@@ -120,28 +120,28 @@ indirectly influence its own attributes. Mitigations:
 - Note: no revision semantics (hippocampus actions are
   not revisable in the intervention sense).
 
-### 2. Broker — validator widening (satan/dl-satan-audit.el)
+### 2. Broker — validator widening (satan/satan-audit.el)
 
-- Add `"hippocampus"` to `dl-satan-audit-attribute-sources-reserved`.
-- Add `"hippocampus"` to `dl-satan-audit-attribute-sources-implemented`.
-- Define `dl-satan-audit-attribute-hippocampus-reasons`
+- Add `"hippocampus"` to `satan-audit-attribute-sources-reserved`.
+- Add `"hippocampus"` to `satan-audit-attribute-sources-implemented`.
+- Define `satan-audit-attribute-hippocampus-reasons`
   constant: `("written" "overwritten" "deleted" "renamed" "searched")`.
-- Add cond branch in `dl-satan-audit--attribute-reasons-for-source`.
+- Add cond branch in `satan-audit--attribute-reasons-for-source`.
 - Validator evidence shape for `source=hippocampus`:
   `evidence.tool_name` (string), `evidence.filename` (string),
   no `intervention_id`, no `confidence`, no `classification`.
 
-### 3. Broker — enqueue from tool handlers (satan/dl-satan-tools-hippocampus.el)
+### 3. Broker — enqueue from tool handlers (satan/satan-tools-hippocampus.el)
 
 - After each mutating tool succeeds (and hippocampus_grep
   with 0 matches), build payload and call
-  `dl-satan-attribute-enqueue-outcome`.
-- Pattern: mirror `dl-satan-tools-hippocampus--cross-ref`
+  `satan-attribute-enqueue-outcome`.
+- Pattern: mirror `satan-tools-hippocampus--cross-ref`
   — soft-fail, log on error, do not affect tool return value.
 - Payload shape: `source="hippocampus"`, `reason=<per tool>`,
   `evidence={tool_name, filename}`, `confidence` absent,
   `is_revision=false`.
-- Gate on `dl-satan-attribute-updates-enabled` (§9 disable
+- Gate on `satan-attribute-updates-enabled` (§9 disable
   switch) — skip enqueue when disabled.
 
 ### 4. Daemon — dispatcher (~/dev/satan-attrd/src/dispatcher.rs)

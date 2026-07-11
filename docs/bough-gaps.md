@@ -95,14 +95,14 @@ JSON (D10).
 
 **SATAN follow-up once DR-116 ships (out of v1 memory scope):**
 
-1. `dl-satan-tools-bough.el:280` (the `recent_changes` scope) —
+1. `satan-tools-bough.el:280` (the `recent_changes` scope) —
    replace the `node tree --after updated_at=...` proxy with
    `bough --json node status-transitions --since ...`, or add a
    sibling `status_transitions` scope.
-2. `dl-satan-memory-evidence.el:156` — synthesize
+2. `satan-memory-evidence.el:156` — synthesize
    `:event "status_changed"` per status_log row so the dormant canon
    rule `bough.recent_status_change`
-   (`dl-satan-memory-canon.el:357`) starts firing.
+   (`satan-memory-canon.el:357`) starts firing.
 3. Compose `node created` (DR-116 §D18 peer event feed) alongside
    `status-transitions` for the full "what's new + what moved" view;
    initial-status assignments never appear in the transitions feed

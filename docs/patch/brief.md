@@ -351,7 +351,7 @@ scan directive
 → report job/branch to inbox
 ```
 
-Possible markers (current scheme — see `dl-satan-tools-atsatan.el`):
+Possible markers (current scheme — see `satan-tools-atsatan.el`):
 
 ```org
 @satan-was-here
@@ -691,7 +691,7 @@ The coding harness should receive a self-contained job prompt.
     "memory_matches": []
   },
   "checks": [
-    "emacs --batch -l test/dl-satan-memory-test.el -f ert-run-tests-batch-and-exit"
+    "emacs --batch -l test/satan-memory-test.el -f ert-run-tests-batch-and-exit"
   ],
   "output_contract": {
     "must_commit": true,
@@ -739,8 +739,8 @@ mark directives done
   ],
   "warnings": [],
   "changed_files": [
-    "satan/dl-satan-memory-canon.el",
-    "test/dl-satan-memory-test.el"
+    "satan/satan-memory-canon.el",
+    "test/satan-memory-test.el"
   ]
 }
 ```

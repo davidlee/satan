@@ -3,7 +3,7 @@
 -- v1 phase aliases are absent, so a hint of `phase:"planning"' is
 -- rejected; v2 adds `planning -> phase:orientation' so the same hint
 -- now produces a `phase:orientation' handle.  Tests cl-letf the elisp
--- grammar constants and run `dl-satan-memory-renormalize' against the
+-- grammar constants and run `satan-memory-renormalize' against the
 -- new version to flip old `trace_handles' rows to inactive and insert
 -- the v2 set.
 --

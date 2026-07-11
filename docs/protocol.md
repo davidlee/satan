@@ -122,7 +122,7 @@ true`) or `error` (when `ok = false`).
   newline arrives.
 - No streaming chunk semantics. A message is whole or not present.
 - Arrays serialised as JSON arrays. Elisp callers must coerce non-plist
-  lists to vectors via `dl-satan-jsonl-prepare` (see jsonl module).
+  lists to vectors via `satan-jsonl-prepare` (see jsonl module).
 - `satan_final` is a **synthetic tool**: the harness intercepts a
   `tool_call` with `name = "satan_final"` and translates it into a
   `final` record. The broker never sees a `tool_call` of that name.
@@ -138,7 +138,7 @@ Both sides ship a thin validator. Each consumes the same fixture file
 (`protocol/fixtures.json`), and the test suites assert validator
 behaviour matches the fixture's `kind`.
 
-- elisp: `dl-satan-protocol-validate` in `dl-satan-protocol.el`.
+- elisp: `satan-protocol-validate` in `satan-protocol.el`.
 - python: `validate` / `check` in `harness/protocol.py`. Both sides
   ship the validator as its own module (since phase 3B).
 
@@ -149,15 +149,15 @@ fixtures, update both validators. Tests fail loudly otherwise.
 
 The events below do **not** cross the membrane. They are emitted
 broker-side into `runs/<run-id>/transcript.jsonl` via
-`dl-satan-audit-record` and consumed only by broker / observer code +
+`satan-audit-record` and consumed only by broker / observer code +
 the projection rebuild CLI. The harness never sees them. They share
 the file with membrane records (which carry `:dir in|out`) but use
 `:dir broker`.
 
 Authority for vocabulary: [`attributes/outcome-semantics.md`](attributes/outcome-semantics.md)
-§9. The validator (`dl-satan-audit-validate-intervention-event` in
-`satan/dl-satan-audit.el`) enforces this shape; tests live in
-`satan/test/dl-satan-audit-intervention-test.el`.
+§9. The validator (`satan-audit-validate-intervention-event` in
+`satan/satan-audit.el`) enforces this shape; tests live in
+`satan/test/satan-audit-intervention-test.el`.
 
 Closed sets at the audit boundary are **strings**, not elisp keywords
 (`"worked"`, not `:worked`).
@@ -223,7 +223,7 @@ The validator refuses any record where:
 5. (on `outcome_revised`) `revises` is missing, or names no prior `intervention.created`.
 
 Adding an event kind or field means: update this section, extend
-`dl-satan-audit-intervention-events` (and the relevant closed-set
+`satan-audit-intervention-events` (and the relevant closed-set
 constants), add ert coverage in
-`dl-satan-audit-intervention-test.el`, and amend
+`satan-audit-intervention-test.el`, and amend
 `outcome-semantics.md` §9 if the contract itself moves.

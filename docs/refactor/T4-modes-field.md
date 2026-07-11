@@ -16,8 +16,8 @@ metadata:
 ## Current shape
 
 Three places to know about tool→mode mapping:
-1. `dl-satan-mode.el` mode-spec `:tools` list — authoritative; broker consults it.
-2. `dl-satan-tools-atsatan.el` calls `dl-satan-tick-register` at load time to dynamically add `patch_job_*` to the tick-agent mode.
+1. `satan-mode.el` mode-spec `:tools` list — authoritative; broker consults it.
+2. `satan-tools-atsatan.el` calls `satan-tick-register` at load time to dynamically add `patch_job_*` to the tick-agent mode.
 3. Each tool spec carries a `:modes` field — per `docs/satan/patch/handover.md`, *documentary only; the broker does not consult it*.
 
 ## Target shape
@@ -34,4 +34,4 @@ PR that greps every tool spec for `:modes`, confirms no runtime consumer, delete
 
 ## PR log
 
-- [x] PR 1: delete `:modes` field + load-time consistency check — merged 2026-05-23 (22 sites stripped across 14 modules; `dl-satan-mode-check-tool-references' enforces the invariant at load; affected tests rewritten; new `dl-satan-mode-test.el' covers the guard)
+- [x] PR 1: delete `:modes` field + load-time consistency check — merged 2026-05-23 (22 sites stripped across 14 modules; `satan-mode-check-tool-references' enforces the invariant at load; affected tests rewritten; new `satan-mode-test.el' covers the guard)

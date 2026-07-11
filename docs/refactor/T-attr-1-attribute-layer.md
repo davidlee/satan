@@ -11,7 +11,7 @@ metadata:
 
 # Theme T-attr-1 — Attribute layer (state + event log + Shame dispatcher)
 
-**Impact:** High. **Effort:** L (design + implementation). **Risk:** M. **Reversibility:** Soft (`dl-satan-attribute-updates-enabled` disable switch + projection-rebuild from event log).
+**Impact:** High. **Effort:** L (design + implementation). **Risk:** M. **Reversibility:** Soft (`satan-attribute-updates-enabled` disable switch + projection-rebuild from event log).
 
 `T-attr-1a` (design) blocks the rest. `T-attr-1b` (state + event log) blocks `T-attr-1c` (Shame dispatcher). `T-attr-1d` (capsule render) and `T-attr-1e` (percept/sensor inputs) follow.
 
@@ -28,7 +28,7 @@ Brief §7 acceptance criteria 6–8 require Shame to increase on `ignored`/`cont
 - Outcome verdicts are recorded but never bias future behaviour. The whole motivation for `outcome-semantics.md` ("mechanically driven Shame deltas") is unrealised.
 - Cruelty has no cap → the model is one mis-classified outcome away from escalating friction unbounded.
 - The capsule the model sees does not surface attribute pressure → decisions about intervention strength, downgrades, abstention are made on prompt-shape alone, not on the evidence base T1.5b built.
-- Operators have no rollback switch for attribute behaviour (refactor/plan.md §6 Q9 promised `dl-satan-attribute-updates-enabled`).
+- Operators have no rollback switch for attribute behaviour (refactor/plan.md §6 Q9 promised `satan-attribute-updates-enabled`).
 
 Dropping the Shame dispatcher in as a single PR understates the design (storage schema, event shape, cap semantics, rebuild path all need locking down first). Hence the a/b split mirroring T1.5.
 
@@ -36,11 +36,11 @@ Dropping the Shame dispatcher in as a single PR understates the design (storage 
 
 Split into a *design contract* (T-attr-1a, no code) and an *implementation* (T-attr-1b..1e, code in PR-sized increments).
 
-T-attr-1a's deliverable is [`docs/satan/attributes/design-contract.md`](../attributes/design-contract.md) defining: vocabulary (8 attrs, internal `:friction` / public Cruelty), scope (`global` only in v1), storage (`satan_attributes` + `satan_attribute_events` per brief §5), event schema (`attribute.delta_applied` in audit transcript), update rules (per-source delta tables; `:outcome` source maps `worked|ignored|contradicted|harmful|neutral` × `:low|:medium|:high` confidence to the brief §3.3 magnitudes), caps (`friction_cap` per brief §1 Cruelty invariant `friction ≤ 1 - doubt - shame`; `range_clamp` to `[0,1]`), disable switch (`dl-satan-attribute-updates-enabled`), rebuild semantics (projection derivable from event-log replay), A3 boundary (inherits T1.5b's break, no new break), and an explicit list of what is NOT in v1 (per-scope storage, automatic decay, cross-attribute cascade rules, repeated-neutral micro-Shame, model-side attribute read tool).
+T-attr-1a's deliverable is [`docs/satan/attributes/design-contract.md`](../attributes/design-contract.md) defining: vocabulary (8 attrs, internal `:friction` / public Cruelty), scope (`global` only in v1), storage (`satan_attributes` + `satan_attribute_events` per brief §5), event schema (`attribute.delta_applied` in audit transcript), update rules (per-source delta tables; `:outcome` source maps `worked|ignored|contradicted|harmful|neutral` × `:low|:medium|:high` confidence to the brief §3.3 magnitudes), caps (`friction_cap` per brief §1 Cruelty invariant `friction ≤ 1 - doubt - shame`; `range_clamp` to `[0,1]`), disable switch (`satan-attribute-updates-enabled`), rebuild semantics (projection derivable from event-log replay), A3 boundary (inherits T1.5b's break, no new break), and an explicit list of what is NOT in v1 (per-scope storage, automatic decay, cross-attribute cascade rules, repeated-neutral micro-Shame, model-side attribute read tool).
 
 The contract pins down (post-review):
 
-- **Confidence weighting.** `:low` → 0.5×, `:medium` → 1.0×, `:high` → 1.5×; **upper-bound clamp only** (`0.30`) — `:low` is allowed to produce sub-`small` deltas. Operator-tunable via `dl-satan-attribute-confidence-weights` defcustom.
+- **Confidence weighting.** `:low` → 0.5×, `:medium` → 1.0×, `:high` → 1.5×; **upper-bound clamp only** (`0.30`) — `:low` is allowed to produce sub-`small` deltas. Operator-tunable via `satan-attribute-confidence-weights` defcustom.
 - **Reduced outcome magnitudes for global scope.** `worked shame` = −0.025 (not −0.05; Shame is durable wrongness memory). `contradicted suspicion` = −0.05 (not −0.15; global Suspicion is ambient by architecture — per-pattern contradiction lives in the pattern record's `contradicted_count`/scar fields, not in scoped attributes). `harmful suspicion` = 0 (verdict alone does not distinguish wrong-suspicion from wrong-timing — pattern-record's `harmful_count` carries the cue-specific consequence).
 - **Revision handling.** `intervention.outcome_revised` emits a delta computed against the **actually logged** prior delta (not theoretical), via `evidence_json->>'intervention_id'` lookup. Caps may have reduced the prior delta below its table value; a theoretical-minus-theoretical net would over- or under-reverse. Migration adds an expression index on `(evidence_json->>'intervention_id')`. Revision chains sum prior actual deltas across the chain.
 - **Multi-attribute event semantics.** Caps within a single source event use a **pre-dispatch snapshot** of `(doubt, shame)` — per-attribute application order does not affect cap outputs, replay is deterministic.
@@ -51,9 +51,9 @@ The contract pins down (post-review):
 - **Audit validator widening.** `attribute.delta_applied` accepted with: closed-set `source` against reserved list; per-source `reason` enum (NOT a global pool); `(source, reason)` pairing enforced; `[0,1]` range on `old`/`new`; delta = `new - old` coherence; 8-name enforcement on `name`; `caps_applied` against closed set (`friction_cap`, `range_clamp`); for `source=outcome`, required `evidence.confidence` + `evidence.intervention_id` + `evidence.classification`.
 - **Future-scope evidence preservation.** For `source=outcome` events, `evidence_json` carries `intervention_id`, `intervention_kind`, `related_motive_id`, `cue_handles`, `related_trace_ids` so T-attr-2's scoped-Shame migration can replay the event log filtered by cue dimensions.
 
-T-attr-1b's implementation lands the substrate: migration `0007_attributes.sql`, `dl-satan-attribute-store.el` (UPSERT + insert-event + counter + lookup APIs), audit validator widening, no dispatcher yet.
+T-attr-1b's implementation lands the substrate: migration `0007_attributes.sql`, `satan-attribute-store.el` (UPSERT + insert-event + counter + lookup APIs), audit validator widening, no dispatcher yet.
 
-T-attr-1c lands the dispatcher: `dl-satan-attribute-dispatcher.el` consumes `intervention.outcome_classified` / `outcome_revised` via a hook registered into `dl-satan-intervention-classify`'s post-emit path. Applies §6 delta table + §7 caps + §9 disable switch.
+T-attr-1c lands the dispatcher: `satan-attribute-dispatcher.el` consumes `intervention.outcome_classified` / `outcome_revised` via a hook registered into `satan-intervention-classify`'s post-emit path. Applies §6 delta table + §7 caps + §9 disable switch.
 
 T-attr-1d lands capsule render: brief §4 ASCII bar block + one-line derived pressure summary, threaded into the existing capsule registry.
 
@@ -68,8 +68,8 @@ design contract at [`../attributes/design-contract.md`](../attributes/design-con
 remains normative on substance (schema, validators, semantics, caps,
 rebuild) and is now formally locus-split (contract §17 — "Implementation
 locus + pinned daemon design choices"). Elisp-specific file references
-in the original theme-doc body (`dl-satan-attribute-store.el`,
-`dl-satan-attribute-dispatcher.el`) are superseded by daemon-side
+in the original theme-doc body (`satan-attribute-store.el`,
+`satan-attribute-dispatcher.el`) are superseded by daemon-side
 modules under `~/dev/satan-attrd/src/`.
 
 Locus split:
@@ -109,7 +109,7 @@ discussion that produced them):
 **Contract status.** The design contract at
 [`../attributes/design-contract.md`](../attributes/design-contract.md)
 has been language-neutralised: §4/§4.2/§4.3/§5/§5.1/§9/§10/§11/§12
-rewritten in broker / daemon role-language (no more `dl-satan-*` /
+rewritten in broker / daemon role-language (no more `satan-*` /
 defcustom-name / ert-file leaks), and a new §17 adopts the three
 pinned daemon design choices into the contract proper. Substantive
 content (schema, deltas, caps, rebuild semantics, validator widening,
@@ -149,7 +149,7 @@ plan order; production observation pulled two items ahead of T-attr-1d.
    Production has 2 interventions ever (both `inbox`-kind, severity=medium),
    zero classified.  `satan_intervention_outcomes` empty.  Doubt+Shame pinned
    at 0.50 from one synthetic `morning-aaaaaa` fixture event.  Investigate:
-   is `dl-satan-observer-classify` hooked into a path that fires on tick-agent
+   is `satan-observer-classify` hooked into a path that fires on tick-agent
    runs; does the classifier ever return non-null on real intervention shapes;
    should the manual `@satan-intervention-*` notes-directive be exercised as
    warm-up.  Captured in [`../follow-ups.md`](../follow-ups.md) §"Attribute
@@ -162,10 +162,10 @@ plan order; production observation pulled two items ahead of T-attr-1d.
    Resolve in §16 before more sources land.
 3. **T-attr-1d — capsule render** (broker-only).  Per HANDOVER §"Open shape
    choices":
-   - Read order: design-contract §9 + §17.1, brief §6, `dl-satan-context.el` +
-     `dl-satan-output.el` (capsule assembly site).
+   - Read order: design-contract §9 + §17.1, brief §6, `satan-context.el` +
+     `satan-output.el` (capsule assembly site).
    - Recommend broker queries `satan_attributes` directly via
-     `dl-satan-attribute--query` (RPC only if projection moves to a
+     `satan-attribute--query` (RPC only if projection moves to a
      daemon-private DB).
    - Disabled marker shape: §9 mandates `"Attributes: disabled"` single line,
      NOT frozen values.
@@ -210,12 +210,12 @@ These do not block 1b. 1c may surface tuning open questions on the delta magnitu
 ## PR log
 
 - [x] T-attr-1a — [`docs/satan/attributes/design-contract.md`](../attributes/design-contract.md) + this theme doc (doc only). Resolves: vocabulary; scope = `global` (with explicit ambient-not-pattern-specific caution per §3.1); storage shapes (with `seq INTEGER` for deterministic replay + `disabled BOOLEAN` for filter); `attribute.delta_applied` event schema; outcome→delta table per brief §3.3 (with global-scope magnitude reductions: `worked shame` −0.025, `contradicted suspicion` −0.05); confidence weighting (upper-bound clamp only); revision net-delta semantics; multi-attribute pre-dispatch snapshot; friction_cap (forward-compat) + range_clamp; disable switch (capsule renders "disabled" not stale values); rebuild from event log with default-skip-disabled vs `--include-disabled` modes; replay-order rule `(ts, run_id, seq)`; source reservation vs implementation distinction; validator widening for `(source, reason)` pairing + required `evidence.confidence` for outcome; A3 boundary; v1 non-inferables. Patched 2026-05-23 from external review (disposition recorded in contract §16). Open questions punted to 1b+: confidence-weight magnitudes (Q1); decay schedule (Q2); per-scope (Q3); event-source-vs-upsert authority (Q4); repeated-neutral (Q5); evidence-json shape (Q6). Locus pivot + contract language-neutralising pass landed 2026-05-23 (contract §17 + `Implementation locus` section above; daemon scaffold at `~/dev/satan-attrd` commit `d8a6a10`).
-- [x] T-attr-1b — state + event log substrate (no dispatcher). **Daemon side** (`~/dev/satan-attrd` commit `d46d93b`): `0007_attributes.sql` migration (contract §4 verbatim + §6.2.1 expression index + 8-attribute seed at `value=0.0`) + store API (`upsert_attribute`, `insert_event`, `lookup_attribute`, `lookup_prior_events_by_intervention`, `Counter::next()`, `format_event_id`, `outcome_evidence_json` helper, `rebuild_projection(include_disabled)`) + closed-enum types (`AttributeName`, `Scope`, `Source`, `OutcomeReason`, `Cap` — `Source::is_implemented()` gates the validator's reserved-vs-implemented split) + `migrate` + `rebuild` CLI subcommands + 22 tests (11 unit + 11 integration against `satan_memory_test`). **Broker side** (this commit): `dl-satan-audit.el` widens with the "Attribute event validators (T-attr-1b)" block (closed-set defconsts in lockstep with the daemon's `types.rs`; new `--iv-require-number-in-range` + `--iv-require-bool` helpers; `--validate-attribute-delta-applied` enforces every key in contract §5 + the `(source, reason)` pairing + the for-`source=outcome` evidence keys + the float-epsilon delta-coherence check; dispatcher `dl-satan-audit-validate-attribute-event` mirrors the existing `validate-intervention-event` shape). 26 new ert in `dl-satan-audit-attribute-test.el`; sister audit suites 45/45 unchanged.
-- [x] T-attr-1c — Shame dispatcher (outcome → delta).  Slice 1 (broker `1a819c8` / daemon `336606d`) shipped the pure dispatcher core (`src/dispatcher.rs` — §6 base-delta table + §6.1 confidence weighting + §6.3 pre-dispatch snapshot + §7 caps + `dispatch_outcome` first-emit + `dispatch_revision` against actually-logged prior deltas + `gather_prior_actuals` helper) plus the contract pins for RPC error policy (§17.4 log+drop) and per-run Counter LRU (§17.7).  Slice 2 (broker `1b7b75d` / daemon `72aee8e`) wired the broker→daemon outcome queue (`satan_outcome_inbox` + migrations 0008/0009/0010), the daemon run loop (`src/run_loop.rs` — single-thread `tokio::select!` over outcome + reply LISTENers, per-run `LruCounterMap`, snapshot read, audit payload builder, schema_version major-rejection), broker enqueue path (`dl-satan-attribute.el` + classify-path widening), and broker LISTENer (`dl-satan-attribute-listener.el` writing the matching run's transcript via the §5.1 validator).  Daemon at 65 tests; broker audit + attribute ert at 88.
+- [x] T-attr-1b — state + event log substrate (no dispatcher). **Daemon side** (`~/dev/satan-attrd` commit `d46d93b`): `0007_attributes.sql` migration (contract §4 verbatim + §6.2.1 expression index + 8-attribute seed at `value=0.0`) + store API (`upsert_attribute`, `insert_event`, `lookup_attribute`, `lookup_prior_events_by_intervention`, `Counter::next()`, `format_event_id`, `outcome_evidence_json` helper, `rebuild_projection(include_disabled)`) + closed-enum types (`AttributeName`, `Scope`, `Source`, `OutcomeReason`, `Cap` — `Source::is_implemented()` gates the validator's reserved-vs-implemented split) + `migrate` + `rebuild` CLI subcommands + 22 tests (11 unit + 11 integration against `satan_memory_test`). **Broker side** (this commit): `satan-audit.el` widens with the "Attribute event validators (T-attr-1b)" block (closed-set defconsts in lockstep with the daemon's `types.rs`; new `--iv-require-number-in-range` + `--iv-require-bool` helpers; `--validate-attribute-delta-applied` enforces every key in contract §5 + the `(source, reason)` pairing + the for-`source=outcome` evidence keys + the float-epsilon delta-coherence check; dispatcher `satan-audit-validate-attribute-event` mirrors the existing `validate-intervention-event` shape). 26 new ert in `satan-audit-attribute-test.el`; sister audit suites 45/45 unchanged.
+- [x] T-attr-1c — Shame dispatcher (outcome → delta).  Slice 1 (broker `1a819c8` / daemon `336606d`) shipped the pure dispatcher core (`src/dispatcher.rs` — §6 base-delta table + §6.1 confidence weighting + §6.3 pre-dispatch snapshot + §7 caps + `dispatch_outcome` first-emit + `dispatch_revision` against actually-logged prior deltas + `gather_prior_actuals` helper) plus the contract pins for RPC error policy (§17.4 log+drop) and per-run Counter LRU (§17.7).  Slice 2 (broker `1b7b75d` / daemon `72aee8e`) wired the broker→daemon outcome queue (`satan_outcome_inbox` + migrations 0008/0009/0010), the daemon run loop (`src/run_loop.rs` — single-thread `tokio::select!` over outcome + reply LISTENers, per-run `LruCounterMap`, snapshot read, audit payload builder, schema_version major-rejection), broker enqueue path (`satan-attribute.el` + classify-path widening), and broker LISTENer (`satan-attribute-listener.el` writing the matching run's transcript via the §5.1 validator).  Daemon at 65 tests; broker audit + attribute ert at 88.
 - [ ] T-attr-1d — capsule render.
 - T-attr-1e — additional sources (one sub-PR per source):
-  - [x] T-attr-1e-hc — hippocampus source (contract §6H). Broker 2026-05-24 (`dl-satan-attribute`, `dl-satan-tools-hippocampus`, audit-validator widening); daemon-side caught up 2026-05-29 in `satan-attrd e66ce17` (`HippocampusReason` + `dispatch_hippocampus`). 12 events observed in production since 2026-05-25.
-  - [x] T-attr-1e-sensor — sensor source (contract §6S). Broker 2026-05-25 (`dl-satan-sensor-curiosity`, `dl-satan-sensor-wpm`, ATTR_ORDER widened to 8 for Curiosity); daemon-side caught up 2026-05-29 in `satan-attrd e66ce17` (`SensorReason` + `dispatch_sensor` + `tuning.rs` extraction). 7 events observed in production.
+  - [x] T-attr-1e-hc — hippocampus source (contract §6H). Broker 2026-05-24 (`satan-attribute`, `satan-tools-hippocampus`, audit-validator widening); daemon-side caught up 2026-05-29 in `satan-attrd e66ce17` (`HippocampusReason` + `dispatch_hippocampus`). 12 events observed in production since 2026-05-25.
+  - [x] T-attr-1e-sensor — sensor source (contract §6S). Broker 2026-05-25 (`satan-sensor-curiosity`, `satan-sensor-wpm`, ATTR_ORDER widened to 8 for Curiosity); daemon-side caught up 2026-05-29 in `satan-attrd e66ce17` (`SensorReason` + `dispatch_sensor` + `tuning.rs` extraction). 7 events observed in production.
   - [ ] T-attr-1e-percept — percept source (canonical Suspicion trigger via repeated percept shape; canonical Curiosity trigger via novel/weak percept).
   - [ ] T-attr-1e-resonance — resonance source (canonical Suspicion trigger via handle-match).
   - [ ] T-attr-1e-tool_error — tool execution failure source (strengthens Metamorphosis + Doubt).

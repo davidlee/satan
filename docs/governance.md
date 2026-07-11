@@ -79,7 +79,7 @@ across those changes.
 | Perceptual loop v0 Phase 5 (outcome observer 5.0–5.8) | ✅ | landed 2026-05-22; observer.process runs in `--spawn` before percept-build; positive-only `auto_rule` traces |
 | Perceptual loop v0 Phase 6 (cooldown floor render) | ✅ | landed 2026-05-23; read-side capsule annotation `[cooling-down (Nm remaining)]` |
 
-`M-x my/satan-run RET morning` writes a SATAN-owned block into today's
+`M-x satan-run RET morning` writes a SATAN-owned block into today's
 daily note and a full audit bundle under `~/notes/satan/runs/<run-id>/`.
 `motd` writes `~/notes/satan/motd.txt`. `self-edit` stages proposals
 under `~/notes/satan/proposals/` — nothing auto-applies.
@@ -93,16 +93,16 @@ per-phase test totals (e.g. memory substrate +119, observer +N, Phase 6
 
 ```sh
 # Manual invocation (the morning timer also does this).
-M-x my/satan-run RET morning
-M-x my/satan-run RET motd
-M-x my/satan-run RET self-edit          # SATAN audits its own source
+M-x satan-run RET morning
+M-x satan-run RET motd
+M-x satan-run RET self-edit          # SATAN audits its own source
 
 # Review staged artifacts.
-M-x my/satan-hippocampus                 # dired ~/notes/satan/hippocampus
+M-x satan-hippocampus                 # dired ~/notes/satan/hippocampus
 find ~/notes/satan/proposals             # denote-named proposals
 
 # Audit a finished run.
-emacsclient --eval '(dl-satan-audit-verify-run "/home/david/notes/satan/runs/<RUN-ID>/")'
+emacsclient --eval '(satan-audit-verify-run "/home/david/notes/satan/runs/<RUN-ID>/")'
 ```
 
 The wrapper script `~/.emacs.d/satan/bin/satan-run <mode>` invokes
@@ -135,9 +135,9 @@ Dotfiles contain mechanism.
 | `satan_final` description (synthetic terminal tool) | `~/notes/satan/tools/satan_final.md` |
 | examples / few-shot snippets, style instructions, hippocampus policy | `~/notes/satan/` |
 | hippocampus entries, staged proposals | `~/notes/satan/{hippocampus,proposals}/` |
-| tool name / risk / schema / capability / handler | elisp tool-spec (`dl-satan-tools-*.el`) |
-| mode allowlist / harness / jail / timeouts / budgets | elisp mode-spec (`dl-satan-mode.el`) |
-| JSONL protocol, validation, dispatch, audit, jailing | elisp (`dl-satan-*.el`) |
+| tool name / risk / schema / capability / handler | elisp tool-spec (`satan-tools-*.el`) |
+| mode allowlist / harness / jail / timeouts / budgets | elisp mode-spec (`satan-mode.el`) |
+| JSONL protocol, validation, dispatch, audit, jailing | elisp (`satan-*.el`) |
 
 The broker assembles `manifest.json` by joining the two halves: each
 allowed tool's full OpenAI-tools JSON Schema is built from the elisp
@@ -234,8 +234,8 @@ broker boundary.
 
 The canonical message spec is [protocol.md](protocol.md). Shared exemplars
 live at `~/.emacs.d/satan/protocol/fixtures.json` and drive validator tests on both
-sides — the elisp validator (`dl-satan-protocol-validate` in
-`dl-satan-protocol.el`) and the python validator (`harness/protocol.py`)
+sides — the elisp validator (`satan-protocol-validate` in
+`satan-protocol.el`) and the python validator (`harness/protocol.py`)
 must remain in lockstep. Adding a message
 type or required field means: edit the spec, add fixtures, update both
 validators. Tests fail loudly otherwise.
@@ -260,7 +260,7 @@ SATAN's memory is called the hippocampus and lives at
 `~/notes/satan/hippocampus/` as one denote-named org file per entry.
 SATAN curates the hippocampus freely — writes auto-apply, no candidate
 / confirmed ceremony. The user reviews when they want to via
-`my/satan-hippocampus`; ad-hoc deletes / edits are expected.
+`satan-hippocampus`; ad-hoc deletes / edits are expected.
 
 Each entry carries provenance (`:RUN_ID:`, `:MODE:`, file mtime).
 A future loop-detection / salience pass can use that to weigh
@@ -349,81 +349,81 @@ justification):
 
 | File | Role |
 |---|---|
-| `dl-satan.el` | Aggregator + `my/satan-run`. |
-| `dl-satan-mode.el` | Mode registry; modes `morning`, `motd`, `self-edit-mech`, `self-edit-mind`. |
-| `dl-satan-tick.el` | Tick mode family: weighted picker, quiet-hours gate, `dl-satan-tick-register` helper, default `tick-pulse`, `my/satan-tick`. |
-| `dl-satan-tools.el` | Tool registry, dispatch, schema validator, JSON-Schema builder (from notes descriptions). |
-| `dl-satan-tools-org.el` | Handlers: `org_read_context`, `org_update_owned_block`, `proposal_stage`. |
-| `dl-satan-tools-notify.el` | `notify_send` (D-Bus). |
-| `dl-satan-tools-hippocampus.el` | `hippocampus_write`; `my/satan-hippocampus`. Emits an `auto_rule` memory observation when called from a `memory-write` mode (cross-ref hook, [[satan-memory-design]] §10.7). |
-| `dl-satan-tools-inbox.el` | `inbox_append`; `my/satan-inbox`; `my/satan-inbox-unread-count`. |
-| `dl-satan-tools-agenda.el` | `agenda_read` (gcalcli → text); timeout-wrapped; calendar id from `$WORK_EMAIL`. |
-| `dl-satan-tools-activity.el` | `activity_read` (panopticon's `~/.local/state/behaviour/` → histogram or focus segments); read-only. |
-| `dl-satan-tools-bough.el` | `bough_read` (shell-out to `bough --json` for `node`, `recent_changes`, `active`, `day`, `week`, `project_subtree`); only path SATAN uses to read bough. |
-| `dl-satan-tools-memory.el` | `memory_mark`, `memory_resonate`, `memory_show_trace` — LLM-facing tools over the memory substrate. |
-| `dl-satan-tools-docs.el` | `docs_list`, `docs_search`, `docs_read` — lazy lookup over the frontmatter-stamped chunks under `docs/satan/` + `docs/emacs/`. |
-| `dl-satan-memory.el` | Substrate aggregator + `my/satan-memory-{resonate,show,status}` interactive surface. |
-| `dl-satan-memory-grammar.el` | Closed-world enums, alias seed, default weights for grammar v1 (mirrored in `memory/migrations/0002_grammar_v1.sql`). |
-| `dl-satan-memory-canon.el` | Pure canonicalizer + rule registry; emits handles + per-handle source. Purity grep-lint enforced. |
-| `dl-satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + `bough_read` + git/fs) per [[satan-memory-design]] §4; deterministic truncation. Also the §S6 git-activity probe (`--git-commits-status`): reads `segments/git-<day>.jsonl`, bursty-freshness (never stale), adds `:git_commits` + `:git` sensor_status. |
-| `dl-satan-memory-store.el` | `mark` / `resonate` / `show` against `satan_memory` via `psql` subprocess. |
-| `dl-satan-memory-migrate.el` | Forward-only migration runner; `dl-satan-memory-renormalize` (§7 grammar-bump replay) + `-status`. |
-| `dl-satan-percept.el` | Perceptual-loop §S1: percept builder, persist (`percept.json`), capsule render. Phase 1. |
-| `dl-satan-resonance.el` | Perceptual-loop §S2: cue derivation + sensor-observed-handle gate + capsule resonance block. Phase 2. |
-| `dl-satan-motive.el` | Perceptual-loop §S3 + §S4 + Phase 6: motives.org parser, atomic writer, footer rewriter (`dl-satan-motive-touch-footer`), capsule render with cooldown annotation (`[cooling-down (Nm remaining)]`). |
-| `dl-satan-observer.el` | Perceptual-loop §S5: 24h transcript scan, window-mature gate, baseline-vs-after diff, positive predicate classifier, multi-motive resolver, verdict persistence; broker entry `dl-satan-observer-process RUN-CTX`. Phase 5. |
-| `dl-satan-sensor-alerts.el` | Perceptual-loop §S6: freshness check dispatcher, per-cause cooldown, quiet-hours suppression, dispatch through `notify_send` tool path, records into `actions.json.pre_spawn`. Phase 4. Renders the `git` sensor (no alert cause — commits are bursty, a quiet feed must not page). |
-| `dl-satan-tank.el` | Shared mutable run-context "tank" plist accessors (run_id, time_now, evidence, percept, sensor_status, pre_spawn, motive, observer summary). |
-| `dl-satan-tools-motive.el` | `motive_read` / `motive_replace` handlers + bound validators (≤3 active, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:`). |
-| `dl-satan-tools-atsatan.el` | `notes_at_satan_scan` (read; `rg --json` over `~/notes/` excluding `satan/`, enriched with headline + context) + `notes_at_satan_done` (claim by replacing `@satan` with `@satan-was-here` + quoted run-id block). Registers `tick-agent` via `dl-satan-tick-register`. |
-| `dl-satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`, excludes `satan/`). |
-| `dl-satan-tools-sway.el` | `sway_border_set` / `sway_border_reset` (visual ephemeral effect). |
-| `dl-satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.emacs.d`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
-| `dl-satan-patch.el` | Patch-agent aggregator + `my/satan-patch-*` interactive surface. |
-| `dl-satan-patch-store.el` | `satan_patch.patch_jobs` PG store; INSERT fires `pg_notify` for queued rows. |
-| `dl-satan-patch-worktree.el` | Worktree allocator + cleanup: `git worktree add <runs-dir>/<job-id>` against current HEAD, branch `satan/patch/<job-id>`. |
-| `dl-satan-patch-adapter.el` | Adapter protocol (`Provider`-like); pre-resolves API keys via `my/op-read-env`. |
-| `dl-satan-patch-adapter-pi.el` | `pi`-CLI adapter; stdin EOF close, `--system-prompt` (not `-file`), stderr persisted to sidecar log. |
-| `dl-satan-patch-runner.el` | Background runner: claims queued jobs, spawns adapter in jail, persists transcript + result; `dl-satan-patch-runner-enabled` defcustom can hand queue off to standalone Go daemon at `~/dev/satan-patcher/`. |
-| `dl-satan-patch-listener.el` | `pg_notify` LISTEN bridge waking the runner without polling. |
-| `dl-satan-patch-classify.el` | `@satan` directive → patch-shape classifier (used by `tick-agent` + `self-edit-*` to route patch-shaped work via `patch_job_create`). |
-| `dl-satan-patch-inbox.el` | Inbox handoff: writes `~/notes/satan/inbox.org` entry on patch completion. |
-| `dl-satan-patch-prompt.el` | Patch-agent system prompt assembler (per-job). |
-| `dl-satan-tools-patch.el` | LLM-facing tools: `patch_job_create`, `patch_job_status`, `patch_job_result`, `patch_job_cancel`, `patch_job_cleanup`. See `docs/satan/patch/{brief,plan,handover}.md`. |
+| `satan.el` | Aggregator + `satan-run`. |
+| `satan-mode.el` | Mode registry; modes `morning`, `motd`, `self-edit-mech`, `self-edit-mind`. |
+| `satan-tick.el` | Tick mode family: weighted picker, quiet-hours gate, `satan-tick-register` helper, default `tick-pulse`, `satan-tick`. |
+| `satan-tools.el` | Tool registry, dispatch, schema validator, JSON-Schema builder (from notes descriptions). |
+| `satan-tools-org.el` | Handlers: `org_read_context`, `org_update_owned_block`, `proposal_stage`. |
+| `satan-tools-notify.el` | `notify_send` (D-Bus). |
+| `satan-tools-hippocampus.el` | `hippocampus_write`; `satan-hippocampus`. Emits an `auto_rule` memory observation when called from a `memory-write` mode (cross-ref hook, [[satan-memory-design]] §10.7). |
+| `satan-tools-inbox.el` | `inbox_append`; `satan-inbox`; `satan-inbox-unread-count`. |
+| `satan-tools-agenda.el` | `agenda_read` (gcalcli → text); timeout-wrapped; calendar id from `$WORK_EMAIL`. |
+| `satan-tools-activity.el` | `activity_read` (panopticon's `~/.local/state/behaviour/` → histogram or focus segments); read-only. |
+| `satan-tools-bough.el` | `bough_read` (shell-out to `bough --json` for `node`, `recent_changes`, `active`, `day`, `week`, `project_subtree`); only path SATAN uses to read bough. |
+| `satan-tools-memory.el` | `memory_mark`, `memory_resonate`, `memory_show_trace` — LLM-facing tools over the memory substrate. |
+| `satan-tools-docs.el` | `docs_list`, `docs_search`, `docs_read` — lazy lookup over the frontmatter-stamped chunks under `docs/satan/` + `docs/emacs/`. |
+| `satan-memory.el` | Substrate aggregator + `satan-memory-{resonate,show,status}` interactive surface. |
+| `satan-memory-grammar.el` | Closed-world enums, alias seed, default weights for grammar v1 (mirrored in `memory/migrations/0002_grammar_v1.sql`). |
+| `satan-memory-canon.el` | Pure canonicalizer + rule registry; emits handles + per-handle source. Purity grep-lint enforced. |
+| `satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + `bough_read` + git/fs) per [[satan-memory-design]] §4; deterministic truncation. Also the §S6 git-activity probe (`--git-commits-status`): reads `segments/git-<day>.jsonl`, bursty-freshness (never stale), adds `:git_commits` + `:git` sensor_status. |
+| `satan-memory-store.el` | `mark` / `resonate` / `show` against `satan_memory` via `psql` subprocess. |
+| `satan-memory-migrate.el` | Forward-only migration runner; `satan-memory-renormalize` (§7 grammar-bump replay) + `-status`. |
+| `satan-percept.el` | Perceptual-loop §S1: percept builder, persist (`percept.json`), capsule render. Phase 1. |
+| `satan-resonance.el` | Perceptual-loop §S2: cue derivation + sensor-observed-handle gate + capsule resonance block. Phase 2. |
+| `satan-motive.el` | Perceptual-loop §S3 + §S4 + Phase 6: motives.org parser, atomic writer, footer rewriter (`satan-motive-touch-footer`), capsule render with cooldown annotation (`[cooling-down (Nm remaining)]`). |
+| `satan-observer.el` | Perceptual-loop §S5: 24h transcript scan, window-mature gate, baseline-vs-after diff, positive predicate classifier, multi-motive resolver, verdict persistence; broker entry `satan-observer-process RUN-CTX`. Phase 5. |
+| `satan-sensor-alerts.el` | Perceptual-loop §S6: freshness check dispatcher, per-cause cooldown, quiet-hours suppression, dispatch through `notify_send` tool path, records into `actions.json.pre_spawn`. Phase 4. Renders the `git` sensor (no alert cause — commits are bursty, a quiet feed must not page). |
+| `satan-tank.el` | Shared mutable run-context "tank" plist accessors (run_id, time_now, evidence, percept, sensor_status, pre_spawn, motive, observer summary). |
+| `satan-tools-motive.el` | `motive_read` / `motive_replace` handlers + bound validators (≤3 active, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:`). |
+| `satan-tools-atsatan.el` | `notes_at_satan_scan` (read; `rg --json` over `~/notes/` excluding `satan/`, enriched with headline + context) + `notes_at_satan_done` (claim by replacing `@satan` with `@satan-was-here` + quoted run-id block). Registers `tick-agent` via `satan-tick-register`. |
+| `satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`, excludes `satan/`). |
+| `satan-tools-sway.el` | `sway_border_set` / `sway_border_reset` (visual ephemeral effect). |
+| `satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.emacs.d`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
+| `satan-patch.el` | Patch-agent aggregator + `satan-patch-*` interactive surface. |
+| `satan-patch-store.el` | `satan_patch.patch_jobs` PG store; INSERT fires `pg_notify` for queued rows. |
+| `satan-patch-worktree.el` | Worktree allocator + cleanup: `git worktree add <runs-dir>/<job-id>` against current HEAD, branch `satan/patch/<job-id>`. |
+| `satan-patch-adapter.el` | Adapter protocol (`Provider`-like); pre-resolves API keys via `my/op-read-env`. |
+| `satan-patch-adapter-pi.el` | `pi`-CLI adapter; stdin EOF close, `--system-prompt` (not `-file`), stderr persisted to sidecar log. |
+| `satan-patch-runner.el` | Background runner: claims queued jobs, spawns adapter in jail, persists transcript + result; `satan-patch-runner-enabled` defcustom can hand queue off to standalone Go daemon at `~/dev/satan-patcher/`. |
+| `satan-patch-listener.el` | `pg_notify` LISTEN bridge waking the runner without polling. |
+| `satan-patch-classify.el` | `@satan` directive → patch-shape classifier (used by `tick-agent` + `self-edit-*` to route patch-shaped work via `patch_job_create`). |
+| `satan-patch-inbox.el` | Inbox handoff: writes `~/notes/satan/inbox.org` entry on patch completion. |
+| `satan-patch-prompt.el` | Patch-agent system prompt assembler (per-job). |
+| `satan-tools-patch.el` | LLM-facing tools: `patch_job_create`, `patch_job_status`, `patch_job_result`, `patch_job_cancel`, `patch_job_cleanup`. See `docs/satan/patch/{brief,plan,handover}.md`. |
 | `memory/migrations/0001_init.sql` | Substrate schema (§6.2). |
 | `memory/migrations/0002_grammar_v1.sql` | v1 grammar seed (aliases + namespace weights). |
 | `memory/migrations/0003_memory_functions.sql` | `memory_mark_trace`, `memory_resonate`, `memory_show_trace`, `handle_weight_for`. |
 | `memory/migrations/0004_grammar_v2_fixture.sql` | Operator-applied fixture bump exercising the renormalize CLI (adds `planning -> phase:orientation`). |
 | `memory/migrations/0005_patch_jobs.sql` | Patch-agent schema: `satan_patch.patch_jobs` table + index. |
 | `docs/satan/memory/design.md` | Substrate design (§§0–11). |
-| `dl-satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly; recent-runs block via `:recent-runs N` mode-spec key. |
-| `dl-satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
-| `dl-satan-block.el` | Owned-block find/replace. |
-| `dl-satan-jsonl.el` | Line-buffered filter + writer + `dl-satan-jsonl-prepare`. |
-| `dl-satan-protocol.el` | Validator for the JSONL membrane; fixture loader; constants. |
+| `satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly; recent-runs block via `:recent-runs N` mode-spec key. |
+| `satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
+| `satan-block.el` | Owned-block find/replace. |
+| `satan-jsonl.el` | Line-buffered filter + writer + `satan-jsonl-prepare`. |
+| `satan-protocol.el` | Validator for the JSONL membrane; fixture loader; constants. |
 | `docs/satan/protocol.md` | Canonical message-type spec. |
 | `protocol/fixtures.json` | Shared valid/invalid exemplars consumed by both ert and python tests. |
-| `dl-satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
-| `dl-satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
-| `dl-satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
-| `test/dl-satan-memory-{migrate,grammar,canon,evidence,store,renormalize}-test.el` | Memory substrate ert against `satan_memory_test`; canon also enforces purity + §9.10 bough isolation lint. |
-| `test/dl-satan-tools-{bough,memory,hippocampus,atsatan,docs,motive,patch}-test.el` | Tool-handler ert; hippocampus covers the cross-ref hook. |
-| `test/dl-satan-{percept,resonance,motive,observer,sensor-alerts,tank,context}-test.el` | Perceptual-loop module ert (Phases 1–6). |
-| `test/dl-satan-patch-{store,worktree,adapter,runner,listener,classify,inbox}-test.el` | Patch-agent module ert. |
+| `satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
+| `satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
+| `satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
+| `test/satan-memory-{migrate,grammar,canon,evidence,store,renormalize}-test.el` | Memory substrate ert against `satan_memory_test`; canon also enforces purity + §9.10 bough isolation lint. |
+| `test/satan-tools-{bough,memory,hippocampus,atsatan,docs,motive,patch}-test.el` | Tool-handler ert; hippocampus covers the cross-ref hook. |
+| `test/satan-{percept,resonance,motive,observer,sensor-alerts,tank,context}-test.el` | Perceptual-loop module ert (Phases 1–6). |
+| `test/satan-patch-{store,worktree,adapter,runner,listener,classify,inbox}-test.el` | Patch-agent module ert. |
 | `bin/satan-run` | Shell wrapper (`emacsclient --eval`). |
-| `bin/satan-run-tick` | Tick wrapper; calls `(my/satan-tick)` which picks + quiet-checks. |
+| `bin/satan-run-tick` | Tick wrapper; calls `(satan-tick)` which picks + quiet-checks. |
 | `harness/__main__.py` | Entrypoint: sys.path bootstrap + `main`. |
 | `harness/protocol.py` | JSONL validator + `emit*` / `read_tool_result`. |
 | `harness/bundle.py` | `load_bundle` / `load_manifest` / `build_system_prompt` / `build_tools`. |
 | `harness/runloop.py` | Turn loop + budget guard + tool-call dispatch. |
 | `harness/providers/{base,openrouter}.py`, `__init__.py` | `Provider` ABC, OpenAI-v1 adapter, `build_provider` registry. |
 | `harness/test_gptel_harness.py` | stdlib unittest cases (no network). |
-| `test/dl-satan-MODULE-test.el` | Phase-3 unit ert, split per source module (T6). |
-| `test/dl-satan-integration-test.el` | 1 e2e ert (skips unless `SATAN_TEST_JAIL_BIN` set). |
+| `test/satan-MODULE-test.el` | Phase-3 unit ert, split per source module (T6). |
+| `test/satan-integration-test.el` | 1 e2e ert (skips unless `SATAN_TEST_JAIL_BIN` set). |
 
 ### Wiring
 
-- `~/.emacs.d/init.el` — `(require 'dl-satan)` after `dl-denote-journal`.
+- `~/.emacs.d/init.el` — `(require 'satan)` after `dl-denote-journal`.
 - `~/.emacs.d/core/dl-path.el` — `"satan"` in `my/lisp-dirs`.
 - `~/flakes/modules/home/emacs.nix` — `"satan"` in `configDirs`.
 - `~/.emacs.d/flake.nix` — `satanFakeHarness`, `satanGptelHarness`,
@@ -491,10 +491,10 @@ justification):
 | `self-edit-mech` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read`, `patch_job_create` | `none` | 50000 / 20 / 180s |
 | `self-edit-mind` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `none` | 50000 / 20 / 180s |
 
-Tick-mode pool (`dl-satan-tick-pool`): `tick-pulse` weight 5,
-`tick-agent` weight 3. `dl-satan-tick-register SHORT-NAME` registers
-each — `pulse` from `dl-satan-tick.el`, `agent` from
-`dl-satan-tools-atsatan.el`. Each rendered tick capsule includes the
+Tick-mode pool (`satan-tick-pool`): `tick-pulse` weight 5,
+`tick-agent` weight 3. `satan-tick-register SHORT-NAME` registers
+each — `pulse` from `satan-tick.el`, `agent` from
+`satan-tools-atsatan.el`. Each rendered tick capsule includes the
 perceptual layer's percept / resonance / motive / sensor blocks
 (broker-built; see [[satan-perceptual-design]]).
 
@@ -503,7 +503,7 @@ the memory_mark + hippocampus cross-ref hook are admitted; `self-edit-*`
 lanes are read-only against the substrate.
 
 All three use OpenRouter with `anthropic/claude-haiku-4.5` by default.
-Override per-mode in `dl-satan-mode.el`: `:provider`, `:model`,
+Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 `:budget-tokens`.
 
 ## Tools
@@ -554,20 +554,20 @@ JAIL=$(nix build .#satan-jailed-fake-harness --no-link --print-out-paths)/bin/ja
 mkdir -p /tmp/satan-smoke && SATAN_RUN_ID=smoke SATAN_RUN_DIR=/tmp/satan-smoke \
   "$JAIL" <<< '{"type":"tool_result","id":"c1","ok":true,"result":{"content":""}}'
 
-# Unit ert (per-module — load any test file in satan/test/dl-satan-*-test.el).
+# Unit ert (per-module — load any test file in satan/test/satan-*-test.el).
 emacs --batch -L core -L lisp -L org -L satan -L satan/test \
-  -l satan/test/dl-satan-broker-test.el -f ert-run-tests-batch-and-exit
+  -l satan/test/satan-broker-test.el -f ert-run-tests-batch-and-exit
 
 # Integration ert (real bwrap jail, fake harness).
 JAIL=$(nix build .#satan-jailed-fake-harness --no-link --print-out-paths)/bin/jailed-satan-fake-harness
 SATAN_TEST_JAIL_BIN=$JAIL emacs --batch -L core -L lisp -L org -L satan -L satan/test \
-  -l satan/test/dl-satan-integration-test.el -f ert-run-tests-batch-and-exit
+  -l satan/test/satan-integration-test.el -f ert-run-tests-batch-and-exit
 
 # Python harness unit tests.
 cd ~/.emacs.d/satan/harness && python -m unittest test_gptel_harness -v
 
 # Audit a real run.
-emacsclient --eval '(dl-satan-audit-verify-run "/home/david/notes/satan/runs/<RUN-ID>/")'
+emacsclient --eval '(satan-audit-verify-run "/home/david/notes/satan/runs/<RUN-ID>/")'
 
 # Inspect timer state.
 systemctl --user list-timers satan-*
@@ -578,11 +578,11 @@ journalctl --user -u satan-morning.service --since today
 
 ### Bundle `:now` block
 
-Every context-fn includes a `:now` plist via `dl-satan-context-now`:
+Every context-fn includes a `:now` plist via `satan-context-now`:
 `iso_date`, `weekday`, `iso_week`, `time`, `tz_offset`, `tz_name`.
 The broker renders this as a fixed `# Now` section between the
 assembled prompt and any `today_text` / source-file sections (see
-`dl-satan-context--render-prompt` and `~/notes/satan/system/framing.txt`),
+`satan-context--render-prompt` and `~/notes/satan/system/framing.txt`),
 so the model always sees the same date/time/tz framing regardless of
 mode. Single source of truth — never set `:date`/`:time` separately.
 
@@ -597,11 +597,11 @@ truncated; omitted on FAILED runs without a `final.json`), plus a
 `tools: name×N, …` tally line from `transcript.jsonl` (excludes
 `satan_final`).
 
-`dl-satan-tick-register` defaults to `:recent-runs 5`, so both
+`satan-tick-register` defaults to `:recent-runs 5`, so both
 `tick-pulse` and `tick-agent` carry the block. Other modes leave
 the key unset and see no change. The block is silently omitted
-when `dl-satan-runs-dir` is missing or empty — same convention as
-the other render-* helpers. Helpers live in `dl-satan-context.el`
+when `satan-runs-dir` is missing or empty — same convention as
+the other render-* helpers. Helpers live in `satan-context.el`
 (`--list-recent-runs`, `--summarize-run`, `--tally-tool-calls`,
 `--render-recent-runs`).
 
@@ -621,12 +621,12 @@ Custom block, not a dynamic-block, not a drawer:
 #+end_satan
 ```
 
-Inert to org's dblock updater; `dl-satan-block-replace` is idempotent.
+Inert to org's dblock updater; `satan-block-replace` is idempotent.
 
 ### `json-serialize` arrays
 
 Elisp lists become objects unless coerced to vectors.
-`dl-satan-jsonl-prepare` walks payloads: plists (car keyword) preserved;
+`satan-jsonl-prepare` walks payloads: plists (car keyword) preserved;
 non-plist lists → vectors; recurses. Applied at every JSON write
 boundary (audit, outbound send). **Never call `json-serialize` directly
 on a SATAN payload.**
@@ -639,7 +639,7 @@ Plist `(:action ACTION :reason MSG)`, never the improper cons
 ### Run-id
 
 `format-time-string "%Y%m%dT%H%M%S" + "-" + mode + "-" + 6-hex-random`.
-The `YYYYMMDDT` prefix is load-bearing: `dl-satan-budget` uses it to
+The `YYYYMMDDT` prefix is load-bearing: `satan-budget` uses it to
 enumerate today's runs without parsing manifests.
 
 ### Self-edit lanes (mech vs mind)
@@ -650,14 +650,14 @@ defaults (50000-token budget, 20 tool calls, 180-second timeout,
 
 | Mode | Source roots | Stamped `:MODE:` |
 |---|---|---|
-| `self-edit-mech` | `dl-satan-self-edit-mech-roots` (default `~/.emacs.d/satan/`) | `self-edit-mech` |
-| `self-edit-mind` | `dl-satan-self-edit-mind-roots` (default `~/notes/satan/{prompts,system,tools}/`) | `self-edit-mind` |
+| `self-edit-mech` | `satan-self-edit-mech-roots` (default `~/.emacs.d/satan/`) | `self-edit-mech` |
+| `self-edit-mind` | `satan-self-edit-mind-roots` (default `~/notes/satan/{prompts,system,tools}/`) | `self-edit-mind` |
 
 Both lanes write proposals to `~/notes/satan/proposals/`; the
 `:MODE:` property in each denote file distinguishes them. Mode specs
 reference defcustoms via `:source-roots-var` so the user can recustomize
 roots without redefining modes. The shared context-fn
-`dl-satan-context-self-edit` reads either `:source-roots` (direct) or
+`satan-context-self-edit` reads either `:source-roots` (direct) or
 `:source-roots-var` (indirect) from the mode spec; sources are
 abbreviated paths (`~/notes/...`, `~/.emacs.d/...`).
 
@@ -665,31 +665,31 @@ abbreviated paths (`~/notes/...`, `~/.emacs.d/...`).
 
 `tick-*` modes are short, frequent, lightly-budgeted runs fired every
 ~30 minutes by `satan-tick.timer`. The wrapper `bin/satan-run-tick`
-calls `my/satan-tick`, which:
+calls `satan-tick`, which:
 
-1. Returns early if `dl-satan-tick-quiet-p` is non-nil. Default
+1. Returns early if `satan-tick-quiet-p` is non-nil. Default
    quiet window is 22:00–07:00 inclusive of 22 / exclusive of 07,
-   wraparound supported. Set `dl-satan-tick-quiet-hours` to nil to
+   wraparound supported. Set `satan-tick-quiet-hours` to nil to
    disable.
-2. Samples a mode name from `dl-satan-tick-pool` (defcustom alist of
+2. Samples a mode name from `satan-tick-pool` (defcustom alist of
    `(MODE-NAME . WEIGHT)`; default `(("tick-pulse" . 1))`).
-3. Spawns the chosen mode via `my/satan-run`, which still passes
+3. Spawns the chosen mode via `satan-run`, which still passes
    through the daily-token-ceiling gate.
 
-Each tick mode is registered via `dl-satan-tick-register SHORT-NAME
+Each tick mode is registered via `satan-tick-register SHORT-NAME
 &rest OVERRIDES`. The helper applies the standard defaults
 (`org_read_context` + `notify_send` + `inbox_append` tool surface,
 `(notify inbox-write)` capabilities, 3000-token / 4-call / 30-second
-budget, `dl-satan-context-tick` + `dl-satan-output/tick`,
+budget, `satan-context-tick` + `satan-output/tick`,
 `anthropic/claude-haiku-4.5`). Prompts live at
 `~/notes/satan/prompts/tick/<short-name>.txt`. Add a tick by writing a
-prompt file and calling `(dl-satan-tick-register "name")` from the
+prompt file and calling `(satan-tick-register "name")` from the
 config.
 
 ### Daily token ceiling
 
-`dl-satan-budget-daily-tokens` (default 400000) caps total tokens spent
-under `dl-satan-runs-dir` per local day. Pre-spawn, the broker sums
+`satan-budget-daily-tokens` (default 400000) caps total tokens spent
+under `satan-runs-dir` per local day. Pre-spawn, the broker sums
 each today-prefixed run's max `usage.tokens_total` log event. If the
 ceiling is met, the broker writes a slim audit bundle for the new
 run-id with `status=budget-exceeded`, a synthetic `final.json` carrying
@@ -699,7 +699,7 @@ verifier accepts it.
 
 ### direnv-driven exec-path
 
-`dl-satan-direnv-dir` (default `user-emacs-directory`) is resolved via
+`satan-direnv-dir` (default `user-emacs-directory`) is resolved via
 `envrc--export` at spawn time and merged into `process-environment`.
 Means the jailed binary lives in the `.emacs.d` devshell; no global
 `home.packages` install.
@@ -713,7 +713,7 @@ to fixed paths inside the jail (`/satan/run`, `/satan/hippocampus`).
 
 ### Key resolution (op://)
 
-Mode `:provider` symbol maps via `dl-satan-broker-provider-key-vars`
+Mode `:provider` symbol maps via `satan-broker-provider-key-vars`
 (`openrouter` → `OPENROUTER_API_KEY`, plus `anthropic`, `openai`,
 `deepseek`). Broker calls `my/op-read-env` at spawn to resolve any
 `op://` ref to plaintext, wrapped in `condition-case` so a locked 1P
@@ -739,11 +739,11 @@ here for SATAN-specific relevance.)
 
 ### Naming
 
-- `dl-satan-MODULE` for the elisp `provide` symbol.
-- `dl-satan-MODULE-name` for public internals; `dl-satan-MODULE--name`
+- `satan-MODULE` for the elisp `provide` symbol.
+- `satan-MODULE-name` for public internals; `satan-MODULE--name`
   for private.
-- `my/satan-*` for user-callable commands (`my/satan-run`,
-  `my/satan-hippocampus`).
+- `satan-*` for user-callable commands (`satan-run`,
+  `satan-hippocampus`).
 - Tool names: `domain_verb` (`org_read_context`, `notify_send`).
   Underscored, not dotted: must match `^[a-zA-Z0-9_-]+$` so the schema
   survives every OpenAI-compatible adapter (OpenRouter → Amazon Bedrock
@@ -766,11 +766,11 @@ Numbered for cross-referencing in commits / changelog.
    OpenRouter produced a daily-note SATAN block and a full
    `transcript.jsonl` with `usage` log events.
 2. **`org-roam` backlinks in morning context** —
-   `dl-satan-context-morning` currently only dumps today's note text +
+   `satan-context-morning` currently only dumps today's note text +
    prompt. Surfacing backlinks for unresolved-loop items would let the
    model thread yesterday's open questions into today's plan.
 3. **Hippocampus / proposal review UX (magit-style)** — v1 is raw
-   `find-file` / dired (`my/satan-hippocampus`). When volume
+   `find-file` / dired (`satan-hippocampus`). When volume
    warrants, a `magit-status`-style buffer over `proposals/` +
    `hippocampus/` with `a`pply / `r`eject / `s`nooze actions.
 4. **Budget-exhaustion UX** — ✅ done 2026-05-19. On first budget
@@ -787,7 +787,7 @@ Numbered for cross-referencing in commits / changelog.
    `manifest.json["tools"]`; harness reads verbatim. Descriptions are
    loaded from `~/notes/satan/tools/<name>.md` (mind/mechanism split).
 7. **Self-edit scope expansion** — currently
-   `dl-satan-self-edit-root = ~/.emacs.d/satan/`. Broader (full
+   `satan-self-edit-root = ~/.emacs.d/satan/`. Broader (full
    `~/.emacs.d/`) is on the table when SATAN's edit suggestions prove
    trustworthy.
 8. **`org_read_context` scope coverage** — only `today | week | inbox`.
@@ -829,7 +829,7 @@ Numbered for cross-referencing in commits / changelog.
     `patch/archive/handover-phase3-mechanism.md`; not decided). Phase
     4 (memory hooks) out of v1 scope.
 13. **`@satan` directive trigger (at-satan)** — ✅ landed
-    (`dl-satan-tools-atsatan.el`); `tick-agent` mode registered
+    (`satan-tools-atsatan.el`); `tick-agent` mode registered
     (weights `pulse=5/agent=3`). Design + plan in
     `docs/satan/at-satan/{design,plan}.md`. Future tools sketched
     (`background_enqueue`, `web_fetch`) but not started.

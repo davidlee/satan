@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 # SATAN intervention projection rebuild.  Invokes
-# `my/satan-rebuild-interventions' over emacsclient; the elisp side
-# replays every intervention audit-event under `dl-satan-runs-dir'
+# `satan-rebuild-interventions' over emacsclient; the elisp side
+# replays every intervention audit-event under `satan-runs-dir'
 # into the satan_interventions / satan_intervention_outcomes
 # projection (migration 0006_interventions.sql).  Idempotent.
 set -eu
-exec emacsclient --eval "(my/satan-rebuild-interventions)"
+exec emacsclient --eval "(satan-rebuild-interventions)"

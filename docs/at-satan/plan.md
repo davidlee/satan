@@ -38,10 +38,10 @@ things wrong about the existing code. Phase B is the chance to fix them.
 
 | Wrong | Right |
 |---|---|
-| "broker passes capabilities as *symbols* (see `dl-satan-broker.el:266-267`)" | Lines 266-267 do `(mapcar #'symbol-name ...)` and convert capabilities to **strings** for the harness/LLM JSON metadata. The in-process tool-handler path is `dl-satan-broker.el:109`: `:capabilities (plist-get mode :capabilities)` — preserved as symbols. Confirmed handler-side at `dl-satan-tools-org.el:73-76` and `dl-satan-tools-inbox.el:49-51`, both of which do `(memq 'sym caps)` against the symbol list. |
+| "broker passes capabilities as *symbols* (see `satan-broker.el:266-267`)" | Lines 266-267 do `(mapcar #'symbol-name ...)` and convert capabilities to **strings** for the harness/LLM JSON metadata. The in-process tool-handler path is `satan-broker.el:109`: `:capabilities (plist-get mode :capabilities)` — preserved as symbols. Confirmed handler-side at `satan-tools-org.el:73-76` and `satan-tools-inbox.el:49-51`, both of which do `(memq 'sym caps)` against the symbol list. |
 
 Doc-level resolution: the resolved-decisions table cites
-**`dl-satan-broker.el:109`** for the symbol-list contract, and the handler
+**`satan-broker.el:109`** for the symbol-list contract, and the handler
 boilerplate uses `(memq 'write-notes (plist-get ctx :capabilities))` to match
 the existing org/inbox pattern.
 
@@ -49,7 +49,7 @@ the existing org/inbox pattern.
 
 | Wrong | Right |
 |---|---|
-| "NUL-delimited handling via `split-string \"\\0\" t` (same pattern as `dl-satan-tools-notes--run-fd`)" | `rg --null` NUL-separates **filename from line:content** within a record; records are still **LF-terminated**. The `fd -0` pattern (true NUL-terminated records) does not transfer. |
+| "NUL-delimited handling via `split-string \"\\0\" t` (same pattern as `satan-tools-notes--run-fd`)" | `rg --null` NUL-separates **filename from line:content** within a record; records are still **LF-terminated**. The `fd -0` pattern (true NUL-terminated records) does not transfer. |
 
 Doc-level resolution: specify the parse explicitly. Two viable options;
 pick one and show the elisp:
@@ -65,7 +65,7 @@ pick one and show the elisp:
   colons in content.
 
 Phase B includes the Option-A `call-process` form, copying the stderr-temp-
-file pattern from `dl-satan-tools-notes--run-fd` (the call-process plumbing
+file pattern from `satan-tools-notes--run-fd` (the call-process plumbing
 *does* transfer; only the parse doesn't).
 
 ### B3. Excluding `@satan-done` lines
@@ -94,7 +94,7 @@ numbers. Implementer should not later treat the id as a cross-run anchor.
 | 'add `("tick-agent" . 3)` … weighted below `"tick-pulse"`' | Current default is `'(("tick-pulse" . 1))`. Setting agent=3, pulse=1 makes agent *higher* than pulse, not lower. The design.md draft sets pulse=5, agent=3. Either change both, or pick coherent numbers. |
 
 Decision: keep pulse=5, agent=3 (matches existing draft). Phase A modifies
-both entries of the `dl-satan-tick-pool` defcustom default. Note that this
+both entries of the `satan-tick-pool` defcustom default. Note that this
 is a defcustom — users with `M-x customize` overrides won't pick up the new
 entry; an inline `Customisation note:` is added to the doc.
 
@@ -103,14 +103,14 @@ entry; an inline `Customisation note:` is added to the doc.
 `@satan-done(<run-id>,comment)` requires the handler knows the current
 run-id. Not currently called out. Resolution: read from
 `(plist-get tool-ctx :id)` — the broker populates it at
-`dl-satan-broker.el:107`. Add to the resolved-decisions table so the green
+`satan-broker.el:107`. Add to the resolved-decisions table so the green
 implementer doesn't fumble looking for it in run-state, env, or mode-spec.
 
 ### B7. Drop the line-number anchor for the morning diff
 
 | Wrong | Right |
 |---|---|
-| "single-line edit to `dl-satan-mode.el:75`" | Line numbers rot. Describe the edit by the morning mode's `:tools` plist key (currently around line 70 but unimportant). |
+| "single-line edit to `satan-mode.el:75`" | Line numbers rot. Describe the edit by the morning mode's `:tools` plist key (currently around line 70 but unimportant). |
 
 ### B8. Verify command for ert
 
@@ -132,16 +132,16 @@ specific reference the scan surfaced.
 
 ### B10. Require chain (load order)
 
-`dl-satan-tools-atsatan.el` calls `dl-satan-tick-register` at load time.
-That symbol lives in `dl-satan-tick.el`. If `dl-satan.el` requires the
+`satan-tools-atsatan.el` calls `satan-tick-register` at load time.
+That symbol lives in `satan-tick.el`. If `satan.el` requires the
 new tools file before tick, load fails.
 
 | Wrong | Right |
 |---|---|
-| Slot `(require 'dl-satan-tools-atsatan)` alphabetically | Insert it **after** `(require 'dl-satan-tick)` in `dl-satan.el`. Tools file's mode registration depends on `dl-satan-tick-register` being defined. |
+| Slot `(require 'satan-tools-atsatan)` alphabetically | Insert it **after** `(require 'satan-tick)` in `satan.el`. Tools file's mode registration depends on `satan-tick-register` being defined. |
 
-Phase A's "Files to modify" entry for `dl-satan.el` calls this out
-explicitly; the anchor is "immediately after the `dl-satan-tick` require".
+Phase A's "Files to modify" entry for `satan.el` calls this out
+explicitly; the anchor is "immediately after the `satan-tick` require".
 
 ### B11. `rg --json` output schema
 
@@ -185,7 +185,7 @@ not write into `~/notes/`. Fixture pattern:
 
 ```elisp
 (let* ((root (make-temp-file "satan-atsatan-test-" 'dir))
-       (dl-satan-tools-atsatan-root root)
+       (satan-tools-atsatan-root root)
        (file (expand-file-name "test.org" root)))
   (unwind-protect
       (progn
@@ -207,7 +207,7 @@ file concurrently — both read full file, edit one line, write whole
 file; last write silently wins.
 
 Probability under a 30-min systemd timer is near zero. Under
-hand-driven `my/satan-run "tick-agent"` during development it is
+hand-driven `satan-run "tick-agent"` during development it is
 plausible.
 
 Decision: **accept the risk for v1.** Document it as a known limitation
@@ -218,14 +218,14 @@ in the design invariants section. Future: file-level lock via
 
 Every code block currently marked ```` ```elisp ```` becomes eval-able:
 
-- **Register forms** — real `dl-satan-tool-register` plists with the
+- **Register forms** — real `satan-tool-register` plists with the
   schema, modes list, and handler symbol filled in.
 - **Handler functions** — `require` at top, `defcustom`/`defconst` forms,
   full handler body with `condition-case`, exact `(cons 'ok ...)` /
   `(cons 'error ...)` return shape matching neighbours like
-  `dl-satan-tools-inbox.el`.
-- **Tick registration** — `(dl-satan-tick-register "agent" ...)` with the
-  overrides plist. Note: `dl-satan-tick-register` prepends `"tick-"` to
+  `satan-tools-inbox.el`.
+- **Tick registration** — `(satan-tick-register "agent" ...)` with the
+  overrides plist. Note: `satan-tick-register` prepends `"tick-"` to
   produce `tick-agent`, and resolves the prompt file to
   `<prompts>/tick/agent.txt`. So the public mode name is `tick-agent` and
   the short-name argument is `"agent"` — the doc must be consistent.
@@ -297,16 +297,16 @@ balloons the doc without proportional value. Decision:
 | File | Treatment |
 |---|---|
 | `~/notes/satan/prompts/tick/agent.txt` | **Verbatim.** Behavioural prompt — every word matters. |
-| `satan/dl-satan-tools-atsatan.el` claim function (`dl-satan-tool/notes-at-satan-done`) | **Verbatim.** Optimistic re-read, idempotent claim, run-id embedding — subtle. |
-| `satan/test/dl-satan-tools-atsatan-test.el` round-trip test (`notes-at-satan/scan-then-done-then-rescan`) | **Verbatim.** One test that exercises scan → done → re-scan; demonstrates the contract. |
-| `dl-satan-tools-atsatan.el` scan function | **Described** (call-process form, JSON parse, filter, build match plists). Future agent fills in. |
+| `satan/satan-tools-atsatan.el` claim function (`satan-tool/notes-at-satan-done`) | **Verbatim.** Optimistic re-read, idempotent claim, run-id embedding — subtle. |
+| `satan/test/satan-tools-atsatan-test.el` round-trip test (`notes-at-satan/scan-then-done-then-rescan`) | **Verbatim.** One test that exercises scan → done → re-scan; demonstrates the contract. |
+| `satan-tools-atsatan.el` scan function | **Described** (call-process form, JSON parse, filter, build match plists). Future agent fills in. |
 | `~/notes/satan/tools/notes_at_satan_scan.md`, `_done.md` | **Described** (3-paragraph spec, audience: the LLM). |
 | Remaining ert tests | **Described** (one paragraph per test case). |
 
 ### Files to create
 
-1. `satan/dl-satan-tools-atsatan.el` — handlers + registrations
-2. `satan/test/dl-satan-tools-atsatan-test.el` — ert (5 tests; round-trip
+1. `satan/satan-tools-atsatan.el` — handlers + registrations
+2. `satan/test/satan-tools-atsatan-test.el` — ert (5 tests; round-trip
    verbatim, others described)
 3. `~/notes/satan/tools/notes_at_satan_scan.md` — model-facing description
 4. `~/notes/satan/tools/notes_at_satan_done.md` — model-facing description
@@ -314,26 +314,26 @@ balloons the doc without proportional value. Decision:
 
 ### Files to modify
 
-1. `satan/dl-satan.el` — add `(require 'dl-satan-tools-atsatan)`. Anchor:
+1. `satan/satan.el` — add `(require 'satan-tools-atsatan)`. Anchor:
    the existing block of tool requires.
-2. `satan/dl-satan-mode.el` — add `"notes_at_satan_scan"` (not `_done`) to
+2. `satan/satan-mode.el` — add `"notes_at_satan_scan"` (not `_done`) to
    the `morning` mode's `:tools` list. Anchor: the `(list :name "morning"
    …)` form's `:tools` key.
-3. `satan/dl-satan-tick.el` — change `dl-satan-tick-pool` defcustom default
+3. `satan/satan-tick.el` — change `satan-tick-pool` defcustom default
    from `'(("tick-pulse" . 1))` to `'(("tick-pulse" . 5) ("tick-agent" .
-   3))`. Anchor: the `defcustom dl-satan-tick-pool` form. Note the
+   3))`. Anchor: the `defcustom satan-tick-pool` form. Note the
    customisation caveat: users with `M-x customize` overrides need to
    re-add the entry manually.
-4. `satan/dl-satan.el` (separately or same edit): nothing else — the
-   `tick-agent` mode is registered via `dl-satan-tick-register "agent"`
-   inside `dl-satan-tools-atsatan.el`'s load body, so a single require is
+4. `satan/satan.el` (separately or same edit): nothing else — the
+   `tick-agent` mode is registered via `satan-tick-register "agent"`
+   inside `satan-tools-atsatan.el`'s load body, so a single require is
    enough.
 
 ### Build-verify sequence
 
 ```sh
-git -C ~/.emacs.d add satan/dl-satan-tools-atsatan.el
-git -C ~/.emacs.d add satan/test/dl-satan-tools-atsatan-test.el
+git -C ~/.emacs.d add satan/satan-tools-atsatan.el
+git -C ~/.emacs.d add satan/test/satan-tools-atsatan-test.el
 # Notes-side files live under ~/notes/ — separate repo, no flake involvement.
 
 cd ~/flakes && home-manager switch --flake .#david
@@ -342,11 +342,11 @@ cd ~/flakes && home-manager switch --flake .#david
 # goes to stdout (unlike emacsclient --eval, which swallows it).
 emacs -batch \
   -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
-  -l ert -l dl-satan-tools-atsatan-test \
+  -l ert -l satan-tools-atsatan-test \
   --eval '(ert-run-tests-batch-and-exit "notes-at-satan-")'
 
 # Smoke-test one tick-agent run end-to-end in the live emacs:
-emacsclient --eval '(my/satan-run "tick-agent")'
+emacsclient --eval '(satan-run "tick-agent")'
 # Then inspect the audit bundle:
 ls ~/notes/satan/runs/most-recent/
 ```
@@ -365,19 +365,19 @@ ls ~/notes/satan/runs/most-recent/
 | Hash function | `(secure-hash 'md5 (format "%s:%d" file line))` → `(substring digest 0 12)` | Deterministic, built-in to Emacs 30.2, no dep. 48 bits comfortable for ≤200 results. |
 | Hash stability | Single-scan-cycle only | `(file . line)` shifts under edits; documented as non-persistent. |
 | `rg` invocation | `rg --json -n @satan <root>` parsed line-by-line | Robust against colons/NULs in paths; avoids cascaded split bugs. |
-| Exclude `satan/` dir | `--glob '!satan/**'` plus a defconst exclude list mapped to repeated `--glob` flags | Matches existing `dl-satan-tools-notes--exclude` pattern. |
+| Exclude `satan/` dir | `--glob '!satan/**'` plus a defconst exclude list mapped to repeated `--glob` flags | Matches existing `satan-tools-notes--exclude` pattern. |
 | Exclude `@satan-done` lines | Post-parse elisp filter (`seq-remove`) | Pipe-through-grep breaks NUL/JSON framing; PCRE lookahead is overkill. |
 | Context-window method | Line-sliced N-above/N-below plus org headline walk-up | Hybrid; matches existing draft. |
 | Concurrent claim safety | Optimistic re-read of the target line; if already `@satan-done`, return `(:status "already-done")` | Idempotent, matches Q3 resolution. |
 | `write-notes` capability | New symbol, checked via `(memq 'write-notes (plist-get ctx :capabilities))` | Matches `inbox-write` / `write-daily` pattern. Central capability registry is a future refactor. |
-| Run-id source for marker | `(plist-get tool-ctx :id)` (broker populates at `dl-satan-broker.el:107`) | Avoids the green-implementer fumble. |
+| Run-id source for marker | `(plist-get tool-ctx :id)` (broker populates at `satan-broker.el:107`) | Avoids the green-implementer fumble. |
 | Default path-pattern | `.*\.(org\|md)$`, overridable | rg `-g` for extension filter. |
-| `tick-agent` short-name vs full name | `dl-satan-tick-register "agent"` → mode name `tick-agent`, prompt `<prompts>/tick/agent.txt` | Convention enforced by `dl-satan-tick-register`. Doc uses both consistently. |
-| Require chain | `(require 'dl-satan-tools-atsatan)` must come **after** `(require 'dl-satan-tick)` in `dl-satan.el` | Tools file calls `dl-satan-tick-register` at load time. |
+| `tick-agent` short-name vs full name | `satan-tick-register "agent"` → mode name `tick-agent`, prompt `<prompts>/tick/agent.txt` | Convention enforced by `satan-tick-register`. Doc uses both consistently. |
+| Require chain | `(require 'satan-tools-atsatan)` must come **after** `(require 'satan-tick)` in `satan.el` | Tools file calls `satan-tick-register` at load time. |
 | `rg --json` field map | path = `.data.path.text`; line = `.data.line_number`; content = `.data.lines.text`; filter `.type == "match"` | Locks the parse surface so the elisp doesn't drift. |
 | Context lines | In-elisp slice from the file buffer (±N around `:line`) | `rg -A/-B` context records must be re-associated to their match — fragile. Buffer is already opened for the headline walk-up. |
 | Headline walk-up | Walk backward for `^\\(\\*+\\|#+\\) `; return matched heading text or nil | Org and markdown both covered with one regex. |
-| Test fixture | `make-temp-file ... 'dir` + `let`-bound `dl-satan-tools-atsatan-root` + `unwind-protect` cleanup | Keeps `~/notes/` clean; round-trip test verbatim form documented in Phase B. |
+| Test fixture | `make-temp-file ... 'dir` + `let`-bound `satan-tools-atsatan-root` + `unwind-protect` cleanup | Keeps `~/notes/` clean; round-trip test verbatim form documented in Phase B. |
 | Inter-file concurrency | Accepted limitation for v1 | Two ticks editing different lines of the same file at once can lose a claim. Probability near zero under 30-min systemd timer. Document in design invariants. Future: `make-lock-file`. |
 | Verify command | `emacs -batch -l ert -l <test> --eval '(ert-run-tests-batch-and-exit "notes-at-satan-")'` | Non-zero exit + stdout output on failure; `emacsclient --eval (ert-run-tests-batch …)` swallows results. |
 

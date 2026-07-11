@@ -12,7 +12,7 @@ metadata:
 
 # Outcome semantics — design contract (T1.5a)
 
-> **Status.** This is the **contract**, not the implementation. T7 (intervention records) encodes this vocabulary into the audit event schema. T1.5b implements the classifier extensions in `dl-satan-observer-classify.el`. Where this document conflicts with code at any point, this document wins — file an issue or amend the contract first.
+> **Status.** This is the **contract**, not the implementation. T7 (intervention records) encodes this vocabulary into the audit event schema. T1.5b implements the classifier extensions in `satan-observer-classify.el`. Where this document conflicts with code at any point, this document wins — file an issue or amend the contract first.
 
 This document defines what an *outcome verdict* is, when it is allowed to transition between states, what evidence each kind of classification requires, and what v1 deliberately refuses to infer.
 
@@ -42,7 +42,7 @@ An outcome verdict carries exactly one *classification* from this closed set:
 
 The string forms used in audit events / projection rows match `attributes.brief` §5 SQL: `worked`, `neutral`, `ignored`, `contradicted`, `harmful`, `unknown`. Elisp keywords are used inside `observer-classify.el`; SQL strings cross the audit boundary. Mapping is name-equality without the colon.
 
-`:worked` is the only classification today's positive classifier already emits (`dl-satan-observer-classify` returns `:verdict "positive"`). T1.5b folds that emission into this new verdict shape.
+`:worked` is the only classification today's positive classifier already emits (`satan-observer-classify` returns `:verdict "positive"`). T1.5b folds that emission into this new verdict shape.
 
 ---
 
@@ -79,7 +79,7 @@ Verdicts are addressed by `(intervention-id, classified-at)` in audit events. Th
 
 ## 3. Lifecycle
 
-A verdict moves through three maturity states keyed off the intervention's `created_at` (set at `intervention.created` audit-event emit time, T7) and its `outcome_window_minutes` (declared at create-time; defaults to 30 per today's `dl-satan-observer-window-mature-seconds`).
+A verdict moves through three maturity states keyed off the intervention's `created_at` (set at `intervention.created` audit-event emit time, T7) and its `outcome_window_minutes` (declared at create-time; defaults to 30 per today's `satan-observer-window-mature-seconds`).
 
 ```text
                                     +--- :stale cutoff -----+
@@ -98,7 +98,7 @@ A verdict moves through three maturity states keyed off the intervention's `crea
 
 **Why a finite `:stale` cutoff.** Two reasons: (i) late evidence beyond 24 h has weak causal claim on Shame; (ii) the observer's per-tick cost is bounded by the maturity-eligible set, and without a cutoff that set grows unboundedly.
 
-**Why 24 h.** Matches `dl-satan-observer-scan-window-hours` (today's prior-run scan window) — re-using the same horizon means a single tick's scan covers everything still mutable, and a missed-tick day does not prematurely freeze the projection.
+**Why 24 h.** Matches `satan-observer-scan-window-hours` (today's prior-run scan window) — re-using the same horizon means a single tick's scan covers everything still mutable, and a missed-tick day does not prematurely freeze the projection.
 
 The intervention's `outcome_window_minutes` is **declared at create-time by the handler**, not inferred. T7's `intervention.created` audit event carries the value; the observer reads it. The handler picks a value appropriate to the intervention kind:
 
@@ -148,7 +148,7 @@ The `:evidence` slot holds a plist whose shape varies by classification. Every s
  :handle-overlap 3)                                              ; |motive.cue ∩ percept.handles|
 ```
 
-Today's `dl-satan-observer-classify` already produces the `:predicates` payload (as a single `:predicate` keyword); T1.5b extends it to a list to allow `:confidence :high` via multi-predicate firings.
+Today's `satan-observer-classify` already produces the `:predicates` payload (as a single `:predicate` keyword); T1.5b extends it to a list to allow `:confidence :high` via multi-predicate firings.
 
 ### `:ignored`
 
@@ -202,7 +202,7 @@ The classifier API **must** reject auto-emission of `:contradicted` even with `:
  :reason :crosses_midnight | :no_baseline | :no_correlation | :motive_dormant | :pending)
 ```
 
-The `:reason` keywords mirror today's `dl-satan-observer-classify` `:reason` slot. A `:pending`-maturity verdict always reports `:reason :pending`.
+The `:reason` keywords mirror today's `satan-observer-classify` `:reason` slot. A `:pending`-maturity verdict always reports `:reason :pending`.
 
 ---
 
@@ -210,7 +210,7 @@ The `:reason` keywords mirror today's `dl-satan-observer-classify` `:reason` slo
 
 ### 6.1 Clock
 
-All maturity transitions use the broker's `:time_now`, **frozen at `dl-satan-broker--prepare`**. Acceptance A3 (byte-identical-rerun) requires this; computing maturity from `(current-time)` would defeat A3 every tick.
+All maturity transitions use the broker's `:time_now`, **frozen at `satan-broker--prepare`**. Acceptance A3 (byte-identical-rerun) requires this; computing maturity from `(current-time)` would defeat A3 every tick.
 
 Per `CODE_REVIEW.md` §6 Q7, T7 and T1.5b are the two themes allowed to break A3 byte-identical-rerun (new IDs, new classifier outputs). T1.5b breaks it because the verdict shape is wider; T7 breaks it because intervention IDs include a random suffix.
 
@@ -243,8 +243,8 @@ Manual marks are the only legal route to `:harmful` and (in v1) `:contradicted`.
 ### 7.1 Interactive command
 
 ```text
-M-x dl-satan-intervention-mark-harmful
-M-x dl-satan-intervention-mark-contradicted
+M-x satan-intervention-mark-harmful
+M-x satan-intervention-mark-contradicted
 ```
 
 (T1.5b PR 4 ships these.) The command prompts for:
@@ -268,7 +268,7 @@ A `@satan-intervention-harmful` directive in a notes file:
   The proposal arrived mid-debug and broke my train of thought.
 ```
 
-The tick-agent's `notes_at_satan_scan` tool finds these (the existing `@satan-*` scanner); a new `notes_at_satan_intervention_done` handler (mirroring `notes_at_satan_done`) routes through the same writer as the interactive command. `:source :manual :marked-by :notes-directive`. Once consumed, the scanner rewrites the directive to include the run-id stamp (mirroring `dl-satan-tools-atsatan--rewrite-line`).
+The tick-agent's `notes_at_satan_scan` tool finds these (the existing `@satan-*` scanner); a new `notes_at_satan_intervention_done` handler (mirroring `notes_at_satan_done`) routes through the same writer as the interactive command. `:source :manual :marked-by :notes-directive`. Once consumed, the scanner rewrites the directive to include the run-id stamp (mirroring `satan-tools-atsatan--rewrite-line`).
 
 Directive grammar:
 
@@ -377,12 +377,12 @@ A rebuild from audit-log replays `created` → `outcome_classified` → `outcome
 
 ## 10. Implications for T1.5b (classifier extensions)
 
-T1.5b lands four PRs in `dl-satan-observer-classify.el` (already extracted by T1 — see [`../refactor/T1-observer-split.md`](../refactor/T1-observer-split.md)):
+T1.5b lands four PRs in `satan-observer-classify.el` (already extracted by T1 — see [`../refactor/T1-observer-split.md`](../refactor/T1-observer-split.md)):
 
 1. **Verdict shape extension.** Replace today's `(:verdict "positive" :predicate :kw)` with the §2 plist. Today's positive classifier becomes `:classification :worked :confidence (:medium when one predicate fires, :high when ≥2)`. The `:unknown` reasons map straight from today's `:reason :crosses_midnight`/`:no_baseline`/`:no_correlation`/`:motive_dormant`.
 2. **Negative predicates.** Add `classify-negative` returning `:ignored` (user-facing intervention, no positive predicate, no ack event in window) or `:neutral` (non-user-facing intervention, no positive predicate). `:contradicted` and `:harmful` are rejected at the API boundary.
-3. **Lifecycle coordinator.** `dl-satan-observer--maturity-state intervention now` returns `:pending|:mature|:stale`. The classifier dispatches: `:pending` → emit `(:classification :unknown :maturity :pending)`; `:mature` → run predicates; `:stale` → no-op.
-4. **Manual override path.** Interactive commands `dl-satan-intervention-mark-{harmful,contradicted}`; notes-side `notes_at_satan_intervention_done` handler consuming `@satan-intervention-{harmful,contradicted}` directives. Both route through `dl-satan-intervention-write-manual-outcome` (the single writer).
+3. **Lifecycle coordinator.** `satan-observer--maturity-state intervention now` returns `:pending|:mature|:stale`. The classifier dispatches: `:pending` → emit `(:classification :unknown :maturity :pending)`; `:mature` → run predicates; `:stale` → no-op.
+4. **Manual override path.** Interactive commands `satan-intervention-mark-{harmful,contradicted}`; notes-side `notes_at_satan_intervention_done` handler consuming `@satan-intervention-{harmful,contradicted}` directives. Both route through `satan-intervention-write-manual-outcome` (the single writer).
 
 PR order respects T7 dependencies: PRs 1–3 land after T7 (need audit-event substrate); PR 4 may land same-cycle or shortly after.
 
@@ -394,7 +394,7 @@ Decisions intentionally left for T7 / T1.5b implementation, not the contract:
 
 1. **`intervention_id` exposure to the model in `tool_result`.** The contract specifies the id schema but does not mandate visibility. Recommendation (carried from `CODE_REVIEW.md` §6 Q8): id-only in v1 — the handler returns the id; the model can call a future `intervention_status` tool to fetch the current outcome. Letting the model see the live `:classification` in-band invites it to optimise for the metric.
 2. ~~**Notes-directive consumption ordering.** A directive sat in a notes file may be consumed before or after the auto-classifier has emitted a `:mature` verdict for the same intervention. T1.5b PR 4 must pick a rule: latest-write-wins (simplest); or notes-directive-trumps-auto (richer evidence wins). Recommendation: latest-write-wins by `:classified-at`, with the directive's `ts` being the file mtime at scan time.~~ **Resolved (T1.5b PR 4, 2026-05-23):** latest-write-wins by `:classified-at`. The directive's `:classified-at` is the consuming tick's `:time-now` (no special handling required — `intervention-classify` already orders by that field).
-3. ~~**Counter-memory writer.** `attributes.brief` §3.4 mandates a counter-memory trace on `:contradicted` / `:harmful`. T1.5b PR 4 must wire it through `dl-satan-memory-store-mark` with `:trace-origin :auto_rule :kind "observation"`. Whether to ship counter-memory in PR 4 or a follow-up PR is an implementation call.~~ **Resolved (T1.5b PR 4, 2026-05-23):** shipped in PR 4. `dl-satan-intervention--write-counter-memory` invokes `dl-satan-memory-store-mark` with `:trace-origin "auto_rule" :kind "observation" :source "intervention.manual_mark" :valence "negative"`; trace `:handles` inherit the intervention's `:cue_handles` verbatim (with `:rule_id "intervention.manual_mark" :origin "derived"` provenance) so resonance can surface the counter-memory when the same cue re-fires. The dedicated `outcome:*` handle-values amendment to the memory grammar is deferred to the attribute-layer build, not a one-off PR.
+3. ~~**Counter-memory writer.** `attributes.brief` §3.4 mandates a counter-memory trace on `:contradicted` / `:harmful`. T1.5b PR 4 must wire it through `satan-memory-store-mark` with `:trace-origin :auto_rule :kind "observation"`. Whether to ship counter-memory in PR 4 or a follow-up PR is an implementation call.~~ **Resolved (T1.5b PR 4, 2026-05-23):** shipped in PR 4. `satan-intervention--write-counter-memory` invokes `satan-memory-store-mark` with `:trace-origin "auto_rule" :kind "observation" :source "intervention.manual_mark" :valence "negative"`; trace `:handles` inherit the intervention's `:cue_handles` verbatim (with `:rule_id "intervention.manual_mark" :origin "derived"` provenance) so resonance can surface the counter-memory when the same cue re-fires. The dedicated `outcome:*` handle-values amendment to the memory grammar is deferred to the attribute-layer build, not a one-off PR.
 
 These do not block T7. T7 may proceed with the §9 event shapes as fixed.
 

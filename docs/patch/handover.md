@@ -58,20 +58,20 @@ Prod DB now at migration 5 (operator applied 0004 + 0005 mid-session).
 ## Mode manifests (the missing piece)
 
 The prompt edits told the model to call `patch_job_create` but the
-broker tool gate (`dl-satan-tool-allowed-p`) is the mode's `:tools`
+broker tool gate (`satan-tool-allowed-p`) is the mode's `:tools`
 allowlist.  Before this session, none of `tick-agent`,
 `self-edit-mech`, `self-edit-mind` had `patch_job_*` in `:tools`,
 so the broker refused the call and the model fell back to
 `inbox_append`.  Now:
 
-- `dl-satan-tools-atsatan.el` — `dl-satan-tick-register "agent"`
+- `satan-tools-atsatan.el` — `satan-tick-register "agent"`
   adds `"patch_job_create" "patch_job_status"`.
-- `dl-satan-mode.el` — same two added to `self-edit-mech` and
+- `satan-mode.el` — same two added to `self-edit-mech` and
   `self-edit-mind`.
 
 Historic note: tool specs used to carry a `:modes` documentary list.
 T4 deleted it; the mode-spec `:tools' allowlist is now the only
-source of truth and `dl-satan-mode-check-tool-references' enforces
+source of truth and `satan-mode-check-tool-references' enforces
 consistency at load.
 
 ## Op-cache path port (the big one)
@@ -93,15 +93,15 @@ now mirrored for `jailed-pi`:
 ~/.emacs.d/flake.nix     useOpEnv = false; passApiKeysFromEnv = true;
 ```
 
-Emacs-side, `dl-satan-patch-adapter-pi.el` now pre-resolves the API
-keys in `dl-satan-patch-adapter-pi-api-key-vars` (defaults: 7 keys)
+Emacs-side, `satan-patch-adapter-pi.el` now pre-resolves the API
+keys in `satan-patch-adapter-pi-api-key-vars` (defaults: 7 keys)
 via `my/op-read-env` and binds the resolved env as
 `process-environment` for the spawn.  Any leftover `op://` refs
 are scrubbed via `my/scrub-op-refs-env`.
 
 Helper move:
 
-- `dl-satan-broker--scrub-op-refs` → `my/scrub-op-refs-env` in
+- `satan-broker--scrub-op-refs` → `my/scrub-op-refs-env` in
   `lisp/dl-secret.el` so the broker and adapter share it.  Broker
   call site delegates; ert renamed.
 
@@ -131,7 +131,7 @@ shell at `~/.emacs.d`; `direnv reload` rebuilds the devshell so
 
 ## Other small things
 
-- `dl-satan-tools-atsatan--claimed-re' now matches
+- `satan-tools-atsatan--claimed-re' now matches
   `@satan-\(?:was-here\|done\)\b` — legacy claim token from before
   the rename in `bfea6c2f' is filtered upstream again.  Test added.
 - Budget ceiling raised to 2M (was 800k) — long debugging session
@@ -176,7 +176,7 @@ direnv-elisp's env loaded).
 
    - Pin the absolute path:
      ```
-     (setq dl-satan-patch-adapter-pi-program
+     (setq satan-patch-adapter-pi-program
            (string-trim
             (shell-command-to-string
              "direnv exec ~/.emacs.d which jailed-pi")))
@@ -184,7 +184,7 @@ direnv-elisp's env loaded).
      Brittle across rebuilds.
 
    - Land a resolver in
-     `dl-satan-patch-adapter-pi.el' that, on first use, runs
+     `satan-patch-adapter-pi.el' that, on first use, runs
      `direnv exec ~/.emacs.d which jailed-pi' and caches the
      absolute path; falls back to a defcustom override.  Started
      drafting this in the session — not committed.
@@ -199,7 +199,7 @@ direnv-elisp's env loaded).
 3. **Op popup count after Emacs restart.**  `my/op--cache` is
    per-Emacs-session, so the first tick post-restart prompts
    biometric for each `op://` ref in
-   `dl-satan-patch-adapter-pi-api-key-vars`.  User saw 4 prompts.
+   `satan-patch-adapter-pi-api-key-vars`.  User saw 4 prompts.
    Tick #2+ is silent (cache hit).  Reduction options noted in
    chat: trim the var list, pre-warm on startup, or use `op
    signin` for a CLI session token (~10 min unlock).
@@ -225,7 +225,7 @@ Current shape:
 
 - Emacs broker is the only thing that ever spawns `jailed-pi'.
 - The runner is a globally-singletonised callback chain
-  (`dl-satan-patch-runner--active') driven by `make-process'
+  (`satan-patch-runner--active') driven by `make-process'
   sentinels.  Its PATH / `process-environment' inherits from
   whatever buffer triggered the kick.
 - Cancel / timeout / cleanup are all in-process.
@@ -248,11 +248,11 @@ Alternative shape (sketch, not designed):
   of secrets to thread, another place a bug can hide.  Streaming
   logs back to the Emacs UI is a small protocol design.
 
-If this pivot happens, the dl-satan-patch-runner.el and most of
-dl-satan-patch-adapter-pi.el become a thin client.  The
+If this pivot happens, the satan-patch-runner.el and most of
+satan-patch-adapter-pi.el become a thin client.  The
 worktree / store / prompt / classify modules are unaffected.
 The inbox-handoff / atsatan integration code (in
-`dl-satan-patch-inbox.el' and `dl-satan-tools-atsatan.el') is
+`satan-patch-inbox.el' and `satan-tools-atsatan.el') is
 unaffected as long as the runner-hook contract is preserved.
 
 Worth a tiny ADR before committing either way; the in-Emacs
@@ -273,9 +273,9 @@ runner *does* work today with the bugs identified above patched.
    The wrapper script should NOT contain `op run`.
 
 3. **Drive one acceptance run from a buffer that has direnv
-   loaded** — i.e. M-: in `dl-satan-patch-adapter-pi.el`:
+   loaded** — i.e. M-: in `satan-patch-adapter-pi.el`:
    ```
-   (dl-satan-tool/patch-job-create
+   (satan-tool/patch-job-create
     (list :directive "In satan/hello-world.txt write the single line 'hi'. Then commit."
           :mode "manual"
           :repo (expand-file-name "~/.emacs.d")
@@ -303,12 +303,12 @@ runner *does* work today with the bugs identified above patched.
 (In addition to the originals in
 `archive/handover-phase3-mechanism.md::Don't`.)
 
-- Don't `setq dl-satan-patch-adapter-pi-program` to a `/nix/store`
+- Don't `setq satan-patch-adapter-pi-program` to a `/nix/store`
   path and commit it — paths change with every rebuild.  A
   defcustom override is fine; a hardcoded default is not.
 - Don't strip `process-send-eof' from the adapter "to simplify."
   It is load-bearing — see fix 1 above.
-- Don't move `my/scrub-op-refs-env' back into `dl-satan-broker'.
+- Don't move `my/scrub-op-refs-env' back into `satan-broker'.
   Two callers now (broker, pi adapter); the helper is generic.
 
 ## File map (delta from previous handover)
@@ -318,16 +318,16 @@ runner *does* work today with the bugs identified above patched.
   flake.nix                              jailed-pi: useOpEnv=false, passApiKeysFromEnv=true
   lisp/dl-secret.el                      + my/scrub-op-refs-env
   satan/
-    dl-satan-broker.el                   delegate scrub to dl-secret
-    dl-satan-budget.el                   ceiling 2M
-    dl-satan-mode.el                     self-edit-{mech,mind} :tools + patch_job_*
-    dl-satan-patch-adapter-pi.el         resolved-env, stdin EOF,
+    satan-broker.el                   delegate scrub to dl-secret
+    satan-budget.el                   ceiling 2M
+    satan-mode.el                     self-edit-{mech,mind} :tools + patch_job_*
+    satan-patch-adapter-pi.el         resolved-env, stdin EOF,
                                          --system-prompt, stderr sidecar
-    dl-satan-tools-atsatan.el            tick-agent :tools + patch_job_*;
+    satan-tools-atsatan.el            tick-agent :tools + patch_job_*;
                                          claimed-re tolerates @satan-done
-    test/dl-satan-test.el                require dl-secret;
+    test/satan-test.el                require dl-secret;
                                          renamed scrub-op-refs test
-    test/dl-satan-tools-atsatan-test.el  + legacy @satan-done filter test
+    test/satan-tools-atsatan-test.el  + legacy @satan-done filter test
 ~/notes/satan/prompts/
   tick/agent.txt                         + patch_job_create routing
   self-edit-mech.txt                     + patch lane defaults

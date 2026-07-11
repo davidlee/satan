@@ -23,7 +23,7 @@ brief §4 bar-chart reference.
 
 ## 1. Data source — direct SELECT
 
-The capsule queries `satan_attributes` directly via `dl-satan-attribute--query`:
+The capsule queries `satan_attributes` directly via `satan-attribute--query`:
 
 ```sql
 SELECT name, value FROM satan_attributes
@@ -38,7 +38,7 @@ to a daemon-private DB.
 
 ## 2. Disabled marker
 
-Per `design-contract.md` §9: when `dl-satan-attribute-updates-enabled` is nil,
+Per `design-contract.md` §9: when `satan-attribute-updates-enabled` is nil,
 the capsule renders a single line:
 
 ```text
@@ -134,10 +134,10 @@ All broker-side (`~/.emacs.d/satan/`). No daemon changes.
 
 | File | Responsibility |
 |---|---|
-| `dl-satan-attribute-render.el` | Snapshot query + bar rendering |
-| `dl-satan-context.el` | Wire attribute block into render pipeline |
+| `satan-attribute-render.el` | Snapshot query + bar rendering |
+| `satan-context.el` | Wire attribute block into render pipeline |
 | `framing.txt` | `attributes_block_header=# Attributes` key |
-| `dl-satan-attribute-render-test.el` | ert tests for render + snapshot |
+| `satan-attribute-render-test.el` | ert tests for render + snapshot |
 
 ### 7.1 Test surface
 

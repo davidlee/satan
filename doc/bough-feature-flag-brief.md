@@ -32,11 +32,11 @@ system's `--derive-causes` already handles a missing key gracefully → no alert
 - **Sensor alerts**: `--derive-causes` iterates `:bough` from source-order; missing key → `plist-get` nil → `--match-kind` nil → no cause tuple → no alert
 - **Canon rules**: `bough.recent_status_change` and `bough.active_focus` check for non-nil evidence before firing
 - **Observer predicates**: `--predicate-bough-event-match` checks `:bough_recent` — nil → no match
-- **Sensor render order**: `dl-satan-sensor--source-order` (→ `satan-sensor--source-order`) keeps `:bough` — harmless when key is absent from plist
+- **Sensor render order**: `satan-sensor--source-order` (→ `satan-sensor--source-order`) keeps `:bough` — harmless when key is absent from plist
 
 ## Dependency
 
-After SL-012 (rename `dl-satan-*` → `satan-*`, move to this repo).
+After SL-012 (rename `satan-*` → `satan-*`, move to this repo).
 All references above use the post-SL-012 names.
 
 ## Discovered bug (fix independently)

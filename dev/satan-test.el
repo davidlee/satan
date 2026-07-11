@@ -4,7 +4,7 @@
 ;;
 ;;   `just check'             — batch (emacs --batch), the default.
 ;;   `just check-interactive' — live Emacs server (emacsclient),
-;;                              let-binds dl-satan-db-host-override
+;;                              let-binds satan-db-host-override
 ;;                              so DB tests hit the test DB without
 ;;                              disturbing the production broker.
 ;;

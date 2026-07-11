@@ -41,7 +41,7 @@ capture:
   `emit_error(f"provider call failed: {e}")` (runloop.py:112).
 - **Broker-side context**: which observers/sensors ran, what the
   attribute snapshot was, which pre-spawn actions completed.
-- **Run-ctx diagnostic snapshot**: the `dl-satan-run` struct has
+- **Run-ctx diagnostic snapshot**: the `satan-run` struct has
   `:tool-calls-done`, `:status`, `:final` — none of this is persisted
   on crash paths.
 
@@ -49,7 +49,7 @@ capture:
 
 On every non-`done` terminal path, the broker emits a
 `broker/crash-context` event to the transcript before calling
-`dl-satan-audit-close`. This is a structured snapshot of the run's
+`satan-audit-close`. This is a structured snapshot of the run's
 state at the moment of failure:
 
 ```json
@@ -75,8 +75,8 @@ state at the moment of failure:
 }
 ```
 
-**Placement.** `dl-satan-broker--finalize` (broker.el:389), before
-`dl-satan-audit-close`. One `dl-satan-audit-record` call with the
+**Placement.** `satan-broker--finalize` (broker.el:389), before
+`satan-audit-close`. One `satan-audit-record` call with the
 snapshot plist. Pure data assembly — no new I/O.
 
 ### 1.3 Proposed: harness-side error classification
@@ -196,16 +196,16 @@ budget, OR 85% of timeout elapsed.
 - Token-budget thresholds checked after each turn (replace current
   single-threshold `warned` boolean with tier progression).
 
-**Broker side (dl-satan-broker.el).**
+**Broker side (satan-broker.el).**
 
-- Tool-call dispatch (`dl-satan-broker--on-tool-call`) already checks
+- Tool-call dispatch (`satan-broker--on-tool-call`) already checks
   tool allowlist per mode. No change needed — the harness controls
   which tools it offers the model, and the broker validates against
   the mode's full list (which is a superset of any tier's list).
 - New `tier_changed` log event type accepted by the audit validator.
 - Tank LAST RUN section shows tier transitions.
 
-**Mode spec (dl-satan-mode.el).**
+**Mode spec (satan-mode.el).**
 
 - New optional `:tier-toolsets` plist on mode specs. When absent,
   default tier definitions apply. When present, overrides per-mode

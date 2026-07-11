@@ -15,7 +15,7 @@ metadata:
 
 ## Current shape
 
-`dl-satan-patch-adapter-pi-api-key-vars` is a hardcoded 7-element list in elisp; the pi binary (built by Nix flake) must accept the same env var names. No shared spec (`review/12-HARNESS-BOUNDARY.md` §items-from-one-side).
+`satan-patch-adapter-pi-api-key-vars` is a hardcoded 7-element list in elisp; the pi binary (built by Nix flake) must accept the same env var names. No shared spec (`review/12-HARNESS-BOUNDARY.md` §items-from-one-side).
 
 ## Target shape
 

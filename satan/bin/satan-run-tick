@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# SATAN tick trigger.  Invokes `my/satan-tick' over emacsclient.
-# The elisp side picks a mode from `dl-satan-tick-pool' and applies
+# SATAN tick trigger.  Invokes `satan-tick' over emacsclient.
+# The elisp side picks a mode from `satan-tick-pool' and applies
 # quiet-hours suppression.  Returns the run-id (or nil on suppression).
 set -eu
-exec emacsclient --eval "(my/satan-tick)"
+exec emacsclient --eval "(satan-tick)"

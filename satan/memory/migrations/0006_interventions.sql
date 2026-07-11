@@ -7,7 +7,7 @@
 --
 -- Vocabulary, invariants, and verdict shape pinned by
 -- docs/satan/attributes/outcome-semantics.md §9 and attributes.brief §5.
--- The audit-side validator (dl-satan-audit-validate-intervention-event)
+-- The audit-side validator (satan-audit-validate-intervention-event)
 -- enforces the same invariants pre-write; these CHECKs enforce them
 -- post-projection as a defence-in-depth guard against direct INSERTs.
 

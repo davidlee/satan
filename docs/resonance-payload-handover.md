@@ -13,9 +13,9 @@ metadata:
 > **Shipped 2026-05-30.** The open loop below is closed. Implemented exactly as
 > the sketch describes: `-resonate` SELECT widened with the `traces` join + 4th
 > payload column (guard `3`→`4`, `:payload` on each row); renderer emits the
-> third quoted line truncated to 120c (`dl-satan-resonance--payload-max`),
+> third quoted line truncated to 120c (`satan-resonance--payload-max`),
 > self-suppressing on empty. Tab/newline collapse and graceful-degrade kept. A
-> drive-by build fix added the missing `(require 'dl-satan-tools-vcs)` to the
+> drive-by build fix added the missing `(require 'satan-tools-vcs)` to the
 > broker test. Retained as the design rationale for the inline-payload decision.
 
 ## State: shipped, one enrichment open
@@ -41,7 +41,7 @@ past moment → useless recall. So:
 - Rationale: `project:emacs.d` is as generic as `day:2026-05-22` when you always
   work in this repo. Stay silent until a sensor saw a transition.
 
-Gate lives in `dl-satan-resonance--admittable-p` (`satan/dl-satan-resonance.el:47`),
+Gate lives in `satan-resonance--admittable-p` (`satan/satan-resonance.el:47`),
 excluded set in `--excluded-rule-ids` (`:35`). Do not loosen it as part of this work.
 
 ### Current render (per match)
@@ -75,7 +75,7 @@ The cheapest path keeps it one SQL round-trip by joining `traces` for the payloa
 in the resonate query itself — no change to the `memory_resonate` SQL function.
 
 1. **Store — widen the resonate SELECT.**
-   `dl-satan-memory-store-resonate` (`satan/dl-satan-memory-store.el:269`) runs:
+   `satan-memory-store-resonate` (`satan/satan-memory-store.el:269`) runs:
    ```sql
    SELECT trace_id, score, matched_handles
    FROM memory_resonate(:'handles'::text[], %d::smallint, %s::float8, %d::int, %s)
@@ -95,26 +95,26 @@ in the resonate query itself — no change to the `memory_resonate` SQL function
    docstring (`:278`) gains `:payload`.
 
 2. **Renderer — third line.**
-   `dl-satan-resonance-render-block` (`satan/dl-satan-resonance.el:113`) currently
+   `satan-resonance-render-block` (`satan/satan-resonance.el:113`) currently
    pushes two lines per match (`- <id>  score N.N` then `    matched: …`). Add a
    third indented line when `:payload` is non-empty:
    ```
        "<payload>"
    ```
-   Reuse a truncation cap (mirror `dl-satan-percept--attention-title-max`, ~80–120c)
+   Reuse a truncation cap (mirror `satan-percept--attention-title-max`, ~80–120c)
    so a long payload can't blow the capsule. Self-suppress the line (not the
    block) when payload is nil/empty.
 
-3. **`dl-satan-resonance-derive`** (`:56`) needs no logic change — it passes store
+3. **`satan-resonance-derive`** (`:56`) needs no logic change — it passes store
    rows through verbatim into `:matches`; the new `:payload` key rides along.
 
 ## Tests (TDD)
 
-- `test/dl-satan-memory-store-test.el` — resonate parse: assert a 4-field tab row
+- `test/satan-memory-store-test.el` — resonate parse: assert a 4-field tab row
   yields `:payload`; assert a payload containing collapsed whitespace round-trips.
   (Store tests stub the psql query output, so no live DB needed — follow the
   existing resonate test's fake-`--query` pattern.)
-- `test/dl-satan-resonance-test.el` — render: a match with `:payload` emits the
+- `test/satan-resonance-test.el` — render: a match with `:payload` emits the
   third quoted line; a match with nil/empty payload emits only two lines (no
   empty quotes); long payload truncated.
 
@@ -135,10 +135,10 @@ in the resonate query itself — no change to the `memory_resonate` SQL function
 
 ## Pointers
 
-- `satan/dl-satan-resonance.el` — gate, derive, render (`render-block:113`).
-- `satan/dl-satan-memory-store.el` — `-resonate:269`, `-show:317`,
+- `satan/satan-resonance.el` — gate, derive, render (`render-block:113`).
+- `satan/satan-memory-store.el` — `-resonate:269`, `-show:317`,
   payload-collapse pattern `:371`.
-- `satan/dl-satan-broker.el:726` — where `dl-satan-resonance-derive` is called and
+- `satan/satan-broker.el:726` — where `satan-resonance-derive` is called and
   attached to `:resonance` for the context-fn.
 - `docs/satan/perceptual-design.md` §S2 — the auto-resonance design (intended
   three-line render lives here).

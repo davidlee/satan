@@ -49,13 +49,13 @@ The substrate is past minimum-viable.
 | Component | Status | Location |
 |---|---|---|
 | Panopticon (sway + firefox capture, segmentizer) | shipped | `~/dev/panopticon`, state in `~/.local/state/behaviour/` |
-| Bough CLI read surface | shipped | `dl-satan-tools-bough.el` |
-| Evidence assembler (10-min window, deterministic truncation) | shipped | `dl-satan-memory-evidence.el` |
-| Canonicalizer (pure, ~14 rules, grammar v1, closed-world enums) | shipped | `dl-satan-memory-canon.el` |
-| `satan_memory` PostgreSQL store (traces, handles, links, grammar_version) | shipped | `dl-satan-memory-store.el` + `memory/migrations/` |
-| `memory_mark` / `memory_resonate` / `memory_show_trace` tools | shipped | `dl-satan-tools-memory.el` |
-| Tick / morning / motd timers, daily token ceiling, audit bundle | shipped | `dl-satan-tick.el`, `dl-satan-broker.el`, `dl-satan-budget.el`, `dl-satan-audit.el` |
-| Recent-runs block in tick context | shipped | `dl-satan-context.el` |
+| Bough CLI read surface | shipped | `satan-tools-bough.el` |
+| Evidence assembler (10-min window, deterministic truncation) | shipped | `satan-memory-evidence.el` |
+| Canonicalizer (pure, ~14 rules, grammar v1, closed-world enums) | shipped | `satan-memory-canon.el` |
+| `satan_memory` PostgreSQL store (traces, handles, links, grammar_version) | shipped | `satan-memory-store.el` + `memory/migrations/` |
+| `memory_mark` / `memory_resonate` / `memory_show_trace` tools | shipped | `satan-tools-memory.el` |
+| Tick / morning / motd timers, daily token ceiling, audit bundle | shipped | `satan-tick.el`, `satan-broker.el`, `satan-budget.el`, `satan-audit.el` |
+| Recent-runs block in tick context | shipped | `satan-context.el` |
 
 What the substrate **does not** do today, and v0 will add:
 
@@ -81,7 +81,7 @@ counts; this section is just the high-level map.
 | 3 — motive file | 2026-05-22 | `3df47f0c1`, `e1ef890be`, `b49d1b776`, `65962c882` (3.1–3.4) | parser, motive_read/motive_replace, broker call, motive_replace precedence + bound-naming contract |
 | 4 — sensor alerts | 2026-05-22 | `80f357c88`, `f4f6e8847`, `a10c8b971`, `41b11e354` (4.1–4.4) | freshness, capsule block, dispatcher + cooldown + notify, pre_spawn integration |
 | 5 — outcome observer | 2026-05-22 | `6422688d3` (5.1 evidence bounds), `9a02562ce` (5.0 `:project_cwd:`), `783d4b2e8` (5.2 skeleton + 24h scan), `1938943e2` (5.3 window-mature + dedup), `67e311e30`/`99fac686a`/`270e72ea2` (5.4a/b/c predicate + classifier), `2d8f36ccb` (5.5 footer rewriter), `3c422c911` (5.6 verdict persistence), `1f3f6398a` (5.7 multi-motive resolver), `a5f38ce2f` (5.8 broker integration) | observer.process now runs in `--spawn` before percept-build; positive-only `auto_rule` traces |
-| 6 — cooldown floor | 2026-05-23 | `1a9c9c591` | read-side annotation in `dl-satan-motive-render-block`; cooling-down motives flip to `[cooling-down (Nm remaining)]` |
+| 6 — cooldown floor | 2026-05-23 | `1a9c9c591` | read-side annotation in `satan-motive-render-block`; cooling-down motives flip to `[cooling-down (Nm remaining)]` |
 | fixes | 2026-05-23 | `7179e276a`, `547ef003b` | evidence `:truncated_at` JSON-serializable; jsonl coerces symbols |
 
 What this means for the rest of the doc: §2 (settled decisions) S1–S7
@@ -99,7 +99,7 @@ exists so a future reader doesn't mistake design language for plan.
 ### S1 — Percept capsule (broker-built, deterministic)
 
 **Run-lifecycle slot — depends on Phase 0 broker refactor.**
-Percept build happens in `dl-satan-broker--prepare`, a new function
+Percept build happens in `satan-broker--prepare`, a new function
 introduced in Phase 0 (§7), which allocates `run_id` and freezes one
 `time_now`. The same `time_now` and evidence-window snapshot back both
 `bundle.json` and `percept.json` — they must derive from the same
@@ -332,7 +332,7 @@ demotion / ceiling design.
 ### S5 — Outcome observer (light, deterministic)
 
 A small broker module runs at the **start of each tick** (during
-`dl-satan-broker--prepare`, before evidence assembly). It scans prior
+`satan-broker--prepare`, before evidence assembly). It scans prior
 runs' `transcript.jsonl` files for **interventions whose attribution
 window has matured** (i.e. `intervention_emitted_at + 30 min <= time_now`),
 classifies each as positive against a simple predicate, and:
@@ -479,7 +479,7 @@ normal capability check + audit pipeline. Causes that trigger:
 
 **Audit semantics — actions.json schema bump.** Today `actions.json`
 is exactly `{applied, staged, rejected, failed}` and the audit
-verifier (`dl-satan-audit.el`, ~line 159) requires those four
+verifier (`satan-audit.el`, ~line 159) requires those four
 partitions to count-match `final.actions`. Sensor alerts fire
 *before* the model has a turn — they are not a model action and must
 not pollute the final-action partitions.
@@ -518,7 +518,7 @@ The audit verifier learns the `pre_spawn` key:
 
 - per-cause `last_notified_at`
 - per-cause cooldown (default 24 h)
-- skip during `dl-satan-tick-quiet-p`; fire on first awake tick
+- skip during `satan-tick-quiet-p`; fire on first awake tick
   instead (suppression is recorded in `actions.json` either way, so
   the audit shows what was held back)
 
@@ -605,11 +605,11 @@ These don't block v0 implementation but should be resolved during it.
 
 ## 5. Architecture
 
-The new layer all lives inside `dl-satan-broker--prepare`, before
+The new layer all lives inside `satan-broker--prepare`, before
 `bundle.json` freezes. The prepare phase **does not exist today** —
 Phase 0 (§7) introduces it as the very first piece of v0 work. The
-current broker (`dl-satan-broker.el` ~line 573) builds `bundle` before
-any run-context object exists and `dl-satan-broker--tool-ctx` calls
+current broker (`satan-broker.el` ~line 573) builds `bundle` before
+any run-context object exists and `satan-broker--tool-ctx` calls
 `format-time-string` on demand (~line 222). Phase 0 replaces both
 with a single `run_ctx` plist threaded through context-fn, tool
 dispatch, and audit.
@@ -617,7 +617,7 @@ dispatch, and audit.
 ```text
 existing tick run                       additions in v0 (after Phase 0)
 ==========================================================================
-dl-satan-broker--prepare:                dl-satan-broker--prepare:
+satan-broker--prepare:                satan-broker--prepare:
   (does not exist today; Phase 0)          allocate run_id + freeze time_now
                                            build run_ctx plist
                                            observer.scan_prior_interventions  ← S5
@@ -652,15 +652,15 @@ the next tick's start. No live loop, no callbacks.
 
 ```text
 ~/.emacs.d/satan/
-  dl-satan-percept.el           percept builder + persist + capsule render
-  dl-satan-motive.el            motive file parse / write / footer state
-  dl-satan-tools-motive.el      motive_read / motive_replace handlers
-  dl-satan-observer.el          outcome observer (start-of-tick)
-  dl-satan-sensor-alerts.el     freshness + notify dispatch
-  test/dl-satan-percept-test.el
-  test/dl-satan-motive-test.el
-  test/dl-satan-observer-test.el
-  test/dl-satan-sensor-alerts-test.el
+  satan-percept.el           percept builder + persist + capsule render
+  satan-motive.el            motive file parse / write / footer state
+  satan-tools-motive.el      motive_read / motive_replace handlers
+  satan-observer.el          outcome observer (start-of-tick)
+  satan-sensor-alerts.el     freshness + notify dispatch
+  test/satan-percept-test.el
+  test/satan-motive-test.el
+  test/satan-observer-test.el
+  test/satan-sensor-alerts-test.el
 
 ~/notes/satan/
   motives.org                   user-editable motive file
@@ -691,20 +691,20 @@ commit subjects (`phase N.M: …`) over the numbering here.
 
 ```text
 Phase 0 — broker prerequisites (NEW; ~100–150 lines)   ✅ 2026-05-22
-  0.1  dl-satan-broker--prepare:
+  0.1  satan-broker--prepare:
          allocate run_id, freeze time_now ONCE
          build run_ctx plist {run_id, time_now, evidence, percept,
                               sensor_status, pre_spawn, motive}
-         thread run_ctx into context-fn, dl-satan-broker--tool-ctx,
-         dl-satan-audit
+         thread run_ctx into context-fn, satan-broker--tool-ctx,
+         satan-audit
          replace per-call format-time-string in tool-ctx
   0.2  notify capability guard:
-         add :capabilities check in dl-satan-tools.el dispatch
+         add :capabilities check in satan-tools.el dispatch
          (existing modes already declare `notify` capability — the
          guard just starts enforcing it)
   0.3  actions.json schema bump:
          add `pre_spawn` key (array of {kind, ...} entries)
-         dl-satan-audit verifier accepts pre_spawn entries
+         satan-audit verifier accepts pre_spawn entries
          pre_spawn does NOT count into the four model-action partitions
          fixture: a run with one pre_spawn sensor_alert and no model
                   final.actions still verifies clean
@@ -736,7 +736,7 @@ Phase 4 — sensor alerts                                ✅ 2026-05-22
   4.1  freshness check in evidence assembler
   4.2  sensor_status plist returned
   4.3  capsule sensor line
-  4.4  dl-satan-sensor-alerts:
+  4.4  satan-sensor-alerts:
          per-cause cooldown + quiet-hours suppression
          dispatch via notify_send tool handler
          record every fire AND every suppression in
@@ -784,10 +784,10 @@ corresponding test (unit or fixture).
 
 ### Phase 0 prerequisites
 
-A0a. `dl-satan-broker--prepare` exists and is the single allocator
+A0a. `satan-broker--prepare` exists and is the single allocator
      of `run_id` + `time_now`. No other code path mints either.
 A0b. A `run_ctx` plist is threaded into context-fn, tool dispatch,
-     and audit. `dl-satan-broker--tool-ctx` no longer calls
+     and audit. `satan-broker--tool-ctx` no longer calls
      `format-time-string`; it reads `time_now` from `run_ctx`.
 A0c. Tool dispatch enforces `:capabilities` declared on a mode.
      A test removes the `notify` capability from a mode and asserts

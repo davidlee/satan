@@ -324,7 +324,7 @@ locate the inputs that produced the handle. `null` is acceptable for
 
 Each rule is a named pure predicate over `(evidence_window, hints,
 ctx)`. Rules emit zero or more handles. Rules live as individual
-defuns in `dl-satan-memory-canon.el` and are individually testable.
+defuns in `satan-memory-canon.el` and are individually testable.
 
 Initial rules (illustrative, not exhaustive):
 
@@ -366,7 +366,7 @@ canonicalization   (§3)  pure, deterministic, fixture-testable
 storage            (§6)  transactional
 ```
 
-Rules in `dl-satan-memory-canon.el` must **not** call `bough`, shell
+Rules in `satan-memory-canon.el` must **not** call `bough`, shell
 out, read files, consult the system clock except via `ctx.time_now`,
 or touch the network. A grep-lint in the test suite enforces this
 (forbidden symbols: `shell-command`, `call-process`,
@@ -578,7 +578,7 @@ design. When added, stage as proposals per [[satan-governance]].)
 
 Migrations: numbered SQL files under
 `~/.emacs.d/satan/memory/migrations/NNNN_<slug>.sql`. Forward-only,
-additive where possible. Applied by `dl-satan-memory-migrate`.
+additive where possible. Applied by `satan-memory-migrate`.
 
 **R3 decided 2026-05-19: `psql` subprocess** for both migration runner
 and runtime store. Verified `psql 18.4` at
@@ -588,8 +588,8 @@ works as user `david`. Rationale:
 - Migrations are already `.sql`; `psql -v ON_ERROR_STOP=1 -1 -f FILE`
   is a one-line invocation, atomically applied per file.
 - No new emacs package or `home-manager switch` required.
-- Matches surrounding shell-out pattern (`dl-satan-tools-sway.el`,
-  `dl-satan-tools-bough.el`).
+- Matches surrounding shell-out pattern (`satan-tools-sway.el`,
+  `satan-tools-bough.el`).
 - Runtime throughput is human-paced (mark/resonate), so per-call
   subprocess latency (~20 ms) is invisible.
 - Multi-step transactions live in SQL as PL/pgSQL functions
@@ -598,7 +598,7 @@ works as user `david`. Rationale:
   quoting handles LLM-supplied strings safely.
 
 If runtime hot-path ever materializes (e.g. auto_rule writers), revisit
-with an `emacsql-pg` backend behind the same `dl-satan-memory-store`
+with an `emacsql-pg` backend behind the same `satan-memory-store`
 interface.
 
 Migration state is tracked in `schema_migrations` (§6.2). The runner
@@ -806,10 +806,10 @@ Bumping a version:
 1. Insert into `grammar_versions` with notes.
 2. Insert/update rows in `handle_aliases` and `handle_weights` under
    the new version. Old rows stay.
-3. Update `dl-satan-memory-grammar.el` constants (the elisp-side
+3. Update `satan-memory-grammar.el` constants (the elisp-side
    closed-world enums) and the rule registry if rule semantics
    changed.
-4. Optionally run `dl-satan-memory-renormalize`: for each affected
+4. Optionally run `satan-memory-renormalize`: for each affected
    trace, replay `canonicalize(metadata_json.evidence,
    metadata_json.hints, ctx-replay)`, flip old `trace_handles` rows to
    `active = FALSE`, and insert new rows under the new version.
@@ -897,7 +897,7 @@ What v1 deliberately does **not** ship:
   the `memory_mark` tool-schema does not expose an `outcome` hint
   field. An LLM cannot produce an outcome trace via `memory_mark`.
 - **The `memory_mark` handler never forwards `:outcome` to
-  `dl-satan-memory-store-mark`.** Trace origin is hard-wired to
+  `satan-memory-store-mark`.** Trace origin is hard-wired to
   `llm_mark`; the store-mark `:outcome` keyword is exercised only
   by direct callers (today: the integration tests for §9.12).
 
@@ -935,13 +935,13 @@ A v1 implementation is acceptable when:
    `bough_production`.
 7. Re-running `memory_mark` with the same fixture inputs produces the
    same handles.
-8. A grammar bump + `dl-satan-memory-renormalize` flips old
+8. A grammar bump + `satan-memory-renormalize` flips old
    `trace_handles` rows to `active = FALSE` and inserts new rows under
    the new `grammar_version`. The trace row is untouched.
 9. The migration runner applies numbered SQL forward-only; refuses to
    skip versions; refuses to apply when a recorded checksum no longer
    matches the file.
-10. No code path in `dl-satan-memory-*` reads any bough database
+10. No code path in `satan-memory-*` reads any bough database
     directly — only via the `bough_read` tool surface (grep lint
     enforced).
 11. Two traces matching only on `bough_node:<nanoid>` rank strictly
@@ -970,7 +970,7 @@ normalization. Empty array equivalent to omission. Slug regex
 ### 10.2 Bough CLI scopes
 
 Discovered against `bough 0.1.0` (binary `/home/david/.cargo/bin/bough`)
-on 2026-05-19. Pin this binary path in `dl-satan-tools-bough.el`
+on 2026-05-19. Pin this binary path in `satan-tools-bough.el`
 defcustom; fail-fast on shape drift (R2). Sample-output integration
 fixture goes in `test/bough-fixtures/`.
 
@@ -980,12 +980,12 @@ ship loosened semantics in v1 and file a bough issue.
 
 | Design scope (§5.4) | Status | Invocation(s) | Notes |
 |---------------------|--------|---------------|-------|
-| `node`             | composable | `bough --json node get NANOID` + `bough --json node annotations NANOID` + walk `parent_nanoid` upward via repeated `node get` until `null` | `node get` returns the node with `parent_nanoid` but no chain and no annotations. Compose all three in `dl-satan-tools-bough.el`; cache chain walk per call. |
+| `node`             | composable | `bough --json node get NANOID` + `bough --json node annotations NANOID` + walk `parent_nanoid` upward via repeated `node get` until `null` | `node get` returns the node with `parent_nanoid` but no chain and no annotations. Compose all three in `satan-tools-bough.el`; cache chain walk per call. |
 | `recent_changes`   | composable | `bough --json node status-transitions --since <SINCE>` + `bough --json node created --since <SINCE>` (DR-116) | Peer event feeds: status transitions (`{seq, nanoid, from_status, to_status, at, actor}`) and newly-created nodes. Evidence assembler synthesizes `:event "status_changed"` / `:event "created"` rows for canon. **Bough gap B1 closed 2026-05-21**. |
 | `active`           | exists     | `bough --json node tree --kind task --status doing,todo,blocked` | Comma-separated `--status` confirmed. Add `--workspace` passthrough. |
 | `day`              | exists     | `bough --json day show -d YYYY-MM-DD` | Returns `error: day not found` when no day entry exists; tool wrapper must translate to `ok { scope:"day", day:null }` rather than error. |
 | `week`             | composable | `bough --json day list <MONDAY> <SUNDAY>` followed by per-non-empty-day `bough --json day show -d <D>` | No `bough week` subcommand. `day list` returns the date set; iterate for entries. |
-| `project_subtree`  | degraded   | `bough --json node subtree NANOID` + elisp post-filter to `max_depth` | `node subtree` has no `--max-depth N` flag. Fetch full subtree, prune in `dl-satan-tools-bough.el` against design-default depth (e.g. 3). **Bough gap B2**. |
+| `project_subtree`  | degraded   | `bough --json node subtree NANOID` + elisp post-filter to `max_depth` | `node subtree` has no `--max-depth N` flag. Fetch full subtree, prune in `satan-tools-bough.el` against design-default depth (e.g. 3). **Bough gap B2**. |
 
 Bough-side issues to file (do not block v1):
 
@@ -1034,7 +1034,7 @@ The existing `hippocampus_write` writes prose org files. Open: should
 hippocampus writes also emit an `observation` trace pointing at the
 hippocampus file (`metadata.hippocampus_path`)? Cheap, valuable
 cross-reference. **Lean yes**, as a v1 hook in
-`dl-satan-tools-hippocampus.el`.
+`satan-tools-hippocampus.el`.
 
 ### 10.8 Source gaps
 Some grammar values currently have no emitter:
@@ -1062,17 +1062,17 @@ producers are anticipated.
 
 ```text
 ~/.emacs.d/satan/
-  dl-satan-memory.el                   aggregator + my/satan-memory-* commands
-  dl-satan-memory-grammar.el           closed-world enums; alias seed; weight defaults
-  dl-satan-memory-canon.el             canonicalizer; rule registry (PURE)
-  dl-satan-memory-evidence.el          evidence-window assembly (panopticon + bough_read + git/fs)
-  dl-satan-memory-store.el             DB connection; mark/resonate/show backend
-  dl-satan-memory-migrate.el           migration runner; renormalize CLI
-  dl-satan-tools-memory.el             tool handlers: memory_mark, memory_resonate, memory_show_trace
-  dl-satan-tools-bough.el              bough_read tool (shell-out)
+  satan-memory.el                   aggregator + satan-memory-* commands
+  satan-memory-grammar.el           closed-world enums; alias seed; weight defaults
+  satan-memory-canon.el             canonicalizer; rule registry (PURE)
+  satan-memory-evidence.el          evidence-window assembly (panopticon + bough_read + git/fs)
+  satan-memory-store.el             DB connection; mark/resonate/show backend
+  satan-memory-migrate.el           migration runner; renormalize CLI
+  satan-tools-memory.el             tool handlers: memory_mark, memory_resonate, memory_show_trace
+  satan-tools-bough.el              bough_read tool (shell-out)
   memory/migrations/0001_init.sql      initial schema (tables in §6.2)
   memory/migrations/0002_grammar_v1.sql initial grammar_versions row + aliases + weights
-  test/dl-satan-memory-test.el         unit + canon-fixture golden tests + purity grep-lint
+  test/satan-memory-test.el         unit + canon-fixture golden tests + purity grep-lint
   test/canon-fixtures/                 JSON fixtures
 ~/notes/satan/tools/
   memory_mark.md
@@ -1081,9 +1081,9 @@ producers are anticipated.
   bough_read.md
 ```
 
-Naming follows [docs/emacs/naming.md](../../emacs/naming.md): module symbols `dl-satan-memory-*`, public
-internals `dl-satan-memory-<name>`, private `dl-satan-memory--<name>`,
-user commands `my/satan-memory-*`.
+Naming follows [docs/emacs/naming.md](../../emacs/naming.md): module symbols `satan-memory-*`, public
+internals `satan-memory-<name>`, private `satan-memory--<name>`,
+user commands `satan-memory-*`.
 
 ---
 

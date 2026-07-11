@@ -81,9 +81,9 @@ if the user wants to start a v2.
 4. Storage: PostgreSQL, `satan_memory` (prod) + `satan_memory_test`
    (ert). Socket auth, no FDW.
 5. Bough is read-only via `bough --json` exclusively. Enforced by
-   `dl-satan-memory/bough-isolation` lint (acceptance §9.10) — refuses
-   `bough_production`, `bough_agent`, `dl-satan-bough-program`,
-   `dl-satan-bough--invoke` in any `dl-satan-memory-*.el`.
+   `satan-memory/bough-isolation` lint (acceptance §9.10) — refuses
+   `bough_production`, `bough_agent`, `satan-bough-program`,
+   `satan-bough--invoke` in any `satan-memory-*.el`.
 6. Grammar evolves at boundary. Every trace carries `grammar_version`;
    replays from `metadata_json` + per-handle `source`. v2 fixture
    shipped (`0004_grammar_v2_fixture.sql`); renormalize CLI lands
@@ -130,7 +130,7 @@ small, well-scoped cleanup. Pick any without coordination needed.
    `--derive-cue-handles` opts the cue path in; `--mark-impl`
    stays full-window.
 
-7. ~~**`dl-satan-tool--validate-arg` missing `:type 'number` branch.**~~
+7. ~~**`satan-tool--validate-arg` missing `:type 'number` branch.**~~
    Done · `2f8fdc78` (sweep §7): validator rejects non-numeric values
    on `:type 'number`; `memory_resonate` handler check dropped.
 
@@ -140,11 +140,11 @@ Bough DR-116 shipped (`node status-history <NANOID>`,
 `node status-transitions`, `node created`).  SATAN follow-up landed
 on 2026-05-21:
 
-1. `dl-satan-bough--scope-recent-changes` now invokes
+1. `satan-bough--scope-recent-changes` now invokes
    `node status-transitions --since` + `node created --since`,
    returns `:transitions` / `:created` peer arrays.  Old
    `node tree --after updated_at=…` proxy retired.
-2. `dl-satan-memory-evidence--bough-recent` synthesizes
+2. `satan-memory-evidence--bough-recent` synthesizes
    `:event "status_changed"` per transition row and
    `:event "created"` per created row.  Wakes the previously-dormant
    canon rule `bough.recent_status_change`.
@@ -190,26 +190,26 @@ All admitted by the schema and design; deferred by policy. See
 # Memory subsystem (DB-touching ert skip-unless `satan_memory_test'
 # reachable; lint-only ert always run).
 emacs --batch -L core -L lisp -L org -L satan -L satan/test \
-  -l satan/test/dl-satan-memory-migrate-test.el \
-  -l satan/test/dl-satan-memory-grammar-test.el \
-  -l satan/test/dl-satan-memory-canon-test.el \
-  -l satan/test/dl-satan-memory-evidence-test.el \
-  -l satan/test/dl-satan-memory-store-test.el \
-  -l satan/test/dl-satan-tools-memory-test.el \
-  -l satan/test/dl-satan-memory-renormalize-test.el \
-  -l satan/test/dl-satan-tools-hippocampus-test.el \
+  -l satan/test/satan-memory-migrate-test.el \
+  -l satan/test/satan-memory-grammar-test.el \
+  -l satan/test/satan-memory-canon-test.el \
+  -l satan/test/satan-memory-evidence-test.el \
+  -l satan/test/satan-memory-store-test.el \
+  -l satan/test/satan-tools-memory-test.el \
+  -l satan/test/satan-memory-renormalize-test.el \
+  -l satan/test/satan-tools-hippocampus-test.el \
   -f ert-run-tests-batch-and-exit
 # → 119/119
 
 # Phase-3 unit ert.
 emacs --batch -L core -L lisp -L org -L satan -L satan/test \
-  -l satan/test/dl-satan-test.el -f ert-run-tests-batch-and-exit
+  -l satan/test/satan-test.el -f ert-run-tests-batch-and-exit
 # → 87/87
 
 # Integration ert (boots the broker against the fake harness).
 JAIL=$(nix build .#satan-jailed-fake-harness --no-link --print-out-paths)/bin/jailed-satan-fake-harness
 SATAN_TEST_JAIL_BIN=$JAIL emacs --batch -L core -L lisp -L org -L satan -L satan/test \
-  -l satan/test/dl-satan-integration-test.el -f ert-run-tests-batch-and-exit
+  -l satan/test/satan-integration-test.el -f ert-run-tests-batch-and-exit
 # → 1/1
 
 # Real-harness rebuild (also runs ruff).
@@ -217,8 +217,8 @@ nix build .#satan-jailed-gptel-harness --no-link --print-out-paths
 
 # Operator-side renormalize status on the prod DB.
 emacs --batch -L core -L lisp -L org -L satan \
-  --eval "(require 'dl-satan-memory-migrate)" \
-  --eval "(message \"%S\" (dl-satan-memory-renormalize-status))"
+  --eval "(require 'satan-memory-migrate)" \
+  --eval "(message \"%S\" (satan-memory-renormalize-status))"
 # → (:by-version ((1 . N)) :stale-traces 0) at v1 HEAD; bumps to
 #    include (2 . M) after the operator applies 0004 + renormalizes.
 ```
@@ -227,27 +227,27 @@ emacs --batch -L core -L lisp -L org -L satan \
 
 ```text
 ~/.emacs.d/satan/
-  dl-satan-memory.el                   aggregator + my/satan-memory-* commands
-  dl-satan-memory-grammar.el           closed-world enums; v1 alias seed; default weights
-  dl-satan-memory-canon.el             canonicalizer; rule registry (PURE — grep-lint)
-  dl-satan-memory-evidence.el          evidence-window assembly (impure)
-  dl-satan-memory-store.el             DB connection; mark/resonate/show backend
-  dl-satan-memory-migrate.el           migration runner + renormalize CLI
-  dl-satan-tools-memory.el             memory_mark / memory_resonate / memory_show_trace
-  dl-satan-tools-bough.el              bough_read tool (shell-out)
-  dl-satan-tools-hippocampus.el        hippocampus_write + auto_rule cross-ref hook
+  satan-memory.el                   aggregator + satan-memory-* commands
+  satan-memory-grammar.el           closed-world enums; v1 alias seed; default weights
+  satan-memory-canon.el             canonicalizer; rule registry (PURE — grep-lint)
+  satan-memory-evidence.el          evidence-window assembly (impure)
+  satan-memory-store.el             DB connection; mark/resonate/show backend
+  satan-memory-migrate.el           migration runner + renormalize CLI
+  satan-tools-memory.el             memory_mark / memory_resonate / memory_show_trace
+  satan-tools-bough.el              bough_read tool (shell-out)
+  satan-tools-hippocampus.el        hippocampus_write + auto_rule cross-ref hook
   memory/migrations/0001_init.sql      schema per §6.2
   memory/migrations/0002_grammar_v1.sql v1 grammar seed
   memory/migrations/0003_memory_functions.sql  memory_mark_trace + resonate + show + handle_weight_for
   memory/migrations/0004_grammar_v2_fixture.sql  operator-applied v2 fixture (planning -> phase:orientation)
-  test/dl-satan-memory-migrate-test.el  ert (9)
-  test/dl-satan-memory-grammar-test.el  ert (6 — pure + DB sync)
-  test/dl-satan-memory-canon-test.el    ert (33; rules + golden fixtures + purity + §9.10 bough-isolation)
-  test/dl-satan-memory-evidence-test.el ert (16)
-  test/dl-satan-memory-store-test.el    ert (18)
-  test/dl-satan-tools-memory-test.el    ert (28; mark/resonate/show handlers + dispatch)
-  test/dl-satan-memory-renormalize-test.el ert (6; no-op / bump / idempotent / per-trace-tx / status / §9.8)
-  test/dl-satan-tools-hippocampus-test.el  ert (3; cross-ref soft-fail / gated / present)
+  test/satan-memory-migrate-test.el  ert (9)
+  test/satan-memory-grammar-test.el  ert (6 — pure + DB sync)
+  test/satan-memory-canon-test.el    ert (33; rules + golden fixtures + purity + §9.10 bough-isolation)
+  test/satan-memory-evidence-test.el ert (16)
+  test/satan-memory-store-test.el    ert (18)
+  test/satan-tools-memory-test.el    ert (28; mark/resonate/show handlers + dispatch)
+  test/satan-memory-renormalize-test.el ert (6; no-op / bump / idempotent / per-trace-tx / status / §9.8)
+  test/satan-tools-hippocampus-test.el  ert (3; cross-ref soft-fail / gated / present)
   test/canon-fixtures/                 JSON fixtures for golden canon tests
   ../bough-gaps.md                     upstream brief (B1 DR-116 in flight, B2 deferred)
   design.md                            design doc — implementation target
@@ -258,9 +258,9 @@ emacs --batch -L core -L lisp -L org -L satan \
   memory_show_trace.md
 ```
 
-Naming (per [docs/emacs/naming.md](../../emacs/naming.md)): module symbols `dl-satan-memory-*`, public
-internals `dl-satan-memory-<name>`, private `dl-satan-memory--<name>`,
-user commands `my/satan-memory-*`.
+Naming (per [docs/emacs/naming.md](../../emacs/naming.md)): module symbols `satan-memory-*`, public
+internals `satan-memory-<name>`, private `satan-memory--<name>`,
+user commands `satan-memory-*`.
 
 ## Gotchas worth remembering
 
@@ -293,19 +293,19 @@ user commands `my/satan-memory-*`.
 
 - Purity boundary is grep-lint enforced. Adding any of
   `shell-command` / `call-process` / `insert-file-contents` /
-  `url-retrieve` / `current-time*` / `dl-satan-bough-*` to
-  `dl-satan-memory-canon.el` fails `canon/purity-grep-lint`.
-- `dl-satan-memory-canon-canonicalize-from-raw` drops the normalized
+  `url-retrieve` / `current-time*` / `satan-bough-*` to
+  `satan-memory-canon.el` fails `canon/purity-grep-lint`.
+- `satan-memory-canon-canonicalize-from-raw` drops the normalized
   hint scalars (sweep §3 above). Callers that need `kind` / `valence`
   call `normalize-hints` + `canonicalize` directly.
-- Aliases (`dl-satan-memory-grammar-aliases`) are resolved ONLY for
+- Aliases (`satan-memory-grammar-aliases`) are resolved ONLY for
   the `phase` hint field — open-world fields (topic, focal_app) are
   slugged and pass through unchanged. The v2 fixture
   (`planning -> phase:orientation`) exploits this.
 
 ### Renormalize (step 10)
 
-- `dl-satan-memory-renormalize` is idempotent: skips the per-trace
+- `satan-memory-renormalize` is idempotent: skips the per-trace
   transaction when the new handle set equals the currently-active
   set. Always opens a separate BEGIN/COMMIT per trace via stdin to
   psql — one failing trace cannot abort the rest.
@@ -326,7 +326,7 @@ user commands `my/satan-memory-*`.
 
 ### Schema gaps (step 8)
 
-- `dl-satan-tools.el` `:type 'object` validation walks `:shape`
+- `satan-tools.el` `:type 'object` validation walks `:shape`
   recursively but has no `:type 'number` branch (sweep §7); handlers
   validate numerics themselves.
 - The schema validator short-circuits on nil values regardless of
@@ -343,7 +343,7 @@ user commands `my/satan-memory-*`.
 ## Working agreements
 
 - TDD per project CLAUDE.md: red, green, refactor. Lint as you go.
-- Two-space indent in elisp; convention `dl-satan-*` / `my/*`.
+- Two-space indent in elisp; convention `satan-*` / `my/*`.
 - Wired into Nix. Adding a new `.el` file requires `git add` +
   `home-manager switch --flake ~/flakes#david` before the
   `use-package` form is parsed. See [docs/emacs/traps.md](../../emacs/traps.md).
@@ -366,15 +366,15 @@ user commands `my/satan-memory-*`.
   post-prunes in elisp). Both captured in `../bough-gaps.md` for
   upstream filing; DR-116 in flight for B1.
 - **R2. Bough JSON output stability.** Addressed; pinned via
-  `dl-satan-bough-program` defcustom; fail-fast on parse error in
-  `dl-satan-bough--invoke`. Integration tests skip-unless `bough`
+  `satan-bough-program` defcustom; fail-fast on parse error in
+  `satan-bough--invoke`. Integration tests skip-unless `bough`
   is on PATH.
 - **R3. Emacs PG client choice.** Closed; `psql` subprocess (§6.1).
   Migrations + store + renormalize all shell out.
 - **R4. Grammar drift elisp vs DB.** Closed;
-  `dl-satan-memory-grammar/db-sync` ert asserts
+  `satan-memory-grammar/db-sync` ert asserts
   `MAX(grammar_versions.version) ==
-  dl-satan-memory-grammar-current-version` and that aliases +
+  satan-memory-grammar-current-version` and that aliases +
   default weights match.
 - **R5. Migration runner skip-version + checksum.** Closed;
   refuses tampered, missing, and out-of-order versions; per-file

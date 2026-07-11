@@ -109,7 +109,7 @@ The §17.5 contract paragraph "skip UPSERT when disabled" maps to the `if !ev.di
 
 ### Decay sees `attribute-updates-enabled` via — resolved (2026-05-29, option A)
 
-§15 Q7 resolved → **persistent settings table.** Migration `0012_attribute_settings.sql` introduces `satan_attribute_settings(name TEXT PK, value JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`. Broker writes `('attribute_updates_enabled', true|false)` on every `dl-satan-attribute-updates-enabled` toggle via `add-variable-watcher`; seeded on first emacs load from the defcustom default (`t`). Daemon `DecayScheduler::tick` SELECTs the row at the start of each tick and threads the boolean into `MaintenanceInput.enabled`, which `dispatch_maintenance` stamps onto each `EventInsert.disabled`. §17.5's apply rule then handles disabled rows unchanged — event written, audit RPC sent, UPSERT skipped, `last_decay_at` NOT bumped (so next-enabled tick still fires). Normative in design-contract §17.5 "Decay path".
+§15 Q7 resolved → **persistent settings table.** Migration `0012_attribute_settings.sql` introduces `satan_attribute_settings(name TEXT PK, value JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`. Broker writes `('attribute_updates_enabled', true|false)` on every `satan-attribute-updates-enabled` toggle via `add-variable-watcher`; seeded on first emacs load from the defcustom default (`t`). Daemon `DecayScheduler::tick` SELECTs the row at the start of each tick and threads the boolean into `MaintenanceInput.enabled`, which `dispatch_maintenance` stamps onto each `EventInsert.disabled`. §17.5's apply rule then handles disabled rows unchanged — event written, audit RPC sent, UPSERT skipped, `last_decay_at` NOT bumped (so next-enabled tick still fires). Normative in design-contract §17.5 "Decay path".
 
 Rejected: (B) `pg_notify` + LISTEN cache — over-engineering for a single boolean that flips ≤ once/day; needs startup query anyway. (C) skip-disable-in-v1 — capsule "disabled" render would lie while values silently drifted downward (observability mismatch).
 
@@ -228,12 +228,12 @@ When this theme is done:
   Resolves §17.4 wire-shape requirement in code.  Investigation found the
   daemon-side constructors (`build_audit_payload`, `enqueue_audit_event`,
   `outcome_evidence`) were already correct; the offender was the broker's
-  `dl-satan-attribute-listener--claim-row` parse using
+  `satan-attribute-listener--claim-row` parse using
   `:array-type 'list :null-object nil`, collapsing JSON `null` + `[]` to
   elisp `nil` which `json-serialize` re-emitted as `{}`.  Fixed by
   switching to `:array-type 'array :null-object :null`.  Validator
-  widened: `dl-satan-audit--iv-require-array` accepts vectors;
-  `dl-satan-audit--validate-attribute-caps` uses `seq-doseq`.  New
+  widened: `satan-audit--iv-require-array` accepts vectors;
+  `satan-audit--validate-attribute-caps` uses `seq-doseq`.  New
   roundtrip ert proves daemon-shaped JSON survives.  Contract §17.4
   "Locus" subsection + §16 row added 2026-05-29 to record the diagnostic
   correction.

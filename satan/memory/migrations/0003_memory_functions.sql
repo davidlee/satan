@@ -1,5 +1,5 @@
 -- 0003_memory_functions.sql
--- PL/pgSQL + SQL functions backing dl-satan-memory-store.el (step 7).
+-- PL/pgSQL + SQL functions backing satan-memory-store.el (step 7).
 -- §5.1 memory_mark · §5.2 memory_resonate · §5.3 memory_show.
 --
 -- Multi-step transactions live in SQL per memory.design.md §6.1 so the

@@ -65,7 +65,7 @@ Render example (org):
 ### File header and dependencies
 
 ```elisp
-;;; dl-satan-tools-atsatan.el --- @satan scan + done tool handlers -*- lexical-binding: t; -*-
+;;; satan-tools-atsatan.el --- @satan scan + done tool handlers -*- lexical-binding: t; -*-
 
 ;; Scans ~/notes/ for @satan references and returns excerpts with
 ;; context (`notes_at_satan_scan'); marks a directive done by replacing
@@ -80,55 +80,55 @@ Render example (org):
 (require 'subr-x)
 (require 'json)
 (require 'dl-notes-paths)
-(require 'dl-satan-tools)
-(require 'dl-satan-tick)  ; for dl-satan-tick-register at load time
+(require 'satan-tools)
+(require 'satan-tick)  ; for satan-tick-register at load time
 
-(defcustom dl-satan-tools-atsatan-root
+(defcustom satan-tools-atsatan-root
   dl-notes-root
   "Root directory the @satan scan searches under."
-  :type 'directory :group 'dl-satan)
+  :type 'directory :group 'satan)
 
-(defcustom dl-satan-tools-atsatan-default-context-lines 3
+(defcustom satan-tools-atsatan-default-context-lines 3
   "Default lines of context above and below each @satan match."
-  :type 'integer :group 'dl-satan)
+  :type 'integer :group 'satan)
 
-(defconst dl-satan-tools-atsatan--context-max 20
+(defconst satan-tools-atsatan--context-max 20
   "Hard upper bound on context lines; clamped without error.")
 
-(defconst dl-satan-tools-atsatan--results-max 200
+(defconst satan-tools-atsatan--results-max 200
   "Hard upper bound on results returned in a single scan.")
 
-(defconst dl-satan-tools-atsatan--exclude-globs
+(defconst satan-tools-atsatan--exclude-globs
   '("!satan/**")
   "Glob exclusions passed to rg as repeated --glob flags.")
 
-(defconst dl-satan-tools-atsatan--default-path-glob "*.{org,md}"
+(defconst satan-tools-atsatan--default-path-glob "*.{org,md}"
   "Default rg glob for files to scan.")
 
-(defconst dl-satan-tools-atsatan--mark "@satan"
+(defconst satan-tools-atsatan--mark "@satan"
   "Substring matching an active @satan directive.")
 
-(defconst dl-satan-tools-atsatan--done-re "@satan-done\\b"
+(defconst satan-tools-atsatan--done-re "@satan-done\\b"
   "Regex marking a claimed @satan line; excluded from results.")
 
-(defconst dl-satan-tools-atsatan--headline-re
+(defconst satan-tools-atsatan--headline-re
   "^\\(\\*+\\|#+\\) "
   "Org-or-markdown heading line; walked backward from each match.")
 
-(defvar dl-satan-tools-atsatan--rg-program "rg"
+(defvar satan-tools-atsatan--rg-program "rg"
   "Name (or absolute path) of the ripgrep binary. Overridable for tests.")
 ```
 
 ### Schema
 
 ```elisp
-(dl-satan-tool-register
+(satan-tool-register
  (list :name "notes_at_satan_scan"
        :risk 'read
        :args-schema '(context-lines (:type integer :required nil)
                       max-results   (:type integer :required nil)
                       path-glob     (:type string  :required nil))
-       :handler 'dl-satan-tool/notes-at-satan-scan))
+       :handler 'satan-tool/notes-at-satan-scan))
 ```
 
 | Arg | Type | Required | Default | Notes |
@@ -161,7 +161,7 @@ rg --json -n --fixed-strings @satan
 ```
 
 Stderr captured via temp file; stdout collected in a buffer — same
-plumbing as `dl-satan-tools-notes--run-fd`. The NUL handling pattern
+plumbing as `satan-tools-notes--run-fd`. The NUL handling pattern
 from `--run-fd` does **not** transfer to rg.
 
 ### Context window: in-elisp slice
@@ -182,35 +182,35 @@ structure. Return `nil` if neither found.
 ### Handler
 
 ```elisp
-(defun dl-satan-tools-atsatan--clamp (raw default min max)
+(defun satan-tools-atsatan--clamp (raw default min max)
   (cond ((null raw) default)
         ((< raw min) min)
         ((> raw max) max)
         (t raw)))
 
-(defun dl-satan-tools-atsatan--hash (file line)
+(defun satan-tools-atsatan--hash (file line)
   "Stable id for a (FILE . LINE) pair within a single scan cycle.
 Hash shifts if lines above the match are inserted/deleted, so callers
 must round-trip the id within one scan-then-done cycle."
   (concat "M-" (substring (secure-hash 'md5 (format "%s:%d" file line)) 0 12)))
 
-(defun dl-satan-tools-atsatan--rg-argv (max-results path-glob)
+(defun satan-tools-atsatan--rg-argv (max-results path-glob)
   (let ((argv (list "--json" "-n" "--fixed-strings"
                     "--max-count" (number-to-string max-results)
                     "--glob" path-glob)))
-    (dolist (g dl-satan-tools-atsatan--exclude-globs)
+    (dolist (g satan-tools-atsatan--exclude-globs)
       (setq argv (append argv (list "--glob" g))))
     (append argv
-            (list dl-satan-tools-atsatan--mark
-                  dl-satan-tools-atsatan-root))))
+            (list satan-tools-atsatan--mark
+                  satan-tools-atsatan-root))))
 
-(defun dl-satan-tools-atsatan--run-rg (argv)
+(defun satan-tools-atsatan--run-rg (argv)
   "Invoke rg with ARGV. Returns (:exit N :stdout STR :stderr STR)."
   (let ((stdout-buf (generate-new-buffer " *satan-atsatan-rg-out*"))
         (stderr-file (make-temp-file "satan-atsatan-rg-err-")))
     (unwind-protect
         (let ((exit (apply #'call-process
-                           dl-satan-tools-atsatan--rg-program nil
+                           satan-tools-atsatan--rg-program nil
                            (list stdout-buf stderr-file) nil argv)))
           (list :exit exit
                 :stdout (with-current-buffer stdout-buf (buffer-string))
@@ -221,7 +221,7 @@ must round-trip the id within one scan-then-done cycle."
       (when (buffer-live-p stdout-buf) (kill-buffer stdout-buf))
       (when (file-exists-p stderr-file) (delete-file stderr-file)))))
 
-(defun dl-satan-tools-atsatan--parse-matches (stdout)
+(defun satan-tools-atsatan--parse-matches (stdout)
   "Parse rg --json STDOUT into a list of (:file :line :content) plists.
 Skips non-match records and lines containing @satan-done."
   (let (out)
@@ -238,13 +238,13 @@ Skips non-match records and lines containing @satan-done."
                  (text (plist-get (plist-get data :lines) :text))
                  (content (and text (string-trim-right text))))
             (when (and path line content
-                       (not (string-match-p dl-satan-tools-atsatan--done-re
+                       (not (string-match-p satan-tools-atsatan--done-re
                                             content)))
               (push (list :file path :line line :content content)
                     out))))))
     (nreverse out)))
 
-(defun dl-satan-tools-atsatan--enrich (matches context-lines)
+(defun satan-tools-atsatan--enrich (matches context-lines)
   "Add :context, :headline, :mtime, :id to each match plist.
 Opens each unique file once; reads lines into a vector for slicing."
   (let ((cache (make-hash-table :test 'equal)))
@@ -268,7 +268,7 @@ Opens each unique file once; reads lines into a vector for slicing."
               (headline (cl-loop for i from (1- idx) downto 0
                                  for ln = (aref lines i)
                                  when (string-match-p
-                                       dl-satan-tools-atsatan--headline-re ln)
+                                       satan-tools-atsatan--headline-re ln)
                                  return ln))
               (mtime (format-time-string
                       "%Y-%m-%dT%H:%M:%S%z"
@@ -278,22 +278,22 @@ Opens each unique file once; reads lines into a vector for slicing."
                  (list :context (mapconcat #'identity window "\n")
                        :headline headline
                        :mtime mtime
-                       :id (dl-satan-tools-atsatan--hash file line)))))
+                       :id (satan-tools-atsatan--hash file line)))))
      matches)))
 
-(defun dl-satan-tool/notes-at-satan-scan (args _ctx)
+(defun satan-tool/notes-at-satan-scan (args _ctx)
   "Implements notes_at_satan_scan. Returns (ok PLIST) | (error STR)."
-  (let* ((ctx-lines (dl-satan-tools-atsatan--clamp
+  (let* ((ctx-lines (satan-tools-atsatan--clamp
                      (plist-get args :context-lines)
-                     dl-satan-tools-atsatan-default-context-lines
-                     0 dl-satan-tools-atsatan--context-max))
-         (max-res   (dl-satan-tools-atsatan--clamp
+                     satan-tools-atsatan-default-context-lines
+                     0 satan-tools-atsatan--context-max))
+         (max-res   (satan-tools-atsatan--clamp
                      (plist-get args :max-results)
-                     30 1 dl-satan-tools-atsatan--results-max))
+                     30 1 satan-tools-atsatan--results-max))
          (glob      (or (plist-get args :path-glob)
-                        dl-satan-tools-atsatan--default-path-glob))
-         (argv      (dl-satan-tools-atsatan--rg-argv max-res glob))
-         (run       (dl-satan-tools-atsatan--run-rg argv))
+                        satan-tools-atsatan--default-path-glob))
+         (argv      (satan-tools-atsatan--rg-argv max-res glob))
+         (run       (satan-tools-atsatan--run-rg argv))
          (exit      (plist-get run :exit)))
     (cond
      ;; rg exits 1 when no matches; that is success-with-empty for us.
@@ -301,17 +301,17 @@ Opens each unique file once; reads lines into a vector for slicing."
       (cons 'error (format "rg failed: exit=%s %s"
                            exit (string-trim (plist-get run :stderr)))))
      (t
-      (let* ((raw     (dl-satan-tools-atsatan--parse-matches
+      (let* ((raw     (satan-tools-atsatan--parse-matches
                        (plist-get run :stdout)))
              (capped  (if (> (length raw) max-res)
                           (cl-subseq raw 0 max-res)
                         raw))
              (truncated (> (length raw) max-res))
-             (enriched (dl-satan-tools-atsatan--enrich capped ctx-lines)))
-        (dl-satan-tools-atsatan--remember enriched)
+             (enriched (satan-tools-atsatan--enrich capped ctx-lines)))
+        (satan-tools-atsatan--remember enriched)
         (cons 'ok
               (list :scope "notes_at_satan_scan"
-                    :root dl-satan-tools-atsatan-root
+                    :root satan-tools-atsatan-root
                     :context-lines ctx-lines
                     :max-results max-res
                     :count (length enriched)
@@ -366,12 +366,12 @@ The `id` field is the stable anchor for the round-trip into
 ### Schema
 
 ```elisp
-(dl-satan-tool-register
+(satan-tool-register
  (list :name "notes_at_satan_done"
        :risk 'low
        :args-schema '(match-id (:type string :required t)
                       comment  (:type string :required nil))
-       :handler 'dl-satan-tool/notes-at-satan-done))
+       :handler 'satan-tool/notes-at-satan-done))
 ```
 
 | Arg | Type | Required | Description |
@@ -384,19 +384,19 @@ The `id` field is the stable anchor for the round-trip into
 Single-file in-place line edit with optimistic re-read.
 
 ```elisp
-(defvar dl-satan-tools-atsatan--id-index (make-hash-table :test 'equal)
+(defvar satan-tools-atsatan--id-index (make-hash-table :test 'equal)
   "Maps :id → (FILE . LINE) within a single Emacs session.
 Populated by the scan handler so the done handler does not need to
 re-scan to resolve an id.")
 
-(defun dl-satan-tools-atsatan--remember (matches)
+(defun satan-tools-atsatan--remember (matches)
   "Store FILE/LINE for each match's id in the session index."
   (dolist (m matches)
     (puthash (plist-get m :id)
              (cons (plist-get m :file) (plist-get m :line))
-             dl-satan-tools-atsatan--id-index)))
+             satan-tools-atsatan--id-index)))
 
-(defun dl-satan-tools-atsatan--marker (run-id comment)
+(defun satan-tools-atsatan--marker (run-id comment)
   "Build `@satan-done(<run-id>[,<comment>])'. Strips parens/newlines from comment."
   (let ((c (and comment
                 (replace-regexp-in-string "[()\n\r]" " " comment))))
@@ -404,7 +404,7 @@ re-scan to resolve an id.")
         (format "@satan-done(%s,%s)" (or run-id "") (string-trim c))
       (format "@satan-done(%s)" (or run-id "")))))
 
-(defun dl-satan-tools-atsatan--rewrite-line (file line marker)
+(defun satan-tools-atsatan--rewrite-line (file line marker)
   "Replace the first `@satan' on LINE of FILE with MARKER.
 Optimistic re-read: if the line no longer contains a bare `@satan' (or
 already contains `@satan-done'), return :status \"already-done\". Other
@@ -418,17 +418,17 @@ content on the line is preserved."
       (let* ((line-start (point))
              (line-end   (line-end-position))
              (current    (buffer-substring-no-properties line-start line-end))
-             (id         (dl-satan-tools-atsatan--hash file line)))
+             (id         (satan-tools-atsatan--hash file line)))
         (cond
-         ((string-match-p dl-satan-tools-atsatan--done-re current)
+         ((string-match-p satan-tools-atsatan--done-re current)
           (cons 'ok (list :match-id id :status "already-done")))
-         ((not (string-match-p (regexp-quote dl-satan-tools-atsatan--mark)
+         ((not (string-match-p (regexp-quote satan-tools-atsatan--mark)
                                current))
           (cons 'ok (list :match-id id :status "already-done")))
          (t
           (let ((replaced
                  (replace-regexp-in-string
-                  (regexp-quote dl-satan-tools-atsatan--mark)
+                  (regexp-quote satan-tools-atsatan--mark)
                   marker current t t nil 1)))
             (delete-region line-start line-end)
             (goto-char line-start)
@@ -436,7 +436,7 @@ content on the line is preserved."
             (write-region (point-min) (point-max) file nil 'silent)
             (cons 'ok (list :match-id id :status "done")))))))))
 
-(defun dl-satan-tool/notes-at-satan-done (args ctx)
+(defun satan-tool/notes-at-satan-done (args ctx)
   "Implements notes_at_satan_done. Returns (ok PLIST) | (error STR).
 Refused unless TOOL-CTX `:capabilities' includes `write-notes'.
 Idempotent: claiming an already-done line returns :status \"already-done\"."
@@ -444,7 +444,7 @@ Idempotent: claiming an already-done line returns :status \"already-done\"."
          (comment (plist-get args :comment))
          (caps    (plist-get ctx :capabilities))
          (run-id  (plist-get ctx :id))
-         (pair    (gethash id dl-satan-tools-atsatan--id-index)))
+         (pair    (gethash id satan-tools-atsatan--id-index)))
     (cond
      ((not (memq 'write-notes caps))
       (cons 'error "mode lacks capability write-notes"))
@@ -457,8 +457,8 @@ Idempotent: claiming an already-done line returns :status \"already-done\"."
      (t
       (let* ((file (car pair))
              (line (cdr pair))
-             (marker (dl-satan-tools-atsatan--marker run-id comment)))
-        (dl-satan-tools-atsatan--rewrite-line file line marker))))))
+             (marker (satan-tools-atsatan--marker run-id comment)))
+        (satan-tools-atsatan--rewrite-line file line marker))))))
 ```
 
 Notes on the handler:
@@ -473,7 +473,7 @@ Notes on the handler:
   `@satan-was-here` returns `:status "already-done"` without rewriting
   the file.
 - The embedded code excerpts in this section are a snapshot; the
-  canonical source is `satan/dl-satan-tools-atsatan.el`.
+  canonical source is `satan/satan-tools-atsatan.el`.
 
 ### Why not delete the line outright?
 
@@ -489,17 +489,17 @@ Notes on the handler:
 ### Run-id source
 
 Read from `(plist-get tool-ctx :id)`. The broker populates this at
-`dl-satan-broker.el:107` (`:id (dl-satan-run-id run-ctx)`) when it
+`satan-broker.el:107` (`:id (satan-run-id run-ctx)`) when it
 builds the tool-ctx for each handler invocation.
 
 ---
 
 ## Mode: `tick-agent`
 
-Registered via `dl-satan-tick-register`:
+Registered via `satan-tick-register`:
 
 ```elisp
-(dl-satan-tick-register
+(satan-tick-register
  "agent"  ; → full mode name "tick-agent"; prompt at <prompts>/tick/agent.txt
  :tools '("notes_at_satan_scan" "notes_at_satan_done"
           "org_read_context"
@@ -514,7 +514,7 @@ Registered via `dl-satan-tick-register`:
  :timeout-seconds 120)
 ```
 
-Note the short-name / full-name convention: `dl-satan-tick-register`
+Note the short-name / full-name convention: `satan-tick-register`
 prepends `tick-` and resolves the prompt file to
 `<prompts>/tick/<short>.txt`. So short-name `"agent"` produces mode
 `tick-agent` and reads the prompt from
@@ -525,16 +525,16 @@ prepends `tick-` and resolves the prompt file to
 New capability symbol. Checked in the done handler via
 `(memq 'write-notes (plist-get ctx :capabilities))` — the same pattern
 the org and inbox handlers use. The broker passes mode `:capabilities`
-through as a symbol list at `dl-satan-broker.el:109`. No central
+through as a symbol list at `satan-broker.el:109`. No central
 capability registry exists yet; that is a future refactor noted at the
 end of this document.
 
 ### Tick pool weights
 
-Edit the `dl-satan-tick-pool` defcustom default to:
+Edit the `satan-tick-pool` defcustom default to:
 
 ```elisp
-(defcustom dl-satan-tick-pool
+(defcustom satan-tick-pool
   '(("tick-pulse" . 5)
     ("tick-agent" . 3))
   ...)
@@ -546,7 +546,7 @@ pick up the new entry from a default change; re-add manually.
 ### Morning mode integration
 
 Add `notes_at_satan_scan` (but **not** `notes_at_satan_done`) to the
-morning mode's `:tools` list in `dl-satan-mode.el`. Anchor: the
+morning mode's `:tools` list in `satan-mode.el`. Anchor: the
 `(list :name "morning" ...)` form's `:tools` key. Morning gets the
 read-only scan so SATAN can surface outstanding directives in the
 morning summary; write-back stays in `tick-agent`.
@@ -768,20 +768,20 @@ careful timeout + truncation.
 | Hash stability | Single-scan-cycle only | `(file . line)` shifts under edits that insert/delete above the match line. Do not use as a cross-run anchor. |
 | `rg` vs `fd`+`grep` | `rg --json -n --fixed-strings @satan` | rg already standard in the Nix env; JSON output avoids cascaded split bugs around colons/NULs. |
 | `rg --json` field map | path = `.data.path.text`; line = `.data.line_number`; content = `.data.lines.text`; filter `.type == "match"` | Locks the parse surface so the elisp doesn't drift on rg version bumps. |
-| Exclude `satan/` dir | `--glob '!satan/**'` (extensible via `dl-satan-tools-atsatan--exclude-globs`) | Single mechanism for exclusions; matches the `dl-satan-tools-notes--exclude` pattern. |
+| Exclude `satan/` dir | `--glob '!satan/**'` (extensible via `satan-tools-atsatan--exclude-globs`) | Single mechanism for exclusions; matches the `satan-tools-notes--exclude` pattern. |
 | Exclude `@satan-was-here` lines | Post-parse elisp filter via `string-match-p` | Pipe-through-grep breaks NUL/JSON framing; PCRE lookahead is PCRE-only with `-P`. |
 | Context window | In-elisp line slice from the file buffer (±N around `:line`) | rg context records are fragile to re-associate; buffer already opened for headline walk-up. |
 | Headline walk-up | Regex `^\(\*+\|#+\) ` (org and markdown) | Single mechanism. Return sigil-inclusive text so the LLM sees the level. |
 | Concurrent claim of same line | Optimistic re-read; if already `@satan-was-here`, return `:status "already-done"` | Idempotent. No error on race. |
 | Concurrent edit of different lines in same file | Accepted limitation for v1 | Probability near zero under 30-min systemd timer. Future: `make-lock-file`. |
-| `write-notes` capability | New symbol, checked in handler via `(memq 'write-notes (plist-get ctx :capabilities))` | Matches `inbox-write` / `write-daily` pattern at `dl-satan-tools-inbox.el:51` and `dl-satan-tools-org.el:73-76`. Capabilities are symbols at the handler interface (broker propagates them at `dl-satan-broker.el:109`); they are stringified only for harness/LLM-facing JSON metadata at `dl-satan-broker.el:266-267`. |
-| Run-id source for marker | `(plist-get tool-ctx :id)` populated at `dl-satan-broker.el:107` | Avoids the green-implementer fumble looking for it in run-state or env. |
+| `write-notes` capability | New symbol, checked in handler via `(memq 'write-notes (plist-get ctx :capabilities))` | Matches `inbox-write` / `write-daily` pattern at `satan-tools-inbox.el:51` and `satan-tools-org.el:73-76`. Capabilities are symbols at the handler interface (broker propagates them at `satan-broker.el:109`); they are stringified only for harness/LLM-facing JSON metadata at `satan-broker.el:266-267`. |
+| Run-id source for marker | `(plist-get tool-ctx :id)` populated at `satan-broker.el:107` | Avoids the green-implementer fumble looking for it in run-state or env. |
 | Default path glob | `*.{org,md}`, overridable via `:path-glob` | Limits scan to text formats; binary files (.pdf, .png) excluded by default. |
 | `@satan` inside code blocks | Included in results; LLM uses judgment | Avoids a parser; tick-agent prompt instructs skipping ambiguous matches. |
 | Soft truncation | `:truncated t` flag when result count clamps | LLM can narrow via `:path-glob` or raise `:max-results` next run. |
-| Require chain | `dl-satan-tools-atsatan` requires after `dl-satan-tick` in `dl-satan.el` | Tools file calls `dl-satan-tick-register` at load time. |
-| Mode short-name vs full name | `dl-satan-tick-register "agent"` → mode `tick-agent`, prompt `<prompts>/tick/agent.txt` | Convention enforced by `dl-satan-tick-register`. |
-| Test fixture shape | `make-temp-file ... 'dir` + `let`-bound `dl-satan-tools-atsatan-root` + `unwind-protect` cleanup | Keeps `~/notes/` clean during ert. |
+| Require chain | `satan-tools-atsatan` requires after `satan-tick` in `satan.el` | Tools file calls `satan-tick-register` at load time. |
+| Mode short-name vs full name | `satan-tick-register "agent"` → mode `tick-agent`, prompt `<prompts>/tick/agent.txt` | Convention enforced by `satan-tick-register`. |
+| Test fixture shape | `make-temp-file ... 'dir` + `let`-bound `satan-tools-atsatan-root` + `unwind-protect` cleanup | Keeps `~/notes/` clean during ert. |
 | Verify command | `emacs -batch -l ert -l <test> --eval '(ert-run-tests-batch-and-exit "notes-at-satan-")'` | Non-zero exit + stdout output on failure. emacsclient eval swallows results. |
 
 ---
@@ -826,7 +826,7 @@ capabilities via `(memq need caps)` in a handful of handlers (e.g.
 
 1. A central capability registry (list of known symbols + docstrings).
 2. A `:capability` key in the tool-spec itself, checked automatically
-   by `dl-satan-tool-dispatch` before the handler runs — removing the
+   by `satan-tool-dispatch` before the handler runs — removing the
    ad-hoc `(memq ...)` checks from individual handlers.
 3. A per-capability allowlist in the mode spec: not just which tools,
    but which capabilities the mode is *allowed* to use (so a mode can
@@ -848,7 +848,7 @@ These artifacts are quoted verbatim above and must be reproduced
 exactly:
 
 - The tick-agent prompt (`~/notes/satan/prompts/tick/agent.txt`).
-- `dl-satan-tool/notes-at-satan-done` and its helpers
+- `satan-tool/notes-at-satan-done` and its helpers
   (`--marker`, `--rewrite-line`, `--id-index`, `--remember`).
 - The model-facing `.md` descriptions for both tools.
 
@@ -860,8 +860,8 @@ straight from the spec above.
 
 | Path | Contents |
 |---|---|
-| `satan/dl-satan-tools-atsatan.el` | All elisp shown in this document, in declaration order: header → defcustoms/defconsts → helpers (`--clamp`, `--hash`, `--rg-argv`, `--run-rg`, `--parse-matches`, `--enrich`, `--id-index`, `--remember`) → scan handler → done helpers (`--marker`, `--rewrite-line`) and the done handler → two `dl-satan-tool-register` forms → one `dl-satan-tick-register` form → `(provide 'dl-satan-tools-atsatan)`. |
-| `satan/test/dl-satan-tools-atsatan-test.el` | Ert suite (5 tests, see below). |
+| `satan/satan-tools-atsatan.el` | All elisp shown in this document, in declaration order: header → defcustoms/defconsts → helpers (`--clamp`, `--hash`, `--rg-argv`, `--run-rg`, `--parse-matches`, `--enrich`, `--id-index`, `--remember`) → scan handler → done helpers (`--marker`, `--rewrite-line`) and the done handler → two `satan-tool-register` forms → one `satan-tick-register` form → `(provide 'satan-tools-atsatan)`. |
+| `satan/test/satan-tools-atsatan-test.el` | Ert suite (5 tests, see below). |
 | `~/notes/satan/tools/notes_at_satan_scan.md` | Verbatim from above. |
 | `~/notes/satan/tools/notes_at_satan_done.md` | Verbatim from above. |
 | `~/notes/satan/prompts/tick/agent.txt` | Verbatim from above. |
@@ -870,9 +870,9 @@ straight from the spec above.
 
 | Path | Anchor | Change |
 |---|---|---|
-| `satan/dl-satan.el` | The block of `(require 'dl-satan-tools-*)` lines, **after** `(require 'dl-satan-tick)` | Insert `(require 'dl-satan-tools-atsatan)`. Order matters: tick must load first. |
-| `satan/dl-satan-mode.el` | The `(list :name "morning" ...)` form's `:tools` list | Add `"notes_at_satan_scan"` (not `_done`). |
-| `satan/dl-satan-tick.el` | `defcustom dl-satan-tick-pool` form | Change default to `'(("tick-pulse" . 5) ("tick-agent" . 3))`. |
+| `satan/satan.el` | The block of `(require 'satan-tools-*)` lines, **after** `(require 'satan-tick)` | Insert `(require 'satan-tools-atsatan)`. Order matters: tick must load first. |
+| `satan/satan-mode.el` | The `(list :name "morning" ...)` form's `:tools` list | Add `"notes_at_satan_scan"` (not `_done`). |
+| `satan/satan-tick.el` | `defcustom satan-tick-pool` form | Change default to `'(("tick-pulse" . 5) ("tick-agent" . 3))`. |
 
 ## Ert test plan
 
@@ -882,19 +882,19 @@ One verbatim round-trip test plus four described.
 
 ```elisp
 (require 'ert)
-(require 'dl-satan-tools-atsatan)
+(require 'satan-tools-atsatan)
 
-(defmacro dl-satan-tools-atsatan-test--with-root (root-sym &rest body)
+(defmacro satan-tools-atsatan-test--with-root (root-sym &rest body)
   "Bind ROOT-SYM to a fresh temp dir, let-bind it as the scan root, cleanup on exit."
   (declare (indent 1))
   `(let* ((,root-sym (make-temp-file "satan-atsatan-test-" 'dir))
-          (dl-satan-tools-atsatan-root ,root-sym))
+          (satan-tools-atsatan-root ,root-sym))
      (unwind-protect (progn ,@body)
        (delete-directory ,root-sym 'recursive))))
 
 (ert-deftest notes-at-satan/scan-then-done-then-rescan ()
   "Full round-trip: scan finds a match, done claims it, rescan excludes it."
-  (dl-satan-tools-atsatan-test--with-root root
+  (satan-tools-atsatan-test--with-root root
     (let* ((file (expand-file-name "trip.org" root))
            (ctx  (list :id "TEST-RUN" :capabilities '(write-notes))))
       ;; Seed file.
@@ -902,7 +902,7 @@ One verbatim round-trip test plus four described.
         (write-region "* H\nfirst line\n- @satan summarise me\nlast line\n"
                       nil file))
       ;; Scan: one match.
-      (let* ((res (dl-satan-tool/notes-at-satan-scan nil ctx)))
+      (let* ((res (satan-tool/notes-at-satan-scan nil ctx)))
         (should (eq (car res) 'ok))
         (let* ((payload (cdr res))
                (matches (plist-get payload :matches))
@@ -912,7 +912,7 @@ One verbatim round-trip test plus four described.
           (should (string-match-p "summarise me" (plist-get m :content)))
           (should (equal "* H" (plist-get m :headline)))
           ;; Done: claim it.
-          (let ((done (dl-satan-tool/notes-at-satan-done
+          (let ((done (satan-tool/notes-at-satan-done
                        (list :match-id id :comment "ok")
                        ctx)))
             (should (eq (car done) 'ok))
@@ -923,12 +923,12 @@ One verbatim round-trip test plus four described.
             (should (string-match-p "@satan-done(TEST-RUN,ok)"
                                     (buffer-string))))
           ;; Idempotent: second done is a no-op.
-          (let ((done2 (dl-satan-tool/notes-at-satan-done
+          (let ((done2 (satan-tool/notes-at-satan-done
                         (list :match-id id) ctx)))
             (should (equal "already-done"
                            (plist-get (cdr done2) :status))))
           ;; Rescan: no matches.
-          (let ((rescan (dl-satan-tool/notes-at-satan-scan nil ctx)))
+          (let ((rescan (satan-tool/notes-at-satan-scan nil ctx)))
             (should (eq (car rescan) 'ok))
             (should (zerop (plist-get (cdr rescan) :count)))))))))
 ```
@@ -951,8 +951,8 @@ One verbatim round-trip test plus four described.
 
 ```sh
 # 1. Stage the new elisp under flake-tracked dotfiles.
-git -C ~/.emacs.d add satan/dl-satan-tools-atsatan.el
-git -C ~/.emacs.d add satan/test/dl-satan-tools-atsatan-test.el
+git -C ~/.emacs.d add satan/satan-tools-atsatan.el
+git -C ~/.emacs.d add satan/test/satan-tools-atsatan-test.el
 # Notes-side files (~/notes/satan/{tools,prompts}/...) live in a
 # separate repo and do not feed the Nix flake build.
 
@@ -965,11 +965,11 @@ cd ~/flakes && home-manager switch --flake .#david
 # output goes to stdout.
 emacs -batch \
   -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
-  -l ert -l dl-satan-tools-atsatan-test \
+  -l ert -l satan-tools-atsatan-test \
   --eval '(ert-run-tests-batch-and-exit "notes-at-satan-")'
 
 # 4. Smoke-test one live tick-agent run.
-emacsclient --eval '(my/satan-run "tick-agent")'
+emacsclient --eval '(satan-run "tick-agent")'
 
 # 5. Inspect the audit bundle.
 ls ~/notes/satan/runs/most-recent/

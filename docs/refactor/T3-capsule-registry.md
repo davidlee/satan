@@ -19,11 +19,11 @@ metadata:
 
 ## Why it hurts
 
-Adding attribute bars = write `dl-satan-attributes-render-block` + add framing key + require + a line in `--render-prompt`. Three touch points, no automatic test that the block was registered. Future blocks (Pressure, Brooding state, Metamorphosis triggers per attributes.brief §4) repeat the pattern. GPT-5.5: *"Attribute presentation is not just rendering; it becomes part of how the model perceives itself and how the user audits state."*
+Adding attribute bars = write `satan-attributes-render-block` + add framing key + require + a line in `--render-prompt`. Three touch points, no automatic test that the block was registered. Future blocks (Pressure, Brooding state, Metamorphosis triggers per attributes.brief §4) repeat the pattern. GPT-5.5: *"Attribute presentation is not just rendering; it becomes part of how the model perceives itself and how the user audits state."*
 
 ## Target shape (narrow)
 
-A capsule registry in `dl-satan-capsule.el`. `dl-satan-capsule-register` takes `:order`, `:framing-key`, `:render-fn`. `--render-prompt` becomes a fold over the registry. Adding attribute-bars = one register call.
+A capsule registry in `satan-capsule.el`. `satan-capsule-register` takes `:order`, `:framing-key`, `:render-fn`. `--render-prompt` becomes a fold over the registry. Adding attribute-bars = one register call.
 
 ## Migration sketch — pick ONE path
 

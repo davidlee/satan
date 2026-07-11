@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# SATAN run trigger.  Invokes Emacs's `my/satan-run' over emacsclient.
+# SATAN run trigger.  Invokes Emacs's `satan-run' over emacsclient.
 # Returns the run-id on stdout.
 set -eu
 mode="${1:?usage: satan-run MODE}"
-exec emacsclient --eval "(my/satan-run \"$mode\")"
+exec emacsclient --eval "(satan-run \"$mode\")"

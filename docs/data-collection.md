@@ -58,7 +58,7 @@ turn.
 ### 2.1 System scaffold
 
 **Source:** `~/notes/satan/system/scaffold.txt`
-**Injected by:** `dl-satan-context--assemble-prompt`
+**Injected by:** `satan-context--assemble-prompt`
 **Content:** Core behavioural framing — write boundaries, interruption
 policy, memory model, tool discipline, protocol rules. Load-bearing
 for every mode.
@@ -67,7 +67,7 @@ for every mode.
 ### 2.2 Mode prompt
 
 **Source:** `~/notes/satan/prompts/<mode>.txt`
-**Injected by:** `dl-satan-context--assemble-prompt`
+**Injected by:** `satan-context--assemble-prompt`
 **Content:** Mode-specific instruction — what to do, in what order,
 with which tools.
 **Control:** Per-mode file; self-edit-mind lane can propose changes.
@@ -75,7 +75,7 @@ with which tools.
 ### 2.3 Section headers (framing)
 
 **Source:** `~/notes/satan/system/framing.txt`
-**Injected by:** `dl-satan-context--render-prompt`
+**Injected by:** `satan-context--render-prompt`
 **Content:** Key=value pairs like `now=# Now`, `today=# Today (raw)`,
 `sources=# Source files`. These label the context blocks the broker
 appends after the scaffold + prompt.
@@ -83,8 +83,8 @@ appends after the scaffold + prompt.
 
 ### 2.4 Now block
 
-**Source:** `dl-satan-context-now` (wall clock)
-**Injected by:** `dl-satan-context--render-now`
+**Source:** `satan-context-now` (wall clock)
+**Injected by:** `satan-context--render-now`
 **Content:** ISO date, weekday, ISO week, time, timezone offset and
 name. Every bundle includes this.
 **Control:** Clock only; the user cannot influence this directly
@@ -93,7 +93,7 @@ name. Every bundle includes this.
 ### 2.5 Today block (morning mode)
 
 **Source:** Today's journal org file at `~/notes/journal/<date>.org`
-**Injected by:** `dl-satan-context-morning`
+**Injected by:** `satan-context-morning`
 **Content:** The raw text of today's daily note. This is the user's
 own writing from the current day.
 **Control:** User writes in their journal file.
@@ -102,17 +102,17 @@ own writing from the current day.
 
 **Source:** All tracked files under `~/.emacs.d/satan/` (mech) or
 `~/notes/satan/{prompts,system,tools}/` (mind), capped at 600K chars.
-**Injected by:** `dl-satan-context-self-edit`
+**Injected by:** `satan-context-self-edit`
 **Content:** Full file contents packed alphabetically until budget
 exhausted. Overflow listed in `:dropped-files`.
 **Control:** User edits files; the droppage budget is configurable via
-`dl-satan-self-edit-bundle-char-budget`.
+`satan-self-edit-bundle-char-budget`.
 
 ### 2.7 Recent SATAN runs block (tick modes)
 
 **Source:** `~/notes/satan/runs/<YYYY-MM-DD>/<run-id>/final.json` +
 `transcript.jsonl`
-**Injected by:** `dl-satan-context--recent-runs`
+**Injected by:** `satan-context--recent-runs`
 **Content:** The N most recent runs (default 5), newest-first. Each:
 timestamp, mode, status, summary clipped to 280 chars, tool-call tally.
 Includes failed runs. Cross-mode visibility — a `morning` run appears
@@ -219,7 +219,7 @@ broker-side).
 
 ### 3.9 `motive_read`
 
-**Source:** `~/notes/satan/motives.org` parsed via `dl-satan-motive-parse`.
+**Source:** `~/notes/satan/motives.org` parsed via `satan-motive-parse`.
 **What comes through:** Whole motive file — active motives with prose,
 `:cue:` handles, `:cooldown_s:`, `:worked_count:`, `:last_intervention_at:`,
 optional `:project_cwd:`, plus background ruminations (≤10 lines).
@@ -397,18 +397,18 @@ the call entirely on bound breach.
 
 ### 4.12 Observer verdict (broker-side, post-window-mature)
 
-Not a model tool. Broker module `dl-satan-observer.el` (Phase 5) runs
-in `dl-satan-broker--spawn` before percept-build, scans the prior 24h
+Not a model tool. Broker module `satan-observer.el` (Phase 5) runs
+in `satan-broker--spawn` before percept-build, scans the prior 24h
 of `transcript.jsonl` files for interventions whose 30-min attribution
-window has matured (`dl-satan-observer-window-mature-seconds`,
+window has matured (`satan-observer-window-mature-seconds`,
 default 1800), classifies each per [[satan-perceptual-design]] §S5
 predicate, and on a positive verdict triggers three writes via
-`dl-satan-observer-persist-verdict`:
+`satan-observer-persist-verdict`:
 
 | Write | Surface | Effect |
 |---|---|---|
-| Motive footer touch | `~/notes/satan/motives.org` via `dl-satan-motive-touch-footer` | `:worked_count:` increment + `:last_intervention_at:` ISO bump; prose, ruminations, other footer fields preserved verbatim; atomic tmp + rename |
-| Memory trace | `satan_memory.traces` (kind `observation`, origin `auto_rule`) via `dl-satan-memory-store-mark` | Records run_id, applied_index, motive_id, predicate metadata; future `memory_resonate` calls can surface it |
+| Motive footer touch | `~/notes/satan/motives.org` via `satan-motive-touch-footer` | `:worked_count:` increment + `:last_intervention_at:` ISO bump; prose, ruminations, other footer fields preserved verbatim; atomic tmp + rename |
+| Memory trace | `satan_memory.traces` (kind `observation`, origin `auto_rule`) via `satan-memory-store-mark` | Records run_id, applied_index, motive_id, predicate metadata; future `memory_resonate` calls can surface it |
 | Dedup mark | observer state file (`~/.local/state/satan/observer.json`) | Per-intervention-id mark prevents double-count across ticks; written last so partial failures retry |
 
 Negative verdicts write only the dedup mark — absence of a positive
@@ -418,8 +418,8 @@ fires them.
 
 ### 4.13 Sensor alerts (broker-side, pre-model-turn)
 
-Not a model tool. Broker module `dl-satan-sensor-alerts.el` (Phase 4)
-runs in `dl-satan-broker--prepare` after evidence assembly, evaluates
+Not a model tool. Broker module `satan-sensor-alerts.el` (Phase 4)
+runs in `satan-broker--prepare` after evidence assembly, evaluates
 the freshness thresholds in [[satan-perceptual-design]] §S6, and on a
 fire dispatches through the **same `notify_send` tool handler** the
 model uses (so capability checks + audit apply). Every fire AND every
@@ -441,8 +441,8 @@ cross-run persistence layer. Here is how data flows in and out:
 
 | Source | Handler | `trace_origin` | Frequency |
 |--------|---------|----------------|-----------|
-| `memory_mark` tool call | `dl-satan-tool/memory-mark` | `llm_mark` | Per-run, on demand |
-| `hippocampus_write` cross-ref hook | `dl-satan-tools-hippocampus--cross-ref` | `auto_rule` | Per hippocampus write |
+| `memory_mark` tool call | `satan-tool/memory-mark` | `llm_mark` | Per-run, on demand |
+| `hippocampus_write` cross-ref hook | `satan-tools-hippocampus--cross-ref` | `auto_rule` | Per hippocampus write |
 | Auto-rule writers (future) | TBD | `auto_rule` | TBD |
 
 The canonicalizer (§3 of memory/design.md) is a pure function running

@@ -1,7 +1,7 @@
 """SATAN JSONL protocol validator + wire helpers.
 
 Single-file source of truth for the message-shape contract on the
-harness side. Keep in lockstep with `../dl-satan-protocol.el` and
+harness side. Keep in lockstep with `../satan-protocol.el` and
 `../../docs/satan/protocol.md`. Shared fixtures at `../protocol/fixtures.json`
 drive both this validator's tests and the elisp validator's tests.
 """
@@ -142,7 +142,7 @@ def validate(direction: str, obj: dict) -> None:
 
 # ----- actions.json shape (Phase 0.3 / 0.4) -----
 #
-# Mirror of `dl-satan-audit-validate-actions` on the elisp side. The four
+# Mirror of `satan-audit-validate-actions` on the elisp side. The four
 # model-action partition keys (`applied`, `staged`, `rejected`, `failed`)
 # are each arrays of objects; missing keys are treated as empty (audit-close
 # always writes them, but the validator stays lenient so fixtures can omit

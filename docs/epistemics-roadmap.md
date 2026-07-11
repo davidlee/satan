@@ -33,10 +33,10 @@ attribute shifts on outcome — but nothing to *test*.
 
 | Layer | State | Evidence |
 |---|---|---|
-| Read/memory/write/staged tools (§2) | all real | `satan/dl-satan-tools-*.el`, `dl-satan-patch-*` |
-| Attribute layer (§6) | mature | `dl-satan-attribute*.el`, `dl-satan-observer*`, DE-001 capsule |
-| Habitat / tank (§11) | partly built (text) | `dl-satan-tank.el` |
-| Percept loop (§5) | Phases 0–6 shipped | `dl-satan-percept.el`, `perceptual-design.md` |
+| Read/memory/write/staged tools (§2) | all real | `satan/satan-tools-*.el`, `satan-patch-*` |
+| Attribute layer (§6) | mature | `satan-attribute*.el`, `satan-observer*`, DE-001 capsule |
+| Habitat / tank (§11) | partly built (text) | `satan-tank.el` |
+| Percept loop (§5) | Phases 0–6 shipped | `satan-percept.el`, `perceptual-design.md` |
 
 ## Genuinely missing — vision §3 is accurate
 
@@ -82,7 +82,7 @@ render state without testing anything (§15 dashboard death).
 ## Vision tail ideas (§795) vs reality
 
 - **@satan note-expose + remove-line** — largely *already shipped*: `notes_at_satan_scan`
-  + `notes_at_satan_done` lifecycle (`dl-satan-tools-atsatan.el`). Do not re-spec.
+  + `notes_at_satan_done` lifecycle (`satan-tools-atsatan.el`). Do not re-spec.
 - **image search → tank** — tank exists (text habitat); image display not built. Small add.
 - **async deferred-cognition task** — genuinely missing. `patch_job` is async but
   *edit-shaped*; no general async queue for non-edit cognition (e.g. summarize-URL-later).

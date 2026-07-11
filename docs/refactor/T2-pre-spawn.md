@@ -15,7 +15,7 @@ metadata:
 
 ## Current shape
 
-`dl-satan-broker--spawn` (`broker.el:638`, 157 LOC, the largest function in the codebase) hand-threads a `prepare` plist through 6 sequential pre-spawn steps via a 6-level nested `plist-put` accumulator. Inline comments name "Phase 1.1+1.2", "Phase 2.1+2.2", "Phase 3.3", "Phase 5.8" — the chain has accreted four times. Per-step error policy is encoded ad-hoc by writing or not writing a `condition-case` at the callsite (2 of 6 are wrapped; the other 4 propagate raw).
+`satan-broker--spawn` (`broker.el:638`, 157 LOC, the largest function in the codebase) hand-threads a `prepare` plist through 6 sequential pre-spawn steps via a 6-level nested `plist-put` accumulator. Inline comments name "Phase 1.1+1.2", "Phase 2.1+2.2", "Phase 3.3", "Phase 5.8" — the chain has accreted four times. Per-step error policy is encoded ad-hoc by writing or not writing a `condition-case` at the callsite (2 of 6 are wrapped; the other 4 propagate raw).
 
 Sub-agent A confirmed only the broker calls the six pre-spawn helpers.
 
@@ -25,7 +25,7 @@ Adding attributes' per-run `attribute-update` step becomes the 7th nested plist-
 
 ## Target shape
 
-A declarative step list in a new `dl-satan-pre-spawn.el`. Each step carries `:name`, `:fn`, `:error :tolerate|:raise`. A runner folds the list over the accumulating `prepare` plist applying the policy. `broker--spawn` shrinks from 157 LOC to ~30. Adding attribute-update = adding one list entry.
+A declarative step list in a new `satan-pre-spawn.el`. Each step carries `:name`, `:fn`, `:error :tolerate|:raise`. A runner folds the list over the accumulating `prepare` plist applying the policy. `broker--spawn` shrinks from 157 LOC to ~30. Adding attribute-update = adding one list entry.
 
 ## Scope discipline
 
@@ -48,7 +48,7 @@ T2 is only worth merging if the extracted form makes data dependencies and toler
 
 ## First concrete step
 
-PR that defines `dl-satan-pre-spawn-steps` + `pre-spawn-run` in `satan/dl-satan-pre-spawn.el`, replaces the 157-LOC inline chain in `broker--spawn` with the runner call. A3 determinism test must remain green.
+PR that defines `satan-pre-spawn-steps` + `pre-spawn-run` in `satan/satan-pre-spawn.el`, replaces the 157-LOC inline chain in `broker--spawn` with the runner call. A3 determinism test must remain green.
 
 ## Open questions
 
@@ -57,5 +57,5 @@ PR that defines `dl-satan-pre-spawn-steps` + `pre-spawn-run` in `satan/dl-satan-
 
 ## PR log
 
-- [ ] PR 1: `dl-satan-pre-spawn.el` + cutover (behaviour-neutral) — pending
+- [ ] PR 1: `satan-pre-spawn.el` + cutover (behaviour-neutral) — pending
 - [ ] PR 2 (conditional): `:takes`/`:puts` slots if hidden deps surface — pending

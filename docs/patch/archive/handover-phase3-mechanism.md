@@ -22,11 +22,11 @@ metadata:
 >
 > **Elisp companion changes (this session, on `rust` branch — not
 > yet committed):**
-> - `dl-satan-patch-store.el`: INSERT now uses a CTE that fires
+> - `satan-patch-store.el`: INSERT now uses a CTE that fires
 >   `pg_notify('patch_jobs_new', $id)` for queued rows only, so the
 >   daemon's LISTEN wakes immediately without polling.  Non-queued
 >   inserts (seeded history) deliberately suppress the NOTIFY.
-> - `dl-satan-patch-runner.el`: new `dl-satan-patch-runner-enabled`
+> - `satan-patch-runner.el`: new `satan-patch-runner-enabled`
 >   defcustom (default `t`).  Flip to `nil` to hand the queue off to
 >   the satan-patcher daemon — `tick`, `kick`, and `start-timer` all
 >   short-circuit when nil.
@@ -60,31 +60,31 @@ but only smoke-tested live behind `SATAN_PATCH_LIVE=1`.
 
 ```
 satan/memory/migrations/0005_patch_jobs.sql        prod-applied? see "DB state" below
-satan/dl-satan-patch-store.el                       PG CRUD; FOR UPDATE SKIP LOCKED claim-next
-satan/dl-satan-patch-worktree.el                    branch name + worktree add + allowlist
-satan/dl-satan-tools-patch.el                       5 broker tools + dl-satan-patch-prepare stub
-satan/test/dl-satan-patch-store-test.el             13 ert
-satan/test/dl-satan-patch-worktree-test.el          12 ert
-satan/test/dl-satan-tools-patch-test.el             11 ert
+satan/satan-patch-store.el                       PG CRUD; FOR UPDATE SKIP LOCKED claim-next
+satan/satan-patch-worktree.el                    branch name + worktree add + allowlist
+satan/satan-tools-patch.el                       5 broker tools + satan-patch-prepare stub
+satan/test/satan-patch-store-test.el             13 ert
+satan/test/satan-patch-worktree-test.el          12 ert
+satan/test/satan-tools-patch-test.el             11 ert
 ~/notes/satan/tools/patch_job_{create,status,result,cancel,cleanup}.md
 ```
 
 ### Phase 2 (commit aa8d43b4)
 
 ```
-satan/dl-satan-patch-adapter.el                     registry + invoke dispatcher
-satan/dl-satan-patch-adapter-pi.el                  jailed-pi -p --mode json --no-session
+satan/satan-patch-adapter.el                     registry + invoke dispatcher
+satan/satan-patch-adapter-pi.el                  jailed-pi -p --mode json --no-session
                                                     --no-context-files --tools read,write,
                                                     edit,bash,grep,find,ls --system-prompt-file
                                                     auto-registers as "pi"
-satan/dl-satan-patch-prompt.el                      directive assembler (system prompt +
+satan/satan-patch-prompt.el                      directive assembler (system prompt +
                                                     allowlist bullet + checks + commit footer)
-satan/dl-satan-patch-runner.el                      claim-next → prepare → adapter invoke →
+satan/satan-patch-runner.el                      claim-next → prepare → adapter invoke →
                                                     on-finish ladder; single global active job;
-                                                    dl-satan-patch-runner-tick / -kick / -hook
-satan/dl-satan-patch.el                             aggregator (require all + register hooks)
-satan/test/dl-satan-patch-adapter-test.el           5 ert
-satan/test/dl-satan-patch-runner-test.el            10 ert (1 SATAN_PATCH_LIVE-gated)
+                                                    satan-patch-runner-tick / -kick / -hook
+satan/satan-patch.el                             aggregator (require all + register hooks)
+satan/test/satan-patch-adapter-test.el           5 ert
+satan/test/satan-patch-runner-test.el            10 ert (1 SATAN_PATCH_LIVE-gated)
 ~/notes/satan/patch-agent/prompt.md                 harness system prompt
 ```
 
@@ -94,31 +94,31 @@ worktree's per-worktree `info/exclude` so a no-op pi run shows up as
 truly clean.
 
 `patch_job_create` takes a new boolean `:start` arg (default t).  When
-t, kicks `dl-satan-patch-runner-kick` after insert.  Phase-1 tests
+t, kicks `satan-patch-runner-kick` after insert.  Phase-1 tests
 pass `:start nil` to keep state assertions deterministic.
 
 ### Phase 3 mechanism (commit 17575424)
 
 ```
-satan/dl-satan-patch-inbox.el                       runner-hook target;
+satan/satan-patch-inbox.el                       runner-hook target;
                                                     needs_review → "Patch ready: ...",
                                                     failed → "Patch failed: ..." :urgent:.
                                                     Body carries commits/diffstat/checks/
                                                     warnings/review-commands block.
-satan/dl-satan-patch-classify.el                    keyword heuristic →
-                                                    `dl-satan-patch-classify' →
+satan/satan-patch-classify.el                    keyword heuristic →
+                                                    `satan-patch-classify' →
                                                     'patch | 'dispatch
-satan/dl-satan-tools-inbox.el                       extracted dl-satan-tools-inbox-write
+satan/satan-tools-inbox.el                       extracted satan-tools-inbox-write
                                                     (no caps check); tool handler wraps it
-satan/dl-satan-tools-atsatan.el                     notes_at_satan_done gains :patch-job;
+satan/satan-tools-atsatan.el                     notes_at_satan_done gains :patch-job;
                                                     renders `patch-job: queued <id>` block
-satan/test/dl-satan-patch-inbox-test.el             5 ert
-satan/test/dl-satan-patch-classify-test.el          5 ert
-satan/test/dl-satan-tools-atsatan-test.el           +1 ert (patch-job-arg-renders-queued-block)
+satan/test/satan-patch-inbox-test.el             5 ert
+satan/test/satan-patch-classify-test.el          5 ert
+satan/test/satan-tools-atsatan-test.el           +1 ert (patch-job-arg-renders-queued-block)
 ```
 
-Total: 244 ert expected, 2 skipped (`dl-satan-integration/morning-
-end-to-end` and `dl-satan-patch-runner/real-pi-edits-and-commits`).
+Total: 244 ert expected, 2 skipped (`satan-integration/morning-
+end-to-end` and `satan-patch-runner/real-pi-edits-and-commits`).
 
 ## What's left
 
@@ -131,7 +131,7 @@ mechanism.  Mechanism is ready; nothing else blocks this.
 Specifically:
 
 ```
-tick prompt          tell model to call dl-satan-patch-classify-style
+tick prompt          tell model to call satan-patch-classify-style
                      reasoning, then patch_job_create for patch-shaped
                      directives, then notes_at_satan_done :patch-job <id>.
                      Do NOT also claim the directive done.
@@ -150,7 +150,7 @@ patch-agent job once the prompts route through it.
 
 On terminal state (runner-hook fires already with the row plist), call
 `memory_mark` with topic=[patch-agent, <project>], outcome by state.
-Mechanism: `dl-satan-tools-memory` exposes the tool; the runner hook
+Mechanism: `satan-tools-memory` exposes the tool; the runner hook
 is the natural call site.  Skipped at user's discretion ("Add iff
 doing so doesn't blow scope" — plan §4.5).
 
@@ -171,8 +171,8 @@ explicitly non-goals (brief §19).
 2. **AGENTS trap #1.**  New `.el` files are git-tracked but
    `home-manager switch` not run.  The flake-built Emacs running in
    the user session does **not** see the new modules yet.  Until then,
-   `M-x my/satan-run` against any mode that pulls in patch-agent will
-   `void-function dl-satan-patch-runner-kick`.
+   `M-x satan-run` against any mode that pulls in patch-agent will
+   `void-function satan-patch-runner-kick`.
 
    ```
    cd ~/flakes && home-manager switch --flake .#david
@@ -191,7 +191,7 @@ explicitly non-goals (brief §19).
 4. **Pi `--accept-all` does not exist** (plan §5.3 was wrong).  Pi
    `-p --mode json --no-session` is non-interactive by construction;
    jail is the safety boundary as planned, just without that flag.
-   `dl-satan-patch-adapter-pi.el` does not pass the flag.
+   `satan-patch-adapter-pi.el` does not pass the flag.
 
 5. **jailed-pi cwd inside jail = `/workspace/<basename>` where
    basename is `<job_id>`.**  Pi did not refuse this in smoke test
@@ -199,8 +199,8 @@ explicitly non-goals (brief §19).
    exists; only run with `SATAN_PATCH_LIVE=1`.
 
 6. **The user has uncommitted WIP unrelated to patch-agent** —
-   `CHANGELOG.md`, `satan/dl-satan-memory.el`,
-   `satan/dl-satan-memory-store.el` (memory-list command + drop
+   `CHANGELOG.md`, `satan/satan-memory.el`,
+   `satan/satan-memory-store.el` (memory-list command + drop
    `LEFT(payload, 200)` from `store-recent`).  Phase-2 and Phase-3
    commits did **not** touch these.
 
@@ -212,18 +212,18 @@ psql -h /run/postgresql -d satan_memory_test -c '\dt patch_*'
 
 # Phase-2 modules byte-load
 emacs --batch -L satan -L core -L lisp \
-  -l satan/dl-satan-patch \
-  --eval '(message "adapters=%s" dl-satan-patch-adapters)'
+  -l satan/satan-patch \
+  --eval '(message "adapters=%s" satan-patch-adapters)'
 
 # Full satan ert (244 expected, 2 skipped)
 emacs --batch -L satan -L satan/test -L core -L lisp -L org -L apps \
   -L editing -L completion -L dev -L lang \
-  $(for f in satan/test/dl-satan-*-test.el; do echo "-l $f"; done) \
+  $(for f in satan/test/satan-*-test.el; do echo "-l $f"; done) \
   -f ert-run-tests-batch-and-exit
 
 # Real-pi smoke (opt-in)
-SATAN_PATCH_LIVE=1 emacs --batch ... -l satan/test/dl-satan-patch-runner-test.el \
-  --eval '(ert-run-tests-batch (list (quote member) (quote dl-satan-patch-runner/real-pi-edits-and-commits)))'
+SATAN_PATCH_LIVE=1 emacs --batch ... -l satan/test/satan-patch-runner-test.el \
+  --eval '(ert-run-tests-batch (list (quote member) (quote satan-patch-runner/real-pi-edits-and-commits)))'
 
 # Which jailed-pi binary
 which jailed-pi
@@ -233,20 +233,20 @@ which jailed-pi
 
 ```
 satan/
-  dl-satan-patch.el                aggregator
-  dl-satan-patch-store.el          PG CRUD
-  dl-satan-patch-worktree.el       git mechanics + post-run inspection
-  dl-satan-patch-adapter.el        protocol + registry
-  dl-satan-patch-adapter-pi.el     jailed-pi adapter
-  dl-satan-patch-prompt.el         directive builder
-  dl-satan-patch-runner.el         orchestrator
-  dl-satan-patch-inbox.el          runner-hook → inbox.org headline
-  dl-satan-patch-classify.el       patch | dispatch heuristic
-  dl-satan-tools-patch.el          5 broker tools + dl-satan-patch-prepare stub
-  dl-satan-tools-inbox.el          shared inbox writer + inbox_append tool
-  dl-satan-tools-atsatan.el        notes_at_satan_done :patch-job
+  satan-patch.el                aggregator
+  satan-patch-store.el          PG CRUD
+  satan-patch-worktree.el       git mechanics + post-run inspection
+  satan-patch-adapter.el        protocol + registry
+  satan-patch-adapter-pi.el     jailed-pi adapter
+  satan-patch-prompt.el         directive builder
+  satan-patch-runner.el         orchestrator
+  satan-patch-inbox.el          runner-hook → inbox.org headline
+  satan-patch-classify.el       patch | dispatch heuristic
+  satan-tools-patch.el          5 broker tools + satan-patch-prepare stub
+  satan-tools-inbox.el          shared inbox writer + inbox_append tool
+  satan-tools-atsatan.el        notes_at_satan_done :patch-job
   memory/migrations/0005_patch_jobs.sql
-  test/dl-satan-patch-*-test.el
+  test/satan-patch-*-test.el
 ~/notes/satan/patch-agent/prompt.md
 ~/notes/satan/tools/patch_job_*.md
 ~/.local/state/satan/patch-agent/worktrees/<job_id>/
@@ -274,7 +274,7 @@ Decide whether to:
     `SATAN_PATCH_LIVE=1` to satisfy plan §4.6 acceptance.
 
 (b) **Memory hooks** (plan §4.5) — small, isolated; one runner-hook
-    target similar in shape to `dl-satan-patch-inbox-handoff`.
+    target similar in shape to `satan-patch-inbox-handoff`.
 
 (c) **CHANGELOG.md sweep** — append Phase 2 / Phase 3 entries above
     the user's pending memory-list entry, then `home-manager switch`.

@@ -33,23 +33,23 @@ Companion to [brief.md](brief.md). Brief = what + why; this = how + sequence.
 New elisp modules under `~/.emacs.d/satan/`:
 
 ```
-dl-satan-patch-store.el        PG CRUD against patch_jobs / patch_job_events
-dl-satan-patch-worktree.el     branch naming + git worktree add + manifest + allowlist verify
-dl-satan-patch-adapter.el      adapter protocol + selector
-dl-satan-patch-adapter-pi.el   pi adapter (jailed-pi -p --mode json)
-dl-satan-patch-prompt.el       directive → harness prompt builder
-dl-satan-patch-runner.el       async runner: claim → run → verify → commit → record
-dl-satan-patch.el              top-level: require children, register tools, schedule runner
-dl-satan-tools-patch.el        broker-facing tools: patch_job_{create,status,result,cancel,cleanup}
+satan-patch-store.el        PG CRUD against patch_jobs / patch_job_events
+satan-patch-worktree.el     branch naming + git worktree add + manifest + allowlist verify
+satan-patch-adapter.el      adapter protocol + selector
+satan-patch-adapter-pi.el   pi adapter (jailed-pi -p --mode json)
+satan-patch-prompt.el       directive → harness prompt builder
+satan-patch-runner.el       async runner: claim → run → verify → commit → record
+satan-patch.el              top-level: require children, register tools, schedule runner
+satan-tools-patch.el        broker-facing tools: patch_job_{create,status,result,cancel,cleanup}
 memory/migrations/0005_patch_jobs.sql
 ```
 
 Adjacent edits:
 
 ```
-dl-satan-tools-atsatan.el      classify patch-shaped @satan directives; queue + mark queued
-dl-satan-tick.el               wire patch tools into tick allowlist (status/result read-only)
-dl-satan.el                    require dl-satan-patch
+satan-tools-atsatan.el      classify patch-shaped @satan directives; queue + mark queued
+satan-tick.el               wire patch tools into tick allowlist (status/result read-only)
+satan.el                    require satan-patch
 ~/notes/satan/tools/patch_job_*.md   one description file per tool
 ~/notes/satan/patch-agent/prompt.md  harness system prompt
 ```
@@ -57,12 +57,12 @@ dl-satan.el                    require dl-satan-patch
 Tests:
 
 ```
-test/dl-satan-patch-store-test.el       schema, lifecycle transitions, json roundtrips
-test/dl-satan-patch-worktree-test.el    branch naming, worktree creation, allowlist verify
-test/dl-satan-patch-adapter-test.el     fake-pi adapter contract
-test/dl-satan-patch-runner-test.el      end-to-end with fake adapter
-test/dl-satan-tools-patch-test.el       tool schema + dispatch + capability gating
-test/dl-satan-tools-atsatan-patch-test.el   classify + queue + mark queued
+test/satan-patch-store-test.el       schema, lifecycle transitions, json roundtrips
+test/satan-patch-worktree-test.el    branch naming, worktree creation, allowlist verify
+test/satan-patch-adapter-test.el     fake-pi adapter contract
+test/satan-patch-runner-test.el      end-to-end with fake adapter
+test/satan-tools-patch-test.el       tool schema + dispatch + capability gating
+test/satan-tools-atsatan-patch-test.el   classify + queue + mark queued
 ```
 
 ## 2. Phase 1 — Job substrate
@@ -118,46 +118,46 @@ CREATE TABLE patch_job_events (
 CREATE INDEX patch_job_events_job_idx ON patch_job_events(job_id, at);
 ```
 
-Apply to **both** `satan_memory` (prod) and `satan_memory_test` (ert). Updates `dl-satan-memory-migrate.el` migration list.
+Apply to **both** `satan_memory` (prod) and `satan_memory_test` (ert). Updates `satan-memory-migrate.el` migration list.
 
-### 2.2 `dl-satan-patch-store.el`
+### 2.2 `satan-patch-store.el`
 
-Mirror `dl-satan-memory-store.el` style. API:
+Mirror `satan-memory-store.el` style. API:
 
 ```
-(dl-satan-patch-store-insert SPEC)         -> job-id
-(dl-satan-patch-store-update-state ID NEW &optional FIELDS)
-(dl-satan-patch-store-claim-next)          -> SPEC | nil   ; FOR UPDATE SKIP LOCKED on state='queued'
-(dl-satan-patch-store-get ID)              -> SPEC
-(dl-satan-patch-store-list &key STATE LIMIT) -> list
-(dl-satan-patch-store-event ID KIND PAYLOAD)
+(satan-patch-store-insert SPEC)         -> job-id
+(satan-patch-store-update-state ID NEW &optional FIELDS)
+(satan-patch-store-claim-next)          -> SPEC | nil   ; FOR UPDATE SKIP LOCKED on state='queued'
+(satan-patch-store-get ID)              -> SPEC
+(satan-patch-store-list &key STATE LIMIT) -> list
+(satan-patch-store-event ID KIND PAYLOAD)
 ```
 
 `claim-next` is the runner's atomic pick. Single global runner means contention is theoretical, but PG `FOR UPDATE SKIP LOCKED` future-proofs concurrent runners.
 
 `ert`: insert+get roundtrip; state transition; claim-next atomicity; jsonb roundtrip preserves nesting.
 
-### 2.3 `dl-satan-patch-worktree.el`
+### 2.3 `satan-patch-worktree.el`
 
 API:
 
 ```
-(dl-satan-patch-worktree/branch-name MODE SLUG)
+(satan-patch-worktree/branch-name MODE SLUG)
    -> "satan/<mode>/<YYYYMMDDTHHMMSS>-<slug>"
 
-(dl-satan-patch-worktree/create JOB-SPEC)
+(satan-patch-worktree/create JOB-SPEC)
    -> (:worktree-path PATH :branch BRANCH)
    ; git -C <repo> worktree add <path> -b <branch> <base-ref>
    ; writes <path>/.satan-patch-manifest.json  (job_id + allowlist + checks)
 
-(dl-satan-patch-worktree/changed-files JOB-SPEC)
+(satan-patch-worktree/changed-files JOB-SPEC)
    -> list of paths relative to repo root
    ; git diff --name-only <base-ref>..HEAD inside worktree
 
-(dl-satan-patch-worktree/verify-allowlist JOB-SPEC CHANGED)
+(satan-patch-worktree/verify-allowlist JOB-SPEC CHANGED)
    -> ok | (error LIST-OF-OFFENDING-PATHS)
 
-(dl-satan-patch-worktree/cleanup JOB-SPEC &key delete-branch)
+(satan-patch-worktree/cleanup JOB-SPEC &key delete-branch)
    ; git worktree remove --force; optional git branch -D
 ```
 
@@ -167,9 +167,9 @@ Allowlist matching: prefix match against repo-root-relative paths. Trailing `/` 
 
 `ert`: branch name deterministic given clock; worktree created on clean repo; allowlist accepts inside, rejects outside; cleanup is idempotent.
 
-### 2.4 `dl-satan-tools-patch.el`
+### 2.4 `satan-tools-patch.el`
 
-Tools registered against broker via existing `dl-satan-tool-register` mechanism (cf. `dl-satan-tools.el:dl-satan-tool-register`). Capabilities:
+Tools registered against broker via existing `satan-tool-register` mechanism (cf. `satan-tools.el:satan-tool-register`). Capabilities:
 
 | Tool | Risk | Capability |
 |---|---|---|
@@ -201,12 +201,12 @@ No real edits happen yet. Stop here, commit, smoke-test.
 
 Deliver: actual edits in worktree by jailed-pi, with commit + result recording.
 
-### 3.1 Adapter protocol — `dl-satan-patch-adapter.el`
+### 3.1 Adapter protocol — `satan-patch-adapter.el`
 
 Generic interface:
 
 ```
-(dl-satan-patch-adapter/invoke ADAPTER JOB-SPEC &key on-finish on-log)
+(satan-patch-adapter/invoke ADAPTER JOB-SPEC &key on-finish on-log)
    -> process handle
    ; runs adapter in worktree, async, with timeout & token caps
    ; on-finish: (lambda (RESULT-PLIST))
@@ -219,9 +219,9 @@ Generic interface:
    ; on-log: per-line streaming hook (optional)
 ```
 
-Registry: `dl-satan-patch-adapters` alist keyed by adapter name (`pi`, `zerostack`, `fake`).
+Registry: `satan-patch-adapters` alist keyed by adapter name (`pi`, `zerostack`, `fake`).
 
-### 3.2 `dl-satan-patch-adapter-pi.el`
+### 3.2 `satan-patch-adapter-pi.el`
 
 Invocation shape:
 
@@ -237,7 +237,7 @@ jailed-pi \
   -p <directive-with-context>
 ```
 
-Run with `default-directory = <worktree-path>`. `jailed-pi` already bwraps cwd to `/workspace/<basename>` via `baseJailOptions` and forwards API keys via `apiKeyPassThrough` (no `op run` needed since `passApiKeysFromEnv` reads from Emacs's env — same path SATAN broker uses today, see memory `dl-satan-secret` pattern).
+Run with `default-directory = <worktree-path>`. `jailed-pi` already bwraps cwd to `/workspace/<basename>` via `baseJailOptions` and forwards API keys via `apiKeyPassThrough` (no `op run` needed since `passApiKeysFromEnv` reads from Emacs's env — same path SATAN broker uses today, see memory `satan-secret` pattern).
 
 Parse the JSON event stream as it lands. Track:
 
@@ -255,7 +255,7 @@ Caps:
 
 Stdout file: `~/.local/state/satan/patch-agent/logs/<job_id>.jsonl`.
 
-### 3.3 Prompt builder — `dl-satan-patch-prompt.el`
+### 3.3 Prompt builder — `satan-patch-prompt.el`
 
 Combines:
 
@@ -265,14 +265,14 @@ Combines:
 - explicit allowlist string ("you may only edit files matching ...")
 - explicit check list to run before declaring success
 
-System prompt lives outside the repo (mirrors the `dl-satan-tools-descriptions-dir` split — mind out, mechanism in).
+System prompt lives outside the repo (mirrors the `satan-tools-descriptions-dir` split — mind out, mechanism in).
 
-### 3.4 Runner — `dl-satan-patch-runner.el`
+### 3.4 Runner — `satan-patch-runner.el`
 
 Single global runner. Implemented as:
 
 ```
-(dl-satan-patch-runner-tick)   ; idempotent; safe to invoke from timer or hook
+(satan-patch-runner-tick)   ; idempotent; safe to invoke from timer or hook
    ; if a job is already running this Emacs session: no-op
    ; else: (claim-next) → preparing_worktree → running
    ;   → invoke adapter → on-finish:
@@ -287,11 +287,11 @@ Single global runner. Implemented as:
 
 Trigger:
 
-- `(run-with-idle-timer 30 30 #'dl-satan-patch-runner-tick)` — defensive sweep
-- After successful `patch_job_create` (post-commit hook on tool): `(dl-satan-patch-runner-tick)` immediate kick
-- Manual: `M-x dl-satan-patch-run-now`
+- `(run-with-idle-timer 30 30 #'satan-patch-runner-tick)` — defensive sweep
+- After successful `patch_job_create` (post-commit hook on tool): `(satan-patch-runner-tick)` immediate kick
+- Manual: `M-x satan-patch-run-now`
 
-Concurrency guard: `dl-satan-patch-runner--active` buffer-local flag + a session-level mutex via row state (`claimed` → `running` transition is the lock).
+Concurrency guard: `satan-patch-runner--active` buffer-local flag + a session-level mutex via row state (`claimed` → `running` transition is the lock).
 
 Commit message (brief §8.3):
 
@@ -328,7 +328,7 @@ Deliver: @satan directives + self-edit modes generate patch jobs end-to-end.
 
 ### 4.1 `notes_at_satan_done` extension
 
-Today `notes_at_satan_done` claims a directive in-place by writing `@satan-was-here` + a `BEGIN_QUOTE satan <run-id>` block (cf. `dl-satan-tools-atsatan.el`).
+Today `notes_at_satan_done` claims a directive in-place by writing `@satan-was-here` + a `BEGIN_QUOTE satan <run-id>` block (cf. `satan-tools-atsatan.el`).
 
 Add: a `:patch-job` arg. When set:
 
@@ -341,10 +341,10 @@ For Phase 3 simplicity: do **not** auto-rewrite. The original block stays as `qu
 
 ### 4.2 Tick-agent classifier
 
-`dl-satan-tick.el` already routes per mode. New helper:
+`satan-tick.el` already routes per mode. New helper:
 
 ```
-(dl-satan-patch/classify DIRECTIVE)
+(satan-patch/classify DIRECTIVE)
    -> 'patch | 'dispatch
 ```
 
@@ -373,7 +373,7 @@ self-edit-mind:
 On state `needs_review` (success) or `failed` (when source was a user-facing directive):
 
 ```
-(dl-satan-tool/inbox-append
+(satan-tool/inbox-append
   :kind "patch-ready" or "patch-failed"
   :title "<mode>: <summary>"
   :properties (:SATAN_PATCH_JOB <id> :BRANCH <branch> :REPO <repo>)
@@ -422,10 +422,10 @@ Add iff doing so doesn't blow scope.
 ## 6. Suggested commit cadence
 
 ```
-1. migration 0005 + dl-satan-memory-migrate.el update           (one commit)
-2. dl-satan-patch-store.el + tests                              (one commit)
-3. dl-satan-patch-worktree.el + tests                           (one commit)
-4. dl-satan-tools-patch.el + tool description files + tests    (one commit)
+1. migration 0005 + satan-memory-migrate.el update           (one commit)
+2. satan-patch-store.el + tests                              (one commit)
+3. satan-patch-worktree.el + tests                           (one commit)
+4. satan-tools-patch.el + tool description files + tests    (one commit)
 5. adapter protocol + fake adapter + runner skeleton + tests   (one commit)
 6. pi adapter + prompt builder + prompt file + live-gated test (one commit)
 7. inbox handoff + memory hooks                                 (one commit)

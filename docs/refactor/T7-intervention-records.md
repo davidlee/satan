@@ -29,8 +29,8 @@ Without intervention records, Shame is ungrounded; negative outcomes can't be ob
   - `intervention.created` — handler-side, at tool-call time. Carries stable id + full metadata.
   - `intervention.outcome_classified` — observer-side, when maturity gate fires.
   - `intervention.outcome_revised` — corner case where a later run updates a prior classification.
-- `memory/migrations/0006_interventions.sql` — `satan_interventions` + `satan_intervention_outcomes` tables. **Projection only**, rebuildable from the audit events (a rebuild CLI mirrors `dl-satan-memory-renormalize`).
-- `dl-satan-intervention.el` — write API (emits audit event + inserts projection row in one transaction) and read API.
+- `memory/migrations/0006_interventions.sql` — `satan_interventions` + `satan_intervention_outcomes` tables. **Projection only**, rebuildable from the audit events (a rebuild CLI mirrors `satan-memory-renormalize`).
+- `satan-intervention.el` — write API (emits audit event + inserts projection row in one transaction) and read API.
 - Each of the 5 handlers writes through this single API; intervention-id surfaces in `tool_result`.
 - Observer's `applied-interventions-in-run` deletes; the read path moves to SQL against the projection.
 
@@ -41,7 +41,7 @@ The memory-substrate's Postgres-as-source-of-truth precedent (for traces) is **n
 Five small PRs:
 1. Audit event types + validator + protocol-doc update.
 2. Migration `0006_interventions.sql` + rebuild CLI.
-3. Write API (`dl-satan-intervention.el`) + first handler wired through.
+3. Write API (`satan-intervention.el`) + first handler wired through.
 4. Remaining 4 handlers wired through.
 5. Observer read-path swap (delete `applied-interventions-in-run`; SQL against projection).
 
@@ -65,7 +65,7 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
 
 ## Open questions
 
-- ~~Should rebuild-from-audit run on every migration, or only on operator demand?~~ **Resolved (PR 2): operator-demand only.** Migration `0006_interventions.sql` only creates the tables; population is via `my/satan-rebuild-interventions` / `satan/bin/satan-rebuild-interventions`. Matches `dl-satan-memory-renormalize` precedent.
+- ~~Should rebuild-from-audit run on every migration, or only on operator demand?~~ **Resolved (PR 2): operator-demand only.** Migration `0006_interventions.sql` only creates the tables; population is via `satan-rebuild-interventions` / `satan/bin/satan-rebuild-interventions`. Matches `satan-memory-renormalize` precedent.
 - ~~Intervention-id exposure to the model in `tool_result` — yes/no?~~ **Resolved (PR 3): id-only (no live verdict).** `notify_send`'s `tool_result` carries `:intervention_id` alongside the existing `:id`. The contract recommends v2 add an `intervention_status` tool for explicit lookups; PR 3 stops at id exposure to keep the model from optimising for the metric (per outcome-semantics §11.1).
 - Audit-log retention policy once Postgres projection is the only durable record.
 
@@ -76,20 +76,20 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
 - [x] PR 3: write API + first handler (`notify_send`) — merged 2026-05-23
 - [x] PR 4: remaining 4 handlers wired through — merged 2026-05-23
 - [x] PR 5: observer read-path swap — merged 2026-05-23
-  - Delete `dl-satan-observer--applied-interventions-in-run`,
-    `dl-satan-observer-scan-prior-interventions`,
-    `dl-satan-observer-mark-classified`, the
-    `dl-satan-observer-state-file` dedup path, and the supporting
+  - Delete `satan-observer--applied-interventions-in-run`,
+    `satan-observer-scan-prior-interventions`,
+    `satan-observer-mark-classified`, the
+    `satan-observer-state-file` dedup path, and the supporting
     `--read-state`/`--write-state`/`--classified-p`/`--key-of`/`--mature-p`/
     `--in-scan-window-p`/`--run-id-from-dir`/`--run-started-at` helpers.
-  - `dl-satan-observer-pending` becomes a thin wrapper over
-    `dl-satan-intervention-pending`, mapping projection rows to the plist
+  - `satan-observer-pending` becomes a thin wrapper over
+    `satan-intervention-pending`, mapping projection rows to the plist
     shape the classifier already consumes (`:run_id`, `:run_dir` resolved
     under the runs root, `:intervention_emitted_at` from `:ts`,
     `:applied_index` derived from the `<run-id>.ivNNN` counter so existing
     metadata callers keep working).
-  - `dl-satan-observer-persist-verdict` drops `mark-classified` and instead
-    calls `dl-satan-intervention-classify` with the
+  - `satan-observer-persist-verdict` drops `mark-classified` and instead
+    calls `satan-intervention-classify` with the
     `outcome-semantics §2` payload (`:classification`, `:confidence`,
     `:evidence`, `:maturity "mature"`, `:next_revisit_at`, `:source "auto"`,
     `:classified_at`).  Translation table for PR 5 (T1.5b widens this):
@@ -99,15 +99,15 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
       `:motive_id` `:handle_overlap`.
     - `verdict "none"` (any reason / no fire) → classification
       `"unknown"`, confidence `"low"`, evidence carries `:reason`.
-  - Broker (`dl-satan-broker--spawn`) opens the audit handle *before*
+  - Broker (`satan-broker--spawn`) opens the audit handle *before*
     `observer-process` so the observer can emit
     `intervention.outcome_classified` / `outcome_revised` into the
-    current run's transcript.  `dl-satan-audit-open` now permits a `nil`
-    bundle (deferred) and a new `dl-satan-audit-attach-bundle` writes
+    current run's transcript.  `satan-audit-open` now permits a `nil`
+    bundle (deferred) and a new `satan-audit-attach-bundle` writes
     `bundle.json` once the context-fn has produced it.
   - Observer test: drops the file-walk / scan-window / state-file ert
     that exercise the deleted helpers; new DB-touching ert mirror
-    `dl-satan-intervention-test--with-db` (skip-unless reachable +
+    `satan-intervention-test--with-db` (skip-unless reachable +
     reset-and-migrate) and assert pending + classify writes through the
     projection.  Reset-list prepends `satan_intervention_outcomes,
     satan_interventions`.
@@ -116,6 +116,6 @@ PR that adds the three audit event types to the validator + fixtures + `docs/sat
     timestamps + carry intervention ids minted from the prior runs, so
     two byte-identical reruns of `--spawn` may diverge.  No current
     transcript-level golden test asserts byte-identical broker reruns;
-    the percept-level A3 ert (`dl-satan-percept-test`) is unaffected.
-    Boundary noted at the module header of `dl-satan-observer.el` and in
+    the percept-level A3 ert (`satan-percept-test`) is unaffected.
+    Boundary noted at the module header of `satan-observer.el` and in
     the CHANGELOG line for PR 5.
