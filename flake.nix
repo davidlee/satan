@@ -143,61 +143,61 @@
         # SATAN JSONL protocol; terminates on a `satan_final` tool call.
         # Multi-file since phase 3B: protocol / bundle / runloop /
         # providers.  See ~/.emacs.d/satan/harness/__main__.py.
-        # satanGptelHarness = let
-        #   pythonEnv = pkgs.python3.withPackages (ps: [ps.openai]);
-        # in
-        #   pkgs.stdenv.mkDerivation {
-        #     pname = "satan-gptel-harness";
-        #     version = "0";
-        #     src = lib.cleanSourceWith {
-        #       src = ./satan/harness;
-        #       filter = path: type: let
-        #         base = baseNameOf (toString path);
-        #       in
-        #         type == "directory" || (lib.hasSuffix ".py" base && !(lib.hasPrefix "test_" base));
-        #     };
-        #     nativeBuildInputs = [
-        #       pkgs.makeWrapper
-        #       pkgs.ruff
-        #     ];
-        #     dontConfigure = true;
-        #     dontBuild = true;
-        #     doCheck = true;
-        #     checkPhase = ''
-        #       runHook preCheck
-        #       # Inherit the legacy writePython3Bin ignores that still
-        #       # apply to ruff: long lines (model descriptions) and
-        #       # __future__-first imports.  W503 (line break before binary
-        #       # op) and E704 (def one-liners) are dropped — ruff doesn't
-        #       # implement them; pycodestyle did.
-        #       ruff check --select E,F,W --ignore E501,E402 .
-        #       runHook postCheck
-        #     '';
-        #     installPhase = ''
-        #       runHook preInstall
-        #       mkdir -p $out/lib/satan-gptel-harness $out/bin
-        #       cp -r ./. $out/lib/satan-gptel-harness/
-        #       makeWrapper ${pythonEnv}/bin/python3 \
-        #         $out/bin/satan-gptel-harness \
-        #         --add-flags "$out/lib/satan-gptel-harness/__main__.py"
-        #       runHook postInstall
-        #     '';
-        #     meta.mainProgram = "satan-gptel-harness";
-        #   };
+        satanGptelHarness = let
+          pythonEnv = pkgs.python3.withPackages (ps: [ps.openai]);
+        in
+          pkgs.stdenv.mkDerivation {
+            pname = "satan-gptel-harness";
+            version = "0";
+            src = lib.cleanSourceWith {
+              src = ./satan/harness;
+              filter = path: type: let
+                base = baseNameOf (toString path);
+              in
+                type == "directory" || (lib.hasSuffix ".py" base && !(lib.hasPrefix "test_" base));
+            };
+            nativeBuildInputs = [
+              pkgs.makeWrapper
+              pkgs.ruff
+            ];
+            dontConfigure = true;
+            dontBuild = true;
+            doCheck = true;
+            checkPhase = ''
+              runHook preCheck
+              # Inherit the legacy writePython3Bin ignores that still
+              # apply to ruff: long lines (model descriptions) and
+              # __future__-first imports.  W503 (line break before binary
+              # op) and E704 (def one-liners) are dropped — ruff doesn't
+              # implement them; pycodestyle did.
+              ruff check --select E,F,W --ignore E501,E402 .
+              runHook postCheck
+            '';
+            installPhase = ''
+              runHook preInstall
+              mkdir -p $out/lib/satan-gptel-harness $out/bin
+              cp -r ./. $out/lib/satan-gptel-harness/
+              makeWrapper ${pythonEnv}/bin/python3 \
+                $out/bin/satan-gptel-harness \
+                --add-flags "$out/lib/satan-gptel-harness/__main__.py"
+              runHook postInstall
+            '';
+            meta.mainProgram = "satan-gptel-harness";
+          };
 
         # Extra env passed through the bwrap jail for the real harness:
         # provider selection + cumulative token budget + per-provider keys.
-        # satanGptelJailOptions =
-        #   satanJailOptions
-        #   ++ (with jailLib.combinators; [
-        #     (try-fwd-env "SATAN_PROVIDER")
-        #     (try-fwd-env "SATAN_MODEL")
-        #     (try-fwd-env "SATAN_BUDGET_TOKENS")
-        #     (try-fwd-env "OPENROUTER_API_KEY")
-        #     (try-fwd-env "ANTHROPIC_API_KEY")
-        #     (try-fwd-env "OPENAI_API_KEY")
-        #     (try-fwd-env "DEEPSEEK_API_KEY")
-        #   ]);
+        satanGptelJailOptions =
+          satanJailOptions
+          ++ (with jailLib.combinators; [
+            (try-fwd-env "SATAN_PROVIDER")
+            (try-fwd-env "SATAN_MODEL")
+            (try-fwd-env "SATAN_BUDGET_TOKENS")
+            (try-fwd-env "OPENROUTER_API_KEY")
+            (try-fwd-env "ANTHROPIC_API_KEY")
+            (try-fwd-env "OPENAI_API_KEY")
+            (try-fwd-env "DEEPSEEK_API_KEY")
+          ]);
 
         jailPkgs = lib.optionalAttrs isLinux {
           jailed-pi = jailLib.makeJailedPi {
@@ -262,20 +262,20 @@
             extraOptions = satanJailOptions;
             workspaceDeps = [];
           };
-          # satan-jailed-gptel-harness = jailLib.makeJailedAgent {
-          #   name = "satan-gptel-harness";
-          #   agent = satanGptelHarness;
-          #   profile = "specDev";
-          #   extraOptions = satanGptelJailOptions;
-          #   workspaceDeps = [];
-          #   # Emacs broker pre-resolves op:// refs via `my/op-read-env'
-          #   # and caches in `my/op--cache' for the Emacs session, so the
-          #   # outer `op run' wrapper would prompt 1Password biometric on
-          #   # every tick. Disable it; keep `passApiKeysFromEnv' so the
-          #   # broker's plaintext env still flows into the jail.
-          #   useOpEnv = false;
-          #   passApiKeysFromEnv = true;
-          # };
+          satan-jailed-gptel-harness = jailLib.makeJailedAgent {
+            name = "satan-gptel-harness";
+            agent = satanGptelHarness;
+            profile = "specDev";
+            extraOptions = satanGptelJailOptions;
+            workspaceDeps = [];
+            # Emacs broker pre-resolves op:// refs via `my/op-read-env'
+            # and caches in `my/op--cache' for the Emacs session, so the
+            # outer `op run' wrapper would prompt 1Password biometric on
+            # every tick. Disable it; keep `passApiKeysFromEnv' so the
+            # broker's plaintext env still flows into the jail.
+            useOpEnv = false;
+            passApiKeysFromEnv = true;
+          };
           jailed-shell = jailLib.makeJailedAgent {
             name = "shell";
             agent = pkgs.zsh;
