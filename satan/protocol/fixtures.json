@@ -1,0 +1,281 @@
+{
+  "_comment": "SATAN protocol fixtures. See PROTOCOL.md. Each entry: kind=valid|invalid, direction=in|out, message=<obj>, reason=<str when invalid>. Both elisp and python tests load this file and assert validator behaviour matches kind.",
+  "fixtures": [
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "ready-minimal",
+      "message": {"type": "ready", "run_id": "20260519T070000-morning-abcdef"}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "log-usage",
+      "message": {"type": "log", "kind": "usage", "tokens_in": 1200, "tokens_out": 340, "tokens_total": 1540}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "log-arbitrary-kind",
+      "message": {"type": "log", "kind": "debug", "note": "anything"}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "tool-call-empty-args",
+      "message": {"type": "tool_call", "id": "c1", "name": "org_read_context", "args": {}}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "tool-call-args",
+      "message": {"type": "tool_call", "id": "c2", "name": "notify_send", "args": {"body": "hi"}}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "final-empty-actions",
+      "message": {"type": "final", "summary": "ok", "actions": []}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "final-with-actions",
+      "message": {"type": "final", "summary": "done", "actions": [{"type": "stage-proposal", "args": {"path": "p"}}, {"type": "write-block"}]}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "final-with-reason",
+      "message": {"type": "final", "summary": "ran out", "actions": [], "reason": "budget_tokens"}
+    },
+    {
+      "kind": "valid",
+      "direction": "in",
+      "name": "error",
+      "message": {"type": "error", "error": "provider call failed: 502"}
+    },
+    {
+      "kind": "valid",
+      "direction": "out",
+      "name": "tool-result-ok",
+      "message": {"type": "tool_result", "id": "c1", "ok": true, "result": {"content": ""}}
+    },
+    {
+      "kind": "valid",
+      "direction": "out",
+      "name": "tool-result-denied",
+      "message": {"type": "tool_result", "id": "c2", "ok": false, "error": "tool call budget exhausted"}
+    },
+
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "missing-type",
+      "reason": "missing required field: type",
+      "message": {"run_id": "x"}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "unknown-type",
+      "reason": "unknown message type: chat",
+      "message": {"type": "chat", "content": "hi"}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "ready-missing-run-id",
+      "reason": "missing required field: run_id",
+      "message": {"type": "ready"}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "ready-bad-run-id-type",
+      "reason": "field run_id must be string",
+      "message": {"type": "ready", "run_id": 42}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "log-missing-kind",
+      "reason": "missing required field: kind",
+      "message": {"type": "log", "tokens_in": 1}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "tool-call-missing-id",
+      "reason": "missing required field: id",
+      "message": {"type": "tool_call", "name": "notify_send", "args": {}}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "tool-call-missing-name",
+      "reason": "missing required field: name",
+      "message": {"type": "tool_call", "id": "c1", "args": {}}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "tool-call-bad-name-chars",
+      "reason": "field name must match ^[a-zA-Z0-9_-]+$",
+      "message": {"type": "tool_call", "id": "c1", "name": "bad.name", "args": {}}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "tool-call-args-not-object",
+      "reason": "field args must be object",
+      "message": {"type": "tool_call", "id": "c1", "name": "n", "args": [1, 2]}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "final-missing-summary",
+      "reason": "missing required field: summary",
+      "message": {"type": "final", "actions": []}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "final-summary-not-string",
+      "reason": "field summary must be string",
+      "message": {"type": "final", "summary": 5, "actions": []}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "final-actions-not-array",
+      "reason": "field actions must be array",
+      "message": {"type": "final", "summary": "x", "actions": {"k": 1}}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "final-action-missing-type",
+      "reason": "action missing type",
+      "message": {"type": "final", "summary": "x", "actions": [{"args": {}}]}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "error-missing-error",
+      "reason": "missing required field: error",
+      "message": {"type": "error"}
+    },
+
+    {
+      "kind": "invalid",
+      "direction": "out",
+      "name": "tool-result-missing-ok",
+      "reason": "missing required field: ok",
+      "message": {"type": "tool_result", "id": "c1", "result": {}}
+    },
+    {
+      "kind": "invalid",
+      "direction": "out",
+      "name": "tool-result-ok-not-bool",
+      "reason": "field ok must be boolean",
+      "message": {"type": "tool_result", "id": "c1", "ok": 1, "result": {}}
+    },
+    {
+      "kind": "invalid",
+      "direction": "out",
+      "name": "tool-result-ok-without-result",
+      "reason": "ok=true requires result",
+      "message": {"type": "tool_result", "id": "c1", "ok": true}
+    },
+    {
+      "kind": "invalid",
+      "direction": "out",
+      "name": "tool-result-denied-without-error",
+      "reason": "ok=false requires error",
+      "message": {"type": "tool_result", "id": "c1", "ok": false}
+    },
+    {
+      "kind": "invalid",
+      "direction": "in",
+      "name": "tool-result-wrong-direction",
+      "reason": "type tool_result not valid for direction in",
+      "message": {"type": "tool_result", "id": "c1", "ok": true, "result": {}}
+    },
+    {
+      "kind": "invalid",
+      "direction": "out",
+      "name": "ready-wrong-direction",
+      "reason": "type ready not valid for direction out",
+      "message": {"type": "ready", "run_id": "x"}
+    },
+
+    {
+      "kind": "valid",
+      "direction": "actions",
+      "name": "actions-empty-partitions",
+      "message": {"applied": [], "staged": [], "rejected": [], "failed": []}
+    },
+    {
+      "kind": "valid",
+      "direction": "actions",
+      "name": "actions-with-pre-spawn-sensor-alert",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"kind": "sensor_alert",
+                       "cause": "panopticon_current_stale",
+                       "severity": "warning",
+                       "message": "panopticon current_window stale (28m).",
+                       "remediation": "systemctl --user status panopticon-sway",
+                       "suppressed": false,
+                       "dispatched_at": "2026-05-22T11:13Z"}]
+      }
+    },
+    {
+      "kind": "valid",
+      "direction": "actions",
+      "name": "actions-with-pre-spawn-unknown-kind",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"kind": "future_thing_v2", "payload": "whatever"}]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-pre-spawn-missing-kind",
+      "reason": "pre_spawn[0] missing kind",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"cause": "no_kind"}]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-pre-spawn-kind-not-string",
+      "reason": "pre_spawn[0] kind must be string",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": [{"kind": 7}]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-pre-spawn-entry-not-object",
+      "reason": "pre_spawn[0] must be object",
+      "message": {
+        "applied": [], "staged": [], "rejected": [], "failed": [],
+        "pre_spawn": ["not-an-object"]
+      }
+    },
+    {
+      "kind": "invalid",
+      "direction": "actions",
+      "name": "actions-applied-not-array",
+      "reason": "applied must be array",
+      "message": {"applied": "nope", "staged": [], "rejected": [], "failed": []}
+    }
+  ]
+}

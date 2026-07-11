@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+file="${1:?usage: elisp-locate-paren-error FILE}"
+
+repo_root="$(cd "$(dirname "$0")"/.. && pwd)"
+
+# The locator is self-contained (only `require 'json`); no package load-path
+# needed — it parses the file as text, it does not load it.
+emacs -Q --batch \
+  -l "$repo_root/tools/elisp-locate-paren-error.el" \
+  "$file"

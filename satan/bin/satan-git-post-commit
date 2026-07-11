@@ -1,0 +1,59 @@
+#!/bin/sh
+# satan-git-post-commit --- SATAN git-activity sensor capture.
+#
+# Global post-commit hook: appends one JSONL line per commit to the
+# panopticon segments tree so SATAN perceives commit activity across ALL
+# repos, independent of Emacs's working directory (most commits land via
+# Claude in a terminal, never touching Emacs's pwd).
+#
+# Best-effort: every failure path exits 0 so a commit is NEVER blocked.
+#
+# Install (one-time, manual --- ~/.gitconfig is not Nix-managed):
+#   mkdir -p ~/.config/git/hooks
+#   ln -sf ~/.emacs.d/satan/bin/satan-git-post-commit ~/.config/git/hooks/post-commit
+#   git config --global core.hooksPath ~/.config/git/hooks
+#
+# CAVEAT: a global core.hooksPath DISABLES every repo's local .git/hooks/.
+# Audit ~/dev/*/.git/hooks/post-commit before enabling.  See CHANGELOG.
+
+set -u
+
+behaviour="${SATAN_BEHAVIOUR_DIR:-$HOME/.local/state/behaviour}"
+segdir="$behaviour/segments"
+
+# Only act inside a work tree.
+toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -n "$toplevel" ] || exit 0
+
+mkdir -p "$segdir" 2>/dev/null || exit 0
+
+# Committer date, ISO8601 with offset --- the load-bearing freshness field.
+ts=$(git log -1 --pretty=format:%cI 2>/dev/null) || exit 0
+[ -n "$ts" ] || exit 0
+day=$(printf '%s' "$ts" | cut -c1-10)
+
+sha=$(git rev-parse --short HEAD 2>/dev/null)
+subject=$(git log -1 --pretty=format:%s 2>/dev/null)
+author=$(git log -1 --pretty=format:%an 2>/dev/null)
+remote=$(git config --get remote.origin.url 2>/dev/null)
+files=$(git diff-tree --no-commit-id --name-only -r --root HEAD 2>/dev/null | grep -c .)
+
+# slug: remote basename (.git stripped) else toplevel basename.
+if [ -n "$remote" ]; then
+  slug=$(printf '%s' "$remote" | sed 's#/$##; s#.*/##; s#\.git$##')
+else
+  slug=$(basename "$toplevel")
+fi
+
+# JSON-escape: backslash, double-quote; flatten tabs to spaces.
+esc() {
+  printf '%s' "$1" | sed 's#\\#\\\\#g; s#"#\\"#g' | tr '\t' ' '
+}
+
+line=$(printf '{"repo":"%s","slug":"%s","remote":"%s","sha":"%s","subject":"%s","author":"%s","files_changed":%s,"start_ts":"%s","end_ts":"%s"}' \
+  "$(esc "$toplevel")" "$(esc "$slug")" "$(esc "$remote")" "$(esc "$sha")" \
+  "$(esc "$subject")" "$(esc "$author")" "${files:-0}" "$ts" "$ts")
+
+# Single atomic append (one write, line << PIPE_BUF).
+printf '%s\n' "$line" >> "$segdir/git-$day.jsonl" 2>/dev/null || exit 0
+exit 0

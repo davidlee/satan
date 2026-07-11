@@ -1,0 +1,74 @@
+{
+  "name": "rich_window",
+  "description": "Multi-source evidence: focus_segments span terminal→browser→editor; browser hits a docs allowlist; bough has a recent status_change and an active focal task; git remote is set; recent file is a .rs; LLM hints include topic+phase.",
+  "evidence": {
+    "current_window": {"app_id": "emacs", "workspace": "main"},
+    "focus_segments": [
+      {"app_id": "Alacritty", "start_ts": "2026-05-19T09:55:00+10:00",
+       "end_ts": "2026-05-19T09:58:00+10:00", "duration_s": 180},
+      {"app_id": "firefox",   "start_ts": "2026-05-19T09:58:00+10:00",
+       "end_ts": "2026-05-19T09:59:30+10:00", "duration_s": 90},
+      {"app_id": "emacs",     "start_ts": "2026-05-19T09:59:30+10:00",
+       "end_ts": "2026-05-19T10:00:00+10:00", "duration_s": 30}
+    ],
+    "browser_segments": [
+      {"domain": "github.com",
+       "start_ts": "2026-05-19T09:58:00+10:00",
+       "end_ts":   "2026-05-19T09:58:30+10:00"},
+      {"domain": "docs.python.org",
+       "start_ts": "2026-05-19T09:58:30+10:00",
+       "end_ts":   "2026-05-19T09:59:30+10:00"}
+    ],
+    "bough_recent": [
+      {"nanoid": "nano001", "event": "status_changed",
+       "from": "todo", "to": "doing",
+       "at": "2026-05-19T09:55:00+10:00"}
+    ],
+    "bough_active": [
+      {"nanoid": "nano001", "title": "wire memory store",
+       "status": "doing", "project_nanoid": "PROJ001"}
+    ],
+    "git_state": {
+      "remote": "git@github.com:david/satan.git",
+      "head_short": "abc1234",
+      "dirty": true,
+      "commits": ["abc1234 wip"]
+    },
+    "fs_state": {
+      "cwd": "/home/david/dev/satan",
+      "recent_files": ["src/store.rs", "README.md"]
+    },
+    "window_start_at": "2026-05-19T09:55:00+10:00",
+    "window_end_at":   "2026-05-19T10:00:00+10:00"
+  },
+  "hints": {
+    "kind": "observation",
+    "topic": ["postgres", "Rust"],
+    "phase": "execution",
+    "focal_bough_nanoid": "nano001"
+  },
+  "ctx": {
+    "mode_name": "morning",
+    "time_now": "2026-05-19T10:00:00+10:00",
+    "current_grammar_version": 1
+  },
+  "expected_handles": [
+    "app:emacs",
+    "surface:editor",
+    "surface_transition:terminal->browser",
+    "surface_transition:browser->editor",
+    "domain_kind:docs",
+    "bough_event:status_changed",
+    "artifact:bough_status_change",
+    "bough_node:nano001",
+    "bough_project:PROJ001",
+    "project:satan",
+    "file_kind:source",
+    "mode:morning",
+    "day:2026-05-19",
+    "week:2026-W21",
+    "topic:postgres",
+    "topic:rust",
+    "phase:execution"
+  ]
+}

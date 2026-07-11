@@ -1,0 +1,20 @@
+{
+  "name": "minimal_firefox",
+  "description": "Bare current_window with ctx; no segments, no bough, no hints. Establishes the baseline trace for a window-focus-only observation.",
+  "evidence": {
+    "current_window": {"app_id": "firefox", "workspace": "main"}
+  },
+  "hints": {},
+  "ctx": {
+    "mode_name": "motd",
+    "time_now": "2026-05-19T10:00:00+10:00",
+    "current_grammar_version": 1
+  },
+  "expected_handles": [
+    "app:firefox",
+    "surface:browser",
+    "mode:motd",
+    "day:2026-05-19",
+    "week:2026-W21"
+  ]
+}
