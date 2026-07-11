@@ -1,0 +1,16 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = {{id}}
+slug = {{slug}}
+title = {{title}}
+status = "open"
+created = "{{date}}"
+updated = "{{date}}"
+tags = []
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+

@@ -1,0 +1,37 @@
+# Implementation plan for {{ref}} — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "{{ref}}"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored — edits append, they never renumber. Criterion ids
+# are local to their phase, bare, and equally immutable (.doctrine/glossary.md §
+# reference forms): EN-1 entry, EX-1 exit, and verification by mode —
+# VT-1 test (automated), VA-1 agent check, VH-1 human acceptance.
+[[phase]]
+id        = "PHASE-01"
+name      = ""
+objective = ""
+entrance_criteria = []           # [{ id = "EN-1", text = "…" }]
+exit_criteria     = []           # [{ id = "EX-1", text = "…" }]
+verification      = []           # VT/VA/VH by mode. Every VT row MUST carry a structured mandate:
+                                 #   { id = "VT-1", expects = "…",
+                                 #     test_file = "src/foo.rs", keywords = ["fn_name", "struct_name"],
+                                 #     patterns = ["^\\s*pub fn"], waived = false }
+                                 # test_file = path that must exist, keywords = raw substrings that must
+                                 # appear in it. Without a mandate verify-vt reports UNCHECKABLE (inert).
+specs             = []           # per-phase narrowing of the plan's specs
+requirements      = []

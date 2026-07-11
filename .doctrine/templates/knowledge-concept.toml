@@ -1,0 +1,22 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = {{id}}
+slug = {{slug}}
+title = {{title}}
+record_kind = "concept"
+status = "draft"
+created = "{{date}}"
+updated = "{{date}}"
+tags = []
+
+[facet]                         # currently empty; seeded for scaffold-order invariant
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)

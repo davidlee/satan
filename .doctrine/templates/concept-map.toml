@@ -1,0 +1,16 @@
+id = {{id}}
+slug = {{slug}}
+title = {{title}}
+status = "draft"
+created = "{{date}}"
+updated = "{{date}}"
+description = ""
+
+# DSL format: one edge per line
+#   Source Label > relationship > Target Label
+# Lines starting with # are comments, blank lines are ignored.
+# Example:
+#   User Story > expresses > User Need
+#   Capability > aggregates > Requirements
+dsl = '''
+'''

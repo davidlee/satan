@@ -1,0 +1,41 @@
+memory_uid = "{{uid}}"
+{{key_line}}schema_version = {{schema_version}}
+{{lifespan_line}}memory_type = "{{type}}"
+status = "{{status}}"
+title = {{title}}
+summary = {{summary}}
+created = "{{date}}"
+updated = "{{date}}"
+
+[scope]
+paths = [{{paths}}]
+globs = [{{globs}}]
+commands = [{{commands}}]
+tags = [{{tags}}]
+workspace = "{{workspace}}"
+repo = {{repo}}
+repo_id_kind = "{{repo_id_kind}}"
+repo_id_confidence = "{{repo_id_confidence}}"
+
+[git]
+anchor_kind = "{{anchor_kind}}"
+commit = "{{commit}}"
+tree = "{{tree}}"
+ref_name = {{ref_name}}
+checkout_state_id = "{{checkout_state_id}}"
+base_commit = "{{base_commit}}"
+verified_sha = "{{verified_sha}}"
+normalizer = "{{normalizer}}"
+
+[review]
+verification_state = "unverified"
+reviewed = "{{reviewed}}"
+review_by = {{review_by}}
+
+[trust]
+trust_level = {{trust_level}}
+
+[ranking]
+severity = {{severity}}
+weight = 0
+{{sources}}

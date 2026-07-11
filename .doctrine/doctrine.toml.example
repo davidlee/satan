@@ -1,0 +1,112 @@
+# doctrine.toml — OPTIONAL project conduct config (reference template).
+#
+# This is a reference example, not a live config. To use it: place it at
+# `.doctrine/doctrine.toml` — the single canonical home for project-local
+# config (ISS-055).
+# and uncomment the table below. With NO file present, the baked defaults shown
+# here are in force, so adopting this is purely opt-in.
+#
+# The [conduct] table declares the *conduct axis* (SL-028, ADR-009 §2): per
+# lifecycle state, who conducts it (`actor`) and how much latitude exiting it
+# carries (`autonomy`). It is ADVISORY in v1 — `slice status` and `slice show`
+# PRINT the posture; nothing is enforced or gated. `actor` is declared intent,
+# never a runtime identity claim (invoker-blind).
+#
+#   actor    = self | agent | peer | team        (`self` = the human author)
+#   autonomy = auto | draft | gate
+#
+# `autonomy` is EXIT semantics: it governs advancing *out* of a state, so
+# `slice status` resolves the SOURCE state's posture and `reconcile = gate`
+# gates `reconcile -> done` (the closure gate), `plan = gate` gates
+# `plan -> ready` (the approved-plan gate).
+#
+# Baked defaults (in force when the file or a key is absent):
+#   actor = self, autonomy = auto for EVERY state,
+#   EXCEPT plan and reconcile, which default to autonomy = gate.
+# Unknown top-level keys and unknown-state subtables (e.g. [conduct.foo]) are
+# tolerated and ignored; only genuinely malformed TOML is an error.
+
+# [conduct]
+# default-actor    = "self"
+# default-autonomy = "auto"
+#
+# [conduct.plan]      # "no code without an approved plan" gate
+# autonomy = "gate"
+#
+# [conduct.reconcile] # the closure gate (ADR-003 §8)
+# autonomy = "gate"
+#
+# [estimation]
+# unit = "espresso_shots"
+# lower_confidence = 0.1
+# upper_confidence = 0.9
+#
+# [value]
+# unit = "magic_beans"
+#
+# [reservation]
+# # How fresh entity ids are allocated (SL-148).
+# #   local  — single-tree: local mkdir is the claim; remote is never touched
+# #   shared — cross-clone: remote ref CAS is the claim; unreachable remote hard-errors
+# #   auto   — shared when a remote is reachable, degrade to local otherwise (default)
+# reach = "auto"
+# # Explicit remote name for reservation coordination (default: auto-detect).
+# remote = "origin"
+# # Accept local allocation when a configured remote is unreachable (non-interactive
+# # equivalent of the D8 y/N prompt). Default false.
+# allow-local-fallback = false
+#
+# [verification]
+# # Project-default base argv for checks whose matcher names no source.
+# command = ["just", "gate"]
+# # Default matcher source when a check's matcher names none.
+# #   stdout  — match against stdout
+# #   exit    — match exit code only
+# default-source = "stdout"
+# # Per-check timeout in seconds (default 300).
+# timeout-secs = 300
+#
+# # Named base argvs that checks can alias against.
+# [verification.aliases]
+# gate = ["just", "check"]
+#
+# [install]
+# # Git repo slug for npx-skills / plugin marketplace (default: davidlee/doctrine).
+# repo = "davidlee/doctrine"
+#
+# [dispatch]
+# # Preferred subprocess harness for dispatch workers.
+# # "pi"   — pi RPC mode (SL-108)
+# # "codex" — codex exec (default)
+# preferred-subprocess-harness = "pi"
+# # The trunk delivery ref dispatch advances to / the close-integration
+# # gate checks against. Defaults to refs/heads/main.
+# deliver-to = "refs/heads/main"
+# # Buffered-trunk posture (SL-166). The source-of-truth ref where `.doctrine`
+# # content is authored, ahead of `deliver-to`. Setting it declares that
+# # `deliver-to` is a non-checked-out integration buffer promoted from this ref,
+# # and ENABLES the corpus-loss guards g1 (refuse trunk-mutating verbs while HEAD
+# # is on the buffer) and g2 (refuse setup when the fork base predates the
+# # corpus). Unset (default) ⇒ single-branch posture, g1/g2 inert; g3 (the
+# # 3-way clobber gate) protects regardless. Must differ from `deliver-to`.
+# # PRECONDITION: a single, linear, append-mostly authoring ref promoted to the
+# # buffer. Rebased/divergent history, shallow/grafted clones, and multiple
+# # authoring branches are UNSUPPORTED and hard-refuse setup.
+# authoring-branch = "refs/heads/edge"
+# # The HARD scope tier for `worker_commit` (SL-198): a jailed dispatch worker's
+# # server-side self-commit hard-refuses (`forbidden-zone`) any changed path
+# # matching a line below. GITIGNORE SYNTAX — positive + negative globs, with
+# # last-match-wins precedence, so a project NEGATES a defaulted zone with `!path`
+# # or EXTENDS the set as legitimate writes require. These defaults ship here
+# # (visible, editable text — the owner steers), NOT as baked Rust defaults.
+# #
+# # NOTE: `.doctrine/**` is ALSO a non-negotiable CODE floor — it is enforced with
+# # precedence over this config (present, absent, emptied, or `!`-negated), because
+# # this very config lives under it; the entry below is a visible echo of that floor.
+# worker-forbidden-writes = [
+#   ".doctrine/**",       # governance + runtime state (code floor — non-negotiable)
+#   ".claude/**",         # installed agent-defs / tool grants
+#   ".agents/**",         # authored agent/skill definitions
+#   "install/agents/**",  # shipped agent-def + tool-grant surface
+#   "flake.nix",          # jail definition — highest security leverage in the repo
+# ]

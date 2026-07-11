@@ -1,0 +1,25 @@
+id    = {{id}}
+slug  = {{slug}}
+title = {{title}}
+# no status — a REC is the immutable record of ONE reconciliation act (SPEC-002
+# D-Q3): it has no lifecycle, so no status is stored. The act is the commit.
+
+[rec]
+move = {{move}}              # accept | revise | redesign
+{{owning_slice}}{{decision_ref}}
+# status_deltas — the requirement-status facts THIS act already applied. May be
+# EMPTY for a `redesign`, which records the reconcile→design escalation, not an
+# instance-truth write (SPEC-002 F7/D7). The reconcile writer (Slice B) appends
+# them as `[[status_delta]]` tables; a fresh `rec new` writes none:
+#   [[status_delta]]
+#   requirement = "REQ-NNN"
+#   from = "pending"
+#   to   = "active"
+#
+# evidence_refs — the coverage entries this act rests on, cited by the stable
+# 4-tuple key (slice, requirement, contributing_change, mode), never a file#line:
+#   [[evidence_ref]]
+#   slice = "SL-NNN"
+#   requirement = "REQ-NNN"
+#   contributing_change = "SL-NNN"
+#   mode = "VT"

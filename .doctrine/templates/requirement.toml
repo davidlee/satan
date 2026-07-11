@@ -1,0 +1,14 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = {{id}}
+slug = {{slug}}
+title = {{title}}
+status = "pending"
+kind = "functional"   # default seed; `spec req add --kind` overwrites (PHASE-03)
+
+# description — optional one-line summary (queryable). Omitted by default (None);
+# the full statement/rationale stays prose in the sister `.md`. Add as:
+#   description = "…"
+tags = []
+acceptance_criteria = []

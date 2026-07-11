@@ -1,0 +1,28 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = {{id}}
+slug = {{slug}}
+title = {{title}}
+record_kind = "constraint"
+status = "active"
+created = "{{date}}"
+updated = "{{date}}"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+statement     = ""
+source        = ""             # canon | adr | external | technical | legal | compatibility | operator
+applies_to    = []
+waiver_reason = ""
+waived_by     = ""
+waived_on     = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)

@@ -1,0 +1,16 @@
+id    = {{id}}
+slug  = {{slug}}
+title = {{title}}
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = {{facet}}     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = {{raiser}}
+responder = {{responder}}
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = {{target_ref}}
+{{target_phase}}
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

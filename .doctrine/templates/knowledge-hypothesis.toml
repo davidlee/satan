@@ -1,0 +1,24 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = {{id}}
+slug = {{slug}}
+title = {{title}}
+record_kind = "hypothesis"
+status = "proposed"
+created = "{{date}}"
+updated = "{{date}}"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+proposition = ""
+predicts    = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
