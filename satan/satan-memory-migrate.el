@@ -17,13 +17,14 @@
 (require 'json)
 (require 'subr-x)
 (require 'satan-db)
+(require 'satan-custom)
 
 (defgroup satan-memory nil
   "SATAN memory substrate."
   :group 'satan)
 
 (defcustom satan-memory-migrate-directory
-  (expand-file-name "satan/memory/migrations/" user-emacs-directory)
+  (expand-file-name "memory/migrations/" satan--root)
   "Directory containing migration files (`NNNN_<slug>.sql')."
   :type 'directory :group 'satan-memory)
 

@@ -273,6 +273,10 @@ nil so the runner is not kicked from Phase-1 tests."
 ;; ---------------------------------------------------------------------
 
 (ert-deftest satan-tools-patch/descriptions-resolvable ()
+  ;; Model-facing descriptions live in the host-only ~/notes/satan/ corpus
+  ;; (SL-012 D4/POL), not shipped in the package.
+  (skip-unless (file-readable-p
+                (expand-file-name "patch_job_create.md" satan-tools-descriptions-dir)))
   (dolist (name '("patch_job_create"
                   "patch_job_status"
                   "patch_job_result"

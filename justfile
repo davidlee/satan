@@ -10,5 +10,5 @@ lint:
 test:
     #!/usr/bin/env bash
     set -euo pipefail
-    emacs --batch -L ./satan -L ./dev \
+    emacs --batch -L ./satan -L ./dev -L ./satan/test \
       -l satan-test --eval "(satan-test-run-batch)"

@@ -37,11 +37,12 @@
 (require 'satan-jsonl)
 (require 'satan-memory-grammar)
 (require 'satan-memory-migrate)
+(require 'satan-custom)
 
 ;; ── file resolution ─────────────────────────────────────────────────────────
 
 (defcustom satan-pattern-file
-  (expand-file-name "satan/patterns.eld" user-emacs-directory)
+  (expand-file-name "patterns.eld" satan--root)
   "Path to the curated pattern definitions file (read-form list of plists)."
   :type 'file :group 'satan)
 

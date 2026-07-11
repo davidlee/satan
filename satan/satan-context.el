@@ -7,8 +7,7 @@
 (require 'subr-x)
 (require 'cl-lib)
 (require 'json)
-(require 'dl-notes-paths)
-(require 'dl-denote-journal)
+(require 'satan-custom)
 (require 'satan-percept)
 (require 'satan-resonance)
 (require 'satan-motive)
@@ -121,14 +120,14 @@ Caller-threaded keys (NOT set by this function):
   (satan-run-enrich (satan-run-perceive prepare mode dir)))
 
 (defcustom satan-system-scaffold-file
-  (expand-file-name "satan/system/scaffold.txt" dl-notes-root)
+  (expand-file-name "satan/system/scaffold.txt" satan-notes-root)
   "Shared system-prompt scaffold prepended to every mode prompt.
 Canonical text lives under `~/notes/satan/system/'; dotfiles must
 not be the source of truth for behavioural framing."
   :type 'file :group 'satan)
 
 (defcustom satan-system-framing-file
-  (expand-file-name "satan/system/framing.txt" dl-notes-root)
+  (expand-file-name "satan/system/framing.txt" satan-notes-root)
   "Bundle-section headers for context blocks the broker appends to `:prompt'.
 Each call to a context-fn reads this file fresh to assemble the
 `# Now' / `# Today (raw)' / `# Source files' headers added after the
@@ -489,8 +488,7 @@ RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1) — when present,
 its `:run_id' `:time_now' `:percept' slots are mirrored into the
 bundle so audit artifacts agree (A2) and the capsule renders the
 percept block."
-  (let* ((today (progn (my/journal--ensure-today)
-                       (my/journal--today-file dl-notes-journal-dir "journal")))
+  (let* ((today (satan-notes-today))
          (assembled (satan-context--assemble-prompt mode-spec))
          (bundle (list :prompt     ""
                        :mode       (plist-get mode-spec :name)
@@ -532,19 +530,16 @@ RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); see
      (satan-context--with-prepare bundle run-ctx) assembled)))
 
 (defcustom satan-self-edit-mech-roots
-  (list (expand-file-name "satan" user-emacs-directory))
+  (list satan--root)
   "Roots whose source is included in the `self-edit-mech' bundle.
 Mech = the broker / handlers / harness / tests — Emacs-side
 machinery that runs the SATAN protocol."
   :type '(repeat directory) :group 'satan)
 
 (defcustom satan-self-edit-mind-roots
-  (list (expand-file-name "satan/prompts" (or (bound-and-true-p dl-notes-root)
-                                              (expand-file-name "~/notes")))
-        (expand-file-name "satan/system"  (or (bound-and-true-p dl-notes-root)
-                                              (expand-file-name "~/notes")))
-        (expand-file-name "satan/tools"   (or (bound-and-true-p dl-notes-root)
-                                              (expand-file-name "~/notes"))))
+  (list (expand-file-name "satan/prompts" satan-notes-root)
+        (expand-file-name "satan/system"  satan-notes-root)
+        (expand-file-name "satan/tools"   satan-notes-root))
   "Roots whose source is included in the `self-edit-mind' bundle.
 Mind = mode prompts, the system scaffold, tool descriptions —
 model-facing text under `~/notes/satan/' that shapes behaviour."

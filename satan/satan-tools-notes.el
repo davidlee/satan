@@ -1,7 +1,7 @@
 ;;; satan-tools-notes.el --- notes_recent tool handler -*- lexical-binding: t; -*-
 
 ;; Read-only window into recently-changed files under the user's notes
-;; corpus (`satan-tools-notes-root', default `dl-notes-root').
+;; corpus (`satan-tools-notes-root', default `satan-notes-root').
 ;; Complements `activity_read' (window focus) and `org_read_context'
 ;; (fixed files): tells SATAN which notes *artifacts* moved recently,
 ;; regardless of which window the user was looking at.
@@ -30,11 +30,11 @@
 
 (require 'cl-lib)
 (require 'subr-x)
-(require 'dl-notes-paths)
+(require 'satan-custom)
 (require 'satan-tools)
 
 (defcustom satan-tools-notes-root
-  dl-notes-root
+  satan-notes-root
   "Root directory `notes_recent' searches under."
   :type 'directory :group 'satan)
 

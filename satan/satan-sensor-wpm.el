@@ -12,14 +12,13 @@
 
 (require 'cl-lib)
 (require 'json)
+(require 'satan-custom)
 
 (declare-function satan-attribute-build-sensor-payload "satan-attribute")
 (declare-function satan-attribute-enqueue "satan-attribute")
 
 (defcustom satan-sensor-wpm-log-dir
-  (expand-file-name "satan/log/wpm"
-                    (or (bound-and-true-p dl-notes-root)
-                        (expand-file-name "notes" "~")))
+  (expand-file-name "satan/log/wpm" satan-notes-root)
   "Directory containing per-day WPM TSV logs."
   :type 'string :group 'satan-attribute)
 

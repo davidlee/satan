@@ -11,7 +11,7 @@
 
 (require 'cl-lib)
 (require 'subr-x)
-(require 'dl-notes-paths)
+(require 'satan-custom)
 (require 'satan-tools)
 (require 'satan-memory-grammar)
 (require 'satan-memory-canon)
@@ -20,7 +20,7 @@
 (require 'satan-attribute)
 
 (defcustom satan-hippocampus-dir
-  (expand-file-name "satan/hippocampus" dl-notes-root)
+  (expand-file-name "satan/hippocampus" satan-notes-root)
   "Directory holding SATAN hippocampus entries."
   :type 'directory :group 'satan)
 

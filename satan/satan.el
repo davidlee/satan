@@ -24,6 +24,7 @@
 
 ;;; Code:
 
+(require 'satan-custom)   ; leaf: defines the `satan' group + self-location root
 (require 'satan-audit)
 (require 'satan-budget)
 (require 'satan-jsonl)
@@ -59,11 +60,6 @@
 ;; Replaces the documentary-only `:modes' field that used to live on every
 ;; tool spec (T4).
 (satan-mode-check-tool-references)
-
-(defgroup satan nil
-  "SATAN local agent runtime."
-  :group 'tools
-  :prefix "satan-")
 
 (defun satan-run (name)
   "Run a SATAN session in mode NAME.  Returns the run-id string."

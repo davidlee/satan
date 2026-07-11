@@ -591,10 +591,7 @@
 Guards against the multi-top-level-form footgun: a `read'-once parser
 silently drops every form after the first, so a file written as N separate
 `((..))' forms only yields its first pattern."
-  (let* ((file (expand-file-name
-                "satan/patterns.eld"
-                (or (and (boundp 'user-emacs-directory) user-emacs-directory)
-                    default-directory)))
+  (let* ((file satan-pattern-file)   ; self-location-anchored (D10)
          (defs (satan-pattern--read-file file))
          (ids (mapcar (lambda (e) (plist-get e :id)) defs)))
     (should (member "docs-after-error" ids))

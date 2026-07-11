@@ -8,18 +8,17 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'satan-custom)
 
 ;; ── Directories ─────────────────────────────────────────────────────────────
 
 (defcustom satan-runs-dir
-  (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
-                                     (expand-file-name "~/notes")))
+  (expand-file-name "satan/runs" satan-notes-root)
   "Directory holding per-run audit bundles."
   :type 'directory :group 'satan)
 
 (defcustom satan-hippocampus-dir
-  (expand-file-name "satan/hippocampus" (or (bound-and-true-p dl-notes-root)
-                                            (expand-file-name "~/notes")))
+  (expand-file-name "satan/hippocampus" satan-notes-root)
   "Read-write scratch directory inside the jail."
   :type 'directory :group 'satan)
 

@@ -25,7 +25,11 @@
         (expand-file-name "~/flakes/"))
   "Roots a bare repo slug is resolved against, in order.
 First existing `ROOT/SLUG' directory wins.  Absolute-path `repo'
-arguments bypass this list entirely."
+arguments bypass this list entirely.
+
+User-tunable: this is the user's repo-search list, not package
+self-location.  `~/.emacs.d/' stays valid post-extraction and is
+intentionally retained."
   :type '(repeat directory) :group 'satan)
 
 (defcustom satan-tools-vcs-default-limit 20

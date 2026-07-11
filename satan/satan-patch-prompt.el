@@ -14,12 +14,12 @@
 
 (require 'cl-lib)
 (require 'subr-x)
-(require 'dl-notes-paths)
+(require 'satan-custom)
 (require 'satan-patch-store)
 (require 'satan-patch-worktree)
 
 (defcustom satan-patch-prompt-system-file
-  (expand-file-name "satan/patch-agent/prompt.md" dl-notes-root)
+  (expand-file-name "satan/patch-agent/prompt.md" satan-notes-root)
   "Path to the patch-agent harness system prompt."
   :type 'file :group 'satan-patch)
 

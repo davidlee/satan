@@ -26,7 +26,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'json)
-(require 'dl-notes-paths)
+(require 'satan-custom)
 (require 'satan-tools)
 (require 'satan-intervention)      ; manual-outcome writer (T1.5b PR 4)
 (require 'satan-audit)              ; audit-reopen (T1.5b PR 4)
@@ -38,7 +38,7 @@
 (declare-function satan-broker-locate-run-dir "satan-broker")
 
 (defcustom satan-tools-atsatan-root
-  dl-notes-root
+  satan-notes-root
   "Root directory the @satan scan searches under."
   :type 'directory :group 'satan)
 

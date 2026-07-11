@@ -13,6 +13,7 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'satan-custom)
 (require 'satan-audit)
 (require 'satan-budget)
 (require 'satan-jsonl)
@@ -41,19 +42,17 @@
 (defvar satan-broker--spawn-running nil)
 
 (defcustom satan-runs-dir
-  (expand-file-name "satan/runs" (or (bound-and-true-p dl-notes-root)
-                                     (expand-file-name "~/notes")))
+  (expand-file-name "satan/runs" satan-notes-root)
   "Directory holding per-run audit bundles."
   :type 'directory :group 'satan)
 
 (defcustom satan-hippocampus-dir
-  (expand-file-name "satan/hippocampus" (or (bound-and-true-p dl-notes-root)
-                                            (expand-file-name "~/notes")))
+  (expand-file-name "satan/hippocampus" satan-notes-root)
   "Read-write scratch directory inside the jail."
   :type 'directory :group 'satan)
 
 (defcustom satan-direnv-dir
-  (expand-file-name user-emacs-directory)
+  (file-name-directory (directory-file-name satan--root))
   "Directory whose `.envrc' is sourced into the jailed-harness environment.
 If non-nil and `envrc--export' is available, the broker resolves direnv
 for this directory and merges the result into `process-environment'

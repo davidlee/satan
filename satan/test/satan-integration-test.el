@@ -39,8 +39,15 @@
     (make-directory hipp-dir t)
     ;; Override the harness command + paths.  Use a copy of the morning
     ;; mode so we don't mutate the global registry permanently.
-    (let* ((dl-notes-root temp)
-           (dl-notes-journal-dir journal-dir)
+    (let* ((satan-notes-root temp)
+           ;; Inject today's-journal resolver (the config wires `my/journal--*'
+           ;; here in production); the broker writes the SATAN block into it.
+           (satan-journal-today
+            (lambda ()
+              (let ((f (expand-file-name
+                        (format-time-string "%Y-%m-%d.org") journal-dir)))
+                (unless (file-exists-p f) (write-region "" nil f))
+                f)))
            (satan-runs-dir runs-dir)
            (satan-hippocampus-dir hipp-dir)
            (satan-motd-path motd-path)
@@ -67,7 +74,7 @@
               (should (file-readable-p (expand-file-name "final.json" run-dir)))
               (should (file-readable-p (expand-file-name "actions.json" run-dir)))
               ;; Daily-note should now contain the SATAN block.
-              (let ((today (my/journal--today-file journal-dir "journal")))
+              (let ((today (satan-notes-today)))
                 (should (file-readable-p today))
                 (let ((text (with-temp-buffer
                               (insert-file-contents today)

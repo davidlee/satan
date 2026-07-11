@@ -29,12 +29,14 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'satan-tools)
+(require 'satan-custom)
 
 (defcustom satan-tools-docs-roots
-  '("docs/satan" "docs/emacs")
-  "List of doc-corpus roots, relative to `user-emacs-directory'.
-Each entry is walked recursively for `*.md' chunks carrying the
-standard frontmatter shape."
+  '("docs")
+  "List of doc-corpus roots, relative to the package docs root
+\(`satan--root'/../docs).  Each entry is walked recursively for `*.md'
+chunks carrying the standard frontmatter shape.  The config-owned
+`docs/emacs' corpus is not part of the package."
   :type '(repeat directory) :group 'satan)
 
 (defconst satan-tools-docs--metadata-keys
@@ -124,9 +126,10 @@ decides whether to abbreviate)."
 
 (defun satan-tools-docs--resolve-roots (&optional roots)
   "Resolve ROOTS (default `satan-tools-docs-roots') to absolute paths
-under `user-emacs-directory'.  Drops entries that don't exist."
+under the package docs root (`satan--root'/../docs's parent, i.e. the
+package repo root).  Drops entries that don't exist."
   (cl-loop for r in (or roots satan-tools-docs-roots)
-           for abs = (expand-file-name r user-emacs-directory)
+           for abs = (expand-file-name r (expand-file-name ".." satan--root))
            when (file-directory-p abs)
            collect abs))
 

@@ -8,12 +8,12 @@
 
 (require 'cl-lib)
 (require 'subr-x)
-(require 'dl-notes-paths)
+(require 'satan-custom)
 (require 'satan-tools)
 (require 'satan-intervention)
 
 (defcustom satan-inbox-file
-  (expand-file-name "satan/inbox.org" dl-notes-root)
+  (expand-file-name "satan/inbox.org" satan-notes-root)
   "Path to SATAN's append-only inbox org file."
   :type 'file :group 'satan)
 

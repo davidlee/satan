@@ -14,6 +14,13 @@
 (require 'satan-mode)                 ; self-edit-mech / self-edit-mind specs
 (require 'satan-output)                ; self-edit output handler
 
+(defun satan-context-test--corpus-p (&rest files)
+  "Non-nil when every model-facing FILE is readable.
+The `~/notes/satan/' corpus is host-only (SL-012 D4/POL, not shipped in
+the package); corpus-integration tests `skip-unless' it is present, so
+the suite is green in CI/sandbox without it and exercised on the host."
+  (cl-every #'file-readable-p files))
+
 (defun satan-context-test--mkrun (root run-id &optional final-summary tools failed)
   "Create a fake run directory under ROOT for RUN-ID.
 TOOLS is an alist (NAME . COUNT) of tool-call lines to fabricate.
@@ -171,6 +178,10 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
 ;; ---------- End-to-end via context-fn ----------
 
 (ert-deftest satan-context/tick-emits-block-when-recent-runs-set ()
+  (skip-unless (satan-context-test--corpus-p
+                satan-system-scaffold-file satan-system-framing-file
+                (expand-file-name "tick/pulse.txt"
+                                  (expand-file-name "satan/prompts" satan-notes-root))))
   (satan-context-test--with-runs-root root
     (satan-context-test--mkrun
      root "20260521T125543-tick-pulse-80e9e6"
@@ -185,8 +196,7 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
                        :prompt-file (or (locate-file "tick/pulse.txt"
                                                     (list (expand-file-name
                                                            "satan/prompts"
-                                                           (or (bound-and-true-p dl-notes-root)
-                                                               (expand-file-name "~/notes")))))
+                                                           satan-notes-root)))
                                         (error "tick/pulse.txt prompt missing from notes"))))
            (bundle (satan-context-tick spec))
            (prompt (plist-get bundle :prompt)))
@@ -194,6 +204,10 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
       (should (string-match-p "tick-pulse: Earlier tick observation\\." prompt)))))
 
 (ert-deftest satan-context/tick-omits-block-when-recent-runs-unset ()
+  (skip-unless (satan-context-test--corpus-p
+                satan-system-scaffold-file satan-system-framing-file
+                (expand-file-name "tick/pulse.txt"
+                                  (expand-file-name "satan/prompts" satan-notes-root))))
   (satan-context-test--with-runs-root root
     (satan-context-test--mkrun
      root "20260521T125543-tick-pulse-80e9e6"
@@ -204,8 +218,7 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
                        :prompt-file (or (locate-file "tick/pulse.txt"
                                                     (list (expand-file-name
                                                            "satan/prompts"
-                                                           (or (bound-and-true-p dl-notes-root)
-                                                               (expand-file-name "~/notes")))))
+                                                           satan-notes-root)))
                                         (error "tick/pulse.txt prompt missing from notes"))))
            (bundle (satan-context-tick spec))
            (prompt (plist-get bundle :prompt)))
@@ -669,6 +682,8 @@ rest under :dropped-files."
 (ert-deftest satan-context/interactive-does-not-mutate-run-ctx ()
   "AUD-008 F-004: `satan-context-interactive' must not clobber the
 caller's session-frozen `:time_now' (or inject assembly keys into it)."
+  (skip-unless (satan-context-test--corpus-p
+                satan-system-scaffold-file satan-system-framing-file))
   (let ((run-ctx (list :run_id "rid" :time_now "FROZEN-SESSION-TIME")))
     (cl-letf (((symbol-function 'satan-run-dir-for-id) (lambda (_) "/tmp"))
               ((symbol-function 'satan-run-assemble-context)
@@ -683,6 +698,8 @@ caller's session-frozen `:time_now' (or inject assembly keys into it)."
 (ert-deftest satan-context/interactive-degrades-on-assembly-failure ()
   "AUD-008 F-003/F-005: an assembly backend failure yields a partial capsule
 string rather than erroring the session."
+  (skip-unless (satan-context-test--corpus-p
+                satan-system-scaffold-file satan-system-framing-file))
   (let ((run-ctx (list :run_id "rid" :time_now "FROZEN")))
     (cl-letf (((symbol-function 'satan-run-dir-for-id) (lambda (_) "/tmp"))
               ((symbol-function 'satan-run-assemble-context)
@@ -707,6 +724,8 @@ interactive capsule the MCP server emits is unchanged build-to-build.
 `:now'/`:time_now' from it), assembly is stubbed to a deterministic
 prepare, and the attribute snapshot is pinned.  Both builds must produce
 `equal' bundles and byte-identical `:prompt' strings."
+  (skip-unless (satan-context-test--corpus-p
+                satan-system-scaffold-file satan-system-framing-file))
   (let ((run-ctx (list :run_id "20260609T100000-interactive-aaaaaa"
                        :time_now "FROZEN-SESSION-TIME"))
         (frozen (encode-time '(0 0 10 9 6 2026 nil nil 36000))))

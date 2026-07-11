@@ -7,19 +7,20 @@
 
 (require 'cl-lib)
 (require 'subr-x)
-(require 'dl-notes-paths)
-(require 'dl-denote-journal)
+(require 'satan-custom)
+;; Weekly journal is a soft, config-provided surface (D4): declared, not required.
+(declare-function my/journal--week-file "ext:dl-denote-journal" (dir suffix))
 (require 'satan-tools)
 (require 'satan-block)
 (require 'satan-intervention)
 
 (defcustom satan-motd-path
-  (expand-file-name "satan/motd.txt" dl-notes-root)
+  (expand-file-name "satan/motd.txt" satan-notes-root)
   "Output path for `motd' mode."
   :type 'file :group 'satan)
 
 (defcustom satan-proposals-dir
-  (expand-file-name "satan/proposals" dl-notes-root)
+  (expand-file-name "satan/proposals" satan-notes-root)
   "Directory for staged proposals."
   :type 'directory :group 'satan)
 
@@ -43,24 +44,22 @@ Proposals need triage time.")
   (let ((scope (plist-get args :scope)))
     (pcase scope
       ("today"
-       (let* ((file (progn (my/journal--ensure-today)
-                           (my/journal--today-file dl-notes-journal-dir "journal")))
-              (content (satan-tools-org--read-file file)))
+       (let* ((file (satan-notes-today))
+              (content (and file (satan-tools-org--read-file file))))
          (cons 'ok (list :content (or content "") :path file))))
       ("week"
-       (let* ((file (my/journal--week-file dl-notes-weekly-dir "weekly_journal"))
+       (let* ((file (my/journal--week-file (satan-notes-path "weekly") "weekly_journal"))
               (content (satan-tools-org--read-file file)))
          (cons 'ok (list :content (or content "") :path file))))
       ("inbox"
-       (let* ((file dl-notes-inbox-file)
+       (let* ((file (satan-notes-path "inbox.org"))
               (content (satan-tools-org--read-file file)))
          (cons 'ok (list :content (or content "") :path file))))
       (_ (cons 'error (format "unknown scope: %s" scope))))))
 
 (defun satan-tools-org--target-path (target)
   (pcase target
-    ("today" (progn (my/journal--ensure-today)
-                    (my/journal--today-file dl-notes-journal-dir "journal")))
+    ("today" (satan-notes-today))
     (_ nil)))
 
 (defun satan-tools-org--target-capability (target)

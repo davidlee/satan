@@ -4,7 +4,7 @@
 ;; modes register themselves at load time.
 
 (require 'cl-lib)
-(require 'dl-notes-paths)
+(require 'satan-custom)
 
 (defvar satan-modes nil
   "Alist of (NAME . SPEC) mode registrations.")
@@ -78,7 +78,7 @@ hard error so typos surface at startup rather than at dispatch."
              (mapconcat #'identity (nreverse errors) "; ")))))
 
 (defvar satan-prompts-dir
-  (expand-file-name "satan/prompts/" dl-notes-root)
+  (expand-file-name "satan/prompts/" satan-notes-root)
   "Directory holding mode prompt files.
 Canonical model-facing text lives under `~/notes/satan/prompts/'.
 Dotfiles must not be the source of truth for prompt content.")

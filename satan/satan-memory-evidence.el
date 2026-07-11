@@ -34,6 +34,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
+(require 'calendar)   ; calendar-absolute-from-gregorian / -gregorian-from-absolute
 (require 'satan-jsonl)
 (require 'satan-trace)
 (require 'satan-tools-activity)
