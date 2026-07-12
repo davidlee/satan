@@ -1,7 +1,7 @@
 # Blessed is the GNU
 ![SATAN](./satan.png)
 
-# ⛧ All hail SATAN ⛧
+## ⛧ Say Hello, SATAN ⛧
 
  │ SATAN — Scheduled Agent for Textual Attention and Notes
 
