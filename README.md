@@ -1,8 +1,7 @@
-# .emacs.d
-
+# Blessed is the GNU
 ![SATAN](./satan.png)
 
-# ⛧ Blessed be the GNU :: All hail SATAN ⛧
+# ⛧ All hail SATAN ⛧
 
  │ SATAN — Scheduled Agent for Textual Attention and Notes
 
@@ -20,6 +19,9 @@ code changes in isolation (bubblewrap). [Nix](https:/github:com/davidlee/nix-con
 
 Extracted from my [emacs-config](https://github.com/davidlee/emacs-config), 
 which had become bloated with experiments in personal motivated reasoning agents.
+
+I'm gradually extracting & rewriting the parts of it which have no business being written in 
+elisp (mostly in Rust).
 
 ```text
 Curiosity      [####      ]
