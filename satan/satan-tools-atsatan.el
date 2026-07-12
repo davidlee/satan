@@ -157,9 +157,13 @@ render a `> '-prefixed blockquote."
                     "--glob" path-glob)))
     (dolist (g satan-tools-atsatan--exclude-globs)
       (setq argv (append argv (list "--glob" g))))
+    ;; `call-process' performs no shell tilde expansion, so a literal
+    ;; "~/notes" root would reach rg as a nonexistent path.  Expand here
+    ;; (the sole call-process boundary) so absolute match paths flow
+    ;; through enrich/done downstream.
     (append argv
             (list satan-tools-atsatan--mark
-                  satan-tools-atsatan-root))))
+                  (expand-file-name satan-tools-atsatan-root)))))
 
 (defun satan-tools-atsatan--run-rg (argv)
   "Invoke rg with ARGV. Returns (:exit N :stdout STR :stderr STR)."

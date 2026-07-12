@@ -69,6 +69,16 @@
             (should (eq (car rescan) 'ok))
             (should (zerop (plist-get (cdr rescan) :count)))))))))
 
+(ert-deftest notes-at-satan-scan/expands-tilde-root ()
+  "A `~'-prefixed root is expanded before rg: `call-process' does no
+shell tilde expansion, so a literal \"~/notes\" reaches rg as a
+nonexistent path and the scan silently finds nothing (SL-012 D4
+regression)."
+  (let ((satan-tools-atsatan-root "~/notes-does-not-exist-xyzzy"))
+    (let ((argv (satan-tools-atsatan--rg-argv 5 "*.org")))
+      (should (member (expand-file-name "~/notes-does-not-exist-xyzzy") argv))
+      (should-not (member "~/notes-does-not-exist-xyzzy" argv)))))
+
 (ert-deftest notes-at-satan-scan/excludes-satan-dir ()
   "Files under <root>/satan/ are excluded by the !satan/** glob."
   (satan-tools-atsatan-test--with-root root
