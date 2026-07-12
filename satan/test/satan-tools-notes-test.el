@@ -68,6 +68,16 @@ into `satan-tools-notes-test--fd-calls'."
         (should (member "--exclude" args))
         (should (member "satan" args))))))
 
+(ert-deftest satan-notes/expands-tilde-base-directory ()
+  "A `~'-prefixed root is expanded before fd: `call-process' does no
+shell tilde expansion, so a literal \"~/notes\" base-directory reaches
+fd as a nonexistent path and notes_recent silently finds nothing
+(SL-012 D4 regression, sibling of the @satan scan)."
+  (let ((satan-tools-notes-root "~/notes-does-not-exist-xyzzy"))
+    (let ((args (satan-tools-notes--build-argv 24)))
+      (should (member (expand-file-name "~/notes-does-not-exist-xyzzy") args))
+      (should-not (member "~/notes-does-not-exist-xyzzy" args)))))
+
 (ert-deftest satan-notes/parses-output-and-sorts-by-mtime-desc ()
   "Returns files newer-first; relative paths; correct count."
   (satan-tools-notes-test--with-notes-root

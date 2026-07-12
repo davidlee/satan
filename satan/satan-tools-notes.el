@@ -68,7 +68,11 @@
   (let ((argv (list "--changed-after" (format "%dh" hours)
                     "-t" "f"
                     "--print0"
-                    "--base-directory" satan-tools-notes-root)))
+                    ;; `call-process' performs no shell tilde expansion,
+                    ;; so a literal "~/notes" base-directory would reach
+                    ;; fd as a nonexistent path.  Expand here.
+                    "--base-directory"
+                    (expand-file-name satan-tools-notes-root))))
     (dolist (name satan-tools-notes--exclude)
       (setq argv (append argv (list "--exclude" name))))
     argv))
