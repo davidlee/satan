@@ -10,7 +10,7 @@
 #
 # Install (one-time, manual --- ~/.gitconfig is not Nix-managed):
 #   mkdir -p ~/.config/git/hooks
-#   ln -sf ~/.emacs.d/satan/bin/satan-git-post-commit ~/.config/git/hooks/post-commit
+#   ln -sf ~/dev/satan/satan/bin/satan-git-post-commit ~/.config/git/hooks/post-commit
 #   git config --global core.hooksPath ~/.config/git/hooks
 #
 # CAVEAT: a global core.hooksPath DISABLES every repo's local .git/hooks/.
