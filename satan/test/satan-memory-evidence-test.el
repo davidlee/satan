@@ -286,7 +286,7 @@ populate them.  Keeps current_window and bough_active."
           (segments-dir (expand-file-name "segments" tmp)))
      (make-directory current-dir t)
      (make-directory segments-dir t)
-     (with-temp-file (expand-file-name "sway.json" current-dir)
+     (with-temp-file (expand-file-name "desktop.json" current-dir)
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
        (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n"))
@@ -348,7 +348,7 @@ stays valid through `--truncate' + canon (no signal)."
                      :mode_name "motd")))
      (make-directory current-dir t)
      (make-directory segments-dir t)
-     (with-temp-file (expand-file-name "sway.json" current-dir)
+     (with-temp-file (expand-file-name "desktop.json" current-dir)
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
        (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n")
@@ -672,20 +672,20 @@ because no calls are attempted (the binary's missing → tool errors
      (should (equal "missing" (plist-get ss :browser))))))
 
 (ert-deftest satan-memory-evidence/sensor-status-current-stale-drops-slice ()
-  "When sway.json mtime exceeds the threshold, :current_window is
+  "When desktop.json mtime exceeds the threshold, :current_window is
 dropped from the evidence (set nil) AND the status is tagged
 \"stale-Nm\"."
   (satan-memory-evidence-test--in-tmp tmp
    (let* ((current-dir (expand-file-name "current" tmp))
-          (sway-path (expand-file-name "sway.json" current-dir))
+          (desktop-path (expand-file-name "desktop.json" current-dir))
           (ctx (list :time_now "2026-05-19T10:00:00+10:00"
                      :mode_name "motd")))
      (make-directory current-dir t)
-     (with-temp-file sway-path
+     (with-temp-file desktop-path
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (let ((old (time-subtract (date-to-time "2026-05-19T10:00:00+10:00")
                                (seconds-to-time (* 60 28)))))
-       (set-file-times sway-path old))
+       (set-file-times desktop-path old))
      (let* ((out (satan-memory-evidence-assemble
                   ctx (list :behaviour_dir (file-name-as-directory tmp)
                             :cwd tmp)))
@@ -696,11 +696,11 @@ dropped from the evidence (set nil) AND the status is tagged
 (ert-deftest satan-memory-evidence/sensor-status-current-fresh-keeps-slice ()
   (satan-memory-evidence-test--in-tmp tmp
    (let* ((current-dir (expand-file-name "current" tmp))
-          (sway-path (expand-file-name "sway.json" current-dir))
+          (desktop-path (expand-file-name "desktop.json" current-dir))
           (ctx (list :time_now (format-time-string "%Y-%m-%dT%T%:z")
                      :mode_name "motd")))
      (make-directory current-dir t)
-     (with-temp-file sway-path
+     (with-temp-file desktop-path
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (let* ((out (satan-memory-evidence-assemble
                   ctx (list :behaviour_dir (file-name-as-directory tmp)
@@ -728,13 +728,13 @@ reports \"stale-Nm\" and the slice drops to '()."
        (should (equal "stale-62m" (plist-get ss :focus)))))))
 
 (ert-deftest satan-memory-evidence/sensor-status-malformed-json ()
-  "Malformed sway.json → status \"malformed\", slice nil."
+  "Malformed desktop.json → status \"malformed\", slice nil."
   (satan-memory-evidence-test--in-tmp tmp
    (let* ((current-dir (expand-file-name "current" tmp))
           (ctx (list :time_now (format-time-string "%Y-%m-%dT%T%:z")
                      :mode_name "motd")))
      (make-directory current-dir t)
-     (with-temp-file (expand-file-name "sway.json" current-dir)
+     (with-temp-file (expand-file-name "desktop.json" current-dir)
        (insert "{not-json"))
      (let* ((out (satan-memory-evidence-assemble
                   ctx (list :behaviour_dir (file-name-as-directory tmp)
@@ -794,7 +794,7 @@ recorded attempts, the bough status is \"unreachable\"."
                      :mode_name "motd"
                      :current_grammar_version 1)))
      (make-directory current-dir t)
-     (with-temp-file (expand-file-name "sway.json" current-dir)
+     (with-temp-file (expand-file-name "desktop.json" current-dir)
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (let* ((ev (satan-memory-evidence-assemble
                  ctx (list :behaviour_dir (file-name-as-directory tmp)

@@ -98,9 +98,9 @@ returns nil (git-output) or marks `:timed_out t' (git-state)."
 ;; ---------------------------------------------------------------------
 
 (defcustom satan-memory-evidence-current-window-stale-seconds 300
-  "Seconds-old ceiling for `current/sway.json' mtime before it is stale.
-Default 5 minutes per §S6 open question — tune from observed sway
-focus cadence."
+  "Seconds-old ceiling for `current/desktop.json' mtime before it is stale.
+Default 5 minutes per §S6 open question — tune from observed focus
+cadence."
   :type 'integer :group 'satan)
 
 (defcustom satan-memory-evidence-segment-stale-seconds 1800
@@ -130,7 +130,7 @@ window."
        (file-attribute-modification-time (file-attributes path))))
 
 (defun satan-memory-evidence--current-window-status (path now)
-  "Return (STATUS . DATA) for `current/sway.json' at PATH.
+  "Return (STATUS . DATA) for `current/desktop.json' at PATH.
 STATUS is the JSON-friendly string `\"ok\"' / `\"stale-Nm\"' /
 `\"missing\"' / `\"malformed\"'.  DATA is the parsed plist on success,
 nil on stale / missing / malformed — the assembler treats nil-data
@@ -659,7 +659,7 @@ about substrate slices."
          (budget-hard (or (plist-get opts :budget_hard_cap_bytes)
                           satan-memory-evidence-budget-hard-cap))
          (cue-only (plist-get opts :cue_only))
-         (current-path (expand-file-name "current/sway.json" root))
+         (current-path (expand-file-name "current/desktop.json" root))
          (current-probe (satan-trace-stage "evidence.current_window"
                           (satan-memory-evidence--current-window-status
                            current-path now-t)))

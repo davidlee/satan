@@ -117,7 +117,7 @@ diff-friendly."
                      "systemctl --user status panopticon-sway"))
      ("malformed" . ("panopticon_current_malformed" "warning"
                      "panopticon current_window JSON is malformed"
-                     "head -1 ~/.local/state/behaviour/current/sway.json")))
+                     "head -1 ~/.local/state/behaviour/current/desktop.json")))
     (:focus
      ("malformed" . ("panopticon_focus_malformed" "warning"
                      "panopticon focus segments JSON is malformed"

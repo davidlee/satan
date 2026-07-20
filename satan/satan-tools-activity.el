@@ -108,7 +108,7 @@ Returns (ok PLIST) | (error STRING)."
                          :path path
                          :segments (or tail '())))))
       ("current"
-       (let* ((path (expand-file-name "current/sway.json" root))
+       (let* ((path (expand-file-name "current/desktop.json" root))
               (data (satan-tools-activity--read-json path)))
          (cons 'ok (list :scope "current"
                          :path path

@@ -350,7 +350,7 @@ non-existent path so bough probes return nil."
 (defun satan-resonance-test--write-sway (behaviour app)
   (let ((dir (expand-file-name "current" behaviour)))
     (make-directory dir t)
-    (with-temp-file (expand-file-name "sway.json" dir)
+    (with-temp-file (expand-file-name "desktop.json" dir)
       (insert (format "{\"app_id\":\"%s\",\"workspace\":\"main\"}" app)))))
 
 (defun satan-resonance-test--prepare (run-id time-now)
