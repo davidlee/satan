@@ -1,0 +1,29 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "satan-run-sole-owner"
+title = "satan-run.el is the sole owner of run identity, directory layout, and run-lifecycle state"
+record_kind = "decision"
+status = "accepted"
+created = "2026-07-22"
+updated = "2026-07-22"
+tags = ["satan", "extraction", "architecture"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+context      = "SL-013 collapses the satan-run.el / satan-broker.el run-context duplication (ADR-018 D4.1). satan-run.el is the dependency-light leaf (cl-lib, subr-x, satan-custom); satan-broker.el requires 20 modules and holds every real caller."
+choice       = "satan-run.el owns the satan-run struct, both defcustoms, run-id minting, run-ctx construction, tool-ctx, the run-directory layout/discovery cluster, and the DEC-8 spawn-running flag. satan-broker.el deletes its clones and requires the leaf."
+alternatives = ["satan-broker.el owns it (rejected: reinstates the context/percept coupling on satan-mcp.el that produced the clone)", "Minimal cut leaving the run-directory cluster in the broker (rejected: leaves two genuine require cycles unresolved)", "Relocate with define-obsolete-function-alias shims (rejected: two names for one thing, and the soft-dependency guards would survive)"]
+rationale    = "satan-broker.el requires satan-budget and satan-observer, so neither can require the broker back. Both use declare-function (observer additionally an in-function require) purely as cycle-breakers to reach satan-broker-locate-run-dir / -run-dirs-for-date. satan-tools-atsatan.el and satan-intervention-mark.el declare the broker a soft dependency for the same reason. Five modules want run-directory resolution without the broker weight — the same pressure that produced the clone. Moving the cluster to the leaf dissolves both cycles and lets the guards be deleted."
+consequences = ["Two require cycles (satan-budget->broker, satan-observer->broker) dissolve", "Soft-dependency scaffolding deleted in satan-tools-atsatan.el, satan-intervention-mark.el, satan-observer.el", "satan-mcp.el keeps run identity without context/percept — the original constraint holds", "satan-broker-locate-run-dir / -list-run-dirs / -run-dirs-for-date rename to satan-run-*, touching 27 sites across 11 files", "satan-run.el grows from 117 to roughly 240 lines and gains its first test file"]
+decided_by   = "david (SL-013 design)"
+decided_on   = "2026-07-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = ["ADR-018 D4.1 — rehearse single-owner discipline in-language", "POL-001 — precondition, not an extraction", "Measured: all 7 cloned bodies plus the 18-slot struct are structurally identical modulo docstrings, so the broker side is pure deletion"]
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)

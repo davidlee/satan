@@ -1,0 +1,25 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "accessor-clobber-compiler-macro"
+title = "cl-defstruct accessor survives a defun clobber via its compiler-macro"
+record_kind = "evidence"
+status = "captured"
+created = "2026-07-22"
+updated = "2026-07-22"
+tags = ["elisp", "satan", "gotcha"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum        = "A `defun` over a `cl-defstruct` accessor name replaces the function cell but NOT the symbol's `compiler-macro` property, so every syntactic call site still inlines to the slot read — interpreted and byte-compiled alike. Only indirect dispatch (funcall/apply/eval of a constructed form) reaches the defun."
+provenance   = "experiment"     # inspection | experiment | reproduction | citation
+confidence   = "high"           # low | medium | high
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = ["SL-013 R1 verdict: the satan-run-prepare collision is latent, not live"]
+contradicts = ["ADR-018 Context: 'cl-defstruct accessors inline at load time, so existing callers compiled to (aref run-ctx 18) before the clobber' — the stated mechanism (byte-compilation) is wrong; interpreted callers inline too", "SL-013 R1 hypothesis: that reachability turns on load order — it does not"]
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)

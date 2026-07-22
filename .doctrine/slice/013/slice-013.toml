@@ -12,23 +12,23 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "satan/satan-run.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/satan-broker.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/satan-mcp.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/test/satan-broker-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/test/satan-mcp-test.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "bin/**"
@@ -36,7 +36,83 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "justfile"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-context.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tools-hippocampus.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-budget.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-observer.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tools-atsatan.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-intervention-mark.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-attribute-listener.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tank.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-run-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "tools/elisp-duplicate-definitions.el"
+intent = "design-target"
+
+[[selector]]
+selector = "tools/test/elisp-duplicate-definitions-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "bin/elisp-duplicate-definitions"
+intent = "design-target"
+
+[[selector]]
+selector = "dev/satan-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-context-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-tools-atsatan-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-intervention-mark-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-attribute-listener-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-budget-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-observer-test.el"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"
@@ -45,6 +121,14 @@ target = "ADR-018"
 [[relation]]
 label = "governed_by"
 target = "POL-001"
+
+[[relation]]
+label = "related"
+target = "EVD-001"
+
+[[relation]]
+label = "related"
+target = "DEC-001"
 
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
