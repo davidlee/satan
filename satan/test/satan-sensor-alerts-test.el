@@ -37,19 +37,19 @@
 (ert-deftest satan-sensor/render-block-all-ok ()
   (let* ((framing '(("sensor_block_header" . "# Sensors")))
          (ss (list :current_window "ok" :focus "ok"
-                   :browser "ok" :bough "ok" :git "ok"))
+                   :browser "ok" :git "ok"))
          (lines (satan-sensor-render-block framing ss)))
     (should (equal (car lines) "# Sensors"))
     (should (equal (cadr lines)
-                   "sensors: current=ok focus=ok browser=ok bough=ok git=ok"))))
+                   "sensors: current=ok focus=ok browser=ok git=ok"))))
 
 (ert-deftest satan-sensor/render-block-mixed-degradation ()
   (let* ((framing '(("sensor_block_header" . "# Sensors")))
          (ss (list :current_window "stale-28m" :focus "ok"
-                   :browser "missing" :bough "unreachable" :git "malformed"))
+                   :browser "missing" :git "malformed"))
          (lines (satan-sensor-render-block framing ss)))
     (should (equal (cadr lines)
-                   "sensors: current=STALE(28m) focus=ok browser=MISSING bough=UNREACHABLE git=MALFORMED"))))
+                   "sensors: current=STALE(28m) focus=ok browser=MISSING git=MALFORMED"))))
 
 (ert-deftest satan-sensor/render-block-nil-when-no-header ()
   "Self-suppress when framing.txt is missing the seed key."
@@ -57,7 +57,7 @@
     (should-not (satan-sensor-render-block
                  framing
                  (list :current_window "ok" :focus "ok"
-                       :browser "ok" :bough "ok")))))
+                       :browser "ok")))))
 
 (ert-deftest satan-sensor/render-block-nil-when-no-status ()
   (let ((framing '(("sensor_block_header" . "# Sensors"))))
@@ -71,15 +71,14 @@
   (let* ((prepare (list :run_id "r" :time_now "t"
                         :sensor_status (list :current_window "stale-28m"
                                              :focus "ok"
-                                             :browser "ok"
-                                             :bough "unreachable")))
+                                             :browser "malformed")))
          (bundle (satan-context--with-prepare (list :mode "tick-pulse") prepare)))
     (should (equal "stale-28m"
                    (plist-get (plist-get bundle :sensor_status)
                               :current_window)))
-    (should (equal "unreachable"
+    (should (equal "malformed"
                    (plist-get (plist-get bundle :sensor_status)
-                              :bough)))))
+                              :browser)))))
 
 ;; ---------------------------------------------------------------------
 ;; Phase 4.3 — cooldown + dispatch (A15, A16, A17)
@@ -100,7 +99,7 @@
 
 (defun satan-sensor-alerts-test--ok-sensor ()
   (list :current_window "ok" :focus "ok"
-        :browser "ok" :bough "ok"))
+        :browser "ok"))
 
 (defun satan-sensor-alerts-test--silence-notify (body-fn)
   "Stub `notifications-notify' to a counter; call BODY-FN with counter ref.
@@ -136,7 +135,7 @@ or broken feed is not page-worthy — see `--causes')."
      (lambda (_)
        (let ((entries (satan-sensor-alerts-check
                        (list :current_window "ok" :focus "ok"
-                             :browser "ok" :bough "ok" :git "malformed")
+                             :browser "ok" :git "malformed")
                        (satan-sensor-alerts-test--mode '(notify))
                        :time-now "2026-05-22T10:00:00+10:00"
                        :state-file path
@@ -149,7 +148,7 @@ or broken feed is not page-worthy — see `--causes')."
     (satan-sensor-alerts-test--silence-notify
      (lambda (counter)
        (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok" :bough "ok"))
+                        :browser "ok"))
               (mode (satan-sensor-alerts-test--mode '(notify)))
               (e1 (satan-sensor-alerts-check
                    ss mode
@@ -177,7 +176,7 @@ or broken feed is not page-worthy — see `--causes')."
     (satan-sensor-alerts-test--silence-notify
      (lambda (counter)
        (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok" :bough "ok"))
+                        :browser "ok"))
               (mode (satan-sensor-alerts-test--mode '(notify))))
          (satan-sensor-alerts-check
           ss mode
@@ -197,7 +196,7 @@ or broken feed is not page-worthy — see `--causes')."
     (satan-sensor-alerts-test--silence-notify
      (lambda (counter)
        (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok" :bough "ok"))
+                        :browser "ok"))
               (mode (satan-sensor-alerts-test--mode '(notify)))
               (entries (satan-sensor-alerts-check
                         ss mode
@@ -213,19 +212,14 @@ or broken feed is not page-worthy — see `--causes')."
 ;; A16 — every degradation produces an entry, fired or suppressed
 
 (ert-deftest satan-sensor-alerts/every-degradation-recorded ()
-  "Mix of stale + malformed + unreachable → multiple entries this run."
+  "Mix of stale + malformed → multiple entries this run."
   (satan-sensor-alerts-test--with-tmp-state path
     (satan-sensor-alerts-test--silence-notify
      (lambda (_)
        (let* ((ss (list :current_window "stale-28m"
                         :focus "malformed"
-                        :browser "ok"
-                        :bough "unreachable"))
+                        :browser "malformed"))
               (mode (satan-sensor-alerts-test--mode '(notify)))
-              ;; Bough fires on streak ≥ 3 — pre-seed so it dispatches.
-              (_seed (satan-sensor-alerts--write-state
-                      path
-                      '(:streaks (:bough_unreachable 5))))
               (entries (satan-sensor-alerts-check
                         ss mode
                         :time-now "2026-05-22T10:00:00+10:00"
@@ -234,21 +228,20 @@ or broken feed is not page-worthy — see `--causes')."
               (causes (mapcar (lambda (e) (plist-get e :cause)) entries)))
          (should (member "panopticon_current_stale" causes))
          (should (member "panopticon_focus_malformed" causes))
-         (should (member "bough_unreachable" causes))
+         (should (member "panopticon_browser_malformed" causes))
          (should (= 3 (length entries))))))))
 
 (ert-deftest satan-sensor-alerts/a16-one-to-one-causes-and-entries ()
   "A16 — causes touched in notified.json this run match pre_spawn entries.
-Tests fired, suppressed-by-cooldown, suppressed-by-quiet, and
-streak-suppressed all share the invariant: |state.:causes keys| ==
-|entries| with matching cause names."
+Fired, suppressed-by-cooldown and suppressed-by-quiet all share the
+invariant: |state.:causes keys| == |entries| with matching cause
+names."
   (satan-sensor-alerts-test--with-tmp-state path
     (satan-sensor-alerts-test--silence-notify
      (lambda (_)
        (let* ((ss (list :current_window "stale-28m"
                         :focus "malformed"
-                        :browser "ok"
-                        :bough "unreachable"))
+                        :browser "ok"))
               (mode (satan-sensor-alerts-test--mode '(notify)))
               (entries (satan-sensor-alerts-check
                         ss mode
@@ -274,7 +267,7 @@ streak-suppressed all share the invariant: |state.:causes keys| ==
     (satan-sensor-alerts-test--silence-notify
      (lambda (counter)
        (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok" :bough "ok"))
+                        :browser "ok"))
               (mode (satan-sensor-alerts-test--mode '()))
               (entries (satan-sensor-alerts-check
                         ss mode
@@ -293,7 +286,7 @@ streak-suppressed all share the invariant: |state.:causes keys| ==
     (let* ((seen nil)
            (mode (satan-sensor-alerts-test--mode '(notify)))
            (ss (list :current_window "stale-28m" :focus "ok"
-                     :browser "ok" :bough "ok")))
+                     :browser "ok")))
       (cl-letf (((symbol-function 'notifications-notify)
                  (lambda (&rest args)
                    (setq seen args)
@@ -309,62 +302,66 @@ streak-suppressed all share the invariant: |state.:causes keys| ==
       (should (string-match-p "SATAN sensor: panopticon_current_stale"
                               (plist-get seen :title))))))
 
-;; Bough streak gate
+;; ---------------------------------------------------------------------
+;; SL-002 PHASE-04 — retired-cause state prune (RN-17)
+;; ---------------------------------------------------------------------
 
-(ert-deftest satan-sensor-alerts/bough-below-threshold-suppresses ()
-  "First two unreachable ticks accumulate; only the third dispatches."
-  (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (counter)
-       (let* ((ss (list :current_window "ok" :focus "ok"
-                        :browser "ok" :bough "unreachable"))
-              (mode (satan-sensor-alerts-test--mode '(notify))))
-         (let ((e1 (satan-sensor-alerts-check
-                    ss mode
-                    :time-now "2026-05-22T10:00:00+10:00"
-                    :state-file path
-                    :quiet-p-fn (lambda (&rest _) nil))))
-           (should (eq t (plist-get (car e1) :suppressed)))
-           (should (equal "streak_below_threshold"
-                          (plist-get (car e1) :reason))))
-         (satan-sensor-alerts-check
-          ss mode
-          :time-now "2026-05-22T10:30:00+10:00"
-          :state-file path
-          :quiet-p-fn (lambda (&rest _) nil))
-         (let ((e3 (satan-sensor-alerts-check
-                    ss mode
-                    :time-now "2026-05-22T11:00:00+10:00"
-                    :state-file path
-                    :quiet-p-fn (lambda (&rest _) nil))))
-           (should (eq :false (plist-get (car e3) :suppressed)))
-           (should (= 1 (car counter)))))))))
+(ert-deftest satan-sensor-alerts/no-bough-segment-in-sensor-line ()
+  "VT-1 — the capsule sensor line carries no bough segment, and a
+`:bough' key surviving in a persisted `sensor_status' is simply not
+rendered (the source order no longer names it)."
+  (let* ((framing '(("sensor_block_header" . "# Sensors")))
+         (ss (list :current_window "ok" :focus "ok" :browser "ok"
+                   :bough "unreachable" :git "ok"))
+         (lines (satan-sensor-render-block framing ss)))
+    (should (equal (cadr lines)
+                   "sensors: current=ok focus=ok browser=ok git=ok"))
+    (should-not (string-match-p "bough" (cadr lines)))))
 
-(ert-deftest satan-sensor-alerts/bough-streak-resets-on-ok ()
-  "An `ok' bough between unreachable runs resets the counter."
+(ert-deftest satan-sensor-alerts/no-bough-cause-derivable ()
+  "VT-1 — an `unreachable' bough status derives no cause at all."
+  (let ((causes (satan-sensor-alerts--derive-causes
+                 (list :current_window "ok" :focus "ok" :browser "ok"
+                       :bough "unreachable"))))
+    (should (null causes))))
+
+(ert-deftest satan-sensor-alerts/read-state-prunes-retired-cause-residue ()
+  "VT-2 (RN-17) — persisted state outlives the code that wrote it.
+A `notified.json' pre-seeded with a retired cause's `:causes' entry and
+its `:streaks' counter, read through the post-removal path, comes back
+with both gone and every live cause's state intact.
+
+The prune is deliberately generic — it names no retired cause, it drops
+whatever is outside the currently-derivable set — so this test doubles
+as the guard for the next retirement."
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (_)
-       (let* ((unreach (list :current_window "ok" :focus "ok"
-                             :browser "ok" :bough "unreachable"))
-              (ok-ss (satan-sensor-alerts-test--ok-sensor))
-              (mode (satan-sensor-alerts-test--mode '(notify))))
-         (satan-sensor-alerts-check unreach mode
-                                       :time-now "2026-05-22T10:00:00+10:00"
-                                       :state-file path
-                                       :quiet-p-fn (lambda (&rest _) nil))
-         (satan-sensor-alerts-check unreach mode
-                                       :time-now "2026-05-22T10:30:00+10:00"
-                                       :state-file path
-                                       :quiet-p-fn (lambda (&rest _) nil))
-         (satan-sensor-alerts-check ok-ss mode
-                                       :time-now "2026-05-22T11:00:00+10:00"
-                                       :state-file path
-                                       :quiet-p-fn (lambda (&rest _) nil))
-         (let ((state (satan-sensor-alerts--read-state path)))
-           (should (= 0
-                      (satan-sensor-alerts--streak
-                       state "bough_unreachable")))))))))
+    (satan-sensor-alerts--write-state
+     path
+     '(:causes (:bough_unreachable
+                (:last_notified_at "2026-05-20T09:00:00+10:00")
+                :panopticon_current_stale
+                (:last_notified_at "2026-05-21T09:00:00+10:00"))
+       :streaks (:bough_unreachable 5)))
+    (let* ((state (satan-sensor-alerts--read-state path))
+           (causes (plist-get state :causes)))
+      ;; retired residue gone, both slots
+      (should-not (plist-member causes :bough_unreachable))
+      (should-not (plist-member state :streaks))
+      ;; unrelated live sensor state untouched
+      (should (equal "2026-05-21T09:00:00+10:00"
+                     (plist-get (plist-get causes :panopticon_current_stale)
+                                :last_notified_at))))))
+
+(ert-deftest satan-sensor-alerts/known-causes-covers-every-table-entry ()
+  "The prune's allow-set is derived from `--causes', not transcribed —
+so a cause added to the table can never be pruned as residue."
+  (let ((known (satan-sensor-alerts--known-causes)))
+    (should (member "panopticon_current_stale" known))
+    (should (member "panopticon_current_missing" known))
+    (should (member "panopticon_current_malformed" known))
+    (should (member "panopticon_focus_malformed" known))
+    (should (member "panopticon_browser_malformed" known))
+    (should-not (cl-find-if (lambda (c) (string-match-p "bough" c)) known))))
 
 (provide 'satan-sensor-alerts-test)
 ;;; satan-sensor-alerts-test.el ends here

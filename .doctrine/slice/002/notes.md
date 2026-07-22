@@ -127,6 +127,37 @@ corpus-integration tests `skip-unless` it is present. `satan-mcp-test` green
 unmodified is the available evidence; the external `bough_read.md` still needs
 the manual cleanup already flagged for close.
 
+## 2026-07-22 — PHASE-04 complete (sensor, tank, persisted state)
+
+Suite 1017/0 unexpected. Eight production modules still hold a bough token, all
+PHASE-05's.
+
+**The RN-17 prune was implemented generically, and that was forced.** The design
+says "prune the `:streaks.bough_unreachable` + `:causes.bough_unreachable` keys
+on state read" — but writing those literals into `satan-sensor-alerts.el` would
+put a bough token in a production file and break §9's zero-token gate, whose
+allowlist is exactly the grammar artifacts plus the one motive occurrence. The
+inquisition did not catch the collision between its own RN-17 remedy and its own
+R1 gate.
+
+Resolution: `--prune-state` drops any `:causes` key **outside the currently
+derivable set** (derived from `--causes`, not transcribed), and drops `:streaks`
+wholesale — no cause uses a streak threshold now that the bough one is gone. It
+names no retired cause, so it satisfies the gate, and it self-heals for the next
+retirement instead of accumulating a list of ghosts. Strictly better than the
+literal prune, and smaller.
+
+Consequences worth flagging at audit:
+
+- **`--streak` / `--set-streak` deleted**, not just their caller. The bough
+  streak was the only user; `:streaks` is a retired slot.
+- **`satan-sensor-alerts-bough-streak-threshold` defcustom gone.** Any user
+  customisation of it is now inert — acceptable, it gated a tool that no longer
+  exists.
+- A `:bough` key surviving in a persisted `sensor_status` is now simply not
+  rendered rather than erroring, because `--source-order` no longer names it.
+  Pinned by `no-bough-segment-in-sensor-line`.
+
 ### Census at plan time (2026-07-22)
 
 Live bough token counts, for divergence detection at audit — 67 files. Largest:

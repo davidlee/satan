@@ -32,12 +32,6 @@ atomicity (§S6)."
 At most one dispatch per cause per cooldown window (A15)."
   :type 'integer :group 'satan)
 
-(defcustom satan-sensor-alerts-bough-streak-threshold 3
-  "Consecutive unreachable ticks required before a bough alert fires (§S6).
-Below the threshold the streak counter advances but the entry
-records as suppressed with `reason: streak_below_threshold'."
-  :type 'integer :group 'satan)
-
 ;; ---------------------------------------------------------------------
 ;; Capsule render (§S6)
 ;; ---------------------------------------------------------------------
@@ -49,7 +43,7 @@ is absent the block self-suppresses so a missing seed doesn't
 block a run.")
 
 (defconst satan-sensor--source-order
-  '(:current_window :focus :browser :bough :git)
+  '(:current_window :focus :browser :git)
   "Canonical render order for the sensors.
 Stable order keeps capsule diffs readable across runs even when
 one source flips status.  `:git' (the git-activity feed) renders
@@ -61,7 +55,6 @@ last; it carries NO alert cause — see `satan-sensor-alerts--causes'.")
     (:current_window "current")
     (:focus          "focus")
     (:browser        "browser")
-    (:bough          "bough")
     (:git            "git")
     (_ (substring (symbol-name key) 1))))
 
@@ -86,7 +79,7 @@ attached to the evidence window by Phase 4.1.
 Self-suppresses (returns nil) when either the framing key or the
 sensor-status plist is absent — same pattern as the other capsule
 blocks (A6 / A8).  When rendered, emits a single line of the form
-`sensors: current=ok focus=ok browser=ok bough=ok' regardless of
+`sensors: current=ok focus=ok browser=ok git=ok' regardless of
 how many sources are degraded; constant shape keeps capsule diffs
 diff-friendly."
   (let ((header (cdr (assoc satan-sensor--framing-key framing))))
@@ -125,11 +118,7 @@ diff-friendly."
     (:browser
      ("malformed" . ("panopticon_browser_malformed" "warning"
                      "panopticon browser segments JSON is malformed"
-                     "head ~/.local/state/behaviour/segments/browser-$(date +%F).jsonl")))
-    (:bough
-     ("unreachable" . ("bough_unreachable" "warning"
-                       "bough tool unreachable"
-                       "bough active"))))
+                     "head ~/.local/state/behaviour/segments/browser-$(date +%F).jsonl"))))
   "Map of (SENSOR-KEY KIND-STRING . (CAUSE SEVERITY MESSAGE REMEDIATION)).
 KIND-STRING is matched against the sensor_status value: a status of
 `stale-28m' matches kind `stale' by prefix; `missing' / `malformed' /
@@ -171,10 +160,45 @@ Each element is a plist: (:cause :severity :message :remediation
 ;; State file I/O (atomic tmp + rename, like satan-audit--write-json)
 ;; ---------------------------------------------------------------------
 
+(defun satan-sensor-alerts--known-causes ()
+  "Return the set of cause names `--causes' can currently derive."
+  (let (acc)
+    (dolist (sensor satan-sensor-alerts--causes (nreverse acc))
+      (dolist (kind (cdr sensor))
+        (push (car (cdr kind)) acc)))))
+
+(defun satan-sensor-alerts--prune-state (state)
+  "Return STATE with residue from retired causes dropped.
+
+Persisted state outlives the code that wrote it: a cause removed from
+`--causes' leaves its `:causes' entry (and any `:streaks' counter)
+behind forever, because nothing derives it any more and so nothing ever
+updates it.  Prune on read — drop any `:causes' key outside the
+currently-derivable set, and drop `:streaks' wholesale now that no cause
+uses a streak threshold.
+
+Deliberately generic: it names no retired cause, so it self-heals for
+the next retirement instead of accumulating a list of ghosts."
+  (let* ((known (satan-sensor-alerts--known-causes))
+         (causes (plist-get state :causes))
+         (kept '()))
+    (while causes
+      (let ((key (car causes)) (val (cadr causes)))
+        (when (member (substring (symbol-name key) 1) known)
+          (setq kept (append kept (list key val)))))
+      (setq causes (cddr causes)))
+    (let ((out (plist-put (copy-sequence state) :causes kept)))
+      (cl-remf out :streaks)
+      out)))
+
 (defun satan-sensor-alerts--read-state (path)
   "Return the parsed notified.json plist at PATH, or an empty seed.
 Missing file / malformed JSON both seed to `(:causes ())' so the run
-proceeds — sensor state corruption must not block dispatch."
+proceeds — sensor state corruption must not block dispatch.
+
+Retired-cause residue is pruned on the way through
+\(`--prune-state'), so a stale key cannot outlive the code that
+derived it."
   (cond
    ((not (file-readable-p path)) (list :causes nil))
    (t (condition-case _err
@@ -186,7 +210,8 @@ proceeds — sensor state corruption must not block dispatch."
                                           :array-type 'list
                                           :null-object nil
                                           :false-object :false)))
-              (or obj (list :causes nil))))
+              (satan-sensor-alerts--prune-state
+               (or obj (list :causes nil)))))
         (error (list :causes nil))))))
 
 (defun satan-sensor-alerts--write-state (path state)
@@ -207,25 +232,11 @@ Ensures parent dir exists; uses tmp + rename per §S6."
 (defun satan-sensor-alerts--update-cause-state (state cause new)
   "Return STATE with cause CAUSE's substate replaced by NEW (a plist).
 Lives under the `:causes' slot so the A16 one-to-one invariant
-(causes touched this run ↔ pre_spawn entries) holds independent of
-the `:streaks' bookkeeping."
+(causes touched this run ↔ pre_spawn entries) holds."
   (let* ((sym (intern (concat ":" cause)))
          (causes (or (plist-get state :causes) '()))
          (updated (plist-put (copy-sequence causes) sym new)))
     (plist-put (copy-sequence state) :causes updated)))
-
-(defun satan-sensor-alerts--streak (state name)
-  "Return the streak counter under STATE.`:streaks'.<NAME> as an integer."
-  (or (plist-get (plist-get state :streaks)
-                 (intern (concat ":" name)))
-      0))
-
-(defun satan-sensor-alerts--set-streak (state name value)
-  "Return STATE with streak NAME set to VALUE (integer) under `:streaks'."
-  (let* ((sym (intern (concat ":" name)))
-         (streaks (or (plist-get state :streaks) '()))
-         (updated (plist-put (copy-sequence streaks) sym value)))
-    (plist-put (copy-sequence state) :streaks updated)))
 
 ;; ---------------------------------------------------------------------
 ;; Cooldown + suppression decisions
@@ -245,16 +256,6 @@ A never-fired cause (no `:last_notified_at') is always elapsed."
                        satan-sensor-alerts-cooldown-seconds)))
     (or (null last)
         (>= (float-time (time-subtract now last)) cooldown))))
-
-(defun satan-sensor-alerts--bump-bough-streak (state status)
-  "Return STATE with the bough_unreachable streak counter updated.
-Reset to 0 when STATUS is anything other than `unreachable'.  The
-counter lives under `:streaks' (not `:causes') so updates here
-don't pollute the A16 one-to-one count between `:causes' and
-pre_spawn entries."
-  (let* ((count (satan-sensor-alerts--streak state "bough_unreachable"))
-         (next (if (equal status "unreachable") (1+ count) 0)))
-    (satan-sensor-alerts--set-streak state "bough_unreachable" next)))
 
 ;; ---------------------------------------------------------------------
 ;; Dispatch (§S6 — same path as model-side notify_send, A17)
@@ -325,7 +326,6 @@ appended keyword overrides."
 For each degraded sensor:
   - quiet hours suppress dispatch (entry recorded with reason `quiet_hours');
   - per-cause cooldown suppresses dispatch (`cooldown');
-  - bough sub-threshold streak suppresses dispatch (`streak_below_threshold');
   - capability gate suppresses dispatch (`capability_denied');
   - otherwise dispatch through `notify_send' and stamp `:dispatched_at'.
 
@@ -338,8 +338,6 @@ sensor was `ok')."
          (path (or state-file satan-sensor-state-file))
          (quiet-p (funcall (or quiet-p-fn #'satan-tick-quiet-p) now))
          (state (satan-sensor-alerts--read-state path))
-         (state (satan-sensor-alerts--bump-bough-streak
-                 state (plist-get sensor-status :bough)))
          (tool-ctx (satan-sensor-alerts--make-tool-ctx
                     mode now-iso run-dir))
          (causes (satan-sensor-alerts--derive-causes sensor-status))
@@ -348,9 +346,6 @@ sensor was `ok')."
       (let* ((cause (plist-get base :cause))
              (msg (plist-get base :message))
              (cs (or (satan-sensor-alerts--cause-state state cause) '()))
-             (streak (and (equal cause "bough_unreachable")
-                          (satan-sensor-alerts--streak
-                           state "bough_unreachable")))
              (entry nil)
              (next-cs (copy-sequence cs)))
         (cond
@@ -358,12 +353,6 @@ sensor was `ok')."
          (quiet-p
           (setq entry (satan-sensor-alerts--entry
                        cause base :suppressed t :reason "quiet_hours")))
-         ;; Bough streak threshold (§S6 — ≥ 3 ticks before fire).
-         ((and (equal cause "bough_unreachable")
-               (< streak satan-sensor-alerts-bough-streak-threshold))
-          (setq entry (satan-sensor-alerts--entry
-                       cause base :suppressed t
-                       :reason "streak_below_threshold")))
          ;; A15 — cooldown not elapsed.
          ((not (satan-sensor-alerts--cooldown-elapsed-p cs now))
           (setq entry (satan-sensor-alerts--entry

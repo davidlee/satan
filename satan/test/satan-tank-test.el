@@ -1,7 +1,7 @@
 ;;; satan-tank-test.el --- observation tank ert -*- lexical-binding: t; -*-
 
 ;; Pure renderer ert + a fixture-dir test for `satan-tank--read-run-events'.
-;; No DB / panopticon / bough access required.
+;; No DB / panopticon access required.
 
 (require 'ert)
 (require 'cl-lib)
@@ -81,9 +81,6 @@
                              :title "GitHub · prs")
             :focus_segments (1 2 3)
             :browser_segments (1 2)
-            :bough_active
-            ((:status "wip" :title "memory tank" :nanoid "abc12345")
-             (:status "todo" :title "renormalize cli" :nanoid "def67890"))
             :git_commits
             ((:repo "/tmp/r" :slug "r" :sha "4bd198f6"
               :end_ts "2026-05-20T08:15:00+10:00"))
@@ -96,9 +93,6 @@
     (should (string-match-p "GitHub · prs" out))
     (should (string-match-p "focus:         3 segments" out))
     (should (string-match-p "browser:       2 segments" out))
-    (should (string-match-p "bough_active:  2 nodes" out))
-    (should (string-match-p "memory tank" out))
-    (should (string-match-p "abc12345" out))
     (should (string-match-p "git:           1 commit(s)" out))
     (should (string-match-p "newest 4bd198f6" out))
     (should (string-match-p "/home/david/.emacs.d" out))

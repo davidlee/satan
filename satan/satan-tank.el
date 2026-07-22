@@ -6,7 +6,7 @@
 ;;
 ;;   1. EVIDENCE WINDOW   `satan-memory-evidence-assemble' output
 ;;                        (current panopticon window, focus / browser
-;;                        segment counts, active bough nodes, git + cwd)
+;;                        segment counts, git + cwd)
 ;;   2. ATTRIBUTES        live attribute bars from `satan_attributes'
 ;;   3. RECENT TRACES     `satan-memory-store-recent' last N rows
 ;;   4. LAST RUN          summary of the newest run under
@@ -15,7 +15,7 @@
 ;;   5. RECENT EVENTS     tail of run transcripts under `satan-runs-dir'
 ;;
 ;; Section renderers are pure (state plist in, string out) so they are
-;; tested without DB / panopticon / bough access.  Gatherers wrap the
+;; tested without DB / panopticon access.  Gatherers wrap the
 ;; impure reads and swallow errors so a degraded section never breaks
 ;; the buffer.
 
@@ -151,22 +151,6 @@ outside an active SATAN run.  Default is 30 minutes."
 (defun satan-tank--header (now-iso)
   (format "═══ SATAN OBSERVATION TANK · %s ═══\n\n" now-iso))
 
-(defun satan-tank--render-bough-active (nodes max)
-  (cond
-   ((null nodes) "")
-   (t
-    (let* ((shown (cl-subseq nodes 0 (min max (length nodes))))
-           (rest (max 0 (- (length nodes) max))))
-      (concat
-       (mapconcat
-        (lambda (n)
-          (format "  · %-6s %s  (%s)\n"
-                  (or (plist-get n :status) "?")
-                  (satan-tank--truncate (or (plist-get n :title) "") 60)
-                  (or (plist-get n :nanoid) "?")))
-        shown "")
-       (if (> rest 0) (format "  · …%d more\n" rest) ""))))))
-
 (defun satan-tank--render-evidence (state)
   "Render the EVIDENCE WINDOW section for STATE plist."
   (concat
@@ -179,7 +163,6 @@ outside an active SATAN run.  Default is 30 minutes."
             (cw (plist-get state :current_window))
             (focus (plist-get state :focus_segments))
             (browser (plist-get state :browser_segments))
-            (active (plist-get state :bough_active))
             (gc (plist-get state :git_commits))
             (fs (plist-get state :fs_state))
             (truncated (plist-get state :truncated_at))
@@ -195,8 +178,6 @@ outside an active SATAN run.  Default is 30 minutes."
           "current:       (no panopticon)\n")
         (format "focus:         %d segments\n" (length focus))
         (format "browser:       %d segments\n" (length browser))
-        (format "bough_active:  %d nodes\n" (length active))
-        (satan-tank--render-bough-active active 4)
         (format "git:           %d commit(s) since %s%s\n"
                 (length gc)
                 (or (plist-get state :git_window_start_at) "?")
@@ -368,7 +349,7 @@ nil means no completed runs are available yet."
   (format-time-string "%Y-%m-%dT%H:%M:%S%:z" time))
 
 (defun satan-tank--gather-evidence ()
-  "Assemble the evidence window from current panopticon / bough / git state.
+  "Assemble the evidence window from current panopticon / git state.
 Returns the state plist on success; nil if any read errors."
   (condition-case _err
       (let* ((now (satan-tank--time-iso))
