@@ -1,0 +1,42 @@
+memory_uid = "mem_019f8903980c72338080ac0bf8decc33"
+memory_key = "mem.fact.doctrine.policy-status-vocabulary"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Doctrine policy status vocabulary: 'active' is not one, and boot silently omits it"
+summary = "Policy statuses are draft|required|superseded|deprecated|retired; a legacy 'active' passes validate but drops the policy from the boot snapshot"
+created = "2026-07-22"
+updated = "2026-07-22"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = []
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "def73c713dd57cfab708f2f484bcca08fa0aadb5"
+ref_name = "refs/heads/main"
+checkout_state_id = "f2db32fc140f3b1810e1143330ab7e7d41ffd726ca795e6f26299d784d76bf30"
+base_commit = "4d488f8873fc18c4f1c3ed0c3138c5da6b860d69"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
