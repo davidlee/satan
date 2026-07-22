@@ -11,6 +11,24 @@ metadata:
 
 # SATAN — Memory Substrate (Design)
 
+> **Partially superseded 2026-07-22 by SL-002 — read the boundary before the
+> detail.** SATAN's bough *integration* was removed: no `bough_read` tool, no
+> `bough_recent` / `bough_active` / `bough_day` evidence fields, no `:bough`
+> sensor status, no `bough.*` canon rules, no bough truncation passes, no
+> `focal_bough_nanoid` hint. Every §4/§5 statement about reading bough is now
+> **history**.
+>
+> The **grammar is not**. §3's `bough_kind` / `bough_status` / `bough_event` /
+> `bough_node` / `bough_project` namespaces, their closed values and their
+> weights are all still live and still correct: the vocabulary was preserved
+> deliberately (SL-002 D4) so handles written before the removal stay
+> grammatical, readable and copy-forwardable. Retiring it is SL-002's OQ-3
+> follow-up — a grammar-v2 plus a data migration, not a deletion.
+>
+> Sections marked **[removed SL-002]** describe machinery that no longer
+> exists. The standing gate is
+> `satan/test/satan-bough-removal-gate-test.el`.
+
 Status: design draft, pre-implementation.
 Prerequisites:
 
@@ -57,10 +75,10 @@ they leave open.
    `david`, socket `/run/postgresql`. Schema follows the addendum's
    relational shape. No FDW into bough in v1.
 
-5. **Bough is read-only, via the `bough` CLI.** No parallel read
-   logic. No direct connection to `bough_production` or `bough_agent`
-   from satan code. Bough is a primary integration surface; traces
-   address bough nodes by nanoid.
+5. ~~**Bough is read-only, via the `bough` CLI.**~~ **[removed SL-002]**
+   Nothing in SATAN reads bough. Historical traces still address bough
+   nodes by nanoid and remain queryable; the vocabulary stays until
+   OQ-3.
 
 6. **Grammar evolves at boundary.** Per brief §14. Every trace stores
    the `grammar_version` that was current at write time; aliases and
@@ -250,9 +268,6 @@ the broker (§4):
 current_window      panopticon current/sway.json
 focus_segments[]    panopticon segments/focus-<day>.jsonl tail
 browser_segments[]  panopticon segments/browser-<day>.jsonl tail
-bough_recent[]      bough_read recent_changes since window_start
-bough_active[]      bough_read active
-bough_day           bough_read day
 git_state           HEAD short ref, dirty/clean, last 5 commits (cwd-derived)
 fs_state            cwd, recently-edited files (cheap heuristic)
 window_start_at
@@ -335,8 +350,6 @@ Initial rules (illustrative, not exhaustive):
 | `panopticon.event_transition`    | `event_transition:<event>-><surface>` (inert in v1)          |
 | `panopticon.domain_transition`   | `domain_transition:<from>-><to>` from browser_segments      |
 | `panopticon.docs_visit`          | `domain_kind:docs` if any browser segment matches allowlist |
-| `bough.recent_status_change`     | `bough_event:status_changed`, `artifact:bough_status_change`|
-| `bough.active_focus`             | `bough_node:<nanoid>`, `bough_project:<nanoid>`             |
 | `cwd.project`                    | `project:<slug>` from cwd / git remote                      |
 | `cwd.file_kind`                  | `file_kind:<value>`                                         |
 | `ctx.mode`                       | `mode:<mode_name>`                                          |
@@ -390,7 +403,6 @@ The window is the bounded snapshot that backs one `memory_mark`.
 end_at      = ctx.time_now
 start_at    = max(end_at - 10 minutes, mode_run.started_at)
 seg_limit   = 10 segments per source (focus, browser)
-bough_limit = 50 recent changes (deduped by nanoid)
 ```
 
 If the mode-run is shorter than 10 minutes, the window does not extend
@@ -404,13 +416,10 @@ previous session's evidence.
 | panopticon current    | `~/.local/state/behaviour/current/sway.json`                         |
 | panopticon focus      | `~/.local/state/behaviour/segments/focus-<day>.jsonl` (tail)         |
 | panopticon browser    | `~/.local/state/behaviour/segments/browser-<day>.jsonl` (tail)       |
-| bough recent_changes  | `bough --json … recent_changes --since <start_at>` (or composed)     |
-| bough active          | `bough --json task list --status active`                             |
-| bough day             | `bough --json day get`                                               |
 | git state             | `git -C <cwd> log -n 5 --oneline` + `git status --porcelain` (capped)|
 | cwd                   | `default-directory` of active Emacs buffer, or `pwd` if from tty     |
 
-The exact bough invocations track the bough-cli surface; see §10.2.
+*(The bough source rows above were removed by SL-002.)*
 
 ### 4.3 Snapshot semantics
 
@@ -440,16 +449,12 @@ current_window
 first 3 + last 3 of focus_segments (middle dropped)
 first 3 + last 3 of browser_segments (middle dropped)
 git status summary (short)
-bough_active (limit 10, newest first)
-bough_recent (limit 10, newest first)
-bough_day (linked items only; bodies excluded)
 ```
 
 Truncated first when budget is exceeded:
 
 ```text
 long browser session bodies / titles (older middle dropped before first/last)
-large bough annotation bodies (replaced with "…" placeholder + `len_original`)
 full git log text beyond short refs
 fs_state file lists beyond limit
 ```
@@ -531,41 +536,16 @@ For audit and LLM follow-up after a resonance hit. `metadata_json`
 included but large blobs truncated with a recorded note. Also
 read-only in v1.
 
-### 5.4 `bough_read`
+### 5.4 `bough_read` — **[removed SL-002, 2026-07-22]**
 
-Companion read tool. Shell-out wrapper around the `bough` CLI; same
-output shape per scope. This tool is the **only** path SATAN uses to
-read bough — both LLM-facing calls and the canonicalizer's internal
-queries go through it. No direct PG access to `bough_*` databases
-from satan code.
+The companion read tool. A shell-out wrapper around the `bough` CLI, and the
+only path SATAN used to read bough — both LLM-facing calls and the
+canonicalizer's internal queries went through it. Six scopes: `node`,
+`recent_changes`, `active`, `day`, `week`, `project_subtree`.
 
-```text
-risk:        read
-capability:  none
-modes:       morning | motd | tick-pulse | self-edit-mech | self-edit-mind
-args:
-  scope    enum, required
-  …        scope-specific args (nanoid, since, limit, workspace)
-returns:
-  ok { scope, … payload from `bough --json …` }
-```
-
-Scopes (v1, nominal):
-
-```text
-node              by nanoid; full node + annotations + parent chain
-recent_changes    transitions in a time window
-active            current active tasks (optional workspace)
-day               today's day_entry + linked items
-week              current week
-project_subtree   by project nanoid, depth-limited
-```
-
-Implementation: subprocess `bough --json --workspace <ws> <scope> …`,
-parse JSON, return as plist. Standard timeouts and size caps.
-
-(Write surfaces — `bough_propose_*` — are out of scope for the memory
-design. When added, stage as proposals per [[satan-governance]].)
+Deleted with the rest of the integration. The specification it carried is in
+git history (see SL-002's notes for the pre-removal SHA) and in SL-001
+`design.md` §2, the verified seam ledger.
 
 ## 6. Persistence
 
@@ -589,7 +569,7 @@ works as user `david`. Rationale:
   is a one-line invocation, atomically applied per file.
 - No new emacs package or `home-manager switch` required.
 - Matches surrounding shell-out pattern (`satan-tools-sway.el`,
-  `satan-tools-bough.el`).
+  `satan-tools-vcs.el`).
 - Runtime throughput is human-paced (mark/resonate), so per-call
   subprocess latency (~20 ms) is invisible.
 - Multi-step transactions live in SQL as PL/pgSQL functions
@@ -931,8 +911,8 @@ A v1 implementation is acceptable when:
    No state mutation occurs.
 5. `memory_show_trace` round-trips a trace including provenance.
    No state mutation occurs.
-6. `bough_read` returns plausible output for each scope on a populated
-   `bough_production`.
+6. ~~`bough_read` returns plausible output for each scope on a populated
+   `bough_production`.~~ **[void SL-002]**
 7. Re-running `memory_mark` with the same fixture inputs produces the
    same handles.
 8. A grammar bump + `satan-memory-renormalize` flips old
@@ -941,9 +921,12 @@ A v1 implementation is acceptable when:
 9. The migration runner applies numbered SQL forward-only; refuses to
    skip versions; refuses to apply when a recorded checksum no longer
    matches the file.
-10. No code path in `satan-memory-*` reads any bough database
+10. ~~No code path in `satan-memory-*` reads any bough database
     directly — only via the `bough_read` tool surface (grep lint
-    enforced).
+    enforced).~~ **[superseded SL-002]** — no code path reads bough at
+    all. The §9.10 isolation lint is replaced by a strictly stronger
+    zero-token gate over every production file
+    (`satan/test/satan-bough-removal-gate-test.el`).
 11. Two traces matching only on `bough_node:<nanoid>` rank strictly
     below any trace matching on a non-zero-weight handle. (Zero-weight
     handles preserve audit/show value without dominating score.)
@@ -953,7 +936,7 @@ A v1 implementation is acceptable when:
     `grammar_version`. Enforced app-side; verified by integration
     test.
 13. **Canonicalizer purity:** the canonicalizer module does not
-    reference `bough`, `shell-command`, `call-process`,
+    reference `shell-command`, `call-process`,
     `insert-file-contents`, `url-retrieve`, `current-time`, or any IO/
     network primitive. Enforced by grep-lint test (§3.5).
 14. **Origin admission:** the `traces.trace_origin` column accepts
@@ -967,7 +950,10 @@ A v1 implementation is acceptable when:
 normalization. Empty array equivalent to omission. Slug regex
 `^[a-z0-9][a-z0-9_-]*$`.
 
-### 10.2 Bough CLI scopes
+### 10.2 Bough CLI scopes — **[removed SL-002, 2026-07-22]**
+
+Research appendix, retained as history: this is the surface the removed
+integration was built against. Nothing below is live.
 
 Discovered against `bough 0.1.0` (binary `/home/david/.cargo/bin/bough`)
 on 2026-05-19. Pin this binary path in `satan-tools-bough.el`

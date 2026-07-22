@@ -1,5 +1,7 @@
 ## Design note: global attributes, pattern-local scars
 
+> **Note (SL-002, 2026-07-22):** the bough integration has been removed from SATAN — no `bough_read` tool, no bough evidence/sensor/canon/observer surfaces. Bough references below are historical. The `bough_*` grammar vocabulary is deliberately preserved (OQ-3 retires it).
+
 Do **not** make SATAN attributes pattern-specific.
 
 Attributes are a closed, organism-level control surface:

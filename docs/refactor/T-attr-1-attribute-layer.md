@@ -11,6 +11,8 @@ metadata:
 
 # Theme T-attr-1 — Attribute layer (state + event log + Shame dispatcher)
 
+> **Note (SL-002, 2026-07-22):** the bough integration has been removed from SATAN — no `bough_read` tool, no bough evidence/sensor/canon/observer surfaces. Bough references below are historical. The `bough_*` grammar vocabulary is deliberately preserved (OQ-3 retires it).
+
 **Impact:** High. **Effort:** L (design + implementation). **Risk:** M. **Reversibility:** Soft (`satan-attribute-updates-enabled` disable switch + projection-rebuild from event log).
 
 `T-attr-1a` (design) blocks the rest. `T-attr-1b` (state + event log) blocks `T-attr-1c` (Shame dispatcher). `T-attr-1d` (capsule render) and `T-attr-1e` (percept/sensor inputs) follow.

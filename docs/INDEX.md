@@ -41,7 +41,7 @@ metadata:
 
 ## Tracking
 - [resonance-payload-handover](resonance-payload-handover.md) — shipped 2026-05-30: inline the recalled trace's payload text in the resonance block
-- [bough-gaps](bough-gaps.md) — bough CLI gaps surfaced by SATAN
+- [bough-gaps](bough-gaps.md) — **superseded** (SL-002 removed the bough integration); kept as the record of what it found
 - [follow-ups](follow-ups.md) — durable cleanup / audit items deferred during perceptual-layer v0
 - [refactor/plan](refactor/plan.md) — refactor themes index (T1, T1.5, T2–T4, T6–T8, T-attr-1)
 - [refactor/extraction-policy](refactor/extraction-policy.md) — guiding policy + standing candidates for moving modules out of `.emacs.d/`

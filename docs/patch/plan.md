@@ -361,7 +361,7 @@ Defaults (brief §10.2/10.3):
 ```
 self-edit-mech:
   allowed_paths:  ["~/.emacs.d/satan/", "~/.emacs.d/test/", "~/notes/satan/tools/"]
-  checks:        ert + emacs --batch byte-compile + bough-isolation lint
+  checks:        ert + emacs --batch byte-compile
 
 self-edit-mind:
   allowed_paths:  ["~/notes/satan/", "~/.emacs.d/satan/prompts/"]

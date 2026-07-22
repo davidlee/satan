@@ -11,6 +11,8 @@ metadata:
 
 # AT-SATAN: `@satan` agent-trigger tooling
 
+> **Note (SL-002, 2026-07-22):** the bough integration has been removed from SATAN — no `bough_read` tool, no bough evidence/sensor/canon/observer surfaces. Bough references below are historical. The `bough_*` grammar vocabulary is deliberately preserved (OQ-3 retires it).
+
 ## Overview
 
 SATAN needs a way to discover `@satan` directives placed in the user's

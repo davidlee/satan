@@ -1,15 +1,15 @@
 schema = "doctrine.backlog"
 version = 1
 
-id = 1
-slug = "evidence-hard-cap-not-enforced"
-title = "Evidence truncation cap is never enforced: the pass chain has no final reducer"
-kind = "issue"
+id = 16
+slug = "complete-bough-retirement-grammar-v2-plus-residual-data-migration"
+title = "Complete bough retirement: grammar-v2 plus residual-data migration"
+kind = "improvement"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place
-created = "2026-07-17"
-updated = "2026-07-17"
-tags = []
+created = "2026-07-22"
+updated = "2026-07-22"
+tags = ["extraction", "grammar", "memory", "satan"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
@@ -20,10 +20,6 @@ tags = []
 needs    = []                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
-
-[[relation]]
-label = "related"
-target = "SL-001"
 
 [[relation]]
 label = "related"

@@ -49,7 +49,6 @@ The substrate is past minimum-viable.
 | Component | Status | Location |
 |---|---|---|
 | Panopticon (sway + firefox capture, segmentizer) | shipped | `~/dev/panopticon`, state in `~/.local/state/behaviour/` |
-| Bough CLI read surface | shipped | `satan-tools-bough.el` |
 | Evidence assembler (10-min window, deterministic truncation) | shipped | `satan-memory-evidence.el` |
 | Canonicalizer (pure, ~14 rules, grammar v1, closed-world enums) | shipped | `satan-memory-canon.el` |
 | `satan_memory` PostgreSQL store (traces, handles, links, grammar_version) | shipped | `satan-memory-store.el` + `memory/migrations/` |
@@ -121,7 +120,7 @@ consume.
 
 > **Signal model unchanged here.** DE-010 lands the structural cut
 > only. Perception still reads present-tense live state
-> (`current_window`, `git_state`, `fs_state`, bough) — it is **not yet
+> (`current_window`, `git_state`, `fs_state`) — it is **not yet
 > replayable** from a watermark; that promotion is [[IMPR-013]].
 
 Sequence (perceive/consume, as built):
@@ -150,7 +149,7 @@ broker-run
 
 The canonicalizer already emits the right shapes
 (`surface:browser`, `surface_transition:terminal->browser`,
-`domain_kind:docs`, `artifact:bough_status_change`, …). v0 reuses it
+`domain_kind:docs`, `artifact:produced_artifact`, …). v0 reuses it
 verbatim — no LLM in the path.
 
 Capsule rendering shows only handles the canon actually emits. There
@@ -194,8 +193,7 @@ The gate admits anything in:
 panopticon-observed            app:*, surface:*,
                                surface_transition:*, domain_kind:*,
                                domain_transition:*
-bough events / state           bough_event:*, bough_node:*,
-                               bough_project:*, artifact:*
+artifact signals               artifact:*
 hint-side LLM-supplied         topic:*, phase:*, focal_app:*
 ```
 
@@ -361,8 +359,7 @@ window has actually passed (A11).
 the next-tick's 10-min evidence window. It opens its own bounded
 window per intervention: `[intervention_emitted_at,
 intervention_emitted_at + 30 min]`, reading panopticon focus segments,
-browser segments, git refs, and `bough_recent` directly from their
-on-disk surfaces. Quiet-hours gaps and skipped ticks do not lose
+browser segments and git refs directly from their on-disk surfaces. Quiet-hours gaps and skipped ticks do not lose
 evidence — the observer reads history, not live state.
 
 **Intervention-time baseline + after-state diff.** The current evidence
@@ -414,8 +411,6 @@ positive = within the observer's per-intervention 30-min window
                 in the motive's project cwd
              3. an mtime delta exists on a file under the motive's
                 project cwd, not present in baseline.recent_files
-             4. a bough_event appears in after.bough_recent referencing
-                the motive's bough_node/bough_project
 ```
 
 Edits on paths unrelated to the motive's project cwd do **not** count
@@ -434,7 +429,6 @@ Thresholds (start values; tune from observed cadence):
 | `segments/focus-<day>.jsonl` (latest entry) | 30 min | drop tail |
 | `segments/browser-<day>.jsonl` (latest entry) | 30 min | drop tail |
 | `segments/git-<day>.jsonl` (commit feed) | none — bursty | never stale; in-window slice only |
-| `bough` call | 5 s timeout | mark unreachable; rules emit nothing |
 | `satan_memory` (psql) | error | log + notify; resonance disabled this run |
 
 **Git is the odd sensor out.** focus/browser/current are *continuous*
@@ -454,14 +448,14 @@ drill into any repo's full history on demand via the `vcs_log` tool.
 Sensor status returned alongside evidence:
 
 ```text
-:sensor_status (:current_window ok :focus ok :browser ok :bough ok :git ok)
-:sensor_status (:current_window stale-28m :focus ok :browser ok :bough unreachable :git ok)
+:sensor_status (:current_window ok :focus ok :browser ok :git ok)
+:sensor_status (:current_window stale-28m :focus ok :browser malformed :git ok)
 ```
 
 Rendered into the capsule as one line:
 
 ```text
-sensors: current=STALE(28m) focus=4m browser=4m bough=unreachable git=ok
+sensors: current=STALE(28m) focus=4m browser=MALFORMED git=ok
 ```
 
 **Loud failure on shouldn't-be-missing.** When a sensor degrades in a
@@ -473,7 +467,6 @@ normal capability check + audit pipeline. Causes that trigger:
 - `current/sway.json` stale > 5 min during non-quiet hours (panopticon
   daemon likely dead)
 - segmentizer hasn't run for ≥ 36 h
-- bough unreachable on ≥ 3 consecutive ticks
 - malformed JSON in any sensor file
 - psql connection error to `satan_memory`
 
@@ -828,7 +821,7 @@ A5. Gate exclusion is comprehensive. Cues containing **only** any
     derived via `cwd.file_kind`) do **not** trigger resonance.
     The gate passes only when at least one handle is sensor-observed
     via panopticon (`app`, `surface`, `surface_transition`, `domain_kind`,
-    `domain_transition`), bough event/state, `artifact:*`, or a
+    `domain_transition`), `artifact:*`, or a
     hint-supplied `topic`/`phase`/`focal_app`.
 A6. The percept block lists only handles the canonicalizer actually
     emitted. There is no rendering of absence (no `artifact: none`,

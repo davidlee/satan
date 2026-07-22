@@ -94,7 +94,6 @@ mark @satan directives done by itself
 write to SATAN inbox directly
 write SATAN memory directly
 call arbitrary SATAN tools
-perform bough writes
 send notifications
 edit outside allowed paths
 push to remotes by default
@@ -136,7 +135,6 @@ Examples:
 read agenda
 append inbox item
 mark behavioural memory
-read bough active tasks
 summarize context
 mark @satan directive done
 write today's owned SATAN block
@@ -258,7 +256,6 @@ Patch-agent does not receive:
 SATAN inbox write access
 SATAN memory write access
 SATAN notification access
-bough write access
 live @satan claim mutation
 global filesystem write access
 ```
@@ -427,7 +424,6 @@ returns:
 {
   "note_context": "...",
   "memory_matches": [...],
-  "bough_nodes": [...],
   "proposal_id": "...",
   "mode_run_id": "..."
 }
@@ -721,7 +717,7 @@ The harness must not:
 ```text
 write outside worktree
 access SATAN private DBs directly
-call SATAN memory/inbox/bough tools
+call SATAN memory/inbox tools
 push to remotes
 change branch outside assigned worktree
 mark directives done
@@ -793,7 +789,7 @@ Checks:
 ```text
 ert tests where available
 emacs batch load/byte-compile
-grep lint for forbidden bough DB access
+grep lint for forbidden private-DB access
 ```
 
 ## 10.3 `self-edit-mind`
@@ -1263,7 +1259,7 @@ A v1 patch-agent extension is acceptable when:
 7. SATAN reports branch, commits, diffstat, checks, and review commands.
 8. The user can accept via git cherry-pick or merge.
 9. Tick-agent remains unable to perform arbitrary live edits.
-10. Patch-agent cannot call SATAN memory/inbox/bough/write tools directly.
+10. Patch-agent cannot call SATAN memory/inbox/write tools directly.
 11. SATAN transcript, patch job DB, and git history together explain what happened.
 ```
 
@@ -1282,7 +1278,6 @@ complex dependency graph between jobs
 semantic branch acceptance detection
 full issue tracker
 patch-agent memory writes
-patch-agent bough writes
 free-form live note editing from tick-agent
 ```
 

@@ -11,11 +11,26 @@ metadata:
 
 # SATAN — Memory Substrate Handover
 
+> **Partially superseded 2026-07-22 by SL-002.** Every bough statement below is
+> **historical**. SATAN's bough integration was removed entirely — no
+> `bough_read` tool, no bough evidence fields, no sensor signal, no canon rules,
+> no observer predicate. The `bough_*` grammar vocabulary is deliberately
+> preserved (SL-002 D4), so historical bough-attributed traces stay readable and
+> copy-forwardable; retiring it is SL-002's OQ-3 follow-up.
+>
+> This document is a **delivery record** for memory substrate v1, so the
+> completion log, commit list and dated tables below are left intact rather than
+> line-edited — rewriting them would falsify the history they exist to carry.
+> The standing-truth claims in §Invariants and the summary are corrected in
+> place. When in doubt, the code is authoritative and the gate is
+> `satan/test/satan-bough-removal-gate-test.el`.
+
 SATAN's canonical-handle memory substrate v1 is **complete**. Twelve
 implementation steps landed between 2026-05-19 and 2026-05-20; the
 broker dispatches `memory_mark` / `memory_resonate` / `memory_show_trace`
-from morning, motd, tick-pulse, self-edit-{mech,mind}; `bough_read` is
-the only path into bough; `hippocampus_write` emits an `auto_rule`
+from morning, motd, tick-pulse, self-edit-{mech,mind}; `bough_read` was
+the only path into bough (the tool, and the integration behind it, were
+removed by SL-002 on 2026-07-22); `hippocampus_write` emits an `auto_rule`
 cross-ref trace per write; grammar v2 fixture + renormalize CLI land
 end-to-end. There is no "next step" in the original v1 plan. The
 deferred quality sweep is **done** (§1 `b27236ff`, §2 `fb4bbe8a`,
@@ -80,10 +95,13 @@ if the user wants to start a v2.
    land there alongside org files.
 4. Storage: PostgreSQL, `satan_memory` (prod) + `satan_memory_test`
    (ert). Socket auth, no FDW.
-5. Bough is read-only via `bough --json` exclusively. Enforced by
-   `satan-memory/bough-isolation` lint (acceptance §9.10) — refuses
-   `bough_production`, `bough_agent`, `satan-bough-program`,
-   `satan-bough--invoke` in any `satan-memory-*.el`.
+5. ~~Bough is read-only via `bough --json` exclusively, enforced by the
+   `satan-memory/bough-isolation` lint (acceptance §9.10).~~ **Void since
+   SL-002 (2026-07-22):** nothing in SATAN reads bough at all. The §9.10
+   lint is replaced by a strictly stronger zero-token gate over every
+   production file (`satan/test/satan-bough-removal-gate-test.el`), whose
+   allowlist is exactly the preserved grammar artifacts plus
+   `satan-motive--admitted-namespaces`.
 6. Grammar evolves at boundary. Every trace carries `grammar_version`;
    replays from `metadata_json` + per-handle `source`. v2 fixture
    shipped (`0004_grammar_v2_fixture.sql`); renormalize CLI lands

@@ -74,7 +74,7 @@ protocol and its ledger of owners (ADR-017).
 | 2E — mind/mechanism split | ✅ | landed 2026-05-19, prompts + tool descs in `~/notes/satan/` |
 | Wired into Sleipnir (`satan.nix`) | ✅ | timers `satan-morning` 09:00, `satan-motd` 07:00, `satan-tick` `OnUnitActiveSec=30min` |
 | 3A — protocol reification | ✅ | landed 2026-05-19; `protocol.md` + fixtures + validators on both sides |
-| Memory substrate v1 (12 steps) | ✅ | landed 2026-05-19→20; see [[satan-memory-handover]]. DR-116 follow-up (bough B1) landed 2026-05-21 |
+| Memory substrate v1 (12 steps) | ✅ | landed 2026-05-19→20; see [[satan-memory-handover]]. DR-116 follow-up landed 2026-05-21; bough integration removed by SL-002 2026-07-22 |
 | `docs_*` lazy lookup over chunked docs | ✅ | landed 2026-05-21 (`9bacace5`); SATAN now reads its own docs by chunk |
 | `@satan` directive trigger (notes_at_satan_*) | ✅ | implementation landed; `tick-agent` mode active; design + plan in `docs/satan/at-satan/` |
 | Patch agent Phase 3 (mechanism + content) | ✅ | landed pre-2026-05-21; mechanism per `patch/archive/handover-phase3-mechanism.md`; content + 5 open issues per `patch/handover.md`; runner pivot to standalone Go daemon (`~/dev/satan-patcher/`) noted but not decided |
@@ -157,9 +157,11 @@ chooses to do, it belongs in `~/notes/satan`.
 - **Canonical personal substrate**: org/denote notes. SATAN may read
   broadly through selected context assemblers, but writes only to
   explicit owned regions or staged artifacts.
-- **Derived operational layer**: `bough` may cache, index, relate,
-  enrich, or project org/denote state. Treat as reconstructable unless
-  explicitly promoted. Operationally useful, not canonical.
+- **Derived operational layer**: a graph/cache/index over org/denote state
+  may cache, relate, enrich, or project it. Treat as reconstructable unless
+  explicitly promoted. Operationally useful, not canonical. (`bough` filled
+  this role until SL-002 removed the integration, 2026-07-22; the *principle*
+  outlives it and governs whatever fills the slot next.)
 - **SATAN-owned state**: lives under `~/notes/satan` — hippocampus,
   proposals, run summaries, prompt material, owned output surfaces.
 
@@ -186,8 +188,8 @@ only when:
 Higher-risk actions stage. Examples requiring proposal or explicit
 review: self-editing ROM/prompt/tool behaviour; expanding write scope;
 changing capability policy; destructive edits; outbound communications
-beyond local notification; code changes; bough structural mutation;
-calendar/email/chat actions; loading generated elisp.
+beyond local notification; code changes; structural mutation of a derived
+operational layer; calendar/email/chat actions; loading generated elisp.
 
 Central pattern:
 
@@ -254,7 +256,7 @@ capabilities; an action is allowed only if the mode, tool, risk
 policy, and validator all agree. Avoid vague categories like "trusted
 model" or "safe prompt." Use explicit capabilities: read context,
 write owned daily block, write MOTD, stage proposal, write hippocampus
-entry, send local notification, query bough, propose self-edit. The
+entry, send local notification, propose self-edit. The
 model is never the authority on whether an action is safe.
 
 ## Hippocampus governance
@@ -341,7 +343,7 @@ justification):
 - self-edit scope expanding before review UX matures
 - hippocampus accumulating without curation / forgetting
 - noisy notifications with low utility
-- bough becoming canonical by accident
+- a derived operational layer becoming canonical by accident
 - audit artifacts missing or incomplete
 - model-declared risk accepted as authoritative
 - convenience bypasses around capability checks
@@ -362,13 +364,12 @@ justification):
 | `satan-tools-inbox.el` | `inbox_append`; `satan-inbox`; `satan-inbox-unread-count`. |
 | `satan-tools-agenda.el` | `agenda_read` (gcalcli → text); timeout-wrapped; calendar id from `$WORK_EMAIL`. |
 | `satan-tools-activity.el` | `activity_read` (panopticon's `~/.local/state/behaviour/` → histogram or focus segments); read-only. |
-| `satan-tools-bough.el` | `bough_read` (shell-out to `bough --json` for `node`, `recent_changes`, `active`, `day`, `week`, `project_subtree`); only path SATAN uses to read bough. |
 | `satan-tools-memory.el` | `memory_mark`, `memory_resonate`, `memory_show_trace` — LLM-facing tools over the memory substrate. |
 | `satan-tools-docs.el` | `docs_list`, `docs_search`, `docs_read` — lazy lookup over the frontmatter-stamped chunks under `docs/satan/` + `docs/emacs/`. |
 | `satan-memory.el` | Substrate aggregator + `satan-memory-{resonate,show,status}` interactive surface. |
 | `satan-memory-grammar.el` | Closed-world enums, alias seed, default weights for grammar v1 (mirrored in `memory/migrations/0002_grammar_v1.sql`). |
 | `satan-memory-canon.el` | Pure canonicalizer + rule registry; emits handles + per-handle source. Purity grep-lint enforced. |
-| `satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + `bough_read` + git/fs) per [[satan-memory-design]] §4; deterministic truncation. Also the §S6 git-activity probe (`--git-commits-status`): reads `segments/git-<day>.jsonl`, bursty-freshness (never stale), adds `:git_commits` + `:git` sensor_status. |
+| `satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + git/fs) per [[satan-memory-design]] §4; deterministic truncation. Also the §S6 git-activity probe (`--git-commits-status`): reads `segments/git-<day>.jsonl`, bursty-freshness (never stale), adds `:git_commits` + `:git` sensor_status. |
 | `satan-memory-store.el` | `mark` / `resonate` / `show` against `satan_memory` via `psql` subprocess. |
 | `satan-memory-migrate.el` | Forward-only migration runner; `satan-memory-renormalize` (§7 grammar-bump replay) + `-status`. |
 | `satan-percept.el` | Perceptual-loop §S1: percept builder, persist (`percept.json`), capsule render. Phase 1. |
@@ -409,8 +410,9 @@ justification):
 | `satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
 | `satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
 | `satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
-| `test/satan-memory-{migrate,grammar,canon,evidence,store,renormalize}-test.el` | Memory substrate ert against `satan_memory_test`; canon also enforces purity + §9.10 bough isolation lint. |
-| `test/satan-tools-{bough,memory,hippocampus,atsatan,docs,motive,patch}-test.el` | Tool-handler ert; hippocampus covers the cross-ref hook. |
+| `test/satan-memory-{migrate,grammar,canon,evidence,store,renormalize}-test.el` | Memory substrate ert against `satan_memory_test`; canon also enforces purity. |
+| `test/satan-tools-{memory,hippocampus,atsatan,docs,motive,patch}-test.el` | Tool-handler ert; hippocampus covers the cross-ref hook. |
+| `test/satan-bough-removal-gate-test.el` | SL-002 standing gates: production is bough-free outside a named allowlist; the preserved grammar vocabulary stays whole; no surface claims an enforced evidence byte cap. |
 | `test/satan-{percept,resonance,motive,observer,sensor-alerts,tank,context}-test.el` | Perceptual-loop module ert (Phases 1–6). |
 | `test/satan-patch-{store,worktree,adapter,runner,listener,classify,inbox}-test.el` | Patch-agent module ert. |
 | `bin/satan-run` | Shell wrapper (`emacsclient --eval`). |
@@ -460,7 +462,6 @@ justification):
     notify_send.md
     hippocampus_write.md
     inbox_append.md
-    bough_read.md
     memory_mark.md
     memory_resonate.md
     memory_show_trace.md
@@ -487,12 +488,12 @@ justification):
 
 | Mode | Tools | Auto-apply | Budget tokens / tool-calls / wall |
 |---|---|---|---|
-| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `owned` | 20000 / 8 / 90s |
-| `motd` | `org_read_context`, `notify_send`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
-| `tick-pulse` | `org_read_context`, `notify_send`, `inbox_append`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `motive_read`, `motive_replace`, `patch_job_create`, `patch_job_status`, `patch_job_cancel` | `owned` (only `inbox_append`; motives written via `motive_replace` model-side, footer via observer broker-side) | 3000 / 4 / 30s |
+| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `owned` | 20000 / 8 / 90s |
+| `motd` | `org_read_context`, `notify_send`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
+| `tick-pulse` | `org_read_context`, `notify_send`, `inbox_append`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `motive_read`, `motive_replace`, `patch_job_create`, `patch_job_status`, `patch_job_cancel` | `owned` (only `inbox_append`; motives written via `motive_replace` model-side, footer via observer broker-side) | 3000 / 4 / 30s |
 | `tick-agent` | as `tick-pulse` plus `notes_at_satan_scan`, `notes_at_satan_done`, `notes_recent` | as `tick-pulse` (claims directives via `notes_at_satan_done`) | 3000 / 4 / 30s |
-| `self-edit-mech` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read`, `patch_job_create` | `none` | 50000 / 20 / 180s |
-| `self-edit-mind` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `bough_read`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `none` | 50000 / 20 / 180s |
+| `self-edit-mech` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read`, `patch_job_create` | `none` | 50000 / 20 / 180s |
+| `self-edit-mind` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `none` | 50000 / 20 / 180s |
 
 Tick-mode pool (`satan-tick-pool`): `tick-pulse` weight 5,
 `tick-agent` weight 3. `satan-tick-register SHORT-NAME` registers
@@ -521,7 +522,6 @@ Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 | `inbox_append` | low | capability `inbox-write` | Append a headline to `~/notes/satan/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
 | `agenda_read` | read | — | Fetch the work calendar via `gcalcli`. Calendar id read from `$WORK_EMAIL`; wrapped in `timeout(1)` so a stalled gcalcli can't freeze the broker. |
 | `activity_read` | read | — | Read panopticon's behaviour state from `~/.local/state/behaviour/`. `scope="today"` returns the daily histogram; `scope="recent_focus"` / `recent_browser` return the last N focus / browser segments; `scope="current"` returns the live focused-window snapshot (`app_id`, `workspace`, `output`, `title`, `pid`). PII redaction is handled by the producer (firefox URLs stripped to origin, incognito dropped). The `current` scope intentionally passes `title` through — see open thread "current-scope title leak". |
-| `bough_read` | read | — | Shell-out wrapper around `bough --json` — only path SATAN uses to read bough.  Scopes: `node`, `recent_changes`, `active`, `day`, `week`, `project_subtree`. |
 | `memory_mark` | low | capability `memory-write` | Persist an `observation` trace into `satan_memory`. The broker canonicalizes evidence deterministically; the LLM supplies typed hints (no raw handles).  Stamped `trace_origin = llm_mark`. |
 | `memory_resonate` | read | — | Inverted-index lookup over `trace_handles`; returns matches scored by `weight * trace.strength`.  No state mutation in v1. |
 | `memory_show_trace` | read | — | Round-trip a trace by id (handles, sources, links). |
@@ -836,17 +836,18 @@ Numbered for cross-referencing in commits / changelog.
     (weights `pulse=5/agent=3`). Design + plan in
     `docs/satan/at-satan/{design,plan}.md`. Future tools sketched
     (`background_enqueue`, `web_fetch`) but not started.
-14. **Outstanding bough gaps** — B1 (per-status-transition history)
-    closed by DR-116 2026-05-21; B2 (`--max-depth N` on
-    `node subtree`) open, worked around by elisp post-pruning. See
-    [[satan-bough-gaps]].
+14. **Bough integration removed** (SL-002, 2026-07-22) — the tool,
+    evidence fields, sensor signal, canon rules and observer predicate
+    are gone; the `bough_*` grammar vocabulary is preserved so historical
+    handles stay readable (retiring it is SL-002's OQ-3 follow-up). The
+    old upstream gap tracking is superseded: see [[satan-bough-gaps]].
 
 ## Preferred shape of future work
 
 Improvements usually fall into one of these categories:
 
 - **Better context** — agenda; backlinks; recently-edited notes;
-  unresolved loops; bough graph queries; project summaries.
+  unresolved loops; project summaries.
 - **Better review** — proposal review UI; hippocampus review UI;
   accept/reject/snooze flows; diff-based self-edit review.
 - **Better portability** — second harness adapter; self-describing

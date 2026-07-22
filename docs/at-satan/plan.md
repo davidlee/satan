@@ -11,6 +11,8 @@ metadata:
 
 # Plan: Rewrite design.md as two-stage deliverable (B → A)
 
+> **Note (SL-002, 2026-07-22):** the bough integration has been removed from SATAN — no `bough_read` tool, no bough evidence/sensor/canon/observer surfaces. Bough references below are historical. The `bough_*` grammar vocabulary is deliberately preserved (OQ-3 retires it).
+
 ## Overview
 
 The existing `design.md` (588 lines) is a thorough design document with

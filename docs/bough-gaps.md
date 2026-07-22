@@ -1,15 +1,23 @@
 ---
 name: satan-bough-gaps
-description: Bough CLI gaps surfaced by SATAN's memory substrate (tracking; B1 closed, B2 open)
+description: Bough CLI gaps surfaced by SATAN's memory substrate — superseded by SL-002 (integration removed)
 metadata:
   type: tracking
   topic: satan
-  status: living
-  updated_at: 03398479
-  verified_at: 03398479
+  status: superseded
+  updated_at: 2026-07-22
+  verified_at: 2026-07-22
 ---
 
 # Bough CLI gaps surfaced by SATAN memory substrate
+
+> **Superseded 2026-07-22 by SL-002** — SATAN's bough integration was removed
+> entirely (no tool, no evidence, no sensor, no canon rules). Nothing in SATAN
+> reads bough any more, so none of the gaps below are gaps *for SATAN*. Kept
+> whole as a record of what the integration found, not line-edited: if bough
+> ever returns, this is the analysis to start from, alongside SL-001
+> `design.md` §2/§10 (the seam ledger) and the pre-removal SHA in SL-002's
+> notes.
 
 One read-side capability remains missing from bough as of 2026-05-21
 (B2 — `--max-depth N` on `node subtree`).  SATAN works around it in

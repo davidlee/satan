@@ -195,6 +195,69 @@ itself documents why that pin exists, so the comment bought nothing and cost the
 no-diff property. `satan-mode-test.el` and `satan-mcp-test.el` are likewise
 byte-identical, as are both preserved grammar artifacts.
 
+## 2026-07-22 — PHASE-06 complete (docs, gates, follow-ups)
+
+Suite 1018/0 unexpected (6 gate tests added). Corpus clean.
+
+### The gates (`satan/test/satan-bough-removal-gate-test.el`)
+
+Six standing invariants, not "did the removal happen" checks. **Negative-tested**
+— a bough token appended to `satan-tank.el` and a "hard cap is mandatory" line
+appended to `satan-percept.el` both turned the suite red, then were reverted. A
+gate that cannot fail is worse than no gate.
+
+Two of them guard the *preserved* side, which is the part that will look like
+oversight to a future reader: the grammar vocabulary stays whole, and the motive
+admitted namespaces keep their bough entries.
+
+`allowlist-entries-all-exist-and-are-used` is deliberately load-bearing in the
+other direction: when IMP-016 lands it goes **red**, telling you the allowlist
+is now too long. The gate file retires with that item.
+
+### Docs
+
+- **Reconciled in place:** `governance.md` (mode tables, tool catalog, tool
+  module table, file map, source-of-truth principle, staged-action list, failure
+  modes, open thread 14, status table), `architecture.md`, `data-collection.md`
+  (§3.4 deleted; §5.4 cap wording), `perceptual-design.md`, `patch/brief.md`,
+  `patch/plan.md`, `INDEX.md`.
+- **Banner + targeted correction:** `memory/design.md` (95 refs) and
+  `memory/handover.md` (41). Both are canon/living but structurally *historical*
+  — a delivery record and a design record. Line-editing every reference would
+  falsify the history they exist to carry, so each got a banner drawing the
+  boundary (grammar = still true, integration = removed) plus edits to the
+  claims that read as standing truth: invariants, tool sections, source tables,
+  acceptance criteria. Removed sections are marked `[removed SL-002]` rather
+  than deleted.
+- **Superseded whole:** `bough-gaps.md` (front-matter flipped to `superseded`),
+  `bough-feature-flag-brief.md`.
+- **Annotated only:** the seven draft/secondary docs.
+- **Untouched, verified:** `attributes/outcome-semantics.md`
+  (`authority: blocking` — its bough cue example stays semantically valid under
+  the preserved vocabulary) and `docs/review/*` (frozen snapshots). Confirmed by
+  diff against the pre-removal SHA.
+
+### Follow-ups
+
+- **ISS-001** body rewritten to the post-removal inventory and retitled — the
+  "documented as mandatory" half is now fixed, the "never enforced" half is not.
+  Explicitly **not closed**. The `hard-cap` parameter survives on `--truncate`
+  as its attachment point.
+- **IMP-016** filed for OQ-3, related to SL-002. It names the pins that assert
+  the behaviour it will change, as its own checklist.
+- **ISS-007** filed during PHASE-01 setup (grammar db-sync tests never run).
+
+### For the close
+
+- **Manual, outside this repo:** delete the `bough_read.md` tool description
+  under `satan-tools-descriptions-dir` (`~/notes/satan/tools/`). Nothing in the
+  repo can verify this; nothing in the repo depends on it either — the tool is
+  unregistered, so no manifest build asks for the file.
+- **Resurrection point:** `74f82e057c823da344eb7f95e6a7ef5e5c337fc8` plus the
+  SL-001 §2/§10 seam ledger.
+- **Historical bough data stays readable and copy-forwardable.** That is the
+  design's decision (D4/D1), not an oversight — VH-7 is the keeper accepting it.
+
 ### Census at plan time (2026-07-22)
 
 Live bough token counts, for divergence detection at audit — 67 files. Largest:

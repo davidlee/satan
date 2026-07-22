@@ -1,9 +1,11 @@
 # Bough feature flag — brief
 
 Status: **superseded** — bough dormant since ~2026-05, so SL-001 (the flag
-slice this brief seeded) was abandoned in favour of SL-002 (remove the
-integration). Retained for the verified seam analysis below; the fuller map
-is SL-001 `design.md` §2/§10.
+slice this brief seeded) was abandoned in favour of SL-002, which **removed the
+integration outright on 2026-07-22**. Retained for the verified seam analysis
+below; the fuller map is SL-001 `design.md` §2/§10, and the resurrection point
+is the pre-removal SHA recorded in SL-002's notes. Nothing below describes
+current behaviour.
 
 ## Intent
 

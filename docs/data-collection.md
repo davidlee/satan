@@ -164,22 +164,6 @@ halts data production.
 **Risk:** read. Available to: morning, motd.
 **Control:** User edits the calendar and manages gcalcli OAuth.
 
-### 3.4 `bough_read`
-
-| Scope | Source | What comes through |
-|-------|--------|--------------------|
-| `node` | `bough --json node get <nanoid>` + `annotations` + `parent` walk | Full node + annotations + parent chain |
-| `recent_changes` | `bough --json node status-transitions --since` + `node created --since` | Status transitions + newly-created nodes (DR-116) |
-| `active` | `bough --json node tree --kind task --status doing,todo,blocked` | Active task tree (elisp-flattened) |
-| `day` | `bough --json day show -d <date>` | Day entry + linked items |
-| `week` | `bough --json day list Mon Sun` → per-day `day show` | Week data (composed) |
-| `project_subtree` | `bough --json node subtree <nanoid>` (elisp-pruned to depth 3) | Project tree, truncated |
-
-**Risk:** read. Available to: all modes.
-**Producer:** bough (Rust CLI at `~/.cargo/bin/bough`).
-**Control:** User manages tasks in bough. This is SATAN's **only** path
-into bough data — no direct PG access.
-
 ### 3.5 `notes_recent`
 
 **Source:** `fd --changed-after N hours` over `~/notes/`, excludes `satan/`.
@@ -267,7 +251,7 @@ This is SATAN's primary mechanism for **influencing its own future
 context**. The model writes a trace; future runs reply on handle
 collision. The canonicalizer is deterministic (broker-side), so the
 model can only influence *what* to mark via typed hints (phase, topic,
-valence, focal_app, focal_bough_nanoid, outcome_for, kind) — not the
+valence, focal_app, outcome_for, kind) — not the
 actual handles or evidence.
 
 ### 4.3 `inbox_append` (local inbox)
@@ -474,15 +458,14 @@ Every `memory_mark` captures an evidence snapshot:
 - Current window (sway focus)
 - Focus segments (last 10, window-bounded)
 - Browser segments (last 10, window-bounded)
-- Bough recent changes (last 50)
-- Bough active tasks
-- Bough day entry
 - Git state (HEAD short, remote, dirty flag, last 5 commits)
 - FS state (cwd, recently-edited files via `recentf`)
 
-Truncated deterministically from ~16 KB target to 64 KB hard cap. The
-evidence is stored in `metadata_json` so future grammar bumps can
-replay the canonicalizer.
+Truncated deterministically toward a ~16 KB target by an exhaustible set
+of passes. The 64 KB figure is a **last-resort target, not an enforced
+ceiling** — the passes run, and stop, whether or not the result fits; a
+behavioural final reducer is tracked as ISS-001. The evidence is stored in
+`metadata_json` so future grammar bumps can replay the canonicalizer.
 
 ---
 
@@ -546,7 +529,6 @@ tools but currently sit as raw files:
 | Behaviour histograms | `~/.local/state/behaviour/histograms/daily-<date>.json` | panopticon | Via `activity_read` |
 | Current sway window | `~/.local/state/behaviour/current/sway.json` | panopticon | Via `activity_read` |
 | **Typing speed** | `~/notes/satan/log/wpm/<date>.tsv` | Unknown | **None** |
-| Bough DB | PostgreSQL `bough_production` | bough daemon | Via `bough --json` CLI (no direct PG access) |
 | Memory substrate | PostgreSQL `satan_memory` | SATAN itself | Via `psql` subprocess |
 
 ---
@@ -628,7 +610,7 @@ run N+k: observer at start of next spawn scans prior 24h →
     observer.classify-for-motives intersects intervention's percept
     handles ∩ each active motive's :cue: handles →
       positive predicate fires (file edit under :project_cwd:, git
-      HEAD delta, mtime delta, or bough_event) →
+      HEAD delta, or mtime delta) →
         observer.persist-verdict:
           1. motive footer :worked_count: increment + :last_intervention_at: ISO
           2. observation/auto_rule trace into satan_memory

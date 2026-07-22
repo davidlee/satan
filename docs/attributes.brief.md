@@ -40,6 +40,8 @@ Use `friction` internally if possible; render as `Cruelty` in the habitat/status
 
 # 1. Attribute semantics
 
+> **Note (SL-002, 2026-07-22):** the bough integration has been removed from SATAN — no `bough_read` tool, no bough evidence/sensor/canon/observer surfaces. Bough references below are historical. The `bough_*` grammar vocabulary is deliberately preserved (OQ-3 retires it).
+
 ## Curiosity
 
 Raises when:

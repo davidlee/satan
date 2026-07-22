@@ -10,6 +10,8 @@ metadata:
 
 # Handover — resonance payload enrichment
 
+> **Note (SL-002, 2026-07-22):** the bough integration has been removed from SATAN — no `bough_read` tool, no bough evidence/sensor/canon/observer surfaces. Bough references below are historical. The `bough_*` grammar vocabulary is deliberately preserved (OQ-3 retires it).
+
 > **Shipped 2026-05-30.** The open loop below is closed. Implemented exactly as
 > the sketch describes: `-resonate` SELECT widened with the `traces` join + 4th
 > payload column (guard `3`→`4`, `:payload` on each row); renderer emits the

@@ -26,7 +26,7 @@ JSONL protocol          (membrane)
         ↓
 broker-owned tools and output handlers
         ↓
-org/denote/bough/local surfaces
+org/denote/local surfaces
 ```
 
 Emacs is SATAN's privileged client: it owns the canonical personal text
@@ -40,9 +40,10 @@ boundary is the protocol, not a process (ADR-017).
 Today the Emacs client owns every authority item; the ledger is where
 that ceases to be an assumption.
 
-Org/Denote are the canonical personal text substrate. `bough` is a
-graph/cache/metadata/index layer around that substrate, not the primary
-owner of reality.
+Org/Denote are the canonical personal text substrate. A derived
+graph/cache/metadata/index layer around that substrate is never the primary
+owner of reality. (`bough` filled that role until SL-002 removed the
+integration, 2026-07-22.)
 
 ## Conceptual layers
 
