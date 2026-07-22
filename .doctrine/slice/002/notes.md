@@ -258,6 +258,70 @@ is now too long. The gate file retires with that item.
 - **Historical bough data stays readable and copy-forwardable.** That is the
   design's decision (D4/D1), not an oversight — VH-7 is the keeper accepting it.
 
+## 2026-07-22 — Audit + reconciliation
+
+Suite 1018 tests, 0 unexpected, 13 skipped. Corpus clean.
+`verify-vt`: **16 pass, 2 waived, 0 fail**. `reconcile-phases`: nothing to
+reconcile. No spec requirements, so requirement reconciliation is vacuous.
+
+### What conformance caught that the phases did not
+
+Four declared design-targets were never touched. Three were real:
+
+- **`satan-percept-test.el` and `satan-resonance-test.el` let-bound
+  `satan-bough-program`**, a defcustom PHASE-03 deleted. Elisp lets you bind a
+  free variable, so this was silent and meaningless and would have survived
+  indefinitely. This is the same class of hazard as the `satan-run-prepare`
+  collision: legal, inert, invisible.
+- **`satan-resonance/gate-admits-bough-event` built its fixture on rule_id
+  `bough.recent_status_change`** — a canon rule PHASE-05 removed. The gate it
+  covers is content-agnostic (it asks only whether a rule_id is outside the §S2
+  exclude list), so the test asserted real behaviour through an impossible
+  fixture. Retargeted at `cwd.artifact`; coverage unchanged, fixture now
+  producible.
+- **`satan-intervention-mark-test.el`** carries a PRESERVE pin (§2.D) and is now
+  annotated as one.
+
+`docs/protocol.md` was declared but is genuinely clean — the §2.C cue-handle
+reference it cited no longer exists.
+
+### Corrections to my own plan, made at audit
+
+Three VT mandates were mis-authored:
+
+- **PHASE-03 VT-1/VT-2 were self-contradictory with their own phase's VA-4.** A
+  VT mandate proves a claim by pointing at a test file the slice modified —
+  but design §5.6 and VA-4 require `satan-mode-test.el` and `satan-mcp-test.el`
+  to stay *unmodified*, so those two could never attribute. They were VA work
+  wearing a VT label. Waived, evidence re-carried as appended VA-5/VA-6; ids
+  are immutable so the rows stay.
+- **PHASE-03 VT-3's `^def test`** could never match: the harness tests are
+  methods on a `TestCase`, therefore indented.
+- **PHASE-06 VT-2 asked for byte-identity**, which is a one-time audit check
+  (done via git, SHA recorded above) and cannot be a standing test — a
+  legitimate future grammar edit would break it. Retargeted at the durable
+  form: the vocabulary is still declared with its original worlds and weights,
+  in both halves.
+
+### Undeclared-but-intended edits
+
+Conformance lists 22 undeclared paths. All are either doctrine/backlog entities
+(not source selectors) or the `scope-relevant` docs the design explicitly said
+would be "dispositioned at plan" with light annotation (§2.C), plus three the
+design named as a class without naming files: the two canon fixtures, and the
+new gate test file. `satan-memory-grammar-test.el` appears because PHASE-01
+modified it and PHASE-05 reverted it — net zero against the pre-removal SHA.
+
+### Outstanding — blocks close
+
+**VH-7 only.** The keeper must (a) delete `bough_read.md` under
+`satan-tools-descriptions-dir` (`~/notes/satan/tools/`) — outside this repo,
+unverifiable from here, and depended on by nothing since the tool is
+unregistered; and (b) accept that historical bough-attributed data stays
+readable and copy-forwardable until IMP-016. Both are decisions, not work.
+
+The slice sits at `reconcile`. Nothing else is pending.
+
 ### Census at plan time (2026-07-22)
 
 Live bough token counts, for divergence detection at audit — 67 files. Largest:
