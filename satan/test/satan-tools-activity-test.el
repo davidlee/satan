@@ -51,7 +51,7 @@
 
 (defun satan-tools-activity-test--write-current-sway (dir payload)
   (make-directory (expand-file-name "current" dir) t)
-  (let ((path (expand-file-name "current/sway.json" dir)))
+  (let ((path (expand-file-name "current/desktop.json" dir)))
     (with-temp-file path (insert payload))
     path))
 
@@ -150,7 +150,7 @@
       (should (equal (plist-get (cdr res) :segments) '())))))
 
 (ert-deftest satan-activity/current-returns-window-snapshot ()
-  "Scope `current' returns parsed current/sway.json verbatim (title included)."
+  "Scope `current' returns parsed current/desktop.json verbatim (title included)."
   (satan-tools-activity-test--with-root
     (satan-tools-activity-test--write-current-sway
      satan-tools-activity-dir
@@ -165,7 +165,7 @@
       (should (equal (plist-get w :title) "~/notes/foo.org")))))
 
 (ert-deftest satan-activity/current-missing-file-nil-window ()
-  "Missing current/sway.json yields ok with :window nil."
+  "Missing current/desktop.json yields ok with :window nil."
   (satan-tools-activity-test--with-root
     (let ((res (satan-tool/activity-read '(:scope "current") nil)))
       (should (eq (car res) 'ok))
