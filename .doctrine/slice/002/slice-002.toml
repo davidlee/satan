@@ -1,9 +1,9 @@
 id = 2
 slug = "remove-bough-integration"
 title = "Remove bough integration"
-status = "proposed"
+status = "ready"
 created = "2026-07-17"
-updated = "2026-07-17"
+updated = "2026-07-22"
 tags = []
 
 [relationships]

@@ -1,0 +1,192 @@
+# Implementation plan for SL-002 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-002"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored — edits append, they never renumber. Criterion ids
+# are local to their phase, bare, and equally immutable (.doctrine/glossary.md §
+# reference forms): EN-1 entry, EX-1 exit, and verification by mode —
+# VT-1 test (automated), VA-1 agent check, VH-1 human acceptance.
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Boundary pins"
+objective = """
+Pin the preserved content-agnostic substrate (design §5.3, §9) with bough
+machinery still present, so every later phase has a green-before/green-after
+safety net. Additive test work only — no production change.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (RV-001 done, 8 rounds); pre-removal SHA recorded in notes.md for the resurrection path (slice §Context)." },
+  { id = "EN-2", text = "`just check` green on the pre-removal tree." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Every §9 preserved-substrate assertion exists as a test and is green WITH bough present." },
+  { id = "EX-2", text = "No production file modified in this phase." },
+  { id = "EX-3", text = "The §2.D PRESERVE/ADD fixture set is annotated in-file as a boundary pin, so later pruning passes cannot mistake it for integration residue." },
+]
+verification = [
+  { id = "VT-1", expects = "Historical read (RN-1): a seeded trace carrying a `bough_node:` handle is returned by explicit-`cue.handles` resonate, by `memory_show_trace`, and by recent-trace reads — all three preserved paths.", test_file = "satan/test/satan-memory-store-test.el", keywords = ["bough_node", "handles"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-2", expects = "Motive (RN-2/RN-7/RN-9): (a) a mixed app+bough persisted motive fires via its non-bough overlap and copies its bough handle into the persisted observation trace; (b) a bough-only motive keeps admittable status, does NOT fire absent a bough-bearing percept, and DOES fire when a persisted percept carries its handle; (c) manual counter-memory from a stored bough-bearing intervention copies the handle verbatim.", test_file = "satan/test/satan-motive-test.el", keywords = ["bough"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-3", expects = "Fresh-introduction surfaces (RN-9/RN-11): all five still ACCEPT a caller-supplied `bough_*` literal as an intended, documented consequence of the preserved vocabulary — `motive_replace`, `memory-store-mark`, pattern sync, `intervention-create` audit+projection, and `memory_resonate` explicit `cue.handles` recorded into the broker tool-call/tool-result audit.", test_file = "satan/test/satan-pattern-test.el", keywords = ["bough"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-4", expects = "Attribute outcome forwarding copies a bough-bearing intervention's cue handles into its record.", test_file = "satan/test/satan-attribute-test.el", keywords = ["bough"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VA-5", expects = "Each pin added or retained under §2.D PRESERVE/ADD carries an in-file comment naming it a preserved-boundary pin and citing SL-002 §5.3 — including the pre-existing pins at satan-intervention-test.el:410, satan-audit-intervention-test.el:25, satan-tools-atsatan-test.el:318/407/455 and satan-memory-grammar-test.el:74." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Evidence layer"
+objective = """
+Remove bough derivation from `satan-memory-evidence.el` — the deepest seam, and
+the one holding the `(require 'satan-tools-bough)` that must die before the tool
+file can be deleted. Reconcile the three in-file hard-cap wording surfaces
+(design §5.5 items 1–3) in the same pass, since passes 1/4/5 leave with the
+bough reads.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete; boundary pins green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`satan-memory-evidence.el` holds no bough token: the three bough reads, `--bough-call`, `--bough-status`, the `:bough` sensor_status synth, the `:bough_recent`/`:bough_active`/`:bough_day` fields, `satan-memory-evidence-bough-limit` and its `:bough_limit` opt (:22,:653), the `:bough_workspace` opt (:18,:648), truncation passes 1/4/5, the `evidence.bough_*` trace-stage wrappers (:701,704,707) and every bough docstring are gone; `(require 'satan-tools-bough)` (:41) is removed." },
+  { id = "EX-2", text = "Surviving truncation passes 2 (browser) and 3 (focus) keep their existing labels (design OQ-2)." },
+  { id = "EX-3", text = "Hard-cap surfaces (1) evidence header `:budget_hard_cap_bytes` (:22), (2) `budget-hard-cap` defcustom doc (:79-81) and (3) the `--truncate` docstring \"HARD-CAP (mandatory)\" (:553-558) reworded to deterministic best-effort / last-resort. Pass 5's inline \"hard cap\" comment is deleted with pass 5, not reconciled." },
+  { id = "EX-4", text = "PHASE-01 pins still green; full suite green." },
+]
+verification = [
+  { id = "VT-1", expects = "Assembled evidence carries no `:bough_recent`/`:bough_active`/`:bough_day` field and no `:bough` key in sensor_status; `:bough_limit` and `:bough_workspace` opts are no longer consumed.", test_file = "satan/test/satan-memory-evidence-test.el", keywords = ["ert-deftest"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-2", expects = "An oversized evidence object runs passes 2–3 only and records NO bough label in `:truncated_at` — label honesty, explicitly NOT a byte-cap bound (that reducer stays with ISS-001).", test_file = "satan/test/satan-memory-evidence-test.el", keywords = ["truncated_at"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VA-3", expects = "No production or test file requires `satan-tools-bough` on account of evidence; `grep -n bough satan/satan-memory-evidence.el` returns nothing." },
+  { id = "VA-4", expects = "The three reworded hard-cap surfaces assert best-effort, not a mandatory cap; no surface in the file claims an enforced byte ceiling." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Tool surface removal"
+objective = """
+Delete the `bough_read` tool and every registration of it. Atomic by necessity:
+`satan-mode-check-tool-references` only passes when the tool is unregistered AND
+absent from every mode list, so the file deletion, the mode specs, the tick
+defaults and the harness tier set land together (design §5.6).
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete — nothing outside this phase requires `satan-tools-bough`." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`satan/satan-tools-bough.el` deleted (361 lines); its `(satan-tool-register \"bough_read\")` dies with it." },
+  { id = "EX-2", text = "`satan-memory.el` drops `(require 'satan-tools-bough)` (:15) and the docstring mention (:5)." },
+  { id = "EX-3", text = "`satan-mode.el` drops `\"bough_read\"` from all 5 static mode specs; `satan-tick.el` drops it from the tick-pulse and tick-agent `satan-tick-register` defaults." },
+  { id = "EX-4", text = "`harness/runloop.py` drops the `bough_read` tier-2 entry; `test_gptel_harness.py` drops its fixture." },
+  { id = "EX-5", text = "`satan/test/satan-tools-bough-test.el` deleted; `satan-broker-test.el` drops its `(require 'satan-tools-bough)` (:32) and its bough mode/tick fixtures — but KEEPS the `memory_resonate` explicit-`cue.handles` audit pin from PHASE-01 (§2.D PRESERVE)." },
+]
+verification = [
+  { id = "VT-1", expects = "`satan-mode-check-tool-references` passes with `bough_read` absent from the registry and from every mode spec.", test_file = "satan/test/satan-mode-test.el", keywords = ["satan-mode-check-tool-references"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-2", expects = "The MCP description preflight passes with no `bough_read` description present; `satan-mcp-test.el` stays green UNMODIFIED (0 bough refs today, design §5.6).", test_file = "satan/test/satan-mcp-test.el", keywords = ["ert-deftest"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-3", expects = "The harness tier-2 drop set no longer contains `bough_read`.", test_file = "satan/harness/test_gptel_harness.py", keywords = ["def test"], patterns = ["^def test"], waived = false },
+  { id = "VA-4", expects = "`satan-mode-test.el` and `satan-mcp-test.el` are byte-identical to their pre-slice state (design §5.6 requires them green unmodified) unless VT-1 demanded a new assertion, in which case the diff is additive only." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Sensor, tank, persisted state"
+objective = """
+Remove the bough sensor signal and its render, and prune the one piece of
+ACTIVE bough-specific durable state — `notified.json` (design §2.F). This is the
+only store scrubbed in-slice; append-only telemetry and content-agnostic handle
+stores are historical data left to retention or OQ-3.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`satan-sensor-alerts.el` drops `:bough` from `--source-order` and `--source-label`, the `bough_unreachable` cause derivation, and `--bump-bough-streak`." },
+  { id = "EX-2", text = "`satan-sensor-alerts.el` gains a one-time state-read prune of the persisted `:streaks.bough_unreachable` and `:causes.bough_unreachable` keys in `notified.json` (RN-17)." },
+  { id = "EX-3", text = "`satan-tank.el` drops the `bough_active` render line and `--render-bough-active`." },
+]
+verification = [
+  { id = "VT-1", expects = "The sensor line carries no `bough=` segment and no `bough_unreachable` cause is derivable.", test_file = "satan/test/satan-sensor-alerts-test.el", keywords = ["bough"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-2", expects = "Persisted-state cleanup (RN-17): a `notified.json` pre-seeded with `:streaks.bough_unreachable`, `:causes.bough_unreachable` AND an unrelated non-bough cause, run through the post-removal state read/write path, ends with both bough keys absent and the unrelated sensor state intact.", test_file = "satan/test/satan-sensor-alerts-test.el", keywords = ["notified", "bough_unreachable"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-3", expects = "The tank render emits no bough_active line; the rest of the render is unchanged.", test_file = "satan/test/satan-tank-test.el", keywords = ["ert-deftest"], patterns = ["\\(ert-deftest"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Canon, observer, schemas, in-code prose"
+objective = """
+Remove the remaining derivation seams — canon rules, the observer predicate, the
+`focal_bough_nanoid` producer input — and the in-code prose that describes bough
+as live. Ends the slice's production work: after this phase no bough handle can
+be DERIVED anywhere (design §5.3), while every legal literal stays readable.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`satan-memory-canon.el` drops the `bough.recent_status_change` and `bough.active_focus` rules, the `:focal_bough_nanoid` hint-norm (:246) and the docstring mention (:602)." },
+  { id = "EX-2", text = "`satan-observer-classify.el` drops `--predicate-bough-event-match`, its registration, and `--motive-bough-nanoids` — the generic overlap ranker is left intact." },
+  { id = "EX-3", text = "`satan-tools-memory.el` drops `focal_bough_nanoid` from the shared `hints-shape` (:263), taking it off BOTH `memory_mark` and `memory_resonate`; docstring (:236) fixed." },
+  { id = "EX-4", text = "In-code prose cleared: `satan-percept.el` `:bough_workspace` docstring (:48) and \"reads … and bough\" (:63); `satan-db.el` comment (:69); `satan-resonance.el` comments (:19,:41)." },
+  { id = "EX-5", text = "`satan-motive.el` :475 help-string example reworded to drop `bough` (behaviour-neutral). `satan-motive--admitted-namespaces` (:85) is UNTOUCHED — D4, preserved vocabulary; production now holds exactly one bough token, which is that one." },
+]
+verification = [
+  { id = "VT-1", expects = "The two canon bough rules are gone and non-bough rules are unchanged; cue derivation (`satan-tools-memory--derive-cue-handles`) yields no bough handles.", test_file = "satan/test/satan-memory-canon-test.el", keywords = ["ert-deftest"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-2", expects = "`:bough_event_match` is not a registered predicate; non-bough predicates and the generic overlap ranker behave unchanged.", test_file = "satan/test/satan-observer-test.el", keywords = ["ert-deftest"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-3", expects = "Neither `memory_mark` nor `memory_resonate` advertises `focal_bough_nanoid`; existing flows unchanged. Explicit `bough_node:<id>` in `cue.handles` still resolves (PHASE-01 VT-1 still green).", test_file = "satan/test/satan-tools-memory-test.el", keywords = ["focal_bough_nanoid"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-4", expects = "The honest invariant (RN-9d): NO bough handle originates from evidence or canon derivation. Asserted as an origin claim, not as \"no bough rows exist\".", test_file = "satan/test/satan-memory-canon-test.el", keywords = ["bough"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VA-5", expects = "PHASE-01 pins VT-1..VT-4 are still green — the preserved substrate survived every removal phase." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Docs, gates, follow-ups"
+objective = """
+Reconcile the living/canon prose, land the completeness gates that make the
+removal checkable rather than asserted, and open the residue that this slice
+deliberately does not close (OQ-3, ISS-001).
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete — all production removal landed." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Living/canon docs (§2.C) reconciled: `docs/architecture.md`, `docs/governance.md`, `docs/memory/design.md`, `docs/protocol.md`, `docs/patch/brief.md`, `docs/data-collection.md`, `docs/perceptual-design.md`, `docs/patch/plan.md`, `docs/INDEX.md` mention bough only as removed/historical." },
+  { id = "EX-2", text = "`docs/bough-gaps.md` and `docs/bough-feature-flag-brief.md` marked superseded whole-doc, NOT line-edited. `docs/memory/handover.md` (status: living, 41 refs, asserts \"`bough_read` is the only path into bough\") reconciled or formally superseded in-file (RN-12)." },
+  { id = "EX-3", text = "Hard-cap surfaces (4) `docs/memory/design.md:415-422` and (5) `docs/data-collection.md:471-485` carry the narrowed best-effort wording (design §5.5)." },
+  { id = "EX-4", text = "Draft/secondary docs (`docs/at-satan/{design,plan}.md`, `docs/resilience-design.md`, `docs/refactor/T-attr-1-attribute-layer.md`, `docs/attributes.brief.md`, `docs/attributes/patterns_attributes.design_note.md`, `docs/resonance-payload-handover.md`) lightly annotated where they describe the removed integration as current — no load-bearing edits. `docs/attributes/outcome-semantics.md` (status: merged, authority: blocking) is NOT edited: its lone bough cue example stays semantically valid under the preserved vocabulary. Frozen `docs/review/*` untouched." },
+  { id = "EX-5", text = "ISS-001's body updated to the post-removal inventory (passes 2–3 only; the pass-5 last resort is gone) — explicitly NOT closed." },
+  { id = "EX-6", text = "The OQ-3 follow-up filed as a backlog item related-to SL-002: complete bough retirement (grammar-v2 + data migration) — reject `bough_*` at grammar admission and disposition every residual store." },
+  { id = "EX-7", text = "Close notes flag the manual cleanup of the external `bough_read` description under `satan-tools-descriptions-dir` (~/notes, outside this repo) and record the pre-removal SHA." },
+]
+verification = [
+  { id = "VT-1", expects = "Zero-token gate (R1/RN-14): a repo gate over all production .el/.py/.sql finds no `bough` token, with the allowlist restricted to exactly `satan/satan-memory-grammar.el`, `satan/memory/migrations/0002_grammar_v1.sql` and the single `satan-motive--admitted-namespaces` occurrence. The content-agnostic substrate files carry no bough token today and stay under the gate, so a future accidental bough branch there fails.", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["bough", "satan-memory-grammar", "admitted-namespaces"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-2", expects = "Preserved-artifact no-diff (R2): `satan-memory-grammar.el` and `0002_grammar_v1.sql` are byte-identical to their pre-slice state, and `satan-memory-grammar-test.el` (db-sync-* + internal consistency, incl. the :74 pin on the preserved `bough_node` weight = 0) is green UNMODIFIED.", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["grammar", "no-diff"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VT-3", expects = "Repo-wide evidence-cap wording gate: no surface asserts a mandatory/enforced truncation byte cap, closing the sixth-surface risk (design §5.5).", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["hard cap"], patterns = ["\\(ert-deftest"], waived = false },
+  { id = "VA-4", expects = "Doc review: every living/canon .md mentions bough only as removed or historical, never as a live capability. Frozen `docs/review/*` and the two superseded briefs are untouched." },
+  { id = "VA-5", expects = "Tick telemetry (RN-18): a post-removal evidence assembly emits no `evidence.bough_recent`/`bough_active`/`bough_day` stage into `tick-trace-*.jsonl`; historical day-bucketed files are left untouched as immutable retained observability." },
+  { id = "VA-6", expects = "The runtime `satan/patterns.eld` (gitignored) is verified clean where present (currently 0 bough tokens)." },
+  { id = "VH-7", expects = "Keeper confirms the external `bough_read` description file under ~/notes has been removed, and accepts that historical bough-attributed data stays readable and copy-forwardable until OQ-3." },
+]
+specs        = []
+requirements = []
