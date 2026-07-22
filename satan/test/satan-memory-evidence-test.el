@@ -3,10 +3,6 @@
 ;; Tests for step 6 of memory.design.md.  Pure helpers exercised
 ;; directly; impure assembly exercised against tmp fixtures and the
 ;; canonicalizer (cross-step contract).
-;;
-;; Bough is silenced by pointing `satan-bough-program' at a
-;; non-existent path so the tool handler returns an `error' which
-;; `satan-memory-evidence--bough-call' swallows.
 
 (require 'ert)
 (require 'cl-lib)
@@ -22,8 +18,7 @@
   (declare (indent 1))
   `(satan-memory-evidence-test--with-tmp
     (lambda (,var)
-      (let ((satan-bough-program "/nonexistent/bough"))
-        ,@body))))
+      ,@body)))
 
 ;; ---------------------------------------------------------------------
 ;; Bounds
@@ -46,26 +41,6 @@
              "2026-05-19T10:00:00+10:00"
              "2026-05-19T09:00:00+10:00")))
     (should (string-match-p "2026-05-19T09:50:00" (car b)))))
-
-;; ---------------------------------------------------------------------
-;; Flatten
-;; ---------------------------------------------------------------------
-
-(ert-deftest satan-memory-evidence/flatten-nil ()
-  (should (equal (satan-memory-evidence--flatten-tree nil) '())))
-
-(ert-deftest satan-memory-evidence/flatten-nested ()
-  (let* ((tree (list
-                (list :nanoid "a"
-                      :children
-                      (list (list :nanoid "a1")
-                            (list :nanoid "a2"
-                                  :children (list (list :nanoid "a21")))))
-                (list :nanoid "b")))
-         (flat (satan-memory-evidence--flatten-tree tree)))
-    (should (equal (mapcar (lambda (n) (plist-get n :nanoid)) flat)
-                   '("a" "a1" "a2" "a21" "b")))
-    (should (cl-every (lambda (n) (null (plist-get n :children))) flat))))
 
 ;; ---------------------------------------------------------------------
 ;; Filter segments
@@ -95,76 +70,6 @@
                  nil)))
 
 ;; ---------------------------------------------------------------------
-;; bough-recent: synthesize :event per transition/created row (DR-116)
-;; ---------------------------------------------------------------------
-
-(ert-deftest satan-memory-evidence/bough-recent-synthesizes-events ()
-  "Transitions become `:event \"status_changed\"' entries; created nodes
-become `:event \"created\"' entries.  Output is one flat list with
-status_changed rows first (the canon-relevant ones)."
-  (cl-letf (((symbol-function 'satan-memory-evidence--bough-call)
-             (lambda (scope &rest _args)
-               (when (equal scope "recent_changes")
-                 (list :scope "recent_changes"
-                       :since "X"
-                       :transitions
-                       (list (list :seq 7 :nanoid "abc1234"
-                                   :from_status "todo"
-                                   :to_status "doing"
-                                   :at "2026-05-20T09:00:00Z"
-                                   :actor nil))
-                       :created
-                       (list (list :nanoid "def5678"
-                                   :kind "task"
-                                   :title "x"
-                                   :status "todo"
-                                   :parent_nanoid "PARENT0"
-                                   :at "2026-05-20T08:00:00Z"
-                                   :deleted :json-false
-                                   :archived :json-false)))))))
-    (let* ((flat (satan-memory-evidence--bough-recent
-                  "2026-05-20T00:00:00Z" nil 50))
-           (events (mapcar (lambda (e) (plist-get e :event)) flat)))
-      (should (equal events '("status_changed" "created")))
-      (let ((row (car flat)))
-        (should (equal "abc1234" (plist-get row :nanoid)))
-        (should (equal "todo"    (plist-get row :from)))
-        (should (equal "doing"   (plist-get row :to)))
-        (should (equal "2026-05-20T09:00:00Z" (plist-get row :at)))
-        (should (= 7 (plist-get row :seq))))
-      (let ((row (cadr flat)))
-        (should (equal "def5678" (plist-get row :nanoid)))
-        (should (equal "task"    (plist-get row :kind)))
-        (should (equal "todo"    (plist-get row :status)))
-        (should (equal "PARENT0" (plist-get row :parent_nanoid)))))))
-
-(ert-deftest satan-memory-evidence/bough-recent-honours-limit ()
-  "LIMIT caps the total emitted rows."
-  (cl-letf (((symbol-function 'satan-memory-evidence--bough-call)
-             (lambda (_scope &rest _args)
-               (list :transitions
-                     (cl-loop for i from 0 below 5
-                              collect (list :seq i :nanoid (format "n%d" i)
-                                            :from_status "todo"
-                                            :to_status "doing"
-                                            :at "2026-05-20T09:00:00Z"))
-                     :created
-                     (cl-loop for i from 0 below 5
-                              collect (list :nanoid (format "c%d" i)
-                                            :kind "task" :title "y"
-                                            :status "todo"
-                                            :at "2026-05-20T08:00:00Z"))))))
-    (let ((flat (satan-memory-evidence--bough-recent
-                 "2026-05-20T00:00:00Z" nil 3)))
-      (should (= 3 (length flat))))))
-
-(ert-deftest satan-memory-evidence/bough-recent-empty-payload ()
-  (cl-letf (((symbol-function 'satan-memory-evidence--bough-call)
-             (lambda (&rest _) nil)))
-    (should (equal '() (satan-memory-evidence--bough-recent
-                        "2026-05-20T00:00:00Z" nil 50)))))
-
-;; ---------------------------------------------------------------------
 ;; Truncation
 ;; ---------------------------------------------------------------------
 
@@ -172,17 +77,6 @@ status_changed rows first (the canon-relevant ones)."
   (let* ((ev (list :current_window (list :app_id "firefox")))
          (out (satan-memory-evidence--truncate ev 4096 8192)))
     (should-not (plist-get out :truncated_at))))
-
-(ert-deftest satan-memory-evidence/truncate-drops-bough-day-bodies ()
-  (let* ((big (apply #'concat (make-list 4000 "x")))
-         (ev (list :current_window (list :app_id "firefox")
-                   :bough_day (list :linked (list (list :nanoid "n1"))
-                                    :body big)))
-         (out (satan-memory-evidence--truncate ev 1024 65536)))
-    (should (member "bough_day_bodies" (plist-get out :truncated_at)))
-    (should (plist-get (plist-get out :bough_day) :body_dropped))
-    (should (equal (plist-get (plist-get out :bough_day) :linked)
-                   (list (list :nanoid "n1"))))))
 
 (ert-deftest satan-memory-evidence/truncate-segments-middle ()
   (let* ((segs (cl-loop for i from 0 below 10
@@ -199,23 +93,27 @@ status_changed rows first (the canon-relevant ones)."
       (should (= (plist-get sentinel :dropped) 4))
       (should (= (length kept) 7)))))
 
-(ert-deftest satan-memory-evidence/truncate-shrinks-bough-annotations ()
-  (let* ((huge-ann (apply #'concat (make-list 500 "y")))
-         (ev (list :bough_active
-                   (list (list :nanoid "n1" :annotation huge-ann))))
-         (out (satan-memory-evidence--truncate ev 256 65536))
-         (n1  (car (plist-get out :bough_active))))
-    (should (member "bough_active_annotation_bodies"
-                    (plist-get out :truncated_at)))
-    (should (<= (length (plist-get n1 :annotation)) 260))
-    (should (= 500 (plist-get n1 :annotation_len_original)))))
-
-(ert-deftest satan-memory-evidence/truncate-hard-cap-drops-bough-recent ()
-  (let* ((huge (apply #'concat (make-list 200000 "x")))
-         (ev (list :bough_recent (list (list :nanoid "n1" :note huge))))
-         (out (satan-memory-evidence--truncate ev 4096 8192)))
-    (should (member "bough_recent" (plist-get out :truncated_at)))
-    (should (null (plist-get out :bough_recent)))))
+(ert-deftest satan-memory-evidence/truncate-runs-passes-2-3-only ()
+  "SL-002 PHASE-02 VT-2 — label honesty, not a byte bound.
+After the removal only passes 2 (browser) and 3 (focus) survive, so an
+oversized object records exactly those labels and never a bough one.
+This deliberately does NOT assert the result fits the cap: the passes
+are exhaustible and the cap has never been enforced (ISS-001)."
+  (let* ((segs (lambda (n)
+                 (cl-loop for i from 0 below n
+                          collect (list :idx i
+                                        :payload
+                                        (apply #'concat
+                                               (make-list 400 "x"))))))
+         (ev (list :browser_segments (funcall segs 10)
+                   :focus_segments (funcall segs 10)))
+         (out (satan-memory-evidence--truncate ev 256 512))
+         (labels (plist-get out :truncated_at)))
+    (should (equal '("browser_segments_middle" "focus_segments_middle")
+                   labels))
+    (should-not (cl-find-if (lambda (l) (string-match-p "bough" l)) labels))
+    ;; Exhausted passes leave it oversized — honest, and ISS-001's job.
+    (should (> (satan-memory-evidence--encode-bytes out) 512))))
 
 (ert-deftest satan-memory-evidence/truncate-output-json-serializes ()
   "`:truncated_at' entries must survive `json-serialize'.  Symbols
@@ -223,16 +121,18 @@ fail `json-value-p' once `satan-audit--write-json' (percept.json,
 bundle.json) or `satan-jsonl-send' (tool results) carries the
 truncated evidence."
   (require 'satan-jsonl)
-  (let* ((huge-ann (apply #'concat (make-list 500 "y")))
-         (ev (list :bough_active
-                   (list (list :nanoid "n1" :annotation huge-ann))))
+  (let* ((segs (cl-loop for i from 0 below 10
+                        collect (list :idx i
+                                      :payload
+                                      (apply #'concat (make-list 200 "x")))))
+         (ev (list :browser_segments segs))
          (out (satan-memory-evidence--truncate ev 256 65536)))
     (should (stringp (json-serialize (satan-jsonl-prepare out)
                                      :null-object :null
                                      :false-object :false)))))
 
 ;; ---------------------------------------------------------------------
-;; Assemble (impure; tmp fixtures + non-existent bough binary)
+;; Assemble (impure; tmp fixtures)
 ;; ---------------------------------------------------------------------
 
 (ert-deftest satan-memory-evidence/assemble-shape-and-bounds ()
@@ -278,9 +178,8 @@ called without an explicit start/end."
                       "2026-05-19T10:00:00+10:00"))))))
 
 (ert-deftest satan-memory-evidence/assemble-cue-only-skips-heavy-probes ()
-  "`:cue_only t' returns empty focus/browser segments and nil
-bough_recent / bough_day even when those sources would otherwise
-populate them.  Keeps current_window and bough_active."
+  "`:cue_only t' returns empty focus/browser segments even when those
+sources would otherwise populate them.  Keeps current_window."
   (satan-memory-evidence-test--in-tmp tmp
    (let* ((current-dir (expand-file-name "current" tmp))
           (segments-dir (expand-file-name "segments" tmp)))
@@ -290,27 +189,21 @@ populate them.  Keeps current_window and bough_active."
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
        (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n"))
-     (cl-letf (((symbol-function 'satan-memory-evidence--bough-recent)
-                (lambda (&rest _) (error "should not be called"))))
-       (cl-letf (((symbol-function 'satan-memory-evidence--bough-day)
-                  (lambda (&rest _) (error "should not be called"))))
-         (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
-                           :mode_name "motd"))
-                (out (satan-memory-evidence-assemble
-                      ctx (list :behaviour_dir (file-name-as-directory tmp)
-                                :cwd tmp
-                                :cue_only t))))
-           (should (equal (plist-get (plist-get out :current_window) :app_id)
-                          "firefox"))
-           (should (equal (plist-get out :focus_segments) '()))
-           (should (equal (plist-get out :browser_segments) '()))
-           (should (null (plist-get out :bough_recent)))
-           (should (null (plist-get out :bough_day)))))))))
+     (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                       :mode_name "motd"))
+            (out (satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)
+                            :cwd tmp
+                            :cue_only t))))
+       (should (equal (plist-get (plist-get out :current_window) :app_id)
+                      "firefox"))
+       (should (equal (plist-get out :focus_segments) '()))
+       (should (equal (plist-get out :browser_segments) '()))))))
 
 (ert-deftest satan-memory-evidence/budget-exhausted-skips-optional-stages ()
   "Phase 5 — under an exhausted tick budget the OPTIONAL evidence
-stages shed their work: `content_probe' / `bough_recent' / `bough_day'
-skip, so their raw slots go nil, `sensor_status' `:content' degrades to
+stages shed their work: `content_probe' skips, so its raw slot goes
+nil, `sensor_status' `:content' degrades to
 \"budget_skipped\", the skips land on the accumulator, and the percept
 stays valid through `--truncate' + canon (no signal)."
   (satan-memory-evidence-test--in-tmp tmp
@@ -325,17 +218,11 @@ stays valid through `--truncate' + canon (no signal)."
                 ctx
                 (list :behaviour_dir (file-name-as-directory tmp)
                       :cwd tmp))))
-     (should (null (plist-get out :bough_recent)))
-     (should (null (plist-get out :bough_day)))
      (should (null (plist-get out :content_recent)))
      (should (equal (plist-get (plist-get out :sensor_status) :content)
                     "budget_skipped"))
      ;; the optional skips are recorded honestly on the accumulator
      (should (member "evidence.content_probe"
-                     (plist-get satan-trace--current :skipped)))
-     (should (member "evidence.bough_recent"
-                     (plist-get satan-trace--current :skipped)))
-     (should (member "evidence.bough_day"
                      (plist-get satan-trace--current :skipped)))
      ;; degraded percept still canonicalizes (no signal, non-nil result)
      (should (satan-memory-canon-canonicalize out nil ctx)))))
@@ -405,9 +292,9 @@ stays valid through `--truncate' + canon (no signal)."
                       "0"))))))
 
 ;; ---------------------------------------------------------------------
-;; VT-2 — routed choke deadlines: git-output/git-state timeout marker,
-;; bough timeout degrades bough_status.  `satan-trace-call' is
-;; stubbed so the timed-out branch is forced without a real hang.
+;; VT-2 — routed choke deadlines: git-output/git-state timeout marker.
+;; `satan-trace-call' is stubbed so the timed-out branch is forced
+;; without a real hang.
 ;; ---------------------------------------------------------------------
 
 (ert-deftest satan-memory-evidence/git-output-timeout-returns-nil ()
@@ -430,20 +317,6 @@ probe succeeds; the follow-up probes time out."
      (let ((state (satan-memory-evidence--git-state tmp)))
        (should state)
        (should (eq (plist-get state :timed_out) t))))))
-
-(ert-deftest satan-memory-evidence/bough-timeout-degrades-status ()
-  "A bough call that times out counts as an attempt but not ok, so the
-synthesised bough_status degrades to `unreachable'."
-  (let ((satan-memory-evidence--bough-tracking t)
-        (satan-memory-evidence--bough-attempts 0)
-        (satan-memory-evidence--bough-ok 0)
-        (satan-bough-program (or (executable-find "sh") "/bin/sh")))
-    (cl-letf (((symbol-function 'satan-trace-call)
-               (lambda (&rest _)
-                 (list :exit 124 :stdout "" :timed-out t))))
-      (should (null (satan-memory-evidence--bough-call "active")))
-      (should (equal (satan-memory-evidence--bough-status)
-                     "unreachable")))))
 
 ;; ---------------------------------------------------------------------
 ;; Git-activity feed (bursty — NEVER stale)
@@ -657,9 +530,7 @@ eaerlier than :window_start_at when git-window > window-minutes."
 ;; ---------------------------------------------------------------------
 
 (ert-deftest satan-memory-evidence/sensor-status-all-missing ()
-  "No sensor files: every probe reports \"missing\".  Bough is \"ok\"
-because no calls are attempted (the binary's missing → tool errors
-→ ok-payload nil with attempts=0 → reported as ok per §S6 fallback)."
+  "No sensor files: every probe reports \"missing\"."
   (satan-memory-evidence-test--in-tmp tmp
    (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
                      :mode_name "motd"))
@@ -670,6 +541,25 @@ because no calls are attempted (the binary's missing → tool errors
      (should (equal "missing" (plist-get ss :current_window)))
      (should (equal "missing" (plist-get ss :focus)))
      (should (equal "missing" (plist-get ss :browser))))))
+
+(ert-deftest satan-memory-evidence/assemble-emits-no-bough-surface ()
+  "SL-002 PHASE-02 VT-1 — the assembled window carries no `:bough_*'
+field, `sensor_status' has no `:bough' key, and the removed opts are
+no longer consumed (passing them changes nothing)."
+  (satan-memory-evidence-test--in-tmp tmp
+   (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                     :mode_name "motd"))
+          (base (list :behaviour_dir (file-name-as-directory tmp) :cwd tmp))
+          (out (satan-memory-evidence-assemble ctx base))
+          (with-dead-opts (satan-memory-evidence-assemble
+                           ctx (append base (list :bough_limit 3
+                                                  :bough_workspace "main")))))
+     (dolist (k '(:bough_recent :bough_active :bough_day))
+       (should-not (plist-member out k)))
+     (should-not (plist-member (plist-get out :sensor_status) :bough))
+     ;; The dead opts are inert, not merely absent from the output.
+     (should (equal (plist-get out :sensor_status)
+                    (plist-get with-dead-opts :sensor_status))))))
 
 (ert-deftest satan-memory-evidence/sensor-status-current-stale-drops-slice ()
   "When desktop.json mtime exceeds the threshold, :current_window is
@@ -742,46 +632,6 @@ reports \"stale-Nm\" and the slice drops to '()."
             (ss (plist-get out :sensor_status)))
        (should (null (plist-get out :current_window)))
        (should (equal "malformed" (plist-get ss :current_window)))))))
-
-(ert-deftest satan-memory-evidence/sensor-status-bough-unreachable ()
-  "When `--bough-call' returns nil for every probe but tracking
-recorded attempts, the bough status is \"unreachable\"."
-  (satan-memory-evidence-test--in-tmp tmp
-   (cl-letf (((symbol-function 'satan-memory-evidence--bough-call)
-              (lambda (&rest _)
-                (when satan-memory-evidence--bough-tracking
-                  (cl-incf satan-memory-evidence--bough-attempts))
-                nil)))
-     (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
-                       :mode_name "motd"))
-            (out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp)))
-            (ss (plist-get out :sensor_status)))
-       (should (equal "unreachable" (plist-get ss :bough)))))))
-
-(ert-deftest satan-memory-evidence/sensor-status-bough-ok-when-any-succeeds ()
-  "One successful bough call is enough to flip status to \"ok\"."
-  (satan-memory-evidence-test--in-tmp tmp
-   (let ((call-n 0))
-     (cl-letf (((symbol-function 'satan-memory-evidence--bough-call)
-                (lambda (&rest _)
-                  (when satan-memory-evidence--bough-tracking
-                    (cl-incf satan-memory-evidence--bough-attempts))
-                  (cl-incf call-n)
-                  (cond
-                   ((= call-n 1)
-                    (when satan-memory-evidence--bough-tracking
-                      (cl-incf satan-memory-evidence--bough-ok))
-                    (list :nodes '()))
-                   (t nil)))))
-       (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
-                         :mode_name "motd"))
-              (out (satan-memory-evidence-assemble
-                    ctx (list :behaviour_dir (file-name-as-directory tmp)
-                              :cwd tmp)))
-              (ss (plist-get out :sensor_status)))
-         (should (equal "ok" (plist-get ss :bough))))))))
 
 ;; ---------------------------------------------------------------------
 ;; Cross-step contract: canon eats assembler output.

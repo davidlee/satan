@@ -68,6 +68,43 @@ Two small findings:
 - `satan-jsonl-read-file` returns JSON arrays as **lists**, so the broker audit
   pin normalises with `append` before comparing (the arity trap again).
 
+## 2026-07-22 — PHASE-02 complete (evidence layer)
+
+`satan-memory-evidence.el` is at **zero** bough tokens. Suite 1036/0 unexpected
+(11 bough tests removed, 2 added).
+
+Removed: the `(require 'satan-tools-bough)`, `--bough-call`, the three read
+wrappers, `--bough-tracking`/`--bough-attempts`/`--bough-ok`, `--bough-status`,
+the `:bough` sensor_status key, the three evidence fields, the
+`satan-memory-evidence-bough-limit` defcustom with its `:bough_limit` opt, the
+`:bough_workspace` opt, truncation passes 1/4/5, and the three
+`evidence.bough_*` trace-stage wrappers.
+
+Two things the design's touch-set did not name, both forced:
+
+- **`--flatten-tree` went too.** Its only caller was `--bough-active`. Its two
+  unit tests went with it.
+- **`--shrink-annotations` went too.** Its only caller was pass 4.
+
+Judgement calls worth flagging at audit:
+
+- **`--truncate` keeps its `hard-cap` parameter, now unused** (`_hard-cap`).
+  Both surviving passes are target-gated, so nothing reads it. Deleting the
+  parameter would change the call signature and leave ISS-001 nowhere to
+  attach; the docstring says so explicitly rather than leaving a mystery arg.
+- **Pass numbering is frozen, not compacted.** Passes 2 and 3 keep their
+  original labels so `:truncated_at` strings stay comparable across the
+  removal. The docstring records that 1/4/5 were removed.
+- **The new VT-2 test asserts the object stays oversized** once the passes are
+  exhausted. That is the honest post-removal behaviour and the thing ISS-001
+  exists to fix; asserting a byte bound here would encode a guarantee that has
+  never held.
+
+Hard-cap wording surfaces (1) header `:budget_hard_cap_bytes`, (2) the
+`budget-hard-cap` defcustom doc and (3) the `--truncate` docstring now say
+last-resort / best-effort and name ISS-001. Surfaces (4) and (5) are docs —
+PHASE-06.
+
 ### Census at plan time (2026-07-22)
 
 Live bough token counts, for divergence detection at audit — 67 files. Largest:

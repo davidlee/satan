@@ -1,9 +1,9 @@
 ;;; satan-memory-evidence.el --- evidence-window assembler (impure) -*- lexical-binding: t; -*-
 
-;; Step 6 of memory.design.md.  Impure: reads files, runs `git', calls
-;; the `bough_read' tool handler.  Produces the evidence_window plist
-;; consumed by `satan-memory-canon-canonicalize' (step 5) and stored
-;; verbatim (after truncation) in `traces.metadata_json' (step 7).
+;; Step 6 of memory.design.md.  Impure: reads files, runs `git'.
+;; Produces the evidence_window plist consumed by
+;; `satan-memory-canon-canonicalize' (step 5) and stored verbatim (after
+;; truncation) in `traces.metadata_json' (step 7).
 ;;
 ;; Public entry point:
 ;;   (satan-memory-evidence-assemble CTX &optional OPTS) -> PLIST
@@ -15,16 +15,13 @@
 ;;   :run_started_at         ISO8601 string limiting how far back the window reaches
 ;;   :cwd                    absolute path; defaults to `default-directory'
 ;;   :behaviour_dir          panopticon root; defaults to `satan-tools-activity-dir'
-;;   :bough_workspace        passed through to `bough_read'
 ;;   :seg_limit              focus/browser cap (default 10)
-;;   :bough_limit            bough_recent cap (default 50)
 ;;   :budget_target_bytes    soft byte budget (default 16384)
-;;   :budget_hard_cap_bytes  hard byte cap (default 65536)
+;;   :budget_hard_cap_bytes  last-resort byte target (default 65536)
 ;;   :cue_only               t to skip heavy "what happened in the
-;;                           window" probes (focus/browser segments,
-;;                           bough_recent, bough_day).  Keeps the
-;;                           "what is now" probes (current_window,
-;;                           bough_active, git_state, fs_state).
+;;                           window" probes (focus/browser segments).
+;;                           Keeps the "what is now" probes
+;;                           (current_window, git_state, fs_state).
 ;;                           Used by `memory_resonate' cue derivation.
 ;;
 ;; This module is intentionally separate from `satan-memory-canon'
@@ -38,7 +35,6 @@
 (require 'satan-jsonl)
 (require 'satan-trace)
 (require 'satan-tools-activity)
-(require 'satan-tools-bough)
 (require 'satan-tools-content)
 
 ;; ---------------------------------------------------------------------
@@ -68,16 +64,15 @@ returns nil (git-output) or marks `:timed_out t' (git-state)."
   "Maximum focus/browser segments retained per source (newest)."
   :type 'integer :group 'satan)
 
-(defcustom satan-memory-evidence-bough-limit 50
-  "Maximum bough_recent entries retained (after dedup by nanoid)."
-  :type 'integer :group 'satan)
-
 (defcustom satan-memory-evidence-budget-target 16384
   "Soft byte budget for the JSON-serialised evidence (§4.3)."
   :type 'integer :group 'satan)
 
 (defcustom satan-memory-evidence-budget-hard-cap 65536
-  "Hard byte cap for the JSON-serialised evidence (§4.3)."
+  "Last-resort byte target for the JSON-serialised evidence (§4.3).
+Best-effort, not enforced: `--truncate' runs its passes and stops when
+they are exhausted, whether or not the result is under this number.  A
+behavioural final reducer is tracked as ISS-001."
   :type 'integer :group 'satan)
 
 (defcustom satan-memory-evidence-content-limit 10
@@ -276,28 +271,6 @@ DST transitions cannot cause duplicate or skipped dates."
     (push (expand-file-name (format "segments/git-%s.jsonl" end-day) root) acc)
     (nreverse acc)))
 
-(defvar satan-memory-evidence--bough-tracking nil
-  "When non-nil, `--bough-call' records reachability in the vars below.
-Dynamically bound by `assemble' to derive the `:bough' sensor_status
-without needing each `--bough-*' wrapper to thread the flag itself.")
-
-(defvar satan-memory-evidence--bough-attempts 0
-  "Counter incremented by `--bough-call' under `--bough-tracking'.")
-
-(defvar satan-memory-evidence--bough-ok 0
-  "Counter incremented by `--bough-call' on each successful ok payload.")
-
-(defun satan-memory-evidence--bough-status ()
-  "Synthesise the `:bough' sensor_status from tracking counters.
-Returns the JSON-friendly string `\"ok\"' when at least one call
-succeeded; `\"unreachable\"' when one or more were attempted but none
-returned ok; `\"ok\"' (best guess) when no calls were attempted this
-run (e.g. heavy probes skipped under `:cue_only')."
-  (cond
-   ((> satan-memory-evidence--bough-ok 0) "ok")
-   ((> satan-memory-evidence--bough-attempts 0) "unreachable")
-   (t "ok")))
-
 ;; ---------------------------------------------------------------------
 ;; Bounds (§4.1)
 ;; ---------------------------------------------------------------------
@@ -342,90 +315,6 @@ A segment overlaps if its :end_ts >= START and its :start_ts <= END."
          (and (or (null e-time) (not (time-less-p e-time s-t)))
               (or (null s-time) (not (time-less-p e-t s-time))))))
      segments)))
-
-;; ---------------------------------------------------------------------
-;; Bough reads via the tool handler (§5.4 — only path into bough)
-;; ---------------------------------------------------------------------
-
-(defun satan-memory-evidence--bough-call (scope &rest args)
-  "Call `satan-tool/bough-read' with SCOPE and ARGS (keyword plist).
-Return the payload plist on `ok', or nil on any error.
-
-When `--bough-tracking' is non-nil (set by `assemble') each call
-increments `--bough-attempts'; successful calls also increment
-`--bough-ok'.  The two counters back the §S6 `:bough' sensor_status
-synthesis without each `--bough-*' wrapper having to thread state."
-  (let* ((arg-plist (apply #'list :scope scope args))
-         (result (condition-case _err
-                     (satan-tool/bough-read arg-plist nil)
-                   (error nil)))
-         (ok-p (and (consp result) (eq (car result) 'ok))))
-    (when satan-memory-evidence--bough-tracking
-      (cl-incf satan-memory-evidence--bough-attempts)
-      (when ok-p (cl-incf satan-memory-evidence--bough-ok)))
-    (when ok-p (cdr result))))
-
-(defun satan-memory-evidence--flatten-tree (nodes)
-  "Depth-first flatten of a tree of node plists.  Strip :children from
-each emitted plist.  Accept nil for NODES."
-  (let (acc)
-    (cl-labels
-        ((walk (xs)
-           (dolist (n xs)
-             (when (and n (listp n))
-               (let ((children (plist-get n :children))
-                     (cp (copy-sequence n)))
-                 (setq cp (plist-put cp :children nil))
-                 (push cp acc)
-                 (when children (walk children)))))))
-      (walk (or nodes '())))
-    (nreverse acc)))
-
-(defun satan-memory-evidence--bough-recent (start workspace limit)
-  "Return a flat list of bough events since START.  Each transition row
-becomes `(:event \"status_changed\" :nanoid :from :to :at :seq :actor)';
-each created row becomes `(:event \"created\" :nanoid :kind :title
-:status :parent_nanoid :at)'.  Transitions precede creations.  LIMIT
-caps the combined output."
-  (let* ((payload (satan-memory-evidence--bough-call
-                   "recent_changes" :since start :workspace workspace))
-         (transitions
-          (mapcar
-           (lambda (row)
-             (list :event "status_changed"
-                   :nanoid (plist-get row :nanoid)
-                   :from (plist-get row :from_status)
-                   :to (plist-get row :to_status)
-                   :at (plist-get row :at)
-                   :seq (plist-get row :seq)
-                   :actor (plist-get row :actor)))
-           (and payload (plist-get payload :transitions))))
-         (created
-          (mapcar
-           (lambda (row)
-             (list :event "created"
-                   :nanoid (plist-get row :nanoid)
-                   :kind (plist-get row :kind)
-                   :title (plist-get row :title)
-                   :status (plist-get row :status)
-                   :parent_nanoid (plist-get row :parent_nanoid)
-                   :at (plist-get row :at)))
-           (and payload (plist-get payload :created))))
-         (flat (append transitions created)))
-    (if (and limit (< limit (length flat)))
-        (cl-subseq flat 0 limit)
-      flat)))
-
-(defun satan-memory-evidence--bough-active (workspace)
-  (let ((payload (satan-memory-evidence--bough-call
-                  "active" :workspace workspace)))
-    (satan-memory-evidence--flatten-tree
-     (and payload (plist-get payload :nodes)))))
-
-(defun satan-memory-evidence--bough-day (date workspace)
-  (let ((payload (satan-memory-evidence--bough-call
-                  "day" :date date :workspace workspace)))
-    (and payload (plist-get payload :day))))
 
 ;; ---------------------------------------------------------------------
 ;; Git + fs (§4.2)
@@ -535,39 +424,23 @@ under CWD, relativized.  Empty list if recentf unavailable."
               (list (list :truncated t :dropped dropped))
               tail))))
 
-(defun satan-memory-evidence--shrink-annotations (nodes max-len)
-  "Replace any :annotation string longer than MAX-LEN with a placeholder.
-Returns a fresh list; original NODES is not modified."
-  (mapcar
-   (lambda (n)
-     (let ((ann (plist-get n :annotation)))
-       (if (and (stringp ann) (> (length ann) max-len))
-           (let ((cp (copy-sequence n)))
-             (plist-put cp :annotation
-                        (concat (substring ann 0 max-len) "…"))
-             (plist-put cp :annotation_len_original (length ann))
-             cp)
-         n)))
-   nodes))
+(defun satan-memory-evidence--truncate (ev target _hard-cap)
+  "Apply deterministic truncation passes toward TARGET, best-effort.
+Returns EV with :truncated_at set to a list of pass-name strings that
+fired, or nil if none did.  Names are strings (not symbols) so the
+result survives `json-serialize' when carried into `percept.json' /
+`bundle.json' / tool results.
 
-(defun satan-memory-evidence--truncate (ev target hard-cap)
-  "Apply deterministic truncation passes until EV fits TARGET (best
-effort) or HARD-CAP (mandatory).  Returns EV with :truncated_at set
-to a list of pass-name strings that fired, or nil if none did.  Names
-are strings (not symbols) so the result survives `json-serialize'
-when carried into `percept.json' / `bundle.json' / tool results."
+Both remaining passes are TARGET-gated, and the pass set is
+exhaustible: an object still oversized once they have all fired stays
+oversized.  HARD-CAP is therefore accepted but unused — it is where the
+behavioural final reducer will attach (ISS-001).
+
+Pass numbering is historical and stable.  SL-002 removed passes 1, 4
+and 5; passes 2 and 3 survive under their original labels so
+`:truncated_at' strings stay comparable across that removal."
   (let ((dropped nil)
         (cur ev))
-    ;; Pass 1: drop bough_day body, keep linked-items only.
-    (when (> (satan-memory-evidence--encode-bytes cur) target)
-      (let ((day (plist-get cur :bough_day)))
-        (when (and day (listp day))
-          (let ((linked (plist-get day :linked)))
-            (setq cur
-                  (plist-put cur :bough_day
-                             (list :linked (or linked '())
-                                   :body_dropped t)))
-            (push "bough_day_bodies" dropped)))))
     ;; Pass 2: middle-drop browser segments.
     (when (> (satan-memory-evidence--encode-bytes cur) target)
       (let ((segs (plist-get cur :browser_segments)))
@@ -584,18 +457,6 @@ when carried into `percept.json' / `bundle.json' / tool results."
                                (satan-memory-evidence--truncate-segments-middle
                                 segs)))
           (push "focus_segments_middle" dropped))))
-    ;; Pass 4: shrink long bough_active annotations.
-    (when (> (satan-memory-evidence--encode-bytes cur) target)
-      (let ((act (plist-get cur :bough_active)))
-        (when act
-          (setq cur (plist-put cur :bough_active
-                               (satan-memory-evidence--shrink-annotations
-                                act 256)))
-          (push "bough_active_annotation_bodies" dropped))))
-    ;; Pass 5 (hard cap): drop bough_recent entirely.
-    (when (> (satan-memory-evidence--encode-bytes cur) hard-cap)
-      (setq cur (plist-put cur :bough_recent nil))
-      (push "bough_recent" dropped))
     (when dropped
       (setq cur (plist-put cur :truncated_at (nreverse dropped))))
     cur))
@@ -645,13 +506,9 @@ about substrate slices."
          (today (substring end 0 10))
          (root (or (plist-get opts :behaviour_dir)
                    satan-tools-activity-dir))
-         (workspace (or (plist-get opts :bough_workspace)
-                        satan-bough-default-workspace))
          (cwd (or (plist-get opts :cwd) default-directory))
          (seg-limit (or (plist-get opts :seg_limit)
                         satan-memory-evidence-seg-limit))
-         (bough-limit (or (plist-get opts :bough_limit)
-                          satan-memory-evidence-bough-limit))
          (content-limit (or (plist-get opts :content_limit)
                             satan-memory-evidence-content-limit))
          (budget-target (or (plist-get opts :budget_target_bytes)
@@ -694,23 +551,9 @@ about substrate slices."
                             (satan-trace-stage-optional "evidence.content_probe"
                               (satan-memory-evidence--content-probe
                                content-limit)))))
-         (satan-memory-evidence--bough-tracking t)
-         (satan-memory-evidence--bough-attempts 0)
-         (satan-memory-evidence--bough-ok 0)
-         (bough-recent (unless cue-only
-                         (satan-trace-stage-optional "evidence.bough_recent"
-                           (satan-memory-evidence--bough-recent
-                            start workspace bough-limit))))
-         (bough-active (satan-trace-stage "evidence.bough_active"
-                         (satan-memory-evidence--bough-active workspace)))
-         (bough-day (unless cue-only
-                      (satan-trace-stage-optional "evidence.bough_day"
-                        (satan-memory-evidence--bough-day today workspace))))
-         (bough-status (satan-memory-evidence--bough-status))
          (sensor-status (list :current_window (car current-probe)
                               :focus (car focus-probe)
                               :browser (car browser-probe)
-                              :bough bough-status
                               :git (car git-probe)
                               :content (if content-probe
                                            (car content-probe)
@@ -721,9 +564,6 @@ about substrate slices."
                :browser_segments (cdr browser-probe)
                :git_commits (cdr git-probe)
                :content_recent (cdr content-probe)
-               :bough_recent bough-recent
-               :bough_active bough-active
-               :bough_day bough-day
                :git_state (satan-trace-stage "evidence.git_state"
                             (satan-memory-evidence--git-state cwd))
                :fs_state (satan-trace-stage "evidence.fs_state"
