@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 2
+slug = "a13_audit_verifier_cross_check_observer_json_against_intervention_transcripts"
+title = "A13 audit verifier: cross-check observer.json against intervention transcripts"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "audit"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

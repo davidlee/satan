@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 7
+slug = "extract_memory_substrate_to_satan_memoryd_daemon"
+title = "Extract memory substrate to satan-memoryd daemon"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "refactor", "extraction"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

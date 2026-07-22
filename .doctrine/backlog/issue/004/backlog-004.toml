@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 4
+slug = "de_008_follow_ups_retarget_git_state_dirty_canon_cwd_project_to_active_project_root_relax_observer_crosses_midnight_guard_q3"
+title = "DE-008 follow-ups: retarget git_state dirty + canon cwd.project to active-project root; relax observer crosses_midnight guard"
+kind = "issue"
+status = "open"
+resolution = ""
+created = "2026-06-08"
+updated = "2026-06-08"
+tags = []
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

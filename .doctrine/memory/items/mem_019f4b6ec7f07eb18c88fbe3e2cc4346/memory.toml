@@ -1,0 +1,46 @@
+memory_uid = "mem_019f4b6ec7f07eb18c88fbe3e2cc4346"
+memory_key = "mem.pattern.doctrine.codex-external-review"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Codex external review round-trip over the RV ledger"
+summary = "External adversarial review via codex MCP: unsandboxed session raises findings on an RV ledger, responder disposes, codex-reply verifies — full round-trip"
+created = "2026-07-10"
+updated = "2026-07-10"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = []
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "5d7bba102199d8f5fdc0c7f8c5fa4bb9b27d31cb"
+ref_name = "refs/heads/main"
+checkout_state_id = "386a828e916a04fc3214a7b8103c0964a435bb8d2a375881535b94314dba12a9"
+base_commit = "9ea2c2372eb5bdab9b2bd309dc10fdeb9a779c42"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-010"
+

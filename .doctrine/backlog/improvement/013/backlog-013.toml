@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 13
+slug = "satan_perception_signal_model_promotion_class_b_to_class_a"
+title = "SATAN perception signal-model promotion (class B to class A)"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "perception", "signal"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

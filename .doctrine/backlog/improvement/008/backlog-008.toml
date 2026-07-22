@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 8
+slug = "extract_audit_verifier_to_satan_audit_cli"
+title = "Extract audit verifier to satan-audit CLI"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "refactor", "extraction"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

@@ -1,0 +1,14 @@
+schema = "doctrine.policy"
+version = 1
+
+id = 1
+slug = "satan-module-extraction-policy"
+title = "SATAN module extraction policy"
+status = "active"
+created = "2026-05-30"
+updated = "2026-05-30"
+
+[relationships]
+supersedes    = []
+superseded_by = []
+tags          = ["satan", "refactor", "extraction"]

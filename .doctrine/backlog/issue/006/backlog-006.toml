@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 6
+slug = "satan_git_sensor_bwrap_blind_jailed_agent_commits_never_reach_the_feed"
+title = "SATAN git sensor bwrap-blind: jailed-agent commits never reach the feed"
+kind = "issue"
+status = "open"
+resolution = ""
+created = "2026-06-08"
+updated = "2026-06-08"
+tags = ["satan", "sensor"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 11
+slug = "satan_true_page_recall_write_captures_into_memory_store_as_traces_gated_by_impr_007"
+title = "SATAN true page-recall: write captures into memory store as traces (gated by IMPR-007)"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = []
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

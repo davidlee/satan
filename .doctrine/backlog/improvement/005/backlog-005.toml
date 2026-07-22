@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 5
+slug = "provider_error_typing_for_harness_failures"
+title = "Provider error typing for harness failures"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "resilience"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

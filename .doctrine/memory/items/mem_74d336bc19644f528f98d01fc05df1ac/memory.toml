@@ -1,0 +1,41 @@
+memory_uid = "mem_74d336bc19644f528f98d01fc05df1ac"
+memory_key = "mem.pattern.satan.sensor-watermark-format"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "SATAN sensor watermark format"
+summary = "The JSONL watermark format used by SATAN sensors for incremental ingestion."
+created = "2026-06-16"
+updated = "2026-06-16"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = []
+workspace = "default"
+repo = ""
+repo_id_kind = "local_root"
+repo_id_confidence = "low"
+
+[git]
+anchor_kind = "none"
+commit = ""
+tree = ""
+ref_name = ""
+checkout_state_id = ""
+base_commit = ""
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0

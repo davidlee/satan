@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 12
+slug = "satan_arrival_gate_attributes_as_stochastic_scheduling_surface"
+title = "SATAN arrival gate: attributes as stochastic scheduling surface"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "attributes", "scheduling", "governance"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

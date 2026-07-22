@@ -1,0 +1,41 @@
+memory_uid = "mem_ec125dc2468f4204a2da03a413115d6d"
+memory_key = "mem.fact.satan.git-sensor-bwrap-blind"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "SATAN git sensor bwrap-blind"
+summary = "Jailed-agent commits don't appear in the git feed because bubblewrap isolates the repo."
+created = "2026-06-16"
+updated = "2026-06-16"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "sensor", "git", "jail", "panopticon"]
+workspace = "default"
+repo = ""
+repo_id_kind = "local_root"
+repo_id_confidence = "low"
+
+[git]
+anchor_kind = "none"
+commit = ""
+tree = ""
+ref_name = ""
+checkout_state_id = ""
+base_commit = ""
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0

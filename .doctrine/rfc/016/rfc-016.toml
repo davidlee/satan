@@ -1,0 +1,40 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = 16
+slug = "satan-evolution-utility"
+title = "SATAN evolution: earn attention, close the loop"
+status = "open"
+created = "2026-07-06"
+updated = "2026-07-06"
+tags = []
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+
+[[relation]]
+label = "related"
+target = "RFC-001"
+
+[[relation]]
+label = "related"
+target = "ADR-001"
+
+[[relation]]
+label = "related"
+target = "ADR-002"
+
+[[relation]]
+label = "related"
+target = "POL-001"
+
+[[relation]]
+label = "related"
+target = "SL-011"
+
+[[relation]]
+label = "related"
+target = "ADR-017"
+

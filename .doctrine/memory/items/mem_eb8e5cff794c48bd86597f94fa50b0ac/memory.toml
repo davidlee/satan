@@ -1,0 +1,41 @@
+memory_uid = "mem_eb8e5cff794c48bd86597f94fa50b0ac"
+memory_key = "mem.fact.satan.perceive-consume-seam"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "SATAN perceive-consume seam"
+summary = "The boundary between perceive and consume: perceive writes percept.json always; consume handles effects."
+created = "2026-06-16"
+updated = "2026-06-16"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = []
+workspace = "default"
+repo = ""
+repo_id_kind = "local_root"
+repo_id_confidence = "low"
+
+[git]
+anchor_kind = "none"
+commit = ""
+tree = ""
+ref_name = ""
+checkout_state_id = ""
+base_commit = ""
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0

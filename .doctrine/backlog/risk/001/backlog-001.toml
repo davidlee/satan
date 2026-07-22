@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 1
+slug = "rate_limit_429_retry_degradation_not_implemented"
+title = "Rate-limit (429) retry/degradation not implemented"
+kind = "risk"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "resilience"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

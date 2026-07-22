@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 10
+slug = "interactive_satan_inject_last_percept_attributes_at_startup"
+title = "Interactive SATAN: inject last percept + attributes at startup"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "interactive", "percept"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

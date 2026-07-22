@@ -1,0 +1,46 @@
+memory_uid = "mem_019f539257117ba29ad02ac6188af58d"
+memory_key = "mem.fact.satan.stale-elc-masks-edits"
+schema_version = 1
+memory_type = "fact"
+status = "superseded"
+title = "Stale .elc masks source edits in batch runs"
+summary = "Manual batch-byte-compile leaves .elc that require loads over edited .el, masking source fixes; rm before re-running"
+created = "2026-07-11"
+updated = "2026-07-11"
+
+[scope]
+paths = []
+globs = ["satan/**"]
+commands = []
+tags = ["satan", "elisp", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "b87033247e8b0110474e026b440a1722dab3d31f"
+ref_name = "refs/heads/main"
+checkout_state_id = "0fe40f686f5d441d5e8f44ede3d13d9b7b6fa8032b451a25153d367c935f2a42"
+base_commit = "cd6c94e1bdd6b961a03de97eb9e4267cd6e50d86"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[relation]]
+label = "superseded_by"
+target = "mem_4e5a470ccd974140999036b0685f2757"
+

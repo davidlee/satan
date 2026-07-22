@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 9
+slug = "extract_observer_to_a_daemon_with_or_alongside_memory_substrate"
+title = "Extract observer to a daemon (with or alongside memory substrate)"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "refactor", "extraction"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

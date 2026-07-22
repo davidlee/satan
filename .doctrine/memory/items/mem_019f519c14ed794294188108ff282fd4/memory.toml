@@ -1,0 +1,43 @@
+memory_uid = "mem_019f519c14ed794294188108ff282fd4"
+memory_key = "mem.fact.satan.package-self-location-coupling"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "SATAN package self-location coupling (user-emacs-directory)"
+summary = "SATAN prod code anchors its own code/data to user-emacs-directory in 6+ sites — breaks any standalone extraction"
+created = "2026-07-11"
+updated = "2026-07-11"
+
+[scope]
+paths = []
+globs = ["satan/**"]
+commands = []
+tags = ["satan", "packaging", "extraction", "coupling"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "9642bf112fb7c0ef956513810a131a1e3dbf0931"
+ref_name = "refs/heads/main"
+checkout_state_id = "b0811b6624984c685355630cc8280de4bc99d4c5ae4c11ecd895826e2eb3c730"
+base_commit = "2d777c3cfba55bf81363cf9c04d37ac1879a6c0f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+

@@ -1,0 +1,47 @@
+memory_uid = "mem_019f35e62f2679b2a317bbc7cb69f58b"
+memory_key = "mem.fact.git.optional-locks"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "Background git status takes index.lock — set GIT_OPTIONAL_LOCKS=0"
+summary = "git status refreshes the index and writes .git/index.lock; background tooling must set GIT_OPTIONAL_LOCKS=0 or pass --no-optional-locks"
+created = "2026-07-06"
+updated = "2026-07-06"
+
+[scope]
+paths = ["satan/dl-satan-memory-evidence.el"]
+globs = ["satan/**"]
+commands = []
+tags = ["git", "satan", "performance"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6e7cc4a1b04baae1be7f0db834084958d267cff2"
+ref_name = "refs/heads/main"
+checkout_state_id = "6aa9f2ed16b2be6cb33dd7e17237baa25fab7b68cedb551f86b46306decb4090"
+base_commit = "9813a3a25e85880d431d4dad7aa0516eafca2c7e"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[relation]]
+label = "related"
+target = "mem_ec125dc2468f4204a2da03a413115d6d"
+

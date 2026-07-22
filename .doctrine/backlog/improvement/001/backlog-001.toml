@@ -1,0 +1,17 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 1
+slug = "a16_audit_verifier_cross_check_notified_json_against_actions_json_pre_spawn"
+title = "A16 audit verifier: cross-check notified.json against actions.json.pre_spawn"
+kind = "improvement"
+status = "open"
+resolution = ""
+created = "2026-05-30"
+updated = "2026-05-30"
+tags = ["satan", "audit"]
+
+[relationships]
+needs    = []
+after    = []
+triggers = []

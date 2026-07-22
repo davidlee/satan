@@ -1,0 +1,121 @@
+# Implementation plan for SL-012 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-012"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Satan repo bring-up (old names)"
+objective = "Copy the full SATAN tree into /workspace/satan per the D1 move table, stand up its own check infrastructure (linter copy, parameterised test runner, justfile per D7), clean the scaffold residue, and reconcile the satan repo flake (D6 satan-repo items). Names stay dl-satan-* — this phase proves the test suite crosses the repo boundary before any rename. .emacs.d is untouched and stays green."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-011 is closed (D9 ordering contract). Sole escape: a /consult run with the user whose explicit approval to reorder is recorded in notes.md — an agent-authored waiver note without that approval does not satisfy this criterion (RV-010 F-6)" },
+  { id = "EN-2", text = "SL-012 design.md is locked (status plan or later)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Every D1 move-table row present under /workspace/satan (satan/*.el, test/, harness/, bin/, memory/, protocol/, patterns.eld, docs/); source tree in .emacs.d unchanged (copy, not move — cutover deletes in PHASE-04)" },
+  { id = "EX-2", text = "Scaffold residue removed: empty src/ and test/ dirs deleted, flake description no longer 'flake for doing emacs', empty justfile replaced" },
+  { id = "EX-3", text = "bin/elisp-locate-paren-error copied; dev/satan-test.el present with suite dirs parameterised to satan/test, featurep dedup and SATAN_DB_HOST refusal preflight preserved; suite-dir resolution anchored to the repo root (load-file-name), NOT user-emacs-directory (RV-010 F-1)" },
+  { id = "EX-4", text = "Satan repo flake: config-specific jail definitions stripped; satanFakeHarness, satanGptelHarness (src resolving to ./satan/harness), jailed wrappers, bubblewrap kept; devshell keeps postgresql_18, supabase-cli, emacsclient-commands, just, doctrine" },
+  { id = "EX-5", text = "notes.md records the dual-presence window and the no-edits-in-config-copy rule until PHASE-04" },
+  { id = "EX-6", text = "Copied tree git-added in the satan repo BEFORE any flake eval/build gate (nix sees only tracked files — AGENTS.md trap 1; RV-010 F-2)" },
+  { id = "EX-7", text = "test/dl-secret-test.el dropped from the package: it requires dl-secret (a config-owned module SATAN only soft-deps via my/op-read-env) and was copied in error (design D10 manifest note). rm from satan/test; not in the runner's suite" },
+]
+verification = [
+  { id = "VA-1", text = "GREEN GATE (re-cut per design D10, PHASE-01 revision 2026-07-12): 'full ERT green' is unsatisfiable pre-decouple. This phase's gate is: lint green (bin/elisp-locate-paren-error over satan/*.el); satan-test loads and RUNS the full suite across the repo boundary; suites not blocked by the config-root axes pass; coupling-blocked suites (dl-notes require cascade + unmigrated-DB self-location) are known-red until PHASE-03. Full ERT green is a PHASE-03 gate, not this phase's" },
+  { id = "VA-2", text = "satan-test runner refuses to run batch without SATAN_DB_HOST / SATAN_FAILOVER_TO_SYSTEM_DB (loud error before loading tests)" },
+  { id = "VA-3", text = "nix flake evaluation of /workspace/satan/flake.nix succeeds; satanGptelHarness builds from the moved-in ./satan/harness" },
+  { id = "VA-4", text = "Diff audit against the D1 move table: no row missing, no extra config files dragged along" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Rename sweep"
+objective = "Mechanical namespace transfer inside the satan repo per D3: dl-satan-* → satan-*, my/satan-* → satan-*, entry point satan/satan.el with ELPA package headers and (provide 'satan), bin scripts' emacsclient --eval function names, docs prose updated. Harness Python untouched (wire-level SATAN_* env, not symbols)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete: satan repo green under old names" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan/satan.el is the entry point: package headers (;;; satan.el ---, Package-Version, Package-Requires), (provide 'satan)" },
+  { id = "EX-2", text = "rg 'dl-satan-' returns empty REPO-WIDE (code, tests, bin, docs, harness Python comments, protocol fixtures — RV-010 F-7)" },
+  { id = "EX-3", text = "rg 'my/satan-' returns empty over the satan repo; external soft deps my/op-read-env, my/journal--* deliberately unchanged" },
+  { id = "EX-4", text = "satan/bin/* emacsclient --eval calls resolve renamed functions (satan-run etc.); satan-git-post-commit audited for internal .emacs.d/satan path references" },
+  { id = "EX-5", text = "docs/** prose reflects new symbol names and paths (search-replace mechanical, hand-edit where context demands); patterns.eld audited for dl-/my/ keys (OQ-3)" },
+  { id = "EX-6", text = "timeout(1)/coreutils runtime dependency (from SL-011) recorded in package Commentary/README and covered by the devshell (RV-010 F-5)" },
+]
+verification = [
+  { id = "VA-1", text = "GREEN GATE (re-cut per design D10, same bar as PHASE-01 VA-1): lint green + full suite loads/runs across the boundary under satan-* names + non-coupling suites pass; coupling-blocked suites known-red until PHASE-03. The rename must not regress which suites pass vs PHASE-01. Full ERT green is a PHASE-03 gate" },
+  { id = "VA-2", text = "Byte-compilation: emacs --batch -L ./satan batch-byte-compile over satan/*.el. RE-CUT (corollary of D10/VA-1 re-cut): clean for files NOT blocked by the dl-notes-paths coupling; the coupling-blocked files (~40/65) error at compile-time on the missing 'dl-notes-paths require until PHASE-03 decouples. The rename must introduce ZERO new errors — every failure must be the identical missing-require, no void-function/unbound/wrong-signature. Fully clean is a PHASE-03 gate" },
+  { id = "VA-3", text = "rg gates EX-2/EX-3 run and captured in notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Decouple config-root assumptions"
+objective = "Sever BOTH config-root coupling axes per design D4+D10, in one leaf module satan/satan-custom.el (zero satan-deps). AXIS-1 (D4, notes): satan-notes-root + satan-journal-today defcustoms + satan-notes-path helper; consumer-based scope (RV-010 F-3) — 13 production files (10 hard-requires dropped + 3 transitive: run, broker, sensor-wpm) and 2 test files (context-test, integration-test) replace the four dl-notes symbols per the D4 table (root, journal/, weekly/, inbox.org). AXIS-2 (D10, self-location): satan--root defconst (resolved from load-file-name); re-anchor 3 self-location sites (memory-migrate, pattern, self-edit-mech-roots) to it; re-default 3 config-shaped sites (tools-docs drops docs/emacs + anchors ../docs, direnv-dir -> repo root, tools-vcs left as a documented user knob). Anchoring modules gain (require 'satan-custom). This phase is where full ERT green first becomes achievable (self-location fix migrates the test DBs). Behavioural change confined to path resolution — no tool/mode semantics move."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete: satan repo green under satan-* names" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-notes-root, satan-journal-today defcustoms and satan-notes-path helper defined (satan.el or satan-custom.el), :group 'satan" },
+  { id = "EX-2", text = "rg 'dl-notes-' returns empty over the satan repo" },
+  { id = "EX-3", text = "Journal-today call sites funcall satan-journal-today only when non-nil; weekly journal keeps the soft declare-function pattern with (satan-notes-path \"weekly\") as its dir argument" },
+  { id = "EX-4", text = "AXIS-2 home: satan/satan-custom.el is the leaf module (zero satan-deps) holding BOTH decouple surfaces — the D4 notes defcustoms (EX-1, relocated here) AND the satan--root defconst: (defconst satan--root (file-name-directory (or load-file-name buffer-file-name (locate-library \"satan-custom\"))) …), documented as internal package plumbing. Anchoring modules gain (require 'satan-custom)" },
+  { id = "EX-5", text = "AXIS-2a self-location re-anchored to satan--root per D10 table: memory-migrate-directory -> (expand-file-name \"memory/migrations/\" satan--root); pattern-file -> (expand-file-name \"patterns.eld\" satan--root); self-edit-mech-roots -> (list satan--root)" },
+  { id = "EX-6", text = "AXIS-2b config-shaped defaults re-defaulted per D10: tools-docs-roots default '(\"docs\") resolved (expand-file-name \"../docs\" satan--root) — docs/emacs DROPPED, --resolve-roots base updated; direnv-dir -> (file-name-directory (directory-file-name satan--root)) (pkg repo root); tools-vcs-search-roots UNCHANGED, docstring notes it is user-tunable" },
+  { id = "EX-7", text = "rg 'user-emacs-directory' satan/*.el returns empty (all 5 code sites re-anchored; the tools-docs docstring reference updated); the 3 config-shaped defaults resolve without reference to the config tree" },
+]
+verification = [
+  { id = "VT-1", expects = "New ERT coverage for the path surface: satan-notes-path joins below satan-notes-root; derived journal/weekly/inbox paths match the D4 table; satan-journal-today nil → no journal in context assembly", test_file = "/workspace/satan/satan/test/satan-custom-test.el", keywords = ["satan-notes-path", "satan-notes-root", "satan-journal-today"], waived = false },
+  { id = "VT-2", expects = "New ERT coverage for the self-location surface (D10): satan--root resolves to the elisp directory (…/satan/); memory-migrate/pattern/self-edit-mech paths resolve under satan--root; tools-docs default is '(\"docs\") and excludes docs/emacs; direnv-dir resolves to the package repo root", test_file = "/workspace/satan/satan/test/satan-custom-test.el", keywords = ["satan--root", "satan-memory-migrate-directory", "satan-tools-docs-roots"], waived = false },
+  { id = "VA-1", text = "just check green in /workspace/satan — NOW FULL ERT GREEN (the self-location fix migrates the test DBs, clearing the PHASE-01 migrate-driven failures). This is the phase where the re-cut green gate reaches full green" },
+  { id = "VA-2", text = "rg gate EX-2 run and captured in notes" },
+  { id = "VA-3", text = "rg gate EX-7 (user-emacs-directory) run and captured in notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Config cutover + host wiring"
+objective = "Point the config at the package and delete the in-tree copy: dl-path.el load-path move (D5), init.el use-package satan with :custom wiring (D4), dl-test.el drops satan/test, doctor declare-function renames, .emacs.d flake satan outputs removed (D6), satan/ and docs/satan/ deleted from .emacs.d, satan.nix ExecStart paths, git post-commit hook re-link, jail mount resolution (OQ-1). CHANGELOG updated. Both repos end green."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete: satan repo green, decoupled, renamed" },
+  { id = "EN-2", text = "Dual-presence window closes here: config copy of satan/ has received no edits since PHASE-01 (or edits were replayed into the package)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "core/dl-path.el: my/lisp-dirs drops 'satan'; my/checkout-lisp-dirs gains '~/dev/satan/satan' (D5)" },
+  { id = "EX-2", text = "init.el: (require 'dl-satan) replaced by (use-package satan :custom satan-notes-root + satan-journal-today lambda per D4)" },
+  { id = "EX-3", text = "dev/dl-test.el suite dirs reduced to lisp/test; lisp/dl-sleipnir-doctor.el declare-functions renamed satan-*; lisp/test/dl-sleipnir-doctor-test.el rewritten against the renamed package interface or its satan-coupled cases relocated to the satan repo (RV-010 F-4; decide at phase-plan)" },
+  { id = "EX-4", text = ".emacs.d/flake.nix: satanGptelHarness, satanFakeHarness, satanJailOptions and jailed wrappers removed or repointed at the satan repo flake; ~/dev/satan resolvable inside the jail (OQ-1 mechanism chosen and recorded)" },
+  { id = "EX-5", text = "satan/ and docs/satan/ deleted from .emacs.d; rg 'dl-satan-' zero hits outside .doctrine/, .spec-driver/, CHANGELOG.md" },
+  { id = "EX-6", text = "~/flakes satan.nix ExecStart paths %h/dev/satan/satan/bin/; ~/.config/git/hooks/post-commit re-linked to ~/dev/satan/satan/bin/satan-git-post-commit" },
+  { id = "EX-7", text = "CHANGELOG.md notes the extraction" },
+  { id = "EX-8", text = "Justfile check recipe drops hardcoded '-L satan -L satan/test' flags — the batch entrypoint bypasses dl-path.el, so this is load-bearing for VA-1, not cosmetic (RV-010 F-8); doctor tests resolve the package via the D5 load-path or an explicit -L to the external checkout" },
+]
+verification = [
+  { id = "VA-1", text = "just check green in .emacs.d (lisp tests, doctor checks) with satan absent from the tree" },
+  { id = "VA-2", text = ".emacs.d flake evaluates after satan output removal" },
+  { id = "VA-3", text = "rg gate EX-5 run and captured in notes" },
+  { id = "VH-1", text = "Emacs boots with the package: M-x satan-run RET morning works; satan/bin/* scripts resolve renamed functions via emacsclient" },
+  { id = "VH-2", text = "home-manager switch applied; systemd satan units start with new ExecStart paths; a test commit fires the re-linked post-commit hook and appends a git-activity segment row" },
+  { id = "VH-3", text = "dl-sleipnir-doctor SATAN checks pass (mode registry, budget, memory DB, sensors, patch)" },
+]
+specs        = []
+requirements = []

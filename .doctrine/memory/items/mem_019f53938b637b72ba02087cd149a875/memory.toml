@@ -1,0 +1,42 @@
+memory_uid = "mem_019f53938b637b72ba02087cd149a875"
+memory_key = "mem.pattern.satan.corpus-integration-skip-unless"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Corpus-integration tests skip-unless the ~/notes/satan corpus is present"
+summary = "Tests reading the host-only ~/notes/satan/ model-facing corpus must skip-unless the file is present (mirrors the DB skip-unless idiom)"
+created = "2026-07-11"
+updated = "2026-07-11"
+
+[scope]
+paths = []
+globs = ["satan/test/**"]
+commands = []
+tags = ["satan", "testing", "packaging"]
+workspace = "default"
+repo = "github.com/davidlee/emacs-config"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "b87033247e8b0110474e026b440a1722dab3d31f"
+ref_name = "refs/heads/main"
+checkout_state_id = "1a53b98b36940450fbff7a970f0d4a01372175c076171137797d03fd18e10856"
+base_commit = "cd6c94e1bdd6b961a03de97eb9e4267cd6e50d86"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

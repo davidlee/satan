@@ -1,0 +1,88 @@
+id    = 1
+slug  = "inquisition-removal-of-bough-integration"
+title = "Inquisition: removal of bough integration"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "inquisitor"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-002"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "RN-1 Expected dormant schema only; observed live generic bough consumers remain"
+detail = "Expected: D1 and §5.3 say preserved bough handles are legal but nothing emits, matches, consumes, or advertises them. Observed: memory_resonate accepts caller supplied cue.handles as arbitrary strings and forwards them unchanged (satan/satan-tools-memory.el:187-223); satan-memory-store-resonate performs an inverted-index lookup on those handles (satan/satan-memory-store.el:200-236); persisted handles are also returned by show and recent (satan/satan-memory-store.el:256-277,283-339; satan/memory/migrations/0003_memory_functions.sql:158-184). Existing bough-attributed traces therefore remain queryable and visible. Penance: explicitly classify historical generic read/show/recent behavior as preserved or remove it with a compatibility policy; correct every no-consumer/no-match claim and add behavioral tests for persisted bough handles before lock."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "blocker"
+title = "RN-2 Expected persisted bough motives merely stop matching; observed they become dormant or write-invalid"
+detail = "Expected: §5.4 says motives referencing bough handles simply never match after the predicate is removed. Observed: cue admission is computed from satan-motive--admitted-namespaces (satan/satan-motive.el:83-92,147-156); failure marks the motive dormant (satan/satan-motive.el:212-233), suppresses it from active motives (311-314), and causes write validation to reject it (410-453). Removing the three bough namespaces therefore makes a bough-only persisted motive dormant and invalid on rewrite, while mixed cues behave differently. Penance: decide and document compatibility for the external persisted motives file, including bough-only and mixed cues, operator migration/cleanup, read and write semantics, and exact tests; do not claim mere non-match."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "blocker"
+title = "RN-3 Expected every caller supplied bough input removed; observed wrong tool name and missed shared inputs"
+detail = "Expected: D2/D4 trace focal_bough_nanoid and :bough_workspace completely and target no bough tool inputs. Observed: no memory_note tool exists; focal_bough_nanoid sits in one shared hints-shape used by both memory_mark :hints and memory_resonate :cue.hints (satan/satan-tools-memory.el:263-299), feeding both mark canonicalization and derived-cue canonicalization (118-175,187-245). The evidence API also accepts :bough_limit at satan/satan-memory-evidence.el:20,653-654, which the inventory names only as a defcustom, and satan-percept-build advertises forwarded :bough_workspace at satan/satan-percept.el:45-51. Penance: correct the tool names and enumerate both exposed schema paths; remove and test both, explicitly remove :bough_limit, and include the percept forwarding contract/doc in the touch-set and grep gate."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "RN-4 Expected whole DB synced grammar guard; observed omitted SQL and only partial synchronization"
+detail = "Expected: §2.B/§5.3 say satan-memory-grammar.el is the whole DB-synced v1 schema, the DB holds the namespaces, and the unchanged sync test guards the preserved whole. Observed: the persisted bough defaults also live in satan/memory/migrations/0002_grammar_v1.sql:23-47, omitted from §2.B and the grep gate. The DB tables persist aliases and weights, not the Elisp namespace/closed-value tables (satan/memory/migrations/0001_init.sql:105-123). The sync suite compares version, aliases, and default weights only (satan/test/satan-memory-grammar-test.el:84-130); namespaces and closed values receive only internal consistency checks (52-82), so the test does not prove the whole grammar is untouched or DB-equal. Penance: enumerate the SQL migration as preserved schema, state the actual persistence boundary accurately, and add an explicit no-diff/hash audit for both grammar artifacts and their test rather than claiming the sync test proves more than it does."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "RN-5 Expected all false hard-cap claims reconciled; observed at least two more living assertions"
+detail = "Expected: §5.5 and D3 say exactly three surfaces assert a mandatory hard cap. Observed: the evidence module header also calls :budget_hard_cap_bytes a hard byte cap (satan/satan-memory-evidence.el:14-27), and docs/data-collection.md:471-485 says evidence is truncated to a 64 KB hard cap. These are in addition to the defcustom (satan/satan-memory-evidence.el:75-81), --truncate docstring (553-558), and docs/memory/design.md:415-422. Penance: expand §5.5, D3, and §9 to reconcile all five living claims to one best-effort contract and use a repository-wide evidence-cap assertion instead of a three-file checklist."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "RN-6 Expected removal prose touch-set settled; observed many living integration contracts deferred or omitted"
+detail = "Expected: a removal design identifies every living document that still advertises bough and distinguishes only frozen snapshots. Observed: OQ-1 defers the exact set to planning while production-facing documents still specify the bough_read tool and evidence path, including docs/data-collection.md:167-181,471-485, docs/memory/design.md:253-270,407-413,534-567, docs/perceptual-design.md:364-418,457-476, and docs/protocol.md:187. The design names only memory/design and perceptual-design plus vague others. Penance: settle the living/frozen classification before lock, enumerate every living document and required semantic edit, and add those paths to selectors and verification."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "RN-7 Expected validation to adjudicate D1-D4; observed grep and tests assert around the disputed boundary"
+detail = "Expected: §9 proves completeness, grammar preservation, motive compatibility, and caller-input removal. Observed: the grep gate covers production .el plus only bough_read in harness (design.md:359-361), so it misses the preserved SQL artifact, non-Elisp living docs, and generic consumers with no bough token. Grammar validation relies on the partial sync test (362-363). Motive coverage is described only as removed vocabulary path (376-377), and tools-memory checks only a nonexistent memory_note schema (378-379), omitting memory_mark, memory_resonate, :bough_limit, historical explicit-handle retrieval, and bough-only versus mixed persisted motives. Penance: replace these with executable assertions for both tool schemas and all opts, historical generic read behavior, motive parse/write matrices, exact preserved-file no-diff checks, and a cross-extension census with explicit allowlist."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "RN-8 Expected a reviewable design source path-set; observed SL-002 has no selectors"
+detail = "Expected: a slice design under tribunal has scope-relevant and design-target selectors so review prime, staleness, and later conformance can cover its claimed touch-set. Observed: doctrine review prime RV-001 fails with slice SL-002 declares no selectors; review prime has no path-set to track. The design itself claims a full grep touch-set but governance cannot hash or conform it. Penance: before lock, add bounded selectors covering every removal, preserved grammar artifact, harness/test, and living-doc path, run selector doctor, then prime RV-001 successfully."
+disposition = "design-wrong"
+response = "Accepted as a source-verified defect in SL-002 design; reconcile the stated penance in the design before lock. No implementation or source change is authorized by this review."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

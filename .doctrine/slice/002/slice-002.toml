@@ -1,0 +1,304 @@
+id = 2
+slug = "remove-bough-integration"
+title = "Remove bough integration"
+status = "proposed"
+created = "2026-07-17"
+updated = "2026-07-17"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "satan/satan-tools-bough.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-memory.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-mode.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tick.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-memory-evidence.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-sensor-alerts.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tank.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-memory-canon.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-observer-classify.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tools-memory.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-percept.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-resonance.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-db.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/runloop.py"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/test_gptel_harness.py"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/data-collection.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/memory/design.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/perceptual-design.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/protocol.md"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-tools-bough-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-broker-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-intervention-mark-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-intervention-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-memory-canon-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-memory-evidence-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-memory-store-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-motive-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-observer-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-patch-classify-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-percept-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-resonance-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-sensor-alerts-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-tank-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-tools-atsatan-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-tools-memory-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-audit-intervention-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/architecture.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/governance.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/patch/brief.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/patch/plan.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/INDEX.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/bough-gaps.md"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-memory-grammar.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/memory/migrations/0002_grammar_v1.sql"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-memory-grammar-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-mode-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-mcp-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-observer.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-intervention.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-motive.el"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/at-satan/design.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/at-satan/plan.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/resilience-design.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/refactor/T-attr-1-attribute-layer.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/attributes.brief.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/attributes/outcome-semantics.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/attributes/patterns_attributes.design_note.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/memory/handover.md"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tools-motive.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-tools-motive-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-attribute.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-attribute-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-pattern.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-pattern-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-memory-store.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-broker.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/resonance-payload-handover.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-audit.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-context.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-trace.el"
+intent = "scope-relevant"
+
+[[relation]]
+label = "supersedes"
+target = "SL-001"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`, SL-060). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-018
+#   doctrine link SL-NNN governed_by ADR-010
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

@@ -1,0 +1,151 @@
+# Implementation plan for SL-011 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-011"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "GIT_OPTIONAL_LOCKS=0 at git call sites"
+objective = "Kill background index-lock contention immediately: every read-only SATAN git invocation sets GIT_OPTIONAL_LOCKS=0 via let-bound process-environment at the evidence git choke (`--git-output`, `--git-state` rev-parse) and dl-satan-tools-vcs read-only calls. Standalone — no dependency on the trace module; design §2 env application is refactored onto trace-call later in PHASE-03 without behaviour change."
+entrance_criteria = [
+  { id = "EN-1", text = "Design §2 GIT_OPTIONAL_LOCKS scope approved (design.md committed)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "All evidence-assembly git subprocesses run with GIT_OPTIONAL_LOCKS=0 in their environment" },
+  { id = "EX-2", text = "dl-satan-tools-vcs read-only git calls carry the same env; patch-worktree writing ops untouched" },
+  { id = "EX-3", text = "just check green; zero new byte-compile warnings" },
+]
+verification = [
+  { id = "VT-1", expects = "child process observes GIT_OPTIONAL_LOCKS=0 through the evidence git runner", test_file = "satan/test/dl-satan-memory-evidence-test.el", keywords = ["GIT_OPTIONAL_LOCKS"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "dl-satan-trace.el telemetry core"
+objective = "New module per design §1: per-tick accumulator, with-tick/stage/stage-optional macros, subprocess ledger append, tick-row flush (unwind-protect), day-bucketed JSONL under $XDG_STATE_HOME/satan/, kill switch, and dl-satan-trace-call (timeout -k 2 wrapper, :label, :env, :stdin, per-call :timeout-secs with nil = unwrapped, exit-124 → :timed-out, logical-argv ledger row). Pure module + tests; no call sites converted yet."
+entrance_criteria = [
+  { id = "EN-1", text = "Design §1 row shapes and API locked" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Module loads standalone; macros pass through when no accumulator is bound" },
+  { id = "EX-2", text = "Telemetry write failure cannot signal out of a tick (condition-case swallow verified)" },
+  { id = "EX-3", text = "trace-call returns (:exit :stdout :timed-out) honouring timeout, env, stdin, label; ledger row logs logical argv" },
+  { id = "EX-4", text = "just check green; zero new byte-compile warnings" },
+]
+verification = [
+  { id = "VT-1", expects = "stage macro accumulates ms and returns body value; passthrough without accumulator; tick row flushed on error path via unwind-protect", test_file = "satan/test/dl-satan-trace-test.el", keywords = ["dl-satan-trace-stage", "dl-satan-trace-with-tick"], waived = false },
+  { id = "VT-2", expects = "trace-call: sleep 10 under 1s deadline returns fast with :timed-out t; env var visible to child; :timeout-secs nil runs unwrapped; ledger argv carries no timeout prefix; :label present on row", test_file = "satan/test/dl-satan-trace-test.el", keywords = ["dl-satan-trace-call", "timed-out"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Choke-point routing + per-probe deadlines"
+objective = "Route the four subprocess choke points through dl-satan-trace-call per design §2: dl-satan-db-query/-psql (:label per caller; memory-migrate passes :timeout-secs nil), evidence --git-output/--git-state (folding PHASE-01 env into :env, git_state gains :timed_out t marker), --bough-call, tools-sway. Per-site timeout defcustoms (db 5, git 3, bough 5, sway 2). Each site keeps its existing return-shape contract; timeout degrades along existing error paths."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete (trace-call available)" },
+  { id = "EN-2", text = "PHASE-01 complete (env behaviour to preserve is tested)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "All four choke points ledger every call and enforce their deadline; no remaining direct call-process at those sites" },
+  { id = "EX-2", text = "dl-satan-db timeout returns (error . msg); migrate path runs unwrapped; existing db/evidence/bough/sway suites still green" },
+  { id = "EX-3", text = "git_state carries :timed_out t when any sub-call breached; GIT_OPTIONAL_LOCKS=0 still injected (PHASE-01 test still green)" },
+  { id = "EX-4", text = "just check green; zero new byte-compile warnings" },
+]
+verification = [
+  { id = "VT-1", expects = "db-query timeout → (error . …); migrate unbounded; ledger rows labelled per caller", test_file = "satan/test/dl-satan-db-test.el", keywords = ["timeout", "dl-satan-trace-call"], waived = false },
+  { id = "VT-2", expects = "git-output timeout → nil and git_state :timed_out t; bough timeout degrades bough_status", test_file = "satan/test/dl-satan-memory-evidence-test.el", keywords = ["timed_out"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Stage instrumentation + tick trace row"
+objective = "Wrap dl-satan-broker-run's body in with-tick (denied ticks trace; outcome stamped spawned|budget_denied|session_blocked|perceive_failed) and apply stage macros per design §3 map: evidence stages in assemble-with-bounds, perceive.persist, probes.read.*, spawn-side stages (audit_open, observer, enrich.resonance/motive, sensor_alerts, probes.commit.*, ingest_cursor, bundle, exec). MCP interactive path binds no accumulator (free passthrough). One tick row per tick end-to-end."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete (macros available)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "A completed tick appends exactly one tick row carrying stages map, total_ms, outcome; denied ticks also emit rows" },
+  { id = "EX-2", text = "MCP interactive assemble emits no tick row and no budget effects" },
+  { id = "EX-3", text = "just check green; zero new byte-compile warnings" },
+]
+verification = [
+  { id = "VT-1", expects = "broker-run under stubbed spawn emits one tick row with expected stage keys and outcome; denied outcomes stamped", test_file = "satan/test/dl-satan-broker-test.el", keywords = ["dl-satan-trace-with-tick", "outcome"], waived = false },
+  { id = "VT-2", expects = "tick row shape: stages map ms values, skipped array, budget flags, kind=tick", test_file = "satan/test/dl-satan-trace-test.el", keywords = ["tick", "stages"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Tick wall budget — tiered truncation"
+objective = "Apply dl-satan-trace-stage-optional to the optional tier per design §3 (evidence.bough_recent, evidence.bough_day, evidence.content_probe, enrich.resonance, bundle recent_runs); dl-satan-trace-tick-budget-seconds defcustom (10, nil = unbounded). Degrade honestly: skipped slots nil, sensor_status content → budget_skipped, resonance → (:status budget-skipped), tick row skipped[] + budget_breached. Core tier never skipped; probe commits / ingest cursor untouched (watermark integrity)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete (accumulator carries t0 and skip recording end-to-end)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Exhausted budget skips exactly the optional tier; percept shape remains valid through --truncate and canon; renderers self-suppress" },
+  { id = "EX-2", text = "Trace row records budget_breached and the precise skip list" },
+  { id = "EX-3", text = "just check green; zero new byte-compile warnings" },
+]
+verification = [
+  { id = "VT-1", expects = "assemble-with-bounds under exhausted fake accumulator: bough_recent/day + content nil, sensor_status honest, shape valid", test_file = "satan/test/dl-satan-memory-evidence-test.el", keywords = ["budget", "skipped"], waived = false },
+  { id = "VT-2", expects = "resonance skip yields (:status budget-skipped :cue nil :matches nil); render path tolerant; no-budget/no-accumulator passthrough runs everything", test_file = "satan/test/dl-satan-context-test.el", keywords = ["budget-skipped"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Worktree confinement + patch ledger"
+objective = "Design §4: dl-satan-patch-worktree--assert-owned guard (file-truename both sides, prefix compare) called by every mutating git op in patch-worktree + runner; hard error on escape. Patch git ops route through trace-call for ledger visibility (timeout defcustom 30) but stay exempt from GIT_OPTIONAL_LOCKS=0."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete (trace-call available)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Every mutating patch-worktree/runner git op asserts confinement before running" },
+  { id = "EX-2", text = "Patch git ops appear in the subprocess ledger; no GIT_OPTIONAL_LOCKS env on them" },
+  { id = "EX-3", text = "just check green; zero new byte-compile warnings" },
+]
+verification = [
+  { id = "VT-1", expects = "guard accepts owned path, rejects a user tree, rejects symlink escape into a user tree", test_file = "satan/test/dl-satan-patch-worktree-test.el", keywords = ["assert-owned"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "End-to-end verification + docs"
+objective = "Behavioural closure evidence per slice intent: run a real tick, inspect the tick row + ledger; run a git-status loop in a user repo during a tick and observe zero index.lock collisions; confirm full-suite green and zero byte-compile warnings; CHANGELOG note. Findings feed /audit; no new mechanism in this phase."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01..06 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Live tick trace row + ledger inspected and sane (stages attributable, no missing choke coverage)" },
+  { id = "EX-2", text = "Zero index.lock collisions during concurrent git-status loop" },
+  { id = "EX-3", text = "CHANGELOG.md updated; just check green repo-wide" },
+]
+verification = [
+  { id = "VH-1", expects = "Human runs a tick and the concurrent git-status loop; confirms trace/ledger content and zero lock collisions" },
+  { id = "VA-1", expects = "Agent sweeps satan/ for any remaining direct call-process to psql/git/bough/swaymsg outside the choke points and reports residue" },
+]
+specs        = []
+requirements = []

@@ -1,0 +1,24 @@
+schema = "doctrine.adr"
+version = 1
+
+id = 17
+slug = "emacs-is-a-client"
+title = "Emacs is a client: lifecycle authority outside the editor, trust boundary as protocol"
+status = "proposed"
+created = "2026-07-06"
+updated = "2026-07-06"
+tags = []
+
+[relationships]
+# `supersedes` stays typed — author with `doctrine supersede ADR-NNN <previous>`.
+# `related` edges are uniform `[[relation]]` rows — author with `doctrine link ADR-NNN related <target>`.
+supersedes    = []
+superseded_by = []   # set on the old ADR by F1; reverse link is derived
+
+[[relation]]
+label = "related"
+target = "ADR-001"
+
+[[relation]]
+label = "related"
+target = "ADR-002"

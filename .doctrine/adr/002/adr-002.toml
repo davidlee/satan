@@ -1,0 +1,18 @@
+schema = "doctrine.adr"
+version = 1
+
+id = 2
+slug = "satan-arrival-via-metabolic-stochastic-gating"
+title = "SATAN arrival via metabolic stochastic gating"
+status = "proposed"
+created = "2026-06-08"
+updated = "2026-06-08"
+
+[relationships]
+supersedes    = []
+superseded_by = []
+tags          = ["satan", "arrival", "attributes", "governance"]
+
+[[relation]]
+label = "related"
+target = "ADR-001"
