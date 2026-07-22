@@ -60,7 +60,7 @@
             sqlite
             socat
             bun
-            codex
+            jailLib.agentsByName.codex
             coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           ]
           ++ [doctrine-pkg];
