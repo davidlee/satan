@@ -314,6 +314,8 @@ modified it and PHASE-05 reverted it — net zero against the pre-removal SHA.
 
 ### Outstanding — blocks close
 
+*(Dispositioned 2026-07-22 — see "VH-7 disposition" below.)*
+
 **VH-7 only.** The keeper must (a) delete `bough_read.md` under
 `satan-tools-descriptions-dir` (`~/notes/satan/tools/`) — outside this repo,
 unverifiable from here, and depended on by nothing since the tool is
@@ -331,3 +333,38 @@ Live bough token counts, for divergence detection at audit — 67 files. Largest
 two fixture files (`test/canon-fixtures/rich_window.json` 8,
 `minimal_firefox.json` 1) are not named as selectors but fall under §2.D
 classification — disposition them at PHASE-05.
+
+## 2026-07-22 — VH-7 disposition
+
+Both halves confirmed by the keeper; the slice closes.
+
+- **(a) `bough_read.md` removed** from `satan-tools-descriptions-dir`. Keeper's
+  confirmation is the evidence — the file is outside the repo and no in-repo
+  check can attest to it.
+- **(b) Historical bough-attributed data stays readable and copy-forwardable**
+  until IMP-016. Accepted as the design's decision (D4/D1), not a defect.
+
+### VH-7 extended: the model-facing notes corpus
+
+VH-7 as authored named only the tool description file. The audit had treated
+`~/notes` as unverifiable from the working environment; it is in fact readable,
+though what this environment carries is a two-file skeleton, not the keeper's
+corpus. Both files it does carry still advertised bough to the model:
+
+- `satan/tools/satan_boot_context.md` — the `# Percept` block described
+  "sensor-derived focus/browser/**bough**/git context". The percept assembler
+  now reads focus, browser and git only; the line was stale, not merely
+  cosmetic.
+- `satan/prompts/interactive.txt` — listed `**bough** — link graph / knowledge
+  graph traversal` among the available tool categories, a capability the model
+  can no longer invoke.
+
+Both corrected under VH-7 at the keeper's direction. **The corpus this
+environment sees is a skeleton — the keeper's real corpus needs the same two
+edits, plus a `grep -ri bough ~/notes` sweep for surfaces the skeleton omits.**
+
+This is the class of residue the slice's zero-token gate cannot reach:
+`satan-bough-removal-gate-test.el` covers production files in this repo, and
+model-facing content lives outside it by design (D4/POL). Nothing standing
+guards it. Recorded rather than automated — a gate over a corpus the repo does
+not own would fail on every machine that lacks it.
