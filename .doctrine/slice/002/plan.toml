@@ -97,9 +97,19 @@ exit_criteria = [
   { id = "EX-5", text = "`satan/test/satan-tools-bough-test.el` deleted; `satan-broker-test.el` drops its `(require 'satan-tools-bough)` (:32) and its bough mode/tick fixtures — but KEEPS the `memory_resonate` explicit-`cue.handles` audit pin from PHASE-01 (§2.D PRESERVE)." },
 ]
 verification = [
-  { id = "VT-1", expects = "`satan-mode-check-tool-references` passes with `bough_read` absent from the registry and from every mode spec.", test_file = "satan/test/satan-mode-test.el", keywords = ["satan-mode-check-tool-references"], patterns = ["\\(ert-deftest"], waived = false },
-  { id = "VT-2", expects = "The MCP description preflight passes with no `bough_read` description present; `satan-mcp-test.el` stays green UNMODIFIED (0 bough refs today, design §5.6).", test_file = "satan/test/satan-mcp-test.el", keywords = ["ert-deftest"], patterns = ["\\(ert-deftest"], waived = false },
-  { id = "VT-3", expects = "The harness tier-2 drop set no longer contains `bough_read`.", test_file = "satan/harness/test_gptel_harness.py", keywords = ["def test"], patterns = ["^def test"], waived = false },
+  # VT-1/VT-2 waived at audit (2026-07-22): mis-authored, and self-contradictory
+  # with EX/VA-4 of this same phase. A VT mandate proves a claim by pointing at a
+  # test file THIS SLICE MODIFIED — but design §5.6 requires both of these files
+  # to stay green UNMODIFIED, so the mandate can never attribute. The checks
+  # themselves are sound and were run; they are VA work, not VT work, and are
+  # re-carried as VA-5/VA-6 below. Ids are immutable, so these rows stay.
+  { id = "VT-1", expects = "WAIVED — see VA-5. `satan-mode-check-tool-references` passes with `bough_read` absent from the registry and from every mode spec.", test_file = "satan/test/satan-mode-test.el", keywords = ["satan-mode-check-tool-references"], patterns = ["\\(ert-deftest"], waived = true },
+  { id = "VT-2", expects = "WAIVED — see VA-6. The MCP description preflight passes with no `bough_read` description present; `satan-mcp-test.el` stays green UNMODIFIED (design §5.6).", test_file = "satan/test/satan-mcp-test.el", keywords = ["ert-deftest"], patterns = ["\\(ert-deftest"], waived = true },
+  # VT-3 pattern corrected at audit: the harness tests are methods on a
+  # TestCase, so they are indented — `^def test` could never match.
+  { id = "VT-3", expects = "The harness tier-2 drop set no longer contains `bough_read`.", test_file = "satan/harness/test_gptel_harness.py", keywords = ["def test_filter_tools_tier2_drops_reads"], patterns = ["^\\s*def test"], waived = false },
+  { id = "VA-5", expects = "Carries waived VT-1. `(satan-mode-check-tool-references)` evaluated in a live image returns nil — no mode spec references an unregistered tool. Run 2026-07-22, post-PHASE-03." },
+  { id = "VA-6", expects = "Carries waived VT-2. `satan-mcp-test.el` and `satan-mode-test.el` are byte-identical to the pre-removal SHA and green; no manifest build requests a `bough_read` description because the tool is unregistered. The external description file under ~/notes is manual cleanup (VH-7)." },
   { id = "VA-4", expects = "`satan-mode-test.el` and `satan-mcp-test.el` are byte-identical to their pre-slice state (design §5.6 requires them green unmodified) unless VT-1 demanded a new assertion, in which case the diff is additive only." },
 ]
 specs        = []
@@ -181,8 +191,15 @@ exit_criteria = [
 ]
 verification = [
   { id = "VT-1", expects = "Zero-token gate (R1/RN-14): a repo gate over all production .el/.py/.sql finds no `bough` token, with the allowlist restricted to exactly `satan/satan-memory-grammar.el`, `satan/memory/migrations/0002_grammar_v1.sql` and the single `satan-motive--admitted-namespaces` occurrence. The content-agnostic substrate files carry no bough token today and stay under the gate, so a future accidental bough branch there fails.", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["bough", "satan-memory-grammar", "admitted-namespaces"], patterns = ["\\(ert-deftest"], waived = false },
-  { id = "VT-2", expects = "Preserved-artifact no-diff (R2): `satan-memory-grammar.el` and `0002_grammar_v1.sql` are byte-identical to their pre-slice state, and `satan-memory-grammar-test.el` (db-sync-* + internal consistency, incl. the :74 pin on the preserved `bough_node` weight = 0) is green UNMODIFIED.", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["grammar", "no-diff"], patterns = ["\\(ert-deftest"], waived = false },
-  { id = "VT-3", expects = "Repo-wide evidence-cap wording gate: no surface asserts a mandatory/enforced truncation byte cap, closing the sixth-surface risk (design §5.5).", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["hard cap"], patterns = ["\\(ert-deftest"], waived = false },
+  # VT-2 keywords corrected at audit: byte-identity against the pre-removal tree
+  # is a ONE-TIME check (done via git, recorded in notes with the SHA) and cannot
+  # be a standing test — a legitimate future grammar edit would break it. The
+  # durable form of "preserved whole" is that the vocabulary is still declared
+  # with its original worlds and weights, in both halves.
+  { id = "VT-2", expects = "Preserved-artifact gate (R2): the elisp grammar still declares all five bough namespaces with their original worlds and weights (bough_node = 0), and the SQL half mirrors them. Byte-identity of `satan-memory-grammar.el`, `0002_grammar_v1.sql`, `satan-memory-grammar-test.el`, `satan-mode-test.el` and `satan-mcp-test.el` against the pre-removal SHA was verified once at audit and recorded in notes.md.", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["grammar-vocabulary-preserved-whole", "grammar-sql-mirrors-the-elisp"], patterns = ["\\(ert-deftest"], waived = false },
+  # VT-3 keywords corrected at audit: the gate matches `hard[- ]cap` as a regex,
+  # so the bare literal "hard cap" does not appear in the file.
+  { id = "VT-3", expects = "Repo-wide evidence-cap wording gate: no surface asserts a mandatory/enforced truncation byte cap, closing the sixth-surface risk (design §5.5).", test_file = "satan/test/satan-bough-removal-gate-test.el", keywords = ["no-surface-claims-an-enforced-cap", "cap-claim-re"], patterns = ["\\(ert-deftest"], waived = false },
   { id = "VA-4", expects = "Doc review: every living/canon .md mentions bough only as removed or historical, never as a live capability. Frozen `docs/review/*` and the two superseded briefs are untouched." },
   { id = "VA-5", expects = "Tick telemetry (RN-18): a post-removal evidence assembly emits no `evidence.bough_recent`/`bough_active`/`bough_day` stage into `tick-trace-*.jsonl`; historical day-bucketed files are left untouched as immutable retained observability." },
   { id = "VA-6", expects = "The runtime `satan/patterns.eld` (gitignored) is verified clean where present (currently 0 bough tokens)." },

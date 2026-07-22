@@ -9,9 +9,8 @@
 ;;   A6   no rendering of absent handles
 ;;
 ;; Sensor surface is quarantined the same way `satan-memory-evidence-test'
-;; does it: `:behaviour_dir' points at a tmp tree, `satan-bough-program'
-;; points at a non-existent path so bough calls return nil without
-;; touching the user's real bough store.
+;; does it: `:behaviour_dir' points at a tmp tree, so probes read
+;; fixtures rather than the user's real state.
 
 (require 'ert)
 (require 'cl-lib)
@@ -22,8 +21,7 @@
 
 (defmacro satan-percept-test--with-fixture (vars &rest body)
   "Bind VARS plist `(:tmp :behaviour :run-dir)' to a fresh tmp tree.
-BODY runs with `satan-bough-program' shunted to /nonexistent/ so
-bough probes return nil.  TMP cleaned up on exit."
+TMP cleaned up on exit."
   (declare (indent 1))
   (let ((tmp (plist-get vars :tmp))
         (behaviour (plist-get vars :behaviour))
@@ -34,7 +32,7 @@ bough probes return nil.  TMP cleaned up on exit."
             (,run-dir (file-name-as-directory
                        (expand-file-name "run" ,tmp))))
        (unwind-protect
-           (let ((satan-bough-program "/nonexistent/bough"))
+           (progn
              (make-directory ,behaviour t)
              (make-directory ,run-dir t)
              ,@body)

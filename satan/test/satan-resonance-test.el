@@ -147,13 +147,18 @@ still contribute score weight per §S2 — gate is admit-only)."
                    '("app:firefox" "day:2026-05-19" "mode:motd")))
     (should (= 1 (length (plist-get result :matches))))))
 
-(ert-deftest satan-resonance/gate-admits-bough-event ()
-  "`bough_event:*' (bough.recent_status_change) admits."
+(ert-deftest satan-resonance/gate-admits-artifact-event ()
+  "A sensor-observed rule outside the §S2 exclude list admits the cue.
+The gate is content-agnostic: it asks only whether some handle's
+`rule_id' is outside the exclude list, never what the handle names.
+\(This test previously used `bough.recent_status_change'; SL-002
+removed that rule, so the fixture would have asserted a rule_id nothing
+can emit.  The gate behaviour it covers is unchanged.\)"
   (let* ((percept (satan-resonance-test--percept
-                   '("bough_event:status_changed" "day:2026-05-19")
+                   '("artifact:produced_artifact" "day:2026-05-19")
                    (list (satan-resonance-test--src
-                          "bough.recent_status_change"
-                          "bough_event:status_changed")
+                          "cwd.artifact"
+                          "artifact:produced_artifact")
                          (satan-resonance-test--src
                           "time.day_week" "day:2026-05-19"))))
          (result (satan-resonance-derive
@@ -161,7 +166,7 @@ still contribute score weight per §S2 — gate is admit-only)."
                   (list :store-resonate
                         (satan-resonance-test--ok-stub
                          '((:trace_id "tid" :score 3.0
-                            :matched_handles ("bough_event:status_changed"))))))))
+                            :matched_handles ("artifact:produced_artifact"))))))))
     (should (eq (plist-get result :status) 'ok))))
 
 (ert-deftest satan-resonance/limit-forwarded-to-store ()
@@ -329,8 +334,7 @@ section.  Guards against silent fallback to a hardcoded header."
 
 (defmacro satan-resonance-test--with-sensor-fixture (vars &rest body)
   "Parallel to `satan-percept-test--with-fixture' — give BODY a tmp
-behaviour dir and run dir, with `satan-bough-program' shunted to a
-non-existent path so bough probes return nil."
+behaviour dir and run dir."
   (declare (indent 1))
   (let ((tmp (plist-get vars :tmp))
         (beh (plist-get vars :behaviour))
@@ -341,7 +345,7 @@ non-existent path so bough probes return nil."
             (,rd  (file-name-as-directory
                    (expand-file-name "run" ,tmp))))
        (unwind-protect
-           (let ((satan-bough-program "/nonexistent/bough"))
+           (progn
              (make-directory ,beh t)
              (make-directory ,rd t)
              ,@body)

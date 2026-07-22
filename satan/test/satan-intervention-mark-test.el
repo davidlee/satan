@@ -76,6 +76,11 @@
 
 ;; ---------- dispatch end-to-end (DB + stubs) ----------
 
+;; PRESERVED-BOUNDARY PIN — SL-002 §2.D / §9 (RN-2c).  The `bough_node:abc'
+;; handle below is NOT integration residue: it pins that the manual mark path
+;; copies a stored intervention's cue handles verbatim into the counter-memory
+;; trace.  Copy-forward is content-agnostic and survives the removal; scrubbing
+;; the residue is IMP-016.
 (ert-deftest satan-intervention-mark/dispatch-routes-to-writer ()
   (skip-unless (fboundp 'satan-intervention-test--with-db))
   (satan-intervention-test--with-db
