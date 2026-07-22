@@ -4,9 +4,9 @@ version = 1
 id = 17
 slug = "emacs-is-a-client"
 title = "Emacs is a client: lifecycle authority outside the editor, trust boundary as protocol"
-status = "proposed"
+status = "accepted"
 created = "2026-07-06"
-updated = "2026-07-06"
+updated = "2026-07-22"
 tags = []
 
 [relationships]

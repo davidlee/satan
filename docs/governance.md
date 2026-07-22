@@ -59,6 +59,9 @@ Models are interchangeable. Harnesses are interchangeable. The broker
 may evolve. The identity and governance rules should remain coherent
 across those changes.
 
+The broker is an implementation, not an identity: authority lives in the
+protocol and its ledger of owners (ADR-017).
+
 ## Status
 
 | Phase | Status | Notes |

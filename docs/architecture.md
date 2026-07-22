@@ -18,7 +18,7 @@ Companions: [[satan-governance]] (philosophy + policy), [[satan-protocol]] (wire
 ```text
 systemd / manual invocation
         ↓
-Emacs broker            (trusted authority)
+Emacs client            (current owner of every authority item)
         ↓
 jailed harness/model    (untrusted reasoning)
         ↓
@@ -29,10 +29,20 @@ broker-owned tools and output handlers
 org/denote/bough/local surfaces
 ```
 
-Emacs is the trusted local broker. Org/Denote are the canonical
-personal text substrate. `bough` is a graph/cache/metadata/index layer
-around that substrate, not the primary owner of reality. The model is
-a reasoning engine, not trusted with direct authority.
+Emacs is SATAN's privileged client: it owns the canonical personal text
+substrate (org/denote) and every human approval surface. Authority over
+SATAN's actions is defined by protocol — validated actions, allowlists,
+append-only audit, ceilings, kill switches — enforced by whichever
+component owns each authority item (see the authority ledger). The model
+remains a reasoning engine, not trusted with direct authority; the trust
+boundary is the protocol, not a process (ADR-017).
+
+Today the Emacs client owns every authority item; the ledger is where
+that ceases to be an assumption.
+
+Org/Denote are the canonical personal text substrate. `bough` is a
+graph/cache/metadata/index layer around that substrate, not the primary
+owner of reality.
 
 ## Conceptual layers
 
@@ -43,11 +53,14 @@ not decide for itself when to wake up except through mechanisms the
 user has explicitly installed.
 
 ### Broker
-Trusted authority. Owns mode resolution, context assembly,
-prompt/hippocampus loading, permission profile selection, process
-lifecycle, JSONL handling, tool dispatch, action validation, output
-handling, audit logging. The broker enforces policy; the model
-proposes.
+The protocol's current enforcement point, not its definition. Owns mode
+resolution, context assembly, prompt/hippocampus loading, permission
+profile selection, process lifecycle, JSONL handling, tool dispatch,
+action validation, output handling, audit logging. The broker enforces
+policy; the model proposes. Items of that authority migrate one at a
+time under ADR-017 §3, each with its audit trail, never enforced in two
+places at once — the broker is an implementation, and an interchangeable
+one.
 
 ### Harness adapter
 Talks to a model or model-running environment (OpenRouter, gptel,

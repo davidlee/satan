@@ -4,9 +4,9 @@ version = 1
 id = 1
 slug = "satan-module-extraction-policy"
 title = "SATAN module extraction policy"
-status = "active"
+status = "required"
 created = "2026-05-30"
-updated = "2026-05-30"
+updated = "2026-07-22"
 
 [relationships]
 supersedes    = []
