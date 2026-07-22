@@ -427,7 +427,6 @@ class TierDegradationTests(unittest.TestCase):
 
     def test_filter_tools_tier2_drops_reads(self):
         tools = [_stub_tool_schema("org_read_context"),
-                 _stub_tool_schema("bough_read"),
                  _stub_tool_schema("memory_resonate"),
                  _stub_tool_schema("hippocampus_write"),
                  _stub_tool_schema("notify_send"),
@@ -435,7 +434,6 @@ class TierDegradationTests(unittest.TestCase):
         filtered = runloop.filter_tools_for_tier(tools, 2)
         names = [t["function"]["name"] for t in filtered]
         self.assertNotIn("org_read_context", names)
-        self.assertNotIn("bough_read", names)
         self.assertNotIn("memory_resonate", names)
         self.assertIn("hippocampus_write", names)
         self.assertIn("notify_send", names)

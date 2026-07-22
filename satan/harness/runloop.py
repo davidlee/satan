@@ -38,7 +38,7 @@ TIER_1_DROP = frozenset({
 })
 
 TIER_2_DROP = TIER_1_DROP | frozenset({
-    "org_read_context", "bough_read", "agenda_read",
+    "org_read_context", "agenda_read",
     "hippocampus_list", "hippocampus_read", "notes_at_satan_scan",
     "memory_resonate", "memory_show_trace",
     "patch_job_create", "patch_job_status", "proposal_stage",

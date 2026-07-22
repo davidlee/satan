@@ -29,7 +29,6 @@
 (require 'satan-tools-docs)
 (require 'satan-tools-memory)
 (require 'satan-tools-motive)
-(require 'satan-tools-bough)
 (require 'satan-tools-vcs)            ; morning/tick modes reference vcs_log
 (require 'satan-mcp)                   ; satan-mcp--session-active (session gate)
 (require 'satan-trace)                 ; SL-011 tick trace row (VT-1)
@@ -355,7 +354,6 @@ read from the prepare-phase run_ctx plist."
     ("notes_at_satan_scan"    . "Scan @satan directives.")
     ("sway_border_set"        . "Retint sway borders.")
     ("sway_border_reset"      . "Restore sway borders.")
-    ("bough_read"             . "Read bough.")
     ("memory_mark"            . "Mark.")
     ("memory_resonate"        . "Resonate.")
     ("memory_show_trace"      . "Show.")
@@ -403,7 +401,6 @@ populated from ALIST `((NAME . CONTENT) …)'."
      ("notes_at_satan_scan"    . "Scan @satan directives.")
      ("sway_border_set"        . "Retint sway window borders.")
      ("sway_border_reset"      . "Restore sway borders.")
-     ("bough_read"             . "Read from bough.")
      ("memory_mark"            . "Mark a memory trace.")
      ("memory_resonate"        . "Resonate against handles.")
      ("memory_show_trace"      . "Show a memory trace.")
@@ -464,7 +461,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
 Threads a minimal non-nil `:percept' onto PREPARE and persists
 `percept.json' under PDIR, exactly as the real perceive does for the
 identity/mirror invariants — but without the live evidence assembler
-(which reads sensors/git/bough, out of scope for gate tests).  Also
+(which reads sensors/git, out of scope for gate tests).  Also
 threads empty `:probe_snapshots' so the consume-side commit (only
 reached on the spawn path) has the key to read.  Reuse this in any
 broker gate VT that asserts the percept/bundle artifacts."
@@ -509,7 +506,7 @@ Secondary subject: satan-budget (gating policy)."
            ;; DR-010 §3: perceive now runs UNCONDITIONALLY before the budget
            ;; gate.  This test's subject is the gate, not perception, so stub
            ;; `satan-run-perceive' to thread a minimal `:percept' (the real
-           ;; evidence assembler reads sensors/git/bough — out of scope here).
+           ;; evidence assembler reads sensors/git — out of scope here).
            ;; The stub still persists `percept.json' and threads `:percept' so
            ;; the gate path and the new bundle `:percept' mirror stay exercised;
            ;; the budget assertions below are untouched.
@@ -781,7 +778,7 @@ enqueue an attribute (`satan-attribute-enqueue'), advance any probe
 watermark (the three `mark-inspected' / `--write-state' writers), OR advance
 the ingest cursor (`satan-ingest-cursor-advance' /
 `satan-ingest-cursor--write').  Each forbidden fn is spied to fail the
-test if called.  Read-only local subprocess probes (git/bough via
+test if called.  Read-only local subprocess probes (git via
 `call-process') are ALLOWED and not spied.  `satan-percept-build' is
 stubbed to a fixture percept — the purity subject is the perceive
 orchestration, not the builder internals."

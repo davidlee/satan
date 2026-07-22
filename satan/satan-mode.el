@@ -95,7 +95,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "inbox_append" "agenda_read" "activity_read"
                 "notes_recent" "notes_at_satan_scan"
                 "sway_border_set" "sway_border_reset"
-                "bough_read" "memory_mark" "memory_resonate"
+                "memory_mark" "memory_resonate"
                 "memory_show_trace"
                 "motive_read" "motive_replace"
                 "vcs_log"
@@ -121,7 +121,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "hippocampus_grep" "hippocampus_rename"
                 "agenda_read" "activity_read" "notes_recent"
                 "sway_border_set" "sway_border_reset"
-                "bough_read" "memory_mark" "memory_resonate"
+                "memory_mark" "memory_resonate"
                 "memory_show_trace"
                 "motive_read" "motive_replace"
                 "vcs_log")
@@ -145,7 +145,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "hippocampus_list" "hippocampus_read" "hippocampus_write"
                 "hippocampus_overwrite" "hippocampus_delete"
                 "hippocampus_grep" "hippocampus_rename"
-                "bough_read" "memory_resonate" "memory_show_trace"
+                "memory_resonate" "memory_show_trace"
                 "patch_job_create" "patch_job_status"
                 "vcs_log"
                 "docs_list" "docs_search" "docs_read")
@@ -168,7 +168,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "hippocampus_list" "hippocampus_read" "hippocampus_write"
                 "hippocampus_overwrite" "hippocampus_delete"
                 "hippocampus_grep" "hippocampus_rename"
-                "bough_read" "memory_resonate" "memory_show_trace"
+                "memory_resonate" "memory_show_trace"
                 "patch_job_create" "patch_job_status"
                 "vcs_log"
                 "docs_list" "docs_search" "docs_read")
@@ -190,7 +190,7 @@ Dotfiles must not be the source of truth for prompt content.")
                 "hippocampus_overwrite" "hippocampus_delete"
                 "hippocampus_grep" "hippocampus_rename"
                 "memory_mark" "memory_resonate" "memory_show_trace"
-                "motive_read" "bough_read"
+                "motive_read"
                 "notes_recent"
                 "vcs_log"
                 "docs_list" "docs_search" "docs_read")

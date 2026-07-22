@@ -105,6 +105,28 @@ Hard-cap wording surfaces (1) header `:budget_hard_cap_bytes`, (2) the
 last-resort / best-effort and name ISS-001. Surfaces (4) and (5) are docs —
 PHASE-06.
 
+## 2026-07-22 — PHASE-03 complete (tool surface)
+
+`bough_read` no longer exists. Suite 1015/0 unexpected, 13 skipped (the three
+`satan-bough/*` skips left with the test file). Harness: 52 tests OK.
+
+- `satan/satan-tools-bough.el` (361 lines) and
+  `satan/test/satan-tools-bough-test.el` (279) deleted.
+- `satan-memory.el` require + docstring; `satan-mode.el` 5 specs;
+  `satan-tick.el` tick-pulse + tick-agent; `runloop.py` tier-2 entry;
+  `test_gptel_harness.py` fixture and its assertion.
+- `satan-broker-test.el`: require, two manifest description fixtures, three
+  prose comments. Its PHASE-01 audit pin stays.
+
+VT-1 `(satan-mode-check-tool-references)` → nil. VA-4 holds: `satan-mode-test.el`
+and `satan-mcp-test.el` are untouched and green.
+
+VT-2's manifest half cannot run here — tool descriptions live under
+`satan-tools-descriptions-dir` in `~/notes`, outside the repo, and the
+corpus-integration tests `skip-unless` it is present. `satan-mcp-test` green
+unmodified is the available evidence; the external `bough_read.md` still needs
+the manual cleanup already flagged for close.
+
 ### Census at plan time (2026-07-22)
 
 Live bough token counts, for divergence detection at audit — 67 files. Largest:

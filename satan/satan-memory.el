@@ -1,8 +1,8 @@
 ;;; satan-memory.el --- SATAN memory substrate aggregator -*- lexical-binding: t; -*-
 
 ;; Single entry point for the canonical-handle memory substrate.  Pulls
-;; in the five `satan-memory-*' submodules + the two tool modules
-;; (`satan-tools-memory', `satan-tools-bough') and exposes a small
+;; in the five `satan-memory-*' submodules + the `satan-tools-memory'
+;; tool module and exposes a small
 ;; `satan-memory-*' interactive surface for inspecting the store from
 ;; Emacs.  See `~/.emacs.d/satan/memory.design.md' §11.
 
@@ -12,7 +12,6 @@
 (require 'satan-memory-evidence)
 (require 'satan-memory-store)
 (require 'satan-memory-migrate)
-(require 'satan-tools-bough)
 (require 'satan-tools-memory)
 
 (defun satan-memory--recent-rows (limit)
