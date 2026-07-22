@@ -400,6 +400,11 @@ The bucket is parsed from run-id's leading YYYYMMDD."
   (let ((path (satan-audit-handle-transcript-path audit)))
     (satan-jsonl-read-file path :null-object :null)))
 
+;; PRESERVED-BOUNDARY PIN — SL-002 §2.D / §5.3.  The `bough_node:abc' cue
+;; handle below is NOT integration residue: it pins that a caller-supplied
+;; bough handle survives `intervention-create' into both the audit log and
+;; the projection (RN-15).  `intervention-create' is one of the five
+;; fresh-introduction surfaces the removal deliberately leaves open.
 (ert-deftest satan-intervention/create-emits-audit-and-projects ()
   (satan-intervention-test--with-db
    (satan-intervention--reset-counters)
@@ -616,6 +621,11 @@ symbol whose value is a list).  Stub returns `(ok . \"trace_test\")'."
     :classified-at "2026-05-23T12:30:01+1000")
    :type 'user-error))
 
+;; PRESERVED-BOUNDARY PIN — SL-002 §2.D / §9 (RN-2c).  The bough handles below
+;; are NOT integration residue: they pin that manual counter-memory from a
+;; stored bough-bearing intervention copies the handles verbatim into the new
+;; trace.  Copy-forward is content-agnostic and survives the removal; scrubbing
+;; the residue is OQ-3.
 (ert-deftest satan-intervention/manual-writer-harmful-first-emit ()
   (satan-intervention-test--with-db
    (satan-intervention--reset-counters)

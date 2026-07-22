@@ -35,6 +35,39 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 - Plus the SL-001 `design.md` §2/§10 ledger, retained as the authoritative seam
   map (slice §Context).
 
+## 2026-07-22 — PHASE-01 complete (boundary pins)
+
+Ten new pins, all green **with bough present**; no production file touched.
+Suite: 1045 tests, 0 unexpected, 16 skipped (was 1035/0/16).
+
+| Pin | File | Pins |
+|---|---|---|
+| `sync-admits-caller-supplied-bough-handle` | `satan-pattern-test.el` | fresh-introduction surface 1 — pattern sync admits a grammatical `bough_*` |
+| `outcome-payload-forwards-bough-cue-handles` | `satan-attribute-test.el` | attribute outcome forwarding copies handles verbatim |
+| `replace-admits-caller-supplied-bough-cue` | `satan-tools-motive-test.el` | fresh-introduction surface 2 — `motive_replace` |
+| `historical-bough-trace-readable-all-paths` | `satan-memory-store-test.el` | RN-1 — all three preserved read paths in one test |
+| `mark-admits-caller-supplied-bough-handle` | `satan-memory-store-test.el` | fresh-introduction surface 3 — `memory-store-mark` |
+| `rank-mixed-bough-motive-fires-on-non-bough-overlap` | `satan-observer-test.el` | RN-2 (a) |
+| `rank-bough-only-motive-dormant-without-bough-percept` | `satan-observer-test.el` | RN-2 (b) negative half |
+| `rank-bough-only-motive-fires-on-historical-percept` | `satan-observer-test.el` | RN-2/RN-7 (b) positive half — the case round 0 got wrong |
+| `bough-only-cue-stays-admittable` | `satan-motive-test.el` | D4 — preserved vocabulary |
+| `audit-records-explicit-bough-cue-handles-verbatim` | `satan-broker-test.el` | fresh-introduction surface 5 — broker tool-call audit |
+
+Surface 4 (`intervention-create` audit + projection) was already pinned at
+`satan-intervention-test.el:410`; it and the other §2.D PRESERVE/ADD sites
+(`satan-audit-intervention-test.el`, `satan-tools-atsatan-test.el:318/407/455`,
+`satan-memory-grammar-test.el:74`, the counter-memory writer) now carry an
+in-file `PRESERVED-BOUNDARY PIN — SL-002` comment naming why the bough token is
+there. That is EX-3: a later pruning pass must not be able to mistake them for
+integration residue.
+
+Two small findings:
+
+- The `satan_patterns` table stores cue handles as `cue_handles_json` (jsonb),
+  not a `text[]` — the pin queries via `jsonb_array_elements_text`.
+- `satan-jsonl-read-file` returns JSON arrays as **lists**, so the broker audit
+  pin normalises with `append` before comparing (the arity trap again).
+
 ### Census at plan time (2026-07-22)
 
 Live bough token counts, for divergence detection at audit — 67 files. Largest:

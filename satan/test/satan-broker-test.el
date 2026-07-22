@@ -1118,5 +1118,66 @@ old regex missed."
         (funcall sentinel nil event))
       (should-not satan-broker--spawn-running))))
 
+;; ---------------------------------------------------------------------
+;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9.  Do not prune with the bough
+;; integration: this asserts the *preserved* content-agnostic substrate.
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-broker/audit-records-explicit-bough-cue-handles-verbatim ()
+  "The inbound `tool_call' audit record copies the caller's args verbatim,
+including explicit `bough_*' literals in a `memory_resonate' cue.
+
+One of the five fresh-introduction surfaces (RN-9/RN-11).  The audit writer
+is content-agnostic — it neither derives nor filters handles — so removing
+the bough integration must not change what it records.  Explicit-handle
+resonate remains a preserved read path even once nothing derives a bough
+handle any more."
+  (let* ((mode (list :name "test-mode"
+                     :capabilities '()
+                     :tools '("memory_resonate")
+                     :budget-tool-calls 4))
+         (dir (make-temp-file "satan-bough-audit-" t)))
+    (unwind-protect
+        (let* ((audit (satan-audit-open
+                       dir
+                       '(:run_id "rid" :mode (:name "test-mode"))
+                       '(:bundle t)
+                       (list :run_id "rid"
+                             :time_now "2026-05-22T10:00:00+1000")))
+               (prepare (list :run_id "rid"
+                              :time_now "2026-05-22T10:00:00+1000"
+                              :start_time (current-time)
+                              :evidence nil :percept nil
+                              :sensor_status nil :pre_spawn nil :motive nil))
+               (run-ctx (make-satan-run
+                         :id "rid" :mode mode
+                         :start-time (plist-get prepare :start_time)
+                         :dir dir :tool-calls-done 0
+                         :status 'running
+                         :audit audit
+                         :prepare prepare)))
+          (cl-letf (((symbol-function 'satan-jsonl-send) (lambda (&rest _) nil)))
+            (satan-broker--on-tool-call
+             run-ctx
+             '(:type "tool_call" :id "c-bough" :name "memory_resonate"
+               :args (:cue (:handles ["bough_node:abc" "app:emacs"])))))
+          (let* ((records (satan-jsonl-read-file
+                           (expand-file-name "transcript.jsonl" dir)
+                           :null-object :null))
+                 (call (cl-find-if
+                        (lambda (r)
+                          (and (equal (plist-get r :dir) "in")
+                               (equal (plist-get r :event) "tool-call")))
+                        records))
+                 (handles (thread-first call
+                                        (plist-get :payload)
+                                        (plist-get :args)
+                                        (plist-get :cue)
+                                        (plist-get :handles))))
+            (should call)
+            ;; `satan-jsonl-read-file' returns JSON arrays as lists.
+            (should (equal '("bough_node:abc" "app:emacs") (append handles nil)))))
+      (delete-directory dir t))))
+
 (provide 'satan-broker-test)
 ;;; satan-broker-test.el ends here

@@ -859,6 +859,51 @@ is now `:ignored', not `:unknown'."
     (should (null (satan-observer--rank-motives-by-overlap
                    motives handles)))))
 
+;; ---------------------------------------------------------------------
+;; PRESERVED-BOUNDARY PINS — SL-002 §5.3 / §5.4 / §9.  Do not prune with the
+;; bough integration: the generic overlap ranker is content-agnostic and
+;; stays.  What goes is `--predicate-bough-event-match' and
+;; `--motive-bough-nanoids' (derivation); these three pin the corrected
+;; RN-2 semantics — a retained bough motive is NOT universally inert.
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-observer/rank-mixed-bough-motive-fires-on-non-bough-overlap ()
+  "RN-2 (a): a mixed app+bough motive still correlates via its non-bough
+handle.  The ranker counts set intersection and knows nothing about
+namespaces, so removing bough derivation cannot make this motive dormant."
+  (let* ((motives (list (list :id "mixed"
+                              :cue (list "app:emacs" "bough_node:NANO01"))))
+         (handles (list "app:emacs" "surface:editor"))
+         (ranked (satan-observer--rank-motives-by-overlap motives handles)))
+    (should (= 1 (length ranked)))
+    (should (equal "mixed" (plist-get (plist-get (car ranked) :motive) :id)))
+    (should (= 1 (plist-get (car ranked) :overlap)))))
+
+(ert-deftest satan-observer/rank-bough-only-motive-dormant-without-bough-percept ()
+  "RN-2 (b), negative half: with derivation gone no new bough handle enters a
+percept, so a bough-only motive has nothing to overlap and is dropped —
+`:no_correlation', not a positive on a phantom motive."
+  (let* ((motives (list (list :id "bough-only"
+                              :cue (list "bough_node:NANO01"))))
+         (handles (list "app:emacs" "surface:editor")))
+    (should (null (satan-observer--rank-motives-by-overlap
+                   motives handles)))))
+
+(ert-deftest satan-observer/rank-bough-only-motive-fires-on-historical-percept ()
+  "RN-2/RN-7 (b), positive half — the case the round-0 plan got wrong.
+A bough-only motive is not universally inert: when a PERSISTED percept
+already carries its handle (written before the removal, or copied forward
+by a generic writer), it still correlates and fires.  That is why D4 keeps
+the admitted namespaces; scrubbing the residue is OQ-3."
+  (let* ((motives (list (list :id "bough-only"
+                              :cue (list "bough_node:NANO01"))))
+         (handles (list "app:emacs" "bough_node:NANO01"))
+         (ranked (satan-observer--rank-motives-by-overlap motives handles)))
+    (should (= 1 (length ranked)))
+    (should (equal "bough-only"
+                   (plist-get (plist-get (car ranked) :motive) :id)))
+    (should (= 1 (plist-get (car ranked) :overlap)))))
+
 (ert-deftest satan-observer/classify-for-motives-no-bundle-no-correlation ()
   (satan-observer-test--in-tmp
    (lambda (root)

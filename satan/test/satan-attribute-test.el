@@ -170,5 +170,30 @@
      'satan-attribute-updates-enabled t 'set nil)
     (should t)))
 
+;; ---------------------------------------------------------------------
+;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9.  Do not prune with the bough
+;; integration: this asserts the *preserved* content-agnostic substrate.
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-attribute/outcome-payload-forwards-bough-cue-handles ()
+  "Outcome forwarding copies a bough-bearing intervention's cue handles verbatim.
+The payload builder is content-agnostic: it neither derives nor filters
+bough handles.  Removing the bough integration removes derivation, not
+this copy (RN-9/RN-11) — historical bough-attributed interventions keep
+reaching the attribute daemon intact until OQ-3 scrubs the vocabulary."
+  (satan-attribute-test--with-updates-enabled t
+    (let ((p (satan-attribute-build-outcome-payload
+              :run-id "r9" :ts "2026-05-24T12:00:00Z"
+              :intervention-id "r9.iv001"
+              :classification "worked"
+              :confidence "high"
+              :intervention-kind "notify"
+              :cue-handles '("app:emacs" "bough_node:abc" "bough_project:def")
+              :related-trace-ids '("t9")
+              :is-revision nil
+              :revises nil)))
+      (should (equal '("app:emacs" "bough_node:abc" "bough_project:def")
+                     (plist-get (plist-get p :evidence) :cue_handles))))))
+
 (provide 'satan-attribute-test)
 ;;; satan-attribute-test.el ends here

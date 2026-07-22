@@ -22,6 +22,10 @@
 (defconst satan-audit-iv-test--iv-id-2
   "20260523T120000-morning-deadbe.iv02")
 
+;; PRESERVED-BOUNDARY PIN — SL-002 §2.D / §5.3.  The `bough_*' cue handles in
+;; the fixture below are NOT integration residue: the audit verifier is
+;; content-agnostic and must keep accepting historical bough-bearing
+;; intervention records after the removal.  Do not prune.
 (defun satan-audit-iv-test--created (&rest overrides)
   "Build a baseline `intervention.created' payload, applying plist OVERRIDES."
   (let ((base

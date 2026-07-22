@@ -188,6 +188,30 @@ handle the motive triggers on every tick — defeats cooldown."
     (should (plist-get m :dormant))
     (should (eq :no-sensor-handle (plist-get m :dormant_reason)))))
 
+;; PRESERVED-BOUNDARY PIN — SL-002 §5.4 (D4).  Do not prune with the bough
+;; integration.  RN-2 proved the round-0 plan wrong: removing the bough
+;; namespaces from `satan-motive--admitted-namespaces' would flip every
+;; persisted bough-only motive to dormant and reject future writes.  The
+;; vocabulary is therefore preserved and this pin guards it — retiring it is
+;; OQ-3's job (grammar-v2 + data migration), with an operator migration.
+(ert-deftest satan-motive/bough-only-cue-stays-admittable ()
+  "A bough-only `:cue:' passes §S3 admission and does NOT go dormant.
+Its firing behaviour is a separate question, pinned in
+`satan-observer-test.el': it correlates only when a persisted percept
+already carries the handle."
+  (should (satan-motive--cue-admittable-p '("bough_node:NANO01")))
+  (should (satan-motive--cue-admittable-p '("bough_event:status_changed")))
+  (let* ((parsed (satan-motive-parse
+                  "* test: bough-only
+  A motive cued solely on a bough node.
+  :cue: bough_node:NANO01
+  :cooldown_s: 1800
+"))
+         (m (car (plist-get parsed :motives))))
+    (should m)
+    (should (not (plist-get m :dormant)))
+    (should (equal '("bough_node:NANO01") (plist-get m :cue)))))
+
 (ert-deftest satan-motive/parse-missing-text-returns-empty ()
   "Silent self-suppression — missing/empty file is a valid state."
   (let ((parsed (satan-motive-parse "")))

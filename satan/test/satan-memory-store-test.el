@@ -310,6 +310,73 @@ payload stays single-line and the tab-split row parser cannot misframe."
      (err (ert-fail (format "resonate failed: %S" err))))))
 
 ;; ---------------------------------------------------------------------
+;; PRESERVED-BOUNDARY PINS — SL-002 §5.3 / §9.  Do not prune with the bough
+;; integration: these assert the *preserved* content-agnostic substrate.
+;; `bough-node-zero-weight' above is one too (it pins the preserved grammar
+;; weight), as is the store-mark admission pin below.
+;; ---------------------------------------------------------------------
+
+(defun satan-memory-store-test--bough-mark (&optional id)
+  "Seed a trace carrying a `bough_node:' handle alongside a non-bough one."
+  (satan-memory-store-mark
+   :trace-id (or id "20260519T100000-hist01")
+   :kind "observation"
+   :trace-origin "llm_mark"
+   :source "memory_mark@motd"
+   :observed-start-at "2026-05-19T09:50:00+10:00"
+   :observed-end-at   "2026-05-19T10:00:00+10:00"
+   :payload "historical bough-attributed observation"
+   :valence "neutral"
+   :grammar-version 1
+   :handles
+   (list (list :handle "bough_node:NANO01"
+               :source (list :rule_id "bough.active_focus" :origin "derived"))
+         (list :handle "app:emacs"
+               :source (list :rule_id "panopticon.current.app"
+                             :origin "observed")))))
+
+(ert-deftest satan-memory-store/historical-bough-trace-readable-all-paths ()
+  "RN-1: a seeded bough-attributed trace stays readable on all three
+preserved read paths — explicit-`cue-handles' resonate, show, and recent.
+
+The removal takes bough *derivation*, not retrieval: the retrieval path is
+content-agnostic and the grammar is preserved whole, so a handle written
+before the removal is still a legal, matchable literal afterwards.  If any
+of these three goes red, the removal has cut into the substrate."
+  (satan-memory-store-test--with-db
+   (satan-memory-store-test--bough-mark)
+   ;; path 1 — explicit cue.handles resonate
+   (pcase (satan-memory-store-resonate :cue-handles '("bough_node:NANO01"))
+     (`(ok . ,matches)
+      (should (equal '("20260519T100000-hist01")
+                     (mapcar (lambda (m) (plist-get m :trace_id)) matches)))
+      (should (equal '("bough_node:NANO01")
+                     (plist-get (car matches) :matched_handles))))
+     (err (ert-fail (format "resonate failed: %S" err))))
+   ;; path 2 — memory_show_trace
+   (pcase (satan-memory-store-show "20260519T100000-hist01")
+     (`(ok . ,payload)
+      (should (member "bough_node:NANO01"
+                      (mapcar (lambda (h) (plist-get h :handle))
+                              (plist-get payload :handles)))))
+     (err (ert-fail (format "show failed: %S" err))))
+   ;; path 3 — recent-trace read
+   (pcase (satan-memory-store-recent)
+     (`(ok . ,rows)
+      (should (member "bough_node:NANO01" (plist-get (car rows) :handles))))
+     (err (ert-fail (format "recent failed: %S" err))))))
+
+(ert-deftest satan-memory-store/mark-admits-caller-supplied-bough-handle ()
+  "One of the five fresh-introduction surfaces (RN-9/RN-11): `memory-store-mark'
+still accepts a caller-supplied `bough_*' literal.  Intended and documented —
+the vocabulary is preserved, so removal adds no bough filter.  Closing this
+door is OQ-3's job."
+  (satan-memory-store-test--with-db
+   (pcase (satan-memory-store-test--bough-mark "20260519T100000-fresh1")
+     (`(ok . ,tid) (should (equal tid "20260519T100000-fresh1")))
+     (err (ert-fail (format "mark rejected a legal bough handle: %S" err))))))
+
+;; ---------------------------------------------------------------------
 ;; Outcome invariant (§9.12) + origin admission (§9.14)
 ;; ---------------------------------------------------------------------
 

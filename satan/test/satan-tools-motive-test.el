@@ -200,5 +200,35 @@ it on `motive-write'."
     (should (null (plist-get spec :capability)))
     (should (eq 'read (plist-get spec :risk)))))
 
+;; ---------------------------------------------------------------------
+;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9 / D4.  Do not prune with the
+;; bough integration: this asserts the *preserved* content-agnostic
+;; substrate, not the removed integration.
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-tools-motive/replace-admits-caller-supplied-bough-cue ()
+  "`motive_replace' accepts a motive whose `:cue:' carries `bough_*' handles.
+One of the five fresh-introduction surfaces (RN-9/RN-11).  Removing the
+bough integration removes *derivation*, not the admitted namespaces
+\(D4: `satan-motive--admitted-namespaces' is preserved vocabulary\), so a
+caller may still write a bough-bearing motive.  Removing the vocabulary
+instead would flip persisted bough-only motives to dormant and reject
+future writes — which is why it is OQ-3's job, not this slice's."
+  (satan-tools-motive-test--with-tmp-file path
+    (let* ((content "* test: bough-bearing
+  A motive whose cue names a bough node.
+  :cue: app:emacs bough_node:NANO01
+  :cooldown_s: 1800
+  :worked_count: 0
+")
+           (result (satan-tool/motive-replace
+                    (list :content content)
+                    satan-tools-motive-test--tool-ctx)))
+      (should (eq 'ok (car result)))
+      (should (= 1 (plist-get (cdr result) :active_motives)))
+      (with-temp-buffer
+        (insert-file-contents path)
+        (should (equal (buffer-string) content))))))
+
 (provide 'satan-tools-motive-test)
 ;;; satan-tools-motive-test.el ends here

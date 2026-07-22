@@ -290,6 +290,12 @@ prefix, not just `@satan' (otherwise the line becomes
           (should-not (string-match-p "@satan-was-here-intervention" s))
           (should (string-match-p "#\\+BEGIN_QUOTE satan RUN-X,iv-harmful" s)))))))
 
+;; PRESERVED-BOUNDARY PIN — SL-002 §2.D (RN-15).  The `bough_node:abc' handles
+;; in this test and in `end-to-end-smoke' below are NOT integration residue and
+;; NOT mode/tick fixtures: they pin the substrate boundary — a persisted
+;; intervention cue, a caller-supplied `intervention-create' cue, and
+;; counter-memory copy-forward, all content-agnostic and all surviving the
+;; bough removal.  Do not prune.
 (ert-deftest notes-at-satan-intervention/scanner-includes-and-rewrites ()
   "Scanner returns the directive (substring of `@satan'); done-handler
 parses + rewrites; rescan filters it (now claimed-re matches)."

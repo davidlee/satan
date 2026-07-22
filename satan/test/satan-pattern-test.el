@@ -328,6 +328,30 @@
      (should-error (satan-pattern-sync file satan-pattern-test--db)
                    :type 'user-error))))
 
+;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9.  Do not prune with the bough
+;; integration: this asserts the *preserved* content-agnostic substrate, not
+;; the removed integration.  Pattern sync is one of the five fresh-introduction
+;; surfaces (RN-9/RN-11): the bough vocabulary stays in the grammar, so a
+;; caller-supplied `bough_*' literal must keep passing admission.  Closing that
+;; door is OQ-3's job (grammar-v2), not this slice's.
+(ert-deftest satan-pattern/sync-admits-caller-supplied-bough-handle ()
+  "Sync accepts a grammatical `bough_*' handle from a caller.
+Preserved vocabulary: removal of the integration adds no bough filter."
+  (satan-pattern-test--with-db
+   (let ((file (satan-pattern-test--write-patterns
+                '((:id "bough-pat"
+                   :label "Caller-supplied bough handle"
+                   :cue_handles ("app:emacs" "bough_node:NANO01")
+                   :priority 1 :enabled t)))))
+     (should (= 1 (plist-get (satan-pattern-sync
+                              file satan-pattern-test--db)
+                             :upserted)))
+     (should (equal "bough_node:NANO01"
+                    (satan-pattern-test--psql-row
+                     (concat "SELECT h FROM satan_patterns,"
+                             " jsonb_array_elements_text(cue_handles_json) AS h"
+                             " WHERE id = 'bough-pat' AND h LIKE 'bough\\_%'")))))))
+
 ;; ============================================================================
 ;; VT-pattern-rebuild
 ;; ============================================================================
