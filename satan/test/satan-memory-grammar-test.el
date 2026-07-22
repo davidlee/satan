@@ -71,11 +71,6 @@ and every namespace declared closed has a values entry."
   (should (equal "domain_kind:docs"
                  (satan-memory-grammar-alias-target "reference")))
   (should (= 2 (satan-memory-grammar-default-weight 'event)))
-  ;; PRESERVED-ARTIFACT PIN — SL-002 §2.D / §5.3 / §9 (R2).  The grammar is
-  ;; preserved WHOLE across the bough removal (elisp + SQL, byte-identical),
-  ;; so `bough_node' keeps its intentional zero weight: admitted for audit,
-  ;; never score-dominant.  Retiring the vocabulary is OQ-3 (grammar-v2 + data
-  ;; migration), not this slice.  Do not prune.
   (should (= 0 (satan-memory-grammar-default-weight 'bough_node))))
 
 (ert-deftest satan-memory-grammar/valid-value-p ()

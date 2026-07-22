@@ -91,12 +91,6 @@
     ;; dedup
     (should (= 1 (cl-count "rust" topics :test #'equal)))))
 
-(ert-deftest satan-memory-canon/normalize-focal-bough-nanoid-rejects-bad-shape ()
-  (let* ((r (satan-memory-canon-normalize-hints
-             (list :focal_bough_nanoid "has space")))
-         (rej (car (plist-get r :rejected))))
-    (should (eq 'focal_bough_nanoid (plist-get rej :field)))))
-
 ;; ---------- individual rule tests ----------
 
 (defun satan-memory-canon-test--rule (id ev hints ctx)
@@ -148,31 +142,6 @@
                             (list :domain "docs.python.org")))
                 nil nil)))
     (should (equal "domain_kind:docs" (plist-get (car emits) :handle)))))
-
-(ert-deftest satan-memory-canon/rule-bough-recent-status-change ()
-  (let* ((emits (satan-memory-canon-test--rule
-                 'bough.recent_status_change
-                 (list :bough_recent
-                       (list (list :nanoid "abc1234"
-                                   :event "status_changed"
-                                   :from "todo" :to "doing")))
-                 nil nil))
-         (handles (mapcar (lambda (e) (plist-get e :handle)) emits)))
-    (should (member "bough_event:status_changed" handles))
-    (should (member "artifact:bough_status_change" handles))))
-
-(ert-deftest satan-memory-canon/rule-bough-active-focus ()
-  (let* ((emits (satan-memory-canon-test--rule
-                 'bough.active_focus
-                 (list :bough_active
-                       (list (list :nanoid "abc1234"
-                                   :project_nanoid "PROJ001"
-                                   :status "doing")))
-                 (list :focal_bough_nanoid "abc1234")
-                 nil))
-         (handles (mapcar (lambda (e) (plist-get e :handle)) emits)))
-    (should (member "bough_node:abc1234" handles))
-    (should (member "bough_project:PROJ001" handles))))
 
 (ert-deftest satan-memory-canon/rule-cwd-project-from-remote ()
   (let* ((emits (satan-memory-canon-test--rule
@@ -361,12 +330,7 @@ Slug resolves from :slug, else :remote tail, else :repo basename."
     insert-file-contents insert-file-contents-literally
     write-region write-file
     url-retrieve url-retrieve-synchronously
-    current-time current-time-string current-time-zone
-    ;; bough invocations are not symbols but a coarse check anyway —
-    ;; any `satan-bough-' or `satan-tool/bough' reference is
-    ;; equally fatal.
-    satan-bough--invoke
-    satan-tool/bough-read))
+    current-time current-time-string current-time-zone))
 
 (defun satan-memory-canon-test--read-forms (path)
   (with-temp-buffer
@@ -399,43 +363,47 @@ Slug resolves from :slug, else :remote tail, else :repo basename."
         (ert-fail (format "forbidden symbol present in canon module: %S" sym))))))
 
 ;; ---------------------------------------------------------------------
-;; Acceptance §9.10: bough isolation across the substrate
+;; SL-002 PHASE-05 — no bough handle can be DERIVED
 ;; ---------------------------------------------------------------------
 
-(defconst satan-memory-canon-test--memory-modules
-  '("satan-memory"
-    "satan-memory-canon"
-    "satan-memory-evidence"
-    "satan-memory-grammar"
-    "satan-memory-migrate"
-    "satan-memory-store")
-  "Substrate modules subject to the §9.10 bough-isolation lint.")
+(ert-deftest satan-memory-canon/no-rule-derives-a-bough-handle ()
+  "VT-1/VT-4 — the honest invariant.
 
-(defconst satan-memory-canon-test--forbidden-bough-substrings
-  '("bough_production" "bough_agent" "satan-bough-program"
-    "satan-bough--invoke")
-  "Strings that, if present in any substrate module, signal a direct
-bough surface (DB name, binary path, or low-level invoker).  Memory
-code must reach bough only through the `bough_read' tool handler.")
+Not \"no bough handle exists\" (historical ones do, and copy-forward
+still moves them — that is OQ-3's problem).  The claim is about
+ORIGIN: no canon rule can mint one.  Asserted structurally over the
+whole rule set rather than by absence of two named rules, so a rule
+reintroducing bough derivation fails here even under a different name.
 
-(ert-deftest satan-memory/bough-isolation ()
-  "§9.10: no satan-memory-* module may reference a bough DB name
-or the bough binary directly; all reads go via `bough_read'."
-  (dolist (module satan-memory-canon-test--memory-modules)
-    (let* ((path (locate-library module))
-           (src (and path
-                     (if (string-suffix-p ".elc" path)
-                         (concat (substring path 0 -1))
-                       path))))
-      (should src)
-      (with-temp-buffer
-        (insert-file-contents src)
-        (dolist (needle satan-memory-canon-test--forbidden-bough-substrings)
-          (goto-char (point-min))
-          (when (search-forward needle nil t)
-            (ert-fail
-             (format "%s.el contains forbidden bough surface %S"
-                     module needle))))))))
+Fed evidence and hints that the removed rules would have fired on."
+  (let* ((ev (list :current_window (list :app_id "emacs")
+                   :bough_recent
+                   (list (list :nanoid "abc1234" :event "status_changed"
+                               :from "todo" :to "doing"))
+                   :bough_active
+                   (list (list :nanoid "abc1234"
+                               :project_nanoid "PROJ001"
+                               :status "doing"))))
+         (hints (list :focal_bough_nanoid "abc1234"))
+         (ctx (list :mode_name "morning"
+                    :time_now "2026-05-19T10:00:00+10:00"
+                    :current_grammar_version 1))
+         (res (satan-memory-canon-canonicalize ev hints ctx)))
+    (should-not (cl-find-if (lambda (h) (string-match-p "\\`bough_" h))
+                            (plist-get res :handles)))))
+
+(ert-deftest satan-memory-canon/focal-bough-nanoid-hint-is-not-normalized ()
+  "VT-1 — the producer input is gone from hint normalization: the hint
+is neither carried into `:normalized' nor reported as rejected.  It is
+simply not a hint any more."
+  (let* ((r (satan-memory-canon-normalize-hints
+             (list :focal_bough_nanoid "abc1234" :focal_app "emacs"))))
+    (should-not (plist-member (plist-get r :normalized)
+                              :focal_bough_nanoid))
+    (should-not (cl-find 'focal_bough_nanoid (plist-get r :rejected)
+                         :key (lambda (x) (plist-get x :field))))
+    ;; unrelated hints still normalize
+    (should (equal "emacs" (plist-get (plist-get r :normalized) :focal_app)))))
 
 (provide 'satan-memory-canon-test)
 ;;; satan-memory-canon-test.el ends here

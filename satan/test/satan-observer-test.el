@@ -118,7 +118,7 @@
                                           :remote "r")
                          :fs_state (list :cwd "/x" :recent_files nil)
                          :focus_segments nil
-                         :bough_recent nil)))))
+                        )))))
 
 ;; ---------------------------------------------------------------------
 ;; Audit handle + intervention minting (DB)
@@ -529,44 +529,6 @@ even when `:repo' path doesn't match."
     (should-not (satan-observer--predicate-fs-recent-delta
                  baseline after motive nil))))
 
-;; --- P4 bough event match ---------------------------------------------
-
-(ert-deftest satan-observer/p4-bough-node-match-fires ()
-  (let* ((motive (satan-observer-test--motive
-                  :cue (list "bough_node:nano123" "project:foo")))
-         (after (list :bough_recent
-                      (list (list :event "status_changed"
-                                  :nanoid "nano123" :from "todo" :to "done")))))
-    (should (satan-observer--predicate-bough-event-match
-             nil after motive nil))))
-
-(ert-deftest satan-observer/p4-bough-project-match-fires ()
-  (let* ((motive (satan-observer-test--motive
-                  :cue (list "bough_project:proj456")))
-         (after (list :bough_recent
-                      (list (list :event "status_changed"
-                                  :nanoid "proj456")))))
-    (should (satan-observer--predicate-bough-event-match
-             nil after motive nil))))
-
-(ert-deftest satan-observer/p4-noise-event-does-not-fire ()
-  (let* ((motive (satan-observer-test--motive
-                  :cue (list "bough_node:nano123")))
-         (after (list :bough_recent
-                      (list (list :event "status_changed"
-                                  :nanoid "different")))))
-    (should-not (satan-observer--predicate-bough-event-match
-                 nil after motive nil))))
-
-(ert-deftest satan-observer/p4-no-bough-handles-skips ()
-  (let* ((motive (satan-observer-test--motive
-                  :cue (list "project:foo")))
-         (after (list :bough_recent
-                      (list (list :event "status_changed"
-                                  :nanoid "anything")))))
-    (should-not (satan-observer--predicate-bough-event-match
-                 nil after motive nil))))
-
 ;; ---------------------------------------------------------------------
 ;; Phase 5.4c — single-motive classifier glue
 ;; ---------------------------------------------------------------------
@@ -610,7 +572,7 @@ even when `:repo' path doesn't match."
             (baseline-ev
              (list :fs_state (list :cwd satan-observer-test--cwd
                                    :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (after-ev
              (list :git_commits
                    (list (list :repo satan-observer-test--cwd
@@ -619,7 +581,7 @@ even when `:repo' path doesn't match."
                                :end_ts "2026-05-22T10:15:00+1000"))
                    :fs_state (list :cwd satan-observer-test--cwd
                                    :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
                            :run_dir dir)))
@@ -644,7 +606,7 @@ same scan."
             (baseline-ev
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd cwd :recent_files (list "old.el"))
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (after-ev
              (list :git_commits
                    (list (list :repo cwd
@@ -653,7 +615,7 @@ same scan."
                                :end_ts "2026-05-22T10:15:00+1000"))
                    :fs_state (list :cwd cwd
                                    :recent_files (list "old.el" "new.el"))
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
                            :run_dir dir)))
@@ -678,7 +640,7 @@ fixture is `notify') → `:ignored'.  Stubbed AFTER carries no
                                            :remote "github.com/u/r")
                           :fs_state (list :cwd satan-observer-test--cwd
                                           :recent_files nil)
-                          :focus_segments nil :bough_recent nil))
+                          :focus_segments nil))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
                            :run_dir dir)))
@@ -706,7 +668,7 @@ fixture is `notify') → `:ignored'.  Stubbed AFTER carries no
                                            :remote "github.com/u/r")
                           :fs_state (list :cwd satan-observer-test--cwd
                                           :recent_files nil)
-                          :focus_segments nil :bough_recent nil))
+                          :focus_segments nil))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention
                             :kind "delay" :target-surface "internal")
@@ -733,13 +695,13 @@ ratchets up to `:medium'."
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd satan-observer-test--cwd
                                    :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (after-ev
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd satan-observer-test--cwd
                                    :recent_files nil)
                    :focus_segments nil
-                   :bough_recent nil
+                  
                    :sensor_status (list :focus 'ok)))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
@@ -767,7 +729,7 @@ vocabulary."
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd satan-observer-test--cwd
                                    :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (after-ev
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd satan-observer-test--cwd
@@ -775,7 +737,7 @@ vocabulary."
                    :focus_segments
                    (list (list :app_id "firefox"
                                :start_ts "2026-05-22T10:05:00+1000"))
-                   :bough_recent nil
+                  
                    :sensor_status (list :focus 'ok)))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
@@ -798,12 +760,12 @@ is now `:ignored', not `:unknown'."
             (baseline-ev
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd "/other/repo" :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (after-ev
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd "/other/repo"
                                    :recent_files (list "noise.el"))
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
                            :run_dir dir)))
@@ -938,7 +900,7 @@ the admitted namespaces; scrubbing the residue is OQ-3."
             (baseline-ev
              (list :git_state (list :head_short "aaaaaaa" :remote "r")
                    :fs_state (list :cwd "/x" :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (_ (satan-observer-test--write-bundle
                 dir (list :percept
                           (list :handles (list "app:firefox"
@@ -961,7 +923,7 @@ the admitted namespaces; scrubbing the residue is OQ-3."
                              :sha "bbbbbbb"
                              :end_ts "2026-05-22T10:15:00+1000"))
                  :fs_state (list :cwd "/x" :recent_files nil)
-                 :focus_segments nil :bough_recent nil)
+                 :focus_segments nil)
          (let ((out (satan-observer-classify-for-motives iv motives)))
            (should (equal "strong" (plist-get out :motive_id)))
            (should (eq :worked (plist-get out :classification)))
@@ -984,7 +946,7 @@ user-facing so the no-fire fallback now lands on `:ignored'
                            (list :id "second" :cue (list "app:firefox")))))
        (satan-observer-test--with-stubbed-after-state
            (list :git_state nil :fs_state nil
-                 :focus_segments nil :bough_recent nil)
+                 :focus_segments nil)
          (let ((out (satan-observer-classify-for-motives iv motives)))
            (should (equal "first" (plist-get out :motive_id)))
            (should (eq :ignored (plist-get out :classification)))))))))
@@ -1434,7 +1396,7 @@ and git head changed; motive footer bumps, projection holds worked."
         (let* ((baseline-ev
                 (list :git_state (list :head_short "aaaaaaa" :remote "r")
                       :fs_state (list :cwd "/x" :recent_files nil)
-                      :focus_segments nil :bough_recent nil))
+                      :focus_segments nil))
                (prior-run-dir (satan-observer-test--make-run-dir
                                root old-id)))
           (satan-observer-test--write-bundle
@@ -1454,7 +1416,7 @@ and git head changed; motive footer bumps, projection holds worked."
                                  :sha "deadbeef"
                                  :end_ts "2026-05-23T11:15:00+1000"))
                      :fs_state (list :cwd "/x" :recent_files nil)
-                     :focus_segments nil :bough_recent nil)
+                     :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-cccccc")
                     (out (satan-observer-process
                           (list :time_now "2026-05-23T12:00:00+1000"
@@ -1536,7 +1498,7 @@ and continues with the next."
                                  :sha "deadbeef"
                                  :end_ts "2026-05-23T11:15:00+1000"))
                      :fs_state (list :cwd "/x" :recent_files nil)
-                     :focus_segments nil :bough_recent nil)
+                     :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-cccccc")
                     (out (satan-observer-process
                           (list :time_now "2026-05-23T12:00:00+1000"
@@ -1630,7 +1592,7 @@ skips persist (auto re-pass forbidden, §6.3)."
             (baseline-ev
              (list :fs_state (list :cwd satan-observer-test--cwd
                                    :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (after-ev
              (list :git_commits
                    (list (list :repo satan-observer-test--cwd
@@ -1639,7 +1601,7 @@ skips persist (auto re-pass forbidden, §6.3)."
                                :end_ts "2026-05-23T10:15:00+1000"))
                    :fs_state (list :cwd satan-observer-test--cwd
                                    :recent_files nil)
-                   :focus_segments nil :bough_recent nil))
+                   :focus_segments nil))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--pr3-iv)
                            :run_dir dir)))
@@ -1761,7 +1723,7 @@ are intact."
         (let ((baseline-ev
                (list :git_state (list :head_short "aaaaaaa" :remote "r")
                      :fs_state (list :cwd "/x" :recent_files nil)
-                     :focus_segments nil :bough_recent nil)))
+                     :focus_segments nil)))
           (satan-observer-test--write-bundle
            (satan-observer-test--make-run-dir root old-id)
            (list :percept
@@ -1783,7 +1745,7 @@ are intact."
                                    :sha "deadbeef"
                                    :end_ts "2026-05-23T11:15:00+1000"))
                        :fs_state (list :cwd "/x" :recent_files nil)
-                       :focus_segments nil :bough_recent nil)
+                       :focus_segments nil)
                (let* ((curr-id "20260523T120000-morning-cccccc")
                       (out (satan-observer-process
                             (list :time_now "2026-05-23T12:00:00+1000"
@@ -1846,7 +1808,7 @@ swallowed; the observer returns normally and classification is intact."
                                      :sha "deadbeef"
                                      :end_ts "2026-05-23T11:15:00+1000"))
                          :fs_state (list :cwd "/x" :recent_files nil)
-                         :focus_segments nil :bough_recent nil)
+                         :focus_segments nil)
                  (let* ((curr-id "20260523T120000-morning-dddddd")
                         (out (satan-observer-process
                               (list :time_now "2026-05-23T12:00:00+1000"
@@ -1887,7 +1849,7 @@ classification + outcome projection are intact."
          (satan-observer-test--capture-mark _captured
            (satan-observer-test--with-stubbed-after-state
                (list :git_commits nil :fs_state nil
-                     :focus_segments nil :bough_recent nil)
+                     :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-ffffff")
                     (out (satan-observer-process
                           (list :time_now "2026-05-23T12:00:00+1000"
@@ -1940,7 +1902,7 @@ rebuild succeeds or fails."
                                  :sha "deadbeef"
                                  :end_ts "2026-05-23T11:15:00+1000"))
                      :fs_state (list :cwd "/x" :recent_files nil)
-                     :focus_segments nil :bough_recent nil)
+                     :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-hhhhhh")
                     (out (satan-observer-process
                           (list :time_now "2026-05-23T12:00:00+1000"

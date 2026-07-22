@@ -1,8 +1,11 @@
 {
   "name": "minimal_firefox",
-  "description": "Bare current_window with ctx; no segments, no bough, no hints. Establishes the baseline trace for a window-focus-only observation.",
+  "description": "Bare current_window with ctx; no segments, no hints. Establishes the baseline trace for a window-focus-only observation.",
   "evidence": {
-    "current_window": {"app_id": "firefox", "workspace": "main"}
+    "current_window": {
+      "app_id": "firefox",
+      "workspace": "main"
+    }
   },
   "hints": {},
   "ctx": {

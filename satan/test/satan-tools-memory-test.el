@@ -560,5 +560,25 @@ enforced nowhere before."
         (should (>= (length (plist-get result :matches)) 1))
         (should (member "app:firefox" (plist-get result :cue_handles)))))))
 
+;; ---------------------------------------------------------------------
+;; SL-002 PHASE-05 — focal_bough_nanoid off both tool schemas
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-tools-memory/schemas-drop-focal-bough-nanoid ()
+  "VT-3 — the producer input is advertised by neither `memory_mark' nor
+`memory_resonate'.  `hints-shape' is shared, so this asserts both.
+Explicit `bough_node:' in `cue.handles' is a separate, preserved path —
+pinned in `satan-memory-store-test.el'."
+  (dolist (tool '("memory_mark" "memory_resonate"))
+    (let ((spec (satan-tool-lookup tool)))
+      (should spec)
+      ;; Schema only — the description file lives in ~/notes, outside the repo.
+      (let ((params (format "%S" (satan-tool--args-schema-to-jsonschema
+                                  (plist-get spec :args-schema)))))
+        (should-not (string-match-p "focal_bough_nanoid" params))
+        ;; the sibling open-world hint is still advertised — we removed one
+        ;; field, not the hints object
+        (should (string-match-p "focal_app" params))))))
+
 (provide 'satan-tools-memory-test)
 ;;; satan-tools-memory-test.el ends here

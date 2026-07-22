@@ -47,7 +47,7 @@
 PREPARE is the broker--prepare run_ctx plist (Phase 0.1) — carries the
 frozen `:run_id' and `:time_now'.  MODE is the resolved mode-spec.
 OPTS forwards extra knobs to the evidence assembler (e.g.
-`:behaviour_dir', `:cwd', `:bough_workspace') so tests can pin the
+`:behaviour_dir', `:cwd') so tests can pin the
 sensor surface.
 
 Returned plist:
@@ -60,7 +60,7 @@ Returned plist:
   :handle_sources  list    — per-handle provenance, sorted by handle.
 
 The canonicalizer is pure; the evidence assembler reads sensors, git,
-and bough.  Re-running with the same frozen inputs is byte-identical
+sources.  Re-running with the same frozen inputs is byte-identical
 (A3) provided OPTS pin the sensor root."
   (let* ((ctx (satan-percept--canon-ctx prepare mode))
          (evidence (satan-memory-evidence-assemble ctx opts))

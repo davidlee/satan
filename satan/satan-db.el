@@ -66,7 +66,7 @@ host through this so the test redirect is universal."
 
 (defun satan-db-database-url (db &optional host)
   "libpq DATABASE_URL for DB on the resolved host (port via PGPORT env).
-For external binaries (bough, satan-patcher, attribute daemon) that
+For external binaries (satan-patcher, attribute daemon) that
 connect via libpq env vars rather than through satan-db-psql."
   (format "postgres:///%s?host=%s"
     db (satan-db-resolve-host (or host satan-db-default-host))))

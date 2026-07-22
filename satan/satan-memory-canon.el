@@ -14,7 +14,7 @@
 ;; (evidence hints ctx).  This file may NOT call any of:
 ;;   shell-command, call-process, insert-file-contents, url-retrieve,
 ;;   current-time, current-time-string,
-;;   bough invocations of any kind.
+;;   subprocess invocations of any kind.
 ;; The grep-lint test in test/satan-memory-canon-test.el enforces
 ;; this by reading every form and refusing forbidden symbols.
 
@@ -243,15 +243,6 @@ capped at `satan-memory-canon--max-topic-count'."
            (slug (satan-memory-canon--slugify raw)))
       (when slug
         (setq norm (plist-put norm :focal_app slug))))
-    ;; focal_bough_nanoid (validated shape; not slugified)
-    (let ((nano (plist-get hints :focal_bough_nanoid)))
-      (cond
-       ((null nano) nil)
-       ((and (stringp nano) (string-match-p "\\`[A-Za-z0-9_-]+\\'" nano))
-        (setq norm (plist-put norm :focal_bough_nanoid nano)))
-       (t (push (list :field 'focal_bough_nanoid :value nano
-                      :suggestions nil)
-                rejected))))
     ;; outcome_for (trace_id pass-through; not validated here)
     (let ((oc (plist-get hints :outcome_for)))
       (when oc (setq norm (plist-put norm :outcome_for oc))))
@@ -369,48 +360,6 @@ window and are NOT written to the memory store (DEC-2)."
                    (concat "content_domain:" domain) 'observed
                    "/content_recent"))
                 domains)))))
-
-(satan-memory-canon-defrule bough.recent_status_change (ev _hints _ctx)
-  "If any `bough_recent' entry is a status_changed event, emit
-`bough_event:status_changed' and `artifact:bough_status_change' once."
-  (let ((recent (plist-get ev :bough_recent))
-        (idx 0)
-        match-idx)
-    (while (and recent (null match-idx))
-      (when (equal "status_changed" (plist-get (car recent) :event))
-        (setq match-idx idx))
-      (setq recent (cdr recent)
-            idx (1+ idx)))
-    (when match-idx
-      (let ((ptr (format "/bough_recent/%d" match-idx)))
-        (list
-         (satan-memory-canon--emit
-          "bough_event:status_changed" 'observed ptr)
-         (satan-memory-canon--emit
-          "artifact:bough_status_change" 'derived ptr))))))
-
-(satan-memory-canon-defrule bough.active_focus (ev hints _ctx)
-  "When `hints.focal_bough_nanoid' is supplied AND the same nanoid is
-present in `bough_active', emit `bough_node:<nanoid>' and (if the
-node carries `project_nanoid') `bough_project:<nanoid>'."
-  (let* ((focus (plist-get hints :focal_bough_nanoid))
-         (active (plist-get ev :bough_active)))
-    (when (and focus active)
-      (let* ((match (cl-find focus active
-                             :key (lambda (n) (plist-get n :nanoid))
-                             :test #'equal))
-             (idx (and match (cl-position match active)))
-             (proj (and match (plist-get match :project_nanoid))))
-        (when match
-          (let ((ptr (format "/bough_active/%d" idx)))
-            (delq
-             nil
-             (list (satan-memory-canon--emit
-                    (concat "bough_node:" focus) 'observed ptr
-                    "focal_bough_nanoid")
-                   (and proj
-                        (satan-memory-canon--emit
-                         (concat "bough_project:" proj) 'derived ptr))))))))))
 
 (satan-memory-canon-defrule cwd.project (ev _hints _ctx)
   "Derive a project slug from `git_state.remote' (last path segment) or
@@ -599,7 +548,7 @@ rejected lists.  Returns
   (:handles LIST :handle_sources ALIST :rejected LIST :normalized PLIST)
 where `:normalized' is the closed/open-world hint scalars produced
 by `satan-memory-canon-normalize-hints' (kind, phase, valence,
-topic, focal_app, focal_bough_nanoid, outcome_for).  Callers that
+topic, focal_app, outcome_for).  Callers that
 need `kind' or `valence' read them off `:normalized' instead of
 running the normalize step a second time."
   (let* ((nh (satan-memory-canon-normalize-hints raw-hints))

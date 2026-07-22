@@ -158,6 +158,43 @@ Consequences worth flagging at audit:
   rendered rather than erroring, because `--source-order` no longer names it.
   Pinned by `no-bough-segment-in-sensor-line`.
 
+## 2026-07-22 — PHASE-05 complete (derivation ends)
+
+**Production is at the design's target state.** The only bough tokens left in
+`satan/*.el` + `*.sql` are exactly the §9 allowlist: `satan-memory-grammar.el`,
+`memory/migrations/0002_grammar_v1.sql`, and the single
+`satan-motive--admitted-namespaces` occurrence (D4). No bough handle can be
+*derived* anywhere. Suite 1012/0 unexpected.
+
+Removed: the two canon rules, the `:focal_bough_nanoid` hint-norm,
+`--predicate-bough-event-match` + its registration + `--motive-bough-nanoids`,
+`focal_bough_nanoid` off the shared `hints-shape` (both schemas), and the
+in-code prose in `percept`/`resonance`/`db`/`tools-memory`. `satan-motive.el:475`
+help string reworded; `:85` untouched.
+
+Beyond the touch-set, all forced:
+
+- **`satan-tools-memory--nanoid-pattern` deleted** — `focal_bough_nanoid` was its
+  only consumer.
+- **Two canon fixtures pruned** (`rich_window.json`, `minimal_firefox.json`).
+  The design flagged fixtures as a class but named neither; `rich_window`'s
+  `expected_handles` listed four bough handles the removed rules produced.
+- **`satan-memory/bough-isolation` (§9.10 lint) deleted.** It asserted "memory
+  code reaches bough only through `bough_read`" — a rule about a tool that no
+  longer exists. PHASE-06's zero-token gate subsumes it and is strictly
+  stronger: §9.10 forbade four named substrings in six modules; the gate forbids
+  the token in all production files. Recorded because deleting a lint always
+  looks like weakening one.
+- The purity lint's forbidden-symbol list lost its two bough entries — the
+  symbols no longer exist, so they were inert.
+
+**Correction to PHASE-01.** My PHASE-01 EX-3 annotation added a comment to
+`satan-memory-grammar-test.el`, which breaks §9 R2's "green **unmodified**".
+Reverted: the file is byte-identical to the pre-removal SHA again. The design
+itself documents why that pin exists, so the comment bought nothing and cost the
+no-diff property. `satan-mode-test.el` and `satan-mcp-test.el` are likewise
+byte-identical, as are both preserved grammar artifacts.
+
 ### Census at plan time (2026-07-22)
 
 Live bough token counts, for divergence detection at audit — 67 files. Largest:

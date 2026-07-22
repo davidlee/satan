@@ -472,7 +472,7 @@ Used by the tool handler to ship one line back through the
              (pcase (plist-get err :reason)
                (:malformed-cue "handle does not match canon regex")
                (:no-sensor-handle
-                "no sensor-observed handle (≥1 of app/surface/bough/topic required)")
+                "no sensor-observed handle (≥1 of app/surface/domain/topic required)")
                (other (format "%s" other)))))
     (other (format "motive validation failed: %s" other))))
 

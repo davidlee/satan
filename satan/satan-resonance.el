@@ -16,7 +16,7 @@
 ;; (`mode:*' from `ctx.mode'; `day:*' / `week:*' from `time.day_week';
 ;; `project:*' from `cwd.project'; `file_kind:*' from `cwd.file_kind').
 ;; At least one handle from a non-excluded rule must be present — those
-;; are the sensor-observed signals (panopticon, bough, hints, artifact).
+;; are the sensor-observed signals (panopticon, hints, artifact).
 ;; Without that bar resonance retrieves generic moments and drowns the
 ;; capsule in low-signal recall (§S2 rationale).
 ;;
@@ -38,7 +38,7 @@
 A cue with handles from these rules only is too generic to retrieve
 useful recurrence — every prior moment matches `day:*' / `mode:*' /
 `project:emacs.d' when the user always works in this repo (§S2).
-Sensor-observed rules (panopticon.*, bough.*, hint.*) are everything
+Sensor-observed rules (panopticon.*, hint.*) are everything
 else and admit the cue automatically.")
 
 (defconst satan-resonance--default-limit 3

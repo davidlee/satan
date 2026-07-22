@@ -34,9 +34,6 @@
 (defconst satan-tools-memory--kind-values
   '("observation" "intervention" "prediction" "outcome"))
 
-(defconst satan-tools-memory--nanoid-pattern
-  "\\`[A-Za-z0-9_-]+\\'")
-
 ;; ---------------------------------------------------------------------
 ;; Helpers
 ;; ---------------------------------------------------------------------
@@ -233,7 +230,7 @@ cannot express yet."
 (defun satan-tools-memory--derive-cue-handles (hints tool-ctx)
   "Run the evidence + canon pipeline with HINTS to produce a cue list.
 Passes `:cue_only t' to the assembler so the heavy \"what happened\"
-probes (focus/browser segments, bough_recent, bough_day) are
+probes (focus/browser segments) are
 skipped — cue derivation only needs the current-moment context."
   (let* ((ctx (satan-tools-memory--ctx-from tool-ctx))
          (evidence (satan-memory-evidence-assemble
@@ -266,9 +263,6 @@ skipped — cue derivation only needs the current-moment context."
               'phase       (list :type 'string)
               'topic       (list :type 'array :items 'string)
               'focal_app   (list :type 'string)
-              'focal_bough_nanoid
-                           (list :type 'string
-                                 :pattern satan-tools-memory--nanoid-pattern)
               'valence     (list :type 'string
                                  :enum satan-tools-memory--valence-values)
               'outcome_for (list :type 'string)))

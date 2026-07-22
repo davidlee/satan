@@ -249,35 +249,6 @@ follow-up."
                         (not (member path baseline-abs))))
                  after-abs)))))
 
-(defun satan-observer--motive-bough-nanoids (motive)
-  "Return the nanoids referenced by MOTIVE's `:cue' bough handles.
-Strips the `bough_node:' / `bough_project:' prefix.  Returns nil
-when the motive has no bough handles in its cue."
-  (delq nil
-        (mapcar
-         (lambda (h)
-           (cond
-            ((string-prefix-p "bough_node:" h)
-             (substring h (length "bough_node:")))
-            ((string-prefix-p "bough_project:" h)
-             (substring h (length "bough_project:")))))
-         (or (plist-get motive :cue) nil))))
-
-(defun satan-observer--predicate-bough-event-match
-    (_baseline after motive _intervention)
-  "§S5 P4 — fires when AFTER's `:bough_recent' contains a bough event
-whose `:nanoid' matches a `bough_node:' or `bough_project:' handle
-in MOTIVE's `:cue'.  Fires regardless of `:project_cwd' (handle-
-only correlation; see §S5 — `motives without a valid :cue are
-dormant')."
-  (let ((target-ids (satan-observer--motive-bough-nanoids motive)))
-    (and target-ids
-         (cl-some
-          (lambda (ev)
-            (let ((nid (plist-get ev :nanoid)))
-              (and (stringp nid) (member nid target-ids))))
-          (plist-get after :bough_recent)))))
-
 ;; ---------------------------------------------------------------------
 ;; Negative classification (T1.5b PR 2) — :ignored / :neutral
 ;; ---------------------------------------------------------------------
@@ -441,9 +412,7 @@ Per outcome-semantics §3 + §6.2:
     (:git_commit_observed
      . satan-observer--predicate-git-commit-observed)
     (:fs_recent_delta
-     . satan-observer--predicate-fs-recent-delta)
-    (:bough_event_match
-     . satan-observer--predicate-bough-event-match))
+     . satan-observer--predicate-fs-recent-delta))
   "Ordered alist mapping predicate keyword → symbol.
 `satan-observer-classify' runs them in order; first fire wins.
 Order matters only for the `:predicate' slot recorded on the
