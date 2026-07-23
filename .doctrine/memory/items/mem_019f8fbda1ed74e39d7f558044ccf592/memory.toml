@@ -1,0 +1,47 @@
+memory_uid = "mem_019f8fbda1ed74e39d7f558044ccf592"
+memory_key = "mem.pattern.satan.rg-not-ugrep-for-rename-verification"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "pattern"
+status = "active"
+title = "Use rg, not ugrep, to verify zero-hit renames across satan elisp"
+summary = "Use rg (not ugrep) to verify zero-hit renames/deletions across satan/**/*.el — ugrep silently mishandles --include='*.el'"
+created = "2026-07-23"
+updated = "2026-07-23"
+
+[scope]
+paths = []
+globs = ["satan/**/*.el"]
+commands = []
+tags = ["satan", "verification", "grep"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "b8caaf028bfe0e450474648b60348619d1cbc1b0"
+ref_name = "refs/heads/main"
+checkout_state_id = "8b5b34a4cbe75660908eb4c36ba62faa690a29a49473dc043724c6acdd767726"
+base_commit = "2c6b7f7062cfe5078a6600b44c1216fe259f45e3"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[relation]]
+label = "relates"
+target = "mem_e8aeeae50a264bef8c4b3d65a4102c8e"
+

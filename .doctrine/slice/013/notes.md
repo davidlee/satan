@@ -193,6 +193,57 @@ comment + `:27` declare-function; `satan-attribute-listener.el:31`
 declare-function. `cl-letf` stubs of `satan-broker-locate-run-dir` sit in
 `satan-{attribute-listener,tools-atsatan,intervention-mark}-test.el`.
 
+## 2026-07-24 — PHASE-03 complete
+
+Six-function layout cluster and both DEC-8 flags moved to `satan-run.el`;
+five soft-dependency reachers (`satan-budget`, `satan-observer`,
+`satan-tools-atsatan`, `satan-intervention-mark`, `satan-attribute-listener`)
+converted to a hard `(require 'satan-run)`; both require cycles
+(`satan-budget`, `satan-observer`) dissolved. `satan-mcp.el`'s duplicate
+`spawn-running` defvar deleted (F4) as the tail of the flag's move (F7),
+per design §5.3's sequencing. `satan-broker.el`'s `(boundp
+'satan-mcp--session-active)` guard deleted (D6) — the two unrelated
+`fboundp` guards at `:67`/`:81` (`my/op-read-env`, `envrc--export`) survive
+untouched.
+
+**DEC-002** — settled via `/consult` during `/phase-plan`, before any code
+changed: `satan-tank.el`'s `(require 'satan-broker)` also converts to
+`(require 'satan-run)`. Its only three broker references were exactly the
+moved functions, so leaving the require standing after the phase would have
+been the identical coupling PHASE-03 exists to relieve in five siblings, for
+a one-line cost already paid by the forced rename. Recorded as a knowledge
+record (`.doctrine/knowledge/decision/002`), encoded in `plan.toml` as
+PHASE-03 `EX-8`/`VA-6` (appended, not renumbered — ids are immutable).
+
+All EX/VT/VA discharged: zero-hit grep over all nine moved names
+individually (rg, live control `satan-run-locate-dir` = 19 — PHASE-02's
+sampling lesson applied, not the already-zero `satan-broker-run-dir-for-id`);
+`satan-run.el`'s require block read verbatim, still exactly `cl-lib` /
+`subr-x` / `satan-custom` (I3 holds); MCP loaded standalone in a fresh batch
+image with `satan-broker` absent (VA-4) — both flags bound; ADR-018 VT-2
+recount still exactly one each (VA-5). Suite **1029 → 1030**, 0 unexpected,
+13 skipped, same skip set. `just check` clean throughout.
+
+Test-file mechanics, each a direct consequence of the rename rather than a
+fresh scope call: `satan-run-test.el` gained four tests for the moved
+cluster (including `dirs-for-date`'s first-ever direct unit test — it had
+none in `satan-broker-test.el` either); `satan-broker-test.el` lost two
+fully-duplicated tests and one retargeted test (coverage relocated, not
+duplicated — `failure-streak-counts-trailing-failed` stays, since that
+function was never in the moved set) and two now-vestigial requires
+(`satan-mcp`, held only for the moved `session-active` flag — n/a, that one
+was in `satan-budget-test.el`; corrected: `satan-broker-test.el` dropped
+`(require 'satan-mcp)`, `satan-budget-test.el` dropped `(require
+'satan-broker)`).
+
+Left alone, on purpose: `satan-observer-test.el:28-31`'s stale
+comment/defvar about `satan-runs-dir` predates this phase (PHASE-02 already
+moved that defcustom) and names no symbol in PHASE-03's moved set — not this
+phase's debt to clean up.
+
+All three of SL-013's phases are now complete. Next: `doctrine slice status
+SL-013 audit`, then `/audit`.
+
 ### Historical numbering
 
 Design §10's adversarial pass and the RV-002 record were written against a
