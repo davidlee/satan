@@ -35,10 +35,6 @@ selector = "bin/**"
 intent = "scope-relevant"
 
 [[selector]]
-selector = "justfile"
-intent = "design-target"
-
-[[selector]]
 selector = "satan/satan-context.el"
 intent = "design-target"
 
@@ -72,22 +68,6 @@ intent = "design-target"
 
 [[selector]]
 selector = "satan/test/satan-run-test.el"
-intent = "design-target"
-
-[[selector]]
-selector = "tools/elisp-duplicate-definitions.el"
-intent = "design-target"
-
-[[selector]]
-selector = "tools/test/elisp-duplicate-definitions-test.el"
-intent = "design-target"
-
-[[selector]]
-selector = "bin/elisp-duplicate-definitions"
-intent = "design-target"
-
-[[selector]]
-selector = "dev/satan-test.el"
 intent = "design-target"
 
 [[selector]]

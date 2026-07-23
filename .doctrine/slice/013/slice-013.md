@@ -49,17 +49,18 @@ Collapse to one owner of run identity and run context.
   `satan-run.el:38/77/66/98` and `satan-broker.el:119/129/191/270`.
 - **Rename the colliding defun** `satan-run-prepare` → `satan-run-new-ctx`
   (ADR-018 D4.1 names the target).
-- **Land ADR-018 VT-2 as a standing lint**, beside `bin/elisp-locate-paren-error`
-  and wired into `just lint`: exactly one definition of the struct and of each
+- **Discharge ADR-018 VT-2** — exactly one definition of the struct and of each
   defcustom, and no symbol defined both as a struct accessor and as a `defun`.
-  The generic form is the point — the lint forbids a *class*, in any pair, not
-  this pair by name.
-  **Bounded (design D3 / §9, after RV-002 F-2):** the class it forbids is
-  **same-symbol** redefinition. It cannot see a clone that has been *renamed* —
-  which is what seven of this tree's eleven duplications are. The lint therefore
-  establishes single-*definition*, not single-*implementation*; the structural
-  check that would close the gap is [[IMP-017]], deliberately out of this
-  slice's scope.
+  **Revised (design D3):** this bullet previously read "land VT-2 as a standing
+  lint". VT-2 asserts a *property of the tree* and merely notes it is
+  "enforceable as a lint check" — the same feasibility clause VT-3 writes as
+  "Grep-able". The lint was this slice's reading, not the ADR's obligation, and
+  it is withdrawn: cost above a phase (accessor derivation against four shapes
+  the tree never exercises), benefit below one (the class has recurred three
+  times at zero realised cost, and the check would see 4 of 11 duplications).
+  VT-2 is discharged instead by the phase exit greps, which name the actual
+  symbols. Standing enforcement and the structural check that would cover the
+  seven renamed forks are [[IMP-017]].
 - **Establish which module owns the seam** so `satan-mcp.el` gets run identity
   without inheriting context/percept. That constraint is what produced the
   clone; a collapse that reinstates the coupling has not solved it.

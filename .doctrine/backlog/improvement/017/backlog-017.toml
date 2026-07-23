@@ -3,7 +3,7 @@ version = 1
 
 id = 17
 slug = "structural-duplicate-body-check-detect-renamed-clones-the-symbol-keyed-lint-cannot-see"
-title = "Structural duplicate-body check: detect renamed clones the symbol-keyed lint cannot see"
+title = "Standing duplicate-definition check for satan/*.el, incl. renamed clones (ADR-018 VT-2 recurrence guard)"
 kind = "improvement"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place
