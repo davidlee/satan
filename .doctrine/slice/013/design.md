@@ -293,9 +293,13 @@ Code impact, by path (these become the `design-target` selectors):
 | `satan/satan-intervention-mark.el` | Soft-dependency comment + `declare-function` deleted |
 | `satan/satan-attribute-listener.el` | `declare-function` → require |
 | `satan/satan-tank.el` | Call sites repointed |
+| `satan/satan-percept.el`, `satan/satan-audit.el` | Comment-only: both name `satan-broker--prepare` as the allocator of the run_ctx plist (`:14`, `:26`). Named here because P2's exit grep is over the tree, not over the modules the slice was looking at |
 | `satan/test/satan-run-test.el` | **New.** Receives the retargeted coverage |
 | `satan/test/satan-broker-test.el` | ~20 sites updated; broker-specific tests stay |
 | `satan/test/satan-mcp-test.el` | `spawn-running` references updated |
+| `satan/test/satan-{tools-atsatan,attribute-listener,intervention-mark}-test.el` | `cl-letf` / `symbol-function` stubs of `satan-broker-locate-run-dir` repointed (P3) |
+| `satan/test/satan-budget-test.el` | `(require 'satan-broker)` at `:12` — held only for `run-dirs-for-date`; drops with the cycle (P3) |
+| `satan/test/satan-percept-test.el`, `satan/test/satan-observer-test.el` | Docstring-only references to the old names |
 
 No new tooling, no harness change, no second test root — see **D3**.
 

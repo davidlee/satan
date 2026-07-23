@@ -1,0 +1,150 @@
+# Implementation plan for SL-013 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-013"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored — edits append, they never renumber. Criterion ids
+# are local to their phase, bare, and equally immutable (.doctrine/glossary.md §
+# reference forms): EN-1 entry, EX-1 exit, and verification by mode —
+# VT-1 test (automated), VA-1 agent check, VH-1 human acceptance.
+
+# ── PHASE-01 ────────────────────────────────────────────────────────────────
+[[phase]]
+id        = "PHASE-01"
+name      = "Characterise the surviving surface"
+objective = """
+Give satan-run.el the test file it has never had, covering exactly the surface \
+PHASE-02 and PHASE-03 will move. Design §2.2 proves the clones are \
+byte-identical modulo docstrings, so a green suite cannot detect a surviving \
+fork — this file plus the phase exit greps are the only guard the collapse has. \
+No production source changes.\
+"""
+
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked and plan approved; SL-013 lifecycle at plan or later." },
+  { id = "EN-2", text = "Baseline reproduced from a clean tree: `just db-setup && just test` reports 1018 tests / 1005 as expected / 0 unexpected / 13 skipped (design §2.4). Every skip is a corpus-integration or DB `skip-unless`." },
+  { id = "EN-3", text = "No production file under satan/*.el has been modified by this slice." },
+]
+
+exit_criteria = [
+  { id = "EX-1", text = "satan/test/satan-run-test.el exists and covers the named surface: satan-run-mint-id's `YYYYMMDDTHHMMSS-<mode>-<6 hex>` format and its optional TIME argument; satan-run-dir-for-id's bucketed resolution and its legacy flat fallback for an id with no parsable date prefix; the ten v0 keys of the run_ctx constructor; satan-run-tool-ctx reading the *frozen* :time_now off the prepare slot rather than minting a new one; and both defcustom defaults resolving under satan-notes-root." },
+  { id = "EX-2", text = "The run_ctx constructor is reached via `(funcall 'satan-run-prepare mode)`, never a syntactic `(satan-run-prepare mode)` call. A syntactic call inlines the struct accessor (EVD-001, design §10) and would pass against the wrong function — the trap that hid R1 behind two false explanations." },
+  { id = "EX-3", text = "Suite green: 0 unexpected, skip count still 13, total risen by this file's assertions. `just check` clean (lint + test)." },
+  { id = "EX-4", text = "No production file under satan/*.el modified — the phase's git diff touches satan/test/satan-run-test.el only." },
+]
+
+verification = [
+  { id = "VT-1", expects = "The characterisation file exists as ert tests and names every element of the surviving surface: id minting, both dir-for-id layouts, the run_ctx constructor, tool-ctx's frozen time, and both defcustoms.", test_file = "satan/test/satan-run-test.el", keywords = ["satan-run-mint-id", "satan-run-dir-for-id", "satan-run-tool-ctx", "satan-runs-dir", "satan-hippocampus-dir", ":time_now"], patterns = ["^\\(ert-deftest "], waived = false },
+  { id = "VA-1", expects = "Read satan/test/satan-run-test.el and confirm the ten v0 keys are asserted through `funcall` (or `apply`), and that no syntactic call to satan-run-prepare appears anywhere in the file. Confirm the .FAILED / legacy-flat branch of dir-for-id is exercised, not just the bucketed happy path." },
+  { id = "VA-2", expects = "Run `just check`. Compare against the EN-2 baseline: 0 unexpected, 13 skipped, total strictly greater than 1018. Confirm `git diff --name-only` for the phase lists satan/test/satan-run-test.el and nothing under satan/*.el." },
+]
+
+specs             = []
+requirements      = []
+
+# ── PHASE-02 ────────────────────────────────────────────────────────────────
+[[phase]]
+id        = "PHASE-02"
+name      = "The collapse"
+objective = """
+Delete the fork. Rename the colliding defun satan-run-prepare → \
+satan-run-new-ctx; delete satan-broker.el's cl-defstruct satan-run, both \
+defcustoms and the six cloned bodies, repointing ~47 reference sites at the \
+satan-run.el survivors; land F1 (the third satan-hippocampus-dir), F3 \
+(satan-context.el's forward declarations), F5 (MCP's hand-rolled 4-key plist) \
+and F6 (the wrong comment at satan-mcp.el:22). The broker sheds ~190 lines and \
+gains `(require 'satan-run)`. The layout cluster stays in satan-broker.el this \
+phase but must repoint its own internals — PHASE-03 moves it.\
+"""
+
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete: satan/test/satan-run-test.el exists, green, and covers the surface named in its EX-1." },
+  { id = "EN-2", text = "Suite at baseline (0 unexpected, 13 skipped) on entry." },
+]
+
+exit_criteria = [
+  { id = "EX-1", text = "Zero-hit grep over the §5.2 deletion table *entire*, not a sample of it: `satan-broker--(mint-run-id|iso-time-format|prepare|tool-ctx|failed-suffix|date-bucket-for-run-id)` and `satan-broker-run-dir-for-id`, across satan/**/*.el including tests." },
+  { id = "EX-2", text = "Exactly one `cl-defstruct satan-run`, one `defcustom satan-runs-dir` and one `defcustom satan-hippocampus-dir` across satan/*.el — all three in satan/satan-run.el. This is ADR-018 VT-2's first two clauses (design I1); the third declaration site, satan-tools-hippocampus.el:22, is F1." },
+  { id = "EX-3", text = "No `defun satan-run-prepare` anywhere in the tree; `satan-run-new-ctx` is the defun, and the struct accessor of the old name is the symbol's only remaining meaning (ADR-018 VT-2's third clause, design I2). Asserted via `documentation` / `funcall`, never a syntactic call." },
+  { id = "EX-4", text = "F5: satan-mcp--mint-session contains no `format-time-string` and no separate mint-id call — it builds run_ctx from `(satan-run-new-ctx mode)` and reads :run_id / :time_now / :start_time back off it. Safe because satan-audit-open (satan-audit.el:49) stores run-ctx on the handle and serialises only manifest and bundle, so the six added nil keys reach no on-disk artifact." },
+  { id = "EX-5", text = "F3: satan-context.el forward-declares no satan-run-* symbol and no satan-runs-dir, and carries a top-level `(require 'satan-run)`. F2 holds — satan-run-perceive / -enrich / -assemble-context keep their names." },
+  { id = "EX-6", text = "The layout cluster surviving in satan-broker.el (locate-run-dir, list-run-dirs, run-dirs-for-date, run-id-from-leaf) references satan-run--failed-suffix and satan-run--date-bucket, not the deleted broker copies. This is the seam PHASE-03 then moves wholesale." },
+  { id = "EX-7", text = "Docstring union preserved pair by pair, in both directions (R5, design §2.2). The broker is the richer side for prepare / failed-suffix / date-bucket-for-run-id / run-dir-for-id / tool-ctx — notably satan-broker--tool-ctx's :audit / satan-intervention-create contract. satan-run.el is the richer side for mint-id, whose broker copy has no docstring at all: a mechanical 'keep the broker's' would delete the only docstring satan-run-mint-id has. The --iso-time-format docstring must not inherit the broker's 'the broker stamps', false of a leaf. The struct keeps satan-run.el's docstring plus the broker's four-line note on the `prepare` slot. D7: the surviving satan-hippocampus-dir docstring names both roles — the jail's read-write scratch directory and the hippocampus corpus." },
+  { id = "EX-8", text = "Suite green at baseline: 0 unexpected, 13 skipped, total no lower than PHASE-01's. `just check` clean. C2 holds — run-id format, date bucketing, .FAILED handling and the frozen :time_now / :run_id / :start_time contract are byte-identical before and after." },
+]
+
+verification = [
+  { id = "VT-1", expects = "satan-run.el is the sole owner: it holds the single struct, both defcustoms, and the renamed constructor.", test_file = "satan/satan-run.el", keywords = ["cl-defstruct satan-run", "defcustom satan-runs-dir", "defcustom satan-hippocampus-dir", "satan-run-new-ctx"], patterns = ["^\\(defun satan-run-new-ctx "], waived = false },
+  { id = "VT-2", expects = "F5 — MCP mints run_ctx through the canonical constructor.", test_file = "satan/satan-mcp.el", keywords = ["(require 'satan-run)", "satan-run-new-ctx"], waived = false },
+  { id = "VT-3", expects = "F3 — satan-context.el hard-requires the leaf instead of forward-declaring into it.", test_file = "satan/satan-context.el", keywords = ["(require 'satan-run)"], waived = false },
+  { id = "VT-4", expects = "F1 — satan-tools-hippocampus.el consumes the leaf's defcustom rather than declaring a third.", test_file = "satan/satan-tools-hippocampus.el", keywords = ["(require 'satan-run)"], waived = false },
+  { id = "VT-5", expects = "The broker requires the leaf it was forked from.", test_file = "satan/satan-broker.el", keywords = ["(require 'satan-run)"], waived = false },
+  { id = "VA-1", expects = "Run the EX-1 grep over satan/ (production and test) and report zero hits for all seven names individually — a summarised 'no hits' hides a miss. RV-002 F-1 was raised because a sampled exit criterion was satisfiable with nine of ten deletions still standing." },
+  { id = "VA-2", expects = "Count declarations across satan/*.el: `cl-defstruct satan-run`, `defcustom satan-runs-dir`, `defcustom satan-hippocampus-dir` — exactly one each. Encode I4 when counting: a valueless `(defvar x)` is a declaration, never a definition, so legitimate cycle-breakers must not be counted as duplicates." },
+  { id = "VA-3", expects = "Confirm EX-3 in a loaded image, not by grep alone: `(fboundp 'satan-run-new-ctx)` is t; `(documentation 'satan-run-prepare)` returns the struct accessor's docstring, not the constructor's; `(funcall 'satan-run-prepare S)` on a satan-run struct returns the slot value. Confirm no `funcall`, `apply`, `#'` or `advice-add` reference to satan-run-prepare exists in the tree." },
+  { id = "VA-4", expects = "Diff the docstrings pair by pair per EX-7 and report the surviving text for each of the nine items in design §2.2's table, naming which side each was taken from." },
+  { id = "VA-5", expects = "Confirm EX-6: read satan-broker.el's surviving layout cluster and report which satan-run--* symbols it now references. This is the phase's most likely load-time break — locate-run-dir and run-id-from-leaf both close over the deleted --failed-suffix, and locate-run-dir over the deleted --date-bucket-for-run-id." },
+  { id = "VA-6", expects = "Run `just check`. 0 unexpected, 13 skipped, total no lower than PHASE-01's. Report the numbers, not a verdict." },
+]
+
+specs             = []
+requirements      = []
+
+# ── PHASE-03 ────────────────────────────────────────────────────────────────
+[[phase]]
+id        = "PHASE-03"
+name      = "Move the layout cluster and both DEC-8 flags"
+objective = """
+Move the run-directory layout cluster (locate-dir, list-dirs, dirs-for-date and \
+the three private helpers) and *both* DEC-8 flags to satan-run.el, and delete \
+the soft-dependency scaffolding five modules pay for today. F4 and F7 are one \
+operation: MCP cannot require the broker without destroying C1, so deleting \
+satan-mcp.el's duplicate defvar is only safe as the tail of the move to the \
+leaf (design §5.3). Both require cycles dissolve as a consequence, not as a \
+separate effort.\
+"""
+
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete: its EX-1 grep is zero-hit and the suite is at baseline." },
+  { id = "EN-2", text = "satan-broker.el requires satan-run, and its surviving layout cluster already references satan-run--failed-suffix / satan-run--date-bucket (PHASE-02 EX-6) — so this phase moves function bodies, not their dependencies." },
+]
+
+exit_criteria = [
+  { id = "EX-1", text = "Zero-hit grep over the *full* moved set (AR-3), across satan/**/*.el including tests: `satan-broker-(locate-run-dir|list-run-dirs|run-dirs-for-date|run-dir-for-id)`, `satan-broker--(bucket-name-p|legacy-run-name-p|run-id-from-leaf|spawn-running)`, and `satan-mcp--session-active` (D6)." },
+  { id = "EX-2", text = "satan-run.el owns the cluster under the §5.2 names — satan-run-locate-dir, -list-dirs, -dirs-for-date, satan-run--bucket-name-p, --legacy-run-name-p, --id-from-leaf — and both DEC-8 flags as satan-run--spawn-running and satan-run--session-active. Signatures unchanged from the broker originals (§5.2)." },
+  { id = "EX-3", text = "D6: no `(boundp 'satan-mcp--session-active)` guard, and no boundp guard on any MCP state, remains in satan-broker.el. The mutual-exclusion protocol now reads two flags that both live in the module both sides already require." },
+  { id = "EX-4", text = "Both cycles dissolved: satan-budget.el and satan-observer.el contain no reference to satan-broker — no declare-function, no valueless defvar cycle-breaker, no in-function `(require 'satan-broker)`. Each carries one top-level `(require 'satan-run)`." },
+  { id = "EX-5", text = "The soft-dependency scaffolding is gone from the three remaining reachers: satan-tools-atsatan.el's 'Broker is soft' comment, its declare-function and its `fboundp` guard at the call site; satan-intervention-mark.el's 'Broker dependency is soft' comment and declare-function; satan-attribute-listener.el's declare-function. Each requires satan-run instead." },
+  { id = "EX-6", text = "I3 holds: satan-run.el's require block is exactly cl-lib / subr-x / satan-custom. Verified by reading the require block, never inferred from the code's character — the moved code enumerates and stats directories (design §5.3), it is not pure path arithmetic; the invariant is about dependencies, not purity. If I3 fails, C1 fails and the clone comes back." },
+  { id = "EX-7", text = "Suite green, no new skips: 0 unexpected, 13 skipped. `just check` clean. C2 still holds end to end." },
+]
+
+verification = [
+  { id = "VT-1", expects = "satan-run.el owns the layout cluster and both DEC-8 flags under their new names.", test_file = "satan/satan-run.el", keywords = ["satan-run-locate-dir", "satan-run-list-dirs", "satan-run-dirs-for-date", "satan-run--bucket-name-p", "satan-run--legacy-run-name-p", "satan-run--id-from-leaf", "satan-run--spawn-running", "satan-run--session-active"], patterns = ["^\\(defun satan-run-locate-dir "], waived = false },
+  { id = "VT-2", expects = "The satan-budget cycle is dissolved concretely — a hard require on the leaf, calling the moved function.", test_file = "satan/satan-budget.el", keywords = ["(require 'satan-run)", "satan-run-dirs-for-date"], waived = false },
+  { id = "VT-3", expects = "The satan-observer cycle is dissolved concretely — top-level require, no resolve-time require.", test_file = "satan/satan-observer.el", keywords = ["(require 'satan-run)", "satan-run-locate-dir"], waived = false },
+  { id = "VT-4", expects = "The heaviest soft-dependency reacher consumes the leaf directly, with no fboundp guard.", test_file = "satan/satan-tools-atsatan.el", keywords = ["(require 'satan-run)", "satan-run-locate-dir"], waived = false },
+  { id = "VT-5", expects = "The moved layout cluster is covered where it now lives, not only where it came from.", test_file = "satan/test/satan-run-test.el", keywords = ["satan-run-locate-dir", "satan-run-list-dirs", "satan-run-dirs-for-date"], waived = false },
+  { id = "VA-1", expects = "Run the EX-1 grep over satan/ (production and test) and report zero hits for each of the nine names individually." },
+  { id = "VA-2", expects = "Confirm EX-3 and EX-4 by reading: grep satan-broker.el for `boundp`, and satan-budget.el and satan-observer.el for `satan-broker`. Report the hits, or their absence, verbatim." },
+  { id = "VA-3", expects = "Read satan-run.el's require block and report it verbatim (EX-6 / I3). Any fourth require fails the phase — including one pulled in transitively by a moved body." },
+  { id = "VA-4", expects = "Exercise the DEC-8 protocol in an image without satan-broker: load satan-mcp alone and confirm satan-run--spawn-running is bound and readable. The void-variable crash design §5.3 rules out is exactly what satan-mcp-test.el's image would hit if the two flags were split across the two modules." },
+  { id = "VA-5", expects = "Run `just check` — 0 unexpected, 13 skipped; report the numbers. Then confirm ADR-018 VT-2 holds of the final tree by re-running PHASE-02's VA-2 count. The property is asserted at the gates, not enforced by a standing check (design D3); recurrence guarding is IMP-017." },
+]
+
+specs             = []
+requirements      = []

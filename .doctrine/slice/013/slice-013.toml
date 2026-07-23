@@ -1,9 +1,9 @@
 id = 13
 slug = "collapse-run-context"
 title = "Collapse the satan-run / satan-broker run-context duplication"
-status = "design"
+status = "plan"
 created = "2026-07-22"
-updated = "2026-07-22"
+updated = "2026-07-23"
 tags = ["extraction", "refactor", "satan"]
 
 [relationships]
@@ -92,6 +92,18 @@ intent = "design-target"
 
 [[selector]]
 selector = "satan/test/satan-observer-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-percept.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-audit.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-percept-test.el"
 intent = "design-target"
 
 [[relation]]
