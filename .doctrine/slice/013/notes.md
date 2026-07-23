@@ -46,6 +46,59 @@ been touched; every commit so far is `.doctrine/`.
   recorded against the phase gates rather than against a lint that no longer
   exists. Not re-opened; noted so audit does not read it as drift.
 
+## 2026-07-23 — PHASE-01 complete
+
+`satan/test/satan-run-test.el` lands with 9 ert tests. Suite 1018 → **1027, 0
+unexpected, 13 skipped** (same skip set). Diff touches that one file; nothing
+under `satan/*.el`.
+
+### EVD-001 re-verified against the live tree
+
+Probe matrix over the shipped `satan-run.el`, before any change:
+
+| call context | resolves to |
+|---|---|
+| top-level form in a loaded `.el`, interpreted | ACCESSOR |
+| inside a `lambda` / `defun`, interpreted | ACCESSOR |
+| byte-compiled caller | ACCESSOR |
+| `(eval FORM)` / `emacs --eval` | **DEFUN** |
+| `funcall` / `apply` | **DEFUN** |
+
+Loaded source inlines the accessor on **both** eval paths, exactly as design §10
+states. The verdict *latent* stands unamended, and `satan-run.el:103` is the
+accessor read — confirmed live, `satan-run-tool-ctx` returns the frozen
+`:time_now`. Direct evidence: writing PHASE-01's constructor test syntactically
+expands to `(aref X 18)` guarded by `cl-struct-satan-run-tags` — slot 18 is
+`prepare`. EX-2's `funcall` requirement is load-bearing, not ceremony.
+
+### New trap — `emacs --eval` cannot verify the collision
+
+`emacs --eval` **is** the `eval` escape hatch listed above, so a one-liner probe
+reaches the defun no matter what the tree contains: before and after the rename
+look identical through it. It cannot verify PHASE-01 EX-2 or PHASE-02 EX-3.
+Check through a *loaded file* only. This is why PHASE-02 VA-3 says "in a loaded
+image"; the reason is now on record. Cost one false "the design is wrong" reading
+during PHASE-01 planning.
+
+### Reconcile debt — VA-1's `.FAILED` clause
+
+PHASE-01 VA-1 asks that "the `.FAILED` / legacy-flat branch of `dir-for-id`" be
+exercised. **Neither `satan-run-dir-for-id` nor its broker twin has any `.FAILED`
+handling** — the bodies are identical (§2.2) and the second branch is
+legacy-flat only. `.FAILED` belongs to the layout cluster
+(`--run-id-from-leaf`, `locate-run-dir`), PHASE-03's move. Discharged as the
+legacy-flat branch **plus** a test pinning `satan-run--failed-suffix` = `.FAILED`
+— a constant with zero consumers today that PHASE-02 EX-6 makes the broker's
+surviving cluster depend on. Requirement met, criterion's noun loose. A line at
+reconcile, not a gap.
+
+### Incidental
+
+`satan-run-prepare`-the-defun has **no caller in the tree**. The three references
+outside `satan-run.el` (`satan-broker.el:284/406/449`) are all syntactic accessor
+reads on a run-ctx struct; the broker mints via its own `satan-broker--prepare`.
+PHASE-02's F5 gives the constructor its first consumer.
+
 ### Historical numbering
 
 Design §10's adversarial pass and the RV-002 record were written against a
