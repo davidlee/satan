@@ -1,0 +1,54 @@
+schema = "doctrine.spec.tech"
+version = 1
+
+id = 1
+slug = "trust-boundary-protocol"
+title = "SATAN trust-boundary protocol"
+status = "draft"
+kind = "tech"
+tags = ["extraction", "security", "protocol"]
+responsibilities = [
+  "Define the trust-boundary invariants every SATAN surface must satisfy",
+  "Specify the read-only policy artifact (mode/tool/capability/budget) and its schema",
+  "Specify the control-plane RPC surface and the data-plane / control-plane split",
+  "Define the single-owner authority inventory (the ADR-017 §3 ledger) contract",
+]
+category = "protocol"
+c4_level = "container"
+
+# Anchor-free by necessity: this is the first spec in the corpus. No product
+# spec (PRD) exists to descend_from, and no container spec exists to parent to.
+# When the whole-system context spec (ADR-018 D1's daemon core + client + protocol)
+# is authored, this spec is reparented under it. Left empty, not omitted.
+# descends_from = <none yet>
+# parent = <none yet>
+
+# Code anchors where the protocol lives implicitly today (elisp broker), to be
+# retired or re-homed as authority items migrate (ADR-018 D4).
+[[source]]
+language = "elisp"
+identifier = "satan-mode.el"
+module = "satan-mode"
+
+[[source]]
+language = "elisp"
+identifier = "satan-tools.el"
+module = "satan-tools"
+
+[[source]]
+language = "elisp"
+identifier = "satan-audit.el"
+module = "satan-audit"
+
+[[source]]
+language = "elisp"
+identifier = "satan-attribute-listener.el"
+module = "satan-attribute-listener"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"

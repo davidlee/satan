@@ -1,0 +1,15 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 3
+slug = "every-enacted-action-and-control-decision-is-appended-to-a-durable-immutable-audit-log"
+title = "Every enacted action and control decision is appended to a durable, immutable audit log"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+tags = []
+acceptance_criteria = []

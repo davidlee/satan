@@ -1,0 +1,15 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 5
+slug = "a-tripped-kill-switch-halts-enactment-and-fails-closed"
+title = "A tripped kill switch halts enactment and fails closed"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+tags = []
+acceptance_criteria = []

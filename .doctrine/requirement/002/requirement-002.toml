@@ -1,0 +1,15 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 2
+slug = "enaction-is-allowlist-gated-by-the-acting-modes-tool-and-capability-profile"
+title = "Enaction is allowlist-gated by the acting mode's tool and capability profile"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+tags = []
+acceptance_criteria = []

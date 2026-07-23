@@ -1,0 +1,44 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = 17
+slug = "extraction-programme-sequencing"
+title = "SATAN extraction programme: sequencing and coordination"
+status = "open"
+created = "2026-07-23"
+updated = "2026-07-23"
+tags = ["architecture", "coordination", "extraction"]
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+
+[[relation]]
+label = "related"
+target = "ADR-017"
+
+[[relation]]
+label = "related"
+target = "ADR-018"
+
+[[relation]]
+label = "related"
+target = "POL-001"
+
+[[relation]]
+label = "related"
+target = "RFC-001"
+
+[[relation]]
+label = "related"
+target = "RFC-016"
+
+[[relation]]
+label = "related"
+target = "SL-013"
+
+[[relation]]
+label = "related"
+target = "SPEC-001"
+

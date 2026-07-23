@@ -1,0 +1,15 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 8
+slug = "every-authority-item-names-exactly-one-owner-at-any-time-recorded-on-transition-the-authority-ledger"
+title = "Every authority item names exactly one owner at any time, recorded on transition (the authority ledger)"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+tags = []
+acceptance_criteria = []

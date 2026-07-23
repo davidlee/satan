@@ -1,0 +1,15 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 12
+slug = "each-invariant-is-verifiable-against-an-addressable-requirement-id-at-each-migrations-audit"
+title = "Each invariant is verifiable against an addressable requirement id at each migration's audit"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+tags = []
+acceptance_criteria = []
