@@ -1,0 +1,46 @@
+memory_uid = "mem_019f8f4e10517463b3aafdd89926e5a0"
+memory_key = "mem.pattern.elisp.defstruct-accessor-shadowing"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "cl-defstruct accessor shadowed by a same-name defun"
+summary = "A cl-defstruct accessor's compiler-macro survives a same-name defun; syntactic calls inline the slot read, and load order decides the function cell"
+created = "2026-07-23"
+updated = "2026-07-23"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["elisp", "satan"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c49c4341ffe9832f4f7c8e54954f226213854f08"
+ref_name = "refs/heads/main"
+checkout_state_id = "79168951db4b0b2d44a4a16fd300869342d4dc37def6f895e50717d6b8256bad"
+base_commit = "dcb1d94d79aa05fd884b62c28d5ad3655979c80f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-013"
+

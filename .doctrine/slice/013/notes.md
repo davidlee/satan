@@ -99,6 +99,69 @@ outside `satan-run.el` (`satan-broker.el:284/406/449`) are all syntactic accesso
 reads on a run-ctx struct; the broker mints via its own `satan-broker--prepare`.
 PHASE-02's F5 gives the constructor its first consumer.
 
+## 2026-07-24 — PHASE-02 complete
+
+Three commits (`1b46bc5`, `5bedf03`, `dcb1d94`). `satan-broker.el` −149 lines;
+`satan-run.el` +44. Suite **1027 → 1029, 0 unexpected, 13 skipped**, skip set
+identical. All eight EX and six VA discharged; VA-1's control grep returned 27
+hits, so the seven zeros are a real search result and not a broken invocation.
+
+### EVD-001 refined — the `funcall` row is load-order-contingent
+
+**T1 alone turned the suite red**, and the reason is worth keeping. Adding
+`(require 'satan-run)` to `satan-broker.el` put the leaf *first* in load order,
+so `satan-broker.el`'s own `cl-defstruct satan-run` then re-installed the
+accessor **over the defun's function cell**. PHASE-01's
+`(funcall 'satan-run-prepare …)` began reaching the accessor and
+`satan-run/new-ctx-returns-ten-v0-keys` failed.
+
+EVD-001's matrix is unamended for what it claims — every *syntactic* site
+inlines to the slot read under either order, which is why the verdict **latent**
+stands. But its `funcall` / `eval` rows describe a function cell whose occupant
+was decided by load order, and PHASE-02's own first edit flipped it. The escape
+hatch was never stable; only the rename made the symbol single-meaning.
+
+This is also the sharper case *against* the design's dismissal of load order.
+Design §10 says the original R1 "credited load order (both orders inline
+identically)" — true of syntactic calls, and false of `funcall`. Both
+explanations were incomplete rather than simply wrong. A line for reconcile
+against ADR-018, alongside the byte-compilation correction already on record.
+
+Pinned by `satan-run/prepare-is-the-accessor-not-a-constructor`, which asserts
+the property *through* `funcall` — the path that reached the old defun. That
+test would have gone red at T1 under the old naming.
+
+### VA-3 deviates from its own letter, deliberately
+
+VA-3 asks for "no `funcall`, `apply`, `#'` or `advice-add` reference to
+`satan-run-prepare` … in the tree". Two remain, both in
+`satan/test/satan-run-test.el`: a comment recording the historical trap, and the
+regression test above. The criterion's *purpose* — no residual caller that could
+still reach a defun and get a fresh run-id — is met, and met better with the
+test present than absent. Reported rather than quietly satisfied.
+
+### `plan.md`'s intra-phase recipe step (2) is loose
+
+It says to "repoint `satan-run-tool-ctx`'s own call". There is no such call:
+`satan-run.el:129` is the *struct accessor* read, as are `satan-broker.el`'s
+three. All four were left spelled `satan-run-prepare`, which is what EX-3 is
+about. The authored criteria never carried the error.
+
+### A second "the broker stamps" — docstrings that encode their own location
+
+EX-7 names one docstring that must not travel: `--iso-time-format`'s *"the
+broker stamps"*. There is a second. `satan-broker--failed-suffix` reads
+*"Helpers **in this file** strip the suffix"*, true of the broker and false of
+the leaf until PHASE-03 moves the strippers. Adapted to "The layout helpers …"
+in transit. Worth generalising at reconcile: the docstring-union obligation is
+not only "keep the richer side" but "re-read the richer side from its new home".
+
+### Left alone, on purpose
+
+`satan-context.el:265`'s `(boundp 'satan-runs-dir)` guard is now redundant under
+the hard require. No criterion asks for it and F2 set the precedent — don't
+touch what has no defect behind it. A candidate for PHASE-03 or reconcile.
+
 ### Historical numbering
 
 Design §10's adversarial pass and the RV-002 record were written against a
