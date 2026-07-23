@@ -131,6 +131,7 @@ exit_criteria = [
   { id = "EX-5", text = "The soft-dependency scaffolding is gone from the three remaining reachers: satan-tools-atsatan.el's 'Broker is soft' comment, its declare-function and its `fboundp` guard at the call site; satan-intervention-mark.el's 'Broker dependency is soft' comment and declare-function; satan-attribute-listener.el's declare-function. Each requires satan-run instead." },
   { id = "EX-6", text = "I3 holds: satan-run.el's require block is exactly cl-lib / subr-x / satan-custom. Verified by reading the require block, never inferred from the code's character — the moved code enumerates and stats directories (design §5.3), it is not pure path arithmetic; the invariant is about dependencies, not purity. If I3 fails, C1 fails and the clone comes back." },
   { id = "EX-7", text = "Suite green, no new skips: 0 unexpected, 13 skipped. `just check` clean. C2 still holds end to end." },
+  { id = "EX-8", text = "DEC-002: satan-tank.el's (require 'satan-broker) at :25 is replaced by (require 'satan-run) — its only references to satan-broker are the three moved symbols (list-run-dirs, locate-run-dir, run-id-from-leaf), so after EX-1's rename the require is vestigial. Appended after /consult; not in the original design.md §5.4 phase table, which lists tank only as 'call sites repointed'." },
 ]
 
 verification = [
@@ -144,6 +145,7 @@ verification = [
   { id = "VA-3", expects = "Read satan-run.el's require block and report it verbatim (EX-6 / I3). Any fourth require fails the phase — including one pulled in transitively by a moved body." },
   { id = "VA-4", expects = "Exercise the DEC-8 protocol in an image without satan-broker: load satan-mcp alone and confirm satan-run--spawn-running is bound and readable. The void-variable crash design §5.3 rules out is exactly what satan-mcp-test.el's image would hit if the two flags were split across the two modules." },
   { id = "VA-5", expects = "Run `just check` — 0 unexpected, 13 skipped; report the numbers. Then confirm ADR-018 VT-2 holds of the final tree by re-running PHASE-02's VA-2 count. The property is asserted at the gates, not enforced by a standing check (design D3); recurrence guarding is IMP-017." },
+  { id = "VA-6", expects = "Confirm EX-8 (DEC-002): satan-tank.el requires satan-run, not satan-broker, and grep confirms zero remaining `satan-broker` references anywhere in satan-tank.el or satan/test/satan-tank-test.el." },
 ]
 
 specs             = []
