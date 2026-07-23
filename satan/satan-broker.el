@@ -95,58 +95,6 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
                        env)))
     (if path (split-string path ":" t) exec-path)))
 
-(defun satan-broker--mint-run-id (name &optional time)
-  (random t)
-  (format "%s-%s-%06x"
-          (format-time-string "%Y%m%dT%H%M%S" time)
-          name
-          (random (expt 16 6))))
-
-(defconst satan-broker--iso-time-format "%Y-%m-%dT%T%:z"
-  "ISO-8601 time format the broker stamps onto run_ctx and tool-ctx.")
-
-(defun satan-broker--prepare (mode)
-  "Allocate run_id, freeze time_now, return the v0 run_ctx plist for MODE.
-The plist is the single source of truth for the run's identity and
-the frozen `time_now' that the percept builder, observer, and tool
-handlers all read.  Phase-1+ slots (`:evidence' `:percept'
-`:sensor_status' `:pre_spawn' `:motive' `:observer') are present-with-
-nil so later phases can `plist-put' without keyword-arg ordering
-surprises."
-  (let* ((name (plist-get mode :name))
-         (start (current-time))
-         (run-id (satan-broker--mint-run-id name start))
-         (time-now (format-time-string
-                    satan-broker--iso-time-format start)))
-    (list :run_id run-id
-          :mode_name name
-          :time_now time-now
-          :start_time start
-          :evidence nil
-          :percept nil
-          :sensor_status nil
-          :pre_spawn nil
-          :motive nil
-          :observer nil)))
-
-(defconst satan-broker--failed-suffix ".FAILED"
-  "Suffix appended to a run directory when its status is not `done'.
-Lets `ls' / glob users see failures at a glance without opening the
-`status' file.  Helpers in this file strip the suffix when deriving
-the run-id from a leaf directory name.")
-
-(defun satan-broker--date-bucket-for-run-id (run-id)
-  "Return the YYYY-MM-DD date bucket parsed from RUN-ID's prefix.
-Returns nil if RUN-ID does not start with a YYYYMMDDT date stamp."
-  (when (and (stringp run-id)
-             (string-match
-              "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T"
-              run-id))
-    (format "%s-%s-%s"
-            (match-string 1 run-id)
-            (match-string 2 run-id)
-            (match-string 3 run-id))))
-
 (defun satan-broker--bucket-name-p (name)
   "Return non-nil when NAME matches the YYYY-MM-DD bucket-dir pattern."
   (and (stringp name)
@@ -162,21 +110,10 @@ Pre-bucket runs sit directly under `satan-runs-dir' with names like
 (defun satan-broker--run-id-from-leaf (name)
   "Strip the trailing `.FAILED' suffix (if any) from a leaf dir NAME."
   (if (and (stringp name)
-           (string-suffix-p satan-broker--failed-suffix name))
+           (string-suffix-p satan-run--failed-suffix name))
       (substring name 0 (- (length name)
-                           (length satan-broker--failed-suffix)))
+                           (length satan-run--failed-suffix)))
     name))
-
-(defun satan-broker-run-dir-for-id (run-id &optional runs-dir)
-  "Return the absolute dir path where RUN-ID's bucket lives.
-New runs go under `<runs>/<YYYY-MM-DD>/<run-id>/'.  If RUN-ID lacks
-a parsable date prefix (shouldn't happen for minted ids), falls back
-to the legacy flat layout."
-  (let* ((base (or runs-dir satan-runs-dir))
-         (bucket (satan-broker--date-bucket-for-run-id run-id)))
-    (if bucket
-        (expand-file-name (concat bucket "/" run-id) base)
-      (expand-file-name run-id base))))
 
 (defun satan-broker-locate-run-dir (run-id &optional runs-dir)
   "Return the on-disk dir for RUN-ID, or nil if no candidate exists.
@@ -185,8 +122,8 @@ legacy flat <run-id>, legacy flat <run-id>.FAILED.  Used by readers
 that need to find a run regardless of layout migration or terminal
 status."
   (let* ((base (or runs-dir satan-runs-dir))
-         (bucket (satan-broker--date-bucket-for-run-id run-id))
-         (failed satan-broker--failed-suffix)
+         (bucket (satan-run--date-bucket run-id))
+         (failed satan-run--failed-suffix)
          (candidates (delq nil
                            (list
                             (and bucket
@@ -246,33 +183,6 @@ flat layout (filters by prefix on the leaf name)."
              (string-prefix-p date-prefix run-id))))
      (satan-broker-list-run-dirs runs-dir))))
 
-(defun satan-broker--tool-ctx (run-ctx)
-  "Return the tool-ctx plist handlers see.
-Reads frozen `time_now' from RUN-CTX's prepare plist (allocated once
-by `satan-broker--prepare') rather than calling `format-time-string'
-per tool call.  `run-started-at' aliases the same frozen value — a run
-has exactly one starting moment.
-
-`:audit' carries the live audit handle so the intervention write API
-\(T7 PR 3) can emit `intervention.created' into transcript.jsonl on
-the handler's behalf.  Handlers must not invoke `satan-audit-record'
-directly with arbitrary event names; the only sanctioned route is
-through `satan-intervention-create' (and the matching classify /
-lookup APIs)."
-  (let* ((mode (satan-run-mode run-ctx))
-         (prepare (satan-run-prepare run-ctx))
-         (time-now (plist-get prepare :time_now))
-         (percept (plist-get prepare :percept)))
-    (list :id (satan-run-id run-ctx)
-          :mode-name (plist-get mode :name)
-          :capabilities (plist-get mode :capabilities)
-          :run-dir (satan-run-dir run-ctx)
-          :hippocampus-dir satan-hippocampus-dir
-          :run-started-at time-now
-          :time-now time-now
-          :audit (satan-run-audit run-ctx)
-          :percept-handles (and percept (plist-get percept :handles)))))
-
 (defun satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))
     (write-region chunk nil path 'append 'silent)))
@@ -319,7 +229,7 @@ audit every denied dispatch in a structure consumers can grep."
         (satan-broker--send-validated run-ctx result)))
      (t
       (setf (satan-run-tool-calls-done run-ctx) (1+ done))
-      (let* ((tool-ctx (satan-broker--tool-ctx run-ctx))
+      (let* ((tool-ctx (satan-run-tool-ctx run-ctx))
              (result (satan-tool-dispatch
                       obj (plist-get mode :tools) tool-ctx))
              (ok-p (eq (plist-get result :ok) t)))
@@ -406,7 +316,7 @@ Pure data assembly from run-ctx and mode spec — no I/O."
          (partition
           (when (and final (eq status 'done) handler)
             (condition-case err
-                (funcall handler final (satan-broker--tool-ctx run-ctx))
+                (funcall handler final (satan-run-tool-ctx run-ctx))
               (error
                (satan-audit-record
                 (satan-run-audit run-ctx) 'broker 'action-failed
@@ -452,14 +362,14 @@ via `satan-broker--announce-failure'."
         (run-id (satan-run-id run-ctx)))
     (when (and dir
                (not (eq status 'done))
-               (not (string-suffix-p satan-broker--failed-suffix dir))
+               (not (string-suffix-p satan-run--failed-suffix dir))
                (file-directory-p dir))
-      (let ((new-dir (concat dir satan-broker--failed-suffix)))
+      (let ((new-dir (concat dir satan-run--failed-suffix)))
         (unless (file-exists-p new-dir)
           (rename-file dir new-dir)
           (setf (satan-run-dir run-ctx) new-dir)
           (satan-broker--update-most-recent
-           run-id satan-broker--failed-suffix)
+           run-id satan-run--failed-suffix)
           (satan-broker--announce-failure
            run-id
            (plist-get (satan-run-mode run-ctx) :name)
@@ -504,7 +414,7 @@ newest run is non-failed or no runs exist."
                            (file-name-nondirectory b))))))
          (streak 0))
     (cl-loop for p in sorted
-             while (string-suffix-p satan-broker--failed-suffix p)
+             while (string-suffix-p satan-run--failed-suffix p)
              do (cl-incf streak))
     streak))
 
@@ -580,7 +490,7 @@ The harness consumes `:tools' verbatim."
 For a bucketed run-id (the normal case) this is `<bucket>/<run-id>'
 optionally with LEAF-SUFFIX appended (e.g. \".FAILED\").  For a run-id
 that does not parse as bucketed, returns just the leaf."
-  (let* ((bucket (satan-broker--date-bucket-for-run-id run-id))
+  (let* ((bucket (satan-run--date-bucket run-id))
          (leaf (concat run-id (or leaf-suffix ""))))
     (if bucket (concat bucket "/" leaf) leaf)))
 
@@ -634,12 +544,12 @@ desktop alert; DEC-8 deferral)."
                           (list :applied [] :staged [] :rejected [] :failed [])
                           status)
     (when rename-announce
-      (let ((new-dir (concat dir satan-broker--failed-suffix)))
+      (let ((new-dir (concat dir satan-run--failed-suffix)))
         (when (and (file-directory-p dir)
                    (not (file-exists-p new-dir)))
           (rename-file dir new-dir)
           (satan-broker--update-most-recent
-           run-id satan-broker--failed-suffix)
+           run-id satan-run--failed-suffix)
           (satan-broker--announce-failure
            run-id (plist-get mode :name) status
            (or announce-reason reason)))))))
@@ -648,7 +558,7 @@ desktop alert; DEC-8 deferral)."
   "Write a slim audit bundle marking the run in PREPARE as budget-exceeded.
 No child is spawned; the run terminates with status `budget-exceeded'
 and a synthetic final summarising the gate decision.  PREPARE is the
-prepare-phase run_ctx plist allocated by `satan-broker--prepare'
+prepare-phase run_ctx plist allocated by `satan-run-new-ctx'
 (carries the frozen run_id + time_now and the perceived `:percept').
 Thin caller of `satan-broker--write-no-child-run' (rename + announce)."
   (satan-broker--write-no-child-run
@@ -672,7 +582,7 @@ Thin caller of `satan-broker--write-no-child-run' (rename + announce)."
 Returns the run-id.
 
 Single allocation site for `run_id' + `time_now': calls
-`satan-broker--prepare' exactly once at the start of the run.  The
+`satan-run-new-ctx' exactly once at the start of the run.  The
 returned run_ctx plist is threaded into context assembly, tool
 dispatch, and audit.
 
@@ -682,9 +592,9 @@ mutual exclusion), or when today's spend has met or exceeded
 audit bundle with the appropriate status and returns the run-id
 without launching the child."
   (let* ((mode (satan-mode-resolve name))
-         (prepare (satan-broker--prepare mode))
+         (prepare (satan-run-new-ctx mode))
          (run-id (plist-get prepare :run_id))
-         (dir (satan-broker-run-dir-for-id run-id)))
+         (dir (satan-run-dir-for-id run-id)))
     ;; ISSUE-001 (DR-010 §3): perceive runs UNCONDITIONALLY before both
     ;; gates so a session-blocked / budget-denied tick still senses the
     ;; world and persists `percept.json'.  The run dir must exist before
@@ -738,7 +648,7 @@ without launching the child."
 
 (defun satan-broker--spawn (mode prepare dir)
   "Spawn the jailed harness for MODE under DIR.
-PREPARE is the run_ctx plist returned by `satan-broker--prepare'
+PREPARE is the run_ctx plist returned by `satan-run-new-ctx'
 (carries the frozen run_id + time_now and v0 placeholder slots).
 Returns the run-id."
   ;; DEC-8: set the mutual-exclusion flag so the MCP server refuses new

@@ -112,7 +112,7 @@ read from the prepare-phase run_ctx plist."
                    :start-time start
                    :dir "/tmp/satan-run-test"
                    :prepare prepare))
-         (tool-ctx (satan-broker--tool-ctx run-ctx)))
+         (tool-ctx (satan-run-tool-ctx run-ctx)))
     (should (equal (plist-get tool-ctx :id)
                    "20260519T100000-morning-abc123"))
     (should (equal (plist-get tool-ctx :mode-name) 'morning))
@@ -137,17 +137,17 @@ read from the prepare-phase run_ctx plist."
          (called nil))
     (cl-letf (((symbol-function 'format-time-string)
                (lambda (&rest args) (setq called args) "NEVER")))
-      (let ((tool-ctx (satan-broker--tool-ctx run-ctx)))
+      (let ((tool-ctx (satan-run-tool-ctx run-ctx)))
         (should (equal (plist-get tool-ctx :time-now)
                        "2026-01-01T00:00:00+0000"))
         (should (null called))))))
 
 (ert-deftest satan-broker/date-bucket-extracted-from-run-id ()
-  (should (equal (satan-broker--date-bucket-for-run-id
+  (should (equal (satan-run--date-bucket
                   "20260520T163446-tick-pulse-5e8018")
                  "2026-05-20"))
-  (should (null (satan-broker--date-bucket-for-run-id "garbage")))
-  (should (null (satan-broker--date-bucket-for-run-id nil))))
+  (should (null (satan-run--date-bucket "garbage")))
+  (should (null (satan-run--date-bucket nil))))
 
 (ert-deftest satan-broker/run-id-from-leaf-strips-failed-suffix ()
   (should (equal (satan-broker--run-id-from-leaf
@@ -301,12 +301,12 @@ read from the prepare-phase run_ctx plist."
                          "20260520T999999-nope-zzzzzz" root))))
       (delete-directory root t))))
 
-;; ---------- satan-broker--prepare (Phase 0.1) ----------
+;; ---------- satan-run-new-ctx (Phase 0.1) ----------
 
 (ert-deftest satan-broker/prepare-plist-shape ()
   "prepare returns a run_ctx plist with frozen run_id + time_now and v0 placeholders."
   (let* ((mode '(:name "tick-pulse"))
-         (run-ctx (satan-broker--prepare mode)))
+         (run-ctx (satan-run-new-ctx mode)))
     (should (stringp (plist-get run-ctx :run_id)))
     (should (string-prefix-p (format-time-string "%Y%m%dT")
                              (plist-get run-ctx :run_id)))
@@ -321,14 +321,14 @@ read from the prepare-phase run_ctx plist."
 (ert-deftest satan-broker/prepare-mints-distinct-run-ids ()
   "Two calls to prepare allocate different run_ids."
   (let* ((mode '(:name "x"))
-         (a (satan-broker--prepare mode))
-         (b (satan-broker--prepare mode)))
+         (a (satan-run-new-ctx mode))
+         (b (satan-run-new-ctx mode)))
     (should-not (equal (plist-get a :run_id) (plist-get b :run_id)))))
 
 (ert-deftest satan-broker/prepare-freezes-time-now-once ()
   "time_now is computed exactly once at prepare; identical across reads."
   (let* ((mode '(:name "tick-pulse"))
-         (run-ctx (satan-broker--prepare mode))
+         (run-ctx (satan-run-new-ctx mode))
          (frozen (plist-get run-ctx :time_now)))
     (sleep-for 0.05)
     (should (equal frozen (plist-get run-ctx :time_now)))))
