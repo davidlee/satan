@@ -1,0 +1,41 @@
+id = 14
+slug = "authority-ledger"
+title = "Stand up the ADR-017 §3 authority ledger"
+status = "design"
+created = "2026-07-23"
+updated = "2026-07-23"
+tags = ["extraction", "governance"]
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = ".doctrine/adr/017/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/**"
+intent = "scope-relevant"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"
+
+[[relation]]
+label = "references"
+role = "implements"
+target = "SPEC-001"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`, SL-060). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-018
+#   doctrine link SL-NNN governed_by ADR-010
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
