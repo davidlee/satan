@@ -162,6 +162,37 @@ not only "keep the richer side" but "re-read the richer side from its new home".
 the hard require. No criterion asks for it and F2 set the precedent — don't
 touch what has no defect behind it. A candidate for PHASE-03 or reconcile.
 
+### Census for PHASE-03, taken at the PHASE-02 boundary
+
+88 hits across 14 files. Three things the design's tables do not say:
+
+- **`satan-broker-run-dir-for-id` is already zero.** PHASE-03's EX-1 lists nine
+  names; PHASE-02 discharged that one. Eight are live. Do not read its zero as
+  evidence the grep is working — use a *live* name as the control, as PHASE-02's
+  VA-1 did (`satan-broker-locate-run-dir` = 27 at that point).
+- **`satan-tank.el` is a full convert, and no criterion says so.** Everything it
+  takes from the broker — `list-run-dirs` ×2, `locate-run-dir`,
+  `--run-id-from-leaf` — is in PHASE-03's moved set, so its
+  `(require 'satan-broker)` at `:25` can drop to `(require 'satan-run)` and the
+  module stops paying for the broker's 20 requires. §5.4 lists tank as "call
+  sites repointed" only, and EX-4 / EX-5 name the two cycles and the three
+  soft-dependency reachers but not tank. It is the same pressure §2.3 measures,
+  in a sixth module nobody counted. **A scope call for PHASE-03, not a silent
+  extra** — take it to `/consult` rather than deciding it inside the phase.
+- **Exactly one `boundp` guard on MCP state**, `satan-broker.el:628` — EX-3's
+  target, confirmed singular. The other two `boundp`/`fboundp` hits in that file
+  (`:67` `my/op-read-env`, `:81` `envrc--export`) are unrelated optional
+  externals and must survive.
+
+Reacher inventory, verified: `satan-observer.el` `:47` declare-function + `:59`
+in-function require; `satan-budget.el:13` declare-function and
+`satan-budget-test.el:12` `(require 'satan-broker)` held only for
+`run-dirs-for-date`; `satan-tools-atsatan.el` `:35` comment, `:38`
+declare-function, `:539` `fboundp` guard; `satan-intervention-mark.el` `:23`
+comment + `:27` declare-function; `satan-attribute-listener.el:31`
+declare-function. `cl-letf` stubs of `satan-broker-locate-run-dir` sit in
+`satan-{attribute-listener,tools-atsatan,intervention-mark}-test.el`.
+
 ### Historical numbering
 
 Design §10's adversarial pass and the RV-002 record were written against a
