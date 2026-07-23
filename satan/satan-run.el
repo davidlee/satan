@@ -1,10 +1,13 @@
 ;;; satan-run.el --- Shared SATAN run infrastructure (id, dirs, struct, tool-ctx) -*- lexical-binding: t; -*-
 
-;; Lightweight module with zero heavy deps — required by satan-broker and
-;; satan-mcp without pulling in context/percept/denote-journal.
+;; Sole owner of run identity, run-directory layout, and DEC-8 run-lifecycle
+;; state (SL-013 DEC-001, ADR-018 D4.1).
 ;;
-;; Extracted from satan-broker.el so the MCP server can mint runs, resolve
-;; run directories, and build tool-ctx plists without transitive broker deps.
+;; Deliberately a leaf: its requires are exactly cl-lib, subr-x and
+;; satan-custom, and must stay that way.  That is what lets satan-mcp mint
+;; runs and resolve run directories without pulling in context/percept, the
+;; constraint that produced the satan-broker fork this module absorbed.  Every
+;; dependant may therefore hard-require it — nothing can cycle through a leaf.
 
 (require 'cl-lib)
 (require 'subr-x)

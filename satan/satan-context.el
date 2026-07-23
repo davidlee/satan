@@ -258,8 +258,7 @@ Globs `satan-runs-dir' for `YYYY-MM-DD' buckets in descending
 order and collects run leaves until N entries are gathered.  Stray
 files at the runs root (e.g. the `most-recent' symlink) are skipped.
 Returns nil when the runs dir is missing or empty."
-  (when (and (boundp 'satan-runs-dir)
-             satan-runs-dir
+  (when (and satan-runs-dir
              (file-directory-p satan-runs-dir))
     (let* ((buckets (cl-remove-if-not
                      (lambda (name)

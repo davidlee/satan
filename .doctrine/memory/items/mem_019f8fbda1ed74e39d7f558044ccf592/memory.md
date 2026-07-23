@@ -19,6 +19,15 @@ The danger is specifically the silence: a broken invocation and a genuinely
 passing check produce the identical zero-hit output. There is no error to
 notice.
 
+**The tool is not the whole hazard — the pipeline is.** SL-013's audit
+(RV-003) hit the same class with `rg` doing its job perfectly: a per-symbol
+loop piped counts through `bc`, which is absent from that environment, and
+the `|| echo 0` fallback printed **fifteen** spurious zeros. Every link that
+can fail into a zero — an absent counter, a `2>/dev/null`, a `|| echo 0`
+fallback, a glob that matches nothing — reproduces the failure. Prefer
+`rg --no-heading -F -- "$name" <dir> | wc -l`: no counter subprocess, no
+fallback, and `wc -l` cannot silently succeed at nothing.
+
 ## Mitigation
 
 Always include a **live positive control** in the same grep invocation style

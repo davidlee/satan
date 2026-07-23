@@ -1,0 +1,115 @@
+id    = 3
+slug  = "sl-013-reconciliation-audit-the-run-context-collapse"
+title = "SL-013 reconciliation audit: the run-context collapse"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-013"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "ADR-018's Context states a mechanism for the satan-run-prepare collision that EVD-001 falsified; governance still asserts it"
+detail = "Expected: after a slice whose design settled R1 empirically, accepted governance describes the collision correctly. Observed: ADR-018's Context paragraph attributes the collision's latency to byte-compiled callers inlining the accessor before the defun clobbers the function cell. That mechanism is not operative — this project runs tests interpreted (design C5) and interpreted syntactic callers inline too. The real mechanism is that cl-defstruct accessors are cl-defsubsts which install a compiler-macro property that defun does not remove, applied at macroexpansion i.e. on load (EVD-001, design SS10; re-verified live in PHASE-01, notes.md). The wrongness is load-bearing, not cosmetic: the stated mechanism implies a false safety condition (that an interpreted-only tree is exposed), so a future reader could 'restore' the hazard by reasoning from it. Design SS10 books this explicitly as reconcile debt: 'Governance corrections go through a REV at reconcile, not a hand-edit from this design.' Confirmed still owed — ADR-018 is unmodified since 2026-07-22."
+disposition = "verified"
+response = "Observation confirmed. ADR-018 is unmodified since acceptance (2026-07-22) and its Context paragraph still asserts the byte-compilation mechanism. Remediation is a governance write, which audit must not make: routed to /reconcile as a REV against ADR-018, recorded in the Reconciliation Brief under Governance/spec. Design SS10 already books this as reconcile debt in exactly these terms; this finding is the audit confirming the debt is still owed rather than discharged in passing."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "design.md SS10's EVD-001 table presents the funcall row as unconditional and dismisses load order; PHASE-02 showed the funcall row is load-order-contingent"
+detail = "Expected: design SS10's call-form table describes the tree it was written against and stays true through implementation. Observed: SS10 states 'SL-013 R1 hypothesises that reachability turns on load order. Both orders were tested and inline identically. Load order is not the variable.' That is true of *syntactic* call sites only. PHASE-02's first edit falsified it for the escape hatches: adding (require 'satan-run) to satan-broker.el put the leaf first in load order, so the broker's own cl-defstruct satan-run re-installed the accessor over the defun's function cell, and PHASE-01's (funcall 'satan-run-prepare ...) began reaching the accessor — turning the suite red (notes.md, 2026-07-24 PHASE-02). The verdict 'latent' is unaffected, because it rests on the syntactic rows. But SS10's table rows for funcall / apply / eval describe a function cell whose occupant was decided by load order, and the design asserts the opposite without qualification. Both prior explanations were incomplete rather than simply wrong — which sharpens, and partly rehabilitates, the R1 hypothesis SS10 dismisses. This feeds the ADR-018 REV alongside the byte-compilation correction."
+disposition = "verified"
+response = "Observation confirmed against notes.md's PHASE-02 record and the design text. Two write surfaces, both routed to /reconcile: (a) design.md SS10 by direct edit — qualify the funcall/apply/eval rows as load-order-contingent and soften the dismissal of R1's load-order hypothesis from 'not the variable' to 'not the variable for syntactic call sites'; (b) folded into F-1's ADR-018 REV, since the ADR's Context is where the corrected mechanism has to land completely. Not fix-now: prose in an authored design artifact is reconcile's surface, not audit's."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "satan-context.el re-implements the run-directory layout the leaf now owns — a renamed fork surviving in a module the slice touched"
+detail = "Expected: after DEC-001 makes satan-run.el the sole owner of run-directory layout, and PHASE-02 gives satan-context.el a hard (require 'satan-run), the module consumes that layout API. Observed: satan-context.el:248-286 still carries its own bucket walk. satan-context--bucket-regexp (:252) is the byte-identical string satan-run--bucket-name-p (satan-run.el:118) matches; satan-context--list-recent-runs (:255-286) enumerates satan-runs-dir, filters buckets, then filters leaves — the work satan-run-list-dirs (satan-run.el:156-178) now does. This is precisely the same-body/different-name duplication class that design SS2.1 counts as seven of the tree's eleven instances and that RV-002 F-2 records the symbol-keyed census as structurally unable to see; SS2.1's census did not reach satan-context.el. Not drift against any authored criterion — no EX/VT/VA names it, and design F2 set the precedent of leaving satan-context.el's satan-run-* surface alone. Not a mechanical repoint either: context's version is semantically different (newest-first ordering, N-clipping, and its own satan-context--run-id-regexp with date/time/mode capture groups that satan-run--legacy-run-name-p does not provide), and five of the suite's 13 skips are satan-context corpus-integration tests, so the change would land least-observed. Follow-up work, not audit-scope repair."
+disposition = "follow-up"
+response = "Confirmed and captured as IMP-018. Follow-up rather than fix-now, and not because the fix is large: satan-context--list-recent-runs is not behaviourally equivalent to satan-run-list-dirs (newest-first ordering on buckets and leaves, early exit at N, and a run-id regexp with capture groups the leaf's bare predicate does not offer), so collapsing needs a design call about whether the leaf grows an ordered/limited variant and a parser, or context keeps its traversal and consumes only the predicates. Making that call inside an audit would be improvising design. Compounding it: five of the suite's 13 skips are satan-context corpus-integration tests, so the change lands least-observed of anywhere in the module. IMP-018 records the sharp edge and links IMP-017, for which this is fresh evidence — the class recurred a twelfth time and the symbol-keyed census missed it."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "satan-context.el:261's (boundp 'satan-runs-dir) guard is dead under the hard require F3 landed — the soft-dependency idiom EX-5 retired in five modules, surviving in a sixth"
+detail = "Expected: PHASE-03 EX-5 deletes the soft-dependency scaffolding (comments, declare-function, fboundp/boundp guards) from every module that reaches the leaf. Observed: satan-context.el:11 carries (require 'satan-run) — landed by PHASE-02's F3, which deleted the module's three forward declarations — but satan-context--list-recent-runs at :261 still opens (when (and (boundp 'satan-runs-dir) satan-runs-dir (file-directory-p satan-runs-dir)) ...). satan-runs-dir is a defcustom in satan-run.el:15, so under the hard require it is unconditionally bound and the boundp arm can never be false. The guard is the exact idiom EX-5 names, in a module EX-5 does not enumerate — EX-5 lists satan-tools-atsatan, satan-intervention-mark and satan-attribute-listener, and EX-4 the two cycle modules. notes.md (PHASE-02, 'Left alone, on purpose') already identifies it and defers it to PHASE-03 or reconcile; PHASE-03 did not take it. One-line deletion, zero behaviour change."
+disposition = "fix-now"
+response = "Fixed in this audit. satan-context.el:261's (boundp 'satan-runs-dir) arm deleted; the guard now reads (when (and satan-runs-dir (file-directory-p satan-runs-dir)) ...), preserving the nil and missing-directory checks. Zero behaviour change — under satan-context.el:11's (require 'satan-run) the defcustom at satan-run.el:15 is unconditionally bound, so the deleted arm could never be false. In audit scope: a code-only deletion of exactly the scaffolding PHASE-03 EX-5 retires, in a module the slice touched, with no spec or governance consequence. Suite green after: 1030 tests, 0 unexpected, 13 skipped, same skip set; just check exit 0."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "satan-observer-test.el:28-31 keeps a cycle-breaker defvar whose stated reason became false at PHASE-02"
+detail = "Expected: the scaffolding that existed because satan-runs-dir had three declaration sites goes when the collapse leaves one. Observed: satan/test/satan-observer-test.el:28-31 still reads ';; Declare satan-runs-dir dynamic up-front so the let* bindings below don't clash when satan-broker loads later and tries to defvar the same name.' followed by (defvar satan-runs-dir). satan-broker.el has not declared satan-runs-dir since PHASE-02 (its defcustom at :44 was deleted), so the comment's premise is false, and satan-observer.el:42's (require 'satan-run) makes the symbol special via the leaf's defcustom before the test file loads. This is also the last textual satan-broker reference in the observer pair: PHASE-03 EX-4 is satisfied literally because it names satan-observer.el and not its test. No VT-2 violation — I4 holds, a valueless defvar is a declaration. notes.md (PHASE-03, 'Left alone, on purpose') records the deferral, correctly reasoning it names no symbol in PHASE-03's moved set."
+disposition = "fix-now"
+response = "Fixed in this audit. satan/test/satan-observer-test.el:28-31 deleted — both the comment and the valueless (defvar satan-runs-dir). Safe: the file requires satan-observer at :23, which requires satan-run at :42, whose defcustom makes the symbol special before any of the 17 (let* ((satan-runs-dir root) ...) bindings evaluate. The comment's premise died at PHASE-02 when the broker's competing defcustom was deleted. In audit scope: test-file scaffolding whose only reason to exist was the duplication this slice collapsed. Suite green after: 1030 tests, 0 unexpected, 13 skipped, same skip set."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "satan-run.el's file header still describes the pre-collapse module — two dependants and an extraction it no longer is"
+detail = "Expected: the leaf's header states what design SS5.1 / DEC-001 made it — sole owner of run identity, run-directory layout, and DEC-8 run-lifecycle state, held at exactly cl-lib / subr-x / satan-custom so every dependant may hard-require it (C1, I3). Observed: satan-run.el:3-7 still reads 'required by satan-broker and satan-mcp without pulling in context/percept/denote-journal' and 'Extracted from satan-broker.el so the MCP server can mint runs...'. Both were true of the pre-collapse module. After PHASE-03 the file is required by ten modules (satan-broker, satan-mcp, satan-context, satan-budget, satan-observer, satan-tank, satan-tools-atsatan, satan-tools-hippocampus, satan-intervention-mark, satan-attribute-listener), and 'extracted from satan-broker.el' now describes the direction the code moved *away* from. The header is where the next reader learns why the leaf must stay dependency-free; it currently states the constraint as a historical accident rather than the invariant I3 pins."
+disposition = "fix-now"
+response = "Fixed in this audit. satan-run.el:3-7 rewritten to state the module's post-collapse role — sole owner of run identity, run-directory layout and DEC-8 lifecycle state (DEC-001, ADR-018 D4.1) — and to state I3 as an invariant to preserve ('its requires are exactly cl-lib, subr-x and satan-custom, and must stay that way') rather than as an incidental property, naming C1 as the reason. Comment-only; no code touched. In audit scope: the header is the first thing a future reader consults before adding a require, and I3 failing is the one way the clone comes back."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "The design-target selector for satan/test/satan-context-test.el matched no edit — the registry claims a target design SS5.4 never declared"
+detail = "Expected: the design-target selector set mirrors design SS5.4's code-impact table, so conformance's undelivered cell is empty. Observed: 'doctrine slice conformance SL-013' reports undelivered (1): satan/test/satan-context-test.el. Design SS5.4's table lists satan/test/{satan-run,satan-broker,satan-mcp,satan-tools-atsatan,satan-attribute-listener,satan-intervention-mark,satan-budget,satan-percept,satan-observer}-test.el and does not list satan-context-test.el. Nor was a change needed: F3 removed forward declarations from satan-context.el and added a require, while the symbol the test cl-letfs (satan-run-dir-for-id, per design F3 citing satan-context-test.el:688) was not renamed. So the selector is spurious rather than the delivery being short — the slice conformed and the registry disagrees. The load-bearing fix is the registry (doctrine slice selector rm), which is what conformance reads; design SS5.4's table needs no edit because it never carried the entry."
+disposition = "verified"
+response = "Confirmed: the selector is spurious, not the delivery short. Routed to /reconcile. The load-bearing remedy is the selector registry, which is what slice conformance reads: doctrine slice selector rm SL-013 satan/test/satan-context-test.el. No design.md mirror edit is owed — SS5.4's impact table never listed the file, so removing the selector makes registry and design agree rather than requiring both to move. Not fix-now: the selector list is per-slice authored state and reconcile is its writer."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "nit"
+title = "Conformance reports 12 undeclared paths, all under .doctrine/ — systemic registry scope, not slice drift"
+detail = "Expected: undeclared paths are source the slice touched without declaring. Observed: all 12 undeclared entries are doctrine's own authored state — .doctrine/slice/013/{notes.md,plan.toml,slice-013.toml}, the DEC-002 knowledge record, and the two memory items recorded at PHASE-03. Zero source paths are undeclared, which is the cell that would signal scope creep and is the strongest single result in the algebra. Cross-checked as systemic rather than SL-013-specific: 'doctrine slice conformance SL-002' reports 22 undeclared including real source and docs paths, of which the same class (.doctrine/slice/002/notes.md, .doctrine/backlog/**) appears identically. The registry counts governance bookkeeping as tracked tree; a slice cannot avoid it without declaring a selector over its own lifecycle artifacts. Reported so a future reader does not read the 12 as undocumented touches."
+disposition = "aligned"
+response = "Observation correct, no change needed. The undeclared cell contains zero source paths — all 12 are doctrine's own authored lifecycle state (slice toml/notes/plan, the DEC-002 knowledge record, two memory items). That is the cleanest possible reading of the cell for a slice of this size: no scope creep, no undocumented source touch. Cross-checked against SL-002, whose undeclared cell mixes the same .doctrine/** class with real source and docs paths, confirming this is systemic registry scope rather than SL-013 behaviour. Recorded so the count is not later misread as 12 undeclared edits; no registry or design change is warranted, since a slice declaring selectors over its own governance artifacts would be recording derived bookkeeping as design intent."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "PHASE-01 VA-1 asks for a .FAILED branch of satan-run-dir-for-id that the function does not have"
+detail = "Expected: an authored verification criterion names a branch that exists. Observed: PHASE-01 VA-1 reads 'Confirm the .FAILED / legacy-flat branch of dir-for-id is exercised, not just the bucketed happy path.' satan-run-dir-for-id (satan-run.el:77-86) has exactly two branches, bucketed and legacy-flat; it has no .FAILED handling, and neither did the broker twin deleted at 1be1f3e:satan-broker.el:191 — verified identical. .FAILED belongs to the layout cluster (satan-run--id-from-leaf, satan-run-locate-dir), which PHASE-03 moved. The criterion was discharged as the legacy-flat branch plus satan-run/failed-suffix-is-dot-failed pinning the constant, and PHASE-03 subsequently added satan-run/locate-dir-finds-failed-and-buckets and satan-run/id-from-leaf-strips-failed-suffix, so the requirement is now met on both nouns. Raised because the phase is recorded as meeting a criterion whose noun was wrong, and plan.toml criteria are immutable-append: the correction cannot and must not be an edit to VA-1. notes.md (PHASE-01) records it as 'a line at reconcile, not a gap'."
+disposition = "aligned"
+response = "Observation correct; no change needed and none possible on the criterion itself. plan.toml's VA-1 is immutable-append (boot rule) and off-surface for reconcile, so the criterion's loose noun stays as authored. The requirement behind it is met and now over-met: PHASE-01 discharged it as the legacy-flat branch plus satan-run/failed-suffix-is-dot-failed pinning the constant, and PHASE-03 added satan-run/locate-dir-finds-failed-and-buckets and satan-run/id-from-leaf-strips-failed-suffix, which exercise .FAILED on the functions that actually implement it. Verified independently at 1be1f3e that the deleted broker twin had no .FAILED handling either, so nothing was lost in the collapse. notes.md already carries the explanation; the audit confirms it rather than re-opening it."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "PHASE-02 VA-3's letter is knowingly unmet — two satan-run-prepare references survive, deliberately"
+detail = "Expected: VA-3's 'Confirm no funcall, apply, #' or advice-add reference to satan-run-prepare exists in the tree' is either met or the deviation is adjudicated. Observed: two references remain, both in satan/test/satan-run-test.el — a comment at :22 recording the historical trap, and satan-run/prepare-is-the-accessor-not-a-constructor (:125-136) which asserts the property *through* (funcall 'satan-run-prepare run), the only call form that can distinguish accessor from defun (EVD-001). The criterion's purpose is that no residual caller can reach a defun and get a freshly minted run_id; that purpose is met and met better with the regression test present, since the test would have gone red at PHASE-02's T1 under the old naming. Verified independently: rg over satan/ returns exactly 9 satan-run-prepare hits — 4 syntactic accessor reads (satan-run.el:235, satan-broker.el:202/245 and the test's :136 control), 3 comment lines, and the 2 above; no advice-add, no #' form, and no defun. notes.md (PHASE-02, 'VA-3 deviates from its own letter, deliberately') reports it rather than quietly satisfying it."
+disposition = "aligned"
+response = "Observation correct; the deviation is right and stays. VA-3's letter would require deleting satan-run/prepare-is-the-accessor-not-a-constructor, the one test that asserts the single-meaning property through the only call form that can detect a violation — and which would have gone red at PHASE-02's T1 under the old naming, when adding (require 'satan-run) to the broker flipped the function cell back to the accessor. Deleting it to satisfy the criterion's wording would remove the regression guard for exactly the defect the criterion exists to prevent. Independently re-verified: 9 satan-run-prepare hits tree-wide, all accounted for — 4 syntactic accessor reads, 3 comments, the comment at :22 and the funcall in the test; no defun, no advice-add, no sharp-quote. Reported by the phase rather than quietly satisfied, which is the correct handling."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "nit"
+title = "doctrine check gate cannot run — no [verification] config and no just gate recipe"
+detail = "Expected: the audit's mandated 'doctrine check gate' resolves to the project's end-of-phase check. Observed: it exits non-zero with 'justfile does not contain recipe gate'. .doctrine/doctrine.toml declares no [verification] section, so 'doctrine check gate' falls back to its unconfigured default 'just gate', which this project does not define — its gate is 'just check' (lint + test), per the project governance block. Every phase in SL-013 ran 'just check' directly, so no verification was actually skipped and this is not slice drift; the gap is that the project has not declared its cadence commands to doctrine, leaving a documented audit step permanently broken. Affects every future slice audit in this repo, not just SL-013."
+disposition = "follow-up"
+response = "Confirmed and captured as CHR-002. Follow-up rather than fix-now because the remedy is project infrastructure config unrelated to SL-013's subject — declaring [verification] in .doctrine/doctrine.toml affects every future slice audit in this repo, and choosing what prove should map to needs a look at whether just check mutates (formats in place), which is a separate question from this slice. No verification was skipped: every SL-013 phase ran just check directly, and this audit re-ran it (exit 0, 1030 tests, 0 unexpected, 13 skipped). CHR-002 carries the proposed config block and the prove caveat."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

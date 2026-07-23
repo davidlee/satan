@@ -244,6 +244,80 @@ phase's debt to clean up.
 All three of SL-013's phases are now complete. Next: `doctrine slice status
 SL-013 audit`, then `/audit`.
 
+## 2026-07-24 — audit (RV-003)
+
+Eleven findings, no blockers, no majors against the implementation. The one
+`major` is against **governance**: ADR-018's Context still asserts the falsified
+byte-compilation mechanism. Full reasoning in RV-003's `## Synthesis`; the
+handoff is its `## Reconciliation Brief`.
+
+### Harvested from the phase sheets (not previously in this file)
+
+- **Lint scale, PHASE-03:** 65/65 files `ok:true`; `bin/elisp-locate-paren-error`
+  clean on all 9 touched test files. Worth recording because `just check`'s
+  summary line reports tests, not lint breadth.
+- **PHASE-03 also removed `satan-attribute-listener-test.el`'s
+  `declare-function`** — redundant *and* wrongly annotated after the move. The
+  notes' PHASE-03 entry lists the two dropped `require`s but not this third
+  deletion.
+- **The sheet's STOP conditions earned their keep.** PHASE-03 authored two ("a
+  sixth soft-dependency site → `/consult`"; "a fourth entry in `satan-run.el`'s
+  require block → `/consult`, do not patch around it"). The first fired and
+  produced DEC-002 rather than a silent scope extension. That is the pattern to
+  repeat: name the STOP condition in the sheet *before* the phase can trip it.
+
+### What the audit re-ran rather than believed
+
+Every gate independently, from a clean shell. All 15 deleted/renamed names
+zero-hit with live controls; ADR-018 VT-2 clauses 1–2 confirmed; **clause 3
+widened past the slice's own gate** — checked against all three `cl-defstruct`s
+in `satan/*.el` (`satan-run`, `satan-audit-handle`, `satan-mcp-session`), no
+accessor/`defun` collision anywhere, which is what makes design F2's "leave
+`satan-run-perceive` alone" correct rather than merely convenient. I3 read
+verbatim. R5's docstring union diffed pairwise against `1be1f3e`. `just check`
+exit 0, 1030/0/13.
+
+### The trap recurred, in a new costume
+
+This audit's first grep sweep piped per-symbol counts through `bc`, which is
+absent from this environment; the `|| echo 0` fallback printed **fifteen
+spurious zeros** — a perfect pass for a search that never ran. Same failure
+class as PHASE-02's `ugrep` incident, different tool. The live-positive-control
+mitigation already recorded in
+[[mem.pattern.satan.rg-not-ugrep-for-rename-verification]] catches both; the
+memory has been generalised from "`ugrep` is the problem" to "any silent
+zero-producing link in the pipeline is".
+
+### Repairs taken in-audit (fix-now)
+
+Three, all code-only, zero behaviour change, all residue of the collapsed
+duplication. Suite re-run green after.
+
+- **F-4** `satan-context.el:261` — deleted the dead `(boundp 'satan-runs-dir)`
+  arm. Under the hard require F3 landed it could never be false. This is the
+  sixth module carrying the idiom EX-5 retires; EX-5 enumerated five.
+- **F-5** `satan-observer-test.el:28-31` — deleted the stale comment and
+  cycle-breaker `(defvar satan-runs-dir)`. PHASE-03 correctly declined it (not in
+  its moved set); audit is where it belongs.
+- **F-6** `satan-run.el:3-7` — the header still described the pre-collapse module
+  ("required by satan-broker and satan-mcp", "extracted from satan-broker.el").
+  Rewritten to state DEC-001 ownership and to pin I3 as an invariant to preserve,
+  naming C1 as the reason.
+
+### Carried forward
+
+- **[[IMP-018]]** — a **twelfth** instance of the duplication class, found during
+  audit: `satan-context--bucket-regexp` / `--list-recent-runs` are a renamed fork
+  of `satan-run--bucket-name-p` / `satan-run-list-dirs`, in a module this slice
+  gave a hard require. §2.1's symbol-keyed census never reached it, exactly as
+  RV-002 F-2 predicted. Not a mechanical repoint (ordering, N-clipping, a
+  capture-group regexp), so it needs a design call — hence backlog, not fix-now.
+  This is the concrete cost argument [[IMP-017]] previously lacked.
+- **[[CHR-002]]** — `doctrine check gate` exits non-zero in this repo: no
+  `[verification]` in `doctrine.toml`, no `just gate` recipe. No verification was
+  skipped (every phase ran `just check`), but a mandated audit step is broken for
+  every future slice here.
+
 ### Historical numbering
 
 Design §10's adversarial pass and the RV-002 record were written against a

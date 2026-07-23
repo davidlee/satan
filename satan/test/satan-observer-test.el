@@ -25,11 +25,6 @@
 (require 'satan-motive)
 (require 'satan-motive-test)
 
-;; Declare `satan-runs-dir' dynamic up-front so the `let*' bindings
-;; below don't clash when `satan-broker' loads later and tries to
-;; `defvar' the same name.
-(defvar satan-runs-dir)
-
 ;; ---------------------------------------------------------------------
 ;; DB fixture (mirrors satan-intervention-test--with-db)
 ;; ---------------------------------------------------------------------
