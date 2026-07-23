@@ -19,7 +19,7 @@
 (require 'satan-audit)
 (require 'satan-jsonl)
 
-;; Declared in satan-run.el; re-declared for byte-compiler reference.
+;; Defined in satan-memory-store.el; re-declared for byte-compiler reference.
 (defvar satan-memory-store--current-run-id)
 
 ;; Declared in satan-broker.el — used for DEC-8 mutual exclusion.
@@ -165,9 +165,13 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
   (when satan-broker--spawn-running
     (error "SATAN MCP: scheduled run in progress — refuse session (DEC-8)"))
   (let* ((mode (satan-mode-resolve "interactive"))
-          (start-time (current-time))
-          (run-id (satan-run-mint-id "interactive" start-time))
-          (time-now (format-time-string satan-run--iso-time-format start-time))
+          ;; F5: one constructor for run_ctx.  The canonical 10-key shape,
+          ;; not a hand-rolled 4-key clone — the six v0 placeholders reach
+          ;; no on-disk artifact, since `satan-audit-open' stores run-ctx on
+          ;; the handle and serialises only manifest and bundle.
+          (prepare (satan-run-new-ctx mode))
+          (run-id (plist-get prepare :run_id))
+          (start-time (plist-get prepare :start_time))
           (run-dir (satan-run-dir-for-id run-id))
           (manifest
             (let ((tools-list nil))
@@ -182,10 +186,6 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
                     :mode "interactive"
                     :prompt "interactive MCP session (DEC-6: no satan_final in A)"
                     :context "human-supervised pi.dev session"))
-          (prepare (list :run_id run-id
-                     :mode_name "interactive"
-                     :time_now time-now
-                     :start_time start-time))
           (audit (satan-audit-open run-dir manifest bundle prepare))
           (run-struct
             (make-satan-run

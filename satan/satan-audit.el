@@ -23,7 +23,7 @@
   dir
   transcript-path
   last-ts
-  ;; Phase 0.1: the run_ctx plist built by `satan-broker--prepare'.
+  ;; Phase 0.1: the run_ctx plist built by `satan-run-new-ctx'.
   ;; Later phases (sensor alerts, observer) attach pre_spawn / motive
   ;; updates here so audit-close can write them without re-deriving.
   run-ctx)

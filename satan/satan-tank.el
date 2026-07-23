@@ -387,7 +387,7 @@ Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and
 the legacy flat layout, via `satan-broker-list-run-dirs'.  The
 `.FAILED' suffix (if present on the on-disk leaf) is stripped from
 the returned run-ids; callers resolve to a dir via
-`satan-broker-run-dir-for-id'."
+`satan-run-dir-for-id'."
   (let* ((paths (satan-broker-list-run-dirs satan-runs-dir))
          (ids (mapcar (lambda (p)
                         (satan-broker--run-id-from-leaf

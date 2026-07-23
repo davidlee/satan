@@ -458,6 +458,30 @@ Uses a unique id.  Blocks until one response line is received."
    (setq satan-mcp-enabled nil)
    (satan-mcp-test--stop)))
 
+(ert-deftest satan-mcp/session-prepare-is-the-canonical-run-ctx ()
+  "SL-013 F5: the session's run_ctx comes from `satan-run-new-ctx'.
+
+Was a hand-rolled 4-key clone.  The identity it carries — mode name,
+run-id shape, and `:time_now' frozen off `:start_time' — must be
+unchanged by the switch (C2); what changes is that the six v0
+placeholders are now present, so later phases can `plist-put' onto a
+session's run_ctx exactly as they do onto a scheduled run's."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-register-interactive-mode)
+   (let* ((session (satan-mcp--mint-session nil))
+          (prepare (satan-mcp-session-prepare session)))
+     (should (equal (cl-loop for (k _v) on prepare by #'cddr collect k)
+                    '(:run_id :mode_name :time_now :start_time
+                      :evidence :percept :sensor_status :pre_spawn
+                      :motive :observer)))
+     (should (equal (plist-get prepare :mode_name) "interactive"))
+     (should (string-match-p "\\`[0-9]\\{8\\}T[0-9]\\{6\\}-interactive-[0-9a-f]\\{6\\}\\'"
+                             (plist-get prepare :run_id)))
+     (should (equal (plist-get prepare :time_now)
+                    (format-time-string satan-run--iso-time-format
+                                        (plist-get prepare :start_time))))
+     (setq satan-mcp--session-active nil))))
+
 (ert-deftest satan-mcp/dec8-session-refuses-when-spawn-running ()
   "DEC-8: connection is rejected when satan-broker--spawn-running is t.
 The accept-filter catches the error from mint-session and deletes the

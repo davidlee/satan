@@ -11,7 +11,7 @@
 ;;   (satan-percept-persist DIR PERCEPT)                 -> PATH
 ;;   (satan-percept-render-block FRAMING PERCEPT)        -> LIST-OF-LINES
 ;;
-;; PREPARE is the run_ctx plist allocated by `satan-broker--prepare'
+;; PREPARE is the run_ctx plist allocated by `satan-run-new-ctx'
 ;; (Phase 0.1): it carries the frozen `:run_id' + `:time_now' that back
 ;; every artifact written this run.  The percept is one of those
 ;; artifacts — A2 requires identical (`:run_id', `:time_now') across

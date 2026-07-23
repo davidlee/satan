@@ -12,17 +12,13 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'satan-custom)
+(require 'satan-run)
 (require 'satan-tools)
 (require 'satan-memory-grammar)
 (require 'satan-memory-canon)
 (require 'satan-memory-evidence)
 (require 'satan-memory-store)
 (require 'satan-attribute)
-
-(defcustom satan-hippocampus-dir
-  (expand-file-name "satan/hippocampus" satan-notes-root)
-  "Directory holding SATAN hippocampus entries."
-  :type 'directory :group 'satan)
 
 (defun satan-tools-hippocampus--slugify (s)
   (or (satan-memory-canon--slugify s) "untitled"))

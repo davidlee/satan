@@ -8,6 +8,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'satan-custom)
+(require 'satan-run)
 (require 'satan-percept)
 (require 'satan-resonance)
 (require 'satan-motive)
@@ -17,11 +18,6 @@
 (require 'satan-sensor-wpm)
 (require 'satan-attribute-render)
 (require 'satan-trace)
-
-(defvar satan-runs-dir)              ; defined in satan-broker.el
-(defvar satan-run--iso-time-format)  ; defconst in satan-run.el
-(declare-function satan-run-dir-for-id "satan-run"
-                  (run-id &optional runs-dir))
 
 ;; ── Shared assembly core (DEC-13, Phase 4) ─────────────────────────────────
 

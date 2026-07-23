@@ -47,7 +47,7 @@ TMP cleaned up on exit."
 
 (defun satan-percept-test--prepare (run-id time-now)
   "Return a minimal prepare run_ctx plist for RUN-ID + TIME-NOW.
-Mirrors `satan-broker--prepare' shape so callers don't have to
+Mirrors `satan-run-new-ctx' shape so callers don't have to
 import the broker just to fake a run."
   (list :run_id run-id
         :time_now time-now
