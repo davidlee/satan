@@ -1,7 +1,7 @@
 id = 13
 slug = "collapse-run-context"
 title = "Collapse the satan-run / satan-broker run-context duplication"
-status = "ready"
+status = "started"
 created = "2026-07-22"
 updated = "2026-07-23"
 tags = ["extraction", "refactor", "satan"]

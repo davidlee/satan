@@ -14,6 +14,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'satan-custom)
+(require 'satan-run)
 (require 'satan-audit)
 (require 'satan-budget)
 (require 'satan-jsonl)
@@ -41,16 +42,6 @@
 ;; is in progress.
 (defvar satan-broker--spawn-running nil)
 
-(defcustom satan-runs-dir
-  (expand-file-name "satan/runs" satan-notes-root)
-  "Directory holding per-run audit bundles."
-  :type 'directory :group 'satan)
-
-(defcustom satan-hippocampus-dir
-  (expand-file-name "satan/hippocampus" satan-notes-root)
-  "Read-write scratch directory inside the jail."
-  :type 'directory :group 'satan)
-
 (defcustom satan-direnv-dir
   (file-name-directory (directory-file-name satan--root))
   "Directory whose `.envrc' is sourced into the jailed-harness environment.
@@ -76,18 +67,6 @@ Falls back to `getenv' if `my/op-read-env' is unavailable."
   (if (fboundp 'my/op-read-env)
       (my/op-read-env var)
     (getenv var)))
-
-(cl-defstruct satan-run
-  id mode start-time dir bundle-path process
-  pending-tool-calls tool-calls-done
-  applied-actions staged-actions rejected-actions failed-actions
-  final status timeout-timer audit
-  stdout-log-path
-  ;; Phase 0.1: the run_ctx plist built by `satan-broker--prepare'.
-  ;; Carries the frozen `:time_now', `:run_id', `:start_time' and v0
-  ;; placeholder slots (`:evidence' `:percept' `:sensor_status'
-  ;; `:pre_spawn' `:motive' `:observer') that later phases populate.
-  prepare)
 
 (declare-function envrc--export "envrc" (env-dir))
 (declare-function envrc--merged-environment "envrc" (process-env pairs))

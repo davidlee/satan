@@ -13,14 +13,20 @@
 ;; the *frozen* :time_now rather than minting a fresh one; and both
 ;; defcustoms deriving from `satan-notes-root'.
 ;;
-;; TRAP (EVD-001, design §10).  `cl-defstruct satan-run' generates the
-;; accessor `satan-run-prepare'; satan-run.el:77 then defines a defun over
-;; that same symbol.  The accessor installs a `compiler-macro' property that
-;; `defun' does not remove, so every *syntactic* call in loaded source
-;; inlines to the slot read — interpreted and byte-compiled alike.  Only
-;; `funcall' / `apply' / `eval' reach the defun.  The constructor is
-;; therefore reached below as `(funcall 'satan-run-prepare MODE)'; a
-;; syntactic call would silently test the accessor instead.
+;; TRAP, RESOLVED IN PHASE-02 (EVD-001, design §10).  `cl-defstruct
+;; satan-run' generates the accessor `satan-run-prepare', over which
+;; satan-run.el once defined a defun of the same name.  The accessor installs
+;; a `compiler-macro' property that `defun' does not remove, so every
+;; *syntactic* call in loaded source inlined to the slot read — interpreted
+;; and byte-compiled alike — and PHASE-01 had to reach the constructor as
+;; `(funcall 'satan-run-prepare MODE)' to characterise it at all.
+;;
+;; PHASE-02 renamed the defun to `satan-run-new-ctx', so `satan-run-prepare'
+;; now has exactly one meaning (the accessor) and the constructor can be
+;; called syntactically.  The `funcall' escape hatch was never stable anyway:
+;; which definition won the function cell depended on load order, and any
+;; module defining its own `cl-defstruct satan-run' after satan-run.el loaded
+;; put the accessor back on top.
 
 ;;; Code:
 
@@ -98,9 +104,9 @@
 (ert-deftest satan-run/new-ctx-returns-ten-v0-keys ()
   "The v0 run_ctx shape: ten keys, in order, six of them placeholders.
 
-Reached through `funcall'.  A syntactic call would inline the struct
-accessor of the same name (EVD-001) and characterise the wrong function."
-  (let* ((ctx  (funcall 'satan-run-prepare '(:name "tick")))
+Called syntactically: PHASE-02's rename left `satan-run-new-ctx' with no
+struct accessor shadowing it, which is what EVD-001's trap cost us."
+  (let* ((ctx  (satan-run-new-ctx '(:name "tick")))
          (keys (cl-loop for (k _v) on ctx by #'cddr collect k)))
     (should (equal keys '(:run_id :mode_name :time_now :start_time
                           :evidence :percept :sensor_status :pre_spawn
@@ -115,6 +121,20 @@ accessor of the same name (EVD-001) and characterise the wrong function."
     (should (equal (plist-get ctx :time_now)
                    (format-time-string satan-run--iso-time-format
                                        (plist-get ctx :start_time))))))
+
+(ert-deftest satan-run/prepare-is-the-accessor-not-a-constructor ()
+  "`satan-run-prepare' reads the slot; it never mints a run (design I2).
+
+The regression guard for EVD-001.  While a defun of this name shadowed
+the struct accessor, which one answered depended on load order and on
+whether the caller went through `funcall' — so a caller could silently
+get a fresh run-id and an unfrozen time instead of the run's own.  Any
+module re-declaring `cl-defstruct satan-run' would flip it back."
+  (let ((run (make-satan-run :prepare '(:run_id "frozen-rid"))))
+    ;; Through `funcall', which is the path that reached the old defun.
+    (should (equal (funcall 'satan-run-prepare run) '(:run_id "frozen-rid")))
+    (should (equal (satan-run-prepare run) '(:run_id "frozen-rid"))))
+  (should (fboundp 'satan-run-new-ctx)))
 
 ;; ── Tool context ────────────────────────────────────────────────────────────
 

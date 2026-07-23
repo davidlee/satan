@@ -19,7 +19,10 @@
 
 (defcustom satan-hippocampus-dir
   (expand-file-name "satan/hippocampus" satan-notes-root)
-  "Read-write scratch directory inside the jail."
+  "Read-write scratch directory inside the jail, holding hippocampus entries.
+One directory serving both roles: `satan-run-tool-ctx' hands this
+variable to handlers as `:hippocampus-dir', and `satan-tools-hippocampus'
+is the handler that writes SATAN's self-curated memory there."
   :type 'directory :group 'satan)
 
 ;; ── Run struct ──────────────────────────────────────────────────────────────
@@ -31,6 +34,10 @@
   applied-actions staged-actions rejected-actions failed-actions
   final status timeout-timer audit
   stdout-log-path
+  ;; Phase 0.1: the run_ctx plist built by `satan-run-new-ctx'.
+  ;; Carries the frozen `:time_now', `:run_id', `:start_time' and v0
+  ;; placeholder slots (`:evidence' `:percept' `:sensor_status'
+  ;; `:pre_spawn' `:motive' `:observer') that later phases populate.
   prepare)
 
 ;; ── Run ID minting ──────────────────────────────────────────────────────────
@@ -74,10 +81,14 @@ New runs go under `<runs>/<YYYY-MM-DD>/<run-id>/'."
 
 ;; ── Prepare plist ───────────────────────────────────────────────────────────
 
-(defun satan-run-prepare (mode)
+(defun satan-run-new-ctx (mode)
   "Allocate run_id, freeze time_now, return the v0 run_ctx plist for MODE.
-Carries the frozen `:time_now', `:run_id', `:start_time' and v0
-placeholder slots for later phases."
+The plist is the single source of truth for the run's identity and
+the frozen `time_now' that the percept builder, observer, and tool
+handlers all read.  Phase-1+ slots (`:evidence' `:percept'
+`:sensor_status' `:pre_spawn' `:motive' `:observer') are present-with-
+nil so later phases can `plist-put' without keyword-arg ordering
+surprises."
   (let* ((name (plist-get mode :name))
          (start (current-time))
          (run-id (satan-run-mint-id name start))
