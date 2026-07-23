@@ -110,6 +110,112 @@ surprises."
           :motive nil
           :observer nil)))
 
+;; ── Run directory layout ────────────────────────────────────────────────────
+
+(defun satan-run--bucket-name-p (name)
+  "Return non-nil when NAME matches the YYYY-MM-DD bucket-dir pattern."
+  (and (stringp name)
+       (string-match-p "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\'" name)))
+
+(defun satan-run--legacy-run-name-p (name)
+  "Return non-nil when NAME matches the pre-bucket flat run-id layout.
+Pre-bucket runs sit directly under `satan-runs-dir' with names like
+`20260520T163446-tick-pulse-5e8018'."
+  (and (stringp name)
+       (string-match-p "\\`[0-9]\\{8\\}T[0-9]\\{6\\}-" name)))
+
+(defun satan-run--id-from-leaf (name)
+  "Strip the trailing `.FAILED' suffix (if any) from a leaf dir NAME."
+  (if (and (stringp name)
+           (string-suffix-p satan-run--failed-suffix name))
+      (substring name 0 (- (length name)
+                           (length satan-run--failed-suffix)))
+    name))
+
+(defun satan-run-locate-dir (run-id &optional runs-dir)
+  "Return the on-disk dir for RUN-ID, or nil if no candidate exists.
+Probes (in order): bucketed/<run-id>, bucketed/<run-id>.FAILED,
+legacy flat <run-id>, legacy flat <run-id>.FAILED.  Used by readers
+that need to find a run regardless of layout migration or terminal
+status."
+  (let* ((base (or runs-dir satan-runs-dir))
+         (bucket (satan-run--date-bucket run-id))
+         (failed satan-run--failed-suffix)
+         (candidates (delq nil
+                           (list
+                            (and bucket
+                                 (expand-file-name
+                                  (concat bucket "/" run-id) base))
+                            (and bucket
+                                 (expand-file-name
+                                  (concat bucket "/" run-id failed) base))
+                            (expand-file-name run-id base)
+                            (expand-file-name (concat run-id failed) base)))))
+    (cl-find-if #'file-directory-p candidates)))
+
+(defun satan-run-list-dirs (runs-dir)
+  "Return absolute paths of every run dir under RUNS-DIR.
+Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and
+the legacy flat layout (`<runs>/<run-id>'), with or without the
+`.FAILED' suffix.  Non-run entries (the `most-recent' symlink, stray
+files, malformed names) are skipped.  Order is unspecified."
+  (let (acc)
+    (when (file-directory-p runs-dir)
+      (dolist (entry (directory-files runs-dir nil "\\`[^.]" t))
+        (let ((path (expand-file-name entry runs-dir)))
+          (when (file-directory-p path)
+            (cond
+             ((satan-run--bucket-name-p entry)
+              (dolist (child (directory-files path nil "\\`[^.]" t))
+                (let ((cpath (expand-file-name child path)))
+                  (when (and (file-directory-p cpath)
+                             (satan-run--legacy-run-name-p
+                              (satan-run--id-from-leaf child)))
+                    (push cpath acc)))))
+             ((satan-run--legacy-run-name-p
+               (satan-run--id-from-leaf entry))
+              (push path acc)))))))
+    acc))
+
+(defun satan-run-dirs-for-date (runs-dir date-prefix)
+  "Return absolute paths of run dirs under RUNS-DIR dated DATE-PREFIX.
+DATE-PREFIX is YYYYMMDDT (matching the run-id's stem).  Matches both
+the bucketed layout (looks under `<runs>/YYYY-MM-DD/') and the legacy
+flat layout (filters by prefix on the leaf name)."
+  (let ((iso-bucket
+         (and (stringp date-prefix)
+              (string-match "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T"
+                            date-prefix)
+              (format "%s-%s-%s"
+                      (match-string 1 date-prefix)
+                      (match-string 2 date-prefix)
+                      (match-string 3 date-prefix)))))
+    (cl-remove-if-not
+     (lambda (path)
+       (let* ((leaf (file-name-nondirectory path))
+              (run-id (satan-run--id-from-leaf leaf))
+              (parent (file-name-nondirectory (directory-file-name
+                                               (file-name-directory path)))))
+         (or (and iso-bucket (equal parent iso-bucket))
+             (string-prefix-p date-prefix run-id))))
+     (satan-run-list-dirs runs-dir))))
+
+;; ── Lifecycle state (DEC-8) ─────────────────────────────────────────────────
+;; DEC-8 is a two-flag mutual-exclusion protocol between a scheduled broker
+;; run and an interactive MCP session: each side refuses to start while the
+;; other's flag is truthy.  Both flags live here so neither module has to
+;; reach into the other to read or write its counterpart (D6).
+
+(defvar satan-run--spawn-running nil
+  "Truthy while a scheduled broker run is live.
+MCP reads this to refuse a new interactive session while a scheduled
+run is in progress.")
+
+(defvar satan-run--session-active nil
+  "Truthy while an interactive MCP session is open.
+The broker's scheduler reads this to refuse spawning a scheduled run
+while a session is active.")
+
 ;; ── Tool context plist ──────────────────────────────────────────────────────
 
 (defun satan-run-tool-ctx (run-ctx)

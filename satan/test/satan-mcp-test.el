@@ -480,10 +480,10 @@ session's run_ctx exactly as they do onto a scheduled run's."
      (should (equal (plist-get prepare :time_now)
                     (format-time-string satan-run--iso-time-format
                                         (plist-get prepare :start_time))))
-     (setq satan-mcp--session-active nil))))
+     (setq satan-run--session-active nil))))
 
 (ert-deftest satan-mcp/dec8-session-refuses-when-spawn-running ()
-  "DEC-8: connection is rejected when satan-broker--spawn-running is t.
+  "DEC-8: connection is rejected when satan-run--spawn-running is t.
 The accept-filter catches the error from mint-session and deletes the
 client process."
   (satan-mcp-test--with-tmp-env
@@ -491,26 +491,26 @@ client process."
    (satan-mcp-test--register-stub "stub.a")
    ;; Start server without the spawn flag first, then set flag
    (let ((sock (satan-mcp-test--start)))
-     (setq satan-broker--spawn-running t)
+     (setq satan-run--spawn-running t)
      (let ((proc (satan-mcp-test--connect sock)))
        ;; Let the accept-filter callback fire in batch mode
        (accept-process-output nil 0.5)
        ;; accept-filter catches the error and deletes the client proc
        (should-not (process-live-p proc)))
      ;; Session-active flag should NOT be set (mint-session errored before reaching setq)
-     (should-not satan-mcp--session-active)
-     (setq satan-broker--spawn-running nil)
+     (should-not satan-run--session-active)
+     (setq satan-run--spawn-running nil)
      (satan-mcp-test--stop))))
 
 (ert-deftest satan-mcp/dec8-startup-refuses-when-spawn-running ()
-  "DEC-8: startup refuses when satan-broker--spawn-running is t."
+  "DEC-8: startup refuses when satan-run--spawn-running is t."
   (satan-mcp-test--with-tmp-env
    (satan-mcp-test--write-desc "stub.a" "desc")
    (satan-mcp-test--register-stub "stub.a")
    (setq satan-mcp-enabled t)
-   (setq satan-broker--spawn-running t)
+   (setq satan-run--spawn-running t)
    (should-error (satan-mcp-start) :type 'user-error)
-   (setq satan-broker--spawn-running nil)
+   (setq satan-run--spawn-running nil)
    (setq satan-mcp-enabled nil)))
 
 (ert-deftest satan-mcp/dec8-flag-cleared-on-disconnect ()
@@ -525,12 +525,12 @@ client process."
                                                    :capabilities (make-hash-table)
                                                    :clientInfo (list :name "test" :version "0")))))
      ;; Flag should be set while session is active
-     (should satan-mcp--session-active)
+     (should satan-run--session-active)
      ;; Close the connection — need to pump events for sentinel in batch mode
      (delete-process proc)
      (accept-process-output nil 0.5)
      ;; Flag should be cleared after close-session runs in sentinel
-     (should-not satan-mcp--session-active)
+     (should-not satan-run--session-active)
      (satan-mcp-test--stop))))
 
 (ert-deftest satan-mcp/boot-context-caches-per-session ()

@@ -19,12 +19,7 @@
 (require 'satan-intervention)
 (require 'satan-audit)
 (require 'satan-observer-classify)  ; maturity-state util
-
-;; Broker dependency is soft — `satan-broker-locate-run-dir' is loaded
-;; into the live emacs daemon at session start.  Requiring it here would
-;; pull `satan-tools-org' (and its denote chain) into ert batch runs
-;; that don't need them.
-(declare-function satan-broker-locate-run-dir "satan-broker")
+(require 'satan-run)
 
 (defconst satan-intervention-mark--confidences
   '("low" "medium" "high")
@@ -131,7 +126,7 @@ toggles whether :stale interventions appear in the completion list."
                     (if (string-empty-p s) nil s)))
            (now (satan-intervention-mark--now-iso))
            (run-id (satan-intervention-mark--run-id-of iv-id))
-           (run-dir (satan-broker-locate-run-dir run-id))
+           (run-dir (satan-run-locate-dir run-id))
            (_ (unless run-dir
                 (user-error "no run-dir on disk for %s" run-id)))
            (audit (satan-audit-reopen run-dir))

@@ -22,14 +22,6 @@
 ;; Defined in satan-memory-store.el; re-declared for byte-compiler reference.
 (defvar satan-memory-store--current-run-id)
 
-;; Declared in satan-broker.el — used for DEC-8 mutual exclusion.
-(defvar satan-broker--spawn-running nil)
-
-;; DEC-8: mutual-exclusion flag — truthy while an interactive MCP
-;; session is open.  The broker's scheduler reads this to refuse
-;; spawning scheduled runs while a session is active.
-(defvar satan-mcp--session-active nil)
-
 ;; Dynamically bound during tools/call dispatch so handlers can
 ;; access the current session (e.g. boot-context needs the prepare plist).
 (defvar satan-mcp--current-session nil)
@@ -162,7 +154,7 @@ Enforces 0700 permissions."
 (defun satan-mcp--mint-session (proc)
   "Create run directory, open audit with synthetic bundle, return session.
 Signals if a scheduled run is live (DEC-8 mutual exclusion)."
-  (when satan-broker--spawn-running
+  (when satan-run--spawn-running
     (error "SATAN MCP: scheduled run in progress — refuse session (DEC-8)"))
   (let* ((mode (satan-mode-resolve "interactive"))
           ;; F5: one constructor for run_ctx.  The canonical 10-key shape,
@@ -205,7 +197,7 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
           (tool-ctx (satan-run-tool-ctx run-struct))
           (bufs (make-hash-table :test 'eq)))
     ;; DEC-8: mark broker busy while this session lives.
-    (setq satan-mcp--session-active t)
+    (setq satan-run--session-active t)
     (make-satan-mcp-session
       :proc proc
       :run-id run-id
@@ -226,7 +218,7 @@ Without a synthetic final, audit-close writes :status \"invalid\"."
     'completed)
   ;; DEC-8: clear the mutual-exclusion flag so the scheduler can
   ;; spawn runs again.
-  (setq satan-mcp--session-active nil)
+  (setq satan-run--session-active nil)
   ;; Clear the bufs hash
   (clrhash (satan-mcp-session-bufs session)))
 
@@ -418,7 +410,7 @@ does not error the session)."
     (error
       ;; DEC-8: if the session was minted but wiring failed, clear the
       ;; mutual-exclusion flag so the scheduler is not permanently blocked.
-      (setq satan-mcp--session-active nil)
+      (setq satan-run--session-active nil)
       (message "satan-mcp: rejecting connection — %s" (error-message-string err))
       (delete-process client-proc))))
 
@@ -436,7 +428,7 @@ or if socket hardening checks fail (DEC-10)."
   (interactive)
   (unless satan-mcp-enabled
     (user-error "SATAN MCP: disabled (set `satan-mcp-enabled' non-nil)"))
-  (when satan-broker--spawn-running
+  (when satan-run--spawn-running
     (user-error "SATAN MCP: scheduled run in progress — refuse to start (DEC-8)"))
   (when (and satan-mcp--server-process
           (process-live-p satan-mcp--server-process))

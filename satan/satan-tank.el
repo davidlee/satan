@@ -22,7 +22,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
-(require 'satan-broker)
+(require 'satan-run)
 (require 'satan-memory-evidence)
 (require 'satan-memory-store)
 (require 'satan-memory-grammar)
@@ -384,13 +384,13 @@ Returns the state plist on success; nil if any read errors."
 (defun satan-tank--recent-runs ()
   "Most recent N run-ids under `satan-runs-dir', newest first.
 Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and
-the legacy flat layout, via `satan-broker-list-run-dirs'.  The
+the legacy flat layout, via `satan-run-list-dirs'.  The
 `.FAILED' suffix (if present on the on-disk leaf) is stripped from
 the returned run-ids; callers resolve to a dir via
 `satan-run-dir-for-id'."
-  (let* ((paths (satan-broker-list-run-dirs satan-runs-dir))
+  (let* ((paths (satan-run-list-dirs satan-runs-dir))
          (ids (mapcar (lambda (p)
-                        (satan-broker--run-id-from-leaf
+                        (satan-run--id-from-leaf
                          (file-name-nondirectory p)))
                       paths))
          (sorted (sort ids #'string-greaterp)))
@@ -399,7 +399,7 @@ the returned run-ids; callers resolve to a dir via
 (defun satan-tank--read-run-events (run-id)
   "Read transcript.jsonl from RUN-ID, return list of event plists.
 Each returned plist gains a `:run' (mode slug) and `:summary' field."
-  (let ((path (let ((dir (satan-broker-locate-run-dir
+  (let ((path (let ((dir (satan-run-locate-dir
                           run-id satan-runs-dir)))
                 (and dir (expand-file-name "transcript.jsonl" dir))))
         (slug (satan-tank--short-run run-id))

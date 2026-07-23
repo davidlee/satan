@@ -121,7 +121,7 @@
                      (or def "/notes/x.org:1"))
                     ((string-prefix-p "Notes" prompt) "deep work")
                     (t ""))))
-                ((symbol-function 'satan-broker-locate-run-dir)
+                ((symbol-function 'satan-run-locate-dir)
                  (lambda (rid &optional _runs-dir)
                    (satan-audit-handle-dir audit)))
                 ((symbol-function 'satan-memory-store-mark)

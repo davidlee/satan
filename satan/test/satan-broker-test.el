@@ -30,7 +30,6 @@
 (require 'satan-tools-memory)
 (require 'satan-tools-motive)
 (require 'satan-tools-vcs)            ; morning/tick modes reference vcs_log
-(require 'satan-mcp)                   ; satan-mcp--session-active (session gate)
 (require 'satan-trace)                 ; SL-011 tick trace row (VT-1)
 
 ;; Cross-cutter: assertion subject is broker (action-failed audit
@@ -149,44 +148,6 @@ read from the prepare-phase run_ctx plist."
   (should (null (satan-run--date-bucket "garbage")))
   (should (null (satan-run--date-bucket nil))))
 
-(ert-deftest satan-broker/run-id-from-leaf-strips-failed-suffix ()
-  (should (equal (satan-broker--run-id-from-leaf
-                  "20260520T163446-tick-pulse-5e8018.FAILED")
-                 "20260520T163446-tick-pulse-5e8018"))
-  (should (equal (satan-broker--run-id-from-leaf
-                  "20260520T163446-tick-pulse-5e8018")
-                 "20260520T163446-tick-pulse-5e8018")))
-
-(ert-deftest satan-broker/list-run-dirs-walks-both-layouts ()
-  "Enumerator returns paths for legacy flat and bucketed runs, plus FAILED."
-  (let ((root (make-temp-file "satan-runs-list-" t)))
-    (unwind-protect
-        (let ((legacy   (expand-file-name "20260519T100000-x-aaaaaa" root))
-              (legacy-f (expand-file-name "20260519T110000-x-bbbbbb.FAILED" root))
-              (bucket   (expand-file-name "2026-05-20" root))
-              (bucketed (expand-file-name
-                         "2026-05-20/20260520T120000-x-cccccc" root))
-              (bucketed-f (expand-file-name
-                           "2026-05-20/20260520T130000-x-dddddd.FAILED" root))
-              (noise    (expand-file-name "not-a-run-dir" root))
-              (noise-bucket-child
-               (expand-file-name "2026-05-20/scratch" root)))
-          (dolist (d (list legacy legacy-f bucket bucketed bucketed-f
-                           noise noise-bucket-child))
-            (make-directory d t))
-          (let ((got (satan-broker-list-run-dirs root)))
-            (should (member legacy got))
-            (should (member legacy-f got))
-            (should (member bucketed got))
-            (should (member bucketed-f got))
-            (should-not (member noise got))
-            (should-not (member noise-bucket-child got))
-            (should-not (cl-find-if (lambda (p)
-                                      (equal (file-name-nondirectory p)
-                                             "2026-05-20"))
-                                    got))))
-      (delete-directory root t))))
-
 (ert-deftest satan-broker/failure-streak-counts-trailing-failed ()
   "Counts consecutive .FAILED dirs back from the newest run-id."
   (let ((root (make-temp-file "satan-runs-streak-" t)))
@@ -273,32 +234,6 @@ read from the prepare-phase run_ctx plist."
            'failed "child-exit-1")
           (should (= 0 logged))
           (should (= 0 notified)))
-      (delete-directory root t))))
-
-(ert-deftest satan-broker/locate-run-dir-finds-failed-and-buckets ()
-  "Locator falls back through bucketed, bucketed-FAILED, legacy, legacy-FAILED."
-  (let ((root (make-temp-file "satan-runs-locate-" t)))
-    (unwind-protect
-        (progn
-          (let ((d (expand-file-name "2026-05-20/20260520T100000-x-aaaaaa"
-                                     root)))
-            (make-directory d t)
-            (should (equal (satan-broker-locate-run-dir
-                            "20260520T100000-x-aaaaaa" root)
-                           d)))
-          (let ((d (expand-file-name
-                    "2026-05-20/20260520T110000-x-bbbbbb.FAILED" root)))
-            (make-directory d t)
-            (should (equal (satan-broker-locate-run-dir
-                            "20260520T110000-x-bbbbbb" root)
-                           d)))
-          (let ((d (expand-file-name "20260520T120000-x-cccccc" root)))
-            (make-directory d t)
-            (should (equal (satan-broker-locate-run-dir
-                            "20260520T120000-x-cccccc" root)
-                           d)))
-          (should (null (satan-broker-locate-run-dir
-                         "20260520T999999-nope-zzzzzz" root))))
       (delete-directory root t))))
 
 ;; ---------- satan-run-new-ctx (Phase 0.1) ----------
@@ -515,7 +450,7 @@ Secondary subject: satan-budget (gating policy)."
              (satan-broker-test--write-transcript
               existing (list (satan-broker-test--usage-record 500000)))
              (let* ((run-id (satan-broker-run "morning"))
-                    (dir (satan-broker-locate-run-dir run-id root))
+                    (dir (satan-run-locate-dir run-id root))
                     (status-path (expand-file-name "status" dir)))
                (should (string-suffix-p ".FAILED" dir))
                (should (file-directory-p dir))
@@ -565,7 +500,7 @@ existing transcript) but asserts the perceive artifacts, not the gate."
              (satan-broker-test--write-transcript
               existing (list (satan-broker-test--usage-record 500000)))
              (let* ((run-id (satan-broker-run "morning"))
-                    (dir (satan-broker-locate-run-dir run-id root))
+                    (dir (satan-run-locate-dir run-id root))
                     (status-path (expand-file-name "status" dir))
                     (percept-path (expand-file-name "percept.json" dir))
                     (bundle (satan-broker-test--read-bundle dir)))
@@ -598,7 +533,7 @@ pop a desktop alert).  The bundle is verify-clean."
      (let* ((root (make-temp-file "satan-session-perceive-" t))
             (satan-runs-dir root)
             (satan-budget-daily-tokens 2500000) ; under ceiling: no spend
-            (satan-mcp--session-active t)        ; interactive session open
+            (satan-run--session-active t)        ; interactive session open
             (satan-trace-enabled nil)  ; SL-011: keep the real trace dir clean
             (announced nil))
        (unwind-protect
@@ -607,7 +542,7 @@ pop a desktop alert).  The bundle is verify-clean."
                      ((symbol-function 'satan-broker--announce-failure)
                       (lambda (&rest _) (setq announced t))))
              (let* ((run-id (satan-broker-run "morning"))
-                    (dir (satan-broker-locate-run-dir run-id root))
+                    (dir (satan-run-locate-dir run-id root))
                     (status-path (expand-file-name "status" dir))
                     (percept-path (expand-file-name "percept.json" dir))
                     (bundle (satan-broker-test--read-bundle dir)))
@@ -679,7 +614,7 @@ the stage wraps inside the shared perceive fn record onto the tick."
        (let* ((root (make-temp-file "satan-tick-spawn-" t))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000) ; under ceiling
-              (satan-mcp--session-active nil))
+              (satan-run--session-active nil))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-percept-build)
                         #'satan-broker-test--fixture-percept)
@@ -710,7 +645,7 @@ the stage wraps inside the shared perceive fn record onto the tick."
        (let* ((root (make-temp-file "satan-tick-perc-" t))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000)
-              (satan-mcp--session-active nil))
+              (satan-run--session-active nil))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         (lambda (&rest _) (error "sensor exploded")))
@@ -732,7 +667,7 @@ the stage wraps inside the shared perceive fn record onto the tick."
        (let* ((root (make-temp-file "satan-tick-sess-" t))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000)
-              (satan-mcp--session-active t))
+              (satan-run--session-active t))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         #'satan-broker-test--minimal-perceive))
@@ -755,7 +690,7 @@ the stage wraps inside the shared perceive fn record onto the tick."
               (existing (expand-file-name (concat today "080000-x-eeeeee") root))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 400000)
-              (satan-mcp--session-active nil))
+              (satan-run--session-active nil))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         #'satan-broker-test--minimal-perceive))
@@ -1036,11 +971,11 @@ entirely so untouched runs keep the original four-partition shape."
 ;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
 
 (ert-deftest satan-broker/dec8-spawn-running-persists-until-sentinel ()
-  "AUD-008 F-001: `satan-broker--spawn-running' stays t across the live
+  "AUD-008 F-001: `satan-run--spawn-running' stays t across the live
 async run and is cleared ONLY by the child sentinel — never at the
 synchronous launch return (the original unwind-protect bug)."
   (let ((dir (make-temp-file "satan-spawn-flag-" t))
-        (satan-broker--spawn-running nil)
+        (satan-run--spawn-running nil)
         (satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
     (unwind-protect
         (cl-letf (((symbol-function 'satan-broker--build-manifest)
@@ -1085,7 +1020,7 @@ synchronous launch return (the original unwind-protect bug)."
             (should (equal run-id "rid-flag"))
             ;; Child still running → flag MUST still be set.  The bug cleared
             ;; it here, at synchronous return.
-            (should satan-broker--spawn-running)
+            (should satan-run--spawn-running)
             (let ((proc (get-process "satan-rid-flag")))
               (should (process-live-p proc))
               ;; Kill it: "killed" event → sentinel finalises + clears flag
@@ -1093,7 +1028,7 @@ synchronous launch return (the original unwind-protect bug)."
               (delete-process proc)
               (accept-process-output nil 0.3)
               (sleep-for 0.1)
-              (should-not satan-broker--spawn-running))))
+              (should-not satan-run--spawn-running))))
       (delete-directory dir t)
       (when (file-directory-p satan-hippocampus-dir)
         (delete-directory satan-hippocampus-dir t)))))
@@ -1104,7 +1039,7 @@ terminal event — including \"killed\" (timeout/`delete-process'), which the
 old regex missed."
   (dolist (event '("finished\n" "exited abnormally with code 1\n"
                    "killed\n" "broken pipe\n"))
-    (let* ((satan-broker--spawn-running t)
+    (let* ((satan-run--spawn-running t)
            (run-ctx (make-satan-run
                      :id "rid" :mode '(:name "test")
                      :start-time (current-time) :dir "/tmp"
@@ -1113,7 +1048,7 @@ old regex missed."
       (cl-letf (((symbol-function 'satan-audit-record) (lambda (&rest _) nil))
                 ((symbol-function 'satan-broker--finalize) (lambda (&rest _) nil)))
         (funcall sentinel nil event))
-      (should-not satan-broker--spawn-running))))
+      (should-not satan-run--spawn-running))))
 
 ;; ---------------------------------------------------------------------
 ;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9.  Do not prune with the bough

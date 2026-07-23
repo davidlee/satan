@@ -39,14 +39,7 @@
 (require 'satan-memory-store)
 (require 'satan-motive)
 (require 'satan-observer-classify)
-
-;; Lazy require — `satan-broker' will require this module to wire
-;; the observer into prepare.  Declaring the broker symbols here lets
-;; the byte-compiler see them; the actual `require' happens at
-;; resolve-time so observer.el's load does not pull broker.el.
-(declare-function satan-broker-locate-run-dir "satan-broker"
-                  (run-id &optional runs-dir))
-(defvar satan-runs-dir)
+(require 'satan-run)
 
 ;; ---------------------------------------------------------------------
 ;; Projection → classifier shape
@@ -56,8 +49,7 @@
   "Resolve RUN-ID's on-disk dir under RUNS-DIR (default `satan-runs-dir').
 Honours the bucketed layout + `.FAILED' rename.  Returns nil when no
 candidate directory exists — the classifier downgrades to `:no_baseline'."
-  (require 'satan-broker)
-  (satan-broker-locate-run-dir run-id runs-dir))
+  (satan-run-locate-dir run-id runs-dir))
 
 (defun satan-observer--applied-index-from-id (intervention-id)
   "Return the trailing `ivNNN' counter from INTERVENTION-ID as an integer.

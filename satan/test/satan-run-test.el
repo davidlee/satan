@@ -196,5 +196,92 @@ constructor call here would return a new run-id and an unfrozen time."
     (should (equal (eval (car (get 'satan-hippocampus-dir 'standard-value)) t)
                    "/tmp/nr/satan/hippocampus"))))
 
+;; ── Run directory layout cluster (moved from satan-broker.el, PHASE-03) ────
+
+(ert-deftest satan-run/id-from-leaf-strips-failed-suffix ()
+  "Strips the trailing `.FAILED' suffix (if any) from a leaf dir name."
+  (should (equal (satan-run--id-from-leaf
+                  "20260520T163446-tick-pulse-5e8018.FAILED")
+                 "20260520T163446-tick-pulse-5e8018"))
+  (should (equal (satan-run--id-from-leaf
+                  "20260520T163446-tick-pulse-5e8018")
+                 "20260520T163446-tick-pulse-5e8018")))
+
+(ert-deftest satan-run/list-dirs-walks-both-layouts ()
+  "Enumerator returns paths for legacy flat and bucketed runs, plus FAILED."
+  (let ((root (make-temp-file "satan-runs-list-" t)))
+    (unwind-protect
+        (let ((legacy   (expand-file-name "20260519T100000-x-aaaaaa" root))
+              (legacy-f (expand-file-name "20260519T110000-x-bbbbbb.FAILED" root))
+              (bucket   (expand-file-name "2026-05-20" root))
+              (bucketed (expand-file-name
+                         "2026-05-20/20260520T120000-x-cccccc" root))
+              (bucketed-f (expand-file-name
+                           "2026-05-20/20260520T130000-x-dddddd.FAILED" root))
+              (noise    (expand-file-name "not-a-run-dir" root))
+              (noise-bucket-child
+               (expand-file-name "2026-05-20/scratch" root)))
+          (dolist (d (list legacy legacy-f bucket bucketed bucketed-f
+                           noise noise-bucket-child))
+            (make-directory d t))
+          (let ((got (satan-run-list-dirs root)))
+            (should (member legacy got))
+            (should (member legacy-f got))
+            (should (member bucketed got))
+            (should (member bucketed-f got))
+            (should-not (member noise got))
+            (should-not (member noise-bucket-child got))
+            (should-not (cl-find-if (lambda (p)
+                                      (equal (file-name-nondirectory p)
+                                             "2026-05-20"))
+                                    got))))
+      (delete-directory root t))))
+
+(ert-deftest satan-run/locate-dir-finds-failed-and-buckets ()
+  "Locator falls back through bucketed, bucketed-FAILED, legacy, legacy-FAILED."
+  (let ((root (make-temp-file "satan-runs-locate-" t)))
+    (unwind-protect
+        (progn
+          (let ((d (expand-file-name "2026-05-20/20260520T100000-x-aaaaaa"
+                                     root)))
+            (make-directory d t)
+            (should (equal (satan-run-locate-dir
+                            "20260520T100000-x-aaaaaa" root)
+                           d)))
+          (let ((d (expand-file-name
+                    "2026-05-20/20260520T110000-x-bbbbbb.FAILED" root)))
+            (make-directory d t)
+            (should (equal (satan-run-locate-dir
+                            "20260520T110000-x-bbbbbb" root)
+                           d)))
+          (let ((d (expand-file-name "20260520T120000-x-cccccc" root)))
+            (make-directory d t)
+            (should (equal (satan-run-locate-dir
+                            "20260520T120000-x-cccccc" root)
+                           d)))
+          (should (null (satan-run-locate-dir
+                         "20260520T999999-nope-zzzzzz" root))))
+      (delete-directory root t))))
+
+(ert-deftest satan-run/dirs-for-date-matches-bucket-and-legacy ()
+  "Filters `list-dirs' to a single date, honouring both layouts."
+  (let ((root (make-temp-file "satan-runs-for-date-" t)))
+    (unwind-protect
+        (let ((bucketed (expand-file-name
+                          "2026-05-20/20260520T120000-x-cccccc" root))
+              (other-bucket (expand-file-name
+                              "2026-05-21/20260521T010000-x-eeeeee" root))
+              (legacy (expand-file-name "20260520T090000-x-aaaaaa" root))
+              (legacy-other-day (expand-file-name
+                                 "20260521T090000-x-ffffff" root)))
+          (dolist (d (list bucketed other-bucket legacy legacy-other-day))
+            (make-directory d t))
+          (let ((got (satan-run-dirs-for-date root "20260520T")))
+            (should (member bucketed got))
+            (should (member legacy got))
+            (should-not (member other-bucket got))
+            (should-not (member legacy-other-day got))))
+      (delete-directory root t))))
+
 (provide 'satan-run-test)
 ;;; satan-run-test.el ends here

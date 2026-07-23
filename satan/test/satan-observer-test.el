@@ -957,7 +957,7 @@ user-facing so the no-fire fallback now lands on `:ignored'
 
 (ert-deftest satan-observer/pending-returns-classifier-shape ()
   "Projection rows come back enriched with `:run_dir' (resolved under
-the runs root via `satan-broker-locate-run-dir'),
+the runs root via `satan-run-locate-dir'),
 `:intervention_emitted_at' (mirrors `:ts'), and `:applied_index'
 (derived from the `ivNNN' suffix)."
   (satan-observer-test--with-db

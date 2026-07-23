@@ -9,9 +9,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'satan-jsonl)
-
-(declare-function satan-broker-run-dirs-for-date "satan-broker"
-  (runs-dir date-prefix))
+(require 'satan-run)
 
 (defcustom satan-budget-daily-tokens 2500000
   "Maximum tokens SATAN may spend per local day across all runs.
@@ -59,10 +57,10 @@ out-of-order writes."
   "Sum tokens charged today under RUNS-DIR.  TIME defaults to now.
 Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and the
 legacy flat layout (`<runs>/<run-id>') via
-`satan-broker-run-dirs-for-date'."
+`satan-run-dirs-for-date'."
   (let ((prefix (satan-budget--today-prefix time))
          (total 0))
-    (dolist (dir (satan-broker-run-dirs-for-date runs-dir prefix))
+    (dolist (dir (satan-run-dirs-for-date runs-dir prefix))
       (setq total (+ total (satan-budget--run-tokens dir))))
     total))
 

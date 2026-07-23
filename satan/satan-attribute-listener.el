@@ -26,10 +26,9 @@
 (require 'satan-audit)
 (require 'satan-attribute)
 (require 'satan-jsonl)
+(require 'satan-run)
 
 (declare-function notifications-notify "notifications" (&rest args))
-(declare-function satan-broker-locate-run-dir "satan-broker"
-                  (run-id &optional runs-dir))
 
 ;; ---------------------------------------------------------------------
 ;; customisation
@@ -183,7 +182,7 @@ or nil if the shape is unexpected."
 (defun satan-attribute-listener--transcript-path (run-id)
   "Return absolute path to RUN-ID's transcript.jsonl, or nil if no run
 directory exists."
-  (let ((dir (satan-broker-locate-run-dir run-id)))
+  (let ((dir (satan-run-locate-dir run-id)))
     (when dir (expand-file-name "transcript.jsonl" dir))))
 
 (defun satan-attribute-listener--append-transcript (payload)

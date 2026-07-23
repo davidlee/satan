@@ -37,11 +37,6 @@
 
 (defvar satan-memory-store--current-run-id)
 
-;; DEC-8: mutual-exclusion flag — truthy while broker--spawn is live.
-;; MCP server reads this to refuse new sessions while a scheduled run
-;; is in progress.
-(defvar satan-broker--spawn-running nil)
-
 (defcustom satan-direnv-dir
   (file-name-directory (directory-file-name satan--root))
   "Directory whose `.envrc' is sourced into the jailed-harness environment.
@@ -94,94 +89,6 @@ returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
                               (substring kv 5)))
                        env)))
     (if path (split-string path ":" t) exec-path)))
-
-(defun satan-broker--bucket-name-p (name)
-  "Return non-nil when NAME matches the YYYY-MM-DD bucket-dir pattern."
-  (and (stringp name)
-       (string-match-p "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\'" name)))
-
-(defun satan-broker--legacy-run-name-p (name)
-  "Return non-nil when NAME matches the pre-bucket flat run-id layout.
-Pre-bucket runs sit directly under `satan-runs-dir' with names like
-`20260520T163446-tick-pulse-5e8018'."
-  (and (stringp name)
-       (string-match-p "\\`[0-9]\\{8\\}T[0-9]\\{6\\}-" name)))
-
-(defun satan-broker--run-id-from-leaf (name)
-  "Strip the trailing `.FAILED' suffix (if any) from a leaf dir NAME."
-  (if (and (stringp name)
-           (string-suffix-p satan-run--failed-suffix name))
-      (substring name 0 (- (length name)
-                           (length satan-run--failed-suffix)))
-    name))
-
-(defun satan-broker-locate-run-dir (run-id &optional runs-dir)
-  "Return the on-disk dir for RUN-ID, or nil if no candidate exists.
-Probes (in order): bucketed/<run-id>, bucketed/<run-id>.FAILED,
-legacy flat <run-id>, legacy flat <run-id>.FAILED.  Used by readers
-that need to find a run regardless of layout migration or terminal
-status."
-  (let* ((base (or runs-dir satan-runs-dir))
-         (bucket (satan-run--date-bucket run-id))
-         (failed satan-run--failed-suffix)
-         (candidates (delq nil
-                           (list
-                            (and bucket
-                                 (expand-file-name
-                                  (concat bucket "/" run-id) base))
-                            (and bucket
-                                 (expand-file-name
-                                  (concat bucket "/" run-id failed) base))
-                            (expand-file-name run-id base)
-                            (expand-file-name (concat run-id failed) base)))))
-    (cl-find-if #'file-directory-p candidates)))
-
-(defun satan-broker-list-run-dirs (runs-dir)
-  "Return absolute paths of every run dir under RUNS-DIR.
-Walks both the bucketed layout (`<runs>/<YYYY-MM-DD>/<run-id>') and
-the legacy flat layout (`<runs>/<run-id>'), with or without the
-`.FAILED' suffix.  Non-run entries (the `most-recent' symlink, stray
-files, malformed names) are skipped.  Order is unspecified."
-  (let (acc)
-    (when (file-directory-p runs-dir)
-      (dolist (entry (directory-files runs-dir nil "\\`[^.]" t))
-        (let ((path (expand-file-name entry runs-dir)))
-          (when (file-directory-p path)
-            (cond
-             ((satan-broker--bucket-name-p entry)
-              (dolist (child (directory-files path nil "\\`[^.]" t))
-                (let ((cpath (expand-file-name child path)))
-                  (when (and (file-directory-p cpath)
-                             (satan-broker--legacy-run-name-p
-                              (satan-broker--run-id-from-leaf child)))
-                    (push cpath acc)))))
-             ((satan-broker--legacy-run-name-p
-               (satan-broker--run-id-from-leaf entry))
-              (push path acc)))))))
-    acc))
-
-(defun satan-broker-run-dirs-for-date (runs-dir date-prefix)
-  "Return absolute paths of run dirs under RUNS-DIR dated DATE-PREFIX.
-DATE-PREFIX is YYYYMMDDT (matching the run-id's stem).  Matches both
-the bucketed layout (looks under `<runs>/YYYY-MM-DD/') and the legacy
-flat layout (filters by prefix on the leaf name)."
-  (let ((iso-bucket
-         (and (stringp date-prefix)
-              (string-match "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T"
-                            date-prefix)
-              (format "%s-%s-%s"
-                      (match-string 1 date-prefix)
-                      (match-string 2 date-prefix)
-                      (match-string 3 date-prefix)))))
-    (cl-remove-if-not
-     (lambda (path)
-       (let* ((leaf (file-name-nondirectory path))
-              (run-id (satan-broker--run-id-from-leaf leaf))
-              (parent (file-name-nondirectory (directory-file-name
-                                               (file-name-directory path)))))
-         (or (and iso-bucket (equal parent iso-bucket))
-             (string-prefix-p date-prefix run-id))))
-     (satan-broker-list-run-dirs runs-dir))))
 
 (defun satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))
@@ -400,17 +307,17 @@ until at least one `done' run breaks the chain)."
 
 (defun satan-broker--failure-streak-count (runs-dir)
   "Count consecutive `.FAILED' run dirs from newest backward in RUNS-DIR.
-Walks both bucketed and legacy layouts via `satan-broker-list-run-dirs'
+Walks both bucketed and legacy layouts via `satan-run-list-dirs'
 and sorts by the run-id leaf (date-stamped, so a string sort is
 monotonic-in-time enough for streak detection).  Returns 0 when the
 newest run is non-failed or no runs exist."
-  (let* ((paths (satan-broker-list-run-dirs runs-dir))
+  (let* ((paths (satan-run-list-dirs runs-dir))
          (sorted (sort paths
                        (lambda (a b)
                          (string-greaterp
-                          (satan-broker--run-id-from-leaf
+                          (satan-run--id-from-leaf
                            (file-name-nondirectory a))
-                          (satan-broker--run-id-from-leaf
+                          (satan-run--id-from-leaf
                            (file-name-nondirectory b))))))
          (streak 0))
     (cl-loop for p in sorted
@@ -450,7 +357,7 @@ log line and notification body."
       (satan-broker--finalize run-ctx)
       ;; DEC-8: clear the mutual-exclusion flag on async completion so
       ;; a crashed/killed process does not permanently block MCP sessions.
-      (setq satan-broker--spawn-running nil))))
+      (setq satan-run--spawn-running nil))))
 
 (defun satan-broker--build-manifest (mode run-id)
   "Return the manifest plist for MODE and RUN-ID.
@@ -625,8 +532,7 @@ without launching the child."
          ;; DEC-8: refuse to spawn while an interactive session is open.
          ;; ISSUE-001: now perceives first.  No rename, no announce — the
          ;; deferral must not pollute the failure-streak counter or alert.
-         ((and (boundp 'satan-mcp--session-active)
-               satan-mcp--session-active)
+         (satan-run--session-active
           (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
           (satan-broker--write-no-child-run
            mode prepare dir 'failed "session_blocked"
@@ -655,7 +561,7 @@ Returns the run-id."
   ;; sessions while this scheduled run is live.  Cleared by the child
   ;; sentinel on exit (`satan-broker--make-sentinel') and by this
   ;; function's error handler if the synchronous launch itself throws.
-  (setq satan-broker--spawn-running t)
+  (setq satan-run--spawn-running t)
   (condition-case err
       (let* ((run-id (plist-get prepare :run_id))
          (bundle-path (expand-file-name "bundle.json" dir))
@@ -862,7 +768,7 @@ Returns the run-id."
     ;; which fires only if the synchronous launch throws before a sentinel is
     ;; attached, so a failed launch cannot leave the flag stuck.
     (error
-     (setq satan-broker--spawn-running nil)
+     (setq satan-run--spawn-running nil)
      (signal (car err) (cdr err)))))
 
 (provide 'satan-broker)

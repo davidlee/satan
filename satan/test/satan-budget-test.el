@@ -9,7 +9,6 @@
 (require 'cl-lib)
 (require 'json)
 (require 'satan-jsonl)
-(require 'satan-broker)               ; satan-broker-run-dirs-for-date
 (require 'satan-budget)
 
 (defun satan-budget-test--write-transcript (dir lines)

@@ -322,7 +322,7 @@ parses + rewrites; rescan filters it (now claimed-re matches)."
                           :ts "2026-05-23T12:00:00+1000"
                           :outcome_window_minutes 30
                           :cue_handles '("bough_node:abc")))))
-           ((symbol-function 'satan-broker-locate-run-dir)
+           ((symbol-function 'satan-run-locate-dir)
             (lambda (_run-id &optional _runs-dir) root))
            ((symbol-function 'satan-audit-reopen)
             (lambda (_dir) (list :stub-audit t)))
@@ -376,7 +376,7 @@ parses + rewrites; rescan filters it (now claimed-re matches)."
 ;;   - real `satan-intervention-lookup' against the projection
 ;;
 ;; Only stubs:
-;;   - `satan-broker-locate-run-dir' → the audit's actual dir
+;;   - `satan-run-locate-dir' → the audit's actual dir
 ;;     (same as the manual-mark dispatch test; the broker call is a
 ;;     thin run-id→fs-path translator the broker would otherwise
 ;;     resolve via its denote chain)
@@ -419,7 +419,7 @@ notes line to the claimed shape."
                  iv-id)
                 nil notes-file))
              (cl-letf*
-                 (((symbol-function 'satan-broker-locate-run-dir)
+                 (((symbol-function 'satan-run-locate-dir)
                    (lambda (_rid &optional _runs-dir)
                      (satan-audit-handle-dir audit)))
                   ((symbol-function 'satan-memory-store-mark)

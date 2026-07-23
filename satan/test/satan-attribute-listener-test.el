@@ -16,9 +16,6 @@
 (require 'satan-attribute-listener)
 (require 'satan-audit)
 
-(declare-function satan-broker-locate-run-dir "satan-broker"
-                  (run-id &optional runs-dir))
-
 ;; ---------------------------------------------------------------------
 ;; helpers
 ;; ---------------------------------------------------------------------
@@ -86,7 +83,7 @@ dir holding an empty transcript.jsonl, bound as `tmp' inside BODY."
                     (lambda (id msg)
                       (push (list 'reject id msg) ,calls-var)
                       nil))
-                   ((symbol-function 'satan-broker-locate-run-dir)
+                   ((symbol-function 'satan-run-locate-dir)
                     (lambda (_run-id) tmp)))
            ,@body)
        (delete-directory tmp t))))

@@ -31,11 +31,7 @@
 (require 'satan-intervention)      ; manual-outcome writer (T1.5b PR 4)
 (require 'satan-audit)              ; audit-reopen (T1.5b PR 4)
 (require 'satan-observer-classify) ; --maturity-state (T1.5b PR 4)
-
-;; Broker is soft — `satan-broker-locate-run-dir' / `satan-runs-dir'
-;; are available inside the live emacs daemon; requiring `satan-broker'
-;; here pulls a heavy dep chain (denote / org-tools) into ert batch runs.
-(declare-function satan-broker-locate-run-dir "satan-broker")
+(require 'satan-run)
 
 (defcustom satan-tools-atsatan-root
   satan-notes-root
@@ -535,9 +531,7 @@ or (error . STR) on lookup / run-dir failure."
          (iv-run-id (satan-tools-atsatan--intervention-run-id-of iv-id))
          (lookup (and iv-run-id (satan-intervention-lookup iv-id)))
          (iv (and lookup (plist-get lookup :intervention)))
-         (run-dir (and iv-run-id
-                       (fboundp 'satan-broker-locate-run-dir)
-                       (satan-broker-locate-run-dir iv-run-id))))
+         (run-dir (and iv-run-id (satan-run-locate-dir iv-run-id))))
     (cond
      ((null iv-run-id)
       (cons 'error (format "directive iv_id=%S malformed" iv-id)))
