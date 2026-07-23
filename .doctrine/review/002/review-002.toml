@@ -1,0 +1,211 @@
+id    = 2
+slug  = "inquisition-the-run-context-collapse-design"
+title = "Inquisition: the run-context collapse design"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "inquisitor"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-013"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "Expected: each phase's exit criterion proves that phase's work landed (the standard AR-3 itself set). Observed: P3's and P2's gates are satisfiable with the work entirely undone."
+detail = """
+P3 is the phase that performs the collapse — 'rename, delete broker clones, F1 / F3 / F4 / F5 / F6' — and its exit is 'Suite green; no cl-defstruct satan-run outside satan-run.el'.
+
+Neither clause bites. The suite is green TODAY, with every clone in place; §2.2 proves the clones are structurally identical, so greenness is evidence of nothing about deletion. That leaves a single struct check guarding nine other deletions:
+
+  satan-broker.el:44   defcustom satan-runs-dir
+  satan-broker.el:49   defcustom satan-hippocampus-dir
+  satan-broker.el:119  satan-broker--mint-run-id
+  satan-broker.el:126  satan-broker--iso-time-format
+  satan-broker.el:129  satan-broker--prepare
+  satan-broker.el:270  satan-broker--tool-ctx
+  satan-mcp.el:26      duplicate (defvar satan-broker--spawn-running nil)  [F4]
+  satan-tools-hippocampus.el:22  third satan-hippocampus-dir               [F1]
+  satan-context.el:21-24         forward declarations                      [F3]
+
+P3 can ship with all nine standing and report a clean exit. Nothing downstream notices: the lint is not wired into just lint until P5 (§5.4), by explicit design so that just check never goes red mid-slice — correct in itself, but it means P3 and P4 run with no standing check at all.
+
+P2 has the same disease in sharper form: objective 'satan/test/satan-run-test.el characterisation of the surviving surface', exit 'Green'. An empty file is green. A characterisation suite whose gate is 'green' asserts nothing about what was characterised — and P2 exists precisely to be the net that R2 was downgraded on the promise of.
+
+Why blocker rather than chore: §5.4's phase table is the direct input to plan.toml, and EX-/VT- ids are IMMUTABLE once numbered (boot doctrine: 'Phase ids and criteria ids are immutable — edits append, never renumber'). A vacuous exit criterion authored into the plan is expensive to correct and is inherited by every later reader as the standard the phase met.
+
+Penance: give P3 a zero-hit grep gate over its own deleted set, symmetric with the one AR-3 forced onto P4 — satan-broker--(mint-run-id|iso-time-format|prepare|tool-ctx), the two defcustom sites, satan-mcp.el:26, satan-tools-hippocampus.el:22, satan-context.el's forward declarations — plus 'exactly one cl-defstruct satan-run in the tree'. Give P2 a gate naming the surface characterised: run-id format, date bucketing, .FAILED resolution, the frozen time_now contract, and the ten-key run_ctx shape, retargeted from the sites §9 already enumerates (satan-broker-test.el:146-156, :177, :286-300)."""
+disposition = "fix-now"
+response = "Accepted without contest. The gate is vacuous and the reason it matters — EX-/VT- immutability once authored into plan.toml — is correct. §5.4's P3 and P2 rows must be amended before /plan runs, not after. Remedy as prescribed: P3 gains a zero-hit grep over its own deleted set plus a single-struct assertion; P2 gains a gate naming the characterised surface (run-id format, date bucketing, .FAILED resolution, frozen time_now, ten-key run_ctx). Deferring this to /plan would invert the authority order — the plan is not higher authority than the design."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "Expected: a lint that makes this class of collision un-reintroducible (scope objective). Observed: a symbol-keyed check that would have flagged none of the seven forked bodies it is meant to prevent."
+detail = """
+The scope commits to: 'The generic form is the point — this class of collision must not be re-introducible, in this pair or any other.' D3 elects a general duplicate-DEFINITION check, keyed on the defined symbol's name.
+
+Every forked body in this slice lives under a DIFFERENT name:
+
+  satan-broker--mint-run-id            vs  satan-run-mint-id
+  satan-broker--prepare                vs  satan-run-prepare
+  satan-broker--iso-time-format        vs  satan-run--iso-time-format
+  satan-broker--failed-suffix          vs  satan-run--failed-suffix
+  satan-broker--date-bucket-for-run-id vs  satan-run--date-bucket
+  satan-broker-run-dir-for-id          vs  satan-run-dir-for-id
+  satan-broker--tool-ctx               vs  satan-run-tool-ctx
+
+Seven pairs. A name-keyed lint flags zero of them. What it does flag is the struct, the two defcustoms and the F4 defvar — four of the eleven duplications, and the four that were ALREADY cheap to find, since §2.1 found them with a sexp scan in an afternoon. The expensive half — bodies copied under a fresh prefix, which is how the clone was actually committed — remains fully re-introducible the day this slice closes.
+
+D3's own justification measures the wrong property: 'after this slice the tree has zero violations under the general rule, so generality costs nothing.' Zero violations under a rule that cannot see the violation is not evidence of the rule's reach. By the same measure the tree had zero violations of the name rule for six of the seven forks the entire time the clone existed.
+
+The stakes are not local. ADR-018's Consequences: 'D4.2 must land as a cutover, not an addition. The satan-run.el clone is proof this project fails that way by default; a duplicated policy table would be materially worse than a duplicated struct.' And D2's rationale: policy 'is the authority item most likely to be silently duplicated (it is data, so copying is easy and looks harmless).' The rehearsal exists to install the discipline before that migration. It ships a check that would not have caught the rehearsal's own subject.
+
+Note the design already reasoned exactly this way once and reached the opposite conclusion in D3: 'the narrow reading of VT-2 would not have caught F4 — the same single-owner defect in the same two modules — so it would certify a tree still violating the principle the lint exists to enforce.' Substitute 'the seven forked bodies' for 'F4' and the sentence indicts D3's own result.
+
+Penance — either is acceptable, silence is not:
+(a) Extend the lint with a structural check: canonicalised body hash over top-level defuns/defconsts, docstrings elided, reporting cross-file collisions. §2.2 states this comparison was already performed by hand to establish the clones are identical; the design has therefore already written the algorithm once and can afford to commit it.
+(b) Record the limitation EXPLICITLY, on the model of OQ-2 ':include inheritance — implement, or document the limitation explicitly. The answer should not be silence.' State in §5.2/§9 that the lint enforces single-DEFINITION, not single-IMPLEMENTATION, that renamed clones remain undetectable, and strike or qualify the scope's 'must not be re-introducible' claim so ADR-018 D4.2 inherits an accurate account of what the rehearsal proved. If (b), raise the structural check as a backlog improvement so D4.2 is not surprised by it."""
+disposition = "design-wrong"
+response = "Accepted. The defect is in the design and in the scope's claim, not in the implementation, so it is reconciled at the artifact level. Route (b) is taken over (a): the lint stays a duplicate-DEFINITION check, because a body-hash check is a materially larger tool with its own false-positive surface and its own design, and smuggling it in under a slice whose non-goals say 'this is a topology fix' would be scope drift of exactly the kind POL-001 warns about. What is NOT acceptable is silence. Therefore: §5.2/§9 state plainly that the lint enforces single-definition and not single-implementation and that renamed clones remain undetectable; the scope's 'this class of collision must not be re-introducible' is qualified to name the class it actually forbids; and the structural-clone check is captured as a backlog improvement so ADR-018 D4.2 inherits a true account of what the rehearsal proved rather than an optimistic one."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "Expected: every accepted adversarial remediation is owned by a phase and a gate (the standard AR-4 set). Observed: D6 / F7 — the accepted half of AR-1 — appears in no phase row and in no exit criterion."
+detail = """
+AR-1 was raised, argued and ACCEPTED: DEC-8 is a two-flag protocol, satan-mcp--session-active moves to the leaf beside satan-run--spawn-running, and the (boundp 'satan-mcp--session-active) guard at satan-broker.el:739-740 is deleted. It is recorded as D6, listed in §5.2's rename table, described in §5.3, and appears in §5.4's per-path table for satan-broker.el and satan-mcp.el.
+
+It appears in no phase.
+
+  P3: 'The collapse: rename, delete broker clones, F1 / F3 / F4 / F5 / F6'  — F7 absent.
+  P4: 'Move the layout cluster; dissolve both cycles; delete the guards'    — 'the guards' unqualified.
+  P4 exit: zero-hit grep over satan-broker-(locate-run-dir|list-run-dirs|run-dirs-for-date|run-dir-for-id)
+           and satan-broker--(failed-suffix|date-bucket-for-run-id|bucket-name-p|legacy-run-name-p|run-id-from-leaf|spawn-running).
+
+satan-mcp--session-active is in neither list. So P4's gate — the gate AR-3 was specifically raised to widen — passes with the symbol untouched at all 13 live sites:
+
+  satan-mcp.el:31,208,229,421            (defvar + three setq)
+  satan-broker.el:739-740                (the boundp guard D6 deletes)
+  satan-broker-test.el:33,601,682,713,735,758
+  satan-mcp-test.el:477,504,509
+
+And nothing else catches it. §7 D6 states the position plainly: 'Not forced by the lint — session-active is defined only once.' So the lint will not flag it, no phase names it, no exit criterion greps it, and the suite stays green either way because the boundp guard degrades silently to nil when the variable is absent — which is the exact failure mode D6 exists to abolish.
+
+This is AR-4's defect verbatim. AR-4 caught that P1 could not run its own tests until satan-test-suite-dirs and -L ./tools were assigned to it, and re-homed them into P1. The same sweep was not run over AR-1's remediation, so the design's most recently accepted change is the one least connected to its execution.
+
+Penance: name F7/D6 in P3's objective beside F4 (both flags move together — that is the whole argument of D6, and splitting them across P3 and P4 recreates the half-retired coupling AR-1 condemned), and add satan-mcp--session-active plus 'no boundp guard on MCP state in satan-broker.el' to the zero-hit gate. §9 already carries the behavioural VT ('the broker refuses a scheduled run while satan-run--session-active is t'); it is the structural gate that is missing."""
+disposition = "fix-now"
+response = "Accepted without contest. AR-1 was accepted and then orphaned; the design's own AR-4 standard requires every remediation to have a phase that can run it and a gate that proves it did. F7/D6 joins P3 beside F4 — the two flags move together, which is the entire argument of D6 — and satan-mcp--session-active plus 'no boundp guard on MCP state in satan-broker.el' join the zero-hit gate that F-1 is already widening. One amendment discharges both findings' structural half."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected: §2.2's docstring finding, which underwrites R3 and R5, holds across the cloned set. Observed: it is false for four of the nine items, and inverted for one — R5 as written instructs a reviewer to delete the only docstring that exists."
+detail = """
+§2.2: 'The only differences are docstrings, and the broker's are consistently the richer of the two.' R3 repeats it as a mitigation: '(the broker's docstrings are the richer ones and are the copies being deleted).' R5 turns it into an instruction: 'a reviewer must diff docstrings, not just symbol lists.'
+
+Cross-examined item by item:
+
+  satan-runs-dir        run:17 'Directory holding per-run audit bundles.'
+                     broker:46 'Directory holding per-run audit bundles.'      IDENTICAL
+  satan-hippocampus-dir run:22 'Read-write scratch directory inside the jail.'
+                     broker:51 'Read-write scratch directory inside the jail.' IDENTICAL
+  mint-id            run:39-40 two-line docstring
+                     broker:119 NO DOCSTRING AT ALL                            INVERTED
+  cl-defstruct satan-run
+                        run:28 has a struct docstring; broker:80 has none
+                     broker:87-90 has a prepare-slot comment; run has none     MIXED, both ways
+  prepare / failed-suffix / date-bucket / tool-ctx / run-dir-for-id            broker richer — claim holds
+
+Four of nine contradict the claim; five support it. 'Consistently' is not earned.
+
+The harm is not the arithmetic, it is that R3's mitigation is aimed at the two defcustoms and is VACUOUS there — there is no union to preserve, the strings are byte-identical, so the obligation R3 imposes on the survivor is already satisfied and a reviewer who discharges it learns nothing. Meanwhile R5 sends that reviewer to prefer the broker's copy, and for satan-run-mint-id the broker's copy has no docstring: following the design's own instruction deletes the surviving documentation of a public function.
+
+Note this does not disturb D7. D7's argument rests on the run/hippocampus-tool pair (satan-run.el:22 'Read-write scratch directory inside the jail' vs satan-tools-hippocampus.el:24 'Directory holding SATAN hippocampus entries'), which genuinely differ and are genuinely one concept. It is the BROKER's third copy that is identical, and D7 never claimed otherwise. AR-2 stands.
+
+Penance: correct §2.2 to say the broker's docstrings are richer for the five function-ish clones and identical or poorer for the rest; restate R5's instruction as 'take the richer docstring per symbol, and for satan-run-mint-id that is the survivor's'; strike R3's parenthetical, which is about the two items where it is untrue."""
+disposition = "fix-now"
+response = "Accepted. The measurement is checkable and the check fails: two identical, one inverted, one mixed. §2.2's 'consistently' is corrected to name which five items the claim holds for; R3's parenthetical is struck because it is about the two items where it is untrue; R5's instruction becomes per-symbol ('take the richer docstring, and for satan-run-mint-id that is the survivor's') so a reviewer discharging it cannot delete the only docstring a public function has. D7 and AR-2 are untouched — the finding is explicit that the run/hippocampus-tool pair genuinely differs and that only the broker's third copy is identical."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected: after §10's own lesson, no mitigation rests on a false mechanism. Observed: R7/I3 justify the leaf's safety with 'pure path arithmetic'; the moved cluster does filesystem I/O at four call sites."
+detail = """
+R7's mitigation, and I3's supporting sentence: 'The moved layout functions are pure path arithmetic, so it holds' / 'The moved functions are pure path arithmetic — no new require.'
+
+Read under cross-examination:
+
+  satan-broker.el:202-221  satan-broker-locate-run-dir
+                           probes four candidates with (cl-find-if #'file-directory-p candidates)
+  satan-broker.el:223-245  satan-broker-list-run-dirs
+                           (file-directory-p runs-dir), two (directory-files ... t) walks,
+                           (file-directory-p path), (file-directory-p cpath)
+  satan-broker.el:247-268  satan-broker-run-dirs-for-date
+                           cl-remove-if-not over the result of list-run-dirs
+
+That is directory enumeration and stat-ing the filesystem. It is not path arithmetic; satan-run-dir-for-id (satan-run.el:66) is path arithmetic, and the contrast between the two is precisely what the phrase elides.
+
+The CONCLUSION survives — file-directory-p and directory-files are C-core, cl-find-if / cl-remove-if-not are cl-lib which satan-run.el already requires at :9, so no new require is introduced and I3 holds. R7's actual check ('checkable by inspecting satan-run.el's require block') is sound and independent of the false premise. This is therefore a defect of record, not of outcome.
+
+It is charged because the design set the standard itself, in §10: 'Both explanations on record are wrong, and the wrongness matters because each implies a false safety condition.' The same pattern recurs here — right verdict, wrong mechanism — in a document whose central contribution is having caught that pattern twice elsewhere. A later reader who takes 'pure path arithmetic' at face value will believe I3 is preserved by the functions' NATURE rather than by an accident of which primitives happen to live in C, and will approve the next addition to the leaf on that basis.
+
+There is a second, substantive omission behind the phrasing: after P4, satan-run.el is a module that touches the filesystem, hard-required by satan-mcp.el, satan-context.el, satan-budget.el and satan-observer.el, several of which previously reached it only through guards. §5.1's diagram labels the block 'layout' and says nothing of I/O; §5.3 'Data, State & Ownership' does not mention it either.
+
+Penance: replace 'pure path arithmetic' in R7 and I3 with the true reason — 'the moved functions use only C-core filesystem primitives and cl-lib, both already available to the leaf' — and state in §5.1 or §5.3 that the leaf performs directory enumeration, so the property I3 protects is 'no new REQUIRE', not 'no I/O'."""
+disposition = "fix-now"
+response = "Accepted. The finding concedes the conclusion holds and charges the record, which is the right frame: I3 is preserved by which primitives happen to live in C, not by the functions' nature, and a reader who believes the latter will approve the next addition to the leaf on a false test. R7 and I3 are reworded to the true reason. The second half is the more useful correction: §5.3 gains a sentence stating that after P4 the leaf enumerates directories and stats the filesystem, so the property I3 protects is 'no new require', not 'no I/O' — four modules are about to hard-require it and the diagram calling the block 'layout' does not say so."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "Expected: every cross-reference and citation in a locked design resolves. Observed: four that do not — a disposition naming the wrong decision, a diagram mislabelling three survivors as migrants, two defconsts called functions, and an off-by-one line cite."
+detail = """
+(a) §10, AR-1: 'Disposition: accepted — D7 moves both flags and deletes the guard.' D7 is the satan-hippocampus-dir collapse. The decision that moves the flags is D6, which correctly announces itself as '(Closes OQ-4 / F7 / AR-1)'. §5.3 also cites D6 correctly. AR-1's own disposition line is the only site that gets it wrong — and it is the line a reader checks to find the remedy, so the error lands where it does most harm.
+
+(b) §5.1's diagram annotates the second block 'layout (moved from satan-broker.el)'. Three of its nine entries are not moved from anywhere:
+
+    satan-run--failed-suffix   already at satan-run.el:52
+    satan-run--date-bucket     already at satan-run.el:55
+    satan-run-dir-for-id       already at satan-run.el:66
+
+  These are SURVIVORS whose broker twins (:153, :159, :191) are deleted, not
+  migrants. §5.2's rename table gets this right for run-dir-for-id ('already
+  exists; broker's is deleted') and silently wrong for the other two, which it
+  omits entirely. The distinction is not cosmetic: a migrant must be moved and
+  its call sites repointed, a survivor needs only its twin deleted, and P3/P4's
+  division of labour turns on which is which.
+
+(c) §2.1: 'The forked functions are satan-run.el:38/47/52/55/66/77/98 against
+  satan-broker.el:119/126/153/159/191/129/270.' :47 (satan-run--iso-time-format)
+  and :52 (satan-run--failed-suffix) are defconsts, as are their broker twins
+  :126 and :153. Five functions and two constants. The count of seven is right;
+  the noun is wrong, and §9's VT coverage inherits the blur — nothing in §9
+  asserts that satan-broker--iso-time-format is gone, and it appears in no grep
+  gate in §5.4 either (see F-1).
+
+(d) §5.4 and AR-4 cite dev/satan-test.el:44 for satan-test-suite-dirs. It is
+  at :43.
+
+Everything else checked resolves exactly, and the citation record is otherwise
+unusually precise — satan-context.el:661/666, satan-mcp.el:26/165/170,
+satan-tools-hippocampus.el:22, satan-broker.el:739-740, satan-run.el:103 all
+land on the nose, and DEC-001 and EVD-001 both exist and say what the design
+says they say. The charge is filed for correction, not for punishment.
+
+Penance: four one-line edits."""
+disposition = "fix-now"
+response = "Accepted; four one-line corrections, no argument. (a) AR-1's disposition line reads D6. (b) §5.1's layout block distinguishes the three survivors (satan-run--failed-suffix, satan-run--date-bucket, satan-run-dir-for-id) from the six migrants, and §5.2's rename table stops omitting the first two — the survivor/migrant distinction is what P3 and P4 divide on. (c) §2.1 says 'five forked functions and two forked constants'. (d) dev/satan-test.el:43. Item (c) also surfaces a live gap that F-1's remedy must absorb: satan-broker--iso-time-format appears in no rename table, no grep gate and no VT anywhere in the design."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

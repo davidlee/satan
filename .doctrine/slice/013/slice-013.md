@@ -52,8 +52,14 @@ Collapse to one owner of run identity and run context.
 - **Land ADR-018 VT-2 as a standing lint**, beside `bin/elisp-locate-paren-error`
   and wired into `just lint`: exactly one definition of the struct and of each
   defcustom, and no symbol defined both as a struct accessor and as a `defun`.
-  The generic form is the point — this class of collision must not be
-  re-introducible, in this pair or any other.
+  The generic form is the point — the lint forbids a *class*, in any pair, not
+  this pair by name.
+  **Bounded (design D3 / §9, after RV-002 F-2):** the class it forbids is
+  **same-symbol** redefinition. It cannot see a clone that has been *renamed* —
+  which is what seven of this tree's eleven duplications are. The lint therefore
+  establishes single-*definition*, not single-*implementation*; the structural
+  check that would close the gap is [[IMP-017]], deliberately out of this
+  slice's scope.
 - **Establish which module owns the seam** so `satan-mcp.el` gets run identity
   without inheriting context/percept. That constraint is what produced the
   clone; a collapse that reinstates the coupling has not solved it.

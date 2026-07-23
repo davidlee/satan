@@ -34,21 +34,38 @@ returns **six** hits, and only four are real:
 | `satan-runs-dir` | `defvar` valueless | `satan-observer.el:49`, `satan-context.el:21` | no — forward declarations |
 | `satan-memory-store--current-run-id` | `defvar` valueless | `satan-mcp.el:23`, `satan-broker.el:37` | no — forward declarations |
 
-The forked functions are `satan-run.el:38/47/52/55/66/77/98` against
-`satan-broker.el:119/126/153/159/191/129/270`.
+The forked **function and constant** bodies pair `satan-run.el`
+`:38/47/52/55/66/77/98` against `satan-broker.el` `:119/126/153/159/191/129/270`
+— seven each, of which two (`--iso-time-format`, `--failed-suffix`) are
+`defconst`s, not functions.
+
+They are absent from the table above because **every fork wears a different
+name**. That is the shape of this tree's duplication: four same-name collisions
+and seven same-body/different-prefix forks, eleven in all. A symbol-keyed scan
+sees the first four and none of the last seven — a bound that constrains what
+VT-2 can prove (**D3**, §9).
 
 ### 2.2 The clones are structurally identical
 
 A canonicalising sexp comparison (docstrings elided, prefixes normalised) shows
 **all seven cloned bodies and both 18-slot struct definitions are identical**.
-The only differences are docstrings, and the broker's are consistently the
-richer of the two — `satan-broker--tool-ctx` carries the `:audit` /
-`satan-intervention-create` contract that `satan-run-tool-ctx` omits.
+The only differences are docstrings — and they do **not** run consistently in
+the broker's favour, which R3 and R5 must not assume:
+
+| Item | Richer side |
+|---|---|
+| `--prepare`, `--failed-suffix`, `--date-bucket-for-run-id`, `run-dir-for-id`, `--tool-ctx` | **broker** — `satan-broker--tool-ctx` carries the `:audit` / `satan-intervention-create` contract that `satan-run-tool-ctx` omits |
+| `--mint-run-id` | **`satan-run.el`** — `satan-broker--mint-run-id:119` has **no docstring at all** |
+| `--iso-time-format` | neither — one sentence each, but the broker's reads *"the broker stamps"*, which is false of a leaf |
+| `cl-defstruct satan-run` | mixed — `satan-run.el:27` holds the struct docstring, `satan-broker.el:80` holds a four-line comment on the `prepare` slot and no docstring |
+| `satan-runs-dir`, `satan-hippocampus-dir` | neither — **byte-identical**, docstrings included |
 
 Consequence: the broker side of the collapse is **pure deletion with no
 behaviour change**, and R2's "refactor without a net" risk is much smaller than
 scoped. The corollary obligation is that deletion must **preserve the union of
-the docstrings**, not merely drop the broker's copy.
+the docstrings in both directions** — each pair diffed on its own merits. A
+mechanical "keep the broker's" would delete the only docstring
+`satan-run-mint-id` has.
 
 ### 2.3 The seam is under real pressure
 
@@ -123,13 +140,14 @@ and run-lifecycle state (**DEC-001**), remaining a leaf on `cl-lib` / `subr-x` /
                        │   satan-run--iso-time-format │
                        │   satan-run-new-ctx   (was the colliding defun)
                        │   satan-run-tool-ctx         │
-                       │ layout          (moved from satan-broker.el)
+                       │ layout — already here        │
                        │   satan-run--failed-suffix   │
                        │   satan-run--date-bucket     │
+                       │   satan-run-dir-for-id       │
+                       │ layout — moved from satan-broker.el
                        │   satan-run--bucket-name-p   │
                        │   satan-run--legacy-run-name-p
                        │   satan-run--id-from-leaf    │
-                       │   satan-run-dir-for-id       │
                        │   satan-run-locate-dir       │
                        │   satan-run-list-dirs        │
                        │   satan-run-dirs-for-date    │
@@ -161,7 +179,24 @@ Renames (the `run` in the prefix makes the old infix redundant):
 | `satan-broker--bucket-name-p` | `satan-run--bucket-name-p` |
 | `satan-broker--legacy-run-name-p` | `satan-run--legacy-run-name-p` |
 | `satan-broker--spawn-running` | `satan-run--spawn-running` |
-| `satan-mcp--session-active` | `satan-run--session-active` *(D6)* |
+| `satan-mcp--session-active` | `satan-run--session-active` *(D6, P4)* |
+
+Deletions — the fork is removed and every call site repoints to the
+`satan-run.el` body it was cloned from. This is the set §2.1 counts and the set
+**P3**'s exit criterion greps:
+
+| Deleted | Survivor |
+|---|---|
+| `satan-broker--mint-run-id` | `satan-run-mint-id` |
+| `satan-broker--iso-time-format` | `satan-run--iso-time-format` |
+| `satan-broker--prepare` | `satan-run-new-ctx` |
+| `satan-broker--failed-suffix` | `satan-run--failed-suffix` |
+| `satan-broker--date-bucket-for-run-id` | `satan-run--date-bucket` |
+| `satan-broker--tool-ctx` | `satan-run-tool-ctx` |
+| `satan-broker.el`'s `cl-defstruct satan-run`, `satan-runs-dir`, `satan-hippocampus-dir` | the `satan-run.el` declarations |
+| `satan-tools-hippocampus.el:22`'s `satan-hippocampus-dir` (**F1**) | ditto, with D7's union docstring |
+| `satan-context.el:21-24`'s three forward declarations (**F3**) | `(require 'satan-run)` |
+| `satan-mcp.el:26`'s `satan-broker--spawn-running` (**F4**) | `satan-run--spawn-running` *(P4 — see §5.3)* |
 
 `satan-run-prepare` **must not exist as a defun afterwards**; the struct accessor
 of the same name (slot `prepare`) survives and is the only meaning of the symbol.
@@ -184,6 +219,16 @@ The `satan-run` struct keeps all 18 slots in their existing order (`id mode
 start-time dir bundle-path process pending-tool-calls tool-calls-done
 applied-actions staged-actions rejected-actions failed-actions final status
 timeout-timer audit stdout-log-path prepare`). **C2** forbids touching it.
+
+**The layout cluster owns filesystem reads, not merely path arithmetic.**
+`satan-run-locate-dir` stats four candidate paths with `file-directory-p`;
+`satan-run-list-dirs` enumerates via `directory-files` and stats each entry;
+`satan-run-dirs-for-date` filters that enumeration. Moving them makes the leaf a
+module that touches the disk, and the design records that rather than eliding
+it. It costs no new `require` — every primitive involved (`directory-files`,
+`file-directory-p`, `expand-file-name`, `string-match-p`, `cl-find-if`,
+`cl-remove-if-not`) is C-core or `cl-lib` — so **I3 holds as a dependency
+invariant, not as a purity claim** (**R7**).
 
 **F5 — one constructor for run_ctx.** `satan-mcp--mint-session`
 (`satan-mcp.el:169-187`) currently mints a run-id, formats a timestamp, and
@@ -221,6 +266,15 @@ void-variable crash whenever MCP loads without the broker (which
 already require, as `satan-run--spawn-running` and `satan-run--session-active`,
 and the `boundp` guard is deleted (**D6**).
 
+**Both flags move in P4, together.** F4's fix is not "delete MCP's duplicate
+`defvar`" on its own: MCP cannot `require` the broker (**C1**), so deleting
+`satan-mcp.el:26` while the flag still lives in `satan-broker.el` leaves
+`satan-mcp.el:165` reading an unbound variable in every image that loads MCP
+without the broker — precisely the void-variable crash this paragraph rules out.
+The deletion is only safe as the tail of the move to the leaf. F4 and F7 are
+therefore one operation, sequenced with the layout cluster in P4, not split
+across P3 and P4.
+
 ### 5.4 Lifecycle, Operations & Dynamics
 
 Code impact, by path (these become the `design-target` selectors):
@@ -229,8 +283,8 @@ Code impact, by path (these become the `design-target` selectors):
 |---|---|
 | `satan/satan-run.el` | Gains the layout cluster + spawn flag; `satan-run-prepare` defun → `satan-run-new-ctx`; absorbs the broker's richer docstrings. ~117 → ~240 lines |
 | `satan/satan-broker.el` | `(require 'satan-run)`; deletes struct, 2 defcustoms and 13 cloned/moved definitions; deletes the `boundp` guard at `:739-740` (**D6**); ~47 reference sites repointed. **−~190 lines** |
-| `satan/satan-mcp.el` | Drops the duplicate `spawn-running` defvar; `satan-mcp--session-active` → `satan-run--session-active` (**D6**); **F5** switch to `satan-run-new-ctx`; corrects the wrong `:23` comment (**F6**) |
-| `satan/satan-context.el` | **F3**: `(require 'satan-run)`; deletes the `:21-23` forward declarations. `satan-run-perceive` / `-enrich` / `-assemble-context` keep their names (**F2**, no defect) |
+| `satan/satan-mcp.el` | Drops the duplicate `spawn-running` defvar; `satan-mcp--session-active` → `satan-run--session-active` (**D6**); **F5** switch to `satan-run-new-ctx`; corrects the wrong `:22-23` comment (**F6**) |
+| `satan/satan-context.el` | **F3**: `(require 'satan-run)`; deletes the `:21-24` forward declarations. `satan-run-perceive` / `-enrich` / `-assemble-context` keep their names (**F2**, no defect) |
 | `satan/satan-tools-hippocampus.el` | **F1**: deletes the third `satan-hippocampus-dir`; requires the leaf |
 | `satan/satan-budget.el` | `declare-function` → `(require 'satan-run)`; **cycle dissolved** |
 | `satan/satan-observer.el` | `declare-function` + valueless defvar + in-function require → one top-level `(require 'satan-run)`; **cycle dissolved** |
@@ -252,14 +306,25 @@ Code impact, by path (these become the `design-target` selectors):
 | Phase | Objective | Exit |
 |---|---|---|
 | **P1** | The lint, TDD against fixtures, **not yet pointed at `satan/*.el`**. Includes the harness wiring it depends on: `satan-test-suite-dirs` → `("satan/test" "tools/test")` and `-L ./tools` in `just test` (**AR-4**) | Planted-duplicate fixture fails; clean fixture passes; `just check` clean |
-| **P2** | `satan/test/satan-run-test.el` characterisation of the surviving surface | Green |
-| **P3** | The collapse: rename, delete broker clones, F1 / F3 / F4 / F5 / F6 | Suite green; no `cl-defstruct satan-run` outside `satan-run.el` |
-| **P4** | Move the layout cluster; dissolve both cycles; delete the guards | Zero-hit grep over the **full** moved set (**AR-3**): `satan-broker-(locate-run-dir\|list-run-dirs\|run-dirs-for-date\|run-dir-for-id)` **and** `satan-broker--(failed-suffix\|date-bucket-for-run-id\|bucket-name-p\|legacy-run-name-p\|run-id-from-leaf\|spawn-running)` |
-| **P5** | Wire the lint into `just lint`; verify VT-2 against the real tree | `just check` clean |
+| **P2** | `satan/test/satan-run-test.el` characterisation of the surviving surface | Named surface covered before P3 may move it: `satan-run-mint-id`'s format, `satan-run-dir-for-id`'s bucketed and legacy resolution, `satan-run-new-ctx`'s ten v0 keys, `satan-run-tool-ctx`'s **frozen** `:time_now`, and both defcustom defaults. Suite green, count risen by the new file's assertions |
+| **P3** | The collapse: rename `satan-run-prepare` → `satan-run-new-ctx`; delete the broker's struct, both defcustoms and the six cloned bodies; F1 / F3 / F5 / F6 | (a) zero-hit grep over `satan-broker--(mint-run-id\|iso-time-format\|prepare\|tool-ctx\|failed-suffix\|date-bucket-for-run-id)` **and** `satan-broker-run-dir-for-id` — the §5.2 deletion table entire; (b) exactly one `cl-defstruct satan-run`, one `defcustom satan-runs-dir`, one `defcustom satan-hippocampus-dir` in `satan/*.el`; (c) no `defun satan-run-prepare` anywhere, and `satan-mcp--mint-session` contains no `format-time-string` (**F5**); (d) `satan-context.el` forward-declares no `satan-run-*` symbol and requires `satan-run` (**F3**); (e) suite green at baseline |
+| **P4** | Move the layout cluster **and both DEC-8 flags** (**F4** / **F7** / **D6**, §5.3); dissolve both cycles; delete the guards | Zero-hit grep over the **full** moved set (**AR-3**): `satan-broker-(locate-run-dir\|list-run-dirs\|run-dirs-for-date\|run-dir-for-id)`, `satan-broker--(failed-suffix\|date-bucket-for-run-id\|bucket-name-p\|legacy-run-name-p\|run-id-from-leaf\|spawn-running)` **and** `satan-mcp--session-active` (**D6**); no `boundp` guard on MCP state in `satan-broker.el`; `satan-budget.el` and `satan-observer.el` contain no `satan-broker` reference; suite green |
+| **P5** | Wire the lint into `just lint`; verify VT-2 against the real tree | `just check` clean; the lint fails when a duplicate is deliberately re-introduced and passes when it is removed (**R4**) |
 
 The lint is written red-then-green against **fixtures** in P1, so `just check`
 never goes red while the tree still holds its duplicates. The rename does not
 lead, because R1 (§10) found the collision latent.
+
+**Every phase exits on a zero-hit grep over its own deleted set, not a sample of
+it.** AR-3 established that standard for P4; RV-002 **F-1** found it had not been
+carried to P2 or P3 — P3's original exit ("suite green; no `cl-defstruct
+satan-run` outside `satan-run.el`") was satisfiable with nine of its ten
+deletions still standing, and P2's was the bare word "Green". A green suite
+cannot detect a surviving clone, because §2.2 proves the clones are identical
+and the lint is deliberately unwired until P5 (**C4**); the two phases that
+perform the actual collapse are guarded by nothing but these criteria. They are
+what `plan.toml`'s `EX-` ids will carry, and those ids are immutable once
+authored.
 
 ### 5.5 Invariants, Assumptions & Edge Cases
 
@@ -269,7 +334,10 @@ lead, because R1 (§10) found the collision latent.
   function-ish definition.
 - **I3** `satan-run.el` acquires no dependency beyond `cl-lib` / `subr-x` /
   `satan-custom`. This is **C1** made structural; if it ever fails, the clone
-  comes back. The moved layout functions are pure path arithmetic, so it holds.
+  comes back. It survives the layout move not because the moved code is pure —
+  it enumerates and stats directories (§5.3) — but because every primitive it
+  uses is C-core or `cl-lib`. Verified by reading the require block, never
+  inferred from the code's character.
 - **I4** A valueless `(defvar x)` is a *declaration*, never a definition. The
   lint must encode this or it will flag legitimate cycle-breakers.
 - **I5** Run-id format, date bucketing, `.FAILED` handling, and the frozen
@@ -294,7 +362,8 @@ cover them or the lint is only accidentally correct.
 - **OQ-3** ADR-018 D4.2 will want the same single-owner check over the policy /
   registry tables once they move. Whether this lint generalises to that, or is
   superseded by a Rust-side check, is out of scope here but worth not
-  foreclosing.
+  foreclosing. Carried as [[IMP-017]], which also records why the lint this
+  slice ships would not cover a duplicated *table* (**D3**).
 - **OQ-4 — CLOSED (D6).** `satan-mcp--session-active` moves to the leaf too.
 - **OQ-5 — CLOSED (D7).** One concept; collapse with a union docstring.
 
@@ -322,6 +391,18 @@ The slice asks for the generic form. Measured: after this slice the tree has
 narrow reading of VT-2 (struct + defcustom + accessor collision only) would not
 have caught **F4** — the same single-owner defect in the same two modules — so it
 would certify a tree still violating the principle the lint exists to enforce.
+
+*Its reach is nonetheless bounded, and the bound is on the record (**RV-002
+F-2**).* The check is keyed on the **symbol**, so it sees the four same-name
+duplications of §2.1 and **none of the seven same-body/different-prefix forks**
+in the same tree — the larger half of this slice's own subject matter. The
+argument above against the narrow reading applies with equal force to this
+result: single-definition is not single-implementation. The check that would
+close the gap is structural — a canonical-body hash across the tree, mechanising
+the comparison §2.2 ran by hand — and it is **deferred to [[IMP-017]] rather
+than smuggled into this slice**, because ADR-018 D4.2 migrates a *data* table whose
+duplication will look exactly like these seven forks, and must not inherit a
+false account of what VT-2 proved.
 
 **D4 — the lint parses source; it does not load the package.** Forced, not
 chosen: after loading, the second definition has already overwritten the first
@@ -360,11 +441,11 @@ cosmetic churn across a module the slice's non-goals never contemplated.
 |---|---|---|
 | **R1** | *Answered — see §10.* The collision is latent | Rename still lands (P3); the lint (I2) makes recurrence detectable |
 | **R2** | `satan-run.el` untested; collapse is a refactor without a net | Downgraded by §2.2: the clones are **provably identical**, so the broker's existing coverage *is* the characterisation suite. P2 retargets it into `satan-run-test.el` before P3 moves anything |
-| **R3** | Defcustom collapse is user-visible | **Closed on evidence.** All three declarations carry identical default expressions, and `defcustom` sets a default only when unbound — so collapsing changes no value. A keeper's `custom-set-variables` binds the shared symbol either way. Only the docstring surface changes; hence "keep the union" (§2.2) |
+| **R3** | Defcustom collapse is user-visible | **Closed on evidence.** All three declarations carry identical default expressions, and `defcustom` sets a default only when unbound — so collapsing changes no value. A keeper's `custom-set-variables` binds the shared symbol either way. The broker's two copies are **byte-identical to the leaf's, docstrings included** (§2.2), so their deletion changes nothing whatever; the only docstring decision genuinely in play is `satan-tools-hippocampus.el`'s third declaration, which **D7**'s union docstring settles |
 | **R4** | The lint is written to fit a tree already known to pass, proving nothing | P1 builds it against fixtures *before* the tree is clean; P5 verifies by deliberately re-introducing a duplicate |
-| **R5** | Docstring loss — the broker's are richer and its copies are the ones deleted | Explicit obligation in §2.2; a reviewer must diff docstrings, not just symbol lists |
+| **R5** | Docstring loss — the deleted copy is sometimes the better one | Explicit obligation in §2.2, **in both directions**. The broker's copy is richer for five of seven bodies, but `satan-broker--mint-run-id` has none at all, so a mechanical "keep the broker's" would delete the only docstring `satan-run-mint-id` has. The reviewer diffs each pair, not symbol lists |
 | **R6** | The 27-site rename silently misses a site | Every miss is a void-function/void-variable at load or test time under **C5**; exit criterion for P4 is a zero-hit grep |
-| **R7** | Moving the layout cluster grows the leaf and could pull in a dependency, breaking **I3**/**C1** | The moved functions are pure path arithmetic — no new `require`. Asserted as I3 and checkable by inspecting `satan-run.el`'s require block |
+| **R7** | Moving the layout cluster grows the leaf and could pull in a dependency, breaking **I3**/**C1** | No new `require`. The moved functions are **not** pure path arithmetic — they stat and enumerate directories (§5.3) — but every primitive they use is C-core or `cl-lib`. Asserted as I3 and checked by inspecting `satan-run.el`'s require block, not by asserting the code's character |
 
 **A1 — falsified.** The slice assumed no third module declared these; the tree
 scan found `satan-tools-hippocampus.el:22` (**F1**). The assumption is replaced
@@ -384,6 +465,15 @@ by the lint, which makes the property standing rather than grep-verified.
 - `VT` fails on a fixture where a `defun` shadows a generated struct accessor
   (the **I2** / R1 class), including under an explicit `:conc-name`.
 
+**What VT-2 does not establish (RV-002 F-2).** The lint proves
+*single-definition*, not *single-implementation*. Being keyed on the symbol it
+cannot see a clone that has been renamed — the form seven of this tree's eleven
+duplications actually took (§2.1). After P5 the tree is clean and the check is
+honest about its own reach; it does not license the claim that this class of
+duplication has been made un-reintroducible in general, and no `VT` above is
+worded to imply otherwise. The structural form of the check is backlogged as
+[[IMP-017]], related to ADR-018 D4.2 (**D3**).
+
 **Collapse:**
 
 - `VT` `satan-run-prepare` is not `fboundp` as a defun; `satan-run-new-ctx` is.
@@ -402,6 +492,12 @@ by the lint, which makes the property standing rather than grep-verified.
   `satan-mcp-test.el:462-489` and `satan-broker-test.el:1039-1116`.
 - `VT` the surviving `satan-hippocampus-dir` docstring names **both** roles —
   jail scratch and hippocampus corpus (**D7**). Verified by review, not by test.
+- `VA` every surviving definition carries the **better** of the two docstrings,
+  diffed pairwise (§2.2) rather than by a blanket rule. In particular
+  `satan-run-mint-id` still has one, the leaf's `satan-run--iso-time-format`
+  docstring is not replaced by the broker's broker-specific wording, and the
+  struct keeps both its own docstring and the broker's `prepare`-slot comment
+  (**R5**).
 - `VA` `satan-budget.el` and `satan-observer.el` contain no reference to
   `satan-broker`; `satan-broker.el` contains no `boundp` guard on MCP state.
 - `VA` `satan-run.el`'s require block is exactly `cl-lib`, `subr-x`,
@@ -468,7 +564,7 @@ reconcile, not a hand-edit from this design.
 | **F3** | `satan-context.el:661/666` calls `satan-run-dir-for-id` and reads `satan-run--iso-time-format` with **no require** for either — all four `satan-run-*` symbols are unbound after `(require 'satan-broker)`. Latent void-function, masked because the only live caller path is MCP, and because `satan-context-test.el:688` `cl-letf`s the function | Absorbed (D5) |
 | **F4** | `satan-broker--spawn-running` defined **with a value** in both `satan-broker.el:42` and `satan-mcp.el:26`. Benign today (`defvar` sets only when unbound) but a duplicate definition of shared run-lifecycle state in exactly the two modules being collapsed | Absorbed (D5) |
 | **F5** | `satan-mcp--mint-session` hand-rolls a 4-key run-ctx instead of the canonical 10-key constructor — a fifth instance of copy-instead-of-share | Absorbed (D5) |
-| **F6** | `satan-mcp.el:23`'s comment claims `satan-memory-store--current-run-id` is "Declared in satan-run.el"; it is declared in `satan-memory-store.el:27` | Corrected in passing (P3) |
+| **F6** | `satan-mcp.el:22`'s comment (on the `:23` defvar) claims `satan-memory-store--current-run-id` is "Declared in satan-run.el"; it is declared in `satan-memory-store.el:27` | Corrected in passing (P3) |
 
 ### Adversarial pass
 
@@ -483,7 +579,8 @@ soft-dependency idiom this slice exists to retire. Moving only `spawn-running`
 to the leaf leaves the protocol split across two modules with a `boundp` guard
 papering over the seam — and the lint will **not** flag `session-active`, because
 it is defined only once. *Not forced by the lint; forced by the principle.*
-**Disposition: accepted — D7 moves both flags and deletes the guard.**
+**Disposition: accepted — D6 moves both flags and deletes the guard, in P4
+(§5.3, §5.4).**
 
 **AR-2 — the two `satan-hippocampus-dir` docstrings describe different
 concepts.** `satan-run.el:22` says *"Read-write scratch directory inside the
@@ -505,10 +602,11 @@ there.
 `--bucket-name-p`, `--legacy-run-name-p`, `--run-id-from-leaf` and
 `--spawn-running`, all of which also move. A phase can pass its own gate with six
 moved symbols still referenced. **Corrected in §5.4**: the gate is now a zero-hit
-grep over the full moved set.
+grep over the full moved set. *(RV-002 F-1 later found this correction had been
+applied to P4 alone; §5.4 now carries it to P2 and P3 as well.)*
 
 **AR-4 — P1 was not self-sufficient.** The lint's ert tests live in `tools/test/`,
-which the runner cannot see until `satan-test-suite-dirs` (`dev/satan-test.el:44`)
+which the runner cannot see until `satan-test-suite-dirs` (`dev/satan-test.el:43`)
 gains the directory and `just test` gains `-L ./tools`. Listing those under
 "justfile / dev" without assigning them a phase would leave P1 unable to run its
 own tests. **Corrected in §5.4**: both belong to P1.
@@ -530,3 +628,28 @@ resolves it on the same path, so no new ordering constraint is introduced.
 shadow helpers. Stated so the exclusion is a decision on the record rather than
 an accident of globbing — and so a future contributor does not "fix" the glob to
 `**` and get a noisy lint that then gets weakened.
+
+### RV-002 — external hostile pass, integrated
+
+A formal Inquisition against the design aspect, raised after the lock at
+`2b87023`. Six findings, all disposed; the verdict is in RV-002's `## Synthesis`.
+The core survived: EVD-001 was **re-run rather than believed** and reproduces
+under Emacs 31.0.90, so R1's *latent* verdict stands and the phase order may rest
+on it; DEC-001's ownership argument, the D2 cost measurement and nine spot-checked
+citations all held. What did not hold was the design's own standards applied
+consistently — named there as *rigour deep but narrow-beam*, each finding being a
+test the design wrote and then applied at one site only.
+
+| | Sev | Finding | Where integrated |
+|---|---|---|---|
+| **F-1** | blocker | AR-3's standard reached P4 alone. P3's exit was satisfiable with nine of its ten deletions standing; P2's was the word "Green" | §5.4 phase table and the paragraph beneath it |
+| **F-2** | major | The symbol-keyed lint sees 4 of 11 duplications and 0 of the 7 renamed forks — D3's own argument against a narrow VT-2 indicts D3's result | §2.1, §7 D3, §9; harvested as [[IMP-017]] |
+| **F-3** | major | AR-1 was accepted and then orphaned — D6 appeared in three sections and no phase row | §5.3 (with the sequencing argument), §5.2, §5.4 P4 |
+| **F-4** | minor | §2.2's "the broker's are consistently richer" false for four items and **inverted** for `mint-run-id`; R5 as written would delete the survivor's only docstring | §2.2 table, R3, R5 |
+| **F-5** | minor | R7 / I3 rested on "pure path arithmetic" over three functions that enumerate and stat directories. Conclusion sound, mechanism false — §10's own lesson, recommitted | §5.3, §5.5 I3, R7 |
+| **F-6** | nit | AR-1's disposition cited D7 for a D6 remedy; §5.1 labelled three survivors as migrants; §2.1 called two `defconst`s functions and `satan-broker--iso-time-format` appeared in no rename table or gate; `dev/satan-test.el:44` → `:43` | §5.1, §5.2 deletion table, §2.1, AR-1, AR-4, F6 |
+
+Only **F-2** was disposed as a limitation on the record rather than a fix; the
+other five are corrected above. F-1 gated: its correction had to land before
+`/plan`, because `plan.toml`'s `EX-` ids are immutable once authored and a
+vacuous exit criterion becomes the standard the phase is recorded as meeting.
