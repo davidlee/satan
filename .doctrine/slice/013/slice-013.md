@@ -73,7 +73,7 @@ Collapse to one owner of run identity and run context.
   moving it **dissolves two genuine require cycles** (`satan-budget` and
   `satan-observer` cannot require `satan-broker`, which requires them).
 - **Fold in four defects design surfaced** (design D5), each either covered by
-  the objectives above or flagged by the new lint: a third
+  the objectives above or caught by a phase exit grep: a third
   `satan-hippocampus-dir` in `satan-tools-hippocampus.el` (F1); `satan-context.el`
   using `satan-run-*` with no require (F3); `satan-broker--spawn-running` defined
   with a value in two modules (F4); `satan-mcp--mint-session` hand-rolling a
@@ -82,7 +82,7 @@ Collapse to one owner of run identity and run context.
   adversarial pass). Mutual exclusion is a *two*-flag protocol and each module
   reaches into the other: MCP reads the broker's `spawn-running`, and the broker
   reads `satan-mcp--session-active` behind a `boundp` guard at `:739`. Both flags
-  move to the leaf; the guard goes. Not forced by the lint — `session-active` is
+  move to the leaf; the guard goes. Not forced by VT-2 — `session-active` is
   defined once — but moving one and not the other would retire half a coupling
   and call the rehearsal complete.
 - **Collapse `satan-hippocampus-dir` to one declaration carrying both roles**
@@ -118,34 +118,43 @@ Collapse to one owner of run identity and run context.
 - **R2 — DOWNGRADED.** `satan-run.el` is still untested, but a canonicalising
   sexp comparison proved all seven cloned bodies and both 18-slot structs
   identical modulo docstrings. The broker side is pure deletion, so its existing
-  coverage *is* the characterisation suite; P2 retargets it into
+  coverage *is* the characterisation suite; P1 retargets it into
   `satan-run-test.el` before anything moves.
 - **R3 — CLOSED on evidence.** All three defcustom declarations carry identical
   default expressions, and `defcustom` sets a default only when unbound — so
   collapsing changes **no value**, and a keeper's `custom-set-variables` binds
-  the shared symbol either way. Only the docstring surface changes; the
-  surviving declaration must keep the union (the broker's docstrings are the
-  richer ones and are the copies being deleted).
-- **R5 — NEW: docstring loss.** The deleted copies are the better-documented
-  ones. A reviewer must diff docstrings, not just symbol lists.
+  the shared symbol either way. Only the docstring surface changes — and for
+  both defcustoms the two declarations are **byte-identical, docstrings
+  included** (design §2.2), so nothing is at stake there.
+- **R5 — NEW: docstring loss.** Real, but not uniform: the broker is the richer
+  side for five of the cloned bodies and `satan-run.el` is richer for
+  `mint-run-id`, whose broker copy has no docstring at all (design §2.2).
+  Deletion must preserve the union **in both directions**; a mechanical "keep
+  the broker's" would delete the only docstring `satan-run-mint-id` has. A
+  reviewer must diff docstrings pair by pair, not just symbol lists.
 - **R6 — NEW: a missed rename site.** Mitigated by tests running interpreted —
-  every miss is a void-function/void-variable at load — plus a zero-hit grep as
-  P4's exit criterion.
+  every miss is a void-function/void-variable at load — plus the zero-hit greps
+  in P2's and P3's exit criteria.
 - **R7 — NEW: the leaf acquires a dependency**, breaking the property that
-  preserves the MCP constraint. The moved functions are pure path arithmetic and
-  add no `require`; asserted as design I3 and checked by inspection.
+  preserves the MCP constraint. The moved functions are **not** pure path
+  arithmetic — they enumerate and stat directories — but every primitive they
+  use is C-core or `cl-lib`, so they add no `require`. Asserted as design I3, a
+  dependency invariant checked against the require block, not a claim about the
+  code's character.
 - **Q1 — ANSWERED: `satan-run.el`.** Mostly deletion, not extraction — the
   broker sheds ~190 lines.
 - **A1 — FALSIFIED.** `satan-tools-hippocampus.el:22` declares a third
-  `satan-hippocampus-dir`; the scoping grep missed it. Replaced by the lint,
-  which makes the property standing rather than grep-verified.
+  `satan-hippocampus-dir`; the scoping grep missed it. Replaced by F1 and by
+  P2's exit criterion (b), which counts declarations across `satan/*.el` rather
+  than grepping the two modules the slice happened to be looking at.
 
 ## Verification / closure intent
 
-- **ADR-018 VT-2 passes as a lint** in `just lint`, and fails on a deliberately
-  re-introduced duplicate — struct, defcustom, valued `defvar`, and
-  accessor/defun collision — while **passing** on a valueless `(defvar x)`
-  forward declaration.
+- **ADR-018 VT-2 holds of the tree at the phase gates.** Its three clauses map
+  onto P2's exit criteria (design §9): exactly one `cl-defstruct satan-run` and
+  one declaration of each defcustom across `satan/*.el`, and no symbol both a
+  struct accessor and a `defun`. Measured, not enforced — no standing check is
+  built (design D3); recurrence guarding is [[IMP-017]].
 - **`satan-run-prepare` no longer exists as a defun**; `satan-run-new-ctx` does.
   Asserted via `documentation` / `funcall`, never a syntactic call — a syntactic
   call inlines the accessor and would pass either way, which is the trap that
