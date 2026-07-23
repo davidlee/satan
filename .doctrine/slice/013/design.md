@@ -528,7 +528,7 @@ checkout would silently satisfy by omission.
 
 ## 10. Review Notes
 
-### R1 — settled with evidence: latent, and every recorded reason is wrong
+### R1 — settled with evidence: latent, and every recorded reason is incomplete
 
 Recorded in full as **EVD-001**. `satan-run.el:27`'s struct generates the
 accessor `satan-run-prepare`; `:77`'s defun overwrites its **function cell** —
@@ -544,33 +544,49 @@ read.
 | `(satan-run-prepare s)` — syntactic, interpreted | accessor |
 | interpreted `(lambda (x) (satan-run-prepare x))` | accessor |
 | `(byte-compile (lambda (x) (satan-run-prepare x)))` | accessor |
-| `(funcall 'satan-run-prepare s)` | **defun** — fresh `run_id` |
-| `(apply #'satan-run-prepare (list s))` | **defun** |
-| `(eval '(satan-run-prepare s) env)` | **defun** |
+| `(funcall 'satan-run-prepare s)` | **defun** — fresh `run_id` *(load-order-contingent)* |
+| `(apply #'satan-run-prepare (list s))` | **defun** *(load-order-contingent)* |
+| `(eval '(satan-run-prepare s) env)` | **defun** *(load-order-contingent)* |
+
+The last three rows describe a **function cell whose occupant load order
+decides**, not a stable property of the symbol. Measured with `satan-broker.el`
+loaded last; PHASE-02's very first edit — adding `(require 'satan-run)` to
+`satan-broker.el` — put the leaf first, so the broker's own `cl-defstruct`
+re-installed the accessor over the defun and those three rows flipped to
+*accessor* (notes.md, 2026-07-24 PHASE-02). The escape hatch was never stable;
+only the rename made the symbol single-meaning. The first three rows are
+unconditional under either order, which is what the **latent** verdict rests on.
 
 All four in-tree call sites (`satan-run.el:103`, `satan-broker.el:284/406/449`)
 are syntactic, and no `funcall` / `apply` / `#'satan-run-prepare` appears
 anywhere. **Verdict: latent.** The slice is not a bug fix and the rename does not
 need to lead the phase order.
 
-Both explanations on record are nonetheless wrong, and the wrongness matters
-because each implies a false safety condition:
+Both explanations on record are nonetheless **incomplete**, and the incompleteness
+matters because each implies a false safety condition:
 
 - **ADR-018 Context** attributes latency to byte-compiled callers inlining
-  before the clobber. But this project runs tests **interpreted** (**C5**), and
-  interpreted syntactic callers inline too. The stated mechanism is not the
-  operative one.
+  before the clobber. Byte-compilation is real but not the operative mechanism:
+  the `compiler-macro` property inlines syntactic callers **interpreted too**,
+  which matters because this project runs its tests interpreted (**C5**). Read
+  as stated, the ADR implies an interpreted-only tree is exposed — it is not.
 - **SL-013 R1** hypothesises that reachability turns on load order. Both orders
   (`broker`→`run`, `run`→`broker`) were tested and inline identically. Load order
-  is not the variable.
+  is not the variable **for syntactic call sites** — but it *is* the variable for
+  `funcall` / `apply` / `eval`, which reach whichever definition load order left
+  in the function cell (PHASE-02, above). R1's error is over-generalising a true
+  result about syntactic calls to the whole symbol.
 
 The real hazard is narrower and sharper than "wrong value at three call sites":
 it is dormant until someone writes `(mapcar #'satan-run-prepare runs)`, advises
 the symbol, or `cl-letf`s it in a test — at which point it silently returns a
 freshly minted `run_id` with an unfrozen `time_now`, with no error.
 
-**Reconcile debt.** ADR-018's Context paragraph and SL-013's R1 both assert a
-mechanism now known to be false. Governance corrections go through a REV at
+**Reconcile debt — discharged.** ADR-018's Context paragraph and SL-013's R1
+both asserted a mechanism now known to be incomplete. Both were corrected at
+reconcile ([[RV-003]] F-1, F-2): ADR-018's Context bullet via [[REV-001]]
+(`modify ADR-018`, landed by hand under the authored-truth honour model), and
+this section by direct edit above. Governance corrections go through a REV at
 reconcile, not a hand-edit from this design.
 
 ### Findings raised during design

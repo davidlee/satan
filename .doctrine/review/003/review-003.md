@@ -223,3 +223,75 @@ belongs to [[IMP-017]], and [[IMP-018]] is now its evidence.
   remedy is *not* a `plan.toml` edit**: PHASE-01 VA-1's noun is loose, but plan
   criteria are immutable-append and off-surface for reconcile. The substance is
   already recorded in `notes.md`.
+
+## Reconciliation Outcome
+
+Reconcile pass, 2026-07-24. All 11 findings terminal (`verified`) at entry; no
+finding disposition was mutated. Every brief item is resolved.
+
+### Direct edits applied
+
+- **`design.md` §10 (F-2)** — three edits plus the section heading.
+  - The EVD-001 matrix's `funcall` / `apply` / `eval` rows now read
+    *(load-order-contingent)*, and a new paragraph beneath the table states that
+    those rows describe a function cell whose occupant load order decides — the
+    matrix was measured with `satan-broker.el` loaded last, and PHASE-02's first
+    edit (`(require 'satan-run)` in `satan-broker.el`) put the leaf first and
+    flipped them. The first three rows are unconditional under either order,
+    which is what the **latent** verdict rests on.
+  - *"Both explanations on record are nonetheless wrong"* → **incomplete**, with
+    both bullets restated: the ADR bullet now says byte-compilation is real but
+    not operative (the `compiler-macro` property inlines interpreted callers too,
+    **C5**); the R1 bullet now says load order is not the variable **for
+    syntactic call sites** but *is* the variable for `funcall` / `apply` / `eval`,
+    R1's error being over-generalisation of a true result.
+  - Section heading *"…every recorded reason is wrong"* → *"…incomplete"*, so the
+    heading does not contradict the paragraph beneath it.
+  - The **Reconcile debt** paragraph is marked discharged and cites [[REV-001]].
+- **Selector registry (F-7)** — `doctrine slice selector rm SL-013
+  satan/test/satan-context-test.el`. `doctrine slice conformance SL-013` re-run:
+  **`undelivered (0)`**, 22 conformant. No `design.md` §5.4 mirror edit was owed
+  or made — §5.4's impact table never listed the file, so removing the selector
+  makes registry and design agree. The 12 `undeclared` paths remain and are F-8,
+  disposed `aligned` (systemic `.doctrine/` registry scope, not slice drift).
+
+### REVs completed
+
+- **[[REV-001]]** (`reconcile-sl-013`) — **done**. One row: `modify ADR-018`
+  (primary), surfaced-for-manual at apply and landed by hand under the
+  authored-truth honour model. Covers **F-1** (major) and F-2's governance half.
+  ADR-018's Context, fifth bullet: the falsified mechanism (byte-compiled callers
+  inlining before the clobber) is replaced by the operative one — `cl-defstruct`
+  accessors are `cl-defsubst`s installing a `compiler-macro` property `defun`
+  does not remove, applied at macroexpansion, so every syntactic call site
+  inlines to the slot read **interpreted and byte-compiled alike** — and carries
+  F-2's refinement that the non-syntactic forms reach whichever definition load
+  order left in the function cell, so the escape hatch was never stable and only
+  the rename made the symbol single-meaning. Before/after excerpts, scope guard
+  and rationale in `revision-001.md`.
+  - **Scope guard held**: a Context observation only. No ADR-018 Decision
+    (D1–D8), consequence or verification criterion moved; no ADR-017 §3 authority
+    item changed owner.
+  - **Canon note**: the imported-corpus freeze governs id *resolution* for
+    imported prose, not mutability. ADR-018 was authored and accepted in this
+    repo, so it resolves locally and a local REV is the correct mechanism. This
+    is the first governance amendment here since the 2026-07-22 import.
+
+### Not written, by design
+
+- **F-9** — no `plan.toml` edit. PHASE-01 VA-1's loose noun is real, but plan
+  criteria are immutable-append and off-surface for reconcile; the substance is
+  recorded in `notes.md`. Disposed `aligned`; nothing owed.
+- **F-3 → [[IMP-018]]**, **F-11 → [[CHR-002]]** — follow-up work already
+  captured; no reconcile write.
+- **F-4, F-5, F-6** — fixed in-audit, source only; no artefact change.
+- **F-8, F-10** — disposed `aligned`; nothing owed.
+
+### Not re-audited
+
+No new discovery was performed (D9). No new gap was found while locating edit
+points, and no target had drifted since the audit. RV-003's cache remains stale
+on the three files the audit repaired — an optimisation signal, not a gate, and
+no further findings were raised, so it was not re-primed.
+
+Reconcile pass complete — handoff to `/close`.

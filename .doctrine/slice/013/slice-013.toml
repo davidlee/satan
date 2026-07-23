@@ -71,10 +71,6 @@ selector = "satan/test/satan-run-test.el"
 intent = "design-target"
 
 [[selector]]
-selector = "satan/test/satan-context-test.el"
-intent = "design-target"
-
-[[selector]]
 selector = "satan/test/satan-tools-atsatan-test.el"
 intent = "design-target"
 
