@@ -47,18 +47,20 @@ population of one artifact. A slice is the right altitude.
   desirable and a design consideration, but automated enforcement tooling is a
   follow-up, not this slice's closure bar.
 
-## Open Questions (for /design)
+## Open Questions — resolved in /design (see design.md §7)
 
-- **Where the ledger lives and in what format.** Candidates: a structured
-  section appended to ADR-017 (edits append, never renumber), a standalone
-  `.doctrine` artifact, or a doc under the satan repo's `docs/`. The format
-  (prose table vs TOML vs something greppable) trades authoring cost against the
-  "grep both sides" verification SPEC-001 NF-001 wants. Design decides.
-- **Row granularity.** Whether "allowlists" is one row or one-per-authority-class
-  (mode allowlist vs tool allowlist vs capability). ADR-017 §3 enumerates six
-  classes; SPEC-001 splits some finer.
-- **Owner vocabulary.** How an owner is named durably (component id? the
-  ADR-018 D1 daemon core vs the Emacs client) so a transition is unambiguous.
+- **Home/format** → linked companion `.doctrine/adr/017/authority-ledger.md`,
+  markdown table + append-only transition log (DEC-003, accepted).
+- **Row granularity** → one row per independently-ownable duty (~7 rows);
+  design.md §7 D2.
+- **Owner vocabulary** → fixed legend-defined tokens keyed to ADR-018 topology;
+  design.md §7 D3.
+
+Residual (do not block the slice):
+- **QUE-001** — SPEC-001 has no invariant for run-lifecycle/arrival authority
+  that ADR-017 §3 lists; row 7 cites ADR-002 in the interim.
+- **Q2 (design.md §10 F6)** — whether the forward pointer into accepted ADR-017
+  §3 is acceptable; needs a governance call before implementation.
 
 ## Verification / Closure Intent
 

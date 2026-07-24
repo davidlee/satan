@@ -1,0 +1,27 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "spec001-lifecycle-authority-gap"
+title = "SPEC-001 has no invariant for run-lifecycle/arrival authority that ADR-017 §3 lists"
+record_kind = "question"
+status = "open"
+created = "2026-07-24"
+updated = "2026-07-24"
+tags = ["extraction", "governance"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+question    = "ADR-017 §3 enumerates 'arrival policy' as an authority item, but SPEC-001's invariant set (schema-validated actions, allowlists, append-only audit, ceilings, kill switches, single-owner inventory) contains no invariant for who may start or gate a run. Should SPEC-001 gain a run-lifecycle/arrival-authority invariant (a new REQ), so the authority ledger's arrival row (SL-014 row 7) can cite a REQ rather than falling back to ADR-002?"
+why_matters = "SPEC-001 NF-004 wants every authority item verifiable against an addressable REQ at audit. The arrival row cannot satisfy that today. SPEC-001's own hypothesis anticipates this ('if a sixth invariant surfaces, add it as a requirement'). Relevant when ADR-002 is taken off 'proposed' and arrival authority migrates to satan-attrd."
+answer      = ""
+answered_by = ""
+answered_on = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)

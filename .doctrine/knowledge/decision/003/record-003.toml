@@ -1,0 +1,36 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 3
+slug = "authority-ledger-home"
+title = "Authority ledger lives as a linked markdown companion in the ADR-017 bundle"
+record_kind = "decision"
+status = "accepted"
+created = "2026-07-24"
+updated = "2026-07-24"
+tags = ["extraction", "governance"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+context      = "SL-014 must give the ADR-017 §3 authority ledger a physical home. It is living current-state (owner per authority item) that mutates on every migration, cites SPEC-001 REQ ids, and must be greppable for the NF-001 'no dual enforcement' check."
+choice       = "A markdown file `authority-ledger.md` inside the ADR-017 entity bundle (`.doctrine/adr/017/`), linked from `adr-017.md §3`. Table format with an append-only transition log per row."
+alternatives = [
+  "Append the ledger as a section inside adr-017.md — rejected: mutating living state inside an immutable decision record blurs the ADR contract.",
+  "Standalone docs/authority-ledger.md next to architecture.md — rejected: scatters a governance instrument into the code-doc tier.",
+  "Structured .toml in .doctrine — rejected for v1: orphan structured data (no `doctrine ledger show`); machine-checking is an explicit slice non-goal.",
+]
+rationale    = "Co-locates the ledger with the mandate (ADR-017 §3) and keeps it in the governance tier, while leaving adr-017.md immutable. `doctrine validate` confirmed clean with a companion file present. Markdown stays greppable and hand-editable; CI-gating is the slice's named follow-up if wanted later."
+consequences = [
+  "`doctrine adr show ADR-017` does not render the ledger (engine assembles only adr-017.{toml,md}); reached via the link line — acceptable.",
+  "One pointer edit to adr-017.md §3 (append a 'see authority-ledger.md' reference).",
+]
+decided_by   = "david"
+decided_on   = "2026-07-24"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)

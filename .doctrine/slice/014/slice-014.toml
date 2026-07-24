@@ -15,8 +15,12 @@ selector = ".doctrine/adr/017/**"
 intent = "scope-relevant"
 
 [[selector]]
-selector = "docs/**"
-intent = "scope-relevant"
+selector = ".doctrine/adr/017/authority-ledger.md"
+intent = "design-target"
+
+[[selector]]
+selector = ".doctrine/adr/017/adr-017.md"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"
@@ -30,6 +34,16 @@ target = "ADR-018"
 label = "references"
 role = "implements"
 target = "SPEC-001"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "DEC-003"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "QUE-001"
 
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
