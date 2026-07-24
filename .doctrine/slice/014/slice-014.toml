@@ -1,9 +1,9 @@
 id = 14
 slug = "authority-ledger"
 title = "Stand up the ADR-017 §3 authority ledger"
-status = "design"
+status = "ready"
 created = "2026-07-23"
-updated = "2026-07-23"
+updated = "2026-07-24"
 tags = ["extraction", "governance"]
 
 [relationships]
