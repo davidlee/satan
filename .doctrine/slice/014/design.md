@@ -177,10 +177,10 @@ adversarial pass:
   blocked. But this is a real gap in SPEC-001 (its own stated hypothesis: "if a
   sixth invariant surfaces, add it as a requirement"). Captured as QUE-001 for
   the SPEC-001 owner; **does not block SL-014**.
-- **Q2 — the ADR-017 pointer edit** (see §10 F6): whether adding a forward
-  pointer to an *accepted* ADR's §3 is acceptable, or discoverability should rely
-  on the ledger's back-reference + DEC-003/RFC-017. Needs a governance call
-  before implementation.
+- **Q2 — the ADR-017 pointer edit** (see §10 F6): **RESOLVED 2026-07-24 (david):
+  add the pointer.** An additive sentence in adr-017.md §3 pointing at the ledger,
+  in keeping with ADR-017's existing dated-amendment style. adr-017.md stays in
+  the design-target touch-set.
 
 ## 7. Decisions, Rationale & Alternatives
 
@@ -256,4 +256,5 @@ Internal adversarial pass (self-review), findings + disposition:
   dated amendment text, so an additive pointer is arguably in-keeping — but this
   is a governance-convention call. Alternative: leave ADR-017 untouched; the
   ledger back-references it and DEC-003 + RFC-017 G2 supply discoverability.
-  **Raised to the user (Q2); implementation waits on the call.**
+  **RESOLVED 2026-07-24 (david): add the pointer** — additive sentence in §3, an
+  in-keeping dated amendment; adr-017.md remains a design target.
