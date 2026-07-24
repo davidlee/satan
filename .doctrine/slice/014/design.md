@@ -119,8 +119,8 @@ The initial population (day-one, all `emacs-client`):
 | # | Authority item | Owner | Governs | Enforced at | Since |
 |---|---|---|---|---|---|
 | 1 | Action schema validation | `emacs-client` | REQ-001 | `satan-tool-validate-args` satan-tools.el:132 | ADR-017 |
-| 2 | Mode/tool allowlist | `emacs-client` | REQ-002, REQ-006 | mode/tool table satan-mode.el:80-208 | ADR-017 |
-| 3 | Capability / jail profiles | `emacs-client` | REQ-002 | mode specs satan-mode.el | ADR-017 |
+| 2 | Mode/tool allowlist | `emacs-client` | REQ-002, REQ-006 | mode-spec `:tools` via `satan-mode-register`; consistency `satan-mode-check-tool-references` (satan-mode.el) | ADR-017 |
+| 3 | Capability / jail profiles | `emacs-client` | REQ-002 | `satan-profiles` / `satan-mode--apply-profile` (satan-mode.el) | ADR-017 |
 | 4 | Append-only audit | `emacs-client` | REQ-003 | `satan-audit-record` satan-audit.el:95 | ADR-017 |
 | 5 | Token / budget ceiling | `emacs-client` | REQ-004 | `satan-budget-exceeded-p` satan-budget.el:67 | ADR-017 |
 | 6 | Kill / disable switches | `emacs-client` | REQ-005 | `satan-*-enabled` defcustoms; broker halt | ADR-017 |

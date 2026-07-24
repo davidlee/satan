@@ -93,3 +93,21 @@ artifact. Canon is reconciled to the symbols (Per-slice direct edit).
   only the sanctioned additive pointer (F6-resolved, in-slice, not a reconcile
   item). QUE-001 is a pre-existing open question owned by the SPEC-001 owner, out
   of this slice's scope — not a reconcile action here.
+
+## Reconciliation Outcome
+
+### Direct edits applied
+- **design.md §5.3 (rows 2–3 "Enforced at")** — replaced the stale
+  `satan-mode.el:80-208` / `mode specs satan-mode.el` anchors with the
+  symbol-first anchors the delivered ledger uses (`satan-mode-register` +
+  `satan-mode-check-tool-references`; `satan-profiles` / `satan-mode--apply-profile`).
+  Canon now mirrors `authority-ledger.md` and honours design §5.2 (symbol-first,
+  lines advisory). Drove: RV-004 F-2.
+
+### REVs completed
+- None. No governance/spec item in the brief — no ADR/spec/requirement diverged.
+
+### Withdrawn / tolerated
+- RV-004 F-1: aligned (benign `slice-014.toml` lifecycle-metadata touch; no write).
+
+Reconcile pass complete — every brief item resolved. Handoff to /close.
