@@ -1,0 +1,45 @@
+# Implementation plan for SL-014 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-014"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored — edits append, they never renumber. Criterion ids
+# are local to their phase, bare, and equally immutable (.doctrine/glossary.md §
+# reference forms): EN-1 entry, EX-1 exit, and verification by mode —
+# VT-1 test (automated), VA-1 agent check, VH-1 human acceptance.
+[[phase]]
+id        = "PHASE-01"
+name      = "Author the authority ledger and wire the ADR-017 §3 pointer"
+objective = "Create .doctrine/adr/017/authority-ledger.md — owner legend, the seven-row day-one inventory (all emacs-client), standing notes on the row 4 attrd dual-write and row 7 arrival trigger/policy split, the append-only transition-log line format, and a worked D4.2 transition example — and append an additive dated pointer to it from adr-017.md §3 (the 'Authority inventory with single ownership' decision item)."
+entrance_criteria = [
+  { id = "EN-1", text = "design.md is locked at plan status; DEC-003 accepted; Q2 resolved (add the pointer)." },
+  { id = "EN-2", text = "Design enforcement anchors verified present in the current tree (satan-tool-validate-args, satan-audit-record, satan-budget-exceeded-p, satan-tick-quiet-p/pick) and adr-017.md §3 exists (adr-017.md:59)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "authority-ledger.md exists with: the owner legend (design §5.2), the seven-row day-one table all owned by emacs-client (design §5.3), standing notes on row 4 (attrd dual-write) and row 7 (systemd trigger vs emacs-client policy; ADR-002 pending), the transition-log line format, and the worked D4.2 example." },
+  { id = "EX-2", text = "adr-017.md §3 carries an additive dated sentence pointing at authority-ledger.md; no prior §3 text removed or renumbered." },
+  { id = "EX-3", text = "doctrine validate reports the corpus clean." },
+]
+verification = [
+  { id = "VA-1", expects = "Completeness: every ADR-017 §3 authority class (budget ceiling, allowlists, audit append, permission profiles, kill switches, arrival policy) appears as >=1 ledger row." },
+  { id = "VA-2", expects = "Single owner: every row names exactly one legend token in the Owner column, and all are emacs-client on landing (retrospective accuracy)." },
+  { id = "VA-3", expects = "Addressability: every row cites its governing SPEC-001 REQ, or a governing ADR where no REQ applies (row 7 -> ADR-002); satisfies SPEC-001 NF-004." },
+  { id = "VA-4", expects = "Greppable transitions: the transition-log format makes a from->to owner change greppable (SPEC-001 NF-001), demonstrated by the worked D4.2 example in the ledger." },
+  { id = "VA-5", expects = "Wiring: adr-017.md §3 links the ledger and doctrine validate is clean." },
+]
+specs             = []           # v1 — no spec/requirement registry linkage in plan.toml
+requirements      = []
