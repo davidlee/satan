@@ -34,6 +34,22 @@ intent = "scope-relevant"
 selector = "docs/perceptual-design.md"
 intent = "scope-relevant"
 
+[[selector]]
+selector = "satan/satan-context.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-sensor-*.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-trace.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-ingest-cursor.el"
+intent = "scope-relevant"
+
 [[relation]]
 label = "references"
 role = "originates_from"
