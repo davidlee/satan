@@ -1,7 +1,7 @@
 id = 15
 slug = "corpus-relocation"
 title = "Corpus relocation: SATAN model-facing corpus leaves ~/notes for a standalone repo"
-status = "design"
+status = "plan"
 created = "2026-08-22"
 updated = "2026-08-23"
 tags = ["corpus", "paths", "refactor", "satan"]
