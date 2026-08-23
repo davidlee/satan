@@ -22,8 +22,8 @@ reads the other) and `satan-tools-atsatan` already carries an
 `!**/satan/**` exclude glob to undo the nesting at scan time.
 
 A **third** ownership class is unnamed too. Runtime state already lives at
-`~/.local/state/satan/`, but no module owns that root: eight sites inline the
-same `(or (getenv "XDG_STATE_HOME") …)` expression, in two divergent spellings
+`~/.local/state/satan/`, but no module owns that root: nine defcustoms inline
+the same `(or (getenv "XDG_STATE_HOME") …)` expression, in two divergent spellings
 of the fallback. The relocation needs a state root regardless — `runs/` must
 land somewhere — so naming it retires the clone in the same act
 (design D1).
@@ -46,7 +46,7 @@ live there.
    defcustoms in `satan-custom.el` (the zero-dep leaf that already owns
    `satan-notes-root`), plus `satan-corpus-path` / `satan-state-path` join
    helpers mirroring `satan-notes-path`. The 16 corpus sites lose their literal
-   `"satan/"` prefix; the 8 cloned XDG expressions collapse into one.
+   `"satan/"` prefix; the 9 cloned XDG expressions collapse into one.
    `satan-notes-root` survives unchanged for the two genuine user-notes
    consumers and the journal/weekly/inbox derivations.
 2. **Split runtime from authored.** `satan-run`'s two directory defcustoms
@@ -64,7 +64,7 @@ live there.
 | Surface | Refs | Note |
 |---|---|---|
 | `satan/*.el` corpus sites | 16 | via new `satan-corpus-path` |
-| `satan/*.el` cloned XDG state sites | 8 | via new `satan-state-path` |
+| `satan/*.el` cloned XDG state sites | 9 | via new `satan-state-path` |
 | `satan/test/*.el` | 6 files bind `satan-notes-root` | some become `satan-corpus-root` |
 | `flake.nix:134` | jail `--bind $HOME/notes/satan/hippocampus`; `--ro-bind $HOME/notes` → `/satan/notes` | corpus currently reachable *through* the notes mount — needs its own bind |
 | **authored corpus text** — 8 files name their own old path to the model | 8 | `system/scaffold.txt`, 3 `tools/*.md`, 4 `prompts/*.txt` |

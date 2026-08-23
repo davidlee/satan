@@ -39,7 +39,7 @@ dependencies = []
 [[phase]]
 id        = "PHASE-01"
 name      = "Name the three roots"
-objective = "Introduce satan-corpus-root / satan-state-root defcustoms and satan-corpus-path / satan-state-path joins in satan-custom.el (design §5.2), and rewire all 24 sites: the 16 corpus paths spelled `(expand-file-name \"satan/<x>\" satan-notes-root)` (design §2.1) and the 8 inlined XDG-state clones (design §2.2). Pure refactor — both new defaults resolve to today's on-disk locations, so every one of the 24 paths comes out byte-identical and nothing moves. This phase is the design (P1): once the concepts have names, the relocation is a default value. It is also the whole DRY payload, and it carries no cutover risk."
+objective = "Introduce satan-corpus-root / satan-state-root defcustoms and satan-corpus-path / satan-state-path joins in satan-custom.el (design §5.2), and rewire all 25 sites: the 16 corpus paths spelled `(expand-file-name \"satan/<x>\" satan-notes-root)` (design §2.1) and the 9 inlined XDG-state clones (design §2.2). Pure refactor — both new defaults resolve to today's on-disk locations, so every one of the 25 paths comes out byte-identical and nothing moves. This phase is the design (P1): once the concepts have names, the relocation is a default value. It is also the whole DRY payload, and it carries no cutover risk."
 entrance_criteria = [
   { id = "EN-1", text = "Design authored at .doctrine/slice/015/design.md; `just check` green at the baseline commit (design §2.5)" },
 ]
@@ -47,7 +47,7 @@ exit_criteria = [
   { id = "EX-1", text = "satan-custom.el defines satan-corpus-root (transitional default: `satan/` below satan-notes-root) and satan-state-root (default: XDG_STATE_HOME or ~/.local/state, + `satan`), both :group 'satan" },
   { id = "EX-2", text = "satan-custom.el defines satan-corpus-path and satan-state-path with the same join-and-expand shape as the existing satan-notes-path — the root is expand-file-name'd, so a literal tilde root never reaches a caller (design F5/E2)" },
   { id = "EX-3", text = "All 16 corpus sites (design §2.1 table) resolve via satan-corpus-path; the `\"satan/\"` literal is gone from each" },
-  { id = "EX-4", text = "All 8 XDG-state clones (design §2.2 table) resolve via satan-state-path; both divergent fallback spellings are gone" },
+  { id = "EX-4", text = "All 9 XDG-state clones (design §2.2 table) resolve via satan-state-path; both divergent fallback spellings are gone" },
   { id = "EX-5", text = "satan-tools-notes-root and satan-tools-atsatan-root still default to satan-notes-root — unchanged, and now a deliberate statement rather than an accident" },
   { id = "EX-6", text = "satan-custom.el remains a zero-satan-dependency leaf (design I2/F6)" },
   { id = "EX-7", text = "Nothing on disk moves; no external consumer (flake, justfile, ~/.config, corpus text) is touched in this phase" },
@@ -57,7 +57,7 @@ verification = [
   { id = "VT-2", expects = "Derivation, not literals: rebinding satan-corpus-root or satan-state-root moves every dependent default. Extends the invariant satan-run-test.el:186 already asserts for satan-notes-root to the two new roots, with the wpm, sensor, trace and patch-worktree paths as the new cases.", test_file = "satan/test/satan-custom-test.el", keywords = ["satan-runs-dir", "satan-hippocampus-dir", "satan-sensor-state-file", "satan-trace-dir", "satan-sensor-wpm-log-dir"], waived = false },
   { id = "VT-3", expects = "Recurrence guard (design I1, VT form): a test asserts no path expression under satan/*.el contains a `satan/` path segment literal. This is the invariant that keeps the concept named — cf. IMP-017's standing duplicate-definition check.", test_file = "satan/test/satan-custom-test.el", keywords = ["satan/", "directory-files-recursively"], waived = false },
   { id = "VT-4", expects = "satan-custom.el declares both new defcustoms and both new joins and requires nothing from satan (leaf invariant I2).", test_file = "satan/satan-custom.el", keywords = ["defcustom satan-corpus-root", "defcustom satan-state-root", "defun satan-corpus-path", "defun satan-state-path"], waived = false },
-  { id = "VA-1", expects = "Byte-identical resolution: enumerate all 24 paths before and after the rewire (batch-eval each defcustom) and diff. Empty diff — the refactor is provably behaviour-free, which is what licenses landing it ahead of any move." },
+  { id = "VA-1", expects = "Byte-identical resolution: enumerate all 25 paths before and after the rewire (batch-eval each defcustom) and diff. Empty diff — the refactor is provably behaviour-free, which is what licenses landing it ahead of any move." },
 ]
 specs        = []
 requirements = []

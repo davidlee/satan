@@ -59,7 +59,7 @@ Note the corrected figure. A first survey put this at 37 by grepping
 
 ### 2.2 The state-root clone
 
-Those XDG hits are their own duplication. Eight sites inline the same
+Those XDG hits are their own duplication. Nine defcustoms inline the same
 resolution, in two spellings of the same fallback:
 
 | File:line | Leaf | Fallback spelling |
@@ -70,7 +70,7 @@ resolution, in two spellings of the same fallback:
 | `satan-sensor-wpm.el:26` | `satan/sensor-wpm.json` | `".local/state" "~"` |
 | `satan-sensor-curiosity.el:18` | `satan/sensor-curiosity.json` | `".local/state" "~"` |
 | `satan-sensor-curiosity.el:26` | (second file) | `".local/state" "~"` |
-| `satan-sensor-content.el` | `satan/sensor-content.json` | `".local/state" "~"` |
+| `satan-sensor-content.el:27` | `satan/sensor-content.json` | `".local/state" "~"` |
 | `satan-patch-worktree.el:18` | `satan/patch-agent/worktrees/` | `"~/.local/state/"` |
 | `satan-patch-prompt.el:28` | `satan/patch-agent/logs/` | `"~/.local/state/"` |
 
@@ -93,6 +93,7 @@ Eleven surfaces reference `~/notes/satan`; one is punted (§7 D5).
 | # | Surface | Refs | In scope |
 |---|---|---|---|
 | 1 | `satan/*.el` corpus sites | 16 (§2.1) | yes |
+| 1b | `satan/*.el` cloned XDG-state defcustoms | 9 (§2.2) | yes |
 | 2 | `satan/test/*.el` | 6 files bind `satan-notes-root`; `satan-run-test.el:197` asserts `/tmp/nr/satan/hippocampus` | yes |
 | 3 | **Authored corpus text** — 8 files name their own old path to the model: `system/scaffold.txt`, `tools/{inbox_append,hippocampus_write,proposal_stage}.md`, `prompts/{motd,morning,self-edit-mech,self-edit-mind}.txt` | 8 | yes |
 | 4 | `flake.nix:134` jail bind | 1 | yes |
@@ -286,7 +287,7 @@ the window is seconds (§7 D4).
 ## 7. Decisions, Rationale & Alternatives
 
 - **D1 — Three named roots, not two.** The move needs a state root anyway
-  (`runs/` must land somewhere), and naming it retires the 8-fold clone of §2.2
+  (`runs/` must land somewhere), and naming it retires the 9-fold clone of §2.2
   in the same act. *Alternative:* add `satan-corpus-root` only and leave the
   clones — rejected: it leaves the third ownership class unnamed while
   demonstrably in use, and the clone's two divergent fallback spellings are a

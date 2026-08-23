@@ -10,7 +10,7 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 
 Four phases. One is the design, two are the moves, one is the record.
 
-PHASE-01 carries the whole design payload — the three named roots and the 24
+PHASE-01 carries the whole design payload — the three named roots and the 25
 rewired sites — and carries none of the risk, because both new defaults still
 resolve exactly where the paths resolve today. PHASE-02 and PHASE-03 are the two
 live moves, deliberately separated. PHASE-04 sweeps documentation and memory.
@@ -20,7 +20,7 @@ live moves, deliberately separated. PHASE-04 sweeps documentation and memory.
 **Why the refactor lands before anything moves.** The design's premise (P1) is
 that the relocation is a *consequence* of naming the concept. PHASE-01 tests
 that premise: if naming the roots is done properly, the move reduces to one
-default value, and VA-1 proves the rewire is behaviour-free by diffing all 24
+default value, and VA-1 proves the rewire is behaviour-free by diffing all 25
 resolved paths before and after. A rewire that cannot pass that check is a
 rewire that changed something it shouldn't have — better to discover that with
 the trees still in place.
