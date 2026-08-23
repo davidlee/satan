@@ -1,0 +1,139 @@
+# Implementation plan for SL-015 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-015"
+
+[specs]                          # empty in v1 — no spec/requirement registry yet
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored — edits append, they never renumber. Criterion ids
+# are local to their phase, bare, and equally immutable (.doctrine/glossary.md §
+# reference forms): EN-1 entry, EX-1 exit, and verification by mode —
+# VT-1 test (automated), VA-1 agent check, VH-1 human acceptance.
+
+# ── Sequencing note ─────────────────────────────────────────────────────────
+# The design's cutover (design §5.4 S0-S4) is split so that no phase leaves the
+# live system inconsistent. PHASE-01 is a pure refactor: the roots are named and
+# every site rewired, but the two new defaults still resolve to today's
+# locations, so nothing on disk moves and nothing can break. PHASE-02 and
+# PHASE-03 are the two independent live moves (state, then corpus), each ending
+# with its tree, its defaults and its external writers agreeing. PHASE-04 sweeps
+# the record.
+#
+# PHASE-01's transitional defaults are NOT the fallback chain design D2 rejects.
+# A fallback resolves two paths and prefers whichever exists; these resolve
+# exactly one. At every moment there is a single answer to "where does the
+# corpus live", and PHASE-03 changes that answer once.
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Name the three roots"
+objective = "Introduce satan-corpus-root / satan-state-root defcustoms and satan-corpus-path / satan-state-path joins in satan-custom.el (design §5.2), and rewire all 24 sites: the 16 corpus paths spelled `(expand-file-name \"satan/<x>\" satan-notes-root)` (design §2.1) and the 8 inlined XDG-state clones (design §2.2). Pure refactor — both new defaults resolve to today's on-disk locations, so every one of the 24 paths comes out byte-identical and nothing moves. This phase is the design (P1): once the concepts have names, the relocation is a default value. It is also the whole DRY payload, and it carries no cutover risk."
+entrance_criteria = [
+  { id = "EN-1", text = "Design authored at .doctrine/slice/015/design.md; `just check` green at the baseline commit (design §2.5)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-custom.el defines satan-corpus-root (transitional default: `satan/` below satan-notes-root) and satan-state-root (default: XDG_STATE_HOME or ~/.local/state, + `satan`), both :group 'satan" },
+  { id = "EX-2", text = "satan-custom.el defines satan-corpus-path and satan-state-path with the same join-and-expand shape as the existing satan-notes-path — the root is expand-file-name'd, so a literal tilde root never reaches a caller (design F5/E2)" },
+  { id = "EX-3", text = "All 16 corpus sites (design §2.1 table) resolve via satan-corpus-path; the `\"satan/\"` literal is gone from each" },
+  { id = "EX-4", text = "All 8 XDG-state clones (design §2.2 table) resolve via satan-state-path; both divergent fallback spellings are gone" },
+  { id = "EX-5", text = "satan-tools-notes-root and satan-tools-atsatan-root still default to satan-notes-root — unchanged, and now a deliberate statement rather than an accident" },
+  { id = "EX-6", text = "satan-custom.el remains a zero-satan-dependency leaf (design I2/F6)" },
+  { id = "EX-7", text = "Nothing on disk moves; no external consumer (flake, justfile, ~/.config, corpus text) is touched in this phase" },
+]
+verification = [
+  { id = "VT-1", expects = "The two new joins are covered as the existing satan-notes-path cases are: segments join below the root, a tilde root is expanded, and satan-state-root honours XDG_STATE_HOME — including a value with a trailing slash, which is what the two divergent clone spellings could disagree about.", test_file = "satan/test/satan-custom-test.el", keywords = ["satan-corpus-path", "satan-state-path", "satan-corpus-root", "satan-state-root", "XDG_STATE_HOME"], patterns = ["^\\(ert-deftest "], waived = false },
+  { id = "VT-2", expects = "Derivation, not literals: rebinding satan-corpus-root or satan-state-root moves every dependent default. Extends the invariant satan-run-test.el:186 already asserts for satan-notes-root to the two new roots, with the wpm, sensor, trace and patch-worktree paths as the new cases.", test_file = "satan/test/satan-custom-test.el", keywords = ["satan-runs-dir", "satan-hippocampus-dir", "satan-sensor-state-file", "satan-trace-dir", "satan-sensor-wpm-log-dir"], waived = false },
+  { id = "VT-3", expects = "Recurrence guard (design I1, VT form): a test asserts no path expression under satan/*.el contains a `satan/` path segment literal. This is the invariant that keeps the concept named — cf. IMP-017's standing duplicate-definition check.", test_file = "satan/test/satan-custom-test.el", keywords = ["satan/", "directory-files-recursively"], waived = false },
+  { id = "VT-4", expects = "satan-custom.el declares both new defcustoms and both new joins and requires nothing from satan (leaf invariant I2).", test_file = "satan/satan-custom.el", keywords = ["defcustom satan-corpus-root", "defcustom satan-state-root", "defun satan-corpus-path", "defun satan-state-path"], waived = false },
+  { id = "VA-1", expects = "Byte-identical resolution: enumerate all 24 paths before and after the rewire (batch-eval each defcustom) and diff. Empty diff — the refactor is provably behaviour-free, which is what licenses landing it ahead of any move." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Split runtime state out of the corpus"
+objective = "Move the two runtime trees — runs/ (9.4k files, 145M, already gitignored) and log/wpm/ — out from under the corpus and onto satan-state-root, retargeting the one external writer (waybar). Independent of the corpus relocation and separable from it: after this phase ~/notes/satan holds only authored content (~250K), which is what makes PHASE-03's repo split clean and lets ~/satan ship with no .gitignore (design P5, D3)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete: satan-state-root and satan-state-path exist and are proven behaviour-free (VA-1)" },
+  { id = "EN-2", text = "Writers quiesced (design §5.4 S0): satan-{tick,motd,morning}.timer and satan-attrd.service stopped, waybar wpm module stopped" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-runs-dir defaults to (satan-state-path \"runs\"); the wpm log dir defaults to (satan-state-path \"log\" \"wpm\")" },
+  { id = "EX-2", text = "satan-hippocampus-dir stays on satan-corpus-path — hippocampus is SATAN-authored, versioned content, not scratch (design D3)" },
+  { id = "EX-3", text = "Both trees moved by rename into ~/.local/state/satan/ (same filesystem, design F7)" },
+  { id = "EX-4", text = "~/.config/waybar/wpm-status.py:43 writes to the new location" },
+  { id = "EX-5", text = "The `/satan/runs` line is removed from ~/notes/.gitignore, and the few tracked log/wpm rows are git rm'd — telemetry from a non-SATAN writer was never meant to be versioned (design D3)" },
+  { id = "EX-6", text = "Writers restarted; a live tick writes its bundle under ~/.local/state/satan/runs/" },
+]
+verification = [
+  { id = "VT-1", expects = "Both run-layout defcustoms derive from satan-state-root, and satan-hippocampus-dir derives from satan-corpus-root — the split of design D3 asserted in the test that already owns this invariant. satan-run-test.el:197's `/tmp/nr/satan/hippocampus` expectation follows the rename.", test_file = "satan/test/satan-run-test.el", keywords = ["satan-state-root", "satan-corpus-root", "satan-runs-dir", "satan-hippocampus-dir"], waived = false },
+  { id = "VT-2", expects = "The wpm sensor resolves its TSV directory through the state join, not the notes root — a source-shape assertion, since there is no satan-sensor-wpm test file and one path check does not earn a new one (its derivation is already covered by PHASE-01 VT-2).", test_file = "satan/satan-sensor-wpm.el", keywords = ["satan-state-path"], waived = false },
+  { id = "VA-1", expects = "~/notes/satan contains no runs/ or log/ directory, and ~/notes/satan is now under 1M — the authored corpus, alone." },
+  { id = "VH-1", expects = "After restart, one live tick writes a complete run bundle under ~/.local/state/satan/runs/<date>/, and waybar's next minute lands a TSV row in ~/.local/state/satan/log/wpm/." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Corpus cutover to ~/satan"
+objective = "Split ~/notes:satan/ into a standalone ~/satan repo with history, move the tree, flip satan-corpus-root to ~/satan, and follow every remaining consumer — including the 8 authored corpus files that name their own old path to the model (design D6/F2). Retire the two workarounds the nesting forced (design D8). This is the only phase where the live system is briefly inconsistent; design §5.4 keeps that window to seconds and design D4 rules out a symlink that would hide a missed consumer."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete: only authored content remains under ~/notes/satan" },
+  { id = "EN-2", text = "Hard gate (design R3): ~/notes working tree clean under satan/ — the 4 modified + 31 untracked files committed before any history operation" },
+  { id = "EN-3", text = "OQ-1 resolved empirically: `git subtree split -P satan` inspected for usable history over ~/notes' `git add .` commit style; if unusable, `nix run nixpkgs#git-filter-repo` used instead. Decided BEFORE any git rm (design R2)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "~/satan is a git repo whose history carries the corpus commits; ~/notes has the subtree removed and no .gitignore entry for it" },
+  { id = "EX-2", text = "satan-corpus-root defaults to the literal \"~/satan\" — no fallback, no derivation from satan-notes-root (design D2/P4)" },
+  { id = "EX-3", text = "~/satan carries no .gitignore (design P5)" },
+  { id = "EX-4", text = "The 8 authored corpus files naming ~/notes/satan are retargeted: system/scaffold.txt, tools/{inbox_append,hippocampus_write,proposal_stage}.md, prompts/{motd,morning,self-edit-mech,self-edit-mind}.txt. Content semantics unchanged — only the path strings (design D6)" },
+  { id = "EX-5", text = "flake.nix:134 binds $HOME/satan/hippocampus; the --ro-bind of $HOME/notes stays (design A1 — the jail needs no corpus bind, assembly is elisp-side)" },
+  { id = "EX-6", text = "~/notes/justfile build-system-prompt reads its two sources from ~/satan; the recipe stays in ~/notes with its .pi/SYSTEM.md artefact (design D7)" },
+  { id = "EX-7", text = "~/.config retargeted: zsh/init.zsh:161 motd read, systemd/user/satan-patcher.service:9 SATAN_PATCHER_PROMPT (the pin that keeps the punted daemon working, design D5)" },
+  { id = "EX-8", text = "Workarounds retired (design D8): denote-excluded-directories-regexp dropped from ~/.emacs.d/org/dl-denote.el, and the '!**/satan/**' exclude glob dropped from satan-tools-atsatan.el" },
+  { id = "EX-9", text = "~/notes/satan no longer exists — no symlink stands in for it (design D4)" },
+]
+verification = [
+  { id = "VT-1", expects = "The atsatan scan no longer excludes a satan/ subtree: the exclude-glob constant and its test expectation are both gone.", test_file = "satan/test/satan-tools-atsatan-test.el", keywords = ["satan-tools-atsatan-root"], waived = false },
+  { id = "VT-2", expects = "Fixture trees follow the rename — the context and integration tests build ${temp}/satan/... layouts that would otherwise pass against a layout that no longer exists (design §9 regression watch).", test_file = "satan/test/satan-integration-test.el", keywords = ["satan-corpus-root"], waived = false },
+  { id = "VT-3", expects = "satan-corpus-root's default is the standalone path, not a derivation from the notes root.", test_file = "satan/satan-custom.el", keywords = ["\"~/satan\""], waived = false },
+  { id = "VA-1", expects = "No file under ~/satan names ~/notes/satan — the corpus no longer lies to the model about where it lives (design F2)." },
+  { id = "VA-2", expects = "git log in ~/satan shows corpus history predating the split, not a single initial commit (design F3)." },
+  { id = "VH-1", expects = "After an Emacs restart (design E1/R4 — restart, never setq), a live interactive run receives its framing from ~/satan/system/framing.txt and its tool descriptions from ~/satan/tools/, and a denote: link-follow in ~/notes is no slower than before the exclusion regexp was dropped." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Sweep the record"
+objective = "Close the paper trail: retarget the remaining documentation and memory references, and run the whole-$HOME sweep that catches any consumer missing from the design's inventory (design R5). Closed-slice prose stays as written — SL-002 and SL-012 cite ~/notes/satan as historical record and are not rewritten (slice non-goals)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete; `just check` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "docs/perceptual-design.md:227 names the new motives path" },
+  { id = "EX-2", text = "Memory corpus updated: the SATAN orientation signpost's code/content split and the corpus-integration skip-unless pattern both name ~/satan" },
+  { id = "EX-3", text = "The three-root model is recorded as durable knowledge — which root owns what, and why satan-notes-root is read-only to SATAN — so the distinction survives the next context" },
+  { id = "EX-4", text = "Closed-slice prose (SL-002, SL-012 notes/plans/designs) left untouched" },
+]
+verification = [
+  { id = "VA-1", expects = "Whole-$HOME sweep (design R5): `grep -rIl \"notes/satan\"` across the config trees, dev repos and notes returns only (a) historical run bundles under the state root, which are frozen evidence and deliberately not rewritten (design A2), (b) closed-slice doctrine prose, and (c) the punted satan-patcher repo (CHR-003). Any other hit is a missed consumer." },
+  { id = "VA-2", expects = "`doctrine memory validate` clean; the updated memories retrieve on a satan-orientation query." },
+]
+specs        = []
+requirements = []
