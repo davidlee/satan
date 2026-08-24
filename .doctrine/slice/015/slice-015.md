@@ -22,7 +22,7 @@ reads the other) and `satan-tools-atsatan` already carries an
 `!**/satan/**` exclude glob to undo the nesting at scan time.
 
 A **third** ownership class is unnamed too. Runtime state already lives at
-`~/.local/state/satan/`, but no module owns that root: nine defcustoms inline
+`~/.local/state/satan/`, but no module owns that root: eight defcustoms inline
 the same `(or (getenv "XDG_STATE_HOME") …)` expression, in two divergent spellings
 of the fallback. The relocation needs a state root regardless — `runs/` must
 land somewhere — so naming it retires the clone in the same act
@@ -32,7 +32,7 @@ land somewhere — so naming it retires the clone in the same act
 under the gitignored `runs/`. `~/.emacs.d/org/dl-denote.el` carries a
 `denote-excluded-directories-regexp` prune whose sole purpose is to stop denote
 walking that tree (~10s per `denote:` link-follow without it). Only 124 files
-under `satan/` are tracked by the notes repo; the authored corpus is ~250K
+under `satan/` are tracked by the notes repo; the authored corpus is 528K
 hiding inside a 145M directory.
 
 Destination: `~/satan`, a new standalone git repo — corpus provenance carried
@@ -46,7 +46,10 @@ live there.
    defcustoms in `satan-custom.el` (the zero-dep leaf that already owns
    `satan-notes-root`), plus `satan-corpus-path` / `satan-state-path` join
    helpers mirroring `satan-notes-path`. The 16 corpus sites lose their literal
-   `"satan/"` prefix; the 9 cloned XDG expressions collapse into one.
+   `"satan/"` prefix; the 8 cloned XDG expressions collapse into one
+   (a further two resolve off the same expression but their leaf is
+   `behaviour/` — panopticon's state, read-only to SATAN, out of scope by
+   ownership; design §2.2b).
    `satan-notes-root` survives unchanged for the two genuine user-notes
    consumers and the journal/weekly/inbox derivations.
 2. **Split runtime from authored.** `satan-run`'s two directory defcustoms
@@ -64,13 +67,14 @@ live there.
 | Surface | Refs | Note |
 |---|---|---|
 | `satan/*.el` corpus sites | 16 | via new `satan-corpus-path` |
-| `satan/*.el` cloned XDG state sites | 9 | via new `satan-state-path` |
+| `satan/*.el` cloned XDG state sites | 8 | via new `satan-state-path` |
 | `satan/test/*.el` | 6 files bind `satan-notes-root` | some become `satan-corpus-root` |
 | `flake.nix:134` | jail `--bind $HOME/notes/satan/hippocampus`; `--ro-bind $HOME/notes` → `/satan/notes` | corpus currently reachable *through* the notes mount — needs its own bind |
 | **authored corpus text** — 8 files name their own old path to the model | 8 | `system/scaffold.txt`, 3 `tools/*.md`, 4 `prompts/*.txt` |
 | `~/notes/justfile:12,14` | 2 | `build-system-prompt` cats corpus into `.pi/SYSTEM.md` |
 | ~~`satan-patcher` (separate repo)~~ | 5 | **out of scope** → CHR-003 |
-| `~/.config/systemd/user/satan-patcher.service:9` | `SATAN_PATCHER_PROMPT` | |
+| `~/flakes/modules/home/linux/satan-patcher.nix` | add `systemPromptFile` (the unit is a non-editable /nix/store symlink and carries no pin) | |
+| `~/flakes/modules/home/linux/sway.nix:12` | `wpm-archive-yesterday` hardcoded TSV path; timer active | |
 | `~/.config/zsh/init.zsh:161` | motd read | |
 | `~/.config/waybar/wpm-status.py:43` | **writes** the wpm TSV | live writer |
 | `~/.emacs.d/org/dl-denote.el:15` | exclusion regexp | delete |
@@ -94,8 +98,13 @@ live there.
   re-anchor to `satan-state-root` but do not move.
 - **`satan-patcher` itself** (separate repo — Go default, nix module, 3 docs).
   Punted at the user's direction 2026-08-22: not in active use, may be replaced.
-  Nothing breaks — `satan-patcher.service:9` pins `SATAN_PATCHER_PROMPT` and
-  that line *is* in scope. Tracked as CHR-003.
+  Tracked as CHR-003. **Correction 2026-08-24:** the claim that "nothing breaks
+  because `satan-patcher.service:9` pins `SATAN_PATCHER_PROMPT`" was false — the
+  unit is a non-editable `/nix/store` home-manager symlink carrying no pin, so
+  the daemon runs on the punted module's own stale default. The fix is one line
+  in `~/flakes/modules/home/linux/satan-patcher.nix`, which is *outside* the
+  punted repo and *is* in scope (design D5, PHASE-03 EX-10). Also newly in
+  scope: `~/flakes/modules/home/linux/sway.nix:12` (design R8).
 
 ## Summary
 

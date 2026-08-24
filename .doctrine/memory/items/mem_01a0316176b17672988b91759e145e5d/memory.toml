@@ -1,0 +1,43 @@
+memory_uid = "mem_01a0316176b17672988b91759e145e5d"
+memory_key = "mem.fact.satan.green-is-not-green"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "Verifying green in SATAN: just check needs DB env, just lint is paren-balance only"
+summary = "`just check` aborts from a bare shell without SATAN_DB_HOST/SATAN_FAILOVER_TO_SYSTEM_DB; `just lint` is only paren balance, and ~130 tests skip-and-pass without the test DBs."
+created = "2026-08-24"
+updated = "2026-08-24"
+
+[scope]
+paths = ["justfile", "flake.nix"]
+globs = []
+commands = ["just check", "just lint", "just test"]
+tags = ["satan", "testing", "tooling", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "03bc293996a5df71304d724471b8da8609cdfa1f"
+ref_name = "refs/heads/main"
+checkout_state_id = "93114020ae96d3f2b8c90d7890d05770fa08a8adb72fe2c7eba8b05a1012da65"
+base_commit = "d27229ec04e2fbdd878f2553231c0b38c7cfcd7c"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+

@@ -1,0 +1,43 @@
+memory_uid = "mem_01a03161ca2570c2a3c66d410914f7c3"
+memory_key = "mem.pattern.nixos.grep-misses-symlinked-dotfiles"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "pattern"
+status = "active"
+title = "Home-manager symlinks hide path consumers from grep -r"
+summary = "Every ~/.config dotfile is a /nix/store symlink: grep -r reports clean over them, and the rendered file is not the edit target — the flake source is."
+created = "2026-08-24"
+updated = "2026-08-24"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["nix", "home-manager", "grep", "gotcha", "migration"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "03bc293996a5df71304d724471b8da8609cdfa1f"
+ref_name = "refs/heads/main"
+checkout_state_id = "3ed527eb0e30bd83633e4bb9d6dddf988316156ae877fa7fe9366612213bb162"
+base_commit = "d27229ec04e2fbdd878f2553231c0b38c7cfcd7c"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+

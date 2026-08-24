@@ -10,7 +10,7 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 
 Four phases. One is the design, two are the moves, one is the record.
 
-PHASE-01 carries the whole design payload — the three named roots and the 25
+PHASE-01 carries the whole design payload — the three named roots and the 24
 rewired sites — and carries none of the risk, because both new defaults still
 resolve exactly where the paths resolve today. PHASE-02 and PHASE-03 are the two
 live moves, deliberately separated. PHASE-04 sweeps documentation and memory.
@@ -20,7 +20,7 @@ live moves, deliberately separated. PHASE-04 sweeps documentation and memory.
 **Why the refactor lands before anything moves.** The design's premise (P1) is
 that the relocation is a *consequence* of naming the concept. PHASE-01 tests
 that premise: if naming the roots is done properly, the move reduces to one
-default value, and VA-1 proves the rewire is behaviour-free by diffing all 25
+default value, and VA-1 proves the rewire is behaviour-free by diffing all 24
 resolved paths before and after. A rewire that cannot pass that check is a
 rewire that changed something it shouldn't have — better to discover that with
 the trees still in place.
@@ -56,7 +56,10 @@ being moved; a rename under a live writer strands rows in a directory nothing
 reads again.
 
 **The `~/notes` working tree is a hard gate** (EN-2 of PHASE-03, design R3).
-Four modified and 31 untracked files sit under `satan/` today. A history
+Four modified and 33 untracked files sit under `satan/` today — all 33
+untracked and one modified are `satan/log/wpm/*.tsv`, which PHASE-02 removes
+from version control, so PHASE-03's gate commits only the 3 genuine corpus
+edits rather than everything (PHASE-03 EN-2). A history
 operation over a dirty tree loses them silently.
 
 **OQ-1 must resolve before any `git rm`** (EN-3). `git subtree split` is

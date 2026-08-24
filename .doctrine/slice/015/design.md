@@ -55,60 +55,91 @@ The 16 corpus sites:
 Note the corrected figure. A first survey put this at 37 by grepping
 `expand-file-name "satan…"`; ~18 of those hits anchor to **XDG state**, not to
 `satan-notes-root`, and are already correct. The corpus surface is 16 sites in
-14 files.
+9 files (`satan-context.el` contributes 5, `satan-run.el` /
+`satan-tools-org.el` / `satan-motive.el` 2 each).
 
 ### 2.2 The state-root clone
 
-Those XDG hits are their own duplication. Nine defcustoms inline the same
+Those XDG hits are their own duplication. **Eight** defcustoms inline the same
 resolution, in two spellings of the same fallback:
 
 | File:line | Leaf | Fallback spelling |
 |---|---|---|
-| `satan-trace.el:37` | `satan/` | `".local/state" "~"` |
-| `satan-ingest-cursor.el:52` | `satan/ingest-cursor.json` | `".local/state" "~"` |
-| `satan-sensor-alerts.el:22` | `satan/notified.json` | `".local/state" "~"` |
-| `satan-sensor-wpm.el:26` | `satan/sensor-wpm.json` | `".local/state" "~"` |
+| `satan-trace.el:38` | `satan/` | `".local/state" "~"` |
+| `satan-ingest-cursor.el:53` | `satan/ingest-cursor.json` | `".local/state" "~"` |
+| `satan-sensor-alerts.el:23` | `satan/notified.json` | `".local/state" "~"` |
+| `satan-sensor-wpm.el:27` | `satan/sensor-wpm.json` | `".local/state" "~"` |
 | `satan-sensor-curiosity.el:18` | `satan/sensor-curiosity.json` | `".local/state" "~"` |
-| `satan-sensor-curiosity.el:26` | (second file) | `".local/state" "~"` |
-| `satan-sensor-content.el:27` | `satan/sensor-content.json` | `".local/state" "~"` |
-| `satan-patch-worktree.el:18` | `satan/patch-agent/worktrees/` | `"~/.local/state/"` |
+| `satan-sensor-content.el:29` | `satan/sensor-content.json` | `".local/state" "~"` |
+| `satan-patch-worktree.el:19` | `satan/patch-agent/worktrees/` | `"~/.local/state/"` |
 | `satan-patch-prompt.el:28` | `satan/patch-agent/logs/` | `"~/.local/state/"` |
 
 `~/.local/state/satan/` already exists and holds every one of those artefacts.
 The convention is real and in production; only its name is missing.
 
+### 2.2b The `behaviour/` class — not ours (finding, 2026-08-24)
+
+Two further defcustoms resolve off the same XDG expression but their leaf is
+`behaviour/`, **not** `satan/`:
+
+| File:line | Leaf | Spelling |
+|---|---|---|
+| `satan-sensor-curiosity.el:26` | `behaviour/segments` | `".local/state" "~"` |
+| `satan-tools-content.el:24-28` | `behaviour/content/` | `(if xdg (expand-file-name xdg) "~/.local/state/")` — a third spelling |
+
+A third member ignores `XDG_STATE_HOME` entirely:
+`satan-tools-activity.el:35` = `(expand-file-name "~/.local/state/behaviour/")`.
+Three remediation-hint string literals at `satan-sensor-alerts.el:113,117,121`
+name the same tree.
+
+This is panopticon's state — an **external producer, read-only to SATAN**
+(consumed at `satan-memory-evidence.el:507`, `satan-ingest-cursor.el:137,196`;
+a workspaceDep at `flake.nix:98`). It is a fourth ownership class and it is
+**out of scope by ownership**: SATAN does not own the tree, so SATAN does not
+name its root (§7 D1). Rewiring these to `satan-state-path` would resolve to a
+nonexistent `~/.local/state/satan/behaviour/…` and silence the curiosity sensor
+without an error (`satan-sensor-curiosity.el:74` returns `(0 . SINCE-TS)` when
+the segment file is absent).
+
+An earlier correction in this slice moved this count the *wrong* way (8 → 9,
+folding `satan-sensor-curiosity-segments-dir` into the state class). Eight is
+right for the class SATAN owns.
+
 ### 2.3 Cohabitation costs
 
 | Cost | Evidence |
 |---|---|
-| Authored corpus hidden in a runtime tree | `satan/` = 9,542 files / 145M; `satan/runs/` alone is 9.4k files / 145M and is gitignored (`~/notes/.gitignore:1 = /satan/runs`). The tracked corpus is **124 files / ~250K**. |
+| Authored corpus hidden in a runtime tree | `satan/` = 9,580 files / 146M; `satan/runs/` alone is 9,423 files / 145M and is gitignored (`~/notes/.gitignore:1 = /satan/runs`). The tracked corpus is **124 files / 528K** — of which 63 are `satan/log/wpm` telemetry rows (§7 D3). |
 | denote workaround | `~/.emacs.d/org/dl-denote.el:15` sets `denote-excluded-directories-regexp` solely to stop denote's uncached tree walk from statting ~10k non-note files on every `denote:` link-follow (~10s per link, per its own comment). |
-| atsatan workaround | `satan-tools-atsatan.el:32` carries `'("!**/satan/**")` to exclude SATAN's corpus from the `@satan` scan of the user's notes — an exclusion needed only because the two are nested. |
+| atsatan workaround | `satan-tools-atsatan.el:51-52` (a `defconst`; consumer at :154) carries `'("!**/satan/**")` to exclude SATAN's corpus from the `@satan` scan of the user's notes — an exclusion needed only because the two are nested. |
 | Ownership inversion | SATAN *writes* its corpus; it only *reads* the user's notes. The write target is nested inside the read-only one, and the jail encodes exactly that inversion (`--ro-bind $HOME/notes` + a narrower `--bind` punching hippocampus back to read-write). |
 
 ### 2.4 Consumer surfaces
 
-Eleven surfaces reference `~/notes/satan`; one is punted (§7 D5).
+Twelve surfaces reference `~/notes/satan`; one is punted (§7 D5).
 
 | # | Surface | Refs | In scope |
 |---|---|---|---|
 | 1 | `satan/*.el` corpus sites | 16 (§2.1) | yes |
-| 1b | `satan/*.el` cloned XDG-state defcustoms | 9 (§2.2) | yes |
-| 2 | `satan/test/*.el` | 6 files bind `satan-notes-root`; `satan-run-test.el:197` asserts `/tmp/nr/satan/hippocampus` | yes |
+| 1b | `satan/*.el` cloned XDG-state defcustoms | 8 (§2.2) | yes |
+| 2 | `satan/test/*.el` | 4 files bind `satan-notes-root` (`satan-context-test.el`, `satan-integration-test.el`, `satan-custom-test.el`, `satan-run-test.el`); `satan-run-test.el:197` asserts `/tmp/nr/satan/hippocampus` | yes |
 | 3 | **Authored corpus text** — 8 files name their own old path to the model: `system/scaffold.txt`, `tools/{inbox_append,hippocampus_write,proposal_stage}.md`, `prompts/{motd,morning,self-edit-mech,self-edit-mind}.txt` | 8 | yes |
 | 4 | `flake.nix:134` jail bind | 1 | yes |
 | 5 | `~/notes/justfile:12,14` — `build-system-prompt` cats `satan/system/scaffold.txt` + `satan/prompts/interactive.txt` into `.pi/SYSTEM.md` | 2 | yes |
 | 6 | `~/.config/waybar/wpm-status.py:43` — **writes** the wpm TSV | 1 | yes |
 | 7 | `~/.config/zsh/init.zsh:161` — motd read | 1 | yes |
-| 8 | `~/.config/systemd/user/satan-patcher.service:9` — pins `SATAN_PATCHER_PROMPT` | 1 | yes |
+| 8 | **`~/flakes/modules/home/linux/satan-patcher.nix`** — the unit is a home-manager store symlink and carries **no** `systemPromptFile =`, so the daemon runs on the punted module's own default (`~/dev/satan-patcher/nix/module.nix:74`). The editable surface is the flake module, not the unit (§7 D5) | 1 | yes |
 | 9 | `~/.emacs.d/org/dl-denote.el:15` — exclusion regexp | 1 | yes (retire) |
 | 10 | `docs/perceptual-design.md:227` + memory corpus | 3 | yes |
 | 11 | `~/dev/satan-patcher` — Go defaults, nix module, 3 docs | 5 | **no** → CHR-003 |
+| 12 | **`~/flakes`** — `modules/home/linux/sway.nix:12` builds `wpm-archive-yesterday` with a hardcoded `~/notes/satan/log/wpm/<date>.tsv`; its timer is **active** (`OnCalendar=*-*-* 04:00`, `Persistent=true`). Nix derivations, so a rebuild — not an in-place edit | 2 | yes |
+| 13 | **`~/dev/satan/docs/` + production docstrings** — ~111 doc lines across 17 files and 17 docstring/comment lines in `satan/*.el` name the old path | ~128 | see §7 D9 |
 
 ### 2.5 Baseline
 
-`just check` green at `043fb21`. `~/notes` working tree: 4 modified + 31
-untracked under `satan/` (must be committed before any split — §5.4 S0).
+`just check` green at `043fb21`. `~/notes` working tree: 4 modified + **33** untracked under `satan/` — all 33
+untracked and one modified are `satan/log/wpm/*.tsv` telemetry; the genuine
+corpus edits are `motd.txt`, `motives.org`, `motives.archive.org` (must be committed before any split — §5.4 S0).
 
 ## 3. Forces & Constraints
 
@@ -137,8 +168,10 @@ untracked under `satan/` (must be committed before any split — §5.4 S0).
 
 - **P1 — Name the concept, then move it.** The rename is the design; the
   relocation is a default value.
-- **P2 — One root per ownership class.** Read-only user data, SATAN-authored
-  content, and SATAN runtime state are three classes. Three roots, three joins.
+- **P2 — One root per ownership class *SATAN owns*.** Read-only user data,
+  SATAN-authored content, and SATAN runtime state are three classes. Three
+  roots, three joins. Panopticon's `~/.local/state/behaviour` (§2.2b) is a
+  fourth class SATAN reads but does not own — no root, by ownership.
 - **P3 — Describe the convention that exists.** `satan-state-root` documents
   `~/.local/state/satan`, already in production at 8 sites. No new layout.
 - **P4 — No fallback chains.** A root that silently resolves to a second
@@ -216,7 +249,13 @@ a statement rather than an accident.
 | `runs/` | state | none | 9.4k frozen run bundles, already gitignored |
 | `log/wpm/` | state | none | per-minute telemetry written by a non-SATAN process; a handful of rows are tracked today and that was never intentional (§7 D3) |
 
-Post-split `~/satan` carries no `.gitignore`.
+Post-split `~/satan` carries no `.gitignore` — *provisionally*. `hippocampus/`
+and `proposals/` are model-written and corpus-tracked, so `~/satan` will run
+permanently dirty with no commit path (today that dirt is absorbed by
+`~/notes`' daily `git add .` habit, `~/notes/justfile:1-4` — which is how the
+63 wpm rows and 7 hippocampus files came to be tracked at all). Decide the
+`.gitignore` / commit-automation question in PHASE-03, with the repo in front
+of us (§6 OQ-4).
 
 ### 5.4 Lifecycle, Operations & Dynamics
 
@@ -237,8 +276,13 @@ Cutover, ordered. F1 forces writers down first; F7 makes every move instant.
 - **S3 — Flip the code.** Land §5.2 (defcustoms, joins, 16 + 8 call sites,
   tests), the 8 corpus text files, `flake.nix`, the `~/notes` justfile, the 3
   `~/.config` files, and retire the denote regexp + atsatan glob.
-- **S4 — Restart and verify.** `just check` green; restart units; one live tick
-  writes under `~/.local/state/satan/runs/`; `~/notes/satan` gone.
+- **S4 — Restart and verify, in this order.** `just check` green → **restart
+  Emacs first** → *then* start the timers. `satan-motd.timer`,
+  `satan-morning.timer` and `wpm-archive.timer` are all `Persistent=true`: a
+  timer started after its window has passed fires a catch-up run *immediately*.
+  Timers before Emacs means that run executes against stale defcustoms and
+  writes to the dead path — exactly what R4/E1 exist to prevent. Then one live
+  tick writes under `~/.local/state/satan/runs/`; `~/notes/satan` gone.
 
 **No transitional symlink.** A `~/notes/satan → ~/satan` link would keep both
 paths live, so a missed consumer would keep working and go undetected — exactly
@@ -258,7 +302,16 @@ the window is seconds (§7 D4).
   (`satan-context.el:491`), a *notes* path. So `flake.nix` changes one line —
   the hippocampus bind source — and `--ro-bind $HOME/notes` stays for notes
   reads. Verified by grep: no `SATAN_NOTES_RO` / `/satan/notes` consumer exists
-  in `satan/harness/*.py` beyond a test fixture string.
+  in `satan/harness/*.py` beyond a test fixture string. **Re-verified
+  adversarially 2026-08-24 and upheld**: `SATAN_NOTES_RO` and
+  `SATAN_HIPPOCAMPUS` are *set* at `flake.nix:130-139` and read *nowhere* in
+  the repo; the harness opens only `bundle.json` / `manifest.json` from
+  `SATAN_RUN_DIR` (`satan/harness/bundle.py:17,22`, `runloop.py:165-170`); the
+  patch agent reads its system prompt **broker-side** and passes the contents
+  as `--system-prompt <text>` (`satan-patch-adapter-pi.el:152-160`), so no
+  jailed process opens a corpus path; `satan-attrd` has no on-disk state beyond
+  the DB. But see §8 R7 — the `flake.nix:98` workspaceDeps entry is a
+  *separate* line and a separate problem.
 - **A2 — Historical run bundles keep stale absolute paths.** 2,208 files under
   `runs/` embed `~/notes/satan/...`. They are frozen evidence; rewriting them
   would falsify the record. Accepted, not fixed.
@@ -266,19 +319,44 @@ the window is seconds (§7 D4).
   computed from the root; a user who has customised it keeps a stale value.
   Same for the other 15. Setting `satan-corpus-root` after load does not
   retroactively move them — restart, don't `setq`.
+- **A3 — `expand-file-name` preserves a trailing slash; the joins do not.**
+  Verified: `(expand-file-name "satan/prompts/" "~/notes")` →
+  `".../notes/satan/prompts/"`, while `(satan-corpus-path "prompts")` →
+  `".../notes/satan/prompts"`. Five sites carry a trailing slash
+  (`satan-mode.el:81`, `satan-tools.el:27`, `satan-trace.el:37`,
+  `satan-patch-worktree.el:18`, `satan-patch-prompt.el:27`). Every consumer of
+  those five normalises with `expand-file-name` or `file-name-as-directory`
+  — including the confinement guard at `satan-patch-worktree.el:66-70` — so the
+  rewire is behaviour-free, but **VA-1 must compare after
+  `file-name-as-directory` normalisation** or those five read as a false defect.
+- **A4 — `satan-prompts-dir` is a `defvar`, not a `defcustom`**
+  (`satan-mode.el:80`). It has no `standard-value` property, so the
+  `(eval (car (get 'SYM 'standard-value)) t)` idiom VT-2 mandates cannot reach
+  it. Promote it to a `defcustom` — a compatible change, and it should have been
+  one. The 24 sites map to **22 variables** (14 corpus + 8 state);
+  `satan-self-edit-mind-roots` is one variable spanning 3 sites.
 - **E2** Unexpanded tilde into `call-process` (F5): `satan-corpus-root` ships
   the literal `"~/satan"` for symmetry with `satan-notes-root`, so the join
   helpers must `expand-file-name` the root exactly as `satan-notes-path` does.
 
 ## 6. Open Questions & Unknowns
 
-- **OQ-1** Does `git subtree split -P satan` produce usable history over this
-  repo's log, or does the daily-blob commit style (`git add .` per §justfile
-  `commit`) make it near-worthless? Resolve empirically at S1 before committing
-  to it; filter-repo is the fallback.
+- **OQ-1 — RESOLVED 2026-08-24, subtree is fine.** `~/notes` has **36 commits
+  total**, 28 touching `satan/`. `git subtree split -P satan` finishes in
+  seconds and yields ≤28 trivially-inspectable commits. Message quality is the
+  expected dated-snapshot granularity (`2026-07-22`, `2026-07-08`, plus two
+  conventional-commit outliers `d6a7b54`, `0bd5733`) — thin, but real, and no
+  available tool improves it. `git filter-repo` is confirmed absent and not
+  needed. F3's provenance survives; R2 downgraded.
 - **OQ-2** Should `~/satan` carry its own `justfile` owning
   `build-system-prompt`, rather than leaving the recipe in `~/notes` reading
   across repo boundaries (§7 D7 takes the conservative option)?
+- **OQ-4** `~/satan` will be permanently dirty (§5.3): `hippocampus/` and
+  `proposals/` are model-written and corpus-tracked, and P5 gives the repo no
+  `.gitignore` and no commit automation. Gitignore them, add a commit recipe, or
+  accept the dirt? Decide in PHASE-03. This is P5 vs D3 — D3 itself is
+  internally consistent (tracked, SATAN-authored, and the jail's one read-write
+  bind all agree).
 - **OQ-3** `satan-tools-atsatan-root` defaults to the whole notes corpus. With
   the corpus gone, should the `@satan` scan also cover `~/satan`? Argument for:
   proposals and motives are exactly where a `@satan` marker would be dropped.
@@ -286,12 +364,25 @@ the window is seconds (§7 D4).
 
 ## 7. Decisions, Rationale & Alternatives
 
-- **D1 — Three named roots, not two.** The move needs a state root anyway
-  (`runs/` must land somewhere), and naming it retires the 9-fold clone of §2.2
-  in the same act. *Alternative:* add `satan-corpus-root` only and leave the
-  clones — rejected: it leaves the third ownership class unnamed while
-  demonstrably in use, and the clone's two divergent fallback spellings are a
-  latent bug waiting on an `XDG_STATE_HOME` that ends in a slash.
+- **D1 — Three named roots, not two — and exactly three.** The move needs a
+  state root anyway (`runs/` must land somewhere), and naming it retires the
+  8-fold clone of §2.2 in the same act. *Alternative:* add `satan-corpus-root`
+  only and leave the clones — rejected: it leaves the third ownership class
+  unnamed while demonstrably in use. *Second alternative* (raised by review,
+  2026-08-24): a **fourth** root for the `behaviour/` class of §2.2b, since P2
+  reads "one root per ownership class" — rejected: SATAN reads that tree and
+  does not own or write it, so naming its root would assert an ownership SATAN
+  does not have. P2 is amended to say so explicitly. The two behaviour sites are
+  excluded from the rewire, not folded into the state class.
+  **Corrected rationale:** an earlier draft justified D1 partly by "the two
+  divergent fallback spellings are a latent bug waiting on an `XDG_STATE_HOME`
+  that ends in a slash". **That is false** — the divergence is in the *fallback*
+  branch, unreachable whenever `XDG_STATE_HOME` is set, and
+  `(expand-file-name "satan/x" "/tmp/xdg/")` normalises correctly regardless.
+  The clone is worth retiring for DRY and for §2.2b's mis-filing hazard, not for
+  a bug that does not exist. VT-1's trailing-slash `XDG_STATE_HOME` case tests
+  something the two spellings cannot disagree about — keep it as a cheap
+  regression guard, but not as this decision's evidence.
 - **D2 — `satan-corpus-root` defaults to `"~/satan"` outright; no
   derived-with-fallback.** *Alternative:* default to
   `${satan-notes-root}/satan` and fall back, so both layouts resolve during
@@ -311,12 +402,21 @@ the window is seconds (§7 D4).
   consumer to whenever it next runs, and the surface inventory (§2.4) is
   complete enough not to need a net.
 - **D5 — `satan-patcher` punted to CHR-003** (user direction, 2026-08-22: not
-  in active use, may be replaced). Its 5 refs stay stale. Nothing breaks:
-  `satan-patcher.service:9` pins `SATAN_PATCHER_PROMPT` explicitly and *that
-  line is in scope*, so the running daemon keeps resolving. Only an unpinned
-  default — fresh install, manual invocation, nix module without `prompt =` —
-  would dangle. The elisp-side reader (`satan-patch-prompt.el:22`) is in scope
-  as one of the 16.
+  in active use, may be replaced). Its 5 refs stay stale. **Corrected
+  2026-08-24: the pin this decision rested on does not exist.** An earlier
+  draft claimed `satan-patcher.service:9` pins `SATAN_PATCHER_PROMPT` and is in
+  scope. In fact that unit is a **symlink into
+  `/nix/store/…-home-manager-files/`** and is not editable; the value there is
+  the punted module's own default
+  (`~/dev/satan-patcher/nix/module.nix:74` = `%h/notes/satan/patch-agent/prompt.md`),
+  because `~/flakes/modules/home/linux/satan-patcher.nix:26-35` declares
+  `services.satan-patcher` with **no** `systemPromptFile =`. The running daemon
+  is in exactly the state this decision called the only dangling case. Fix, and
+  it stays outside CHR-003's repo: add one line
+  `systemPromptFile = "%h/satan/patch-agent/prompt.md";` to
+  `~/flakes/modules/home/linux/satan-patcher.nix`, then home-manager rebuild +
+  `systemctl --user daemon-reload`. The elisp-side reader
+  (`satan-patch-prompt.el:22`) is in scope as one of the 16.
 - **D6 — The 8 authored corpus files are in scope.** This narrows the slice's
   "corpus content is a non-goal": content *semantics* are untouched, but path
   strings inside model-facing text are part of the move (F2). Reconcile the
@@ -325,6 +425,26 @@ the window is seconds (§7 D4).
   sources.** Its output is `~/notes/.pi/SYSTEM.md`, consumed by jailed-pi run
   from `~/notes`; moving the recipe would separate it from its artefact. See
   OQ-2.
+- **D9 — Prose inside the code repo is not part of the cutover.** ~111 lines
+  across 17 files under `docs/` (`docs/governance.md` 31,
+  `docs/data-collection.md` 20, `docs/at-satan/design.md` 12) and 17
+  docstring/comment lines in `satan/*.el` name `~/notes/satan`. F2's objection
+  is about **model-facing** text — the corpus tells the model where the corpus
+  is, and a stale path there is an operative lie. A docstring is not read by the
+  model. Retargeting ~128 prose lines is real, unestimated work; PHASE-04's
+  sweep gains an explicit "prose in the code repo" allowlist instead, and the
+  residue goes to backlog. *Alternative:* fix them all in PHASE-04 — rejected as
+  unscoped, but the 17 docstrings are the defensible subset if a smaller batch
+  is wanted.
+- **D10 — Two live `satan/` path expressions survive I1, by allowlist.**
+  `satan-mcp.el:43` (`(expand-file-name "satan/mcp" xdg)` under
+  `XDG_RUNTIME_DIR` — a genuine fourth location, outside all three roots) and
+  `satan-patch-worktree.el:52` (`(format "satan/%s/%s-%s" …)` — the job-id and
+  branch prefix, joined under the worktree root at :56). Both are path
+  expressions, so a path-expression-scoped VT-3 flags them. The guard is
+  written as "no `satan/` literal in an `expand-file-name` whose DIR argument is
+  a `satan-*-root`", with these two named in an explicit allowlist. Narrow and
+  honest, which is less than I1's letter — see §9.
 - **D8 — Retire both nesting workarounds** (denote regexp, atsatan glob). They
   have no remaining referent, and the denote regexp would otherwise silently
   exclude any future legitimately-named `satan/` note directory.
@@ -334,10 +454,12 @@ the window is seconds (§7 D4).
 | id | Risk | Mitigation |
 |---|---|---|
 | R1 | Writers strand rows in the old tree mid-move | S0 quiesce; verify with `systemctl --user list-timers` before S1 |
-| R2 | `git subtree split` yields useless history (OQ-1) | Evaluate at S1; `nix run nixpkgs#git-filter-repo` fallback; both before any `git rm` |
+| R2 | ~~`git subtree split` yields useless history (OQ-1)~~ **DOWNGRADED 2026-08-24** | OQ-1 resolved: 36 commits total, 28 touching `satan/`; split runs in seconds, history is thin-but-real. No fallback needed |
 | R3 | Dirty `~/notes` tree (4 M + 31 ??) loses uncommitted corpus edits in the split | S0 commits first — hard gate |
 | R4 | A running Emacs holds old defcustom values, writes to the dead path | Restart Emacs at S4; E1 says restart, never `setq` |
-| R5 | A consumer missed from §2.4 | Post-cutover `grep -rIl "notes/satan" ~ --exclude-dir=.git` over `$HOME` config trees as a VA check; the old path must not exist, so any surviving reader errors loudly (D4) |
+| R5 | A consumer missed from §2.4 | Post-cutover sweep as a VA check — **`grep -rIl --dereference-recursive`**, because plain `grep -r` does **not** follow symlinks and every home-manager dotfile under `~/.config` is a store symlink (proven: 0 hits vs 2 with `--dereference`). The sweep must also cover `~/flakes` *sources*, which is where the two hardest consumers actually live (surfaces 8 and 12). The old path must not exist, so any surviving reader errors loudly (D4) |
+| R7 | `flake.nix:98` lists `/home/david/notes/` among `workspaceDeps`, bind-mounted at `/workspace/notes` for jailed-pi / jailed-claude / jailed-opencode / jailed-dirge (`~/flakes/pub/README.md:310`). After the cutover a jailed *dev* agent can no longer see a prompt or `system/framing.txt` — a dev-workflow regression, not a runtime one (A1). Adding `~/satan` collides: basename `satan` is already claimed at `flake.nix:131` by `--bind "$HOME/dev/satan" "/workspace/satan"` | Decide the mount name in PHASE-03 (`/workspace/corpus`?) or accept the loss; not a runtime break |
+| R8 | `wpm-archive.timer` (active, `Persistent=true`, 04:00) fails **silently** after PHASE-02 — `~/flakes/…/sway.nix:12` hardcodes the old TSV path, so the script takes its `if [ ! -f "$file" ]` branch, prints "nothing to archive" and exits 0. Hourly WPM bucketing stops permanently with no error | PHASE-02 gains an exit criterion for `sway.nix:12`; it is a nix derivation, so a flake edit + rebuild, not a `sed` |
 | R6 | The 145M move is slower than assumed | F7: same filesystem, `mv` is a rename |
 
 ## 9. Quality Engineering & Validation
@@ -353,21 +475,57 @@ generalises):
 - **VT — derivation, not literals.** Rebinding each root moves every dependent
   default. Extends `satan-run-test.el:186`'s pattern to the corpus and state
   roots; the wpm, sensor, trace and patch-worktree paths are the new cases.
-- **VT — no `"satan/"` literal survives.** A grep-shaped assertion over
-  `satan/*.el`: no path expression contains a `"satan/"` segment. This is I1
-  made executable and is the recurrence guard (cf. IMP-017's standing
-  duplicate-definition check).
+- **VT — no `"satan/"` literal survives *in a root-anchored join*.** A
+  grep-shaped assertion over `satan/*.el`: no `expand-file-name` whose DIR
+  argument is a `satan-*-root` carries a `"satan/"` segment. Scoped exactly
+  that narrowly, with `satan-mcp.el:43` and `satan-patch-worktree.el:52`
+  named in an explicit allowlist (§7 D10). Of the 28 `satan/`-containing string
+  literals in `satan/*.el`, 24 are rewire targets, 2 are the allowlisted live
+  path expressions, 2 are a docstring and the atsatan glob (which is still
+  present at guard-writing time and retires only in PHASE-03). Not counted:
+  17 production docstrings and ~50 test literals, including 20+ legitimate
+  `"satan/"` allowed-path and branch fixtures in the patch tests
+  (`satan-patch-runner-test.el:148`, `satan-patch-worktree-test.el:31`). This is
+  I1 made executable, weaker than I1's letter, and honest about it (cf. IMP-017's
+  standing duplicate-definition check).
 - **VT — state root honours `XDG_STATE_HOME`,** including a trailing-slash
-  value, closing the §2.2 spelling divergence.
+  value. Kept as a cheap regression guard, *not* as evidence for D1 — the two
+  spellings cannot disagree about it (§7 D1, corrected rationale).
 - **VA — corpus text sweep.** No file under `~/satan` names `~/notes/satan`.
-- **VA — surface sweep.** R5's `$HOME` grep returns only historical run bundles
-  (A2) and closed-slice prose.
+- **VA — surface sweep.** R5's `$HOME` grep — with `--dereference-recursive`,
+  and covering `~/flakes` sources — returns only historical run bundles (A2),
+  closed-slice prose, the punted `satan-patcher` repo (D5/CHR-003), and prose
+  inside the code repo (§7 D9).
 - **VH — one live tick** writes under `~/.local/state/satan/runs/` and the model
   receives framing from `~/satan/system/framing.txt`.
 
-Regression watch: `satan-integration-test.el:42` and
+Regression watch: 4 test files bind `satan-notes-root` (§2.4 #2). `satan-integration-test.el:42` and
 `satan-context-test.el:199,221` build fixture trees as
 `${temp}/satan/...` — they must follow the same rename or they will pass
 against a layout that no longer exists.
+
+### 9.1 Running the suite (finding, 2026-08-24)
+
+`just check` **cannot run from a bare shell**: the test step aborts with
+`satan-test: refusing to run batch tests against production socket; set
+SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB` (exit 255). Neither variable is
+set by the devshell — `SATAN_DB_HOST` appears only at `flake.nix:85`, inside
+`supabaseJailOptions`. Any phase gate that says "`just check` green" must name
+its invocation.
+
+Two further facts about what green means here:
+
+- `just lint` is **only** `bin/elisp-locate-paren-error` per file
+  (`justfile:3-8`) — paren balance, no byte-compile. "Zero warnings" is not
+  measured by it. A missing `(require 'satan-custom)` is a load-time
+  `void-function` that lint cannot see.
+- `justfile:18-20` warns that without the test databases ~130 tests silently
+  skip and still report green.
+
+And the require surface is worse than assumed: **6 of the 8 state modules have
+no `(require 'satan-custom)`** — `satan-trace`, `satan-ingest-cursor`,
+`satan-sensor-alerts`, `satan-sensor-curiosity`, `satan-sensor-content`,
+`satan-patch-worktree`. Only `satan-sensor-wpm` and `satan-patch-prompt` do. No
+cycle risk: `satan-custom` is a zero-dep leaf.
 
 ## 10. Review Notes
