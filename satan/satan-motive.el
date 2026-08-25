@@ -50,7 +50,7 @@
 ;; ---------------------------------------------------------------------
 
 (defcustom satan-motive-file
-  (expand-file-name "satan/motives.org" satan-notes-root)
+  (satan-corpus-path "motives.org")
   "Path to the SATAN motive file.
 Mind owns the content; the broker reads on every tick and the
 `motive_replace' tool writes atomically.  Missing file is a valid
@@ -59,7 +59,7 @@ active motives in the `motive_read' summary."
   :type 'file :group 'satan)
 
 (defcustom satan-motive-archive-file
-  (expand-file-name "satan/motives.archive.org" satan-notes-root)
+  (satan-corpus-path "motives.archive.org")
   "Append-only archive companion to `satan-motive-file'.
 Not auto-written in v0 — the author moves text here by hand when
 retiring a motive.  Reserved for a future archive helper."

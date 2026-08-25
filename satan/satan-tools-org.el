@@ -15,12 +15,12 @@
 (require 'satan-intervention)
 
 (defcustom satan-motd-path
-  (expand-file-name "satan/motd.txt" satan-notes-root)
+  (satan-corpus-path "motd.txt")
   "Output path for `motd' mode."
   :type 'file :group 'satan)
 
 (defcustom satan-proposals-dir
-  (expand-file-name "satan/proposals" satan-notes-root)
+  (satan-corpus-path "proposals")
   "Directory for staged proposals."
   :type 'directory :group 'satan)
 

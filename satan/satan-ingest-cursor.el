@@ -36,6 +36,7 @@
 ;; and feeds backlog depth.  It does NOT (this delta) gate what evidence
 ;; `assemble-with-bounds' reads — there is no positive per-segment replay.
 
+(require 'satan-custom)      ; satan-state-root / satan-state-path
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
@@ -49,9 +50,7 @@
 ;; --- Defcustoms ------------------------------------------------
 
 (defcustom satan-ingest-cursor-state-file
-  (expand-file-name "satan/ingest-cursor.json"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name ".local/state" "~")))
+  (satan-state-path "ingest-cursor.json")
   "Path to the per-source ingest-cursor state file.
 Stores the persisted plist `(:focus TS :browser TS :content TS)' where
 each TS is that source's native timestamp string, verbatim."

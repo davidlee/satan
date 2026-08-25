@@ -116,14 +116,14 @@ Caller-threaded keys (NOT set by this function):
   (satan-run-enrich (satan-run-perceive prepare mode dir)))
 
 (defcustom satan-system-scaffold-file
-  (expand-file-name "satan/system/scaffold.txt" satan-notes-root)
+  (satan-corpus-path "system" "scaffold.txt")
   "Shared system-prompt scaffold prepended to every mode prompt.
 Canonical text lives under `~/notes/satan/system/'; dotfiles must
 not be the source of truth for behavioural framing."
   :type 'file :group 'satan)
 
 (defcustom satan-system-framing-file
-  (expand-file-name "satan/system/framing.txt" satan-notes-root)
+  (satan-corpus-path "system" "framing.txt")
   "Bundle-section headers for context blocks the broker appends to `:prompt'.
 Each call to a context-fn reads this file fresh to assemble the
 `# Now' / `# Today (raw)' / `# Source files' headers added after the
@@ -532,9 +532,9 @@ machinery that runs the SATAN protocol."
   :type '(repeat directory) :group 'satan)
 
 (defcustom satan-self-edit-mind-roots
-  (list (expand-file-name "satan/prompts" satan-notes-root)
-        (expand-file-name "satan/system"  satan-notes-root)
-        (expand-file-name "satan/tools"   satan-notes-root))
+  (list (satan-corpus-path "prompts")
+        (satan-corpus-path "system")
+        (satan-corpus-path "tools"))
   "Roots whose source is included in the `self-edit-mind' bundle.
 Mind = mode prompts, the system scaffold, tool descriptions —
 model-facing text under `~/notes/satan/' that shapes behaviour."

@@ -18,14 +18,12 @@
 (declare-function satan-attribute-enqueue "satan-attribute")
 
 (defcustom satan-sensor-wpm-log-dir
-  (expand-file-name "satan/log/wpm" satan-notes-root)
+  (satan-corpus-path "log" "wpm")
   "Directory containing per-day WPM TSV logs."
   :type 'string :group 'satan-attribute)
 
 (defcustom satan-sensor-wpm-state-file
-  (expand-file-name "satan/sensor-wpm.json"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name ".local/state" "~")))
+  (satan-state-path "sensor-wpm.json")
   "Path to the WPM probe state file.
 Tracks last emitted state to avoid duplicate signals."
   :type 'string :group 'satan-attribute)

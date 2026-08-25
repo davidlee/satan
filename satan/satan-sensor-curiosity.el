@@ -7,6 +7,7 @@
 ;; time this probe ran.  Curiosity represents the gap between observable
 ;; and observed — the organism has unprocessed external signal.
 
+(require 'satan-custom)      ; satan-state-root / satan-state-path
 (require 'cl-lib)
 (require 'json)
 
@@ -14,9 +15,7 @@
 (declare-function satan-attribute-enqueue "satan-attribute")
 
 (defcustom satan-sensor-curiosity-state-file
-  (expand-file-name "satan/sensor-curiosity.json"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name ".local/state" "~")))
+  (satan-state-path "sensor-curiosity.json")
   "Path to the curiosity probe state file.
 Stores the last-inspected timestamp."
   :type 'string :group 'satan-attribute)

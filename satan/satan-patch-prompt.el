@@ -19,14 +19,12 @@
 (require 'satan-patch-worktree)
 
 (defcustom satan-patch-prompt-system-file
-  (expand-file-name "satan/patch-agent/prompt.md" satan-notes-root)
+  (satan-corpus-path "patch-agent" "prompt.md")
   "Path to the patch-agent harness system prompt."
   :type 'file :group 'satan-patch)
 
 (defcustom satan-patch-prompt-log-root
-  (expand-file-name "satan/patch-agent/logs/"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name "~/.local/state/")))
+  (satan-state-path "patch-agent" "logs")
   "Directory where adapter stdout/event logs are written."
   :type 'directory :group 'satan-patch)
 

@@ -77,11 +77,13 @@ hard error so typos surface at startup rather than at dispatch."
       (error "SATAN mode/tool consistency check failed: %s"
              (mapconcat #'identity (nreverse errors) "; ")))))
 
-(defvar satan-prompts-dir
-  (expand-file-name "satan/prompts/" satan-notes-root)
+(defcustom satan-prompts-dir
+  (satan-corpus-path "prompts")
   "Directory holding mode prompt files.
 Canonical model-facing text lives under `~/notes/satan/prompts/'.
-Dotfiles must not be the source of truth for prompt content.")
+Dotfiles must not be the source of truth for prompt content."
+  :type 'directory
+  :group 'satan)
 
 (satan-mode-register
  (list :name "morning"

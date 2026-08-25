@@ -7,6 +7,7 @@
 ;; call.  Dispatch and notified-state are wired in Phase 4.3; Phase 4.2
 ;; only owns the substrate + render.
 
+(require 'satan-custom)      ; satan-state-root / satan-state-path
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
@@ -19,9 +20,7 @@
 (declare-function satan-tick-quiet-p "satan-tick" (&optional time))
 
 (defcustom satan-sensor-state-file
-  (expand-file-name "satan/notified.json"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name ".local/state" "~")))
+  (satan-state-path "notified.json")
   "Per-cause cooldown + dispatch state for sensor alerts.
 Shared across runs; reads/writes go through tmp + rename for
 atomicity (§S6)."

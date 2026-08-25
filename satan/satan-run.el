@@ -16,12 +16,12 @@
 ;; ── Directories ─────────────────────────────────────────────────────────────
 
 (defcustom satan-runs-dir
-  (expand-file-name "satan/runs" satan-notes-root)
+  (satan-corpus-path "runs")
   "Directory holding per-run audit bundles."
   :type 'directory :group 'satan)
 
 (defcustom satan-hippocampus-dir
-  (expand-file-name "satan/hippocampus" satan-notes-root)
+  (satan-corpus-path "hippocampus")
   "Read-write scratch directory inside the jail, holding hippocampus entries.
 One directory serving both roles: `satan-run-tool-ctx' hands this
 variable to handlers as `:hippocampus-dir', and `satan-tools-hippocampus'

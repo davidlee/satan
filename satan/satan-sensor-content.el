@@ -15,6 +15,7 @@
 ;;
 ;; See DR-005 DEC-5, mem.pattern.satan.jsonl-arity-trap.
 
+(require 'satan-custom)      ; satan-state-root / satan-state-path
 (require 'cl-lib)
 (require 'json)
 (require 'satan-tools-content)          ; --read-articles-jsonl (lenient)
@@ -25,9 +26,7 @@
 ;; --- Defcustoms ------------------------------------------------
 
 (defcustom satan-sensor-content-state-file
-  (expand-file-name "satan/sensor-content.json"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name ".local/state" "~")))
+  (satan-state-path "sensor-content.json")
   "Path to the content-backlog probe state file.
 Stores the last-inspected `captured_at' watermark string."
   :type 'string :group 'satan-attribute)

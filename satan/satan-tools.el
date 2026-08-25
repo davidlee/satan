@@ -24,7 +24,7 @@
 (require 'satan-custom)
 
 (defcustom satan-tools-descriptions-dir
-  (expand-file-name "satan/tools/" satan-notes-root)
+  (satan-corpus-path "tools")
   "Directory holding model-facing tool description files.
 One markdown file per tool, named `<tool-name>.md'.  Canonical
 behavioural text for each tool lives here; the elisp tool-spec

@@ -13,7 +13,7 @@
 (require 'satan-intervention)
 
 (defcustom satan-inbox-file
-  (expand-file-name "satan/inbox.org" satan-notes-root)
+  (satan-corpus-path "inbox.org")
   "Path to SATAN's append-only inbox org file."
   :type 'file :group 'satan)
 

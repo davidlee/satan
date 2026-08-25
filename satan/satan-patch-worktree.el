@@ -8,6 +8,7 @@
 ;; A trailing `/' means "this directory and below"; no trailing `/'
 ;; means an exact file match.  No globs in v1; simple to extend later.
 
+(require 'satan-custom)      ; satan-state-root / satan-state-path
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
@@ -15,9 +16,7 @@
 (require 'satan-trace)         ; route patch git through the subprocess ledger
 
 (defcustom satan-patch-worktree-root
-  (expand-file-name "satan/patch-agent/worktrees/"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name "~/.local/state/")))
+  (satan-state-path "patch-agent" "worktrees")
   "Filesystem root under which job worktrees are created.
 One directory per job, keyed by job id."
   :type 'directory :group 'satan-patch)

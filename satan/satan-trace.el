@@ -19,6 +19,7 @@
 ;; `satan-trace-with-tick' for the dynamic extent of one tick and is
 ;; the sole shared mutable state.
 
+(require 'satan-custom)      ; satan-state-root / satan-state-path
 (require 'satan-jsonl)
 (require 'cl-lib)
 (require 'json)
@@ -34,9 +35,7 @@ the writer no-ops and the macros still run BODY as pure passthroughs."
   :type 'boolean :group 'satan-trace)
 
 (defcustom satan-trace-dir
-  (expand-file-name "satan/"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name ".local/state" "~")))
+  (satan-state-path)
   "Directory holding day-bucketed `tick-trace-<YYYY-MM-DD>.jsonl' files.
 Mirrors the XDG state idiom used by the SATAN sensors."
   :type 'directory :group 'satan-trace)
