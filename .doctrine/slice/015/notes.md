@@ -97,3 +97,63 @@ reasoning from the design.
   `most-recent` symlink target **relative**, so the `runs/` move does not dangle
   it. With timers stopped at S0 there is no mid-cutover firing window — the
   hazard is at restart (see above).
+
+## PHASE-01 (2026-08-26)
+
+### Durable — survives this slice
+
+- **`just check` exits 0 no matter what.** `ert-run-tests-batch` (not
+  `…-and-exit`) plus `--eval`'s discarded return value. Three invocations, two
+  with failures, all exit 0. **Never trust `$?` from this suite** — grep stdout
+  for `unexpected`. Filed ISS-008. Together with "lint is paren-balance only"
+  and "~130 tests skip silently without DBs", that is three independent ways
+  this repo reports green while broken.
+- **The working suite invocation on this machine** is
+  `SATAN_DB_HOST=/run/postgresql/ just check` — 1026/1030 at the EN-1 baseline
+  vs 892 with no DB reachable. The trailing slash is what slips past the
+  production-socket guard (`equal` against the bare literal). Filed as ISS-009
+  because a guard defeated by a trailing slash is a defect even when the
+  bypass is convenient. **Fixing ISS-009 invalidates this invocation** — they
+  have to move together.
+- **One test defaults to the production database**:
+  `satan-memory-grammar-test.el:23` is a grammar drift detector and reads
+  `satan_memory` directly. SELECT-only, verified. Worth knowing before pointing
+  the suite anywhere.
+- **`getenv` returns `""`, not nil, for a set-but-empty variable** — so
+  `(or (getenv "XDG_STATE_HOME") fallback)` takes the empty string. Filed
+  ISS-010. Check the same shape wherever `getenv` meets `or`.
+- **A count can be right and still wrong.** Fourth correction in this slice,
+  and the last two were not miscounts at all: F-2 counted nine rows correctly
+  and *classified* one wrongly; F-12's table was arithmetically fine and
+  *temporally* wrong (it described the end state while being read as a phase
+  instruction). Recounting does not verify. Ask what a row means, and when it
+  is true.
+- **Prove a guard fails before trusting it.** VT-3 was run against synthetic
+  violations — both the single-line and multi-line spellings — and against the
+  expressions it must not flag, before being accepted as passing. A guard whose
+  red has never been observed is indistinguishable from a guard that cannot
+  fire.
+
+### Slice-specific
+
+- The corpus/state split is by **ownership**, not by location: `runs/` and
+  `log/wpm/` are state-class but live under the corpus root until PHASE-02
+  physically moves them. PHASE-01 wires them to `satan-corpus-path`; PHASE-02
+  flips them to `satan-state-path` in the same act as the `mv`. Doing it
+  earlier relocates a tree ahead of its data.
+- Derivation chains have a subtlety worth carrying into PHASE-02: a default
+  that reads `satan-corpus-root`'s *current value* does not move when
+  `satan-notes-root` is rebound, because the notes root only feeds the corpus
+  root's *standard value*. Any test that rebinds a root to check propagation
+  must rebind the root that is actually one link away.
+- `satan-trace-dir` is the state root itself, not a subdirectory of it.
+
+### Cleared — do not re-investigate
+
+- All 9 corpus modules already required `satan-custom`; only the 8 state
+  modules were short, 6 of them (F-3, confirmed).
+- The leaf invariant (A5) held throughout — `satan-custom.el` gained no
+  `require`.
+- VA-1 came out empty on the first attempt and stayed empty through the T9
+  refactor. The trailing-slash class (A6) is confined to exactly the 5
+  predicted sites.

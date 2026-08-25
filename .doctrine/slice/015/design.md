@@ -236,6 +236,16 @@ Call-site rewrites — the `"satan/"` literal disappears at all 16 sites:
 | `(expand-file-name "satan/log/wpm" satan-notes-root)` | `(satan-state-path "log" "wpm")` |
 | `(expand-file-name "satan/notified.json" (or (getenv "XDG_STATE_HOME") …))` | `(satan-state-path "notified.json")` |
 
+**The table above is the end state, not PHASE-01.** `runs/` and `log/wpm/`
+belong to the *state* class by ownership (§5.3) but they physically live under
+`~/notes/satan/` until PHASE-02 S2 moves them. So in PHASE-01 all **16** corpus
+sites — `satan-runs-dir` and `satan-sensor-wpm-log-dir` included — rewire to
+`satan-corpus-path`, which is what keeps them byte-identical under A1 and what
+EX-3/EX-7 require. Their re-pointing to `satan-state-path` happens in PHASE-02,
+in the same act as the `mv`. Rewiring them to `satan-state-path` in PHASE-01
+would relocate them ahead of the data and break a phase that is meant to carry
+no cutover risk (finding F-12).
+
 The two user-notes defcustoms (`satan-tools-notes-root`,
 `satan-tools-atsatan-root`) keep defaulting to `satan-notes-root`. That is now
 a statement rather than an accident.
@@ -527,5 +537,54 @@ no `(require 'satan-custom)`** — `satan-trace`, `satan-ingest-cursor`,
 `satan-sensor-alerts`, `satan-sensor-curiosity`, `satan-sensor-content`,
 `satan-patch-worktree`. Only `satan-sensor-wpm` and `satan-patch-prompt` do. No
 cycle risk: `satan-custom` is a zero-dep leaf.
+
+### 9.2 The documented invocation (EN-1, discharged 2026-08-26)
+
+    SATAN_DB_HOST=/run/postgresql/ just check
+
+Result on this machine: `Ran 1030 tests, 1026 results as expected, 1
+unexpected, 3 skipped`. Measured against the alternatives:
+
+| Invocation | expected | unexpected | skipped |
+|---|---|---|---|
+| `SATAN_DB_HOST=127.0.0.1` (no DB reachable) | 892 | 1 | 137 |
+| `SATAN_FAILOVER_TO_SYSTEM_DB=1` | 1007 | 2 | 21 |
+| **`SATAN_DB_HOST=/run/postgresql/`** | **1026** | **1** | **3** |
+
+Why the trailing slash: `satan-db-resolve-host` (`satan-db.el:62`) refuses the
+production socket in batch by `(equal h "/run/postgresql")`. A trailing slash is
+not `equal`, so the guard passes while psql resolves the same socket directory.
+That is a hole in the guard, recorded as a defect below — but it is also the
+only invocation on this machine that reaches a live Postgres *and* leaves the
+guard's own tests intact. `SATAN_FAILOVER_TO_SYSTEM_DB=1` works too, but the
+flag is process-global and breaks `satan-db/resolve-host-guard-fires-in-batch`,
+which asserts the guard fires.
+
+Safety: every DB-touching suite targets `satan_memory_test` / `trace_test` /
+`patch_live_test` by defconst. The one exception,
+`satan-memory-grammar-test.el:23`, defaults to the production `satan_memory` —
+it is a grammar **drift detector** and issues SELECTs only (verified: no
+`insert`/`update`/`delete`/`drop`/`truncate`/`create table` in the file).
+Production `satan_memory` was checked intact after the runs — 21 tables,
+`satan_attribute_events` 1599 rows, `trace_handles` 428.
+
+**Known-failing, pre-existing, environment-dependent:**
+`satan-db/test-db-available-p-probes-test-host` `let`-binds
+`satan-db-host-override` to `"127.0.0.1"` itself and asserts the test DB is
+reachable there. This machine's Postgres listens on 5432 but requires a
+password over TCP, so the probe fails regardless of invocation. It is not
+caused by the chosen env var and it is not in this slice's scope. **The phase's
+green bar is therefore: 1026 expected / 1 unexpected / 3 skipped, and the one
+unexpected is that test.** Any second failure is a regression from this phase.
+
+### 9.3 `just check` cannot fail the build (finding, 2026-08-26)
+
+All three invocations above exited **0**, including the two with unexpected
+failures. `satan-test-run-batch` calls `ert-run-tests-batch` (not
+`…-and-exit`) and returns a summary *string*; `emacs --batch --eval` exits 0
+regardless, and the recipe's `set -euo pipefail` never sees a non-zero. **Exit
+status carries no signal.** Every gate in this slice that says "suite green"
+means: grep the output for `unexpected` and compare against the bar in §9.2.
+This is a real defect in the harness, out of scope here — see the backlog.
 
 ## 10. Review Notes
