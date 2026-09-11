@@ -157,3 +157,53 @@ reasoning from the design.
 - VA-1 came out empty on the first attempt and stayed empty through the T9
   refactor. The trailing-slash class (A6) is confined to exactly the 5
   predicted sites.
+
+## PHASE-02 (2026-09-11)
+
+### Durable — survives this slice
+
+- **`home-manager switch` starts every enabled-but-inactive unit, changed or
+  not.** Activation's `reloadSystemd` step reported `Starting units:
+  satan-attrd.service, satan-morning.timer, satan-motd.timer,
+  satan-tick.timer, wpm-archive.timer, wpm-daemon.service` — the exact set
+  EN-2 had stopped. A stopped unit is indistinguishable from one that needs
+  starting. Any cutover that quiesces writers and then rebuilds must **rebuild
+  after the Emacs restart, or re-stop the timers immediately after the
+  rebuild** — PHASE-03 EX-10 (`satan-patcher.nix`) hits this with a live
+  corpus move in flight. This time nothing fired only because every
+  `Persistent=true` window had already passed for the day.
+- **The wpm TSV writer is `wpm-daemon.service`, not a waybar module.** Waybar's
+  `custom/wpm` only `cat`s `$XDG_RUNTIME_DIR/wpm.json`. Stopping waybar leaves
+  the writer running. (Design F1 / §5.4 S0 carry the mislabel.)
+- **Every scheduled SATAN run since late August ends `.FAILED` with `API key
+  expired` (401), and nothing raised it.** `status: invalid` is silent (cf.
+  IMP-005). Any "a live run works" acceptance must be read as a path claim
+  unless the key is renewed first.
+- **`~/flakes` is a directory of the `~` repo (`davidlee/nix-config`), not its
+  own.** So are `~/.config/*` regular files. One repo, one commit each.
+- **Nix `''`-string edits must not pass through a Python string literal.**
+  `''${` collapses to `${` (empty-string concatenation) and nix then
+  interpolates. Re-read the line and `nix-instantiate --parse` before building.
+- **Numbers in criteria rot; shapes do not.** Tracked wpm rows 63 → 98 between
+  the design survey and execution, because the `~/notes` daily `git add .`
+  kept importing them. A criterion that says "the few tracked rows" stays
+  true; one that says "63" does not. PHASE-03 EN-2 quotes 33 / 4 — re-measure.
+
+### Slice-specific
+
+- `satan-runs-dir` and `satan-sensor-wpm-log-dir` now derive from
+  `satan-state-root` (`aab4b83`); `satan-hippocampus-dir` stays corpus.
+  Trees renamed 2026-09-11 17:14 (11047 / 116 files, counts equal before and
+  after); `~/notes/satan` is 308K of authored content only. Notes repo
+  `08927b5` untracked 98 rows and dropped the gitignore line. `~` repo
+  `abbc3746` (wpm-status.py) and `186bdf5c` (sway.nix); rebuilt archive
+  script verified to carry the state path.
+- Both external writers honour `XDG_STATE_HOME` with empty-as-unset semantics
+  (`or` / `:-`), which is what ISS-010 wants the elisp to do.
+- **Open at handover:** Emacs restart (human), then timers, then one manual
+  `satan-tick.service` for VH-1 — sequence in the phase sheet. `wpm-daemon`
+  and `satan-attrd` already up on the new paths.
+- Plan amendments proposed, not applied: PHASE-02 VT-2 keywords (vacuous —
+  passes before the change) and PHASE-01 VT-3 keyword
+  (`directory-files-recursively` → `directory-files`). PHASE-01 VT-3 fails
+  the mechanical gate today while its test is real.
