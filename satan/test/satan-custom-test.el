@@ -100,7 +100,7 @@ default that derives from another variable or from the environment."
 
 (ert-deftest satan-custom-corpus-root-defaults-below-notes-root ()
   ;; PHASE-01 is a pure refactor: the corpus root's transitional default must
-  ;; reproduce today's on-disk location exactly (SL-015 A1/A2).  PHASE-02 flips
+  ;; reproduce today's on-disk location exactly (SL-015 A1/A2).  PHASE-03 flips
   ;; it to the standalone repo; this assertion is expected to change there.
   (let ((satan-notes-root "/tmp/notes"))
     (should (equal (satan-custom-test--default-of 'satan-corpus-root)
@@ -109,7 +109,7 @@ default that derives from another variable or from the environment."
 ;; ── SL-015 VT-2: every dependent default follows its root ───────────────────
 ;;
 ;; The point of naming the roots is that one knob moves everything below it.
-;; These walk the whole surface — 14 corpus defaults, 8 state defaults — by
+;; These walk the whole surface — 12 corpus defaults, 10 state defaults — by
 ;; re-evaluating each `standard-value' under a rebound root, the idiom from
 ;; `satan-run-test.el'.  Heavy requires sit inside the bodies, per this file's
 ;; convention, so the pure surface above still runs if a module is mid-decouple.
@@ -117,19 +117,23 @@ default that derives from another variable or from the environment."
 (defconst satan-custom-test--corpus-vars
   '(satan-prompts-dir satan-motd-path satan-proposals-dir
     satan-motive-file satan-motive-archive-file
-    satan-patch-prompt-system-file satan-runs-dir satan-hippocampus-dir
+    satan-patch-prompt-system-file satan-hippocampus-dir
     satan-system-scaffold-file satan-system-framing-file
-    satan-self-edit-mind-roots satan-sensor-wpm-log-dir satan-inbox-file
+    satan-self-edit-mind-roots satan-inbox-file
     satan-tools-descriptions-dir)
-  "The 14 defaults that must derive from `satan-corpus-root' (16 call sites —
-`satan-self-edit-mind-roots' spans three).")
+  "The 12 defaults that must derive from `satan-corpus-root' (14 call sites —
+`satan-self-edit-mind-roots' spans three).
+SL-015 PHASE-02 moved `satan-runs-dir' and `satan-sensor-wpm-log-dir' to
+`satan-custom-test--state-vars': run bundles and wpm telemetry are runtime
+state, not authored corpus (design D3).")
 
 (defconst satan-custom-test--state-vars
   '(satan-patch-worktree-root satan-patch-prompt-log-root
     satan-sensor-state-file satan-sensor-wpm-state-file
     satan-ingest-cursor-state-file satan-sensor-content-state-file
-    satan-sensor-curiosity-state-file satan-trace-dir)
-  "The 8 defaults that must derive from `satan-state-root'.")
+    satan-sensor-curiosity-state-file satan-trace-dir
+    satan-runs-dir satan-sensor-wpm-log-dir)
+  "The 10 defaults that must derive from `satan-state-root'.")
 
 (defun satan-custom-test--require-all ()
   (mapc #'require

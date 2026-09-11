@@ -3,7 +3,8 @@
 ;; Emits `typing_active' or `typing_idle' sensor attribute signals based
 ;; on WPM log data (design-contract §6S).
 ;;
-;; Reads the per-minute TSV log at ~/notes/satan/log/wpm/YYYY-MM-DD.tsv.
+;; Reads the per-minute TSV log at `satan-sensor-wpm-log-dir'/YYYY-MM-DD.tsv
+;; (below `satan-state-root'; written by wpm-daemon.service, not by SATAN).
 ;; Format: <iso8601>\t<keys>\t<peak_5s_wpm>\t<active_seconds>
 ;;
 ;; Classifies last 10 minutes: active (>50% active_seconds), idle (<5%),
@@ -18,7 +19,7 @@
 (declare-function satan-attribute-enqueue "satan-attribute")
 
 (defcustom satan-sensor-wpm-log-dir
-  (satan-corpus-path "log" "wpm")
+  (satan-state-path "log" "wpm")
   "Directory containing per-day WPM TSV logs."
   :type 'string :group 'satan-attribute)
 

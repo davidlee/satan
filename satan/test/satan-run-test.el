@@ -182,25 +182,25 @@ constructor call here would return a new run-id and an unfrozen time."
 
 ;; ── Directories ─────────────────────────────────────────────────────────────
 
-(ert-deftest satan-run/dirs-default-under-corpus-root ()
-  "Both run directories derive from `satan-corpus-root', not from literals.
-Renamed in SL-015 PHASE-01: the derivation chain gained a link.  It used to
-run notes-root -> dirs; it now runs notes-root -> corpus-root (as a default)
--> dirs.  The resolved paths are unchanged — that is VA-1's whole point — but
-rebinding `satan-notes-root' no longer moves these, because it moves only
+(ert-deftest satan-run/dirs-split-by-ownership ()
+  "The two run directories derive from different roots, by ownership.
+Run bundles are discardable runtime state and derive from `satan-state-root';
+hippocampus is SATAN-authored, versioned content and derives from
+`satan-corpus-root' (SL-015 design D3).  Neither is a literal: re-evaluating
+the standard values under a rebound root moves each with its own root only.
+Rebinding `satan-notes-root' moves neither, because it feeds only
 `satan-corpus-root''s *standard value*, not its current one."
-  (should (equal satan-runs-dir (satan-corpus-path "runs")))
+  (should (equal satan-runs-dir (satan-state-path "runs")))
   (should (equal satan-hippocampus-dir (satan-corpus-path "hippocampus")))
-  ;; Re-evaluating the standard values under a different root moves both:
-  ;; the defaults are derivations, not paths frozen at load.
-  (let ((satan-corpus-root "/tmp/cr"))
+  (let ((satan-state-root "/tmp/sr")
+        (satan-corpus-root "/tmp/cr"))
     (should (equal (eval (car (get 'satan-runs-dir 'standard-value)) t)
-                   "/tmp/cr/runs"))
+                   "/tmp/sr/runs"))
     (should (equal (eval (car (get 'satan-hippocampus-dir 'standard-value)) t)
                    "/tmp/cr/hippocampus")))
-  ;; And the transitional link still holds: the corpus root defaults below the
+  ;; The transitional link still holds: the corpus root defaults below the
   ;; notes root, so today's on-disk location is reproduced exactly (A1/A2).
-  ;; PHASE-02 repoints this at the standalone repo and this clause changes.
+  ;; PHASE-03 repoints this at the standalone repo and this clause changes.
   (let ((satan-notes-root "/tmp/nr"))
     (should (equal (eval (car (get 'satan-corpus-root 'standard-value)) t)
                    "/tmp/nr/satan"))))

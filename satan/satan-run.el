@@ -16,8 +16,9 @@
 ;; ── Directories ─────────────────────────────────────────────────────────────
 
 (defcustom satan-runs-dir
-  (satan-corpus-path "runs")
-  "Directory holding per-run audit bundles."
+  (satan-state-path "runs")
+  "Directory holding per-run audit bundles.
+Runtime state, not corpus: bundles are frozen evidence, never versioned."
   :type 'directory :group 'satan)
 
 (defcustom satan-hippocampus-dir
