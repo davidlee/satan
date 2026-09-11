@@ -1,0 +1,43 @@
+memory_uid = "mem_01a08f54b2d676c3ad67a98ed0597305"
+memory_key = "mem.fact.nix.home-manager-switch-starts-stopped-units"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "fact"
+status = "active"
+title = "home-manager switch starts every enabled-but-inactive user unit"
+summary = "home-manager activation's reloadSystemd step (re)starts every enabled user unit that is inactive, changed or not — a deliberately stopped timer/service comes back. Quiesce-then-rebuild cutovers must rebuild after the Emacs restart or re-stop timers right after the switch."
+created = "2026-09-11"
+updated = "2026-09-11"
+
+[scope]
+paths = []
+globs = []
+commands = ["home-manager switch", "just home-switch"]
+tags = ["nix", "home-manager", "systemd", "cutover", "satan"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "4c5c4c33a324261cb8078cf9d6d732d399dadf9c"
+tree = "1d106a3a5abf1c422ac84a80b876a96f58e7a7fa"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "4c5c4c33a324261cb8078cf9d6d732d399dadf9c"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "high"
+weight = 0
+
