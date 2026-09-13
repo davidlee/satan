@@ -200,9 +200,12 @@ reasoning from the design.
   script verified to carry the state path.
 - Both external writers honour `XDG_STATE_HOME` with empty-as-unset semantics
   (`or` / `:-`), which is what ISS-010 wants the elisp to do.
-- **Open at handover:** Emacs restart (human), then timers, then one manual
-  `satan-tick.service` for VH-1 — sequence in the phase sheet. `wpm-daemon`
-  and `satan-attrd` already up on the new paths.
+- Closed 2026-09-14: Emacs restarted, timers armed (three catch-up runs
+  fired immediately against the fresh Emacs — the order held), one manual
+  tick wrote a complete bundle with status `done` under the new root;
+  `most-recent` repointed; wpm rows and the hourly archive land on the new
+  path; nothing recreated under `~/notes/satan`. The API key had been
+  renewed by then, so the tick genuinely succeeded.
 - Plan amendments proposed, not applied: PHASE-02 VT-2 keywords (vacuous —
   passes before the change) and PHASE-01 VT-3 keyword
   (`directory-files-recursively` → `directory-files`). PHASE-01 VT-3 fails
