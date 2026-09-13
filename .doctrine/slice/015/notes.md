@@ -204,8 +204,10 @@ reasoning from the design.
   fired immediately against the fresh Emacs — the order held), one manual
   tick wrote a complete bundle with status `done` under the new root;
   `most-recent` repointed; wpm rows and the hourly archive land on the new
-  path; nothing recreated under `~/notes/satan`. The API key had been
-  renewed by then, so the tick genuinely succeeded.
+  path; nothing recreated under `~/notes/satan`. The tick genuinely
+  succeeded; the morning and motd catch-up runs still `.FAILED` at turn 0 on
+  `API key expired` (401) — the key is not renewed, and the tick mode must
+  use a different provider or key. Worth a backlog item.
 - Plan amendments proposed, not applied: PHASE-02 VT-2 keywords (vacuous —
   passes before the change) and PHASE-01 VT-3 keyword
   (`directory-files-recursively` → `directory-files`). PHASE-01 VT-3 fails
