@@ -1,7 +1,7 @@
 ;;; satan-tools-inbox.el --- inbox_append tool -*- lexical-binding: t; -*-
 
 ;; SATAN's local inbox — append-only org headlines at
-;; `~/notes/satan/inbox.org'.  Auto-applied (SATAN owns the file).  Each
+;; `satan-inbox-file'.  Auto-applied (SATAN owns the file).  Each
 ;; entry is a top-level `*' headline tagged `:unread:satan:'.  A waybar /
 ;; user-side widget can count `:unread:' tags for a badge; the user
 ;; removes the tag (or archives the headline) to mark read.

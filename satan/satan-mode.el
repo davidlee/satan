@@ -80,7 +80,7 @@ hard error so typos surface at startup rather than at dispatch."
 (defcustom satan-prompts-dir
   (satan-corpus-path "prompts")
   "Directory holding mode prompt files.
-Canonical model-facing text lives under `~/notes/satan/prompts/'.
+Canonical model-facing text lives in SATAN's corpus (`satan-corpus-root').
 Dotfiles must not be the source of truth for prompt content."
   :type 'directory
   :group 'satan)

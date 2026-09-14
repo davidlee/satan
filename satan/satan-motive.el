@@ -2,7 +2,7 @@
 
 ;; Phase 3 of the perceptual-layer v0 (see docs/satan/perceptual-design.md
 ;; §S3, §S4, §7, §A7–A9).  Parses `motives.org' — a single, bounded,
-;; user-and-SATAN-editable prose file at `~/notes/satan/motives.org' —
+;; user-and-SATAN-editable prose file at `satan-motive-file' —
 ;; into the structured shape the capsule renderer and the
 ;; `motive_replace' write-side guard both consume.
 ;;
@@ -305,7 +305,7 @@ the handover watch-out)."
 
 (defconst satan-motive--framing-key "motive_block_header"
   "Framing.txt key supplying the motive block's section header.
-Mind owns the text under `~/notes/satan/system/framing.txt'; elisp
+Mind owns the text in `satan-system-framing-file'; elisp
 never hardcodes the header (governance §Mind/mechanism).")
 
 (defun satan-motive--active-motives (parsed)

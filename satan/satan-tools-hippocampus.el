@@ -1,7 +1,7 @@
 ;;; satan-tools-hippocampus.el --- hippocampus tools -*- lexical-binding: t; -*-
 
 ;; The hippocampus is SATAN's self-curated memory.  Entries are denote-named
-;; org files written into `~/notes/satan/hippocampus/'.  SATAN owns the
+;; org files written into `satan-hippocampus-dir'.  SATAN owns the
 ;; directory: write is auto-applied, no candidate / confirmed ceremony.
 ;; Risk `low' — the user can grep, edit, or delete files directly.
 ;;

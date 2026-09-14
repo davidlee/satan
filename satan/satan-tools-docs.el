@@ -24,7 +24,7 @@
 ;; these tools.  No eager corpus ingest.
 ;;
 ;; Mind/mechanism split (see docs/satan/governance.md §Ownership): tool
-;; descriptions live under `~/notes/satan/tools/docs_*.md', not here.
+;; descriptions live in `satan-tools-descriptions-dir' (docs_*.md), not here.
 
 (require 'cl-lib)
 (require 'subr-x)

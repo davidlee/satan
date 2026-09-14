@@ -37,7 +37,7 @@ At most one dispatch per cause per cooldown window (A15)."
 
 (defconst satan-sensor--framing-key "sensor_block_header"
   "Framing.txt key supplying the sensor block's section header.
-Owned by mind (`~/notes/satan/system/framing.txt'); when the key
+Owned by mind (`satan-system-framing-file'); when the key
 is absent the block self-suppresses so a missing seed doesn't
 block a run.")
 

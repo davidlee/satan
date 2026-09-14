@@ -117,7 +117,7 @@ bundle."
 
 (defconst satan-percept--framing-key "percept_block_header"
   "Framing.txt key that supplies the percept block's section header.
-Owned by mind (`~/notes/satan/system/framing.txt'); dotfiles never
+Owned by mind (`satan-system-framing-file'); dotfiles never
 hardcode the header text — see governance §Mind/mechanism.")
 
 (defun satan-percept-render-block (framing percept)
@@ -150,7 +150,7 @@ block entirely instead of emitting an empty header."
 
 (defconst satan-percept--attention-framing-key "attention_block_header"
   "Framing.txt key supplying the attention block's section header.
-Owned by mind (`~/notes/satan/system/framing.txt'); absent key
+Owned by mind (`satan-system-framing-file'); absent key
 suppresses the block, same contract as `--framing-key'.")
 
 (defcustom satan-percept-attention-limit 12

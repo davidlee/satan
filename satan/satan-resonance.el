@@ -101,7 +101,7 @@ psql blip should not fail the run (handover watch-out)."
 
 (defconst satan-resonance--framing-key "resonance_block_header"
   "Framing.txt key supplying the resonance block's section header.
-Mind owns the text under `~/notes/satan/system/framing.txt'; elisp
+Mind owns the text in `satan-system-framing-file'; elisp
 never hardcodes the header (governance §Mind/mechanism).")
 
 (defconst satan-resonance--payload-max 120

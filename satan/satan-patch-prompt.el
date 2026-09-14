@@ -2,7 +2,7 @@
 
 ;; Phase 2.3 of satan/patch-harness.plan.md.  Combines:
 ;;
-;;   - canonical system prompt   `~/notes/satan/patch-agent/prompt.md'
+;;   - canonical system prompt   `satan-patch-prompt-system-file'
 ;;   - per-job directive          (the verb)
 ;;   - per-job context bundle     (memory matches, note excerpts, etc)
 ;;   - allowlist string           (explicit "you may only edit ...")

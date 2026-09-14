@@ -12,8 +12,8 @@
 ;; (`:tools' list in `satan-mode.el'); `satan-mode-check-tool-
 ;; references' enforces that every name listed there resolves in this
 ;; registry.  The model-facing description for each tool lives outside
-;; dotfiles, under `satan-tools-descriptions-dir' (default
-;; `~/notes/satan/tools/<name>.md').  See `satan-tool-json-schema'.
+;; dotfiles, as `<name>.md' under `satan-tools-descriptions-dir'.
+;; See `satan-tool-json-schema'.
 ;;
 ;; `satan-tool-dispatch' performs lookup, allowlist check, schema
 ;; validation, and invokes the handler.  Handler returns (ok . RESULT) or

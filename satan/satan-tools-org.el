@@ -153,7 +153,7 @@ and surfaces the minted id in the result alongside `:path'."
 ;; ---- Registration ----
 
 ;; Tool specs carry mechanism only.  Model-facing descriptions live in
-;; `~/notes/satan/tools/<name>.md' and are loaded at manifest assembly
+;; `satan-tools-descriptions-dir' and are loaded at manifest assembly
 ;; time.
 
 (satan-tool-register

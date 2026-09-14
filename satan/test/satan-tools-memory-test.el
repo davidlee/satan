@@ -118,8 +118,8 @@ FN-SYM to call it.  After BODY, VAR holds the captured arg list."
 ;; ---------------------------------------------------------------------
 
 (ert-deftest satan-tools-memory/mind-docs-exist ()
-  ;; Model-facing descriptions live in the host-only ~/notes/satan/ corpus
-  ;; (SL-012 D4/POL), not shipped in the package.
+  ;; Model-facing descriptions live in the host-only corpus
+  ;; (`satan-corpus-root'; SL-012 D4/POL), not shipped in the package.
   (skip-unless (file-readable-p
                 (expand-file-name "memory_mark.md" satan-tools-descriptions-dir)))
   (dolist (name '("memory_mark" "memory_resonate" "memory_show_trace"))

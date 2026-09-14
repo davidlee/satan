@@ -118,8 +118,8 @@ Caller-threaded keys (NOT set by this function):
 (defcustom satan-system-scaffold-file
   (satan-corpus-path "system" "scaffold.txt")
   "Shared system-prompt scaffold prepended to every mode prompt.
-Canonical text lives under `~/notes/satan/system/'; dotfiles must
-not be the source of truth for behavioural framing."
+Canonical text lives in SATAN's corpus (`satan-corpus-root'); dotfiles
+must not be the source of truth for behavioural framing."
   :type 'file :group 'satan)
 
 (defcustom satan-system-framing-file
@@ -537,7 +537,7 @@ machinery that runs the SATAN protocol."
         (satan-corpus-path "tools"))
   "Roots whose source is included in the `self-edit-mind' bundle.
 Mind = mode prompts, the system scaffold, tool descriptions —
-model-facing text under `~/notes/satan/' that shapes behaviour."
+model-facing text under `satan-corpus-root' that shapes behaviour."
   :type '(repeat directory) :group 'satan)
 
 (defcustom satan-self-edit-source-regexp
@@ -598,7 +598,7 @@ without context).  When BUDGET is nil, packs everything."
   "Bundle for a self-edit mode: prompt + every source file under each
 root in MODE-SPEC's `:source-roots' list, each as
 \(:path ABBREVIATED :content STR).  Paths are abbreviated with `~/'
-so the model sees `~/notes/satan/...' / `~/.emacs.d/satan/...' rather
+so the model sees `~/satan/...' / `~/dev/satan/satan/...' rather
 than long relative dotwalks.
 
 RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); see
