@@ -89,7 +89,14 @@
           (set-env "PGPASSWORD" "postgres")
         ];
 
-        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions;
+        # SATAN's corpus (~/satan) for dev agents.  It used to be reachable through
+        # the /workspace/notes dep; workspaceDeps mounts by basename and
+        # /workspace/satan is this project, so it gets its own name (SL-015 D-2).
+        corpusJailOptions = with jailLib.combinators; [
+          (unsafe-add-raw-args ''--bind "$HOME/satan" "/workspace/corpus"'')
+        ];
+
+        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions ++ corpusJailOptions;
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
         workspaceDeps = [
           "/home/david/flakes/"
@@ -131,7 +138,7 @@
           (unsafe-add-raw-args ''--bind "$HOME/dev/satan" "/workspace/satan"'') ## Migration !!
 
           (unsafe-add-raw-args ''--ro-bind "$HOME/notes" "/satan/notes"'')
-          (unsafe-add-raw-args ''--bind "$HOME/notes/satan/hippocampus" "/satan/hippocampus"'')
+          (unsafe-add-raw-args ''--bind "$HOME/satan/hippocampus" "/satan/hippocampus"'')
           (unsafe-add-raw-args ''--bind "$SATAN_RUN_DIR" "/satan/run"'')
           (try-fwd-env "SATAN_RUN_ID")
           (set-env "SATAN_NOTES_RO" "/satan/notes")
@@ -224,7 +231,7 @@
             name = "pi-research";
             profile = "research";
             extraPkgs = projectPkgs;
-            extraOptions = apiKeyJailOptions;
+            extraOptions = apiKeyJailOptions ++ corpusJailOptions;
             inherit workspaceDeps;
           };
           jailed-opencode = jailLib.makeJailedOpencode {
@@ -242,7 +249,7 @@
           jailed-dirge = jailLib.makeJailedDirge {
             profile = "specDev";
             extraPkgs = projectPkgs;
-            extraOptions = apiKeyJailOptions;
+            extraOptions = apiKeyJailOptions ++ corpusJailOptions;
             inherit workspaceDeps;
           };
           # jailed-codex = jailLib.makeJailedCodex {
