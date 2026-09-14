@@ -212,3 +212,81 @@ reasoning from the design.
   passes before the change) and PHASE-01 VT-3 keyword
   (`directory-files-recursively` → `directory-files`). PHASE-01 VT-3 fails
   the mechanical gate today while its test is real.
+
+## PHASE-03 (2026-09-14)
+
+Corpus cutover executed: `~/notes/satan` → `~/satan`, a standalone repo with
+history. Live system consistent again as of 12:54 (home-manager generation 713).
+
+```
+~/notes (user notes, SATAN reads)     ~/satan (SATAN corpus, repo)     ~/.local/state/satan
+  journal/ weekly/ inbox.org            prompts/ system/ tools/          runs/ log/wpm/
+                                        hippocampus/ motives …
+  satan-notes-root                      satan-corpus-root               satan-state-root
+```
+
+### Durable — survives this slice
+
+- **The runtime jail is deployed from GitHub, not from `~/dev/satan`.**
+  `jailed-satan-gptel-harness` on Emacs' PATH comes from `inputs.satan`
+  (`github:davidlee/satan`) in `~/flakes`, locked seven weeks behind the tree.
+  A `flake.nix` bind change ships only via push + `nix flake update satan` +
+  home-switch. The binds are raw `--bind`, which bwrap fails hard on when the
+  source is missing — so in any relocation the deploy is on the critical path.
+  Memory `mem.fact.satan.runtime-jail-deploys-from-github-input`.
+- **Moving a subtree out of a repo with history, as a rename:** `git subtree
+  split -P satan -b satan-corpus` (check `satan-corpus^{tree}` = `HEAD:satan`),
+  `mv` the directory, then in it `git init` + `fetch <old> satan-corpus` +
+  `update-ref refs/heads/main FETCH_HEAD` + `reset` (mixed). Inode and working
+  tree untouched; status clean; then `git rm -r --cached` in the old repo.
+- **Corpus-gated tests skip silently when a test re-derives the corpus path.**
+  Four context tests built `<notes>/satan/prompts` by hand; after the move they
+  would have skipped and the suite stayed "green". Tests must use the defcustom
+  joins (`satan-prompts-dir` …), and a relocation must compare the skip *set*,
+  not just the unexpected count (T3 went 3 → 10 skips while corpus was absent).
+- **Inventories miss consumers the survey did not think to look for.** Two
+  found on the ground: `~/nushell/config.nu` (nu is the login shell; the survey
+  checked zsh) and `~/notes/.pi/SYSTEM.md`, a tracked build artefact that
+  inlined the old path. A path sweep must include generated-and-committed
+  files and every shell's config.
+- **`satan-tick.timer` is `OnBootSec=5min` only** — `list-timers` shows it
+  `elapsed` with no NEXT all day. Not a fault of any rebuild.
+
+### Slice-specific
+
+- Commits. satan: `8c444b3` (`satan-corpus-root` default `"~/satan"`,
+  standalone, atsatan exclude glob retired), `cc291bc` (plan VT keyword
+  amendments, user-approved), `8a49d16` (flake: hippocampus bind +
+  `/workspace/corpus` for dev jails), pushed `4ecc741..8a49d16`. `~/satan`:
+  30 split commits + `c02b2b2` (8 self-naming corpus files) + `0634e37`
+  (justfile `commit`, OQ-4). `~/notes`: `f4ecccf` (untrack), `fbd668c`
+  (build-system-prompt + SYSTEM.md). `~`: `76c28893` (zsh + nu motd),
+  `92b82a39` (patcher `systemPromptFile`), `1aea39ad` (lock). `.emacs.d`:
+  `46da1d6` (denote exclusion dropped).
+- OQ-4 settled: `~/satan` has its own `justfile commit` recipe; no
+  `.gitignore` (P5 holds — PHASE-02 left only authored content).
+- R7 settled: no `workspaceDeps` entry (basename collision); dev jails
+  (`jailed-pi-research`, `jailed-dirge`, `jailEnvOptions`) get a raw rw bind at
+  `/workspace/corpus` via a named `corpusJailOptions` list.
+- Verification: suite 1044/1040/1 (db probe)/3; verify-vt P01 ×4, P02 ×2,
+  P03 VT-3 PASS, P03 VT-1/2 attribution by conformance range at completion.
+  Manual `tick-pulse` 12:55 and human-triggered `tick-agent` 13:10 (`done`,
+  real model turn) and `motd` 13:09 (401, key) — all bundles take mode prompts
+  and 100% of tool descriptions verbatim from `~/satan`, 0 `notes/satan`.
+  `denote:` link-follow in `~/notes`: human reports no slowdown.
+- VH-1 caveat: no pi/MCP interactive session left a footprint
+  (`.pi/SYSTEM.md` mtime predates the check); the human-triggered broker runs
+  are the evidence. SYSTEM.md itself carries `~/satan` (3) and `notes/satan`
+  (0).
+- Residue for PHASE-04: 15 package `.el` comments/docstrings, 2 test
+  comments, 13 `docs/` files still say `~/notes/satan`. Nothing live.
+- Follow-ups filed: CHR-004 (self-edit prompts describe the pre-SL-012
+  layout — F-5/A6), CHR-005 (`~/satan` has no remote — D-7), ISS-011
+  (`satan-attrd` rejects sensor reason `content_backlog`, 22× since 09-11).
+  PHASE-02's "tick uses a different key" backlog suggestion is still unfiled.
+
+### Cleared — do not re-investigate
+
+- The `satan-attrd` `content_backlog` parse error predates the cutover.
+- `.emacs.d/.direnv/flake-inputs/*` hits for `notes/satan` are stale nix
+  store snapshots, not consumers.
