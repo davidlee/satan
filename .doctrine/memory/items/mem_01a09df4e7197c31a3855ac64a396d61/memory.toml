@@ -1,0 +1,46 @@
+memory_uid = "mem_01a09df4e7197c31a3855ac64a396d61"
+memory_key = "mem.concept.satan.three-roots"
+schema_version = 1
+memory_type = "concept"
+status = "active"
+title = "SATAN's three roots: notes, corpus, state"
+summary = "SATAN resolves every path from three roots with distinct owners: satan-notes-root (~/notes, the user's, read-only to SATAN), satan-corpus-root (~/satan, SATAN-authored, own repo), satan-state-root (~/.local/state/satan, runtime, discardable)"
+created = "2026-09-14"
+updated = "2026-09-14"
+
+[scope]
+paths = ["satan/satan-custom.el"]
+globs = []
+commands = []
+tags = ["satan", "paths", "architecture", "onboarding"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "72dfcb2a05534d5256b675db68cab5fefef02a84"
+tree = "8b88b5499580851cc78c0ba56ad2b2a75af566ec"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "72dfcb2a05534d5256b675db68cab5fefef02a84"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-015"
+

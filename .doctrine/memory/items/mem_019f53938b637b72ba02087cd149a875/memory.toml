@@ -3,10 +3,10 @@ memory_key = "mem.pattern.satan.corpus-integration-skip-unless"
 schema_version = 1
 memory_type = "pattern"
 status = "active"
-title = "Corpus-integration tests skip-unless the ~/notes/satan corpus is present"
-summary = "Tests reading the host-only ~/notes/satan/ model-facing corpus must skip-unless the file is present (mirrors the DB skip-unless idiom)"
+title = "Corpus-integration tests skip-unless the ~/satan corpus is present"
+summary = "Tests reading SATAN's host-only model-facing corpus (satan-corpus-root, ~/satan) must skip-unless the file is present, resolving it through the path defcustoms — never a hand-built path, or a relocation turns them into silent skips"
 created = "2026-07-11"
-updated = "2026-07-11"
+updated = "2026-09-14"
 
 [scope]
 paths = []

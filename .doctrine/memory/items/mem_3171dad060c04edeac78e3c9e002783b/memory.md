@@ -35,13 +35,19 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
   `satan-custom.el`, the zero-dependency leaf) replace the old config-owned
   `dl-notes-paths` / `dl-denote-journal` couplings. `satan-custom.el` owns
   `(defgroup satan …)`.
+- **Three roots (SL-015, 2026-09-14):** `satan-notes-root` (`~/notes`, the
+  user's, read-only to SATAN), `satan-corpus-root` (`~/satan`, SATAN's
+  model-facing corpus, its own repo), `satan-state-root`
+  (`~/.local/state/satan`, runtime). Every path defcustom is a
+  `satan-{notes,corpus,state}-path` join — see
+  [[mem.concept.satan.three-roots]].
 
 ## Architecture layers (file map)
 
 | Layer | Files | Role |
 |-------|-------|------|
 | Core | `satan.el`, `-broker.el`, `-mode.el`, `-protocol.el`, `-output.el`, `-jsonl.el`, `-audit.el` | Entry point, broker lifecycle, mode registry, wire protocol, output handlers, JSONL, audit log |
-| Custom | `satan-custom.el` | `satan--root` self-location + `satan-notes-root`/`satan-journal-today` defcustoms (leaf; zero satan-deps) |
+| Custom | `satan-custom.el` | `satan--root` self-location; `satan-{notes,corpus,state}-root` + their `-path` joins; `satan-journal-today` (leaf; zero satan-deps) |
 | Memory | `satan-memory.el`, `-store.el`, `-grammar.el`, `-canon.el`, `-evidence.el`, `-migrate.el` | Trace storage (psql), grammar, canonicalizer, evidence assembly, migrations |
 | Tools | `satan-tools.el`, `-tools-{org,hippocampus,inbox,memory,bough,patch,notes,docs,notify,sway,agenda,activity,vcs,motive,atsatan}.el` | Tool registry + 15 tool modules |
 | Perceptual | `satan-percept.el`, `-resonance.el`, `-motive.el`, `-sensor-{alerts,curiosity,wpm}.el` | Percept capsule, auto-resonance, motive file, sensor probes |
@@ -58,11 +64,12 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
 - **psql is the only DB interface**. ~10 files talk to postgres via `satan-db-*`; all via `call-process` to `psql`. No elisp PG libraries.
 - **Tools are registered at load time** via `satan-tool-register`. Mode→tool allowlists are on mode specs.
 - **The broker's spawn sequence** (in `satan-broker--spawn`) runs percept build → resonance → motive read → sensor alerts → curiosity/WPM probes → bundle assembly → process spawn. Order matters; it's a flat ~185-line `let*`.
-- **Code lives in `~/dev/satan/satan/`; model-facing content lives in `~/notes/satan/`** (prompts, scaffolding, framing, tool descriptions, hippocampus, motives). The notes corpus stays out of the package by design (D4/POL) — corpus-integration tests `skip-unless` it is present ([[mem.pattern.satan.corpus-integration-skip-unless]]).
+- **Code lives in `~/dev/satan/satan/`; model-facing content lives in `~/satan/`** (`satan-corpus-root`: prompts, scaffolding, framing, tool descriptions, hippocampus, motives), a separate repo since SL-015 — no longer under `~/notes`, and no symlink there. The corpus stays out of the package by design (D4/POL) — corpus-integration tests `skip-unless` it is present ([[mem.pattern.satan.corpus-integration-skip-unless]]). The runtime jail that binds it is deployed from the GitHub flake input ([[mem.fact.satan.runtime-jail-deploys-from-github-input]]).
 - **Package paths use `~` — expand before `call-process`.** `satan-notes-root`
-  defaults to the literal `"~/notes"`; a subprocess base-dir/arg must be
+  and `satan-corpus-root` default to the literals `"~/notes"` / `"~/satan"`
+  (the `-path` joins expand; the bare roots do not); a subprocess base-dir/arg must be
   `expand-file-name`'d first (`call-process` does not expand `~`). Two such
-  regressions shipped and were fixed post-cutover.
+  regressions shipped and were fixed after the SL-012 extraction.
 
 ## DRY gotchas (post-extraction)
 
