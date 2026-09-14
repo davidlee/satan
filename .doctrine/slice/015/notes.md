@@ -342,3 +342,5 @@ consumer.
   root" ranks three-roots then the signpost.
 - Suite 1044/1040/1 (db probe)/3; verify-vt 9/9 PASS. `doctrine check gate`
   needs a `gate` recipe this justfile lacks — `just check` is the gate.
+- Lifecycle: slice sat at `plan` through all four phases (never flipped to
+  `started`); advanced `plan → started [skip] → audit` at close (`5ef5546`).
