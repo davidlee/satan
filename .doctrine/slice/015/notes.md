@@ -290,3 +290,55 @@ history. Live system consistent again as of 12:54 (home-manager generation 713).
 - The `satan-attrd` `content_backlog` parse error predates the cutover.
 - `.emacs.d/.direnv/flake-inputs/*` hits for `notes/satan` are stale nix
   store snapshots, not consumers.
+
+## PHASE-04 (2026-09-14)
+
+Paper trail closed. Whole-$HOME sweep: 2835 hits, 0 unclassified, no missed
+consumer.
+
+### Durable — survives this slice
+
+- **In the Claude Code agent shell, `grep` is ugrep with `--ignore-files`.**
+  The bash snapshot shadows `grep`/`find` with an embedded ugrep
+  (`-G --ignore-files --hidden -I --exclude-dir=.git …`), so every plain
+  `grep -r` skips gitignored paths — where untracked consumers live — and the
+  PHASE-03 mini-sweep ran under it. With `--dereference-recursive` it also
+  walked `~/.wine/dosdevices/z:` into `/`. For a sweep whose result is a
+  claim: `rg -l -F --no-ignore --hidden -L -g '!**/<bulk>/**'` (32 s over
+  `$HOME`; exit 2 there is dangling symlinks/loops — classify the errors, do
+  not trust the status) or GNU grep by absolute path. Folded into
+  `mem.pattern.satan.rg-not-ugrep-for-rename-verification`.
+- **Docstrings should name the defcustom, not the path.** The 17 stale lines
+  became `satan-system-framing-file`, `satan-tools-descriptions-dir`,
+  `satan-corpus-root` … — text that cannot rot on the next move.
+- **Three-root model is now a concept memory** (`mem.concept.satan.three-roots`)
+  linked from the orientation signpost and surfaced in the boot snapshot.
+
+### Slice-specific
+
+- Commits: `566969e` (17 docstring/comment lines, D9 subset), `b6c5845`
+  (perceptual-design 7 lines, EX-1), `72dfcb2` (CHR-006: 16 docs/ files /
+  104 lines residue), `ee3dfd3` (three-roots concept; orientation +
+  skip-unless memories, EX-2/EX-3), `d1ce1ec` (ugrep memory).
+- VA-1 buckets (rg, `--no-ignore --hidden -L`, bulk caches/games/containers/
+  VCS internals excluded; `~/.claude` and `jail.nix` agent homes swept
+  separately): 2292 run bundles (a); 118 doctrine/governance prose — this
+  repo's closed slices, SL-015's own record, backlog/RFC evidence, frozen
+  `.emacs.d` corpus and pre-split tree (b); 10 satan-patcher + `sloptower`
+  (its successor repo, same stale default) (c); 16 `docs/` (d); the rest
+  history of some kind — 341 agent session transcripts, 20
+  shell/editor/clipboard histories and backups, 36 old nix generations
+  (current profile-229 and home-manager-713 are clean), 1 panopticon commit
+  record, 1 intentional CHR-003 comment in `satan-patcher.nix`.
+- Fixed outside the repo: `~/.claude/projects/-home-david-notes/memory/
+  bough-removal-rn2.md` told agents to edit `~/notes/satan/prompts/`.
+- Left for the user: `~/.emacs.d/_claude/settings.local.json:33,34,49` grants
+  Claude `Read(//home/david/notes/satan/**)` — dead permission entries, not a
+  reader; the equivalent for `~/satan` is absent.
+- Open doctrine prose still citing old paths, left as record: IMP-010
+  (`runs/` path, pre-SL-012 names), RFC-016 §evidence.
+- EX-4: `git diff e324794..HEAD -- .doctrine/slice/002* .doctrine/slice/012*`
+  empty. VA-2: `memory validate` clean; retrieve on "satan orientation corpus
+  root" ranks three-roots then the signpost.
+- Suite 1044/1040/1 (db probe)/3; verify-vt 9/9 PASS. `doctrine check gate`
+  needs a `gate` recipe this justfile lacks — `just check` is the gate.
