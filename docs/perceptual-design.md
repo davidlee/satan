@@ -224,7 +224,7 @@ does not need to know)." v0 is that v2.
 A single, bounded, user-and-SATAN-editable prose file lives at:
 
 ```text
-~/notes/satan/motives.org
+~/satan/motives.org
 ```
 
 Hard bounds, enforced broker-side on every write:
@@ -531,10 +531,10 @@ vs `patch_job_create`, `inbox_append` vs `notify_send`). Address by
 sharpening the "when to pick me over my neighbour" sentence in:
 
 ```text
-~/notes/satan/tools/proposal_stage.md
-~/notes/satan/tools/patch_job_create.md
-~/notes/satan/tools/inbox_append.md
-~/notes/satan/tools/notify_send.md
+~/satan/tools/proposal_stage.md
+~/satan/tools/patch_job_create.md
+~/satan/tools/inbox_append.md
+~/satan/tools/notify_send.md
 ```
 
 No new code, no schema, no enforcement. Revisit if observation shows
@@ -655,14 +655,14 @@ the next tick's start. No live loop, no callbacks.
   test/satan-observer-test.el
   test/satan-sensor-alerts-test.el
 
-~/notes/satan/
+~/satan/
   motives.org                   user-editable motive file
   motives.archive.org           archived motives (append-only)
   tools/motive_read.md
   tools/motive_replace.md
 
 state:
-  ~/notes/satan/runs/<id>/percept.json
+  ~/.local/state/satan/runs/<date>/<id>/percept.json
   ~/.local/state/satan/notified.json
 ```
 
