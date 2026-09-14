@@ -1,0 +1,46 @@
+memory_uid = "mem_01a09dd9b5bc704388093135ea89e9f2"
+memory_key = "mem.fact.satan.runtime-jail-deploys-from-github-input"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "SATAN runtime jail deploys from the GitHub flake input, not the working tree"
+summary = "SATAN's runtime bwrap jail is built from the github:davidlee/satan flake input in ~/flakes, not from ~/dev/satan — a flake.nix bind change needs push + nix flake update satan + home-switch; a raw --bind to a missing path kills every run"
+created = "2026-09-14"
+updated = "2026-09-14"
+
+[scope]
+paths = ["flake.nix"]
+globs = []
+commands = ["just home-switch", "nix flake update satan"]
+tags = ["nix", "jail", "bwrap", "satan", "cutover"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "8a49d1666cf373728e0886d5a77e10975b7c154a"
+tree = "715664a1567d726203ba9718975b4565ab0b82ed"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "8a49d1666cf373728e0886d5a77e10975b7c154a"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-015"
+
