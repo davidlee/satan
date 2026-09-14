@@ -283,7 +283,7 @@ history. Live system consistent again as of 12:54 (home-manager generation 713).
 - Follow-ups filed: CHR-004 (self-edit prompts describe the pre-SL-012
   layout — F-5/A6), CHR-005 (`~/satan` has no remote — D-7), ISS-011
   (`satan-attrd` rejects sensor reason `content_backlog`, 22× since 09-11).
-  PHASE-02's "tick uses a different key" backlog suggestion is still unfiled.
+  ISS-012 (motd/morning 401 on the expired key while tick passes — PHASE-02).
 
 ### Cleared — do not re-investigate
 
