@@ -28,6 +28,16 @@ fallback, a glob that matches nothing — reproduces the failure. Prefer
 `rg --no-heading -F -- "$name" <dir> | wc -l`: no counter subprocess, no
 fallback, and `wc -l` cannot silently succeed at nothing.
 
+**In the agent shell, `grep` is ugrep.** The Claude Code bash snapshot
+shadows `grep` (and `find`) with an embedded binary run as
+`ugrep -G --ignore-files --hidden -I --exclude-dir=.git …`. `--ignore-files`
+skips everything a `.gitignore` excludes — in a `$HOME` sweep that is
+precisely where untracked consumers live — and `--dereference-recursive`
+follows `~/.wine/dosdevices/z:` into `/`. SL-015 PHASE-04 caught it only
+because the sweep's stderr showed `ugrep:` warnings from `/nix/store`. For any
+sweep whose result is a claim, call GNU grep by absolute path
+(`/run/current-system/sw/bin/grep`) or use `rg --no-ignore`.
+
 ## Mitigation
 
 Always include a **live positive control** in the same grep invocation style

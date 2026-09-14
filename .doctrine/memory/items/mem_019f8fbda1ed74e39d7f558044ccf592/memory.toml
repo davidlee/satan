@@ -5,9 +5,9 @@ lifespan = "procedural"
 memory_type = "pattern"
 status = "active"
 title = "Use rg, not ugrep, to verify zero-hit renames across satan elisp"
-summary = "Use rg (not ugrep) to verify zero-hit renames/deletions across satan/**/*.el — ugrep silently mishandles --include='*.el'"
+summary = "Zero-hit grep checks lie silently: ugrep mishandles --include, and in the agent shell plain grep IS ugrep --ignore-files (skips gitignored paths). Use rg or GNU grep by absolute path, with a live positive control."
 created = "2026-07-23"
-updated = "2026-07-23"
+updated = "2026-09-14"
 
 [scope]
 paths = []
