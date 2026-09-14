@@ -53,9 +53,9 @@ points at the user's config tree and dangles once SATAN ships standalone.")
 ;; ── Notes corpus (Axis-1, D4) ───────────────────────────────────────────────
 
 (defcustom satan-notes-root "~/notes"
-  "Root directory of the notes corpus.
-SATAN derives owned paths as ${satan-notes-root}/satan/... and the
-standard corpus paths (journal/, weekly/, inbox.org) below it."
+  "Root directory of the user's notes corpus, which SATAN only reads.
+The standard notes paths (journal/, weekly/, inbox.org) derive below it.
+SATAN's own corpus is not here: see `satan-corpus-root'."
   :type 'directory
   :group 'satan)
 
@@ -83,18 +83,16 @@ they differ only in which root they read."
 
 ;; ── SATAN's own corpus (SL-015 D1) ──────────────────────────────────────────
 
-(defcustom satan-corpus-root (expand-file-name "satan" satan-notes-root)
+(defcustom satan-corpus-root "~/satan"
   "Root directory of SATAN's own model-facing corpus.
 Prompts, system scaffold and framing, tool descriptions, motives,
 hippocampus, proposals — content SATAN reads *and writes*, versioned in
 its own repo.
 
 Distinct from `satan-notes-root', which is the user's notes corpus and
-which SATAN only reads.  The default derives from `satan-notes-root'
-transitionally, reproducing the historical
-`${satan-notes-root}/satan/...' location; SL-015 PHASE-02 repoints it at
-the standalone repo.  It resolves exactly one location — never two: this
-is a moving default, not a fallback search path."
+which SATAN only reads.  Deliberately not derived from it and with no
+fallback: one location, so a corpus that is missing fails loudly rather
+than resolving somewhere readable but wrong (SL-015 D2)."
   :type 'directory
   :group 'satan)
 

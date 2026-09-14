@@ -187,9 +187,7 @@ constructor call here would return a new run-id and an unfrozen time."
 Run bundles are discardable runtime state and derive from `satan-state-root';
 hippocampus is SATAN-authored, versioned content and derives from
 `satan-corpus-root' (SL-015 design D3).  Neither is a literal: re-evaluating
-the standard values under a rebound root moves each with its own root only.
-Rebinding `satan-notes-root' moves neither, because it feeds only
-`satan-corpus-root''s *standard value*, not its current one."
+the standard values under a rebound root moves each with its own root only."
   (should (equal satan-runs-dir (satan-state-path "runs")))
   (should (equal satan-hippocampus-dir (satan-corpus-path "hippocampus")))
   (let ((satan-state-root "/tmp/sr")
@@ -197,13 +195,7 @@ Rebinding `satan-notes-root' moves neither, because it feeds only
     (should (equal (eval (car (get 'satan-runs-dir 'standard-value)) t)
                    "/tmp/sr/runs"))
     (should (equal (eval (car (get 'satan-hippocampus-dir 'standard-value)) t)
-                   "/tmp/cr/hippocampus")))
-  ;; The transitional link still holds: the corpus root defaults below the
-  ;; notes root, so today's on-disk location is reproduced exactly (A1/A2).
-  ;; PHASE-03 repoints this at the standalone repo and this clause changes.
-  (let ((satan-notes-root "/tmp/nr"))
-    (should (equal (eval (car (get 'satan-corpus-root 'standard-value)) t)
-                   "/tmp/nr/satan"))))
+                   "/tmp/cr/hippocampus"))))
 
 ;; ── Run directory layout cluster (moved from satan-broker.el, PHASE-03) ────
 

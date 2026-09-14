@@ -48,13 +48,6 @@
 (defconst satan-tools-atsatan--results-max 200
   "Hard upper bound on results returned in a single scan.")
 
-(defconst satan-tools-atsatan--exclude-globs
-  '("!**/satan/**")
-  "Glob exclusions passed to rg as repeated --glob flags.
-`!satan/**' alone does not exclude when rg traverses an absolute root
-— rg matches globs against the full path. `!**/satan/**' excludes
-any `satan/' subtree regardless of depth.")
-
 (defconst satan-tools-atsatan--default-path-glob "*.{org,md}"
   "Default rg glob for files to scan.")
 
@@ -148,18 +141,15 @@ render a `> '-prefixed blockquote."
               (list "#+END_QUOTE")))))
 
 (defun satan-tools-atsatan--rg-argv (max-results path-glob)
-  (let ((argv (list "--json" "-n" "--fixed-strings"
-                    "--max-count" (number-to-string max-results)
-                    "--glob" path-glob)))
-    (dolist (g satan-tools-atsatan--exclude-globs)
-      (setq argv (append argv (list "--glob" g))))
-    ;; `call-process' performs no shell tilde expansion, so a literal
-    ;; "~/notes" root would reach rg as a nonexistent path.  Expand here
-    ;; (the sole call-process boundary) so absolute match paths flow
-    ;; through enrich/done downstream.
-    (append argv
-            (list satan-tools-atsatan--mark
-                  (expand-file-name satan-tools-atsatan-root)))))
+  ;; `call-process' performs no shell tilde expansion, so a literal
+  ;; "~/notes" root would reach rg as a nonexistent path.  Expand here
+  ;; (the sole call-process boundary) so absolute match paths flow
+  ;; through enrich/done downstream.
+  (list "--json" "-n" "--fixed-strings"
+        "--max-count" (number-to-string max-results)
+        "--glob" path-glob
+        satan-tools-atsatan--mark
+        (expand-file-name satan-tools-atsatan-root)))
 
 (defun satan-tools-atsatan--run-rg (argv)
   "Invoke rg with ARGV. Returns (:exit N :stdout STR :stderr STR)."

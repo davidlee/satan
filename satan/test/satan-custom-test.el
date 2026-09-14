@@ -98,13 +98,14 @@ default that derives from another variable or from the environment."
     (should (equal (satan-custom-test--default-of 'satan-state-root)
                    (expand-file-name ".local/state/satan" "~")))))
 
-(ert-deftest satan-custom-corpus-root-defaults-below-notes-root ()
-  ;; PHASE-01 is a pure refactor: the corpus root's transitional default must
-  ;; reproduce today's on-disk location exactly (SL-015 A1/A2).  PHASE-03 flips
-  ;; it to the standalone repo; this assertion is expected to change there.
+(ert-deftest satan-custom-corpus-root-is-standalone ()
+  ;; The corpus is its own repo, not a subtree of the notes (SL-015 D2/P4): the
+  ;; default is the literal ~/satan and does not follow `satan-notes-root'.  A
+  ;; derivation would put a moved corpus back under the notes the moment the
+  ;; notes root is rebound.
   (let ((satan-notes-root "/tmp/notes"))
     (should (equal (satan-custom-test--default-of 'satan-corpus-root)
-                   "/tmp/notes/satan"))))
+                   "~/satan"))))
 
 ;; ── SL-015 VT-2: every dependent default follows its root ───────────────────
 ;;

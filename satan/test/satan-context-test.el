@@ -16,9 +16,10 @@
 
 (defun satan-context-test--corpus-p (&rest files)
   "Non-nil when every model-facing FILE is readable.
-The `~/notes/satan/' corpus is host-only (SL-012 D4/POL, not shipped in
-the package); corpus-integration tests `skip-unless' it is present, so
-the suite is green in CI/sandbox without it and exercised on the host."
+SATAN's corpus (`satan-corpus-root') is host-only (SL-012 D4/POL, not
+shipped in the package); corpus-integration tests `skip-unless' it is
+present, so the suite is green in CI/sandbox without it and exercised on
+the host."
   (cl-every #'file-readable-p files))
 
 (defun satan-context-test--mkrun (root run-id &optional final-summary tools failed)
@@ -180,8 +181,7 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
 (ert-deftest satan-context/tick-emits-block-when-recent-runs-set ()
   (skip-unless (satan-context-test--corpus-p
                 satan-system-scaffold-file satan-system-framing-file
-                (expand-file-name "tick/pulse.txt"
-                                  (expand-file-name "satan/prompts" satan-notes-root))))
+                (expand-file-name "tick/pulse.txt" satan-prompts-dir)))
   (satan-context-test--with-runs-root root
     (satan-context-test--mkrun
      root "20260521T125543-tick-pulse-80e9e6"
@@ -193,10 +193,7 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
            ;; so the test catches that drift.
            (spec (list :name "tick-pulse"
                        :recent-runs 5
-                       :prompt-file (or (locate-file "tick/pulse.txt"
-                                                    (list (expand-file-name
-                                                           "satan/prompts"
-                                                           satan-notes-root)))
+                       :prompt-file (or (locate-file "tick/pulse.txt" (list satan-prompts-dir))
                                         (error "tick/pulse.txt prompt missing from notes"))))
            (bundle (satan-context-tick spec))
            (prompt (plist-get bundle :prompt)))
@@ -206,8 +203,7 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
 (ert-deftest satan-context/tick-omits-block-when-recent-runs-unset ()
   (skip-unless (satan-context-test--corpus-p
                 satan-system-scaffold-file satan-system-framing-file
-                (expand-file-name "tick/pulse.txt"
-                                  (expand-file-name "satan/prompts" satan-notes-root))))
+                (expand-file-name "tick/pulse.txt" satan-prompts-dir)))
   (satan-context-test--with-runs-root root
     (satan-context-test--mkrun
      root "20260521T125543-tick-pulse-80e9e6"
@@ -215,10 +211,7 @@ When FAILED is non-nil the directory name carries the `.FAILED' suffix."
      '(("activity_read" . 1)))
     (let* ((satan-runs-dir root)
            (spec (list :name "tick-pulse"
-                       :prompt-file (or (locate-file "tick/pulse.txt"
-                                                    (list (expand-file-name
-                                                           "satan/prompts"
-                                                           satan-notes-root)))
+                       :prompt-file (or (locate-file "tick/pulse.txt" (list satan-prompts-dir))
                                         (error "tick/pulse.txt prompt missing from notes"))))
            (bundle (satan-context-tick spec))
            (prompt (plist-get bundle :prompt)))

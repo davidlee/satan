@@ -79,8 +79,11 @@ regression)."
       (should (member (expand-file-name "~/notes-does-not-exist-xyzzy") argv))
       (should-not (member "~/notes-does-not-exist-xyzzy" argv)))))
 
-(ert-deftest notes-at-satan-scan/excludes-satan-dir ()
-  "Files under <root>/satan/ are excluded by the !satan/** glob."
+(ert-deftest notes-at-satan-scan/scans-satan-subtree ()
+  "A `satan/' directory under the notes root is scanned like any other.
+SATAN's corpus no longer nests inside the notes (SL-015 D8), so nothing
+there needs excluding — a user note dir that happens to be called
+`satan' is the user's."
   (satan-tools-atsatan-test--with-root root
     (let* ((subdir (expand-file-name "satan" root))
            (file   (expand-file-name "x.org" subdir))
@@ -90,7 +93,7 @@ regression)."
         (write-region "@satan x\n" nil file))
       (let ((res (satan-tool/notes-at-satan-scan nil ctx)))
         (should (eq (car res) 'ok))
-        (should (zerop (plist-get (cdr res) :count)))))))
+        (should (= 1 (plist-get (cdr res) :count)))))))
 
 (ert-deftest notes-at-satan-scan/excludes-legacy-done-token ()
   "Lines bearing the legacy `@satan-done' claim marker are filtered.

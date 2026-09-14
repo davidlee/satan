@@ -31,15 +31,17 @@
                     (file-executable-p satan-test--jail-bin)))
   (let* ((temp (make-temp-file "satan-it-" t))
          (journal-dir (expand-file-name "journal" temp))
-         (runs-dir    (expand-file-name "satan/runs" temp))
-         (hipp-dir    (expand-file-name "satan/hippocampus" temp))
-         (motd-path   (expand-file-name "satan/motd.txt" temp)))
+         (corpus-dir  (expand-file-name "corpus" temp))
+         (runs-dir    (expand-file-name "state/runs" temp))
+         (hipp-dir    (expand-file-name "hippocampus" corpus-dir))
+         (motd-path   (expand-file-name "motd.txt" corpus-dir)))
     (make-directory journal-dir t)
     (make-directory runs-dir t)
     (make-directory hipp-dir t)
     ;; Override the harness command + paths.  Use a copy of the morning
     ;; mode so we don't mutate the global registry permanently.
     (let* ((satan-notes-root temp)
+           (satan-corpus-root corpus-dir)
            ;; Inject today's-journal resolver (the config wires `my/journal--*'
            ;; here in production); the broker writes the SATAN block into it.
            (satan-journal-today
