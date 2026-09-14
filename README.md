@@ -19,6 +19,7 @@ context and reactivity. [Sloptower](https://github.com/davidlee/sloptower/)
 allows it to propose code changes in isolation w/ bubblewrap jails - though
 [oubliette](https://github.com/davidlee/oubliette) is strictly more secure, so
 sometime soon we'll use it for containment.
+[goad](https://github.com/davidlee/goad) allows SATAN a means to interrogate its subject.
 [Nix](https:/github:com/davidlee/nix-config) holds all the pieces together.
 
 Extracted from my [emacs-config](https://github.com/davidlee/emacs-config), 
