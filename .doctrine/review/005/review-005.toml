@@ -1,0 +1,115 @@
+id    = 5
+slug  = "sl-015-reconciliation-audit-the-three-root-corpus-relocation"
+title = "SL-015 reconciliation audit: the three-root corpus relocation"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "auditor"
+responder = "author"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-015"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "design-target selector registry under-declares by 28 source paths; conformance signal is inert"
+detail = "`doctrine slice conformance SL-015` reports 59 undeclared / 0 undelivered / 2 conformant. Only `satan/satan-custom.el` and `satan/satan-run.el` carry intent `design-target`; the other 28 source paths the slice actually edited — 19 `satan/*.el`, 7 `satan/test/*.el`, `flake.nix`, `docs/perceptual-design.md` — are registered as `scope-relevant` only, which conformance does not read. The remaining 31 undeclared entries are `.doctrine/**` bookkeeping (backlog, memory, notes.md, plan.toml), which the house convention tolerates (SL-013 carries 12 such). Effect: the one check that does not take the slice's own word for its scope is inert for this slice — 28 real edits read as scope creep and nothing could ever read as conformant. Compare SL-013: 22 conformant, 12 undeclared. The load-bearing fix is the selector registry (`doctrine slice selector add --intent design-target`), which is what `slice conformance` reads; this project's design template carries no §6 selector mirror to update alongside it."
+disposition = "verified"
+response = "Confirmed. The count is exact: 59 undeclared = 31 `.doctrine/**` bookkeeping + 28 real source paths, against 2 conformant. Delegated to /reconcile — per-slice, and the load-bearing surface is the selector registry (`slice-015.toml`), not prose: `doctrine slice selector add SL-015 --intent design-target` over the 28 paths, which is what `slice conformance` reads. Re-run conformance afterwards; the target shape is SL-013's (30 conformant / ~31 undeclared bookkeeping / 0 undelivered). No code change."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "design F1 / §5.4 S0 misidentify the wpm TSV writer as a waybar module"
+detail = """Design F1 lists "waybar's wpm logger writes every minute" and §5.4 S0 instructs "stop the waybar wpm module". PHASE-02 found on the ground that the writer is `wpm-daemon.service`; waybar's `custom/wpm` only `cat`s `$XDG_RUNTIME_DIR/wpm.json`, so stopping waybar leaves the writer running. Recorded in notes.md PHASE-02 as durable, and the quiesce was carried out correctly in practice, so no rows were stranded — but the design still prescribes a quiesce that does not quiesce, and R1's mitigation reads as discharged while naming the wrong process. `~/.config/waybar/wpm-status.py` remains the correct *file* (it is what wpm-daemon runs), so PHASE-02 EX-4 is unaffected; PHASE-02 EN-2's wording carries the same mislabel but plan criteria are immutable-append and off the reconcile write surface."""
+disposition = "verified"
+response = "Confirmed; the design is wrong on a fact the execution disproved. Delegated to /reconcile as a per-slice direct edit of `design.md`: F1 and §5.4 S0 name `wpm-daemon.service` as the writer, with waybar's `custom/wpm` identified as a reader of `$XDG_RUNTIME_DIR/wpm.json`. PHASE-02 EN-2 carries the same mislabel and is left alone — plan criteria are immutable-append and off the reconcile write surface. No code change: the file that was actually retargeted (`wpm-status.py`) was the right one."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "design §2.4 consumer inventory is incomplete; R5 fired and the design does not record it"
+detail = """The slice scope doc calls the §2.4 inventory "the scope boundary", and D4 rejects a transitional symlink on the grounds that "the surface inventory (§2.4) is complete enough not to need a net". PHASE-03 found two consumers on the ground that the survey missed: `~/nushell/config.nu` (nu is the login shell — the survey checked zsh only) and `~/notes/.pi/SYSTEM.md` (a tracked, generated build artefact that inlined the old path). Both are fixed; neither appears in §2.4, and R5 still reads as an unrealised risk with a mitigation. The durable lesson — a path sweep must cover every shell's config and generated-and-committed files — is in notes.md but not in the design a future migration would read. R5 should record that it fired, what it caught, and that D4's confidence rested on an inventory that was two consumers short."""
+disposition = "verified"
+response = "Confirmed. Delegated to /reconcile as a per-slice direct edit of `design.md`: add the two missed consumers to the §2.4 table and mark R5 as fired, naming what it caught and the generalisation (every shell's config, plus generated-and-committed artefacts). D4's reasoning is not overturned — no symlink was needed and the misses were caught by the sweep the design mandated — but the sentence resting D4 on inventory completeness should say the inventory was two short and the sweep is what covered it."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "design §6 OQ-4 and §8 R7 still read as undecided; both were settled in PHASE-03"
+detail = 'OQ-1 was resolved in place, with the resolution written into §6 — the right treatment. Two of its siblings did not get it. §6 OQ-4 ("Gitignore them, add a commit recipe, or accept the dirt? Decide in PHASE-03") was settled: `~/satan` carries its own `justfile commit` recipe and no `.gitignore` — P5 holds because PHASE-02 left only authored content (notes.md PHASE-03, commit `0634e37`). §8 R7 ("Decide the mount name in PHASE-03 (`/workspace/corpus`?) or accept the loss") was settled: no `workspaceDeps` entry — the basename collision stands — and the dev jails instead get a raw rw bind at `/workspace/corpus` via a named `corpusJailOptions` list (`flake.nix:96`, verified today). Both still read to a fresh reader as open decisions on a closing slice.'
+disposition = "verified"
+response = "Confirmed. Delegated to /reconcile as a per-slice direct edit of `design.md`, matching the treatment OQ-1 already received: OQ-4 marked RESOLVED with the settlement (own `justfile commit` recipe, no `.gitignore`, P5 upheld, `0634e37`); R7 marked SETTLED with the outcome (no `workspaceDeps` entry, dev jails get `/workspace/corpus` via `corpusJailOptions`, `flake.nix:96`)."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "slice-015.md §Summary is empty and §Follow-Ups omits every follow-up the slice actually filed"
+detail = "`slice-015.md` §Summary is an empty heading. §Follow-Ups lists CHR-003, OQ-2 and OQ-3 — the state as of design lock — and none of the seven items filed during execution: CHR-004 (self-edit prompts describe the pre-SL-012 layout), CHR-005 (corpus repo remote), CHR-006 (docs/ prose residue, 16 files), ISS-008 (`just check` exits 0 with failures), ISS-009 (production-socket guard defeated by a trailing slash), ISS-010 (empty `XDG_STATE_HOME` treated as set), ISS-011 (attrd rejects `content_backlog`), ISS-012 (motd/morning 401 on the expired key). OQ-2 (should `~/satan` own `build-system-prompt`?) and OQ-3 (should the `@satan` scan cover `~/satan`?) are still carried as open questions with no backlog item behind either — on a closing slice they die with it unless filed or consciously dropped on the record."
+disposition = "verified"
+response = "Confirmed. Delegated to /reconcile as a per-slice direct edit of `slice-015.md`: write §Summary (what the slice delivered — the three named roots, the state split, the standalone corpus repo, the two retired workarounds) and rebuild §Follow-Ups from the eight items filed (CHR-003/004/006 open, CHR-005 resolved, ISS-008/009/010/011/012) plus ISS-013 raised in this audit. OQ-2 and OQ-3 need a call at reconcile: file each as a backlog item or record it as consciously dropped — they must not be left as live questions on a closed slice."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "CHR-005 is discharged on the ground but still open"
+detail = "CHR-005 asks for a remote on the `~/satan` corpus repo. Verified today: `~/satan` has `origin git@github.com:davidlee/satan-corpus.git` and `HEAD == origin/main` at `0634e37`, i.e. the repo is remoted and fully pushed. The backlog item is still `open`. An open item that is already done is the same corpus defect as a closed one that is not — it costs the next reader a verification round."
+disposition = "fix-now"
+response = "Fixed in audit scope: `doctrine backlog edit CHR-005 --status resolved --resolution done`. `~/satan` has remote `git@github.com:davidlee/satan-corpus.git` with HEAD == origin/main at `0634e37` — the item's own acceptance condition, met. Backlog hygiene, not a spec or governance edit."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "`doctrine check gate` cannot run in this project — no `gate` justfile recipe"
+detail = 'The audit skill requires `doctrine check gate` as part of evidence gathering. It fails here: `error: justfile does not contain recipe `gate``. PHASE-04 noted this ("`just check` is the gate") but never dispositioned it. The obvious fix — add `gate: check` — would be actively harmful while ISS-008 stands: `satan-test-run-batch` calls `ert-run-tests-batch` (not `…-and-exit`), so `just check` exits 0 with any number of failures. A `gate` recipe delegating to it would be a gate that cannot fail, which is worse than an absent one because tooling would then report it as passed.'
+disposition = "tolerated"
+response = "Tolerated, with the rationale on the record. `just check` is this project's gate (project governance: `just check` = lint + test). Adding a `gate` recipe that delegates to it would manufacture a gate that cannot fail while ISS-008 stands — tooling would then report a pass that means nothing, which is strictly worse than the current loud failure. Revisit when ISS-008 lands (`ert-run-tests-batch-and-exit`, or a non-zero exit on unexpected); at that point `gate: check` becomes correct and trivial. Not a spec or governance change; no brief item."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "the suite is not safe to run concurrently — overlapping runs clobber the shared test databases"
+detail = """Observed during this audit, not previously recorded. Two `just check` invocations overlapping in time produced 14 unexpected failures across `satan-memory-store/*` and `satan-memory-renormalize/*`, with conditions `duplicate key value violates unique constraint "pg_type_typname_nsp_index" … (typname)=(schema_migrations)` and `relation "satan_interventions" does not exist` — one run's `reset-and-migrate` tearing down the schema another was mid-migration on. The test databases are fixed names by defconst (`satan_memory_test`, `trace_test`, `patch_live_test`), so there is no per-run isolation and no lock. A serial re-run returned the documented bar exactly: 1044 / 1040 / 1 / 3. This is a fourth independent way this repo reports a false result, alongside ISS-008 (exit 0 regardless), lint being paren-balance only, and ~130 tests skipping silently without the DBs — and the only one that manufactures *failures* rather than hiding them, so it burns audit time chasing phantom regressions. Out of this slice's scope; it predates SL-015 and is a property of the harness."""
+disposition = "tolerated"
+response = "Accepted drift, tracked. Reproduced and characterised during this audit; the mechanism is fixed-name test databases (defconst) with no per-run namespacing and no lock, so `reset-and-migrate` races. Predates SL-015 and is a property of the test harness, not of this slice's change — out of scope to fix here. Filed as **ISS-013** with the three remediation options (per-run DB suffix / advisory lock / document only) and linked to ISS-008. Harvested to notes.md and to a durable memory so the next agent does not spend an audit round on phantom regressions. No brief item — not a spec or governance surface."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "design §9.2's documented invocation is load-bearing on the ISS-009 defect, and §9.2 does not say so"
+detail = """§9.2 explains why `SATAN_DB_HOST=/run/postgresql/` works — the trailing slash is not `equal` to the bare literal the guard compares against — and calls that a hole "recorded as a defect below". It is ISS-009. The coupling that matters is only in notes.md PHASE-01: **fixing ISS-009 invalidates this invocation**, so the two have to move together. A future agent reading §9.2 alone would fix the guard and break every gate in this slice's record."""
+disposition = "verified"
+response = "Confirmed. Delegated to /reconcile as a one-line per-slice direct edit of `design.md` §9.2: state that the documented invocation is load-bearing on ISS-009 and that fixing the guard invalidates it, so the two move together. The fact is already durable in notes.md; §9.2 is where a future reader will look."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "lifecycle sat at `plan` through all four phases and was reconciled by a skip at close"
+detail = "The slice never flipped to `started`; it advanced `plan → started [skip] → audit` in one act at close (`5ef5546`, recorded in `e842cda`). `doctrine slice status SL-015` still reports `audit ⚠ divergent: phases complete but lifecycle not terminal`, which is correct for a slice awaiting reconcile. The divergence is recorded and the phase-level runtime status was maintained throughout, so nothing is lost — noted so the audit does not silently pass over it."
+disposition = "aligned"
+response = "Observation correct, no change needed. The skip is recorded (`e842cda`, notes.md PHASE-04) and the runtime phase status was maintained throughout, so no evidence is missing. `audit ⚠ divergent` is the expected reading for a slice awaiting reconcile; it clears at `slice status SL-015 reconcile` and then at close."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "nit"
+title = "every ground-truth exit criterion verified independently today"
+detail = """Not read out of the notes — checked directly at `7f8969d`. `~/notes/satan` absent, no symlink (D4 / P03 EX-9). `satan-corpus-root` = literal `"~/satan"`, no derivation (D2 / P03 EX-2). `~/satan`: 832K, 32 commits with pre-split history back to `e894637`, remote `satan-corpus`, HEAD == origin/main (P03 EX-1, VA-2). State root holds `runs/`, `log/`, four sensor JSONs and 70 tick traces (P02 EX-1/EX-3). `flake.nix` binds `$HOME/satan/hippocampus` at :141 and `$HOME/satan` → `/workspace/corpus` at :96 (P03 EX-5, R7). Both workarounds gone: no `satan/**` glob in `satan-tools-atsatan.el`, no `denote-excluded-directories-regexp` in `dl-denote.el` (D8 / P03 EX-8). All six state modules carry `(require 'satan-custom)` (P01 EX-4); `satan-prompts-dir` is a defcustom (EX-8); the `behaviour/` class is untouched at all three sites (EX-9 / §2.2b); the D10 allowlist survives exactly twice (`satan-mcp.el:43`, `satan-patch-worktree.el:51`). Corpus names no old path (P03 VA-1); the `satan/` package carries none either (D9 subset); `docs/` residue is 16 files, filed as CHR-006. `doctrine memory validate` clean; `verify-vt` 9/9 PASS; suite 1044/1040/1/3 at the documented invocation. Governance untouched: zero `notes/satan` references under `.doctrine/{adr,policy,standard}` — ADR-017 §3 ledger and POL-001 unaffected as the slice declared."""
+disposition = "aligned"
+response = "Observation correct, no change needed. This is the positive evidence the closure rests on: every filesystem, repo, defcustom and jail fact re-derived from the ground at `7f8969d` rather than read out of the slice's own notes, plus a clean suite at the documented invocation and 9/9 VT. Recorded so the next reader can see what was checked, not just that it passed."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

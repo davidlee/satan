@@ -4,10 +4,10 @@ schema_version = 1
 lifespan = "semantic"
 memory_type = "fact"
 status = "active"
-title = "Verifying green in SATAN: just check needs DB env, just lint is paren-balance only"
-summary = "`just check` aborts from a bare shell without SATAN_DB_HOST/SATAN_FAILOVER_TO_SYSTEM_DB; `just lint` is only paren balance, and ~130 tests skip-and-pass without the test DBs."
+title = "Verifying green in SATAN: five ways the suite reports a false result"
+summary = "`just check` will not run bare (needs SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB); `just lint` is paren balance only; ~130 tests skip-and-pass without the test DBs; the exit status is always 0 (ISS-008); and concurrent runs corrupt the shared test databases (ISS-013)."
 created = "2026-08-24"
-updated = "2026-08-24"
+updated = "2026-09-17"
 
 [scope]
 paths = ["justfile", "flake.nix"]

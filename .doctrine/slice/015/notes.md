@@ -344,3 +344,77 @@ consumer.
   needs a `gate` recipe this justfile lacks — `just check` is the gate.
 - Lifecycle: slice sat at `plan` through all four phases (never flipped to
   `started`); advanced `plan → started [skip] → audit` at close (`5ef5546`).
+
+## Audit (2026-09-17) — RV-005
+
+Reconciliation ledger **RV-005**: 11 findings, no blockers, all terminal.
+6 → `/reconcile` (all documentation), 1 fixed in audit scope, 2 tolerated with
+rationale, 2 aligned. Suite at the documented invocation: 1044 / 1040 / 1 / 3.
+
+### Durable — survives this slice
+
+- **Two `just check` runs at once corrupt each other.** The DB suites target
+  fixed database names by defconst (`satan_memory_test`, `trace_test`,
+  `patch_live_test`) and each runs `reset-and-migrate` at setup — no
+  namespacing, no lock. Overlapping runs produced **14 phantom failures**
+  (`duplicate key … (typname)=(schema_migrations)`,
+  `relation "satan_interventions" does not exist`); the serial re-run of the
+  identical command was clean. Filed **ISS-013**; folded into
+  `mem.fact.satan.green-is-not-green`, which now names five ways this repo
+  reports a false result. The others hide a defect; this one manufactures one,
+  and it costs an audit round chasing it.
+- **An allowlist that suppresses nothing should be re-purposed as a liveness
+  check** (PHASE-01 F-14, not previously lifted). Narrowing VT-3 to
+  `expand-file-name` with a `satan-*-root` DIR argument already excluded both
+  D10 exceptions — `satan-mcp.el:43` joins under `xdg`, and
+  `satan-patch-worktree.el:52` is a `format`, not a join — so the allowlist
+  was documentary. It was kept as a second test asserting both expressions
+  still exist, so the entry fails when its subject is finally rewired instead
+  of quietly outliving it.
+- **Require-cleanliness is provable where lint is not** (PHASE-01 F-16, not
+  previously lifted). Each rewired module was `require`d in its own fresh
+  `emacs --batch`; 15/15 loaded clean. That is the check `just lint`
+  structurally cannot perform, and it is cheap. Use it whenever a refactor
+  moves a symbol between modules.
+- **A record that stops moving is the failure mode of a self-correcting
+  slice.** This slice corrected itself five times in flight and wrote every
+  correction into the design, in place, dated, with evidence — which is why
+  the audit found nothing broken. The gap is at the *end*: OQ-1 got its
+  resolution written into §6; OQ-4 and R7 were settled just as firmly and
+  still read as open. F1 still names waybar as the wpm writer four weeks after
+  PHASE-02 disproved it on the ground. §2.4 is still called "the scope
+  boundary" though it was two consumers short. In every case the truth is in
+  `notes.md` — the right place during a slice, the wrong place after one.
+  `design.md` is what the next migration reads.
+- **The `design-target` selector registry is not optional bookkeeping.** This
+  slice declared 2 paths and edited 28, so `slice conformance` reported 59
+  undeclared / 2 conformant for its whole life — the one check that does not
+  take the slice's word for its own scope was inert. Declare design targets
+  when the design locks, not at audit.
+
+### Slice-specific
+
+- Fixed in audit scope: **CHR-005** → `resolved`/`done`. `~/satan` has remote
+  `git@github.com:davidlee/satan-corpus.git`, `HEAD == origin/main` at
+  `0634e37` — the item's own acceptance condition, already met.
+- Filed: **ISS-013** (concurrent suite runs clobber the shared test DBs).
+- Tolerated, on the record: **`doctrine check gate` does not run here** — no
+  `gate` justfile recipe. Adding `gate: check` would manufacture a gate that
+  cannot fail while ISS-008 stands (`just check` exits 0 regardless), which is
+  worse than its absence. Revisit when ISS-008 lands.
+- Ground truth re-derived independently at `7f8969d`, not read from these
+  notes: `~/notes/satan` absent with no symlink; `satan-corpus-root` =
+  `"~/satan"`; corpus repo 832K / 32 commits / pushed; state root holds
+  `runs/`, `log/`, 4 sensor JSONs, 70 tick traces; `flake.nix` binds
+  `$HOME/satan/hippocampus` (:141) and `/workspace/corpus` (:96); both
+  workarounds gone; 6/6 state modules carry `(require 'satan-custom)`;
+  `satan-prompts-dir` is a defcustom; `behaviour/` untouched at all 3 sites;
+  D10 allowlist survives exactly twice; corpus and package prose name no old
+  path; `memory validate` clean; `verify-vt` 9/9.
+- Governance untouched as declared: zero `notes/satan` references under
+  `.doctrine/{adr,policy,standard}` — POL-001 and the ADR-017 §3 authority
+  ledger unaffected.
+- Reconciliation brief in `review-005.md`: 6 per-slice direct edits
+  (selector registry; design F1/§5.4, §2.4/R5, §6 OQ-4, §8 R7, §9.2;
+  `slice-015.md` §Summary and §Follow-Ups). No governance REV. OQ-2 and OQ-3
+  need a call at reconcile — file or drop, not left live on a closed slice.
