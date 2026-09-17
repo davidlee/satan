@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ae3334d77601b434d10108d73464"
+memory_key = "mem.fact.satan.patch-job-contract"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "patch_job_create: allowed_paths is repo-relative; checks are the agent's, not the runner's"
+summary = "patch_job_create: allowed_paths is repo-relative (a ~/ entry matches nothing) and checks are run by the agent, not the runner"
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = ["satan/satan-patch-worktree.el", "satan/satan-tools-patch.el", "satan/satan-patch-prompt.el"]
+globs = []
+commands = []
+tags = ["satan", "patch", "paths"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "a3085cf0743dd8e3f591f10c40e02df892ba44ac"
+tree = "f0a9a71f13edbc354ec66cf07c186798318b0ece"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "a3085cf0743dd8e3f591f10c40e02df892ba44ac"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "backlog"
+ref = "CHR-004"
+
