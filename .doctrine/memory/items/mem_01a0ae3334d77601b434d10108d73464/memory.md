@@ -36,4 +36,4 @@ Related trap: a check whose glob matches nothing exits 0. The stale
 `satan/test/dl-satan-*-test.el` glob made `emacs --batch … -f
 ert-run-tests-batch-and-exit` load no tests and report green — one
 more way the suite lies, cf.
-[[mem.fact.satan.verifying-green-five-ways]].
+[[mem.fact.satan.green-is-not-green]].
