@@ -1,0 +1,43 @@
+memory_uid = "mem_01a0adb7c4f879c38d90403906dd6ea4"
+memory_key = "mem.pattern.doctrine.declare-design-targets-at-lock"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "pattern"
+status = "active"
+title = "Declare design-target selectors at design lock, not at audit"
+summary = "slice conformance reads only design-target selectors; declaring them late leaves the drift signal inert for the slice's whole life, and the fix is the registry verb, never prose."
+created = "2026-09-17"
+updated = "2026-09-17"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "conformance", "slice", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "c8374df743c0e91f1dc0f6925ffeebed06f4a6de"
+tree = "9771e31cfffb8a67500a0fb1b83c9282494aca4b"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "c8374df743c0e91f1dc0f6925ffeebed06f4a6de"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
