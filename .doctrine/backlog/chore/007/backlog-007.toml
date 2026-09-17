@@ -1,15 +1,15 @@
 schema = "doctrine.backlog"
 version = 1
 
-id = 4
-slug = "retarget-self-edit-prompts-allowed-paths-and-check-globs-to-the-relocated-corpus-and-extracted"
-title = "Retarget self-edit prompts' allowed_paths and check globs to the relocated corpus and extracted package (SL-015 follow-up)"
+id = 7
+slug = "retarget-stale-dl-satan-symbol-names-and-emacsd-paths-in-corpus-tool-descriptions-and-framing-sl"
+title = "Retarget stale dl-satan-* symbol names and ~/.emacs.d paths in corpus tool descriptions and framing (SL-012 follow-up)"
 kind = "chore"
-status = "closed"
-resolution = "fixed"
-created = "2026-09-14"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-09-17"
 updated = "2026-09-17"
-tags = ["paths", "prompts", "satan", "self-edit"]
+tags = ["corpus", "paths", "prompts", "satan"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
