@@ -134,7 +134,14 @@ Twelve surfaces reference `~/notes/satan`; one is punted (§7 D5).
 | 11 | `~/dev/satan-patcher` — Go defaults, nix module, 3 docs | 5 | **no** → CHR-003 |
 | 12 | **`~/flakes`** — `modules/home/linux/sway.nix:12` builds `wpm-archive-yesterday` with a hardcoded `~/notes/satan/log/wpm/<date>.tsv`; its timer is **active** (`OnCalendar=*-*-* 04:00`, `Persistent=true`). Nix derivations, so a rebuild — not an in-place edit | 2 | yes |
 | 13 | **`~/dev/satan/docs/` + production docstrings** — ~111 doc lines across 17 files and 17 docstring/comment lines in `satan/*.el` name the old path | ~128 | see §7 D9 |
+| 14 | **`~/nushell/config.nu:113-114`** — motd read. **Found on the ground in PHASE-03, not by this survey**, which checked zsh only; nu is the login shell. Tracked in the `~` repo, sourced by path, so no rebuild | 2 | yes |
+| 15 | **`~/notes/.pi/SYSTEM.md`** — a *tracked build artefact* that inlined the old path, produced by surface 5's `build-system-prompt` recipe. **Found on the ground in PHASE-03.** Generated-and-committed files are readers too | 1 | yes |
 
+**This table was two consumers short** (PHASE-03 F-2/F-3, added above as 14 and
+15). The generalisation, and the reason R5's sweep is load-bearing rather than
+belt-and-braces: a path survey must cover **every shell's config**, not the one
+the surveyor uses, and **generated files that are committed**, which read as
+build output and behave as consumers.
 ### 2.5 Baseline
 
 `just check` green at `043fb21`. `~/notes` working tree: 4 modified + **33** untracked under `satan/` — all 33
@@ -143,10 +150,15 @@ corpus edits are `motd.txt`, `motives.org`, `motives.archive.org` (must be commi
 
 ## 3. Forces & Constraints
 
-- **F1 — Live writers.** waybar's wpm logger writes every minute;
+- **F1 — Live writers.** `wpm-daemon.service` writes the wpm TSV every minute;
   `satan-tick.timer`, `satan-motd.timer`, `satan-morning.timer` and
   `satan-attrd.service` are active. A move with writers running strands rows in
-  the old tree.
+  the old tree. **Corrected 2026-09-11 (PHASE-02 F-1):** an earlier draft named
+  "waybar's wpm logger" as the writer. Waybar's `custom/wpm` only *reads*
+  `$XDG_RUNTIME_DIR/wpm.json`; the writer is a systemd user unit running
+  `wpm-status.py --daemon` (`sway.nix:79-85`). Stopping waybar leaves the writer
+  running — the quiesce must name the daemon. `~/.config/waybar/wpm-status.py`
+  is still the correct *file* to retarget: it is what the daemon executes.
 - **F2 — Model-facing text is data, not code.** Eight corpus files tell the
   model where its own corpus is. A path change that stops at the elisp leaves
   the model holding stale instructions — a silent, corpus-level lie.
@@ -273,8 +285,9 @@ Cutover, ordered. F1 forces writers down first; F7 makes every move instant.
 
 - **S0 — Quiesce and clean.** Commit the 4 modified + 31 untracked corpus files
   in `~/notes`. `systemctl --user stop satan-{tick,motd,morning}.timer
-  satan-{attrd,patcher}.service`; stop the waybar wpm module. Close Emacs, or
-  plan to re-eval `satan-custom` after S3.
+  satan-{attrd,patcher}.service wpm-daemon.service` — the wpm writer is that
+  unit, not waybar (F1). Close Emacs, or plan to re-eval `satan-custom` after
+  S3.
 - **S1 — Split with history.** `git subtree split -P satan -b satan-corpus` in
   a `~/notes` clone, then `git init ~/satan` and pull that branch.
   `git subtree` is built in; `git filter-repo` is **not installed** here, so
@@ -361,12 +374,18 @@ the window is seconds (§7 D4).
 - **OQ-2** Should `~/satan` carry its own `justfile` owning
   `build-system-prompt`, rather than leaving the recipe in `~/notes` reading
   across repo boundaries (§7 D7 takes the conservative option)?
-- **OQ-4** `~/satan` will be permanently dirty (§5.3): `hippocampus/` and
-  `proposals/` are model-written and corpus-tracked, and P5 gives the repo no
-  `.gitignore` and no commit automation. Gitignore them, add a commit recipe, or
-  accept the dirt? Decide in PHASE-03. This is P5 vs D3 — D3 itself is
-  internally consistent (tracked, SATAN-authored, and the jail's one read-write
-  bind all agree).
+- **OQ-4 — RESOLVED 2026-09-14 (PHASE-03): a commit recipe, no `.gitignore`.**
+  The question was whether `~/satan` would run permanently dirty (§5.3), since
+  `hippocampus/` and `proposals/` are model-written and corpus-tracked and P5
+  gives the repo no `.gitignore` and no commit automation — dirt absorbed today
+  only by `~/notes`' daily `git add .` habit, which `~/satan` does not inherit.
+  Settled the third way: `~/satan` carries **its own `justfile` with a `commit`
+  recipe** (`0634e37`), and **no `.gitignore`** — P5 holds as written, because
+  PHASE-02 had already moved every runtime tree out, leaving only authored
+  content. Gitignoring hippocampus was rejected for D3's reason: it is the one
+  memory trail SATAN writes deliberately, and dropping it from version control
+  loses exactly what makes it content rather than scratch. P5 is no longer
+  provisional.
 - **OQ-3** `satan-tools-atsatan-root` defaults to the whole notes corpus. With
   the corpus gone, should the `@satan` scan also cover `~/satan`? Argument for:
   proposals and motives are exactly where a `@satan` marker would be dropped.
@@ -409,8 +428,13 @@ the window is seconds (§7 D4).
   the one memory trail SATAN writes deliberately.
 - **D4 — No transitional symlink.** See §5.4. *Alternative:* symlink for a week
   and watch for accesses — rejected: it defers the discovery of a missed
-  consumer to whenever it next runs, and the surface inventory (§2.4) is
-  complete enough not to need a net.
+  consumer to whenever it next runs. **Corrected 2026-09-17 (RV-005 F-3):** an
+  earlier draft added "and the surface inventory (§2.4) is complete enough not
+  to need a net". It was not — it was two consumers short (R5, §2.4 rows 14 and
+  15). The decision stands, and the misses are the argument *for* it rather than
+  against: with no symlink the old path was absent, so both readers failed
+  loudly and surfaced inside the phase. The net is R5's sweep, not the
+  inventory.
 - **D5 — `satan-patcher` punted to CHR-003** (user direction, 2026-08-22: not
   in active use, may be replaced). Its 5 refs stay stale. **Corrected
   2026-08-24: the pin this decision rested on does not exist.** An earlier
@@ -467,8 +491,8 @@ the window is seconds (§7 D4).
 | R2 | ~~`git subtree split` yields useless history (OQ-1)~~ **DOWNGRADED 2026-08-24** | OQ-1 resolved: 36 commits total, 28 touching `satan/`; split runs in seconds, history is thin-but-real. No fallback needed |
 | R3 | Dirty `~/notes` tree (4 M + 31 ??) loses uncommitted corpus edits in the split | S0 commits first — hard gate |
 | R4 | A running Emacs holds old defcustom values, writes to the dead path | Restart Emacs at S4; E1 says restart, never `setq` |
-| R5 | A consumer missed from §2.4 | Post-cutover sweep as a VA check — **`grep -rIl --dereference-recursive`**, because plain `grep -r` does **not** follow symlinks and every home-manager dotfile under `~/.config` is a store symlink (proven: 0 hits vs 2 with `--dereference`). The sweep must also cover `~/flakes` *sources*, which is where the two hardest consumers actually live (surfaces 8 and 12). The old path must not exist, so any surviving reader errors loudly (D4) |
-| R7 | `flake.nix:98` lists `/home/david/notes/` among `workspaceDeps`, bind-mounted at `/workspace/notes` for jailed-pi / jailed-claude / jailed-opencode / jailed-dirge (`~/flakes/pub/README.md:310`). After the cutover a jailed *dev* agent can no longer see a prompt or `system/framing.txt` — a dev-workflow regression, not a runtime one (A1). Adding `~/satan` collides: basename `satan` is already claimed at `flake.nix:131` by `--bind "$HOME/dev/satan" "/workspace/satan"` | Decide the mount name in PHASE-03 (`/workspace/corpus`?) or accept the loss; not a runtime break |
+| R5 | **FIRED** — a consumer missed from §2.4. Two, found on the ground in PHASE-03: `~/nushell/config.nu` (the survey checked zsh; nu is the login shell) and `~/notes/.pi/SYSTEM.md` (a tracked, generated build artefact inlining the old path). Both are now §2.4 rows 14 and 15. Neither broke anything, because D4 left the old path absent and they failed loudly; the mandated sweep is what caught them | Post-cutover sweep as a VA check — **`grep -rIl --dereference-recursive`**, because plain `grep -r` does **not** follow symlinks and every home-manager dotfile under `~/.config` is a store symlink (proven: 0 hits vs 2 with `--dereference`). The sweep must also cover `~/flakes` *sources*, which is where the two hardest consumers actually live (surfaces 8 and 12). The old path must not exist, so any surviving reader errors loudly (D4) |
+| R7 | `flake.nix:98` lists `/home/david/notes/` among `workspaceDeps`, bind-mounted at `/workspace/notes` for jailed-pi / jailed-claude / jailed-opencode / jailed-dirge (`~/flakes/pub/README.md:310`). After the cutover a jailed *dev* agent can no longer see a prompt or `system/framing.txt` — a dev-workflow regression, not a runtime one (A1). Adding `~/satan` collides: basename `satan` is already claimed at `flake.nix:131` by `--bind "$HOME/dev/satan" "/workspace/satan"` | **SETTLED 2026-09-14 (PHASE-03):** no `workspaceDeps` entry — the `satan` basename collision stands and that list joins on basename. The dev jails instead get a raw read-write bind at `/workspace/corpus`, via a named `corpusJailOptions` list added to `jailed-pi-research`, `jailed-dirge` and `jailEnvOptions` (`flake.nix:96`, `8a49d16`). Dev-agent corpus visibility is restored under a non-colliding name; no runtime path was involved (A1) |
 | R8 | `wpm-archive.timer` (active, `Persistent=true`, 04:00) fails **silently** after PHASE-02 — `~/flakes/…/sway.nix:12` hardcodes the old TSV path, so the script takes its `if [ ! -f "$file" ]` branch, prints "nothing to archive" and exits 0. Hourly WPM bucketing stops permanently with no error | PHASE-02 gains an exit criterion for `sway.nix:12`; it is a nix derivation, so a flake edit + rebuild, not a `sed` |
 | R6 | The 145M move is slower than assumed | F7: same filesystem, `mv` is a rename |
 
@@ -556,7 +580,13 @@ production socket in batch by `(equal h "/run/postgresql")`. A trailing slash is
 not `equal`, so the guard passes while psql resolves the same socket directory.
 That is a hole in the guard, recorded as a defect below — but it is also the
 only invocation on this machine that reaches a live Postgres *and* leaves the
-guard's own tests intact. `SATAN_FAILOVER_TO_SYSTEM_DB=1` works too, but the
+guard's own tests intact.
+
+**This invocation is load-bearing on the defect.** The hole is filed as
+**ISS-009**, and closing it invalidates every gate in this slice's record that
+cites `SATAN_DB_HOST=/run/postgresql/`. The two move together: whoever fixes the
+guard must supply the replacement invocation in the same act, or re-verification
+of SL-015 becomes impossible. `SATAN_FAILOVER_TO_SYSTEM_DB=1` works too, but the
 flag is process-global and breaks `satan-db/resolve-host-guard-fires-in-batch`,
 which asserts the guard fires.
 

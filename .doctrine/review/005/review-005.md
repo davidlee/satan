@@ -209,3 +209,98 @@ in this project yet (`plan.toml [specs]` empty by design).
   `satan-corpus` with `HEAD == origin/main` at `0634e37`.
 - **F-8** — filed as **ISS-013** (concurrent `just check` runs clobber the
   shared test databases), tagged, linked to ISS-008.
+
+## Reconciliation Outcome
+
+Reconcile pass 2026-09-17. Six brief items, all applied. **No REV authored** —
+the brief's governance/spec section was empty, and nothing in this pass touched
+an ADR, policy, standard, spec or requirement. No design escalation.
+
+### Direct edits applied
+
+- **`slice-015.toml` selector registry (F-1).** 28 paths upserted with intent
+  `design-target` — 19 `satan/*.el`, 7 `satan/test/*.el`, `flake.nix`,
+  `docs/perceptual-design.md`. `doctrine slice conformance SL-015` now reads
+  **30 conformant / 0 undelivered / 31 undeclared**, against 2 / 0 / 59 before;
+  every one of the 31 residual is `.doctrine/**` bookkeeping, which is the house
+  tolerance (SL-013 carries 12). The registry is what conformance reads, so this
+  was the load-bearing change; this design template has no §6 selector mirror,
+  so there was no prose counterpart.
+
+- **`design.md` §3 F1 and §5.4 S0 (F-2).** F1 now names `wpm-daemon.service` as
+  the wpm writer, with a dated correction recording that the earlier draft said
+  "waybar's wpm logger", that waybar's `custom/wpm` only reads
+  `$XDG_RUNTIME_DIR/wpm.json`, and that `wpm-status.py` remains the correct file
+  to retarget because it is what the daemon executes. S0's quiesce list gains
+  `wpm-daemon.service` in place of "the waybar wpm module". PHASE-02 EN-2 was
+  left alone as an immutable-append plan criterion, off this write surface.
+
+- **`design.md` §2.4 and §8 R5 (F-3).** Added rows 14 (`~/nushell/config.nu`)
+  and 15 (`~/notes/.pi/SYSTEM.md`), each marked as found on the ground in
+  PHASE-03 rather than by the survey, with a closing note that the table was two
+  consumers short and the generalisation it yields — a path survey must cover
+  every shell's config, not the surveyor's, and generated files that are
+  committed. R5's risk cell now reads **FIRED**, naming both misses and pointing
+  at the new rows.
+
+- **`design.md` §7 D4 (F-3).** The clause resting D4 on inventory completeness
+  is corrected in place: the decision stands, but the misses are the argument
+  *for* it — with no symlink the old path was absent, so both readers failed
+  loudly and surfaced inside the phase. The net is R5's sweep, not §2.4.
+
+- **`design.md` §6 OQ-4 and §8 R7 (F-4).** Both given OQ-1's treatment. OQ-4 →
+  **RESOLVED**: `~/satan` carries its own `justfile commit` recipe and no
+  `.gitignore` (`0634e37`); P5 holds as written because PHASE-02 had already
+  moved every runtime tree out, and gitignoring hippocampus was rejected for
+  D3's reason. P5 is no longer provisional. R7 → **SETTLED**: no `workspaceDeps`
+  entry — that list joins on basename and `satan` is taken — so the dev jails
+  get a raw rw bind at `/workspace/corpus` via a named `corpusJailOptions` list
+  (`flake.nix:96`, `8a49d16`).
+
+- **`design.md` §9.2 (F-9).** Added the coupling: the documented invocation is
+  load-bearing on **ISS-009**, and whoever closes that guard must supply the
+  replacement invocation in the same act or re-verification of SL-015 becomes
+  impossible.
+
+- **`slice-015.md` §Summary and §Follow-Ups (F-5).** §Summary written — the
+  three-root diagram, what landed per phase, and what was consciously left out
+  (D9 residue, A2 frozen bundles, the punted patcher repo). §Follow-Ups rebuilt
+  as a table of all eleven items with live status.
+
+### Open questions settled (user decision, 2026-09-17)
+
+- **OQ-2 — dropped on the record.** `build-system-prompt` stays in the `~/notes`
+  justfile: D7 stands, because the recipe's artefact `.pi/SYSTEM.md` is consumed
+  by jailed-pi run from `~/notes`, and separating recipe from artefact costs a
+  second cross-repo read for nothing. Recorded in `slice-015.md` §Follow-Ups; no
+  backlog item.
+- **OQ-3 — promoted to IMP-019.** Whether the `@satan` scan should cover
+  `~/satan` now that the corpus is outside the scanned tree. Filed with both
+  arguments (proposals and motives are where a marker would land; but `@satan`
+  is a channel *from* the user, and SATAN should not answer its own notes) and
+  the shape of the work — it needs a semantics decision before a mechanism,
+  since `satan-tools-atsatan-root` is singular and the scan walks one tree.
+
+### Handled in audit scope (no reconcile action)
+
+- **F-6** — CHR-005 → `resolved`/`done`; `~/satan` has remote `satan-corpus`,
+  `HEAD == origin/main`.
+- **F-8** — filed as ISS-013; folded into `mem.fact.satan.green-is-not-green`.
+
+### Tolerated — no write
+
+- **F-7** — `doctrine check gate` has no `gate` recipe here. Adding one would
+  manufacture a gate that cannot fail while ISS-008 stands. Rationale carried in
+  the finding disposition; revisit when ISS-008 lands.
+- **F-8** — concurrent-suite corruption: out of this slice's scope, tracked as
+  ISS-013.
+
+### Verification
+
+Suite re-run after the edits, serially, at the documented invocation
+`SATAN_DB_HOST=/run/postgresql/ just check`: **1044 ran / 1040 expected /
+1 unexpected / 3 skipped** — unchanged, the one unexpected being the known
+environment-dependent `satan-db/test-db-available-p-probes-test-host`. No source
+file was touched in this pass.
+
+Reconcile pass complete — handoff to `/close`.

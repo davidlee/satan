@@ -28,15 +28,18 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "flake.nix"
-intent = "scope-relevant"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
 
 [[selector]]
 selector = "docs/perceptual-design.md"
-intent = "scope-relevant"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
 
 [[selector]]
 selector = "satan/satan-context.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
 
 [[selector]]
 selector = "satan/satan-sensor-*.el"
@@ -44,11 +47,128 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "satan/satan-trace.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
 
 [[selector]]
 selector = "satan/satan-ingest-cursor.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-mode.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-motive.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-patch-prompt.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-patch-worktree.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-percept.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-resonance.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-sensor-alerts.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-sensor-content.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-sensor-curiosity.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-sensor-wpm.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-tools-atsatan.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-tools-docs.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-tools-hippocampus.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-tools-inbox.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-tools-org.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/satan-tools.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/test/satan-context-test.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/test/satan-custom-test.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/test/satan-integration-test.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/test/satan-run-test.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/test/satan-tools-atsatan-test.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/test/satan-tools-memory-test.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
+
+[[selector]]
+selector = "satan/test/satan-tools-patch-test.el"
+intent = "design-target"
+note = "reconcile RV-005 F-1: the source surface the slice actually edited"
 
 [[relation]]
 label = "references"

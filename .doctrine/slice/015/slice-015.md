@@ -108,10 +108,75 @@ live there.
 
 ## Summary
 
+Delivered. SATAN now resolves every path it owns through one of **three named
+roots**, and the corpus lives in its own repo.
+
+```
+~/notes (user's, read-only)    ~/satan (SATAN's, versioned)    ~/.local/state/satan
+  journal/ weekly/ inbox.org     prompts/ system/ tools/         runs/ log/wpm/
+                                 hippocampus/ proposals/         sensor *.json
+                                 motives.org motd.txt            tick-trace-*.jsonl
+  satan-notes-root               satan-corpus-root               satan-state-root
+  satan-notes-path               satan-corpus-path               satan-state-path
+```
+
+The split is by **ownership**, not by location: SATAN reads the first, authors
+the second, and discards the third. A fourth class — panopticon's
+`~/.local/state/behaviour/` — is read but not owned, so it deliberately gets no
+root (§2.2b / D1).
+
+What landed, by phase:
+
+1. **PHASE-01** named the roots. Two defcustoms and two join helpers in
+   `satan-custom.el` (still a zero-dependency leaf), 24 call sites rewired
+   across 22 variables — the 16 that spelled `"satan/"` as a bare literal below
+   the notes root, and the 8 that each inlined their own copy of the
+   `XDG_STATE_HOME` expression in two divergent spellings. Pure refactor:
+   both new defaults resolved to the existing on-disk locations, and every one
+   of the 24 paths came out byte-identical.
+2. **PHASE-02** split runtime from authored. `runs/` (9.4k files, 145M) and
+   `log/wpm/` moved to the state root by rename; `hippocampus/` stayed corpus,
+   because it is the memory trail SATAN writes deliberately (D3). Two external
+   writers followed — `wpm-status.py` and `sway.nix`'s archive timer.
+3. **PHASE-03** cut the corpus over. `~/notes:satan/` became `~/satan`, a
+   standalone repo carrying its history through `git subtree split`, with the
+   8 authored files that name their own path to the model retargeted in the
+   same act (D6/F2). No transitional symlink (D4), so a missed consumer would
+   fail loudly rather than quietly keep working — and two did, within the
+   phase. Both nesting workarounds retired: the denote exclusion regexp and the
+   atsatan `!**/satan/**` glob (D8).
+4. **PHASE-04** swept the record — docs, docstrings rewritten to name the
+   defcustom rather than the path, the memory corpus, and a whole-`$HOME` sweep
+   that classified 2835 hits with none left unaccounted.
+
+`~/notes/satan` no longer exists. Nothing stands in for it.
+
+**Out of scope, on the record:** prose inside the code repo (D9, residue in
+CHR-006), historical run bundles that embed the old absolute path as frozen
+evidence (A2), and the `satan-patcher` repo (D5, CHR-003) — whose one live
+consequence, the daemon's prompt path, was fixed at its real editable surface
+outside that repo.
+
 ## Follow-Ups
 
-- **CHR-003** — retarget the `satan-patcher` prompt default (punted, §Non-Goals).
-- **OQ-2** (design) — should `~/satan` own `build-system-prompt` rather than
-  leaving the recipe in the notes justfile reading across repos?
-- **OQ-3** (design) — should the `@satan` scan cover `~/satan` once the corpus
-  is no longer nested inside the scanned tree?
+Filed during execution and audit. None blocks closure.
+
+| id | kind | status | what |
+|---|---|---|---|
+| CHR-003 | chore | open | Retarget the `satan-patcher` prompt default (punted at the user's direction, D5) |
+| CHR-004 | chore | open | Self-edit prompts' `allowed_paths` and check globs still describe the pre-SL-012 layout — model-facing text, the same class F2 exists to prevent |
+| CHR-005 | chore | **resolved** | `~/satan` needed a remote. Done: `satan-corpus`, pushed |
+| CHR-006 | chore | open | 16 `docs/` files still name `~/notes/satan` — the D9 residue |
+| ISS-008 | issue | open | `just check` exits 0 with any number of failures |
+| ISS-009 | issue | open | The production-socket batch guard is defeated by a trailing slash. **Coupled to design §9.2** — fixing it invalidates this slice's documented invocation |
+| ISS-010 | issue | open | Empty `XDG_STATE_HOME` is treated as set, defeating the state-root fallback |
+| ISS-011 | issue | open | `satan-attrd` rejects the sensor outcome reason `content_backlog` |
+| ISS-012 | issue | open | motd and morning runs fail at turn 0 on an expired API key; tick runs succeed |
+| ISS-013 | issue | open | Concurrent `just check` runs clobber the shared test databases (found in audit) |
+| IMP-019 | improvement | open | Should the `@satan` scan cover `~/satan` now that the corpus is outside the scanned tree? (design OQ-3) |
+
+**OQ-2 — settled, no item.** Should `~/satan` own `build-system-prompt` rather
+than leaving the recipe in the `~/notes` justfile reading across repos? No: D7
+stands. The recipe's artefact is `~/notes/.pi/SYSTEM.md`, consumed by jailed-pi
+run from `~/notes`; separating the recipe from its artefact buys nothing and
+costs a second cross-repo read.
