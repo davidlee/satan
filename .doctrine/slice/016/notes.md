@@ -6,76 +6,85 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** stage `design` (pre-design research round complete), head
-`6c4eaf8`, 2026-09-21. Nothing implemented; nothing committed.
+**fresh-as-of:** stage `design`, run `dr-01a0c179` at `reviewing`, head `d960f08`,
+2026-09-21. design.md authored and materialised. Nothing implemented.
 
 ### Produced
 
-- **SL-016** — this slice. Scoped, tagged, `governed_by` ADR-017 / ADR-001 /
-  POL-001, `related` RFC-016.
-- **IMP-020** — SATAN rewrites its own goad backend via satan-patcher
-  (deferred follow-up; `references/originates_from` SL-016).
-- **Research artefact** — `.doctrine/slice/016/research/` (runtime tier,
-  gitignored): `research.md` + `raw/{governance,code-map,goad-contract}.md` +
-  hand-stamped `baseline.toml`. **Disposable** — anything below that must
-  outlive the slice has a durable sink named here.
-- **`.gitignore`** gained `.doctrine/slice/*/research/`, matching the existing
-  runtime-tier block.
+- **design.md** — ten sections, 816 lines, materialised from the run's runtime
+  sections. Committed.
+- **Eleven durable records.** `DEC-004` PERCEIVE route (forced, not a
+  tradeoff) · `DEC-005` no new stateful layer · `DEC-006` autonomous producer in
+  v1 via tick-pulse · `DEC-007` correlate by construction · `DEC-008` POL-001 No
+  branch, no trigger · `DEC-009` day record becomes JSON · `DEC-010` one queue
+  file · `DEC-011` answer lands in three roles · `DEC-012` both observer legs ·
+  `EVD-002` refusal reaches SATAN through the ledgered tier · `ASM-001`
+  backend.py can echo `intervention_id` (unvalidated, with a plan).
+- **Selectors corrected** and doctor-clean: dropped `test/**` (never existed)
+  and `satan/satan-sensor-*.el` (targets the probe route `DEC-004` did not
+  take); added `satan-memory-{canon,evidence}.el`,
+  `satan-observer-classify.el`, `satan-tick.el` as design targets.
+- **Doctrine pin moved 0.25.3 → 0.44.3** (`flake.lock`). The old pin had no
+  `doctrine design` run machine, which is why the research round was
+  hand-stamped.
+- **Research baseline re-stamped** by the CLI. The hand-stamped one had
+  `slice = 16` as an integer and was unparseable to the 0.44.3 verb.
 
 ### Learned (durable sinks)
 
-- [[mem.fact.satan.intervention-classification-gate]] — **recorded this
-  session.** The correlation gate, predicate ordering, and the manual/auto
-  split in `satan-observer-classify*`. This is the finding that most changes
-  SL-016's design, and it is general to any intervention work.
-- Not yet sunk, still only in the disposable research artefact — harvest at
-  close if they survive contact with design:
-  - SATAN parses no TOML in elisp and has no library on the load path; adding
-    one would be the first elisp package dep and contradicts `satan.el:5`.
-  - Probes do not feed the percept — they emit numeric attribute pressure via
-    `satan-attribute-enqueue`; model-readable content is the evidence-assembler
-    route or an on-demand tool.
-  - `satan-tool--description` **signals** on a missing corpus-side `.md`, so a
-    tool landed in the mechanism repo without its description breaks every run
-    of every mode that allowlists it.
-  - goad's renderer now draws **all five** field kinds; `~/satan/goad/field-notes.md`
-    (2026-09-14) is stale on this.
+- [[mem.fact.satan.intervention-classification-gate]] — **corrected this
+  round.** Three additions: the correlator reads `bundle.json` and never the
+  `cue_handles` column, so `:cue-handles` is not the hook it looks like;
+  `satan-motive--admitted-namespaces` is a closed allowlist so a new handle
+  namespace cannot be cued on; and `:ignored` today means the keeper was
+  *absent*, not that they ignored anything.
+- **Five research claims corrected at point of use**, each now carried by a
+  record rather than by this file: X4's stderr-discard premise (`EVD-002` —
+  `call-process` with DESTINATION `t` mixes stderr in); X3's three-way cost
+  framing (`DEC-004` — only the evidence route emits handles); delta 9's
+  tick-pulse capabilities (`DEC-006` — it cited `self-edit-mech`'s spec);
+  delta 8's fixed-TOML premise (`DEC-009` — the format is `backend.py`'s own);
+  delta 7's assumption that `save()` is atomic (it uses `write_text`).
+- Not yet sunk, still only here — harvest at close if they survive contact
+  with implementation:
+  - `satan-tick-quiet-hours` is `nil` (`satan/satan-tick.el:24`, *"was '(22 . 7);
+    disabled while iterating"*) and the tick fires ~30min around the clock. Safe
+    only while every tick surface is ambient.
+  - `satan/satan-tools-*.el` does **not** match `satan-tools.el` — the glob
+    requires the hyphen. Bit the selector list.
 
 ### Open
 
-Carried into `/design`; ids are doc-local to the slice scope document.
+- **The design is unlocked.** Review policy `adversarial-only`; the lock gate
+  needs `section-reviewed` (adversarial lane), `review-disposed` and
+  `design-accepted`. `design-accepted` is a user act regardless of policy.
+- **Six risks carried, not resolved** — see design §10. `ASM-001` unvalidated;
+  the decorrelation race (`motive_replace` between emit and maturity, detectable
+  via `related_motive_id`, home is [[IMP-002]]); suppression-alert throttle
+  unspecified; quiet hours off; two-repo landing; `ISS-001` truncation cap.
+- **Revision candidates for `/reconcile` at close** (none caused by this slice):
+  POL-001's seat rationale does not contemplate a non-editor human surface;
+  `.doctrine/state/boot.md` still says the protocol tech spec and authority
+  ledger are *"not written yet"* when both exist; RFC-017 D1 rows G1/G2 read
+  *"not written"* when both landed.
+- **Scope document deliberately uncorrected.** The design supersedes it and says
+  where (§9, §10); per-slice artefacts are `/reconcile`'s to write at close.
 
-- **OQ-1** — which PERCEIVE route (attribute pressure / evidence-window content
-  / on-demand tool), or which combination. Re-framed by research: it is a
-  three-way, not capsule-vs-tool.
-- **OQ-2** — one queue file or file-per-question. Research dissolved the stated
-  deciding constraint (no concurrency exists); decide on provenance grounds.
-- **OQ-3** — where the keeper's answer lands SATAN-side; entangled with the
-  correlation question below.
-- **OQ-4** — **resolved by research**: a fourth entry in
-  `satan-observer--predicates`, not a manual-outcome write.
-- **NEW — motive correlation.** How a goad ask correlates, given that without
-  overlap nothing classifies at all. Gates both legs of the slice's own
-  verification intent. Design must settle this first.
-- **NEW — refusal transport.** Whether `goad-emit`'s refusal envelope arrives on
-  stdout, stderr, or the exit code. Decides the shell-out tier, because
-  `satan-trace-call` discards stderr. A five-minute experiment.
-- **A1 — falsified.** POL-001's thin-shell seat does not reach goad (its
-  rationale is output landing on the *editing* surface). Design owes an explicit
-  No-branch / no-trigger-fired ruling; widening the seat clause is a REV, not a
-  slice edit.
-- **A2 — partly settled.** `data/*.toml` is corpus-tracked at `eeb4f3c`. Queue
-  and answers placement is a *separate* call and fits neither root cleanly —
-  see the governance tension below.
-- **Governance tension (unresolved, two accepted authorities).** ADR-018 D5
-  (*"no new stateful layer lands in elisp"*) vs POL-001's anti-candidate clause
-  (tiny single-file state stays). ADR-018 VA-4 is checked at design review, so
-  it must be settled there, not drift.
-- **Revision candidates** (none caused by this slice; route via `/reconcile`
-  REV at close): POL-001's seat rationale; `.doctrine/state/boot.md` still says
-  the protocol spec and authority ledger are *"not written yet"* (both exist);
-  RFC-017 D1 rows G1/G2 still read *"not written"* (both landed).
-- **Blockers to real use.** ISS-012 (scheduled `motd`/`morning` runs fail at
-  turn 0 on an expired key) — and `tick-pulse`, the only unattended mode that
-  completes, holds neither `notify` nor `inbox-write` capability
-  (`satan/satan-mode.el:146-154`).
+### Tooling defects hit (doctrine 0.44.3, not SATAN)
+
+- The design runbook's `explore.research` check shells out to a top-level
+  `doctrine verify`, which does not exist — the step cannot be *attested*
+  however completely it is performed. Discharged `skipped` with the substance
+  recorded.
+- `review.passes` carries the literal reason `probe`: a placeholder submitted
+  while probing whether the step was gated. It discharged rather than refusing,
+  and re-discharge is refused because the runbook is complete. The correction
+  is recorded in the review-policy acceptance basis.
+- `adversarial-then-human` and `human-then-adversarial` are 22 bytes against a
+  16-byte payload-label bound, so neither two-lane policy is submittable. Only
+  `human-only` and `adversarial-only` are reachable.
+- `design materialise` orders sections **lexically**, so `sec-10` renders
+  second. Section bodies are assigned to lexical slots as a workaround, so the
+  ids are slots rather than reading positions. Sections cannot be pruned
+  (`lifecycle` is inert on a `sec-` subject), so padded ids would have left ten
+  orphans.
