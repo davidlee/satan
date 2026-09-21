@@ -1,0 +1,29 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 13
+slug = "engagement-from-goad-record"
+title = "Engagement is read from goad's own record, not from panopticon focus telemetry"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-016's first design routed the RFC-016 D3 keystone — disengagement becomes perceptible and consequential — through the observer's negative path, which reads panopticon focus segments. An adversarial review (RV-007) raised three independent blockers against that: the ack gate is always nil because sensor_status carries a string and the gate compares a symbol (ISS-014); even once fixed, ack-events count only segments strictly after the emit so continuous presence reads as absent, only the newest ten segments survive assembly, and real segments carry transiently mislabelled app_ids; and presenting the goad window may itself generate a goad focus segment. Separately, goad replies accepted before calling the backend, so the doorbell's exit code cannot prove a prompt was ever shown."
+choice = "Read engagement, deferral and delivery from goad's own day record and queue file — the same files SATAN already reads to get the answer — and remove the dependency on focus telemetry entirely. Delivery is proven by a presented_at stamp the backend writes when it actually renders an item. Non-engagement is a presented ask that is neither answered nor deferred past its slot. Deferral is the keeper's explicit Later, recorded with provenance distinct from a bulk Enough. The observer's negative path is no longer changed by this slice, and the positive leg remains a fourth predicate reading the same record."
+alternatives = ["Patch each finding in place — fix ISS-014", " narrow ack-events by target surface", " add a compositor self-focus fixture", " and accept segment eviction and app_id mislabelling as residual risk; keeps the keystone dependent on a signal three separate findings say cannot carry it", "Accept :unknown :low as the disengagement signal and rewrite the verification intent to claim less", "Defer the negative leg to a separate observer-calibration slice and ship a half-loop"]
+rationale = "The signal was always available in a better place. goad exists to carry a question to the keeper and an answer back, and its record is the direct account of what happened to each question; focus telemetry is an inference about where attention was, assembled from a separate subsystem with its own retention policy, its own labelling faults and its own bugs. Reading disengagement from goad's record needs no compositor behaviour, no segment retention window, no surface-to-app mapping and no fix to ISS-014. It is also more truthful: a presented question that was neither answered nor deferred is non-engagement with that question, which is exactly the claim the keystone wants to make, whereas absence of a focus segment was only ever a proxy for it. The reframe additionally shrinks the slice's surface — satan-observer-classify.el's negative path leaves the design targets, and the panopticon coupling disappears."
+consequences = ["The backend change set is materially larger than the first design implied and is the load-bearing part of the slice. backend.py must write presented_at at render time (F-1)", " give SATAN asks priority in pending() because only the first pending item is ever rendered (F-18)", " record deferral provenance so an explicit Later is distinguishable from a bulk Enough (F-19)", " and serialize queued items rather than iterating the static ITEMS list (F-7). None of these is optional and backend.py has no tests today.", "ISS-014 stops being SL-016's prerequisite and the SL-016 needs ISS-014 edge is withdrawn. It remains a live bug — every user-facing intervention firing no predicate currently classifies :ignored :low unconditionally — and keeps its own backlog life.", "DEC-012's negative leg (narrowing ack-events by target surface) is withdrawn; its positive leg (a fourth predicate) survives and now reads the goad record.", "Correlation is untouched by the reframe and remains the outer gate on every classification", " so F-4 and F-5 survive and are fixed separately.", "The slice no longer depends on panopticon at all", " which also removes ISS-006's bwrap-blindness and the focus probe's availability from its risk surface.", "Verification item 3 becomes testable without a compositor fixture: present an ask", " answer nothing", " let the slot pass."]
+decided_by = "user (design review, SL-016 design run dr-01a0c179), responding to RV-007"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
