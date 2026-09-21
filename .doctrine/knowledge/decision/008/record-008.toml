@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 8
+slug = "goad-modules-pol-001-no-branch"
+title = "The goad modules do not earn a POL-001 seat; no extraction trigger fires, so they stay in elisp as incidental tenants"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-016 scoped A1 as an assumption: that the SATAN-side goad code earns its POL-001 seat as a thin shell, on the precedent of satan-tools-{notify,sway,activity,agenda}.el. Research falsified it. POL-001 owes an explicit ruling either way and the design is where it is owed."
+choice = "Rule the No branch explicitly. The goad reader, the ask tool and the doorbell do not use the editor as an editor, so they earn no seat and are incidental tenants. Then apply POL-001's own verification: none of its four extraction triggers fires, and the policy says absent any trigger leave it. They stay in elisp for now, on the record as tenants rather than residents."
+alternatives = ["Claim the thin-shell seat on the notify/sway/activity/agenda precedent — the falsified A1; that precedent rests on output landing on the keeper's editing surface and goad renders to a Slint GUI", "Treat the No branch as a reason to extract now — misreads the policy: No makes a module eligible for extraction when carving becomes cheaper than hosting it, not due for it", "Widen POL-001's seat clause to cover non-editor human surfaces — a governance change and not a slice's to make"]
+rationale = "POL-001's test is does it use the editor as an editor. The goad modules use no org parsing or writing, no denote naming, no buffer manipulation, no dired or find-file or recentf, no interactive satan-* command and no compile-angel hook; they take no approval at the keeper's editor. The seat clause was amended on 2026-07-22 precisely to say the quiet part: the listed modules earn the seat because the human's editing surface is where their output lands and where the keeper approves it, not because they need an Emacs image to compute. goad's output lands in a Slint window. So the answer is No. Then the four triggers: the surface is not about to grow materially in the next refactor theme, because this slice creates it small and bounded; no recurring bug traces to language or runtime fit, because the code does not exist yet; no reviewer is being asked to read elisp to evaluate non-elisp work; and the tests do not dominate emacs --batch CI cost. Absent any trigger, leave it."
+consequences = ["The design must not cite the thin-shell precedent anywhere. A1 stands falsified and the No-branch ruling replaces it.", "Because they are tenants rather than residents the goad modules travel with the observer and memory extraction (IMP-009 and IMP-007) rather than anchoring to Emacs. ADR-018 D4's ordering should know that the goad reader rides along.", "Adding a capability and tools enlarges the satan-mode.el mode/tool/capability table that ADR-018 D4.2 names as the first authority item to migrate. The slice makes that table slightly bigger; the design should say so rather than leaving it to be discovered at migration.", "POL-001's seat rationale being too narrow to cover non-editor human surfaces is a genuine gap, but it is not caused by this slice. It is a revision candidate to route through /reconcile's REV surface at close — not a slice edit.", "Writing these modules in elisp is now a recorded tenancy with a known exit rather than an unexamined default."]
+decided_by = "design run dr-01a0c179 (SL-016), agent-proposed"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

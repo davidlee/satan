@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 5
+slug = "goad-ask-state-no-new-layer"
+title = "Ask/answer state adds no new layer: the intervention row is the record, the queue file is a disposable projection"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-016 needs somewhere to hold pending questions, their answers, and the mapping back to the originating intervention. Two accepted authorities disagree about whether that may live in elisp: ADR-018 D5 says no new stateful layer lands in elisp; POL-001's anti-candidate clause says tiny single-file state stays. ADR-018 VA-4 is checked at design review, so the tension had to settle here rather than drift. A second axis was which root a new file would sit under, since research delta 10 found the question fits neither satan-corpus-path nor satan-state-path cleanly."
+choice = "Add no new stateful layer. A question's durable identity is the existing intervention row in satan_memory, keyed by intervention_id. The queue file backend.py reads is a disposable projection of the open-ask rows, rebuildable at any time, and therefore correctly lives under satan-state-path. The keeper's answer returns through goad's own data/*.toml day file, which already carries per-item state and is already corpus-tracked, keyed by the intervention_id that backend.py echoes into the item it renders."
+alternatives = ["Files under satan-corpus-path (~/satan/goad/{queue,answers}/) — durable and versioned on the hippocampus precedent, but a new stateful layer needing an explicit D5 waiver, and it churns the corpus repo on every question and answer", "Files under satan-state-path as the system of record — no corpus churn, but the state root is documented discardable, which is wrong for a durable question", "A new table or a new elisp store — squarely what ADR-018 D5 forbids"]
+rationale = "The tension dissolves rather than needing adjudication, because the state SL-016 appeared to need already exists. An ask is an intervention; satan-intervention-create already persists intervention_id, run_id, kind, message, related_motive_id, cue_handles, percept_handles, expected_outcome and outcome_window_minutes. Nothing about a pending question is unrepresented. Once the queue file is understood as a projection rather than a record, the state root's discardable contract becomes exactly right instead of a compromise, and D5 is satisfied rather than waived — no new layer lands anywhere. POL-001's anti-candidate clause is simply not engaged, so the two authorities never actually meet."
+consequences = ["backend.py must echo the intervention_id on the item it renders and carry it into the day file, so the answer is attributable. backend.py is corpus-side and already in scope for this slice.", "Losing the state root costs nothing but a regeneration: the projection is rebuilt from the open intervention rows. This is a property to test, not just assert.", "SPEC-001 REQ-009 (no dual enforcement) is honoured — there is one record of a question, not two that can disagree.", "The answer path stays read-only on the SATAN side of goad's data files, preserving the zero-host-change constraint.", "ADR-018 VA-4 can be discharged at design review with a no-new-layer finding rather than a waiver."]
+decided_by = "user (design review, SL-016 design run dr-01a0c179)"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

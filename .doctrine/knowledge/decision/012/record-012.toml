@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 12
+slug = "goad-observer-both-legs"
+title = "A fourth predicate closes the positive leg; narrowing ack-events by target surface closes the negative one"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "OQ-4 was resolved by research as a fourth entry in satan-observer--predicates, which settled the positive leg and was assumed to be the whole observer change. Checking the negative leg against the slice's verification intent showed it is not. satan-observer-classify-negative awards :ignored only when ack-events-found is zero, and satan-observer--count-ack-events counts any focus segment after the emit with no surface narrowing — its own comment says v1 does not narrow by surface and a stricter surface mapping is a follow-up. So a keeper who is present and ignores the goad window produces focus segments and lands :unknown :low, while only a keeper who is away from the machine lands :ignored. :ignored today means absent, not ignoring, which inverts the RFC-016 D3 keystone the slice exists to demonstrate."
+choice = "Do both legs. Positive: add a fourth entry to satan-observer--predicates with the existing uniform signature, firing when the keeper answered this ask. Negative: narrow ack-event counting by target surface, so for an ask on the goad surface only a goad focus segment counts as acknowledgement; kinds and surfaces with no mapping keep the current any-segment behaviour unchanged. Additionally split absent from ignoring: zero focus segments anywhere is the keeper being away and must not be reported as :ignored."
+alternatives = ["Extend the :unknown reason vocabulary instead — purely additive but leaves the verdict at :unknown, which the observer defines as cannot assert, so disengagement is recorded without becoming consequential", "Accept :unknown :low and rewrite verification-intent item 3 to claim less — smallest slice, forfeits the keystone", "Defer the negative leg to a separate observer-calibration slice — clean boundary, ships a half-loop"]
+rationale = "The two legs are one loop and shipping half of it would demonstrate that SATAN can be answered while leaving it unable to notice being ignored — which is the precise deficit RFC-016 names. The surface narrowing is contained because it is keyed by a mapping that is empty for every existing kind: no current verdict changes unless a mapping is added for that kind. It is also the follow-up the code itself anticipates rather than a new idea imposed on it. Splitting absent from ignoring costs nothing because both counts are already in hand at the branch, and it matters because away at lunch and saw it and did nothing are different facts about the keeper that the slice's whole thesis depends on telling apart. The deferral case needs no new code: Later and Enough write deferred_at without value so the predicate does not fire, and pressing the button produces a goad focus segment so the ask lands :unknown :low — the correct verdict for engaged but not answered."
+consequences = ["The slice's affected surface now includes satan-observer-classify.el's negative path, not only the predicate alist. The scope document says the observer change is one predicate; that is now wrong and the design supersedes it.", "A surface-to-app mapping is new configuration and needs a home. Focus segments carry app_id and canon already derives app: and surface: handles from current_window.app_id (satan/satan-memory-canon.el:256-271), so the mapping has a real key to match on.", "satan-observer--ack-checked-p still gates everything: when the focus probe is not ok, presence and absence are both unassertable and the verdict stays :low. The negative leg degrades fail-soft if panopticon is unreachable.", "Three outcomes means three tests, not one. answered fires the predicate; deferred produces a goad focus segment and no fire; present-but-untouched produces focus elsewhere and none on goad. Each is a distinct fixture.", "app:goad arrives free from the existing current_window rule whenever goad has focus, but SATAN asks precisely when goad does NOT have focus — so DEC-004's new canon rule must emit a goad handle from the presence of the day record itself, independently of focus, or nothing correlates at ask time.", "Changes to classify-negative must keep satan-observer--assert-auto-classification satisfied; :harmful and :contradicted remain unreachable from this function."]
+decided_by = "user (design review, SL-016 design run dr-01a0c179)"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

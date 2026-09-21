@@ -1,0 +1,29 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 2
+slug = "goad-emit-refusal-through-trace-call"
+title = "goad-emit's refusal reaches SATAN through the ledgered shell-out tier"
+record_kind = "evidence"
+status = "captured"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "goad-emit exits 0 on acceptance (silent), 1 on a host refusal with one stderr line 'goad-emit: refused: <reason>[ retry_after_ms=N][ (detail)]', and 2 when it got no usable answer. satan-trace-call surfaces :exit verbatim and, because call-process is called with DESTINATION t, captures stderr into :stdout alongside it."
+provenance = "inspection"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 11
+slug = "goad-answer-landing-three-roles"
+title = "The answer lands in three places with distinct roles — the day record, the percept, and a memory trace — and suppression lands as a sensor alert"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "OQ-3 asked where the keeper's answer lands SATAN-side: an intervention outcome, a memory trace, the inbox, or all three. It became entangled with correlation (DEC-007) and with the no-new-layer ruling (DEC-005), and DEC-007 added a second thing that must land somewhere — the record of an ask that was suppressed because no motive correlated."
+choice = "The answer lands in three places, each doing one job and none duplicating another. It arrives in goad's day record, written by backend.py and keyed by intervention_id. It reaches the percept through the evidence window and the canon rule of DEC-004, which is what makes it model-visible and correlatable. It becomes a memory trace, because a keeper's answer is the highest-quality human-sourced evidence SATAN receives and is worth resonating against later. It does not go to the inbox, and it is not written through the manual outcome writer. Suppression — wanting to ask with no correlating motive — lands as a sensor alert, so SATAN perceives its own muteness on the next tick."
+alternatives = ["The inbox as well — wrong direction: the inbox is the SATAN-to-human surface and an answer travels human-to-SATAN, so this would be a parallel implementation of perception", "Straight to an intervention outcome via satan-intervention-write-manual-outcome — impossible by construction: that writer rejects positive classifications and belongs to the negative override path", "The day record only, with no trace — cheapest, but throws away the one direct human signal in a system whose four positive predicates are otherwise all ambient telemetry", "Suppression recorded to the audit log — an unasked question is not an enactment so SPEC-001 REQ-003 does not reach it"]
+rationale = "The three places are not three copies; they are one datum at three lifetimes. The day record is arrival and is goad's own file, already corpus-tracked, requiring no new storage under DEC-005. The percept is visibility for the current run and is forced anyway by DEC-004, since without it nothing correlates. The memory trace is durability past the run and is what makes the answer available to resonance later. Routing an answer to the inbox would build a second question-presentation surface beside satan-tools-inbox.el, which the slice already named as the incumbent to avoid duplicating. Suppression needs its own channel precisely because it is the absence of an ask: the day record cannot hold it, and DEC-007 established that a silent suppression would reintroduce the blindness RFC-016 diagnoses. A sensor alert surfaces it into the next percept, which is the organism perceiving its own condition — the same mechanism the alerts sensor already exists for."
+consequences = ["backend.py must carry intervention_id from the queue entry into the day record entry for the answered item — the single point DEC-005's whole no-new-layer argument rests on, and therefore a test not an assumption.", "The memory trace is written under tick-pulse's existing memory-write capability; no new capability for the answer path.", "The canon rule of DEC-004 must emit handles for the answered item, not merely for goad's presence, or the answer is visible without being correlatable.", "The suppression alert needs a rate limit of its own. A keeper with no live motive naming app:goad would otherwise generate one alert per tick, roughly five times in eight, forever — turning a signal into noise and re-earning the ignorance it reports.", "Nothing is written through satan-intervention-write-manual-outcome on either path, so the manual/auto disjointness invariant and authority-ledger row 4 stay untouched."]
+decided_by = "design run dr-01a0c179 (SL-016), agent-proposed"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

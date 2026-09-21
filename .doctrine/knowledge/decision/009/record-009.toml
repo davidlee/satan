@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 9
+slug = "goad-day-record-becomes-json"
+title = "The goad day record becomes JSON, written atomically by backend.py; no elisp TOML reader is written"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SATAN must read goad's day files to get goad state into the evidence window (DEC-004) and to read the keeper's answer back (DEC-005). Research delta 8 framed this as a cost to plan for: there is no TOML parser in the tree and none on the load path, adding one would be the first elisp package dependency and would contradict satan.el:5, so a narrow hand-rolled reader was the expected route with four in-tree precedents."
+choice = "Change the record format instead of writing a parser. backend.py's save() emits JSON and load() reads JSON; the five existing TOML day files convert once. save() writes via tmp+rename rather than write_text. SATAN reads the day file with the built-in json-parse-buffer and writes no TOML code at all."
+alternatives = ["Hand-roll a narrow TOML reader in elisp — the expected route; real work on a grammar SATAN does not control and a maintenance liability forever", "Add a TOML library to the load path — the first elisp package dependency; contradicts satan.el:5", "Have backend.py emit a JSON sidecar beside the TOML — no migration and keeps the TOML readable, but two files holding one state is a divergence class that has to be detected and reconciled"]
+rationale = "The premise that the format is a given is false. data/YYYY-MM-DD.toml is not a goad contract — goad's invariant is that the host understands interaction and the backend owns all domain meaning and persistence, and backend.py's own docstring says items sections slots and the record format are all this file's business. The protocol between goad and the backend is already JSON on stdin and stdout. So the TOML is a private choice of a 5.5KB file that SL-016 is already modifying for two other reasons: merging the SATAN ask queue into pending() and echoing intervention_id into the record. Changing its serializer is marginal work on a file already open. Choosing the sidecar instead would keep a format SATAN cannot parse and add a second copy of the same state — duplication with a divergence class, for the benefit of a human-readable artifact whose actual human-facing surface is the goad window."
+consequences = ["A one-off conversion of the five existing day files (2026-09-14 through 2026-09-21). They are corpus-tracked so the conversion is a reviewable commit rather than a silent rewrite.", "save() currently writes non-atomically via Path.write_text after hand-rendering lines — no tmp+rename. SATAN will be reading this file from another process so the write becomes atomic as part of this change. That closes a gap research delta 7 assumed was already handled.", "load() drops tomllib and the hand-rendered line building goes away — save() becomes a json.dump. Net less code in backend.py than today.", "README.md line 16 documents data/YYYY-MM-DD.toml and must change with it.", "SATAN reads the record with json-parse-buffer which is built in. No new elisp dependency and no hand-rolled parser to maintain against a grammar SATAN does not own.", "The record stops being the timestamp-format trap R1 warned about for a lexically-compared watermark only if the reader still stores the source timestamp verbatim — goad stamps local-offset microsecond ISO and that does not change with the serializer."]
+decided_by = "design run dr-01a0c179 (SL-016), agent-proposed"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

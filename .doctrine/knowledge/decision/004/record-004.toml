@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 4
+slug = "goad-perceive-via-evidence-and-canon-rule"
+title = "goad reaches SATAN through the evidence assembler and a canon rule, because only that route produces handles"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-016 needs goad's day files visible to SATAN. Research X3 framed this as a three-way cost tradeoff: probe to numeric attribute pressure (cheap), evidence assembler to percept (expensive), or an on-demand goad_read tool (cheap), with activity_read as precedent for doing two of them."
+choice = "Feed goad state into the evidence window via satan-memory-evidence-assemble, and register a canon rule that emits goad handles from it. An on-demand goad_read tool may supplement for detail, on the activity_read precedent. A probe-to-attribute leg is optional and carries no weight for the slice's verification intent."
+alternatives = ["Probe to attribute pressure only — cheapest, clones satan-sensor-curiosity, but emits no handles", "On-demand goad_read tool only — cheap and model-readable, but emits no handles", "Leave PERCEIVE out of v1 and ship PROMPT/DOORBELL alone"]
+rationale = "The route choice is forced, not preferential. satan-percept-build (satan/satan-percept.el:65-67) is evidence-assemble then canon-canonicalize, and :handles is canon's output. satan-memory-canon-canonicalize (satan/satan-memory-canon.el:523-543) dispatches registered rules in satan-memory-canon--rules over the evidence window. So handles exist only for what reaches the evidence window and has a canon rule to name it. Correlation — the outer gate on every classification — intersects a motive's :cue tokens against the intervention's percept handles, read from bundle.json by satan-observer--intervention-percept-handles (satan/satan-observer-classify.el:500-509). Neither of the cheap routes puts anything in :handles: a probe emits numeric attribute pressure into Postgres, and a tool result is not percept. So under either cheap route no goad-shaped handle ever exists, no motive cue can overlap one, and every ask classifies :unknown :no_correlation — which makes the slice's verification-intent item 3 (an unanswered ask matures to :ignored, the RFC-016 D3 keystone) undemonstrable by construction."
+consequences = ["Two integration points in the mechanism repo rather than one — the evidence assembler and the canon rule registry. ADR-001 single-percept-builder clause still holds: the reader plugs into the existing chain instead of becoming a second constructor.", "The canon rule must emit handles in an ALREADY-ADMITTED namespace. satan-motive--admitted-namespaces (satan/satan-motive.el:83-92) is a closed allowlist — app surface surface_transition domain_kind domain_transition bough_event bough_node bough_project artifact topic phase focal_app — and a motive cue carrying no handle from it is rejected as :invalid-cue so the motive parses dormant. A new goad: prefix is unusable as a cue basis; emit app:goad or surface:goad plus per-item topic: handles instead.", "Handle vocabulary is a design obligation rather than an implementation detail — it is the surface a motive author writes a :cue against. Cue tokens are full canon handles (satan-motive--parse-cue splits on whitespace and each token must match the canon handle regex) not bare words.", "Evidence-window inclusion costs tokens on every run and the truncation cap is unenforced (ISS-001). The goad contribution must be compact by construction.", "The percept is pure under ADR-001 so the goad read is perceive-side; any watermark advance is consume-side."]
+decided_by = "design run dr-01a0c179 (SL-016), agent-proposed"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"

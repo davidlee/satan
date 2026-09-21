@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 10
+slug = "goad-ask-queue-one-file-whole-rewrite"
+title = "One queue file rewritten whole and atomically, mirroring backend.py's own day-record idiom"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "backend.py must merge SATAN-authored questions into pending() alongside its hardcoded ITEMS. Research delta 7 dissolved the stated deciding constraint — goad serialises exchanges and allows one outstanding interaction so no concurrency exists between SATAN writing and backend.py reading — and said to decide one-file versus file-per-question on provenance grounds instead."
+choice = "One file, holding the whole set of open asks, rewritten whole and atomically via tmp+rename. Not a directory of per-question files."
+alternatives = ["A file per question — natural-looking for provenance and for appending; needs directory scanning in backend.py and creates an orphan-reaping problem", "Append-only log of asks with tombstones — durable ordering SATAN already has in Postgres; all cost no benefit"]
+rationale = "Provenance turns out not to be the projection's job. Under DEC-005 the durable record of a question is its intervention row which already carries origin (run_id, mode, ts), age (ts) and disposition (the observer verdict) better than a filename can. The projection exists only so backend.py can merge open asks into pending(), so the criterion is what makes that merge simple and total. A whole rewrite is total by construction: every regeneration produces the complete open set and no stale entry can survive, which is exactly the regenerability property DEC-005 rests on. A directory would need reaping — an answered or expired question leaves a file behind — and reaping is the half-state that makes a projection start lying. It also matches what backend.py already does: save() rewrites the day record whole on every answer, so the merge side gains no new idiom."
+consequences = ["backend.py reads one path and merges a list; no glob, no ordering rules, no reaping.", "The write must be atomic (tmp+rename) for the same reason DEC-009 makes the day record atomic — backend.py may read while the broker writes.", "Regeneration is the recovery path and it is total: rewrite from the open intervention rows and the file is correct by construction. This is the property to test.", "An ask that must not be re-asked after being answered disappears from the next rewrite, so no per-question disposition state lives in the file at all."]
+decided_by = "design run dr-01a0c179 (SL-016), agent-proposed"
+decided_on = "2026-09-21"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-016"
