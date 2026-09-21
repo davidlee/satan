@@ -1,0 +1,43 @@
+memory_uid = "mem_01a0c207542570a0a75b0897acf94146"
+memory_key = "mem.pattern.doctrine.design-run-defects"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "pattern"
+status = "active"
+title = "Driving a doctrine design run: four defects in 0.44.3"
+summary = "Four reproducible defects in doctrine 0.44.3's design run machine, with the workaround each one needs."
+created = "2026-09-21"
+updated = "2026-09-21"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine design"]
+tags = ["doctrine", "design", "gotcha", "tooling"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "860331b4058cdd2bfb32309d7bb0bfbb556ec0d3"
+tree = "76dcd2c9cbe428e1f13cdd9cc8c0082c5ac7abcb"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "860331b4058cdd2bfb32309d7bb0bfbb556ec0d3"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
