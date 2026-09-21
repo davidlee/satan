@@ -69,6 +69,7 @@ oauth2-auto.plist
 .pi/APPEND_SYSTEM.md
 .doctrine/state/
 .doctrine/slice/*/phases
+.doctrine/slice/*/research/
 .doctrine/**/handover.md
 .doctrine/slice/*/inquisition.md
 .doctrine/memory/index/*

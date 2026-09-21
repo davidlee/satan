@@ -1,0 +1,42 @@
+memory_uid = "mem_01a0c168d5eb795387f47fc818fe2810"
+memory_key = "mem.fact.satan.intervention-classification-gate"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "How an intervention actually reaches a verdict: the correlation gate, predicate ordering, and the manual/auto split"
+summary = "An intervention is only classified when a motive's cues overlap its run's percept handles; predicates run before the negative path; the manual writer is negative-only"
+created = "2026-09-21"
+updated = "2026-09-21"
+
+[scope]
+paths = ["satan/satan-observer-classify.el", "satan/satan-observer.el", "satan/satan-intervention.el", "satan/satan-intervention-mark.el"]
+globs = []
+commands = []
+tags = ["satan", "observer", "intervention", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "be47438d170f76ae49e8c5fefd87ed89c9729be9"
+ref_name = "refs/heads/main"
+checkout_state_id = "09ebe88872f43140c288e9df7a0c48a529c71e3c712a1f39d1934c49c1a460de"
+base_commit = "6c4eaf8239b19499d36a89227f5e26c4b6d100d3"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
