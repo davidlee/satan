@@ -70,3 +70,30 @@ Two further points the correction pins:
   canon handle regex. A motive cues `app:goad`, not `goad`.
 - Widening the allowlist is an edit to a closed set that exists to protect the
   cooldown floor. It is not a slice edit, and this slice does not need it.
+
+## Amendment — the handle's trigger moves to the queue file (RV-007 F-6)
+
+The route decision stands: only the evidence assembler plus a canon rule can put
+a handle in the percept, and that is what correlation needs.
+
+Two corrections from the adversarial review.
+
+**The trigger was deadlocked.** This decision's body said the canon rule must
+emit its goad handle from *the presence of the day record*, so it would not
+depend on window focus. But `backend.py` `load()` returns `{}` when the file is
+absent (`:69-74`) and `save()` runs only on a `respond` request (`:153`) — so no
+day record exists until the keeper answers something. SATAN could therefore never
+be the first goad interaction of the day, which is most of what an autonomous
+producer is for.
+
+The rule now keys on **SATAN's own queue file**, which exists exactly when there
+is something to ask. The handle then means *"SATAN has a question outstanding"*
+rather than *"goad has state today"* — the more useful thing for a motive to cue
+on in any case.
+
+**One sentence was overstated (F-16).** "Handles exist only for what reaches the
+evidence window and has a rule to name it" is false as an absolute: canon also
+emits context- and hint-derived handles (`satan-memory-canon.el:429` and the
+normalized-hints path). The claim that carries the route decision is narrower and
+is the one to rely on — *no probe and no post-percept tool can contribute a
+handle for that run*.

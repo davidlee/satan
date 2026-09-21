@@ -40,3 +40,18 @@ RFC-016 diagnoses SATAN's dormancy as an attention-economy failure. A slice that
 ## Why a distinct capability
 
 SPEC-001 REQ-005/010 want the surface to fail closed and be killable. Reusing `notify` gives one switch for two behaviours: turning off goad would silence all notification, and re-enabling notification would silently re-arm goad. A `goad-ask` capability plus a `satan-goad-enabled` defcustom (the governed idiom, authority-ledger row 6) keeps the two independent.
+
+## Amendment — a goad-specific window, not global quiet hours (RV-007 F-15)
+
+The hazard this record identified is real and unchanged: a doorbell on a
+round-the-clock ~30-minute tick can ring at 3am, and shipping it without a window
+spends exactly the attention the slice exists to conserve.
+
+The proposed remedy was wrong. `satan-tick-quiet-hours` is consulted by
+`satan-tick` **before any mode is selected** (`satan/satan-tick.el:124`), so
+restoring it would suppress the entire tick overnight — observer processing,
+memory work, inbox work, every other tick behaviour — none of which this slice
+has any business changing. That is scope creep dressed as a safety control.
+
+The contained solution is a **goad-specific emission window** owned by the ask
+path, which stops the doorbell without touching global scheduling.

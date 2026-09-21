@@ -25,3 +25,7 @@ triggers = []                   # watched source globs: { globs, note? }
 label = "references"
 role = "originates_from"
 target = "SL-016"
+
+[[relation]]
+label = "related"
+target = "SL-016"

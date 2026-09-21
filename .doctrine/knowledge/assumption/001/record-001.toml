@@ -11,10 +11,10 @@ updated = "2026-09-21"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
-claim = "backend.py can attach the originating intervention_id to a queued SATAN question and carry it through into the day record entry for the item the keeper answers — without a goad host change."
+claim = "backend.py can attach the originating intervention_id to a queued SATAN question and carry it through into the day record entry for the item the keeper answers, by encoding it in the OPTION ID — extending the existing yes:meds convention — and without a goad host change. Ingress event.data does NOT survive into a respond request; only backend-owned option and field ids are echoed back, with view_id host-minted."
 confidence = "high"
 basis = "design-inference"
-validation_plan = "Implement the queue merge in backend.py and answer one SATAN-authored question end to end; assert the day record entry for that item carries the intervention_id verbatim and that satan-observer reading it can attribute the answer to the originating intervention. This is the test that verification-intent item 2 reduces to."
+validation_plan = "Implement the queue merge in backend.py with intervention_id encoded in the option ids it mints; answer one SATAN-authored question end to end; assert the day record entry carries the intervention_id verbatim and that the option id parses back to it. Must also assert the answer SURVIVES save() — see RV-007 F-7: save() iterates the static ITEMS list and would drop a queued item's answer on write. This is the test verification-intent item 2 reduces to."
 validated_by    = ""
 validated_on    = ""
 invalidated_by  = ""

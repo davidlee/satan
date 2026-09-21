@@ -52,3 +52,32 @@ but not the same line of code, and `backend.py` has no tests, no fixtures and no
 check recipe (slice R2) — so nothing would catch it silently not happening.
 
 Promote to evidence when the round trip is demonstrated.
+
+## Correction — the mechanism is the option id, not `event.data` (RV-007 F-13)
+
+The assumption holds; the route was wrong, and the correction constrains the
+implementation.
+
+This record leaned on goad SPEC-003/R-11 — `data` is opaque and reaches the
+backend whole — with the `yes:meds` option-id convention cited only as a parallel
+precedent. The adversarial review verified against goad's protocol spec that
+**ingress `event.data` does not survive into a `respond` request**. What goad
+echoes back is backend-owned **option and field ids**
+(`docs/specs/001-host-backend-protocol.md:87`); only `view_id` is host-minted
+(`:139`).
+
+So the option-id route is not a parallel precedent — it is **the** mechanism.
+`backend.py`'s own docstring already describes the pattern as deliberate:
+
+> *"which item a button belongs to is carried in the option id (`yes:meds`),
+> because the host mints view ids and will not carry ours."*
+
+**The constraint this imposes:** option ids must remain parseable back to an
+`intervention_id`, and `answer()` currently parses with
+`verb, _, item_id = option.partition(":")` — a single split. An id encoding must
+survive that, or `answer()` changes with it.
+
+**And the round trip is longer than this record implied.** Even with the id
+carried correctly, `save()` iterates the static `ITEMS` list (RV-007 F-7), so a
+queued item's answer is dropped at persist time. The validation plan now requires
+asserting the answer *survives* `save()`, not merely that the id arrives.

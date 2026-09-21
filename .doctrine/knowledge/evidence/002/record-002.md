@@ -29,3 +29,21 @@ goad's success is silent (005/D-7 — "a message that prints on success trains i
 ## What this settles for SL-016
 
 The ledgered tier suffices; no raw two-buffer call-process and no structured-refusal parser. goad-emit's contract is a three-value exit code (main.rs, exchange): 0 accepted and silent, 1 host refused with one line on stderr, 2 no usable answer with one line on stderr. satan-trace-call returns (:exit N :stdout STR :timed-out BOOL), so :exit alone carries the accepted/refused/faulted tri-state the doorbell needs. The claim that satan-trace-call discards stderr is false: it calls call-process with DESTINATION t, which mixes stderr into the same buffer, so the refusal line is also in :stdout. Verified empirically. Unambiguous because success is silent (goad 005/D-7) and a refusal writes exactly one line and nothing to stdout, so at most one line ever appears. The refusal reason token is first by design (render.rs:59, 'so a wrapper can branch on it'). retry_after_ms is the only thing a parser would add, and goad reports it as advice never obeyed, which matches delta 5's no-retry-machinery finding. Separately: goad-emit sets no deadline of its own and says to wrap it, so ADR-018's timeout(1) requirement is mandatory, not stylistic, and satan-trace-call's timeout -k 2 is the right tier.
+
+## Scope note — this evidence is about refusal transport, not delivery (RV-007 F-1)
+
+This record stands as written. Its subject is how a *refusal* reaches SATAN, and
+the finding is correct: the ledgered tier carries the exit code and the refusal
+line, so no raw two-buffer fallback and no structured-refusal parser are needed.
+
+What must not be read into it is a **delivery** guarantee. goad replies
+`accepted` *before* calling the backend — `crates/goad/src/controller.rs:735`
+says so verbatim, and `host.evaluate()` runs later at `:998`. So exit 0 means
+the host took the envelope, not that `backend.py` ran and not that anything was
+rendered. A dead or crashing backend yields exit 0.
+
+The first design layered a fail-closed delivery claim on top of this evidence
+(*"a dead backend.py or an unreachable socket must suppress asking ... Exit 2 is
+that case"*). That inference was wrong and is removed. Delivery is proven by the
+`presented_at` stamp the backend writes at render time ([[DEC-009]],
+[[DEC-013]]) — a fact only something that actually ran can produce.

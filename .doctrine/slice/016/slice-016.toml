@@ -7,7 +7,7 @@ updated = "2026-09-21"
 tags = ["elicitation", "goad", "intervention", "perception", "satan"]
 
 [relationships]
-needs = ["ISS-014"]                      # slice→work hard prerequisite
+needs = []                      # slice→work hard prerequisite
 after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]

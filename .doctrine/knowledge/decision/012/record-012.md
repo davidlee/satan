@@ -76,3 +76,33 @@ focus — and SATAN asks when it does not. So the free handle is exactly absent 
 the moment correlation is evaluated for a new ask. DEC-004's canon rule must emit
 a goad handle from the day record's presence, not from the window. The free one is
 a bonus at answer time, not the mechanism.
+
+## Amendment — the negative leg is withdrawn (RV-007 F-2, F-3, F-17)
+
+The positive leg stands: one entry in `satan-observer--predicates`, uniform
+signature, reading the goad day record out of the assembled evidence window.
+
+**The negative leg does not.** Narrowing ack-events by target surface assumed a
+usable focus signal underneath it. Three findings say there is none:
+
+- `satan-observer--ack-checked-p` compares the symbol `'ok` to the string `"ok"`
+  and is **nil on every production run** ([[ISS-014]]) — so the count it would
+  narrow is never taken at all;
+- even once fixed, ack-events count only segments *strictly after* the emit (so
+  continuous presence reads as absent), only the newest ten segments survive
+  assembly, and real telemetry carries `app_id:"goad"` against Emacs and Claude
+  window titles;
+- presenting the prompt may itself focus the window, which would turn every
+  ignored prompt into acknowledgement.
+
+Narrowing a broken count, on evicted data, with mislabelled surfaces, against a
+possible self-focus artefact, is not a design. [[DEC-013]] reads non-engagement
+from goad's own record instead, and this slice stops changing
+`satan-observer-classify.el`'s negative path.
+
+**The `:ignored` analysis in this record's body is also wrong about today.** It
+says `:ignored` requires zero focus segments and therefore means the keeper was
+absent. Because the ack gate never opens, `classify-negative` in fact awards
+`:ignored :low` **unconditionally** to every user-facing intervention that fires
+no predicate. That is [[ISS-014]]'s blast radius, not this slice's to fix.
+

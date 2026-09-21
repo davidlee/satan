@@ -73,3 +73,54 @@ of scope. What this decision does is make it **visible**: `related_motive_id` an
 `cue_handles` recorded at emit are the before-picture, and the verdict's `:motive_id`
 is the after. A verifier comparing them detects every decorrelation. IMP-002 already
 scopes exactly that cross-check and should gain this as a case.
+
+## Amendment — the claim is narrowed, and the gate is made to mean something (RV-007 F-4, F-5)
+
+[[DEC-013]]'s reframe does **not** rescue this decision. A goad-derived predicate
+still runs inside `satan-observer-classify`, which still sits behind
+`satan-observer-classify-for-motives`, so motive correlation remains the outer
+gate on every classification. Both findings survive intact.
+
+### F-5 — the gate did not correlate the question to the motive
+
+As first written, the gate intersected live motive cues against **ambient**
+percept handles. Neither the question nor its subject took part. So a generic
+`app:goad` cue admitted *any* question on *any* subject, and where several
+motives carried the handle, file order picked which was credited
+(`--rank-motives-by-overlap` breaks ties by `:order`). The gate proved *some
+motive overlaps the ambient percept* — not what this record's title claims.
+
+**The fix is a principle, and the machinery forces it:** *SATAN may only ask
+about something already in its perceptual field.* The percept is frozen at spawn,
+before any question exists, so a question-specific handle can correlate **only**
+if the question is derived from what is already perceived.
+
+Concretely, the ask tool requires:
+
+1. the question to name a handle present in ctx `:percept-handles`; and
+2. **that** handle — not merely `app:goad` — to appear in the winning motive's cue.
+
+The gate then proves what it was always claimed to prove, and the tie-break
+concern dissolves because the overlap is on a specific subject.
+
+### F-4 — the loop is not closed by construction, and the design will say so
+
+The observer rereads **live** motives on every pass
+(`satan/satan-observer.el:383`) and ranks them against the bundle
+(`satan-observer-classify.el:584`). It never consults the persisted
+`related_motive_id` or `cue_handles`. So an ask that passed the emit-time gate
+can still mature `:no_correlation` if `motive_replace` touched the motive in
+between — and `tick-pulse` holds exactly that tool.
+
+Recording enough to *detect* a broken loop is not the same as having an unbroken
+one, and the original phrasing ("correlate by construction") overclaimed. Two
+changes:
+
+- correlation is asserted **at emit** and nowhere else;
+- a goad ask that matures `:no_correlation` becomes a **perceptible** event
+  through the same channel as suppression ([[DEC-011]]), so a broken loop is
+  visible rather than silent — this slice's own thesis applied to itself.
+
+Making the correlator honour the persisted motive id is the real fix. It changes
+shared classification semantics for every intervention kind, so it goes to the
+backlog as its own item rather than into this slice.

@@ -40,3 +40,20 @@ The sidecar is the conservative option and it is worse here. Two files holding t
 ## The atomicity is not incidental
 
 `Path.write_text` truncates and rewrites in place. SATAN will read this file from the broker process at percept-build time, on a ~30 minute tick, while the keeper may be answering. A torn read is a malformed record reaching the canon rule. Research delta 7 said *atomic tmp+rename suffices* — correct, and it is not what the code does today. This slice makes it true.
+
+## Amendment — the record grows two fields (RV-007 F-1, F-19)
+
+JSON and the atomic write stand. Two additions the first design did not see.
+
+**`presented_at`.** goad replies `accepted` **before** calling the backend
+(`crates/goad/src/controller.rs:735`, stated verbatim in the code comment), so
+`goad-emit` exit 0 proves only that the host took the envelope. A dead
+`backend.py` yields exit 0. The record therefore has to carry the delivery fact
+itself, written at render time by the one process that can know it.
+
+**Deferral provenance.** `answer()` writes the same `deferred_at` key for both
+`later:` (one item) and `enough:` (every pending item), so the record cannot
+distinguish *the keeper saw this and postponed it* from *the keeper cleared the
+slot, quite possibly without ever seeing it* — and since only the first pending
+item is rendered, the bulk case routinely defers questions nobody saw. For this
+slice those are opposite signals, so they need distinct spellings.

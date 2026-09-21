@@ -13,3 +13,16 @@ A whole rewrite has no such case. The file is a pure function of the open rows a
 ## Symmetry with what is already there
 
 `backend.py:77-90` already rewrites the day record whole on every answer. Under DEC-009 that write becomes a `json.dump` through tmp+rename. The queue file is the same shape from the other direction — written whole by SATAN, read whole by backend.py — so the merge introduces no idiom the file does not already contain.
+
+## Amendment — the projection needs a maintenance trigger (RV-007 F-11)
+
+"Total by construction" was true of each rewrite and false of the file over time.
+Only the ask handler was specified to rewrite the queue, while the observer
+retires rows independently at classification (`satan/satan-observer.el:424`). So
+a matured, retired ask kept its queue entry until some later ask happened to
+rewrite the file, and `backend.py` would keep re-presenting it. After state loss
+nothing regenerated until the next ask.
+
+The rewrite is now triggered at **classification time as well as at emit**. That
+is also what makes the regenerability property [[DEC-005]] leans on actually
+hold, so it earns the test this decision already promised it.
