@@ -1,0 +1,135 @@
+id    = 7
+slug  = "sl-016-design-adversarial-pass-gpt-56-sol"
+title = "SL-016 design — adversarial pass (gpt-5.6-sol)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "adversarial (gpt-5.6-sol)"
+responder = "design author"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-016"
+
+[[finding]]
+id = "F-1"
+status = "open"
+severity = "blocker"
+title = "goad-emit exit 0 does not mean the prompt was delivered"
+detail = "goad replies `accepted` BEFORE calling the backend. crates/goad/src/controller.rs:735 says so verbatim: 'accepted. The reply leaves **before** the backend is called: the listener awaits it before accepting the next connection, so a reply that waited for the exchange would put `engaged` out of reach (I-2)'. host.evaluate() runs later, at controller.rs:998. CONFIRMED by read. Design sec-5 claims 'a dead backend.py or an unreachable socket must suppress asking, never bypass. Exit 2 is that case' — false: a dead or crashing backend.py yields exit 0. SATAN then persists an intervention and starts an outcome window for a question that was never rendered, which later matures :ignored. That conflates delivery failure with human disengagement, which is exactly the signal the slice exists to produce. EVD-002's refusal-transport conclusion is unaffected and stands; what is wrong is the delivery inference layered on it."
+
+[[finding]]
+id = "F-2"
+status = "open"
+severity = "blocker"
+title = "The observer ack gate is always false, so DEC-012 narrows a count that is never taken"
+detail = """satan-memory-evidence--segments-status returns the STRING "ok" (satan/satan-memory-evidence.el:163-190, docstring states it) and it reaches :sensor_status :focus verbatim (:555). satan-observer--ack-checked-p compares it to the SYMBOL 'ok with eq (satan/satan-observer-classify.el:271-277), which is nil for every production run. CONFIRMED by read and by `emacs --batch --eval '(eq (quote ok) "ok")'` => nil. Consequence in classify-negative (:326-345): the :unknown branch is unreachable, --count-ack-events never runs, confidence is never :medium, and every user-facing intervention firing no positive predicate classifies :ignored :low unconditionally. Raised separately as ISS-014 because it is a live bug independent of this slice; SL-016 needs ISS-014. Design sec-6's 'today' truth table is therefore wrong, and DEC-012's surface narrowing is inert until ISS-014 is fixed."""
+
+[[finding]]
+id = "F-3"
+status = "open"
+severity = "blocker"
+title = "Focus telemetry cannot support the absent/ignored/engaged truth table even once ISS-014 is fixed"
+detail = 'Three independent defects, all CONFIRMED by GPT against source and telemetry. (a) --count-ack-events counts only segments whose start_ts is STRICTLY AFTER the emit (satan-observer-classify.el:279), so a keeper continuously focused from before the emit counts as absent. (b) Only the newest ten segments survive assembly (satan-memory-evidence.el:63, :185), so an early goad focus can be evicted before maturity. (c) Real telemetry carries transiently wrong surface labels — app_id "goad" appearing with Emacs and Claude window titles in ~/.local/state/behaviour/segments/focus-2026-09-20.jsonl:5. Together: stable presence can read as absent, a genuine deferral can read as ignored, and focus elsewhere can read as goad acknowledgement. DEC-012 assumes a clean surface signal that the data does not provide.'
+
+[[finding]]
+id = "F-4"
+status = "open"
+severity = "blocker"
+title = "The motive-mutation race invalidates 'correlate by construction'; it is not a safely carried risk"
+detail = "The observer rereads LIVE motives on every pass (satan/satan-observer.el:383) and ranks them against the bundle (satan-observer-classify.el:584). It never consults the persisted related_motive_id or cue_handles. CONFIRMED. So an ask that passed the emit-time gate can still mature :no_correlation if motive_replace touched the motive in between — and tick-pulse holds motive-write with motive_replace in its tool list. Design sec-2 and DEC-007 record this as detectable-but-carried, with IMP-002 as the home for an after-the-fact verifier. Detecting a broken loop is not the same as having a closed one, and both legs of the verification intent sit behind it. Either the correlator must honour the persisted motive id, or the design must stop claiming the loop is closed by construction."
+
+[[finding]]
+id = "F-5"
+status = "open"
+severity = "blocker"
+title = "The correlation gate correlates ambient percept to motive, never the question to the motive"
+detail = "Design sec-2's gate compares live motive cues against ambient percept handles only; neither the question text nor its subject participates. The maturity correlator does the same (satan-observer-classify.el:544). CONFIRMED by reading both. So a generic app:goad cue admits ANY question, on any subject, and where several motives carry the handle, file order picks which one is credited (rank ties break by :order). The gate proves 'some motive overlaps the ambient percept', not 'this question concerns that motive'. DEC-007's title and sec-2's claim both overclaim. The per-item topic: handles sec-3 proposes are the obvious lever but the design does not require the ask to carry one."
+
+[[finding]]
+id = "F-6"
+status = "open"
+severity = "blocker"
+title = "Daily bootstrap deadlock: no day record exists until the keeper answers, so SATAN can never ask first"
+detail = "Design sec-3 conditions the new app:goad handle on the presence of today's day record, precisely so it does not depend on window focus. But backend.py load() returns {} when the file is absent (~/satan/goad/backend.py:69-74) and save() runs only on a 'respond' request (:153). CONFIRMED by read. So before the keeper answers an existing checklist item on any given day, there is no day record, no goad handle, no correlation, and the ask suppresses itself. The elicitation surface cannot be the first goad interaction of the day — which is most of what an autonomous producer is for. The handle's trigger needs rethinking (backend presence? the queue file itself? a daily bootstrap write?)."
+
+[[finding]]
+id = "F-7"
+status = "open"
+severity = "blocker"
+title = "backend.py save() serializes only static ITEMS, so a queued SATAN answer is dropped on write"
+detail = "save() iterates `for item_id, _section, label in ITEMS` (~/satan/goad/backend.py:77-90) — the hardcoded list. CONFIRMED by read. Design sec-4 and sec-7 specify merging the queue into pending() and echoing intervention_id, but never say save()'s static enumeration must be replaced. As written, a dynamic SATAN item would render, be answered, mutate the in-memory items map, and then vanish at persist time. ASM-001's round trip would fail silently, and backend.py has no tests to catch it. The fixture must prove a queued id survives respond -> save -> load."
+
+[[finding]]
+id = "F-8"
+status = "open"
+severity = "major"
+title = "The suppression sensor alert has no implementation path and needs durable state the design denies it"
+detail = "Existing alerts are derived PRE-SPAWN from a closed sensor-status table covering only current-window, focus and browser faults (satan/satan-sensor-alerts.el:102, :322). Goad suppression happens LATER, inside a model-invoked tool handler, with no enqueue API and no sensor-status source. satan-sensor-alerts.el is absent from the design's affected surface (sec-10). And sec-7 states the suppression is not audited, removing the one durable source that could have fed the next tick. CONFIRMED. Verification item 6 ('an ask with no correlating motive is suppressed, and the suppression is perceptible') is not achievable as designed. DEC-011's suppression channel needs a real mechanism or a different one."
+
+[[finding]]
+id = "F-9"
+status = "open"
+severity = "major"
+title = "The memory trace does not hold the answer, and is not written under the tick's memory-write capability"
+detail = "The positive observer trace records intervention id, motive id, predicates, classification and confidence (satan/satan-observer.el:131, :141) — not the question, not the submitted value. It calls satan-memory-store-mark directly (:149) rather than being dispatched through a tool under the mode's capability. CONFIRMED. Design sec-7 claims the answer 'becomes a memory trace ... written under tick-pulse's existing memory-write capability, so the answer path needs no new capability'. Both halves are wrong: the existing trace records that an intervention worked, not what the keeper said, and the capability claim describes a path that is not taken. DEC-011's third landing place needs designing rather than asserting."
+
+[[finding]]
+id = "F-10"
+status = "open"
+severity = "major"
+title = "The ask outcome window (60min) and the observer evidence window (30min) disagree, and the predicate has no upper bound"
+detail = "docs/attributes/outcome-semantics.md:103 recommends a 60-minute outcome window for kind 'ask'. Observer evidence always ends at a fixed 30 minutes (satan-observer-classify.el:28, :80). The predicate design sec-6 proposes requires only `at > emitted_at` with no upper bound. CONFIRMED. So a deferral or focus at minute 45 is invisible to focus evidence, while a late day-record answer can still fire the predicate as :worked if classification runs late. The design never states what outcome-window-minutes the ask handler actually passes."
+
+[[finding]]
+id = "F-11"
+status = "open"
+severity = "major"
+title = "The queue projection is only rewritten by the ask handler, so it is not self-maintaining"
+detail = "Design sec-4 specifies the rewrite in the ask handler and sec-4's table claims the whole-rewrite is 'total by construction' with 'no reaping'. But an ask stops being open when the observer classifies it, independently (satan/satan-observer.el:424), and nothing rewrites the queue at that moment. CONFIRMED. So a matured, retired intervention keeps its queue entry until some later ask happens to rewrite the file, and backend.py keeps re-presenting it. Equally, after state loss nothing regenerates until the next ask. The regenerability property DEC-005 rests on needs a trigger, not just a writer."
+
+[[finding]]
+id = "F-12"
+status = "open"
+severity = "major"
+title = "goad_ask in interactive MCP mode has no percept, so it suppresses or never correlates"
+detail = "Interactive mode exposes every registered tool and capability automatically (satan/satan-mcp.el:66). Its session is minted with a synthetic bundle carrying no percept and its tool context is frozen immediately (:154, :177, :197); later boot-context perception runs on a copy and updates neither (satan/satan-context.el:642, satan-mcp.el:358). CONFIRMED by GPT. So an interactive goad_ask reads nil :percept-handles and suppresses at emit, and the maturity bundle has no percept either. The design must either prohibit the tool in interactive mode explicitly or repair MCP run-state coherence — it currently does neither, and sec-2's 'same handle list' claim is silently false on that path."
+
+[[finding]]
+id = "F-13"
+status = "open"
+severity = "major"
+title = "ASM-001's mechanism is wrong: intervention_id must ride an option or field id, not event.data"
+detail = "GPT verified the zero-host-change identity premise is ACHIEVABLE but by a different route than ASM-001 implies. goad echoes backend-owned option and field ids (docs/specs/001-host-backend-protocol.md:87) while only view_id is host-minted (:139); ingress event.data does NOT survive into a 'respond' request. ASM-001's body leans on SPEC-003/R-11's opaque data field and on the `yes:meds` option-id precedent as parallel evidence. The option-id route is the one that works and the record should say so specifically, because it constrains the id encoding (option ids must remain parseable back to an intervention_id)."
+
+[[finding]]
+id = "F-14"
+status = "open"
+severity = "minor"
+title = "Design sec-9 and sec-6 disagree about what 'saw it and did nothing' classifies as"
+detail = "sec-9 states verification item 3 as 'present, saw it, did nothing' => :ignored. sec-6's truth table says goad focus with no answer => :unknown :low, correctly, because that is a deferral. If the keeper genuinely 'saw it' they focused goad, which sec-6 routes to :unknown. The two sentences are incompatible as written. sec-9 means 'present at the machine but never looked at goad'; it should say that."
+
+[[finding]]
+id = "F-15"
+status = "open"
+severity = "minor"
+title = "Restoring global quiet hours to protect the doorbell is scope creep with unrelated effects"
+detail = "satan-tick-quiet-hours suppresses the ENTIRE tick before any mode is selected (satan/satan-tick.el:124, satan-tick-quiet-p consulted first in satan-tick). CONFIRMED. Design sec-8 proposes restoring it specifically to stop the goad doorbell ringing overnight. That would also disable overnight observer processing, memory work, inbox work and every other tick behaviour — none of which this slice has any business changing. A goad-specific emission window is the contained solution. The underlying hazard (a doorbell on a round-the-clock ~30min tick) is real and still needs an answer."
+
+[[finding]]
+id = "F-16"
+status = "open"
+severity = "nit"
+title = "'Handles exist only for what reaches the evidence window' is overstated"
+detail = "Design sec-3 states handles exist only for what reaches the evidence window and has a rule to name it. Canon rules also emit context- and hint-derived handles (satan/satan-memory-canon.el:429 and the normalized-hints path). GPT confirms this does not create a missed probe or tool route, so DEC-004's route decision is unaffected — but the absolute phrasing is false and a future reader may rely on it."
+
+[[finding]]
+id = "F-17"
+status = "open"
+severity = "major"
+title = "SUSPECTED: presenting the goad window may itself generate a goad focus segment"
+detail = "Rendering a prompt calls window.show() (crates/goad/src/glass.rs:328) and the application id is 'goad' (crates/goad/src/main.rs:124). If the compositor focuses newly shown windows, an untouched prompt produces a goad focus event immediately, and under DEC-012's narrowing that reads as acknowledgement — turning every ignored prompt into :unknown and destroying the keystone from the other direction. GPT rates this SUSPECTED (medium confidence): it did not verify compositor behaviour. Needs a measured fixture — present a prompt, touch nothing, inspect the focus segments — not an assumption either way."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
