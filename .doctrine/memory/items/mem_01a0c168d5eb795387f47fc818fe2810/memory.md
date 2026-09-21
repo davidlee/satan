@@ -82,3 +82,51 @@ dual-write hazard.
   probe family.
 - [[mem.fact.satan.green-is-not-green]] — a test that never runs reports green;
   the same shape of silent success as the `:no_correlation` swallow.
+
+## Correction — `:cue_handles` is not the correlation hook (2026-09-21, SL-016 design)
+
+Section 1 above says *"Correlation rides entirely on `percept_handles`, which is
+auto-populated from ctx."* That is directionally right and misleading in a way
+that costs a design turn, because it leaves open the obvious inference — that
+passing `:cue-handles` to `satan-intervention-create` is the way to make an
+intervention correlate. It is not.
+
+**The correlator reads `bundle.json`, not the database.**
+`satan-observer--intervention-percept-handles` (`satan-observer-classify.el:500-509`)
+is the whole of it:
+
+```elisp
+(let* ((run-dir (plist-get intervention :run_dir))
+       (path (and run-dir (expand-file-name "bundle.json" run-dir)))
+       (bundle (and path (satan-observer--read-json-object path)))
+       (percept (and bundle (plist-get bundle :percept))))
+  (and percept (plist-get percept :handles)))
+```
+
+Neither the `cue_handles_json` column nor `percept_handles_json` is consulted.
+`:cue-handles` is persisted (`satan-intervention.el:385`, `:168`) and feeds
+`satan-intervention--counter-memory-handles` (`:518-532`) — the **resonance**
+path, so a counter-memory inherits the intervention's handles. Passing it is
+worth doing for auditability and resonance. It will never make an ask correlate.
+
+**So correlation can only be arranged two ways:** put handles a motive already
+cues on into the *percept* — which means the evidence window plus a canon rule,
+since `satan-percept-build` is `evidence-assemble` then `canon-canonicalize` —
+or change the correlator itself.
+
+**And the handle namespace is not free.** `satan-motive--admitted-namespaces`
+(`satan-motive.el:83-92`) is a closed allowlist — `app surface
+surface_transition domain_kind domain_transition bough_event bough_node
+bough_project artifact topic phase focal_app`. A motive cue carrying no handle
+from that set is `:invalid-cue` and the motive parses **dormant**, so it never
+reaches the correlator. Minting a new namespace for a new signal does not work;
+emit into an admitted one. Cue tokens are full canon handles (`app:goad`), not
+bare words.
+
+**One more, for anyone planning the negative path.** Section 2's note that a
+user who engaged lands `:unknown :low` understates it. `--count-ack-events`
+(`:278-290`) counts *any* focus segment after the emit — *"v1 does not narrow by
+surface"* — and `:ignored` requires that count to be zero. So `:ignored` today
+means **the keeper was away from the machine**, not that they ignored the
+intervention. Anyone building a disengagement signal needs the surface narrowing
+first; see [[DEC-012]].

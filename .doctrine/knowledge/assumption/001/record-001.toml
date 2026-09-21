@@ -1,0 +1,30 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "backend-echoes-intervention-id"
+title = "backend.py can carry intervention_id from the queue entry into the day record"
+record_kind = "assumption"
+status = "held"
+created = "2026-09-21"
+updated = "2026-09-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+claim = "backend.py can attach the originating intervention_id to a queued SATAN question and carry it through into the day record entry for the item the keeper answers — without a goad host change."
+confidence = "high"
+basis = "design-inference"
+validation_plan = "Implement the queue merge in backend.py and answer one SATAN-authored question end to end; assert the day record entry for that item carries the intervention_id verbatim and that satan-observer reading it can attribute the answer to the originating intervention. This is the test that verification-intent item 2 reduces to."
+validated_by    = ""
+validated_on    = ""
+invalidated_by  = ""
+invalidated_on  = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
