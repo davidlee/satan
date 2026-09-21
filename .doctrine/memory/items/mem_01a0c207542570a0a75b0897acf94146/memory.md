@@ -89,3 +89,12 @@ next reader will think the numbering is a mistake.
   `internal("provenance")`, so it is `{"provenance": {"provenance":
   "agent-proposed"}}`, not a bare string. Read `doctrine design contract
   --format prompt` before the first apply; it is the only place this is stated.
+
+## Related
+
+- [[mem.pattern.doctrine.declare-design-targets-at-lock]] — selectors are
+  declared at design lock, not at audit. The design run's `draft.selectors`
+  step is where that happens, and `doctrine slice selector doctor <ID>` is the
+  check worth running before discharging it.
+- [[mem.signpost.doctrine.lifecycle-start]] — where the design run sits in the
+  slice lifecycle.
