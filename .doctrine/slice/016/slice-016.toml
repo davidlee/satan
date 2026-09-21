@@ -11,10 +11,6 @@ needs = []                      # slice→work hard prerequisite
 after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
-selector = "satan/satan-sensor-*.el"
-intent = "scope-relevant"
-
-[[selector]]
 selector = "satan/satan-tools-*.el"
 intent = "scope-relevant"
 
@@ -31,8 +27,44 @@ selector = "satan/satan-intervention.el"
 intent = "scope-relevant"
 
 [[selector]]
-selector = "test/**"
+selector = "satan/satan-memory-canon.el"
+intent = "design-target"
+note = "The design's own targets: the canon rule and evidence inclusion (DEC-004), both observer legs (DEC-012), and tick-pulse's capability plus quiet hours (DEC-006)."
+
+[[selector]]
+selector = "satan/satan-memory-evidence.el"
+intent = "design-target"
+note = "The design's own targets: the canon rule and evidence inclusion (DEC-004), both observer legs (DEC-012), and tick-pulse's capability plus quiet hours (DEC-006)."
+
+[[selector]]
+selector = "satan/satan-observer-classify.el"
+intent = "design-target"
+note = "The design's own targets: the canon rule and evidence inclusion (DEC-004), both observer legs (DEC-012), and tick-pulse's capability plus quiet hours (DEC-006)."
+
+[[selector]]
+selector = "satan/satan-tick.el"
+intent = "design-target"
+note = "The design's own targets: the canon rule and evidence inclusion (DEC-004), both observer legs (DEC-012), and tick-pulse's capability plus quiet hours (DEC-006)."
+
+[[selector]]
+selector = "satan/satan-tools.el"
 intent = "scope-relevant"
+note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
+
+[[selector]]
+selector = "satan/satan-custom.el"
+intent = "scope-relevant"
+note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
+
+[[selector]]
+selector = "satan/satan-mode.el"
+intent = "scope-relevant"
+note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
+
+[[selector]]
+selector = "satan/test/**"
+intent = "scope-relevant"
+note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
 
 [[relation]]
 label = "governed_by"
