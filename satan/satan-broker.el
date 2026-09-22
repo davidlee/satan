@@ -53,6 +53,9 @@ before spawning the child.  Set to nil to disable."
   "Map SATAN mode `:provider' symbol to its API-key env var name.")
 
 (declare-function my/op-read-env "dl-secret" (var &optional refresh))
+;; Declared special so the `let' below is a dynamic binding dl-secret can see;
+;; without this, lexical-binding would make it a dead local.
+(defvar my/op-read-context)
 (declare-function my/scrub-op-refs-env "dl-secret" (env))
 (declare-function notifications-notify "notifications" (&rest args))
 
@@ -700,9 +703,12 @@ Returns the run-id."
                            (cdr (assq provider
                                       satan-broker-provider-key-vars))))
              (key-val (and key-var
-                           (condition-case _err
-                               (satan-broker--read-env key-var)
-                             (error nil))))
+                           (let ((my/op-read-context
+                                  (format "satan broker/%s"
+                                          (or (plist-get mode :name) "?"))))
+                             (condition-case _err
+                                 (satan-broker--read-env key-var)
+                               (error nil)))))
              (provider-env (delq nil
                                  (list
                                   (when provider

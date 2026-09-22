@@ -25,6 +25,7 @@
 (require 'satan-patch-adapter)
 
 (declare-function my/op-read-env "dl-secret" (var &optional refresh))
+(defvar my/op-read-context)
 (declare-function my/scrub-op-refs-env "dl-secret" (env))
 
 (defcustom satan-patch-adapter-pi-program "jailed-pi"
@@ -236,7 +237,8 @@ session) and prepend `NAME=value' to the returned list.  Any
 remaining `KEY=op://…' entries are scrubbed via
 `my/scrub-op-refs-env' so a transient op failure can't ship a
 literal ref into the jail."
-  (let ((env (copy-sequence process-environment)))
+  (let ((env (copy-sequence process-environment))
+        (my/op-read-context "satan patch-adapter/pi"))
     (dolist (var satan-patch-adapter-pi-api-key-vars)
       (when-let* ((val (and (fboundp 'my/op-read-env)
                             (ignore-errors (my/op-read-env var)))))

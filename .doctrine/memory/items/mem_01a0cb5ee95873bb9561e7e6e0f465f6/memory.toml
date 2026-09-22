@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0cb5ee95873bb9561e7e6e0f465f6"
+memory_key = "mem.fact.satan.op-cache-has-no-invalidation"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Rotating a 1Password key does not reach a running Emacs: clear my/op--cache"
+summary = "my/op--cache is per-Emacs-session with no TTL: rotating a key in 1Password needs my/op-forget or the server keeps serving the dead one."
+created = "2026-09-22"
+updated = "2026-09-22"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "auth", "gotcha", "op"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6fd2fa3c9d6de3b3cb5e4d9142d994a971eba7e0"
+ref_name = "refs/heads/main"
+checkout_state_id = "56913d662d57aa7306633ab471efc8b65458c5d0ac51c485fe498c65c49029d4"
+base_commit = "adc40ca2d4e12636cb08b264c8fa42453de51215"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "session"
+ref = "2026-09-23 SATAN health triage"
+
