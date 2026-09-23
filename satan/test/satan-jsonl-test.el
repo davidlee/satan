@@ -155,5 +155,35 @@ holds a unibyte argv element serialises without error after prepare."
     (should (multibyte-string-p s))
     (should (equal s (satan-jsonl-prepare s)))))
 
+;; ---------------------------------------------------------------------
+;; satan-jsonl-read-object-file — one JSON document, lenient
+;; ---------------------------------------------------------------------
+
+(defun satan-jsonl-test--read-object (content)
+  "Write CONTENT to a temp file and read it with `satan-jsonl-read-object-file'.
+CONTENT nil means the file does not exist."
+  (let* ((dir (make-temp-file "satan-jsonl-object-" t))
+         (path (expand-file-name "doc.json" dir)))
+    (unwind-protect
+        (progn
+          (when content
+            (with-temp-file path (insert content)))
+          (satan-jsonl-read-object-file path))
+      (delete-directory dir t))))
+
+(ert-deftest satan-jsonl/read-object-file-decodes-with-the-shared-shape ()
+  "Objects become plists, arrays lists, JSON null nil, JSON false `:false'."
+  (should (equal '(:a 1 :b ("x" nil) :c :false :d t :e (:f 2))
+                 (satan-jsonl-test--read-object
+                  "{\"a\": 1, \"b\": [\"x\", null], \"c\": false,
+                    \"d\": true, \"e\": {\"f\": 2}}"))))
+
+(ert-deftest satan-jsonl/read-object-file-missing-is-nil ()
+  (should-not (satan-jsonl-test--read-object nil)))
+
+(ert-deftest satan-jsonl/read-object-file-malformed-is-nil-not-a-signal ()
+  (should-not (satan-jsonl-test--read-object "{\"a\": "))
+  (should-not (satan-jsonl-test--read-object "")))
+
 (provide 'satan-jsonl-test)
 ;;; satan-jsonl-test.el ends here

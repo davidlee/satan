@@ -120,6 +120,23 @@ it lives here once now."
   "Join SEGMENTS below `satan-state-root' — SATAN's runtime state."
   (satan--join satan-state-root segments))
 
+;; ── goad, SATAN's elicitation surface (SL-016) ──────────────────────────────
+
+(defcustom satan-goad-queue-file (satan-state-path "goad/queue.json")
+  "SATAN's queue of outstanding asks, which goad's `backend.py' reads.
+SATAN owns it: a projection of its open ask interventions, rewritten
+whole and discardable, so it is runtime state.  goad resolves the same
+path on its side (`queue_path' in the corpus's `goad/backend.py')."
+  :type 'file
+  :group 'satan)
+
+(defcustom satan-goad-data-dir (satan-corpus-path "goad/data")
+  "goad's day records, one `YYYY-MM-DD.json' per local date.
+goad's `backend.py' owns and writes them; they are corpus-tracked.
+SATAN only reads them, to perceive what the keeper did with its asks."
+  :type 'directory
+  :group 'satan)
+
 (defun satan-notes-today ()
   "Today's journal path via `satan-journal-today', or nil when unset."
   (and satan-journal-today (funcall satan-journal-today)))

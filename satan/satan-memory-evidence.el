@@ -23,6 +23,13 @@
 ;;                           Keeps the "what is now" probes
 ;;                           (current_window, git_state, fs_state).
 ;;                           Used by `memory_resonate' cue derivation.
+;;                           Also skips the goad slice.
+;;
+;; Besides the windowed probes, `:goad' carries SATAN's queued asks with
+;; their goad records (`satan-goad-slice'), whole and unwindowed: each
+;; ask's record is read from its own emit date's day file, and consumers
+;; apply the ask's own window (SL-016 design sec-2).  The key is absent
+;; when nothing is queued.
 ;;
 ;; This module is intentionally separate from `satan-memory-canon'
 ;; (which is PURE per §3.5).  The canon module must never `require'
@@ -32,6 +39,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'calendar)   ; calendar-absolute-from-gregorian / -gregorian-from-absolute
+(require 'satan-goad)
 (require 'satan-jsonl)
 (require 'satan-trace)
 (require 'satan-tools-activity)
@@ -551,6 +559,8 @@ observer passes the window end and reads only `:sensor_status'
                             (satan-trace-stage-optional "evidence.content_probe"
                               (satan-memory-evidence--content-probe
                                content-limit)))))
+         (goad (unless cue-only
+                 (satan-trace-stage "evidence.goad" (satan-goad-slice))))
          (sensor-status (list :current_window (car current-probe)
                               :focus (car focus-probe)
                               :browser (car browser-probe)
@@ -558,20 +568,23 @@ observer passes the window end and reads only `:sensor_status'
                               :content (if content-probe
                                            (car content-probe)
                                          "budget_skipped")))
-         (raw (list
-               :current_window (cdr current-probe)
-               :focus_segments (cdr focus-probe)
-               :browser_segments (cdr browser-probe)
-               :git_commits (cdr git-probe)
-               :content_recent (cdr content-probe)
-               :git_state (satan-trace-stage "evidence.git_state"
-                            (satan-memory-evidence--git-state cwd))
-               :fs_state (satan-trace-stage "evidence.fs_state"
-                           (satan-memory-evidence--fs-state cwd))
-               :window_start_at start
-               :window_end_at end
-               :git_window_start_at git-start
-               :sensor_status sensor-status)))
+         (raw (append
+               (list
+                :current_window (cdr current-probe)
+                :focus_segments (cdr focus-probe)
+                :browser_segments (cdr browser-probe)
+                :git_commits (cdr git-probe)
+                :content_recent (cdr content-probe)
+                :git_state (satan-trace-stage "evidence.git_state"
+                             (satan-memory-evidence--git-state cwd))
+                :fs_state (satan-trace-stage "evidence.fs_state"
+                            (satan-memory-evidence--fs-state cwd))
+                :window_start_at start
+                :window_end_at end
+                :git_window_start_at git-start
+                :sensor_status sensor-status)
+               ;; Absent, not `:goad nil', when nothing is queued (SL-016 A3).
+               (and goad (list :goad goad)))))
     (satan-trace-stage "evidence.truncate"
       (satan-memory-evidence--truncate raw budget-target budget-hard))))
 

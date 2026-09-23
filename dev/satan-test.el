@@ -34,6 +34,7 @@
 (require 'ert)
 (require 'satan-announce)
 (require 'satan-credential)
+(require 'satan-custom)
 (require 'satan-db)
 
 (defconst satan-test--repo-root
@@ -95,7 +96,17 @@ from a test run."
         (satan-credential-function nil)
         ;; ...and no inherited credential reference: a test that wants one
         ;; puts it in the env itself, so no result depends on the shell.
-        (process-environment (satan-credential-scrub process-environment)))
+        (process-environment (satan-credential-scrub process-environment))
+        ;; ...and no live goad state (SL-016): every suite that assembles
+        ;; evidence reads the goad queue and day records, so point both at
+        ;; paths that do not exist.  Suites that want goad bind the goldens
+        ;; (`satan-goad-fixture').  `satan-custom' is required above, so
+        ;; these are special and the binding reaches the tests.
+        (satan-goad-queue-file
+         (expand-file-name "satan-test-no-goad/queue.json"
+                           temporary-file-directory))
+        (satan-goad-data-dir
+         (expand-file-name "satan-test-no-goad/data" temporary-file-directory)))
     (let ((load-errors '()))
       (dolist (f (satan-test--suite-files))
         ;; A sibling suite file may `require' this one for its fixture

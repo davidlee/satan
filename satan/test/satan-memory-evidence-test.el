@@ -8,6 +8,7 @@
 (require 'cl-lib)
 (require 'satan-memory-evidence)
 (require 'satan-memory-canon)
+(require 'satan-goad-fixture)
 
 (defun satan-memory-evidence-test--with-tmp (body)
   (let ((tmp (make-temp-file "satan-ev-test-" t)))
@@ -693,6 +694,102 @@ string, so a `string>'-based selector returns the wrong (older) entry."
   (should (null (satan-memory-evidence--newest-segment-end nil)))
   (should (null (satan-memory-evidence--newest-segment-end
                  '((:start_ts "2026-05-29T17:00:00+10:00"))))))
+
+;; ---------------------------------------------------------------------
+;; SL-016 PHASE-03 — the `:goad' slice.  The queue and day records are
+;; the goldens of goad's `backend.py', read in place; malformed inputs
+;; use a scratch dir.
+;; ---------------------------------------------------------------------
+
+(defconst satan-memory-evidence-test--far-from-goad
+  '("2026-09-25T09:50:00+10:00" . "2026-09-25T10:00:00+10:00")
+  "An assembler window two days after every golden ask's emit date.")
+
+(defun satan-memory-evidence-test--assemble-goad (tmp &optional opts)
+  "Assemble over `satan-memory-evidence-test--far-from-goad', panopticon at TMP."
+  (let ((w satan-memory-evidence-test--far-from-goad))
+    (satan-memory-evidence-assemble-with-bounds
+     (car w) (cdr w)
+     (list :time_now (cdr w) :mode_name "motd")
+     (append opts (list :behaviour_dir (file-name-as-directory tmp) :cwd tmp)))))
+
+(ert-deftest satan-memory-evidence/goad-slice-ignores-the-window-bounds ()
+  "Every queued ask is contributed with its record, read from its own emit
+date, although the assembler's window is two days later (RV-007 F-23)."
+  (satan-memory-evidence-test--in-tmp tmp
+    (satan-goad-fixture-with-goldens
+      (let ((goad (plist-get (satan-memory-evidence-test--assemble-goad tmp)
+                             :goad)))
+        (should (= 7 (length goad)))
+        (should (equal (satan-goad-slice) goad))
+        (should (plist-get (satan-goad-fixture-find 'answered goad) :record))))))
+
+(ert-deftest satan-memory-evidence/goad-slice-absent-without-a-usable-queue ()
+  "No queue, or a malformed one: no `:goad' key at all, and no signal."
+  (satan-memory-evidence-test--in-tmp tmp
+    (satan-goad-fixture-with-tmp _dir
+      (should-not (plist-member (satan-memory-evidence-test--assemble-goad tmp)
+                                :goad))
+      (satan-goad-fixture-write satan-goad-queue-file "{\"asks\": [")
+      (should-not (plist-member (satan-memory-evidence-test--assemble-goad tmp)
+                                :goad)))))
+
+(ert-deftest satan-memory-evidence/goad-slice-skipped-for-cue-only ()
+  "`:cue_only' (memory_resonate's cue derivation) does not read goad."
+  (satan-memory-evidence-test--in-tmp tmp
+    (satan-goad-fixture-with-goldens
+      (should-not (plist-member (satan-memory-evidence-test--assemble-goad
+                                 tmp '(:cue_only t))
+                                :goad)))))
+
+(defconst satan-memory-evidence-test--goad-effects
+  '(write-region write-file make-directory rename-file copy-file
+    delete-file set-file-times
+    satan-db-psql satan-attribute-enqueue satan-intervention-record
+    make-process)
+  "What the perceive leg may never do while reading goad (ADR-001).")
+
+(defun satan-memory-evidence-test--forbidding (fns thunk)
+  "Call THUNK with every function in FNS replaced by an `ert-fail' spy.
+Refuses an unbound name, so a typo cannot make a spy vacuous."
+  (if (null fns)
+      (funcall thunk)
+    (let ((fn (car fns)))
+      (unless (fboundp fn) (ert-fail (format "spy target %s is unbound" fn)))
+      (cl-letf (((symbol-function fn)
+                 (lambda (&rest _) (ert-fail (format "evidence called %s" fn)))))
+        (satan-memory-evidence-test--forbidding (cdr fns) thunk)))))
+
+(ert-deftest satan-memory-evidence/goad-slice-is-pure ()
+  "VT-32 — assembling the `:goad' slice writes nothing and has no effect:
+`ert-fail' spies on the file writers, the DB, attribute enqueue,
+intervention record and process spawn.  Read-only git probes
+\(`call-process') are allowed, as in `satan-broker/perceive-is-pure'.
+`satan-trace-enabled' is nil: the telemetry ledger is the tick's own
+write, outside this claim."
+  (require 'satan-db)
+  (require 'satan-attribute)
+  (require 'satan-intervention)
+  (satan-memory-evidence-test--in-tmp tmp
+    (satan-goad-fixture-with-goldens
+      (let* ((satan-trace-enabled nil)
+             (out (satan-memory-evidence-test--forbidding
+                   satan-memory-evidence-test--goad-effects
+                   (lambda () (satan-memory-evidence-test--assemble-goad tmp)))))
+        (should (= 7 (length (plist-get out :goad))))))))
+
+(ert-deftest satan-memory-evidence/canon-perceives-outstanding-goad-asks ()
+  "Cross-step: the assembled `:goad' slice, canonicalized at a time inside
+the 09:30 asks' window, yields `app:goad' and the outstanding subjects."
+  (satan-memory-evidence-test--in-tmp tmp
+    (satan-goad-fixture-with-goldens
+      (let* ((ev (satan-memory-evidence-test--assemble-goad tmp))
+             (handles (plist-get (satan-memory-canon-canonicalize
+                                  ev nil
+                                  (list :time_now "2026-09-23T09:35:00+10:00"))
+                                 :handles)))
+        (should (member "app:goad" handles))
+        (should (member (satan-goad-subject-topic "surface:notes") handles))))))
 
 (provide 'satan-memory-evidence-test)
 ;;; satan-memory-evidence-test.el ends here

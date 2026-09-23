@@ -19,7 +19,7 @@ path `main()` wraps) with fixed instants, then copies `queue.json` and
 
 | | |
 |---|---|
-| corpus commit | pending: PHASE-02 uncommitted |
+| corpus commit | `e3ac87c` |
 | `goad/backend.py` sha256 | `0f506e01446dee9ad5c5ffb1d4a39ef762db238374f5da9e8938d3698e029965` |
 | `goad/goldens.py` sha256 | `595006274b44599e6e55071f3e9282b2d9f954cd8e03bc808d7c1df0602166e4` |
 | `queue.json` sha256 | `a38c1b318da4770a0a671ac7147208289bef4a29867e01291abb0e65abc4bc34` |

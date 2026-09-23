@@ -20,6 +20,7 @@
 (require 'satan-memory-canon)
 (require 'satan-memory-evidence)
 (require 'satan-memory-grammar)
+(require 'satan-jsonl)
 
 ;; ---------------------------------------------------------------------
 ;; Configuration
@@ -46,23 +47,6 @@ silently no-ops on them."
 ;; Baseline + after-state (Phase 5.4a)
 ;; ---------------------------------------------------------------------
 
-(defun satan-observer--read-json-object (path)
-  "Parse the single JSON object at PATH, returning its plist.
-Returns nil on missing file or parse failure.  Mirrors the lenient
-contract of `satan-observer--read-state' but doesn't seed an
-empty value — callers need to distinguish absent from empty."
-  (when (file-readable-p path)
-    (condition-case _err
-        (with-temp-buffer
-          (let ((coding-system-for-read 'utf-8))
-            (insert-file-contents path))
-          (goto-char (point-min))
-          (json-parse-buffer :object-type 'plist
-                             :array-type 'list
-                             :null-object nil
-                             :false-object :false))
-      (error nil))))
-
 (defun satan-observer--baseline-read (run-dir)
   "Return the intervention-time `evidence_window' for RUN-DIR.
 Reads RUN-DIR/`bundle.json' and pulls out `:percept' →
@@ -73,7 +57,7 @@ write under budget-denied; same caveat applies to bundle).
 
 The classifier (5.4c) treats nil here as `:reason :no_baseline'."
   (let* ((path (expand-file-name "bundle.json" run-dir))
-         (bundle (satan-observer--read-json-object path))
+         (bundle (satan-jsonl-read-object-file path))
          (percept (and bundle (plist-get bundle :percept))))
     (and percept (plist-get percept :evidence_window))))
 
@@ -505,7 +489,7 @@ missing or lacks the slot (budget-denied / pre_spawn-denied
 runs)."
   (let* ((run-dir (plist-get intervention :run_dir))
          (path (and run-dir (expand-file-name "bundle.json" run-dir)))
-         (bundle (and path (satan-observer--read-json-object path)))
+         (bundle (and path (satan-jsonl-read-object-file path)))
          (percept (and bundle (plist-get bundle :percept))))
     (and percept (plist-get percept :handles))))
 

@@ -10,6 +10,9 @@
 (require 'json)
 (require 'satan-memory-grammar)
 (require 'satan-memory-canon)
+(require 'satan-motive)
+(require 'satan-goad)
+(require 'satan-goad-fixture)
 
 (defconst satan-memory-canon-test--fixture-dir
   (expand-file-name "canon-fixtures/"
@@ -315,6 +318,128 @@ Slug resolves from :slug, else :remote tail, else :repo basename."
     (should (equal (sort (copy-sequence (plist-get fx :expected_handles))
                          #'string<)
                    (plist-get res :handles)))))
+
+;; ---------- pure time and topic helpers ----------
+
+(ert-deftest satan-memory-canon/parse-instant-accepts-only-offset-stamps ()
+  "An instant is ISO 8601 with an offset.  Everything else is nil — a raw
+psql cell and a naive stamp would otherwise parse to a wrong instant."
+  (should (time-equal-p
+           (satan-memory-canon-parse-instant "2026-09-22T23:30:00+00")
+           (satan-memory-canon-parse-instant "2026-09-23T09:30:00+10:00")))
+  (should (time-equal-p
+           (satan-memory-canon-parse-instant "2026-09-22T23:30:00Z")
+           (satan-memory-canon-parse-instant "2026-09-23T09:30:00+1000")))
+  (should (satan-memory-canon-parse-instant "2026-09-24T00:05:26.407718+10:00"))
+  (dolist (bad '("2026-09-22 23:30:00+00" "2026-09-23T09:30:00" "2026-09-23"
+                 "" "garbage" nil 7))
+    (should-not (satan-memory-canon-parse-instant bad))))
+
+(ert-deftest satan-memory-canon/topic-handle-slugifies-or-refuses ()
+  (should (equal "topic:artifact-thesis-outline"
+                 (satan-memory-canon-topic-handle "artifact:thesis-outline")))
+  (should-not (satan-memory-canon-topic-handle "---"))
+  (should-not (satan-memory-canon-topic-handle nil)))
+
+;; ---------- SL-016 PHASE-03: goad.outstanding ----------
+;;
+;; The slice under test is always built by `satan-goad-slice' over the
+;; goldens (backend.py's own bytes) — never a hand-built plist.  Only the
+;; synthetic-subject cases write a scratch queue.
+
+(defun satan-memory-canon-test--goad-handles (time-now)
+  "Handles `goad.outstanding' emits over the current goad slice at TIME-NOW."
+  (let ((slice (satan-goad-slice)))
+    (mapcar (lambda (e) (plist-get e :handle))
+            (satan-memory-canon-test--rule
+             'goad.outstanding (and slice (list :goad slice)) nil
+             (list :time_now time-now)))))
+
+(defun satan-memory-canon-test--golden-topics (&rest outcomes)
+  "`satan-goad-subject-topic' of each golden OUTCOME's subject."
+  (let ((queue (satan-goad-read-queue)))
+    (mapcar (lambda (outcome)
+              (satan-goad-subject-topic
+               (plist-get (satan-goad-fixture-find outcome queue) :subject)))
+            outcomes)))
+
+(defun satan-memory-canon-test--cueable-p (handles)
+  "HANDLES would all be accepted in a motive's `:cue:' footer."
+  (and (satan-motive--cue-handles-well-formed-p handles)
+       (cl-every (lambda (h)
+                   (member (car (split-string h ":"))
+                           satan-motive--admitted-namespaces))
+                 handles)))
+
+(ert-deftest satan-memory-canon/goad-outstanding-emits-app-goad-and-subject-topics ()
+  "VT-33 — `goad.outstanding' at 09:35 over the goldens: `app:goad' plus one
+`topic:' per outstanding ask, each `satan-goad-subject-topic' of its
+subject.  Outstanding = no answer yet and not expired; a Later or Enough
+deferral leaves an ask outstanding.  The answered ask and the expired one
+share a subject, and neither contributes it."
+  (satan-goad-fixture-with-goldens
+    (let ((handles (satan-memory-canon-test--goad-handles
+                    "2026-09-23T09:35:00+10:00")))
+      (should (equal (sort (cons "app:goad"
+                                 (satan-memory-canon-test--golden-topics
+                                  'later 'enough-seen 'enough-unseen 'untouched))
+                           #'string<)
+                     (sort (copy-sequence handles) #'string<)))
+      (should-not (member (car (satan-memory-canon-test--golden-topics 'answered))
+                          handles))
+      (should (satan-memory-canon-test--cueable-p handles)))))
+
+(ert-deftest satan-memory-canon/goad-outstanding-after-midnight-sees-the-answer ()
+  "VT-25 canon half — at 00:10 on the 24th the 23:15 ask, answered at 00:05
+and filed under the 23rd, is answered, not outstanding: no `topic:' for
+it, and with nothing else outstanding, no `app:goad' either."
+  (satan-goad-fixture-with-goldens
+    (let ((handles (satan-memory-canon-test--goad-handles
+                    "2026-09-24T00:10:00+10:00")))
+      (should-not (member (car (satan-memory-canon-test--golden-topics 'midnight))
+                          handles))
+      (should-not handles))))
+
+(ert-deftest satan-memory-canon/goad-outstanding-subject-with-path-characters ()
+  "VT-33 — a subject carrying `/', `~' and spaces still yields a well-formed,
+admitted `topic:'; one that slugifies to nothing yields no `topic:', and
+`app:goad' alone still marks the outstanding ask."
+  (satan-goad-fixture-with-tmp _dir
+    (let ((subject "artifact:~/notes/a b/c.org"))
+      (satan-goad-fixture-write-queue
+       (list (satan-goad-fixture-ask :subject subject)))
+      (let ((handles (satan-memory-canon-test--goad-handles
+                      "2026-09-23T09:35:00+10:00")))
+        (should (equal (list "app:goad" (satan-goad-subject-topic subject))
+                       handles))
+        (should (satan-memory-canon-test--cueable-p handles))))
+    (satan-goad-fixture-write-queue
+     (list (satan-goad-fixture-ask :subject "~/--")))
+    (should (equal '("app:goad")
+                   (satan-memory-canon-test--goad-handles
+                    "2026-09-23T09:35:00+10:00")))))
+
+(ert-deftest satan-memory-canon/goad-outstanding-a-no-answer-is-an-answer ()
+  "A keeper's No is JSON false, decoded `:false': answered, not outstanding."
+  (satan-goad-fixture-with-tmp _dir
+    (let ((ask (satan-goad-fixture-ask)))
+      (satan-goad-fixture-write-queue (list ask))
+      (satan-goad-fixture-write
+       (expand-file-name "2026-09-23.json" satan-goad-data-dir)
+       (format "{\"asks\": {\"%s\": {\"value\": false}}}"
+               (plist-get ask :intervention_id)))
+      (should-not (satan-memory-canon-test--goad-handles
+                   "2026-09-23T09:35:00+10:00")))))
+
+(ert-deftest satan-memory-canon/goad-outstanding-without-goad-emits-nothing ()
+  "VT-33 — no `:goad' key (the queue is absent) and nothing is emitted; nor
+without a usable `time_now' to judge expiry against."
+  (should-not (satan-memory-canon-test--rule
+               'goad.outstanding nil nil
+               (list :time_now "2026-09-23T09:35:00+10:00")))
+  (satan-goad-fixture-with-goldens
+    (should-not (satan-memory-canon-test--goad-handles nil))
+    (should-not (satan-memory-canon-test--goad-handles "2026-09-23 09:35:00"))))
 
 ;; ---------- PURITY GREP-LINT ----------
 ;;

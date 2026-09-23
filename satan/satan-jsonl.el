@@ -131,5 +131,24 @@ audit transcript reader passes `:null' to match the writer's
           (forward-line 1))
         (nreverse acc)))))
 
+(defun satan-jsonl-read-object-file (path)
+  "Parse the single JSON document at PATH, returning it decoded.
+Lenient: nil when PATH is missing, unreadable or malformed — never a
+signal.  An empty object also decodes to nil.  Decoder shape matches
+`satan-jsonl-read-file' (objects as plists, arrays as lists, JSON null
+as nil, false as `:false').  Contrast `satan-jsonl-read-file', which
+reads JSONL and signals on a malformed line."
+  (when (file-readable-p path)
+    (condition-case nil
+        (with-temp-buffer
+          (let ((coding-system-for-read 'utf-8))
+            (insert-file-contents path))
+          (goto-char (point-min))
+          (json-parse-buffer :object-type 'plist
+                             :array-type 'list
+                             :null-object nil
+                             :false-object :false))
+      (error nil))))
+
 (provide 'satan-jsonl)
 ;;; satan-jsonl.el ends here

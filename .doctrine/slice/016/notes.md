@@ -6,12 +6,110 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-02 implemented, 2026-09-23. `goad/backend.py` reads
-SATAN's queue, puts asks first, stamps `presented_at`, records `deferred_by`,
-files each ask's events under its emit date, and skips expired entries (65
-tests). Goldens generated into `satan/test/goad-fixtures/`. PHASE-01 is corpus
-commit `51a0f36`; PHASE-02 is uncommitted in both repos (orchestrator's to
-commit). Next: `/phase-plan PHASE-03`.
+**fresh-as-of:** PHASE-03 implemented, 2026-09-24 (uncommitted; orchestrator
+commits). SATAN reads goad: `satan-goad.el` readers, a `:goad` evidence slice,
+and canon's `goad.outstanding` rule. Inert in production until a queue exists.
+PHASE-02 landed as corpus `e3ac87c` / dev `528079c`. Next: `/phase-plan
+PHASE-04`.
+
+### PHASE-03
+
+**Orchestrator resolutions** (sheet OQs):
+- OQ-1 — outstanding = record has no `:value` and `expires_at` after ctx
+  `:time_now`, compared as instants; deferral does not change it; `app:goad`
+  only when at least one ask is outstanding (design VT row 25, sec-2).
+- OQ-2 — canon owns public `satan-memory-canon-topic-handle`; the rule lives
+  in canon under the purity lint; `satan-goad-subject-topic` is a `defalias`.
+  Mechanism-only departure from the plan's wording.
+- OQ-3 — `:goad` skipped under `:cue_only`.
+- OQ-4 — out of scope, backlogged as ISS-024 (overlaps ISS-010).
+
+**Files** (dev repo):
+- `satan/satan-goad.el` (new) — `satan-goad-local-date` (date of a parsed
+  instant in `satan-goad--zone`, nil for anything but ISO-with-offset),
+  `satan-goad-read-queue` (five A3 fields, bad entry dropped alone, never
+  signals), `satan-goad-read-record` (record from the emit date's day file),
+  `satan-goad-slice` (entry + `:record` when present, queue order, each day
+  file read once), `satan-goad-subject-topic` (alias).
+- `satan/satan-custom.el` — `satan-goad-queue-file` (state join),
+  `satan-goad-data-dir` (corpus join).
+- `satan/satan-memory-canon.el` — `satan-memory-canon-parse-instant` (strict,
+  `iso8601-parse`), `satan-memory-canon-topic-handle`, rule
+  `goad.outstanding`; `hint.topic` now spells topics via the handle function.
+- `satan/satan-memory-evidence.el` — `:goad` via `satan-trace-stage
+  "evidence.goad"`, skipped under `:cue_only`, key absent when empty; header
+  updated.
+- `satan/satan-jsonl.el` — `satan-jsonl-read-object-file` (promoted from the
+  observer; lenient). `satan/satan-observer-classify.el` — private copy
+  deleted, two call sites use it.
+- `dev/satan-test.el` — harness floor binds both goad paths to nonexistent
+  `temporary-file-directory` paths (`satan-custom` required first).
+- Tests: `satan/test/satan-goad-fixture.el` (new, non-suite: goldens dir,
+  outcome→id alist, `-with-goldens`, `-with-tmp`, `-write`, `-write-queue`,
+  `-ask`), `satan/test/satan-goad-test.el` (new, 15),
+  `satan-memory-canon-test.el` (+7), `satan-memory-evidence-test.el` (+5),
+  `satan-jsonl-test.el` (+3). Existing tests changed only by added requires.
+- `satan/test/goad-fixtures/README.md` — provenance row → `e3ac87c` (shas
+  re-verified against that commit).
+
+**Verification:**
+- Baseline `just check`: exit 0, 1145 ran / 1139 expected / 6 skipped.
+  After: exit 0, 1175 / 1169 / 6 (+30 tests), 0 unexpected, no LOADERR; lint
+  clean; test-log warnings identical to baseline (DB-absent attribute
+  snapshot noise). Python harness 54 OK.
+- VT-24 — `satan-goad/local-date-*` (5 tests): GMT `…T23:30:00+00` →
+  `2026-09-23` in 36000, `2026-09-22` in 0; microsecond goldens; raw psql
+  space form, naive, date-only, garbage → nil; the read side normalises a
+  psql cell through `satan-intervention--normalize-pg-timestamp` and finds
+  the answered ask in `2026-09-23.json`.
+- VT-25 — `satan-goad/after-midnight-reads-emit-date` (the 23:15 ask answered
+  00:05 reads answered from `2026-09-23.json`; no `2026-09-24.json`) and
+  `satan-memory-canon/goad-outstanding-after-midnight-sees-the-answer` (at
+  00:10 on the 24th: no topic for it, nothing emitted).
+- VT-32 — `satan-memory-evidence/goad-slice-is-pure`: `ert-fail` spies on
+  `write-region write-file make-directory rename-file copy-file delete-file
+  set-file-times satan-db-psql satan-attribute-enqueue
+  satan-intervention-record make-process`, each checked `fboundp`;
+  `satan-trace-enabled` nil. Mutation-checked: a `make-directory` injected
+  into `satan-goad-slice` fails the test.
+- VT-33 — `satan-memory-canon/goad-outstanding-*` (5 tests): handles =
+  `app:goad` + `satan-goad-subject-topic` of later/enough-seen/enough-unseen/
+  untouched at 09:35; answered and expired excluded; all well-formed and
+  admitted; `artifact:~/notes/a b/c.org` → admitted topic; slug-nil subject →
+  `app:goad` only; a No (`:false`) is answered; no `:goad` or bad `time_now`
+  → nothing.
+- Mutation checks on the readers: a substring date function fails 9 of 15
+  goad tests; accepting any entry fails the drop/five-field tests.
+- Canon runs without `satan-goad` loaded (checked in a bare batch Emacs).
+- Scratch byte-compile of the touched modules: no new warnings.
+
+**Decisions beyond the sheet:**
+- One strict instant parser, canon-owned (`satan-memory-canon-parse-instant`);
+  the date function formats its result.
+- The queue reader validates `expires_at` too (mirrors `parse_ask`).
+- `:record` omitted when absent: `satan-jsonl-prepare` would persist `nil` as
+  `{}`.
+- T3 path test reuses `satan-custom-test` helpers by `require` rather than
+  editing that suite's var lists.
+
+**Findings:**
+- ISS-024 overlaps ISS-010.
+- Six more hand-rolled lenient JSON-object readers (`ingest-cursor`,
+  `sensor-wpm`, `sensor-content`, `sensor-curiosity`, `audit`, `run`) —
+  candidates for `satan-jsonl-read-object-file`.
+- `satan-memory-evidence--encode-bytes` (legacy `json-encode`) garbles lists
+  of plists as alists; size estimate only, affects segment slices too.
+- Pre-existing: `satan-memory-evidence--next-day` calls
+  `parse-iso8601-time-string` without requiring `parse-time`.
+- `satan-memory-canon-parse-instant` is the natural fix for ISS-021's
+  GMT-substring `crosses_midnight`.
+- Answered is asserted as "`:value` present", not `eq t`: proposed DEC-025
+  makes an ask's value an `{option, values}` object, and the rule already
+  tests presence only. Regenerated goldens will keep these tests green.
+- Proposed DEC-027 (user-approved 2026-09-24, shapes SL-016) makes the
+  state root treat an empty `XDG_STATE_HOME` as unset, contradicting OQ-4's
+  "out of scope" and ISS-024's "out of scope for SL-016". Not reconciled
+  here.
 
 ### PHASE-02
 

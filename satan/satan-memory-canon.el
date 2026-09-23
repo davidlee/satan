@@ -20,6 +20,7 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'iso8601)
 (require 'satan-memory-grammar)
 
 ;; ---------------------------------------------------------------------
@@ -136,6 +137,28 @@ or nil for the empty result."
            (s (replace-regexp-in-string "[^a-z0-9]+" "-" s))
            (s (replace-regexp-in-string "\\`-+\\|-+\\'" "" s)))
       (and (not (string-empty-p s)) s))))
+
+(defun satan-memory-canon-parse-instant (ts)
+  "Parse TS, an ISO 8601 date-time with an explicit offset or `Z'.
+Return the instant as a Lisp time, or nil when TS is anything else.
+Strict on purpose: `date-to-time' reads psql's space-separated
+`YYYY-MM-DD HH:MM:SS+ZZ' without signalling but drops its time of day,
+and reads a naive stamp in Emacs's zone — both silently wrong instants.
+Compare the results with `time-less-p', never the strings."
+  (when (stringp ts)
+    (condition-case nil
+        (let ((decoded (iso8601-parse ts)))
+          (and (decoded-time-zone decoded)
+               (decoded-time-hour decoded)
+               (encode-time decoded)))
+      (error nil))))
+
+(defun satan-memory-canon-topic-handle (s)
+  "The `topic:' handle for the free text S, or nil when S slugifies to nothing.
+The one spelling of a topic handle: canon's rules emit it and SATAN's
+goad code (`satan-goad-subject-topic') computes the same token."
+  (let ((slug (satan-memory-canon--slugify s)))
+    (and slug (concat "topic:" slug))))
 
 (defun satan-memory-canon--app-surface (app-id)
   "Return the closed-world `surface' value for APP-ID, or `desktop'."
@@ -455,7 +478,7 @@ already been slugified, deduped, and capped upstream."
   (let ((topics (plist-get hints :topic)))
     (cl-loop for slug in topics
              collect (satan-memory-canon--emit
-                      (concat "topic:" slug) 'hint
+                      (satan-memory-canon-topic-handle slug) 'hint
                       "/hints/topic" "topic"))))
 
 (satan-memory-canon-defrule hint.phase (_ev hints _ctx)
@@ -472,6 +495,40 @@ contribute the same app, emit `app:<slug>' from the hint side."
     (when focal
       (list (satan-memory-canon--emit
              (concat "app:" focal) 'hint "/hints/focal_app" "focal_app")))))
+
+(defun satan-memory-canon--goad-outstanding-p (ask now)
+  "Non-nil when the goad ASK is still open at the instant NOW.
+Outstanding means no answer in its record — a No is `:false', which is
+an answer — and `:expires_at' still ahead of NOW, compared as instants.
+A Later or Enough deferral leaves an ask outstanding (SL-016 OQ-1)."
+  (let ((expires (satan-memory-canon-parse-instant (plist-get ask :expires_at))))
+    (and (not (plist-get (plist-get ask :record) :value))
+         expires
+         (time-less-p now expires))))
+
+(satan-memory-canon-defrule goad.outstanding (ev _hints ctx)
+  "From `:goad' (SATAN's queued asks with their goad records): when any
+ask is outstanding at `ctx.time_now', emit `app:goad' and one
+`topic:<slug>' per outstanding subject, deduped.  Perception, not
+correlation: later runs see what SATAN is still waiting on, and no ask
+may take these handles as its subject (SL-016 design sec-2)."
+  (let ((now (satan-memory-canon-parse-instant (plist-get ctx :time_now)))
+        (idx -1) topics seen any)
+    (when now
+      (dolist (ask (plist-get ev :goad))
+        (setq idx (1+ idx))
+        (when (satan-memory-canon--goad-outstanding-p ask now)
+          (setq any t)
+          (let ((topic (satan-memory-canon-topic-handle
+                        (plist-get ask :subject))))
+            (when (and topic (not (member topic seen)))
+              (push topic seen)
+              (push (satan-memory-canon--emit
+                     topic 'observed (format "/goad/%d/subject" idx))
+                    topics))))))
+    (when any
+      (cons (satan-memory-canon--emit "app:goad" 'observed "/goad")
+            (nreverse topics)))))
 
 ;; ---------------------------------------------------------------------
 ;; Dispatch
