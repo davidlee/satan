@@ -12,6 +12,7 @@ test:
     set -euo pipefail
     emacs --batch -L ./satan -L ./dev -L ./satan/test \
       -l satan-test --eval "(satan-test-run-batch)"
+    (cd satan/harness && python3 -m unittest -q test_gptel_harness)
 
 # Create the isolated test databases. Idempotent.
 #

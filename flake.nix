@@ -152,7 +152,7 @@
         # chat-completions loop (OpenRouter v1 by default).  Speaks the
         # SATAN JSONL protocol; terminates on a `satan_final` tool call.
         # Multi-file since phase 3B: protocol / bundle / runloop /
-        # providers.  See ~/.emacs.d/satan/harness/__main__.py.
+        # providers.  See satan/harness/__main__.py.
         satanGptelHarness = let
           pythonEnv = pkgs.python3.withPackages (ps: [ps.openai]);
         in
