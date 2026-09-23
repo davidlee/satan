@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-07 completed (7d8b90d) · next: PHASE-08 (live, human: restart Emacs, VH-2, VH-3, arm VH-1 watch), then /audit
+fresh-as-of: 2026-09-23 · PHASE-08 completed (live VH-2/VH-3 pass; VH-1 armed on ASM-002) · next: /audit
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -185,3 +185,29 @@ fresh-as-of: 2026-09-23 · PHASE-07 completed (7d8b90d) · next: PHASE-08 (live,
   `ready-p` / `resolve` through the tick, not by name); VT-7 also anchors the
   adapter-pi `child-env-is-scrubbed` test. Delta tightened to 041ba2f..7d8b90d
   (041ba2f is SL-016, foreign).
+
+### PHASE-08 — live rollout (2026-09-23)
+
+Emacs restarted on 1ad89ea; ~/.emacs.d suite 8/8. Ticks driven by hand with
+`satan/bin/satan-run tick-pulse` (unattended via emacsclient). The tick timer is
+dormant (`OnBootSec` only), and the escalation streak is per mode.
+
+- **VH-2 PASS.** Locked vault: 21:10:59 / 21:11:09 / 21:11:11 →
+  `credential_deferred`, journal line each, no dialog or pop. Threshold lowered
+  to 300 s (the first `setq` was lost across the restart; the next run escalated
+  once it was re-set). 20260923T212358 escalated with label
+  `(escalated: deferred …)`; keeper dismissed → `credential_unavailable`,
+  `.FAILED`. Streak reset (212436 deferred). 20260923T220422 escalated, accepted,
+  spawned with the key (3 tool calls); it then hit tick-pulse's own 60 s timeout,
+  which is unrelated to credentials. Threshold restored to 14400.
+- **VH-3 PASS.** 20260923T221950-motd: triggered before 22:19:29, accepted
+  after; the run id carries the accept time; `motd.txt` rewritten 22:20:04.
+- **Finding: the 1Password dialog expires after ~1–2 min.** `op` reports expiry
+  as "authorization prompt dismissed" (20260923T221713-motd →
+  `credential_unavailable` + pop). An 08:15 motd with nobody at the desk
+  therefore fails with a pop rather than waiting. This is consistent with motd's
+  `prompt` policy (DEC-022) and bounds VH-3's "accept later" to the dialog's
+  lifetime.
+- **VH-1 armed** on ASM-002 (body section "Watch armed"): trip condition,
+  evidence to capture, and PHASE-08 observations (no trip; every dialog was
+  escalated or motd, with `op whoami` exiting 1).
