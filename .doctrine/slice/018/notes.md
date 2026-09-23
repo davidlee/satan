@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · plan approved (8 phases, c2097dc) · status ready · next: /phase-plan PHASE-01 (~/.emacs.d)
+fresh-as-of: 2026-09-23 · PHASE-01 done (~/.emacs.d 45e346d, 634a878) · status started · next: /phase-plan PHASE-02
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -29,3 +29,21 @@ fresh-as-of: 2026-09-23 · plan approved (8 phases, c2097dc) · status ready · 
 - RV-013 F-9 (DST skew) and F-12 (Pi key superset) tolerated
 - DEC-023 consequence: a queued daily mode can lose its day to run_busy
 - two-repo rollout: dl-secret.el first (design sec-9)
+
+## Progress
+
+### PHASE-01 — dl-secret backend (~/.emacs.d 45e346d, changelog 634a878)
+
+- `my/op-session-p` (`op whoami`, exit 0) and `my/satan-credential` (pcase over
+  lookup / session-p / read / forget) in `lisp/dl-secret.el`; `init.el` sets
+  `satan-credential-function`. Inert until PHASE-05.
+- EX-5 evidence: `~/.emacs.d` `just check` → `Ran 8 tests, 8 results as
+  expected` (baseline before the phase: 0 tests). VT-25 / VT-26 live in
+  `lisp/test/dl-secret-test.el`; a stub `op` script logs argv, so no test calls
+  the real `op`.
+- Found and fixed: `dev/dl-test.el` ran under `emacs -Q` without
+  `load-prefer-newer`, so a stale gitignored `lisp/dl-secret.elc` shadowed the
+  edited source and the new tests saw `void-function`. The live Emacs is
+  unaffected (dl-core sets it). The runner now sets it.
+- `my/op-session-p` lets a missing `op` binary signal: a config fault stays
+  loud, and SATAN's boundary (design sec-2) records it as `:unavailable`.
