@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 20
+slug = "deferred-runs-are-skipped-credentials-are-acquired-before-the-run-is-allocated"
+title = "Deferred runs are skipped; credentials are acquired before the run is allocated"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-018 OQ-1. A deferring mode needs a disposition when no 1Password session exists. motd/morning are systemd oneshots (Persistent=true) calling emacsclient --eval, which exits 0 on any returned value. Tick fires every 30 min. The patch runner claims a job (queued->claimed, satan-patch-runner.el:256-264) before the adapter resolves env (satan-patch-adapter-pi.el:283). A prompt-mode read is synchronous, so it already waits for the keeper, but satan-run-new-ctx fixes run_id/time_now and perceive runs before the gate cond, so a prompt accepted hours later would spawn with a stale time and percept."
+choice = "A deferral is a recorded no-child run (credential_deferred) and nothing re-fires it: the next scheduled fire is the retry. Tick retries on its cadence. The patch runner checks the credential before claiming, so a deferred job stays queued and the runner timer retries it. motd/morning prompt and never defer. Credential acquisition (lookup, probe, then read or defer verdict) happens before satan-run-new-ctx; the verdict flows into the existing gate cond after perceive. A late acceptance therefore allocates a fresh run_id, time_now and percept, and no expiry exists."
+alternatives = ["Emacs retry timer with expiry: a second scheduler beside systemd, with state lost on Emacs restart.", "systemd exit code + Restart= with StartLimit as expiry: satan-run must signal on deferral, couples outcome semantics to unit files, adds ~/flakes to the slice.", "Fire-on-warm: needs a pending-run registry, and no event reports a 1Password sign-in, so it fires only when something else in Emacs reads.", "Keep allocation first and add an expiry (credential_expired) for late acceptance.", "Accept stale time_now and percept on late acceptance."]
+rationale = "Every deferring mode already has a natural retry (tick cadence, a queued patch job) and prompting modes already wait on the dialog, so no new scheduler or state is needed. Acquiring before allocation removes staleness at the root and makes expiry unnecessary."
+consequences = ["The top of satan-broker-run is restructured: acquisition precedes satan-run-new-ctx.", "A prompt may be wasted when the session or budget gate then denies the run (rare, accepted).", "The prompt moves before perceive, never into it (R1); defer modes only probe there.", "The patch runner gate sits before satan-patch-store-claim-next.", "A prompt-mode run blocked on the dialog holds the Emacs server until the keeper answers (settled before this slice)."]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

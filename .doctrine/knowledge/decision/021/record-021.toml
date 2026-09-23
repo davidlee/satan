@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 21
+slug = "satan-owns-the-credential-seam-dl-secretel-supplies-the-1password-backend"
+title = "SATAN owns the credential seam; dl-secret.el supplies the 1Password backend"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-018 OQ-2. SATAN reaches 1Password through my/op-read-env, my/op-read-context and my/scrub-op-refs-env (dl-secret.el) from satan-broker.el and satan-patch-adapter-pi.el, mostly via fboundp; satan-broker.el:847 calls my/scrub-op-refs-env unguarded. SL-018 needs three more operations: a cache-only lookup, a non-prompting session probe (op whoami), and per-ref eviction."
+choice = "SATAN defines a small credential backend protocol (operations: lookup REF cache-only, session-p, read REF which may prompt, forget REF) and owns the policy, the env-var to ref mapping, and scrubbing unresolved refs from child env. dl-secret.el registers an adapter over its existing cache, read and announce. With no backend configured, op:// refs never resolve, so runs defer or fail closed (REQ-010). The slice spans two repos: ~/dev/satan and ~/.emacs.d."
+alternatives = ["Keep calling my/* through fboundp and add my/op-session-p and my/op-forget-ref: coupling grows from 3 to 5 config symbols and SATAN policy calls into personal config.", "SATAN calls op itself with its own cache: one repo, but duplicates dl-secret's read, cache and IMP-021 announce, leaving two caches for the same secrets."]
+rationale = "The dependency points from config to package. Policy (SATAN's) is separated from mechanism (the host's), which is the split a future daemon under ADR-017 would need, since it cannot call elisp. Tests use a fake backend instead of stubbing my/* symbols. No parallel implementation of op reads."
+consequences = ["No my/* symbols remain in satan-broker.el or satan-patch-adapter-pi.el.", "dl-secret.el gains a whoami probe, per-ref forget, and the backend registration; it is edited outside this repo.", "Without dl-secret loaded, credential-bearing modes defer or fail closed instead of spawning with a missing key."]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"
