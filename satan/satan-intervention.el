@@ -15,24 +15,36 @@
 ;;   - `satan-rebuild-interventions' is the interactive command;
 ;;     `satan/bin/satan-rebuild-interventions' is the CLI wrapper.
 ;;
-;; PR 3 adds the write/read API used by handlers and the observer:
+;; PR 3 adds the write/read API used by handlers and the observer.  Each
+;; write is split (SL-017 DEC-018) into a RECORD half — validate and append
+;; to the run's transcript.jsonl, no database — and a PROJECT half that
+;; writes Postgres.  The composed functions keep their original contracts:
 ;;
-;;   (satan-intervention-create &key CTX KIND TARGET-SURFACE MESSAGE
+;;   (satan-intervention-record &key CTX KIND TARGET-SURFACE MESSAGE
 ;;                                      RELATED-MOTIVE-ID CUE-HANDLES
 ;;                                      EXPECTED-OUTCOME OUTCOME-WINDOW-MINUTES
 ;;                                      SEVERITY)
-;;     Mint a stable `<run-id>.iv<NNN>' id, emit `intervention.created' into
-;;     the run's transcript.jsonl, and INSERT into `satan_interventions'
-;;     (ON CONFLICT DO NOTHING).  Returns the intervention-id string.
+;;     Mint a stable `<run-id>.iv<NNN>' id and emit `intervention.created'.
+;;     Returns the payload plist.
+;;   (satan-intervention-project PAYLOAD &key DB)
+;;     INSERT into `satan_interventions' (ON CONFLICT DO NOTHING).
+;;   (satan-intervention-create &key CTX ... DB)
+;;     record then project.  Returns the intervention-id string.
 ;;
-;;   (satan-intervention-classify &key CTX INTERVENTION-ID CLASSIFICATION
-;;                                        CONFIDENCE EVIDENCE MATURITY
-;;                                        NEXT-REVISIT-AT SOURCE CLASSIFIED-AT
-;;                                        MARKED-BY NOTES)
-;;     Audit-emit + UPSERT a verdict.  Emits `intervention.outcome_classified'
-;;     when no prior outcome row exists; `intervention.outcome_revised' (with
-;;     `:revises' set to the intervention-id) otherwise.  Returns `ok' or
-;;     signals on validation/DB failure.
+;;   (satan-intervention-classify-record &key CTX INTERVENTION-ID REVISION-P
+;;                                               CLASSIFICATION CONFIDENCE
+;;                                               EVIDENCE MATURITY
+;;                                               NEXT-REVISIT-AT SOURCE
+;;                                               CLASSIFIED-AT MARKED-BY NOTES)
+;;     Emit `intervention.outcome_classified', or `intervention.outcome_revised'
+;;     (with `:revises' set to the intervention-id) when REVISION-P.
+;;     Returns the payload plist.
+;;   (satan-intervention-classify-project PAYLOAD &key DB)
+;;     UPSERT into `satan_intervention_outcomes'.
+;;   (satan-intervention-classify &key CTX INTERVENTION-ID ... DB)
+;;     lookup (REVISION-P = a prior outcome row exists), classify-record,
+;;     classify-project, attribute enqueue.  Returns the event-name string
+;;     or signals on validation/DB failure.
 ;;
 ;;   (satan-intervention-lookup INTERVENTION-ID &optional DB)
 ;;     Return `(:intervention <row-plist> :outcome <row-plist-or-nil>)' or nil.
@@ -41,10 +53,12 @@
 ;;     Return list of intervention plists whose maturity window has elapsed
 ;;     and which have no outcome row.  NOW is an ISO8601 string.
 ;;
-;; **Transaction discipline:** audit-emit happens first (canonical); the
-;; projection INSERT is a separate psql round-trip in the same handler
-;; call.  An audit-only success with a failed projection insert is
-;; recoverable via `satan-rebuild-interventions'.
+;; **Transaction discipline:** the record is canonical and always comes
+;; first; each projection write is a separate psql round-trip.  A record
+;; whose projection failed is recoverable via `satan-rebuild-interventions'.
+;; A caller whose side effect must be recorded before it happens (notify)
+;; calls the record half, acts, then projects — so a Postgres outage can
+;; never suppress the act (I3).
 
 (require 'cl-lib)
 (require 'json)
@@ -347,37 +361,30 @@ implicitly through the audit record's `:ts'."
       (`(ok . ,_) nil)
       (`(error . ,msg) (user-error "satan-intervention SQL: %s" msg)))))
 
-;; --- create ---
+;; --- create = record + project ---
 
-(cl-defun satan-intervention-create
+(cl-defun satan-intervention-record
     (&key ctx kind target-surface message
           related-motive-id cue-handles
-          expected-outcome outcome-window-minutes severity
-          (db satan-memory-migrate-database))
-  "Create an intervention.  CTX is the broker-supplied tool-ctx plist.
-Required keyword args: KIND, TARGET-SURFACE, MESSAGE, EXPECTED-OUTCOME,
-OUTCOME-WINDOW-MINUTES, SEVERITY.  Optional: RELATED-MOTIVE-ID,
-CUE-HANDLES (list of strings).  DB defaults to the migrate database.
+          expected-outcome outcome-window-minutes severity)
+  "Record an intervention: validate, mint its id, append the audit line.
+CTX is the broker-supplied tool-ctx plist.  Required keyword args:
+KIND, TARGET-SURFACE, MESSAGE, EXPECTED-OUTCOME, OUTCOME-WINDOW-MINUTES,
+SEVERITY.  Optional: RELATED-MOTIVE-ID, CUE-HANDLES (list of strings).
 
-On success: emits `intervention.created' to the run's transcript and
-INSERTs the row into the `satan_interventions' projection
-\(`ON CONFLICT (id) DO NOTHING' for retry-idempotency).  Returns the
-minted intervention-id string.
+Appends `intervention.created' to the run's transcript — the canonical
+record (REQ-003) — and touches no database.  Returns the payload plist,
+which carries the minted `:intervention_id'.
 
-Signals `user-error' on validator failure or DB failure.  The audit
-record is canonical; a DB-side failure leaves the run's audit log
-intact for later rebuild."
+Signals `user-error' on an invalid CTX or a validator failure, and
+propagates an append failure; in every such case nothing is recorded."
   (satan-intervention--ctx-required ctx)
   (let* ((run-id (plist-get ctx :id))
-         (ts (plist-get ctx :time-now))
-         (mode (plist-get ctx :mode-name))
-         (audit (plist-get ctx :audit))
-         (iv-id (satan-intervention--mint-id run-id))
          (payload
-          (list :intervention_id        iv-id
+          (list :intervention_id        (satan-intervention--mint-id run-id)
                 :run_id                 run-id
-                :ts                     ts
-                :mode                   mode
+                :ts                     (plist-get ctx :time-now)
+                :mode                   (plist-get ctx :mode-name)
                 :kind                   kind
                 :target_surface         target-surface
                 :message                message
@@ -391,39 +398,63 @@ intact for later rebuild."
                 "intervention.created" payload
                 (make-hash-table :test 'equal))))
     (when verr
-      (user-error "satan-intervention-create: %s" verr))
-    (satan-audit-record audit 'broker 'intervention.created payload)
-    (satan-intervention--exec-sql
-     db (concat "BEGIN;\n"
-                (satan-intervention--insert-created-sql payload)
-                "\nCOMMIT;\n"))
-    iv-id))
+      (user-error "satan-intervention-record: %s" verr))
+    (satan-audit-record (plist-get ctx :audit)
+                        'broker 'intervention.created payload)
+    payload))
 
-;; --- classify ---
+(cl-defun satan-intervention-project
+    (payload &key (db satan-memory-migrate-database))
+  "INSERT an `intervention.created' PAYLOAD into `satan_interventions'.
+Idempotent (`ON CONFLICT (id) DO NOTHING').  Signals `user-error' on
+psql failure; the record is untouched and rebuild can replay it."
+  (satan-intervention--exec-sql
+   db (concat "BEGIN;\n"
+              (satan-intervention--insert-created-sql payload)
+              "\nCOMMIT;\n")))
 
-(cl-defun satan-intervention-classify
-    (&key ctx intervention-id classification confidence evidence
-          maturity next-revisit-at source classified-at
-          marked-by notes
+(cl-defun satan-intervention-create
+    (&key ctx kind target-surface message
+          related-motive-id cue-handles
+          expected-outcome outcome-window-minutes severity
           (db satan-memory-migrate-database))
-  "Record an outcome verdict for INTERVENTION-ID.
+  "Create an intervention: `satan-intervention-record' then
+`satan-intervention-project' into DB (default: the migrate database).
+Takes the record's keyword args.  Returns the minted intervention-id
+string.  Signals `user-error' on validator or DB failure; a DB failure
+leaves the canonical audit record intact for later rebuild.
 
-When the projection already carries an outcome row for INTERVENTION-ID,
-this is a revision: emits `intervention.outcome_revised' with `:revises'
-set to INTERVENTION-ID.  Otherwise emits `intervention.outcome_classified'.
+For callers whose side effect does not depend on the record; an emit
+that must be recorded first (notify) calls the halves itself."
+  (let ((payload (satan-intervention-record
+                  :ctx ctx :kind kind :target-surface target-surface
+                  :message message :related-motive-id related-motive-id
+                  :cue-handles cue-handles :expected-outcome expected-outcome
+                  :outcome-window-minutes outcome-window-minutes
+                  :severity severity)))
+    (satan-intervention-project payload :db db)
+    (plist-get payload :intervention_id)))
 
-CTX is the broker-supplied tool-ctx (provides the audit handle).
-DB defaults to the migrate database.  Returns the audit event-name
-string on success; signals `user-error' on validator/DB failure."
+;; --- classify = lookup + classify-record + classify-project + enqueue ---
+
+(defun satan-intervention--outcome-event (revision-p)
+  "The audit event name for a verdict; a revision when REVISION-P."
+  (if revision-p
+      "intervention.outcome_revised"
+    "intervention.outcome_classified"))
+
+(cl-defun satan-intervention-classify-record
+    (&key ctx intervention-id revision-p classification confidence evidence
+          maturity next-revisit-at source classified-at marked-by notes)
+  "Record an outcome verdict for INTERVENTION-ID in CTX's audit.
+Appends `intervention.outcome_classified', or `intervention.outcome_revised'
+with `:revises' set to INTERVENTION-ID when REVISION-P.  No database
+access: the caller decides REVISION-P.  Returns the payload plist.
+
+Signals `user-error' on an invalid CTX or a validator failure, and
+propagates an append failure."
   (satan-intervention--ctx-required ctx)
-  (let* ((run-id (plist-get ctx :id))
-         (ts (plist-get ctx :time-now))
-         (audit (plist-get ctx :audit))
-         (existing (satan-intervention-lookup intervention-id db))
-         (revision-p (and existing (plist-get existing :outcome)))
-         (event (if revision-p
-                    "intervention.outcome_revised"
-                  "intervention.outcome_classified"))
+  (let* ((event (satan-intervention--outcome-event revision-p))
          (payload
           (append
            (list :intervention_id  intervention-id
@@ -437,21 +468,58 @@ string on success; signals `user-error' on validator/DB failure."
            (when revision-p (list :revises intervention-id))
            (when marked-by (list :marked_by marked-by))
            (when notes (list :notes notes))))
+         ;; Single-event validation: the created/outcome stream check is
+         ;; rebuild's job, so the intervention is taken as created.
          (created-ids (let ((h (make-hash-table :test 'equal)))
                         (puthash intervention-id t h)
                         h))
          (verr (satan-audit-validate-intervention-event
                 event payload created-ids)))
     (when verr
-      (user-error "satan-intervention-classify: %s" verr))
-    (satan-audit-record audit 'broker (intern event) payload)
-    (satan-intervention--exec-sql
-     db (concat "BEGIN;\n"
-                (satan-intervention--upsert-outcome-sql payload)
-                "\nCOMMIT;\n"))
+      (user-error "satan-intervention-classify-record: %s" verr))
+    (satan-audit-record (plist-get ctx :audit) 'broker (intern event) payload)
+    payload))
+
+(cl-defun satan-intervention-classify-project
+    (payload &key (db satan-memory-migrate-database))
+  "UPSERT a verdict PAYLOAD into `satan_intervention_outcomes'.
+Signals `user-error' on psql failure, including a missing
+`satan_interventions' parent row (foreign key)."
+  (satan-intervention--exec-sql
+   db (concat "BEGIN;\n"
+              (satan-intervention--upsert-outcome-sql payload)
+              "\nCOMMIT;\n")))
+
+(cl-defun satan-intervention-classify
+    (&key ctx intervention-id classification confidence evidence
+          maturity next-revisit-at source classified-at
+          marked-by notes
+          (db satan-memory-migrate-database))
+  "Record and project an outcome verdict for INTERVENTION-ID.
+
+Looks the intervention up in DB (default: the migrate database): when
+the projection already carries an outcome row, the verdict is a
+revision.  Then `satan-intervention-classify-record',
+`satan-intervention-classify-project', and the attribute-outcome
+enqueue.  CTX is the broker-supplied tool-ctx (provides the audit
+handle).  Returns the audit event-name string; signals `user-error' on
+validator/DB failure."
+  (satan-intervention--ctx-required ctx)
+  (let* ((existing (satan-intervention-lookup intervention-id db))
+         (revision-p (and existing (plist-get existing :outcome)))
+         (payload (satan-intervention-classify-record
+                   :ctx ctx :intervention-id intervention-id
+                   :revision-p revision-p
+                   :classification classification :confidence confidence
+                   :evidence evidence :maturity maturity
+                   :next-revisit-at next-revisit-at :source source
+                   :classified-at classified-at
+                   :marked-by marked-by :notes notes)))
+    (satan-intervention-classify-project payload :db db)
     (satan-intervention--enqueue-attribute-outcome
-     run-id ts intervention-id classification confidence revision-p existing)
-    event))
+     (plist-get ctx :id) (plist-get ctx :time-now) intervention-id
+     classification confidence revision-p existing)
+    (satan-intervention--outcome-event revision-p)))
 
 (defun satan-intervention--enqueue-attribute-outcome
     (run-id ts intervention-id classification confidence revision-p existing)

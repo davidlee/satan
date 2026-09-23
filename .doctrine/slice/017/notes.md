@@ -494,6 +494,180 @@ order-sensitive function). In-tree, no worktree isolation.
   - R-B (child-branch lock clear lets an MCP session open while the child
     runs) unchanged, as the design keeps it.
 
+## PHASE-06 executed (2026-09-23) — GREEN
+
+Capsule worker (opus — PHASE-06 reorders the intervention record against
+the user-facing emit and splits create/classify into record + project;
+the ordering invariants I2 (nothing shown before `intervention.created` is
+appended), I3 (a failed projection never suppresses an emit or un-arms a
+cooldown) and I4 (a failed pop leaves an undelivered verdict, even with
+Postgres down) sit over a DB-backed store whose default database is
+production). In-tree, no worktree isolation. Orchestrator rulings: sheet
+D1-D5 accepted; F1 (composed classify enqueues into production
+`satan_outcome_inbox`) not fixed in existing tests, the new composition
+test stubs the enqueue.
+
+- **`satan-intervention.el`:**
+  - `satan-intervention-record` (`:366`) — ctx check, mint id, validate,
+    `satan-audit-record`; returns the payload. No DB.
+  - `satan-intervention-project (payload &key db)` (`:406`) — the
+    `--insert-created-sql` exec.
+  - `satan-intervention-create` (`:416`) — record then project; returns
+    the id. Explicit keyword list (sheet A1), not `&rest` pass-through.
+  - `satan-intervention--outcome-event (revision-p)` (`:440`) — the one
+    event-name choice, shared by classify-record and composed classify.
+  - `satan-intervention-classify-record` (`:446`) — takes `:revision-p`,
+    sets `:revises`; ctx check, validate, append; returns the payload. No DB.
+  - `satan-intervention-classify-project (payload &key db)` (`:483`) — the
+    `--upsert-outcome-sql` exec.
+  - `satan-intervention-classify` (`:493`) — ctx check, lookup (sets
+    `revision-p`, same value as before), classify-record, classify-project,
+    enqueue; returns the event name. Contract unchanged.
+  - Record-half `user-error` prefixes renamed to `satan-intervention-record:`
+    / `-classify-record:` (no test or caller matches the old text).
+  - Module commentary: API list + transaction discipline rewritten for the
+    split.
+- **`satan-tools-notify.el`:** `satan-tool/notify-send` = validate →
+  `satan-intervention-record` (signal → `(error . MSG)`, nothing shown) →
+  `satan-announce` in its own `condition-case` → delivered: `(ok :id N
+  :intervention_id IV [:projection "failed: MSG"])`; pop signalled: `(ok
+  :id :null :intervention_id IV :delivered :false :error ERR …notes)`.
+  New helpers: `satan-notify--announce-urgency` (the urgency pcase lifted
+  out), `satan-tools-notify--failed` (note text), `satan-tools-notify--project
+  (fn payload)` (call a projection fn, never signal, return nil or
+  `(:projection "failed: …")`), `satan-tools-notify--mark-undelivered (ctx
+  payload err)` (D2 chaining via `or`: verdict record fails → `(:verdict
+  …)`, skip both projections; intervention projection fails → skip the
+  verdict projection). Docstring gives the side-effect order and all three
+  return shapes. No `notifications` require / `satan-notify-app` (confirmed).
+- **`satan-run.el`:** `satan-run-tool-ctx` docstring names the record halves
+  and composed forms as the sanctioned audit route. No new require (I8).
+- **Tests:**
+  - `satan-tools-notify-test.el` rewritten on a real run. Shared fixtures
+    (reused by the sensor suite via `(require 'satan-tools-notify-test)`,
+    precedent: observer-test requires motive-test): `--with-run (VAR
+    RUN-ID)`, `--ctx (run caps time-now)` (mode name derived from the run
+    id with `satan-run-mode-from-id`), `--events (run event)`,
+    `--as-recorded (payload)` (JSON round trip = what the transcript reads
+    back), `--with-projection ([CALLS [FAILING]])` (stubs **only**
+    `satan-intervention-project` / `-classify-project`, captures `(FN .
+    PAYLOAD)` in call order, listed FNs signal `user-error`). Notify-local:
+    `--with-ctx (RUN CTX)`, `--send`, `--fns`. The synthetic ctx and the
+    `satan-intervention-create` stub are gone. `dispatch-ok`,
+    `-surfaces-intervention-id` (now asserts projected payload =
+    transcript payload), `-intervention-args-shape`,
+    `-severity-defaults-medium`, the two schema tests migrated; new VT-2
+    four; `satan-notify/handler-error-propagates` (old semantics) deleted.
+  - `satan-sensor-alerts-test.el`: `--with-run` re-expressed on the shared
+    fixture (fixed run-id kept); `--ctx`, `--transcript`, `--without-db`
+    (the PHASE-04 `--exec-sql` stub) deleted; `--silence-notify` and
+    `dispatch-goes-through-tool-dispatch` use `--with-projection`.
+    `pre-spawn-intervention-joins-run` rewritten onto `--with-projection
+    (calls)` + the recorder (not `--silence-notify`, whose own projection
+    stub would shadow the outer capture) and asserts the projection got
+    exactly the recorded payload. New `cooldown-arms-on-record`.
+  - `satan-intervention-test.el`: new `--with-ctx`, `--events-named`,
+    `--notify-args`, `--verdict-args` fixtures; VT-1 three. Existing tests
+    untouched.
+- **TDD reds:** VT-1 three → `void-function satan-intervention-record`
+  (DB reachable, not skipped). VT-2 four red against the old handler (pop
+  before record; pop failure → `:ok :false`); the four migrated notify
+  tests stayed green through the helper refactor (composed create called
+  the stubbed project). `cooldown-arms-on-record` was written after T5, so
+  its red was shown by loading HEAD's `satan-tools-notify.el` from a
+  scratch copy over the working tree (no source revert): it and the four
+  VT-2 tests fail (`:ok :false`), 5/5 red.
+- **Gate:** `SATAN_DB_HOST=/run/postgresql/ just check` (serial) → `Ran
+  1080 tests, 1076 results as expected, 1 unexpected, 3 skipped` (baseline
+  1073/1069/1/3 + 8 new − 1 deleted; the unexpected is the pre-existing
+  `satan-db/test-db-available-p-probes-test-host`; skips unchanged at 3, so
+  EN-2's `satan_memory_test` is live). `just lint`: all `{"ok":true}`.
+- **Byte-compile** (scratch copies of HEAD and the working tree, `-L satan
+  -L dev -L satan/test -l satan-announce`, the three source + three test
+  files): warning sets identical (pre-existing notify defconst docstring
+  width, `satan-run.el` `mode-name` shadow, intervention-test
+  `unwind-protect` without unwind forms — line shifted only). No `.elc` in
+  the tree.
+- **Hermeticity (EX-3, T7):** `rg -n "symbol-function
+  'satan-intervention-create" satan/test/` → hits only context, patch-runner,
+  tools-inbox, tools-org, tools-patch, test-sway-border (positive control),
+  none in notify/sensor. `rg -n 'satan-intervention--exec-sql'` over the
+  notify + sensor suites → only a docstring mention; the one code stub is
+  in `satan-intervention-test.el` (the pure `classify-record-needs-no-database`).
+  `notify_send` hits outside the notify suite: tools-test `:163` and
+  broker-test `:74` are capability-denied, tick-test `:74` is staged, not
+  applied — none reach the handler. Design selectors: `notifications-notify
+  | "logger"` outside tests → only `satan/satan-announce.el`;
+  `notifications-notify` in tests → only `satan-announce-test.el`.
+- **EX/VT mapping:** EX-1/I2 — `record-appends-before-projection`,
+  `no-emit-when-record-fails`. EX-1/I3 — `emits-and-notes-when-projection-fails`,
+  `cooldown-arms-on-record`. EX-2/I4 — `undelivered-pop-classified-unknown`,
+  `undelivered-with-db-down-still-ok`, `classify-record-needs-no-database`.
+  EX-3 — sweep above. Composed contract — `classify-composition-unchanged`
+  + existing intervention (28), observer (126), intervention-mark (33),
+  atsatan (48) suites green.
+- **D1-D5 as applied:** D1 `:id :null`. D2 `or` chaining (verdict-project
+  skipped when the intervention projection fails; asserted in
+  `undelivered-with-db-down-still-ok` and `cooldown-arms-on-record`). D3
+  `:projection` / `:verdict` notes, `:delivered :false :error ERR`. D4 verdict
+  note `undelivered: ERR` from `error-message-string`. D5 verdict evidence
+  `nil`; `--quote-jsonb` left alone (projects JSON `null`).
+
+### VA-1 evidence (REQ-003 coverage, notify path — orchestrator records)
+
+Invocation (one process, serial):
+
+```
+SATAN_DB_HOST=/run/postgresql/ emacs --batch -L satan -L dev -L satan/test \
+  -l satan-announce --eval "(let ((satan-announce-sink #'satan-announce-record)) \
+  (load \"satan-intervention-test\") (load \"satan-sensor-alerts-test\") \
+  (ert-run-tests-batch-and-exit \"record-appends-before-projection\\\\|\
+classify-record-needs-no-database\\\\|classify-composition-unchanged\\\\|\
+satan-tools-notify/\\\\|cooldown-arms-on-record\\\\|pre-spawn-intervention-joins-run\"))"
+```
+
+→ `Ran 9 tests, 9 results as expected, 0 unexpected` (0 skipped).
+
+- In-run notify (`notify_send` dispatched on a run's tool-ctx):
+  `satan-tools-notify/no-emit-when-record-fails`,
+  `satan-tools-notify/emits-and-notes-when-projection-fails`,
+  `satan-tools-notify/undelivered-pop-classified-unknown`,
+  `satan-tools-notify/undelivered-with-db-down-still-ok`.
+- Pre-spawn (sensor alert through `satan-sensor-alerts-check`):
+  `satan-sensor-alerts/pre-spawn-intervention-joins-run`,
+  `satan-sensor-alerts/cooldown-arms-on-record`.
+- Record API: `satan-intervention/record-appends-before-projection`,
+  `satan-intervention/classify-record-needs-no-database`,
+  `satan-intervention/classify-composition-unchanged`.
+- Full gate as above (1080/1076/1/3).
+
+- **Deviations / reconcile items:**
+  - Design sec-5 sketch writes `(ok :id nil …)` for the undelivered branch;
+    implemented `:id :null` (D1 — `nil` serialises as `{}`). Reconcile the
+    sketch text.
+  - Design sketch gives `satan-intervention-create` `(&rest args &key db
+    &allow-other-keys)`; implemented with the explicit keyword list (sheet
+    A1 allowed it; same contract).
+  - Undelivered verdict projects `evidence_json` as JSON `null`, not `{}`
+    (D5, left as is).
+  - Running `satan-sensor-alerts-test` standalone now also runs the 10
+    notify tests (it requires the notify suite for fixtures). Full-suite
+    counts unaffected.
+- **STOP guards:** not tripped — no `satan-announce` / `notifications-notify`
+  / `logger` stubs added (failing pops are let-bound `satan-announce-sink`);
+  no re-stubbing (R8); composed contracts unchanged; sensor-alerts source
+  untouched (A3); no new require in `satan-run.el`.
+- **Findings (candidate backlog, out of scope):**
+  - F1 (orchestrator filing): existing composed-classify tests (intervention,
+    manual writer, observer) enqueue into production `satan_outcome_inbox`.
+  - The pre-existing intervention tests repeat the root/audit/ctx boilerplate
+    that the new `satan-intervention-test--with-ctx` now covers; a follow-up
+    could migrate them.
+  - Helper prefixes in `satan-tools-notify.el` are mixed (`satan-notify--`
+    pre-existing, `satan-tools-notify--` per the design). Cosmetic.
+  - R-c confirmed as designed: a pre-spawn entry reads `:dispatched_at` for
+    an undelivered alert; the transcript verdict is the truth.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready

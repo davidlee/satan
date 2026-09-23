@@ -518,6 +518,136 @@ The bucket is parsed from run-id's leading YYYYMMDD."
              (should (member "intervention.outcome_revised" names))))
        (delete-directory root t)))))
 
+;; ---------- record / project split (SL-017 DEC-018) ------------------
+
+(defmacro satan-intervention-test--with-ctx (ctx &rest body)
+  "Bind CTX to a fresh morning tool-ctx over a tmp audit; evaluate BODY.
+Resets the id counters; deletes the tmp run root afterwards."
+  (declare (indent 1))
+  (let ((root (make-symbol "root"))
+        (run-id "20260523T120000-morning-aaaaaa"))
+    `(let* ((,root (make-temp-file "satan-iv-run-" t))
+            (,ctx (satan-intervention-test--build-ctx
+                   (satan-intervention-test--open-audit ,root ,run-id)
+                   ,run-id)))
+       (satan-intervention--reset-counters)
+       (unwind-protect (progn ,@body)
+         (delete-directory ,root t)))))
+
+(defun satan-intervention-test--events-named (ctx event)
+  "Payloads of CTX's transcript records named EVENT, in append order."
+  (cl-loop for r in (satan-intervention-test--transcript-events
+                     (plist-get ctx :audit))
+           when (equal event (plist-get r :event))
+           collect (plist-get r :payload)))
+
+(defconst satan-intervention-test--notify-args
+  '(:kind "notify" :target-surface "dbus" :message "m"
+    :expected-outcome "x" :outcome-window-minutes 30 :severity "low")
+  "Minimal valid keyword args for an intervention record.")
+
+(defconst satan-intervention-test--verdict-args
+  '(:classification "ignored" :confidence "medium" :evidence nil
+    :maturity "mature" :next-revisit-at "2026-05-23T12:30:00+1000"
+    :source "auto" :classified-at "2026-05-23T12:30:01+1000")
+  "Minimal valid keyword args for an outcome verdict.")
+
+(ert-deftest satan-intervention/record-appends-before-projection ()
+  "I2 — `-create' appends `intervention.created' before it projects,
+and a record that signals never reaches the projection."
+  (satan-intervention-test--with-db
+   (satan-intervention-test--with-ctx ctx
+     (let ((project (symbol-function 'satan-intervention-project))
+           (projected '())
+           (recorded-at-projection '()))
+       (cl-letf (((symbol-function 'satan-intervention-project)
+                  (lambda (payload &rest args)
+                    (let ((id (plist-get payload :intervention_id)))
+                      (push id projected)
+                      (push (cl-some
+                             (lambda (p) (equal id (plist-get p :intervention_id)))
+                             (satan-intervention-test--events-named
+                              ctx "intervention.created"))
+                            recorded-at-projection))
+                    (apply project payload args))))
+         (let ((iv-id (apply #'satan-intervention-create :ctx ctx
+                             satan-intervention-test--notify-args)))
+           (should (equal (list iv-id) projected))
+           (should (equal '(t) recorded-at-projection))
+           (should (satan-intervention-lookup iv-id)))
+         (let ((no-audit (copy-sequence ctx)))
+           (cl-remf no-audit :audit)
+           (should-error (apply #'satan-intervention-create :ctx no-audit
+                                satan-intervention-test--notify-args)
+                         :type 'user-error))
+         (should (= 1 (length projected))))))))
+
+(ert-deftest satan-intervention/classify-record-needs-no-database ()
+  "I4 — both record halves append with Postgres unreachable."
+  (satan-intervention-test--with-ctx ctx
+    (cl-letf (((symbol-function 'satan-intervention--exec-sql)
+               (lambda (&rest _) (error "no database")))
+              ((symbol-function 'satan-db-psql)
+               (lambda (&rest _) (error "no database"))))
+      (let* ((created (apply #'satan-intervention-record :ctx ctx
+                             satan-intervention-test--notify-args))
+             (iv-id (plist-get created :intervention_id))
+             (first (apply #'satan-intervention-classify-record
+                           :ctx ctx :intervention-id iv-id
+                           satan-intervention-test--verdict-args))
+             (again (apply #'satan-intervention-classify-record
+                           :ctx ctx :intervention-id iv-id :revision-p t
+                           satan-intervention-test--verdict-args)))
+        (should (equal (concat (plist-get ctx :id) ".iv001") iv-id))
+        (should (equal (list iv-id)
+                       (mapcar (lambda (p) (plist-get p :intervention_id))
+                               (satan-intervention-test--events-named
+                                ctx "intervention.created"))))
+        (should-not (plist-member first :revises))
+        (should (equal iv-id (plist-get again :revises)))
+        (should (equal '("ignored")
+                       (mapcar (lambda (p) (plist-get p :classification))
+                               (satan-intervention-test--events-named
+                                ctx "intervention.outcome_classified"))))
+        (should (equal (list iv-id)
+                       (mapcar (lambda (p) (plist-get p :revises))
+                               (satan-intervention-test--events-named
+                                ctx "intervention.outcome_revised"))))))))
+
+(ert-deftest satan-intervention/classify-composition-unchanged ()
+  "Composed `-classify' = lookup, record, project, enqueue; same return."
+  (satan-intervention-test--with-db
+   (satan-intervention-test--with-ctx ctx
+     (let ((record (symbol-function 'satan-intervention-classify-record))
+           (project (symbol-function 'satan-intervention-classify-project))
+           (calls '()))
+       (cl-letf (((symbol-function 'satan-intervention-classify-record)
+                  (lambda (&rest args)
+                    (push 'record calls) (apply record args)))
+                 ((symbol-function 'satan-intervention-classify-project)
+                  (lambda (&rest args)
+                    (push 'project calls) (apply project args)))
+                 ;; F1: never enqueue into the production outcome inbox.
+                 ((symbol-function 'satan-intervention--enqueue-attribute-outcome)
+                  (lambda (&rest _) (push 'enqueue calls) nil)))
+         (let ((iv-id (apply #'satan-intervention-create :ctx ctx
+                             satan-intervention-test--notify-args)))
+           (should (equal "intervention.outcome_classified"
+                          (apply #'satan-intervention-classify
+                                 :ctx ctx :intervention-id iv-id
+                                 satan-intervention-test--verdict-args)))
+           (should (equal "intervention.outcome_revised"
+                          (apply #'satan-intervention-classify
+                                 :ctx ctx :intervention-id iv-id
+                                 :classification "worked"
+                                 satan-intervention-test--verdict-args)))
+           (should (equal '(record project enqueue record project enqueue)
+                          (reverse calls)))
+           (let ((outcome (plist-get (satan-intervention-lookup iv-id)
+                                     :outcome)))
+             (should (equal "worked" (plist-get outcome :classification)))
+             (should (equal iv-id (plist-get outcome :revises))))))))))
+
 (ert-deftest satan-intervention/classify-rejects-auto-harmful ()
   (satan-intervention-test--with-db
    (satan-intervention--reset-counters)

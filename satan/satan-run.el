@@ -313,8 +313,9 @@ has exactly one starting moment.
 \(T7 PR 3) can emit `intervention.created' into transcript.jsonl on
 the handler's behalf.  Handlers must not invoke `satan-audit-record'
 directly with arbitrary event names; the only sanctioned route is
-through `satan-intervention-create' (and the matching classify /
-lookup APIs)."
+through the intervention write API: `satan-intervention-record' /
+`-classify-record' (the audit append) and their composed forms
+`satan-intervention-create' / `-classify'."
   (let* ((mode (satan-run-mode run-ctx))
          (prepare (satan-run-prepare run-ctx))
          (time-now (plist-get prepare :time_now))

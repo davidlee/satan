@@ -13,6 +13,7 @@
 (require 'satan-intervention)
 (require 'satan-jsonl)
 (require 'satan-run)
+(require 'satan-tools-notify-test)       ; run + projection fixtures
 
 ;; ---------------------------------------------------------------------
 ;; --render-status (pure)
@@ -104,58 +105,28 @@
 (defmacro satan-sensor-alerts-test--with-run (var &rest body)
   "Bind VAR to a `satan-run' with a live audit in a tmp dir; evaluate BODY.
 The run is what `satan-broker--spawn' has built by the time it checks
-sensor alerts; `satan-sensor-alerts-test--ctx' derives each call's ctx
+sensor alerts; `satan-tools-notify-test--ctx' derives each call's ctx
 from it through the canonical builder."
   (declare (indent 1))
-  (let ((dir (make-symbol "dir")))
-    `(let* ((,dir (make-temp-file "satan-sensor-run-" t))
-            (,var (make-satan-run
-                   :id satan-sensor-alerts-test--run-id :dir ,dir
-                   :audit (satan-audit-open ,dir '(:manifest t) nil))))
-       (satan-intervention--reset-counters)
-       (unwind-protect (progn ,@body)
-         (delete-directory ,dir t)))))
-
-(defun satan-sensor-alerts-test--ctx (run caps time-now)
-  "RUN's tool-ctx under a mode with CAPS as `:capabilities', frozen at TIME-NOW."
-  (let ((r (copy-satan-run run)))
-    (setf (satan-run-mode r) (list :name "test-mode" :capabilities caps)
-          (satan-run-prepare r) (list :time_now time-now))
-    (satan-run-tool-ctx r)))
-
-(defun satan-sensor-alerts-test--transcript (run)
-  "Return RUN's transcript records."
-  (satan-jsonl-read-file
-   (expand-file-name "transcript.jsonl" (satan-run-dir run))
-   :null-object :null))
+  `(satan-tools-notify-test--with-run (,var satan-sensor-alerts-test--run-id)
+     ,@body))
 
 (defun satan-sensor-alerts-test--created (run)
   "Return the payloads of RUN's `intervention.created' records."
-  (cl-loop for r in (satan-sensor-alerts-test--transcript run)
-           when (equal "intervention.created" (plist-get r :event))
-           collect (plist-get r :payload)))
+  (satan-tools-notify-test--events run "intervention.created"))
 
 (defun satan-sensor-alerts-test--ok-sensor ()
   (list :current_window "ok" :focus "ok"
         :browser "ok"))
 
-(defmacro satan-sensor-alerts-test--without-db (&rest body)
-  "Evaluate BODY with the intervention projection write stubbed out.
-Only the DB boundary (`satan-intervention--exec-sql') is stubbed: the
-notify handler's `satan-intervention-create' runs for real, so its
-`intervention.created' record lands in the run's transcript."
-  (declare (indent 0))
-  `(cl-letf (((symbol-function 'satan-intervention--exec-sql)
-              (lambda (&rest _) nil)))
-     ,@body))
-
 (defun satan-sensor-alerts-test--silence-notify (body-fn)
   "Run BODY-FN with a live pop counter; COUNTER is a 1-cell list
 incremented once per announcement that carries `:title' (i.e. an actual
-pop, not a journal-only entry).  The projection write is stubbed at the
-DB boundary (`satan-sensor-alerts-test--without-db')."
+pop, not a journal-only entry).  Only the two projection writes are
+stubbed (`satan-tools-notify-test--with-projection'); the record runs
+for real against the run's audit."
   (let ((counter (list 0)))
-    (satan-sensor-alerts-test--without-db
+    (satan-tools-notify-test--with-projection ()
       (let ((satan-announce-sink
              (lambda (a)
                (when (plist-get a :title) (cl-incf (car counter)))
@@ -172,7 +143,7 @@ DB boundary (`satan-sensor-alerts-test--without-db')."
        (lambda (_)
          (let ((entries (satan-sensor-alerts-check
                          (satan-sensor-alerts-test--ok-sensor)
-                         :tool-ctx (satan-sensor-alerts-test--ctx
+                         :tool-ctx (satan-tools-notify-test--ctx
                                     run '(notify) "2026-05-22T10:00:00+10:00")
                          :state-file path
                          :quiet-p-fn (lambda (&rest _) nil))))
@@ -189,7 +160,7 @@ or broken feed is not page-worthy — see `--causes')."
          (let ((entries (satan-sensor-alerts-check
                          (list :current_window "ok" :focus "ok"
                                :browser "ok" :git "malformed")
-                         :tool-ctx (satan-sensor-alerts-test--ctx
+                         :tool-ctx (satan-tools-notify-test--ctx
                                     run '(notify) "2026-05-22T10:00:00+10:00")
                          :state-file path
                          :quiet-p-fn (lambda (&rest _) nil))))
@@ -205,13 +176,13 @@ or broken feed is not page-worthy — see `--causes')."
                           :browser "ok"))
                 (e1 (satan-sensor-alerts-check
                      ss
-                     :tool-ctx (satan-sensor-alerts-test--ctx
+                     :tool-ctx (satan-tools-notify-test--ctx
                                 run '(notify) "2026-05-22T10:00:00+10:00")
                      :state-file path
                      :quiet-p-fn (lambda (&rest _) nil)))
                 (e2 (satan-sensor-alerts-check
                      ss
-                     :tool-ctx (satan-sensor-alerts-test--ctx
+                     :tool-ctx (satan-tools-notify-test--ctx
                                 run '(notify) "2026-05-22T10:15:00+10:00")
                      :state-file path
                      :quiet-p-fn (lambda (&rest _) nil))))
@@ -235,13 +206,13 @@ or broken feed is not page-worthy — see `--causes')."
                          :browser "ok")))
            (satan-sensor-alerts-check
             ss
-            :tool-ctx (satan-sensor-alerts-test--ctx
+            :tool-ctx (satan-tools-notify-test--ctx
                        run '(notify) "2026-05-21T10:00:00+10:00")
             :state-file path
             :quiet-p-fn (lambda (&rest _) nil))
            (let ((e2 (satan-sensor-alerts-check
                       ss
-                      :tool-ctx (satan-sensor-alerts-test--ctx
+                      :tool-ctx (satan-tools-notify-test--ctx
                                  run '(notify) "2026-05-22T11:00:00+10:00")
                       :state-file path
                       :quiet-p-fn (lambda (&rest _) nil))))
@@ -256,7 +227,7 @@ or broken feed is not page-worthy — see `--causes')."
          (let ((entries (satan-sensor-alerts-check
                          (list :current_window "stale-28m" :focus "ok"
                                :browser "ok")
-                         :tool-ctx (satan-sensor-alerts-test--ctx
+                         :tool-ctx (satan-tools-notify-test--ctx
                                     run '(notify) "2026-05-22T03:00:00+10:00")
                          :state-file path
                          :quiet-p-fn (lambda (&rest _) t))))
@@ -278,7 +249,7 @@ or broken feed is not page-worthy — see `--causes')."
                           (list :current_window "stale-28m"
                                 :focus "malformed"
                                 :browser "malformed")
-                          :tool-ctx (satan-sensor-alerts-test--ctx
+                          :tool-ctx (satan-tools-notify-test--ctx
                                      run '(notify) "2026-05-22T10:00:00+10:00")
                           :state-file path
                           :quiet-p-fn (lambda (&rest _) nil)))
@@ -301,7 +272,7 @@ names."
                           (list :current_window "stale-28m"
                                 :focus "malformed"
                                 :browser "ok")
-                          :tool-ctx (satan-sensor-alerts-test--ctx
+                          :tool-ctx (satan-tools-notify-test--ctx
                                      run '(notify) "2026-05-22T10:00:00+10:00")
                           :state-file path
                           :quiet-p-fn (lambda (&rest _) nil)))
@@ -321,35 +292,80 @@ names."
 
 (ert-deftest satan-sensor-alerts/pre-spawn-intervention-joins-run ()
   "On the run's own tool-ctx a fired alert mints `<run-id>.iv001'.
-The handler's `satan-intervention-create' now succeeds: the entry is
-dispatched, the run's transcript holds its `intervention.created', and
-the cause's cooldown arms (`:last_notified_at'), which the synthetic
-ctx's failure never let happen."
+The handler's record now succeeds: the entry is dispatched, the run's
+transcript holds its `intervention.created', the projection is handed
+exactly that recorded payload, and the cause's cooldown arms
+\(`:last_notified_at'), which the synthetic ctx's failure never let
+happen."
   (satan-sensor-alerts-test--with-tmp-state path
     (satan-sensor-alerts-test--with-run run
-      (satan-sensor-alerts-test--silence-notify
-       (lambda (counter)
-         (let* ((entries (satan-sensor-alerts-check
-                          (list :current_window "stale-28m" :focus "ok"
-                                :browser "ok")
-                          :tool-ctx (satan-sensor-alerts-test--ctx
-                                     run '(notify) "2026-05-22T10:00:00+10:00")
-                          :state-file path
-                          :quiet-p-fn (lambda (&rest _) nil)))
-                (created (satan-sensor-alerts-test--created run))
-                (cs (satan-sensor-alerts--cause-state
-                     (satan-sensor-alerts--read-state path)
-                     "panopticon_current_stale")))
-           (should (= 1 (length entries)))
-           (should (eq :false (plist-get (car entries) :suppressed)))
-           (should (= 1 (car counter)))
-           (should (= 1 (length created)))
-           (should (equal (concat satan-sensor-alerts-test--run-id ".iv001")
-                          (plist-get (car created) :intervention_id)))
-           (should (equal satan-sensor-alerts-test--run-id
-                          (plist-get (car created) :run_id)))
-           (should (equal "2026-05-22T10:00:00+10:00"
-                          (plist-get cs :last_notified_at)))))))))
+      (satan-tools-notify-test--with-projection (calls)
+        (satan-announce-with-recorder
+          (let* ((entries (satan-sensor-alerts-check
+                           (list :current_window "stale-28m" :focus "ok"
+                                 :browser "ok")
+                           :tool-ctx (satan-tools-notify-test--ctx
+                                      run '(notify) "2026-05-22T10:00:00+10:00")
+                           :state-file path
+                           :quiet-p-fn (lambda (&rest _) nil)))
+                 (created (satan-sensor-alerts-test--created run))
+                 (cs (satan-sensor-alerts--cause-state
+                      (satan-sensor-alerts--read-state path)
+                      "panopticon_current_stale")))
+            (should (= 1 (length entries)))
+            (should (eq :false (plist-get (car entries) :suppressed)))
+            (should (= 1 (length satan-announce-recorded)))
+            (should (= 1 (length created)))
+            (should (equal (concat satan-sensor-alerts-test--run-id ".iv001")
+                           (plist-get (car created) :intervention_id)))
+            (should (equal satan-sensor-alerts-test--run-id
+                           (plist-get (car created) :run_id)))
+            (should (equal "2026-05-22T10:00:00+10:00"
+                           (plist-get cs :last_notified_at)))
+            (should (equal '(satan-intervention-project)
+                           (satan-tools-notify-test--fns calls)))
+            (should (equal created
+                           (list (satan-tools-notify-test--as-recorded
+                                  (cdar calls)))))))))))
+
+;; SL-017 DEC-018 — the cooldown arms on the record (I3, I4)
+
+(ert-deftest satan-sensor-alerts/cooldown-arms-on-record ()
+  "With D-Bus and Postgres both down, the recorded alert still counts as
+dispatched: the cooldown arms, the transcript marks it undelivered, and
+a check inside the window records nothing more."
+  (satan-sensor-alerts-test--with-tmp-state path
+    (satan-sensor-alerts-test--with-run run
+      (satan-tools-notify-test--with-projection
+          (calls '(satan-intervention-project
+                   satan-intervention-classify-project))
+        (let* ((satan-announce-sink (lambda (_) (error "no D-Bus today")))
+               (ss (list :current_window "stale-28m" :focus "ok"
+                         :browser "ok"))
+               (check (lambda (now)
+                        (satan-sensor-alerts-check
+                         ss
+                         :tool-ctx (satan-tools-notify-test--ctx
+                                    run '(notify) now)
+                         :state-file path
+                         :quiet-p-fn (lambda (&rest _) nil))))
+               (e1 (funcall check "2026-05-22T10:00:00+10:00"))
+               (cs (satan-sensor-alerts--cause-state
+                    (satan-sensor-alerts--read-state path)
+                    "panopticon_current_stale"))
+               (e2 (funcall check "2026-05-22T10:15:00+10:00")))
+          (should (eq :false (plist-get (car e1) :suppressed)))
+          (should (stringp (plist-get (car e1) :dispatched_at)))
+          (should (equal "2026-05-22T10:00:00+10:00"
+                         (plist-get cs :last_notified_at)))
+          (should (equal '("unknown")
+                         (mapcar (lambda (p) (plist-get p :classification))
+                                 (satan-tools-notify-test--events
+                                  run "intervention.outcome_classified"))))
+          (should (equal "cooldown" (plist-get (car e2) :reason)))
+          (should (= 1 (length (satan-sensor-alerts-test--created run))))
+          (should (equal '(satan-intervention-project)
+                         (satan-tools-notify-test--fns calls))))))))
 
 ;; A17 — dispatch routes through notify_send + capability check
 
@@ -362,7 +378,7 @@ ctx's failure never let happen."
          (let ((entries (satan-sensor-alerts-check
                          (list :current_window "stale-28m" :focus "ok"
                                :browser "ok")
-                         :tool-ctx (satan-sensor-alerts-test--ctx
+                         :tool-ctx (satan-tools-notify-test--ctx
                                     run '() "2026-05-22T10:00:00+10:00")
                          :state-file path
                          :quiet-p-fn (lambda (&rest _) nil))))
@@ -377,11 +393,11 @@ ctx's failure never let happen."
   "Successful dispatch shows up as a recorded announcement."
   (satan-sensor-alerts-test--with-tmp-state path
     (satan-sensor-alerts-test--with-run run
-      (satan-sensor-alerts-test--without-db
+      (satan-tools-notify-test--with-projection ()
         (satan-announce-with-recorder
           (satan-sensor-alerts-check
            (list :current_window "stale-28m" :focus "ok" :browser "ok")
-           :tool-ctx (satan-sensor-alerts-test--ctx
+           :tool-ctx (satan-tools-notify-test--ctx
                       run '(notify) "2026-05-22T10:00:00+10:00")
            :state-file path
            :quiet-p-fn (lambda (&rest _) nil))
