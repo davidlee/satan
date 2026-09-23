@@ -32,6 +32,7 @@
 (require 'satan-tools-motive)
 (require 'satan-tools-vcs)            ; morning/tick modes reference vcs_log
 (require 'satan-trace)                 ; SL-011 tick trace row (VT-1)
+(require 'satan-run-test)              ; satan-run-test--mkrun fixture (PHASE-07)
 
 ;; Cross-cutter: assertion subject is broker (action-failed audit
 ;; emission); secondary subject is the tools dispatcher's
@@ -149,83 +150,212 @@ read from the prepare-phase run_ctx plist."
   (should (null (satan-run--date-bucket "garbage")))
   (should (null (satan-run--date-bucket nil))))
 
-(ert-deftest satan-broker/failure-streak-counts-trailing-failed ()
-  "Counts consecutive .FAILED dirs back from the newest run-id."
-  (let ((root (make-temp-file "satan-runs-streak-" t)))
+(ert-deftest satan-broker/announce-failure-respects-disables ()
+  "Both syslog and notify are gated by their respective defcustom flags
+\(ported to the 5-arg `--announce-failure' signature, PHASE-07\): with
+both off, neither a journal line nor a pop is due, so `--announce-failure'
+never reaches `satan-announce' at all (design sec-6's `(when (or pop
+satan-failure-syslog) ...)' guard) — the recorder stays empty."
+  (let* ((root (make-temp-file "satan-runs-announce2-" t))
+         (satan-runs-dir root)
+         (satan-failure-syslog nil)
+         (satan-failure-notify nil)
+         (dir (satan-run-test--mkrun root "20260520T100000-tick-pulse-aaaaaa"
+                                     "failed" "child-exit-1" t)))
     (unwind-protect
-        (progn
-          ;; Empty → 0.
-          (should (= 0 (satan-broker--failure-streak-count root)))
-          ;; One done run → 0.
-          (make-directory
-           (expand-file-name "2026-05-20/20260520T100000-x-aaaaaa" root) t)
-          (should (= 0 (satan-broker--failure-streak-count root)))
-          ;; Add a newer FAILED run → 1.
-          (make-directory
-           (expand-file-name
-            "2026-05-20/20260520T110000-x-bbbbbb.FAILED" root) t)
-          (should (= 1 (satan-broker--failure-streak-count root)))
-          ;; And another → 2.
-          (make-directory
-           (expand-file-name
-            "2026-05-20/20260520T120000-x-cccccc.FAILED" root) t)
-          (should (= 2 (satan-broker--failure-streak-count root)))
-          ;; A done run on top breaks the streak → 0.
-          (make-directory
-           (expand-file-name "2026-05-20/20260520T130000-x-dddddd" root) t)
-          (should (= 0 (satan-broker--failure-streak-count root))))
+        (satan-announce-with-recorder
+          (satan-broker--announce-failure
+           "20260520T100000-tick-pulse-aaaaaa" "tick-pulse"
+           'failed "child-exit-1" dir)
+          (should (null satan-announce-recorded)))
       (delete-directory root t))))
 
-(ert-deftest satan-broker/announce-failure-syslog-and-streak-gate ()
-  "Always journals; only pops (carries `:title') on streak == 1."
-  (let* ((root (make-temp-file "satan-runs-announce-" t))
+;; ── Announce policy back-off (PHASE-07, design sec-6) ───────────────────────
+
+(ert-deftest satan-broker/announce-due-at-powers-of-two ()
+  "For an ordinary reason, a pop is due only at streak positions that are
+powers of two (1, 2, 4, 8)."
+  (let ((outcome '(:status failed :reason "unknown")))
+    (dolist (position '(1 2 4 8))
+      (should (satan-broker--announce-due-p outcome position)))
+    (dolist (position '(3 5 6 7))
+      (should-not (satan-broker--announce-due-p outcome position)))))
+
+(ert-deftest satan-broker/announce-auth-always-critical ()
+  "`auth' is due at every position, including non-powers-of-two, and the
+composed announce sends critical urgency for it regardless of position."
+  (should (satan-broker--announce-due-p '(:status failed :reason "auth") 1))
+  (should (satan-broker--announce-due-p '(:status failed :reason "auth") 3))
+  (should (satan-broker--announce-due-p '(:status failed :reason "auth") 5))
+  (let* ((root (make-temp-file "satan-runs-announce-auth-" t))
+         (satan-runs-dir root)
+         (satan-failure-syslog t)
+         (satan-failure-notify t)
+         (dir (satan-run-test--mkrun root "20260520T100000-tick-pulse-aaaaaa"
+                                     "failed" "auth" t)))
+    (unwind-protect
+        (satan-announce-with-recorder
+          (satan-broker--announce-failure
+           "20260520T100000-tick-pulse-aaaaaa" "tick-pulse" 'failed "auth"
+           dir)
+          (should (eq (plist-get (car satan-announce-recorded) :urgency)
+                     'critical))
+          (should (plist-get (car satan-announce-recorded) :title)))
+      (delete-directory root t))))
+
+(ert-deftest satan-broker/announce-budget-once ()
+  "`budget-exceeded' pops only at streak position 1, never at 2 — and the
+policy match is against `final.json's raw :reason (\"budget_daily_tokens\"),
+never the human-readable display REASON argument (\"500000/400000 tokens\"),
+which is what A1 warns could be silently conflated."
+  (should (satan-broker--announce-due-p
+          '(:status budget-exceeded :reason "budget_daily_tokens") 1))
+  (should-not (satan-broker--announce-due-p
+              '(:status budget-exceeded :reason "budget_daily_tokens") 2))
+  (should-not (satan-broker--announce-due-p
+              '(:status budget-exceeded :reason "budget_daily_tokens") 4))
+  (let* ((root (make-temp-file "satan-runs-announce-budget-" t))
          (satan-runs-dir root)
          (satan-failure-syslog t)
          (satan-failure-notify t))
     (unwind-protect
         (satan-announce-with-recorder
-          ;; No prior runs → streak == 0 before rename; the just-renamed
-          ;; dir is what bumps it to 1.  Emulate by creating that dir
-          ;; first, then calling announce.
-          (make-directory
-           (expand-file-name
-            "2026-05-20/20260520T100000-tick-pulse-aaaaaa.FAILED" root) t)
-          (satan-broker--announce-failure
-           "20260520T100000-tick-pulse-aaaaaa" "tick-pulse"
-           'failed "child-exit-1")
-          (should (= 1 (length satan-announce-recorded)))
-          (should (plist-get (car satan-announce-recorded) :journal))
+          ;; Each run's dir is created just before its own announce call,
+          ;; mirroring production (the walk always sees the just-renamed
+          ;; dir as the newest on disk) — creating both dirs up front
+          ;; would make the first call's walk see the second run too.
+          (let ((dir1 (satan-run-test--mkrun
+                      root "20260520T080000-morning-aaaaaa"
+                      "budget-exceeded" "budget_daily_tokens" t)))
+            (satan-broker--announce-failure
+             "20260520T080000-morning-aaaaaa" "morning" 'budget-exceeded
+             "500000/400000 tokens" dir1))
           (should (plist-get (car satan-announce-recorded) :title))
-          ;; Second consecutive failure → still journalled, but no pop
-          ;; (streak != 1).
-          (make-directory
-           (expand-file-name
-            "2026-05-20/20260520T110000-tick-pulse-bbbbbb.FAILED" root) t)
-          (satan-broker--announce-failure
-           "20260520T110000-tick-pulse-bbbbbb" "tick-pulse"
-           'failed "child-exit-1")
+          (let ((dir2 (satan-run-test--mkrun
+                      root "20260520T090000-morning-bbbbbb"
+                      "budget-exceeded" "budget_daily_tokens" t)))
+            (satan-broker--announce-failure
+             "20260520T090000-morning-bbbbbb" "morning" 'budget-exceeded
+             "500000/400000 tokens" dir2))
+          (should-not (plist-get (car satan-announce-recorded) :title))
+          (should (plist-get (car satan-announce-recorded) :journal)))
+      (delete-directory root t))))
+
+(ert-deftest satan-broker/failure-streak-restarts-on-new-cause ()
+  "A new cause (status/reason pair differing from the two prior same-mode
+failures) restarts the same-cause streak at position 1 (DEC-015 F-3
+regression)."
+  (let* ((root (make-temp-file "satan-runs-streak-cause-" t))
+         (satan-runs-dir root))
+    (unwind-protect
+        (progn
+          (satan-run-test--mkrun root "20260520T080000-motd-aaaaaa"
+                                 "failed" "auth" t)
+          (satan-run-test--mkrun root "20260520T090000-motd-bbbbbb"
+                                 "failed" "auth" t)
+          (let* ((newest-dir (satan-run-test--mkrun
+                              root "20260520T100000-motd-cccccc"
+                              "failed" "unknown" t))
+                 (newest (satan-run-outcome newest-dir))
+                 (streak (satan-broker--failure-streak "motd" newest)))
+            (should (= 1 (length streak)))
+            (should (equal (plist-get (car streak) :run-id)
+                           "20260520T100000-motd-cccccc"))))
+      (delete-directory root t))))
+
+(ert-deftest satan-broker/session-blocked-transparent-to-failure-streak ()
+  "`session_blocked' and `credential_deferred' outcomes are transparent:
+they neither extend nor break a same-cause failure streak, and the walk's
+position numbering steps over them (EX-3)."
+  (let* ((root (make-temp-file "satan-runs-streak-transparent-" t))
+         (satan-runs-dir root))
+    (unwind-protect
+        (progn
+          (satan-run-test--mkrun root "20260520T070000-motd-aaaaaa"
+                                 "failed" "auth" t)
+          (satan-run-test--mkrun root "20260520T080000-motd-bbbbbb"
+                                 "failed" "session_blocked")
+          (satan-run-test--mkrun root "20260520T090000-motd-cccccc"
+                                 "failed" "credential_deferred")
+          (let* ((newest-dir (satan-run-test--mkrun
+                              root "20260520T100000-motd-dddddd"
+                              "failed" "auth" t))
+                 (newest (satan-run-outcome newest-dir))
+                 (streak (satan-broker--failure-streak "motd" newest)))
+            (should (= 2 (length streak)))
+            (should (equal (mapcar (lambda (o) (plist-get o :run-id)) streak)
+                           '("20260520T100000-motd-dddddd"
+                             "20260520T070000-motd-aaaaaa")))))
+      (delete-directory root t))))
+
+(ert-deftest satan-broker/announce-journals-every-failure-ascii ()
+  "The journal/body line is `<status> <mode> <run-id> <reason> x<N>' at
+position 1 (no ` since ...'), gains ` since <first-run-id>' at position >
+1, is pure ASCII, and is written for every failure even when no pop is
+due (EX-2)."
+  (let ((line1 (satan-broker--failure-line
+               'failed "motd" "20260520T100000-motd-aaaaaa" "auth" 1 nil))
+        (line2 (satan-broker--failure-line
+               'failed "motd" "20260526T081501-motd-9a01c2" "auth" 4
+               "20260520T081501-motd-33ec98")))
+    (should (equal line1 "failed motd 20260520T100000-motd-aaaaaa auth x1"))
+    (should (equal line2
+                   (concat "failed motd 20260526T081501-motd-9a01c2 auth x4"
+                          " since 20260520T081501-motd-33ec98")))
+    (should (string-match-p "\\`[[:ascii:]]*\\'" line1))
+    (should (string-match-p "\\`[[:ascii:]]*\\'" line2)))
+  ;; Written for every failure: a non-due position (budget-exceeded, 2nd
+  ;; run) still gets a journal line, just no pop.
+  (let* ((root (make-temp-file "satan-runs-announce-journal-" t))
+         (satan-runs-dir root)
+         (satan-failure-syslog t)
+         (satan-failure-notify t))
+    (unwind-protect
+        (satan-announce-with-recorder
+          ;; Sequential creation (see announce-budget-once) so the second
+          ;; call's walk sees itself at position 2, not both at once.
+          (let ((dir1 (satan-run-test--mkrun
+                      root "20260520T080000-morning-aaaaaa"
+                      "budget-exceeded" "budget_daily_tokens" t)))
+            (satan-broker--announce-failure
+             "20260520T080000-morning-aaaaaa" "morning" 'budget-exceeded
+             "500000/400000 tokens" dir1))
+          (let ((dir2 (satan-run-test--mkrun
+                      root "20260520T090000-morning-bbbbbb"
+                      "budget-exceeded" "budget_daily_tokens" t)))
+            (satan-broker--announce-failure
+             "20260520T090000-morning-bbbbbb" "morning" 'budget-exceeded
+             "500000/400000 tokens" dir2))
           (should (= 2 (length satan-announce-recorded)))
           (should (plist-get (car satan-announce-recorded) :journal))
           (should-not (plist-get (car satan-announce-recorded) :title)))
       (delete-directory root t))))
 
-(ert-deftest satan-broker/announce-failure-respects-disables ()
-  "Both syslog and notify are gated by their respective defcustom flags."
-  (let* ((root (make-temp-file "satan-runs-announce2-" t))
+(ert-deftest satan-broker/announce-quiet-suppresses-pop-not-journal ()
+  "Quiet hours (via `satan-tick-quiet-p', stubbed — never the real wall
+clock) suppress the desktop pop but not the journal line."
+  (let* ((root (make-temp-file "satan-runs-announce-quiet-" t))
          (satan-runs-dir root)
-         (satan-failure-syslog nil)
-         (satan-failure-notify nil))
+         (satan-failure-syslog t)
+         (satan-failure-notify t)
+         (dir (satan-run-test--mkrun root "20260520T080000-motd-aaaaaa"
+                                     "failed" "unknown" t)))
     (unwind-protect
-        (satan-announce-with-recorder
-          (make-directory
-           (expand-file-name
-            "2026-05-20/20260520T100000-tick-pulse-aaaaaa.FAILED" root) t)
-          (satan-broker--announce-failure
-           "20260520T100000-tick-pulse-aaaaaa" "tick-pulse"
-           'failed "child-exit-1")
-          (should (= 1 (length satan-announce-recorded)))
-          (should-not (plist-get (car satan-announce-recorded) :journal))
-          (should-not (plist-get (car satan-announce-recorded) :title)))
+        (progn
+          (satan-announce-with-recorder
+            (cl-letf (((symbol-function 'satan-tick-quiet-p)
+                      (lambda (&optional _time) t)))
+              (satan-broker--announce-failure
+               "20260520T080000-motd-aaaaaa" "motd" 'failed "unknown" dir))
+            (should (plist-get (car satan-announce-recorded) :journal))
+            (should-not (plist-get (car satan-announce-recorded) :title)))
+          (satan-announce-with-recorder
+            (cl-letf (((symbol-function 'satan-tick-quiet-p)
+                      (lambda (&optional _time) nil)))
+              (satan-broker--announce-failure
+               "20260520T080000-motd-aaaaaa" "motd" 'failed "unknown" dir))
+            (should (plist-get (car satan-announce-recorded) :journal))
+            (should (plist-get (car satan-announce-recorded) :title))))
       (delete-directory root t))))
 
 ;; ---------- satan-run-new-ctx (Phase 0.1) ----------

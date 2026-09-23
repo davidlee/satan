@@ -36,6 +36,12 @@
 (require 'satan-ingest-cursor)
 (require 'satan-trace)
 
+;; `satan-tick-quiet-p' is the quiet-hours predicate for the announce
+;; policy (below), but `satan-tick' requires `satan-broker' (transitively,
+;; via `satan-context'), so the broker cannot require it back.  Declare +
+;; resolve at call-site instead; precedent: `satan-sensor-alerts.el:20'.
+(declare-function satan-tick-quiet-p "satan-tick" (&optional time))
+
 (defvar satan-memory-store--current-run-id)
 
 (defcustom satan-direnv-dir
@@ -304,7 +310,8 @@ via `satan-broker--announce-failure'."
            run-id
            (plist-get (satan-run-mode run-ctx) :name)
            status
-           (satan-broker--failure-reason run-ctx)))))))
+           (satan-broker--failure-reason run-ctx)
+           new-dir))))))
 
 (defun satan-broker--failure-reason (run-ctx)
   "Return a short reason string for RUN-CTX's failure.
@@ -325,53 +332,90 @@ the user journal (`journalctl --user -t satan')."
   :type 'boolean :group 'satan)
 
 (defcustom satan-failure-notify t
-  "When non-nil, broker pops a D-Bus notification on the first failure of a streak.
-Suppressed once a streak is in progress (subsequent failures are quiet
-until at least one `done' run breaks the chain)."
+  "When non-nil, broker pops a D-Bus notification per the failure back-off:
+positions 1, 2, 4, 8, ... of the run's same-cause failure streak (see
+`satan-broker--announce-due-p').  An `auth' failure pops at every
+position, at critical urgency.  A `budget-exceeded' failure pops only at
+position 1.  Journalling (`satan-failure-syslog') is an independent
+switch and happens for every failure regardless of this one."
   :type 'boolean :group 'satan)
 
-(defun satan-broker--failure-streak-count (runs-dir)
-  "Count consecutive `.FAILED' run dirs from newest backward in RUNS-DIR.
-Walks both bucketed and legacy layouts via `satan-run-list-dirs'
-and sorts by the run-id leaf (date-stamped, so a string sort is
-monotonic-in-time enough for streak detection).  Returns 0 when the
-newest run is non-failed or no runs exist."
-  (let* ((paths (satan-run-list-dirs runs-dir))
-         (sorted (sort paths
-                       (lambda (a b)
-                         (string-greaterp
-                          (satan-run--id-from-leaf
-                           (file-name-nondirectory a))
-                          (satan-run--id-from-leaf
-                           (file-name-nondirectory b))))))
-         (streak 0))
-    (cl-loop for p in sorted
-             while (string-suffix-p satan-run--failed-suffix p)
-             do (cl-incf streak))
-    streak))
+(defconst satan-broker--streak-transparent-reasons
+  '("session_blocked" "credential_deferred")
+  "Reasons of runs that neither extend nor break a failure streak.")
 
-(defun satan-broker--announce-failure (run-id mode-slug status reason)
-  "Emit syslog + (streak-gated) notify-send for a failed run, via the
-announce seam (`satan-announce').  RUN-ID, MODE-NAME, STATUS (symbol),
-REASON (short string) compose the log line and notification body.
+(defun satan-broker--failure-streak (mode-slug newest)
+  "MODE-SLUG's same-cause failure streak ending at outcome NEWEST.
+Same cause means NEWEST's `:status'/`:reason' pair; a run whose reason
+is in `satan-broker--streak-transparent-reasons' is stepped over rather
+than counted or ending the walk (design sec-3)."
+  (let ((cause (list (plist-get newest :status) (plist-get newest :reason))))
+    (satan-run-outcome-streak
+     mode-slug
+     (lambda (o) (equal (list (plist-get o :status) (plist-get o :reason))
+                        cause))
+     (lambda (o) (member (plist-get o :reason)
+                         satan-broker--streak-transparent-reasons)))))
+
+(defun satan-broker--announce-due-p (outcome position)
+  "Non-nil when a desktop pop is due for OUTCOME at streak POSITION.
+Pure.  `auth' reason -> always; `budget-exceeded' status -> only at
+position 1; otherwise POSITION is a power of two (1, 2, 4, 8, ...)."
+  (cond ((equal (plist-get outcome :reason) "auth") t)
+        ((eq (plist-get outcome :status) 'budget-exceeded) (= position 1))
+        (t (zerop (logand position (1- position))))))
+
+(defun satan-broker--failure-line (status mode-slug run-id reason position
+                                          first-run-id)
+  "Build the journal/body line for a failure announcement.
+`<status> <mode> <run-id> <reason> x<position>', plus
+` since <first-run-id>' when POSITION > 1 (omitted at position 1)."
+  (concat (format "%s %s %s %s x%d"
+                  (symbol-name status) mode-slug run-id reason position)
+          (and (> position 1) first-run-id
+               (format " since %s" first-run-id))))
+
+(defun satan-broker--quiet-p ()
+  "Non-nil when `satan-tick-quiet-p' says now is within quiet hours.
+Reads as not-quiet when the function is unbound."
+  (and (fboundp 'satan-tick-quiet-p) (satan-tick-quiet-p)))
+
+(defun satan-broker--announce-failure (run-id mode-slug status reason dir)
+  "Emit syslog + (back-off-gated) notify-send for a failed run, via the
+announce seam (`satan-announce').  RUN-ID, MODE-SLUG, STATUS (symbol),
+REASON (display string) compose the log line and notification body.
+DIR is the (already `.FAILED'-renamed) run directory the policy reads
+its matching outcome from — `satan-run-outcome' on DIR, i.e. `final.json's
+raw `:reason', never the display REASON argument (design sec-6).
+
 Journalling and popping are independent switches: `satan-failure-syslog'
-gates the journal line, `satan-failure-notify' plus streak == 1 gates the
-pop.  Delivery mechanics (best-effort journal) live in
-`satan-announce-deliver'; a pop failure propagates out of `satan-announce'
-by design (section 5's contract), so this caller wraps the whole
-announcement in `ignore-errors', as it did before the seam existed —
-a failed-run notification is not worth failing finalize over."
-  (let ((line (format "%s %s %s %s"
-                      (symbol-name status) mode-slug run-id reason)))
-    (ignore-errors
-      (satan-announce
-       :journal (and satan-failure-syslog line)
-       :title (and satan-failure-notify
-                   (= 1 (satan-broker--failure-streak-count satan-runs-dir))
-                   (format "SATAN %s (%s)" (symbol-name status) mode-slug))
-       :body line
-       :urgency 'normal
-       :timeout 6000))))
+gates the journal line; `satan-failure-notify' plus the back-off policy
+\(`satan-broker--announce-due-p') plus quiet hours gate the pop.
+Delivery mechanics (best-effort journal) live in `satan-announce-deliver';
+a pop failure propagates out of `satan-announce' by design (section 5's
+contract), so this caller wraps the whole announcement in `ignore-errors',
+as it did before the back-off policy existed — a failed-run notification
+is not worth failing finalize over."
+  (let* ((newest (or (satan-run-outcome dir)
+                     (list :run-id run-id :status status :reason reason)))
+         (streak (satan-broker--failure-streak mode-slug newest))
+         (position (max 1 (length streak)))
+         (first-id (plist-get (car (last streak)) :run-id))
+         (line (satan-broker--failure-line
+               status mode-slug run-id reason position first-id))
+         (pop (and satan-failure-notify
+                  (satan-broker--announce-due-p newest position)
+                  (not (satan-broker--quiet-p)))))
+    (when (or pop satan-failure-syslog)
+      (ignore-errors
+        (satan-announce
+         :title (and pop (format "SATAN %s (%s) x%d"
+                                 (symbol-name status) mode-slug position))
+         :body line
+         :urgency (if (equal (plist-get newest :reason) "auth")
+                     'critical 'normal)
+         :timeout 6000
+         :journal (and satan-failure-syslog line))))))
 
 (defun satan-broker--make-sentinel (run-ctx)
   (lambda (_proc event)
@@ -506,7 +550,7 @@ desktop alert; DEC-8 deferral)."
            run-id satan-run--failed-suffix)
           (satan-broker--announce-failure
            run-id (plist-get mode :name) status
-           (or announce-reason reason)))))))
+           (or announce-reason reason) new-dir))))))
 
 (defun satan-broker--write-budget-denied-run (mode prepare dir spent ceiling)
   "Write a slim audit bundle marking the run in PREPARE as budget-exceeded.

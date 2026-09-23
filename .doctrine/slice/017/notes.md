@@ -668,6 +668,172 @@ satan-tools-notify/\\\\|cooldown-arms-on-record\\\\|pre-spawn-intervention-joins
   - R-c confirmed as designed: a pre-spawn entry reads `:dispatched_at` for
     an undelivered alert; the transcript verdict is the truth.
 
+## PHASE-07 executed (2026-09-23) — GREEN
+
+Capsule worker (sonnet — orchestrator's and keeper's choice: policy over an
+already-landed seam (`satan-announce`, PHASE-01) and an already-landed
+outcome leaf (`satan-run-outcome-streak`, PHASE-02; failure reasons
+PHASE-03; `spawn_failed`, PHASE-05); design sec-3/sec-6 pin the function set
+and exact semantics, so the risk is mechanical transcription, not
+judgement). In-tree, no worktree isolation.
+
+- **`satan-broker.el`:**
+  - `:39-43` new top-of-file `declare-function satan-tick-quiet-p "satan-tick"
+    (&optional time)`, precedent `satan-sensor-alerts.el:20` (`satan-tick`
+    requires `satan-broker` transitively, so the broker cannot require it
+    back).
+  - `:328-333` `satan-failure-syslog` docstring unchanged (confirmed at T7 —
+    it already says "per failure", no streak language to correct).
+  - `:334-341` `satan-failure-notify` docstring rewritten: "first failure of
+    a streak ... suppressed once a streak is in progress" → describes the
+    back-off (positions 1/2/4/8..., `auth` always, `budget-exceeded` only
+    at 1) (D5).
+  - `:343-345` new `satan-broker--streak-transparent-reasons` defconst,
+    `'("session_blocked" "credential_deferred")` (D4).
+  - `:347-357` new `satan-broker--failure-streak (mode-slug newest)` — wraps
+    `satan-run-outcome-streak` with the same-cause COUNTS-P and the
+    transparent-reasons SKIPS-P (design sec-3).
+  - `:360-366` new `satan-broker--announce-due-p (outcome position)` — pure;
+    `auth` always, `budget-exceeded` only at 1, else power-of-two (design
+    sec-6).
+  - `:368-376` new `satan-broker--failure-line (status mode-slug run-id
+    reason position first-run-id)` — pure; omits ` since ...` at position 1.
+  - `:378-381` new `satan-broker--quiet-p ()` — `(and (fboundp
+    'satan-tick-quiet-p) (satan-tick-quiet-p))`.
+  - `:383-419` `satan-broker--announce-failure` rewritten, new signature
+    `(run-id mode-slug status reason dir)` (D1 — `dir` last, matching
+    design's pseudocode order). Reads the policy-matching outcome via
+    `(satan-run-outcome dir)`, never the display `reason` argument (A1);
+    title uses `(symbol-name status)` (D3); `(when (or pop
+    satan-failure-syslog) ...)` guard — when both switches are off,
+    `satan-announce` is never called at all (not called-with-both-nil, as
+    the old code did).
+  - Deleted `satan-broker--failure-streak-count` (old `:333-351`) and its
+    one caller — the global suffix-counting streak is gone, replaced by
+    the per-mode same-cause streak above.
+  - Both call sites updated to pass the renamed `dir` as a 5th arg:
+    `--mark-failed-on-disk` (`new-dir`, already in scope from the rename)
+    and `--write-no-child-run`'s `rename-announce` branch (its own local
+    `new-dir`). No other call sites exist (A4, reconfirmed by `rg -n
+    satan-broker--announce-failure satan/`).
+  - **Deviation from the sheet's literal wording (not from design's
+    semantics):** the sheet's D1 and the design sec-6 pseudocode both spell
+    the mode parameter `mode-name`. Using that literal identifier shadows
+    Emacs's built-in special variable `mode-name` (buffer-local mode-line
+    string), producing 3 new byte-compile warnings not present at HEAD. All
+    four new functions plus the rewritten `--announce-failure` use
+    `mode-slug` instead — semantically identical, and it matches the file's
+    own pre-existing convention (both call sites already pass `(plist-get
+    ... :name)` under that name; the old `--announce-failure` also used
+    `mode-slug`). Zero behaviour change; T9 confirms the warning set is
+    byte-for-byte identical to HEAD's.
+- **`satan/test/satan-broker-test.el`:**
+  - New `(require 'satan-run-test)` (`:34`) for `satan-run-test--mkrun`,
+    precedent: `satan-observer-test.el` requires `satan-motive-test`,
+    `satan-sensor-alerts-test.el` requires `satan-tools-notify-test`.
+  - Deleted `satan-broker/failure-streak-counts-trailing-failed` (tested the
+    deleted function) and `satan-broker/announce-failure-syslog-and-streak-gate`
+    (tested the old streak==1 gate on the old 4-arg signature; superseded).
+  - `satan-broker/announce-failure-respects-disables` ported to the 5-arg
+    signature via `satan-run-test--mkrun`. **Deviation:** its assertion
+    changed from "1 recorded entry, journal and title both nil" to "the
+    recorder stays empty" — the new `(when (or pop satan-failure-syslog)
+    ...)` guard (design sec-6's own pseudocode) means `satan-announce` is
+    never invoked at all when both switches are off, not invoked-with-both-
+    fields-nil as the old code did. Confirmed against design.md, not a
+    workaround.
+  - Seven new VT-1 tests (all pass): `announce-due-at-powers-of-two`,
+    `announce-auth-always-critical`, `announce-budget-once`,
+    `failure-streak-restarts-on-new-cause`,
+    `session-blocked-transparent-to-failure-streak`,
+    `announce-journals-every-failure-ascii`,
+    `announce-quiet-suppresses-pop-not-journal`.
+  - **Fixture note (A1 regression guard, orchestrator ruling):**
+    `announce-budget-once` calls the composed `--announce-failure` with
+    display reason `"500000/400000 tokens"` while the fixture's
+    `final.json` carries `:reason "budget_daily_tokens"` — the two differ
+    on purpose, so a policy that accidentally matched on the display
+    argument would fail this test.
+  - **Fixture ordering gotcha (found during red→green, not in the sheet):**
+    `satan-run-outcome-streak` walks *all* dirs currently on disk for a
+    mode, newest-first — it does not take a starting point. A test that
+    pre-creates every fixture run dir before making any `--announce-failure`
+    call therefore has every later run already visible to the first call's
+    walk, inflating its computed position. `announce-budget-once` and
+    `announce-journals-every-failure-ascii` create each run's dir
+    immediately before that run's own `--announce-failure` call (mirroring
+    production, where the walk always runs after that run's own rename),
+    not all up front. `failure-streak-restarts-on-new-cause` and
+    `session-blocked-transparent-to-failure-streak` are unaffected — they
+    call `satan-broker--failure-streak` directly, once, after all fixture
+    dirs exist, which is the walk's normal steady-state shape.
+  - Quiet-hours test stubs `satan-tick-quiet-p`'s `symbol-function` via
+    `cl-letf` for both the quiet and not-quiet cases; no wall-clock, no
+    `satan-tick-quiet-hours` manipulation (constraint honoured).
+- **TDD reds:** all 8 new/ported tests run red first against
+  pre-implementation `satan-broker.el` — `void-function
+  satan-broker--failure-line` / `--failure-streak`,
+  `wrong-number-of-arguments` on the still-4-arg `--announce-failure`.
+  Implemented T5 (all new functions + the four call-site/deletion changes
+  together, since they're mutually referential), then green.
+- **T8 selector sweep (VA-1/V2):**
+  - `rg -n 'notifications-notify|"logger"' satan/ dev/ -g '!satan/test/**'`
+    → only `satan/satan-announce.el` (unchanged from PHASE-01/06).
+  - `rg -n 'notifications-notify' satan/test/ -g '!satan-announce-test.el'`
+    → no hits (unchanged).
+  - `rg -n 'make-tool-ctx|ctx-from-run-ctx|mark--build-ctx|atsatan--
+    intervention-ctx|failure-streak-count|satan-context--run-id-regexp'
+    satan/ dev/` → **no hits** (this phase's one selector change:
+    `failure-streak-count` is now fully gone, per plan.toml VA-1's excuse
+    for prior phases no longer applying).
+  - Positive control: `rg -n satan-run-outcome-streak satan/` → hits in
+    `satan-run.el`, `satan-broker.el`, `satan-run-test.el` (rg itself
+    working).
+- **T9 byte-compile** (scratch copies of HEAD and the working tree, `-L
+  satan -L dev -L satan/test`, `satan-broker.el` + `satan-broker-test.el`):
+  warning sets identical — only the pre-existing `_probe-snapshots` unused-
+  variable warning (line shifted by the new code, same warning). The
+  `satan-run.el` `mode-name` shadow noted in PHASE-03/05/06 entries lives in
+  `satan-run-mint-id`, an unrelated file this phase does not touch; it is
+  unaffected either way. No `.elc` left in the tree (confirmed before and
+  after with `rg --files -g '*.elc' satan dev`).
+- **T10 gate:** `SATAN_DB_HOST=/run/postgresql/ just check` (serial) →
+  `Ran 1085 tests, 1081 results as expected, 1 unexpected, 3 skipped`
+  (baseline 1080/1076/1/3 + 7 new − 2 deleted = 1085/1081; the one
+  unexpected is the pre-existing `satan-db/test-db-available-p-probes-test-
+  host`; skips unchanged at 3). `just lint`: 66 files, all `{"ok":true}`,
+  zero `false`.
+- **EX/VT mapping:** EX-1 (due-p semantics) — `announce-due-at-powers-of-two`,
+  `announce-auth-always-critical`, `announce-budget-once`. EX-1 (quiet
+  hours) — `announce-quiet-suppresses-pop-not-journal`. EX-2 (line format,
+  ASCII, every-failure journal) — `announce-journals-every-failure-ascii`.
+  EX-3 (session_blocked/credential_deferred transparency) —
+  `session-blocked-transparent-to-failure-streak`,
+  `failure-streak-restarts-on-new-cause` (same-cause-reset half). Confirmed
+  unmodified and still green: `budget-denied-run-is-recorded-not-delivered`
+  (PHASE-06, budget-exceeded still pops at position 1),
+  `session-blocked-still-perceives`, `run-tick-row-outcome-perceive-failed`
+  (arity-agnostic `(&rest _)` stubs, no change needed).
+- **D1-D5 as applied:** D1 param order `(run-id mode-slug status reason
+  dir)` (mode-slug not mode-name — see the deviation note above). D2 four
+  independently-testable helper functions, as sec-8 names them. D3
+  `(symbol-name status)` in the title format. D4 defconst placed
+  immediately before `--failure-streak`. D5 both call sites' docstring
+  updates done; only `satan-failure-notify`'s needed a change.
+- **Findings:**
+  - A5 confirmed stale-plan-text: plan.toml's PHASE-07 objective text names
+    a "notifications declare-function" removal that PHASE-01 already did
+    (`rg -n notifications satan/satan-broker.el` → no hits). No action;
+    noted for reconciliation same as PHASE-02's VT-3-withdrawn note.
+  - The mode-slug/mode-name rename above is a candidate reconcile item
+    against design sec-6's pseudocode text (cosmetic identifier only, no
+    semantic change).
+- **STOP guards:** not tripped — no new `notifications-notify` / `logger`
+  / `satan-announce` stub added (only `satan-announce-with-recorder`, per
+  R8); quiet-hours test stubs `satan-tick-quiet-p`, never wall-clock; no
+  `satan-run.el` changes, no new require (I8); journal lines are ASCII
+  (asserted directly in `announce-journals-every-failure-ascii`).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready
