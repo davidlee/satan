@@ -100,6 +100,66 @@ selector = "satan/test/satan-tools-test.el"
 intent = "design-target"
 note = "SL-017 design sec-8 code impact"
 
+[[selector]]
+selector = "satan/satan-observer.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/satan-intervention-mark.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/satan-tools-atsatan.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/satan-tank.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/satan-context.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/harness/runloop.py"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/harness/test_gptel_harness.py"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/test/satan-observer-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/test/satan-intervention-mark-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/test/satan-tools-atsatan-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/test/satan-tank-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
+[[selector]]
+selector = "satan/test/satan-context-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 (RV-009 integration)"
+
 [[relation]]
 label = "fulfils"
 target = "ISS-015"

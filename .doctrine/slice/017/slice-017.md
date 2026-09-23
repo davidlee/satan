@@ -51,20 +51,32 @@ Defect 3 is REQ-003 non-conformance; defect 4 corrupts the log REQ-003 protects.
      `satan-tools-notify.el:56`, `satan-attribute-listener.el:272`,
      `satan-patch-listener.el:109`) and the `logger` call (`satan-broker.el:339`).
    - Out of scope: `message` and `display-warning`, which are Emacs-local.
-   - `satan-test-run-batch` (`dev/satan-test.el`) installs a recording sink once
-     before loading tests. Tests assert on that recorder, and the per-file emit
-     stubs are removed.
+   - `satan-test-run-batch` (`dev/satan-test.el`) `let`-binds a recording
+     sink around loading and running the suite. It never uses `setq`, so a
+     live Emacs is unaffected.
+   - Tests that assert on emits use `satan-announce-with-recorder`, and the
+     per-file emit stubs are removed.
+   - `satan-notify-app` moves into `satan-announce.el`. Journal lines are
+     ASCII.
    - Production code never branches on `noninteractive`. (ISS-015)
-2. **One tool-ctx builder (DEC-016).** `satan-broker--spawn` makes the
-   `satan-run` struct right after `satan-audit-open`. Pre-spawn sensor alerts
-   receive `(satan-run-tool-ctx run-ctx)` as `:tool-ctx`.
-   - `satan-sensor-alerts--make-tool-ctx` is deleted.
-   - `satan-intervention--ctx-required` is unchanged.
-   - Pre-spawn interventions mint as `<run-id>.ivNNN`. (ISS-016)
+2. **Every tool-ctx is built in `satan-run.el` (DEC-016).** `satan-broker--spawn`
+   creates the `satan-run` struct right after `satan-audit-open`. The observer
+   and the pre-spawn sensor alerts both receive `(satan-run-tool-ctx run-ctx)`.
+   - The synthetic sensor builder is deleted, and so is the observer's own
+     builder.
+   - The duplicated manual-mark and atsatan builders merge into
+     `satan-run-manual-tool-ctx`.
+   - A pre-child spawn error finalises the run as `failed`/`spawn_failed`, so
+     it is announced and counted.
+   - `--ctx-required` is unchanged. Pre-spawn interventions mint as
+     `<run-id>.ivNNN`. (ISS-016)
 3. **Record before emit (DEC-018).** `satan-intervention-create` splits into
    *record* (validate, then audit append) and *project* (psql). `notify_send`
    runs record → announce → project.
    - If the append fails, nothing is emitted.
+   - If the pop fails after the record, the intervention is classified
+     `unknown`/`undelivered`, and the tool returns ok with
+     `:delivered :false`.
    - If the projection fails, the tool returns ok with `projection_failed`.
    - The per-cause cooldown arms on the record.
    - Broker failure announces follow the run bundle, which is their record.
@@ -72,7 +84,9 @@ Defect 3 is REQ-003 non-conformance; defect 4 corrupts the log REQ-003 protects.
      `:journal` line only, no third audit writer. (ISS-016, REQ-003)
 4. **Persistent failures stay loud (DEC-014, DEC-015).** Two parts:
    - **The streak.** `satan-run-outcome-streak MODE COUNTS-P SKIPS-P` in
-     `satan-run.el` does a per-mode walk over run bundles. An outcome is the
+     `satan-run.el` does a per-mode walk over run bundles. The failure streak
+     is *same-cause*: it counts only consecutive runs whose status and reason
+     match the newest failure's. An outcome is the
      status plus the `final.json` reason. The failure streak steps over
      `session_blocked` and `credential_deferred`.
    - **The announce policy.** Re-announce at streak positions 1, 2, 4, 8 and
@@ -84,14 +98,18 @@ Defect 3 is REQ-003 non-conformance; defect 4 corrupts the log REQ-003 protects.
 
    SL-018 consumes the same streak for `credential_deferred`.
    (ISS-017, ISS-012 loudness)
-5. **Failure class becomes the recorded reason (DEC-019).**
-   `satan-broker--on-error` parses the harness `class` into a new `satan-run`
-   `error-class` slot.
-   - An unclassified error records `unknown`.
-   - The synthesised `final.json` carries `:reason <class>`, and
-     `crash-context` carries `:error_class`.
-   - The announce line says the class.
-   - `runloop.py` is unchanged. (IMP-005, partial)
+5. **Failure reason is recorded (DEC-019).**
+   - `classify_error` (`runloop.py`) classifies by HTTP `status_code` first,
+     then by word-boundary match.
+   - `satan-broker--on-error` parses the class into a new `satan-run`
+     `failure-reason` slot. Unclassified errors record `unknown`, and a
+     pre-child spawn error records `spawn_failed`.
+   - The synthesised `final.json` carries `:reason`, `crash-context` carries
+     `:failure_reason`, and the announce line names the reason.
+   - `satan-run.el` owns run-id parsing. `satan-tank` and `satan-context`
+     repoint to it.
+   - Deploying the harness takes a push, a flake lock update and a
+     home-switch. (IMP-005, partial)
 
 ## Non-Goals
 
@@ -124,8 +142,14 @@ Defect 3 is REQ-003 non-conformance; defect 4 corrupts the log REQ-003 protects.
 - `satan/satan-attribute-listener.el`, `satan/satan-patch-listener.el`: emit via
   the seam
 - `dev/satan-test.el`: the recording sink
-- `satan/test/**`: per-file emit stubs removed. Sensor and notify suites use
-  the real record step.
+- `satan/satan-observer.el`, `satan/satan-intervention-mark.el`,
+  `satan/satan-tools-atsatan.el`: tool-ctx from `satan-run.el`
+- `satan/satan-tank.el`, `satan/satan-context.el`: run-id parsing via
+  `satan-run.el`
+- `satan/harness/runloop.py` + `test_gptel_harness.py`: `classify_error`
+- `satan/test/**`: per-file emit stubs removed. Sensor, notify and observer
+  suites use the real record step, with the projection stubbed at the DB
+  boundary.
 
 ## Risks & assumptions
 
