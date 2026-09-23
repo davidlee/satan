@@ -65,23 +65,25 @@ beyond a reference syntax it owns as a setting.
 CONTEXT is the label the backend shows in its announce (IMP-021), e.g.
 `"satan broker/tick-pulse"` or `"satan broker/tick-pulse (escalated: deferred 4h)"`.
 
-**SATAN side (public API).** For each VAR: `getenv`. An unset VAR is skipped,
-as it is today. A value not matching the regexp is a literal. A ref is looked up;
+**SATAN side (public API).** Every function takes ENV, the environment list the
+child will actually receive (RV-013 N5), and never calls `getenv`. For each VAR,
+its value in ENV is looked up. An unset VAR is skipped, as it is today. A value not matching the regexp is a literal. A ref is looked up;
 refs still missing are *pending*.
 
-- `(satan-credential-ready-p vars)`: non-nil when nothing is pending, or when
+- `(satan-credential-ready-p env vars)`: non-nil when nothing is pending, or when
   `session-p` holds. It never reads, so it never prompts.
-- `(satan-credential-acquire vars policy context)` →
-  `(:env ("K=v" …))`, `(:deferred)`, or `(:unavailable ERR)`, where ERR is a
+- `(satan-credential-acquire env vars policy context)` →
+  `(:env ("K=v" …) :refs ((VAR . REF) …))`, `(:deferred)`, or `(:unavailable ERR)`, where ERR is a
   condition object (RV-013 F-4). Nothing pending → `:env`. Pending and
   `session-p` → `read` each. Pending with no session: POLICY `prompt` → `read`
   each; POLICY `defer` → `:deferred`. **Strict**: every pending ref must resolve.
-- `(satan-credential-resolve vars context)` → `(:env … :failed ((VAR . ERR) …))`.
+- `(satan-credential-resolve env vars context)` → `(:env … :failed ((VAR . ERR) …))`.
   **Lenient**: reads each pending ref and collects failures per var instead of
   failing the whole call. Used only after `ready-p` (sec-7).
 - `(satan-credential-scrub env)`: ENV without `K=ref` entries. Replaces
   `my/scrub-op-refs-env`.
-- `(satan-credential-forget var)`: `forget` on VAR's current ref, if it is one.
+- `(satan-credential-forget ref)`: `forget` on REF. Returns nil on success, or
+  the condition object on failure. Like every function here, it never signals.
 
 **Error boundary** (RV-013 F-2). Every backend call goes through one internal
 wrapper. In `acquire`, any signal from any operation becomes `(:unavailable ERR)`.
@@ -112,12 +114,19 @@ Today `satan-broker-run` allocates (`satan-run-new-ctx`), perceives, runs the ga
 1. `mode` ← `satan-mode-resolve`.
 2. `cred` ← `(satan-broker--acquire mode)`, **skipped (nil) while
    `satan-run--spawn-running`**, so a run that will be refused as busy never
-   prompts. Otherwise it collects the mode's key var
-   (`satan-broker-provider-key-vars` over `:provider`; none → `(:env nil)`), the
-   effective policy (sec-4) and the context label, and calls
-   `satan-credential-acquire`. A prompting read blocks here, before any run exists.
+   prompts. Otherwise it builds the **effective base env**,
+   `(satan-broker--direnv-env process-environment)`, which is the same env
+   `--spawn` uses, now computed once and passed down (RV-013 N5). It collects the
+   mode's key var (`satan-broker-provider-key-vars` over `:provider`; none →
+   `(:env nil)`), the effective policy (sec-4) and the context label, and calls
+   `satan-credential-acquire`. A prompting read blocks here, before any run
+   exists. **The whole step is one error boundary**: policy evaluation
+   (streak walk, duration check) and direnv sit inside a `condition-case`, and
+   any signal becomes `(:unavailable ERR)`. The run is then allocated and
+   recorded as `credential_unavailable`, never lost (RV-013 N6).
 3. `prepare` ← `satan-run-new-ctx`; perceive, unchanged.
-4. `cond` branches, in order:
+4. `cond` branches, **in this precedence** (RV-013 N7): real failures announce
+   first; the silent deferrals follow.
    - `perceive_failed`, `session_blocked`: unchanged.
    - **`run_busy`** (DEC-023, RV-013 F-3): `(or (null cred)
      satan-run--spawn-running)` → a no-child run, no rename, no pop,
@@ -128,8 +137,12 @@ Today `satan-broker-run` allocates (`satan-run-new-ctx`), perceives, runs the ga
    - `budget_denied`: unchanged.
    - `(:deferred)` → `credential_deferred`; `(:unavailable ERR)` →
      `credential_unavailable` (sec-5).
-   - otherwise → `(satan-broker--spawn mode prepare dir (plist-get cred :env))`.
-5. `--spawn` takes the env list and appends it to `provider-env`. The
+   - otherwise → `(satan-broker--spawn mode prepare dir cred)`.
+
+   `perceive_failed` beats `run_busy` deliberately. A perception failure is a
+   real fault and is announced even when the run was busy anyway.
+5. `--spawn` takes the verdict: its `:env` is appended to `provider-env`, and
+   its base env replaces the second `satan-broker--direnv-env` call. The
    `key-val` binding, its `condition-case`, `satan-broker--read-env` and the
    `my/*` declarations are deleted. `my/scrub-op-refs-env` → `satan-credential-scrub`.
 
@@ -166,7 +179,14 @@ These are two flat plist keys rather than DEC-022's nested
 (`satan-mode--apply-profile`), and DEC-022 carries a note to that effect (RV-013
 F-8). `satan-mode-register` validates both: the policy must be `prompt` or `defer`,
 and the duration a non-negative number. Anything else signals at registration,
-never at run time.
+never at run time. The effective duration, which may come from the defcustom,
+is re-checked by the policy function; a bad value signals inside sec-3's
+acquisition boundary and is recorded as `credential_unavailable` (RV-013 N6).
+
+**Status, not only reason** (RV-013 N8). `final.json`'s reason is a free string
+a model's own final may carry, so both predicates require `status failed`. The
+same guard is added to the existing skip predicate in
+`satan-broker--failure-streak`, which today matches transparent reasons alone.
 
 `morning` and `motd` set `:credential-policy prompt`. `tick-*` (via
 `satan-tick-register` defaults) and every other mode inherit `defer`.
@@ -187,9 +207,11 @@ defer                                 → defer
 ```elisp
 (satan-run-outcome-streak
   slug
-  (lambda (o) (equal (plist-get o :reason) "credential_deferred"))   ; counts
-  (lambda (o) (member (plist-get o :reason)
-                      '("session_blocked" "run_busy"))))              ; skips
+  (lambda (o) (and (eq (plist-get o :status) 'failed)                ; counts
+                   (equal (plist-get o :reason) "credential_deferred")))
+  (lambda (o) (and (eq (plist-get o :status) 'failed)                ; skips
+                   (member (plist-get o :reason)
+                           '("session_blocked" "run_busy")))))
 ```
 
 Age = now − `(satan-run-id-time (plist-get oldest :run-id))`, where `oldest` is
@@ -247,33 +269,39 @@ altogether, which is a configuration error.
 
 In `satan-broker--finalize`, once status and `failure-reason` are final and
 before the announce, a new step `(satan-broker--evict-on-auth run-ctx)` runs.
-When the run's recorded reason (`satan-broker--failure-reason`) is exactly
-`"auth"`, it calls `satan-credential-forget` on the mode's key var. The next
-run then finds no cached value, re-reads the ref (silently if a session is live,
-otherwise per policy), and picks up the rotated key. `my/op-forget` stops being
-a manual step.
+
+**Trigger** (RV-013 N4): status `failed` **and** the broker-classified
+`failure-reason` slot (DEC-019, set by `satan-broker--on-error` from the
+harness error payload) is exactly `"auth"`. `final.json`'s reason is not
+consulted: a model's final can carry any string. The step then evicts the ref
+the run actually used. The acquisition verdict carries `:refs ((VAR . REF) …)`,
+and `--spawn` stores it in a new `satan-run` slot, `credential-refs`, so a later
+env change cannot redirect the eviction. The next run
+finds no cached value, re-reads the ref (silently if a session is live,
+otherwise per policy), and picks up the rotated key. `my/op-forget` stops
+being a manual step.
 
 Guards (DEC-019 consequences):
-- Only `auth`. `credits`, `rate_limit`, `server`, `unknown` and a moderation 403
-  (`unknown`) never evict.
+- Only a classified `auth`. `credits`, `rate_limit`, `server`, `unknown` and a
+  moderation 403 (`unknown`) never evict.
 - It evicts a single ref, never the whole cache: other consumers' secrets in
   `my/op--cache` survive.
-- **Best-effort and non-critical** (RV-013 F-5). The step is wrapped in
-  `condition-case`. A signal from the backend is recorded as a `broker`
-  `evict-failed` audit event and goes no further. Audit close, the `.FAILED`
-  rename, the critical pop and the sentinel's `spawn-running` reset therefore
-  still happen. The wrapper records the failure rather than hiding it, so it is
-  not `ignore-errors`.
+- **Non-critical** (RV-013 F-5, N3). `satan-credential-forget` never signals
+  (sec-2) and returns ERR on failure. The broker then records a `broker`
+  `evict-failed` audit event with the ordinary audit write. No further guard is
+  added: if the audit itself cannot write, finalize fails regardless, and the
+  sentinel reset below still runs.
 - Evicting twice is harmless (`remhash` of an absent key), so no once-only
   flag is needed.
 
-**Sentinel reset (ISS-020, absorbed).** `satan-broker--make-sentinel` clears
-`satan-run--spawn-running` *after* `--finalize` without `unwind-protect`, so any
-finalize error leaves the flag set. The MCP server then refuses sessions, and
-with DEC-023's `run_busy` every scheduled run is refused until Emacs restarts.
-The finalize call is wrapped in `unwind-protect`, with the reset as its unwind
-form. The error still propagates, as it does today: this is a reset, not
-suppression.
+**Sentinel reset (ISS-020, absorbed).** `satan-broker--make-sentinel` records
+`child-exit` and runs `--finalize`, and only then clears
+`satan-run--spawn-running`, with no `unwind-protect`. A signal from either step
+leaves the flag set. The MCP server then refuses sessions, and with DEC-023's
+`run_busy` every scheduled run is refused until Emacs restarts. The whole body
+after the timer cancel is wrapped in `unwind-protect` (the `child-exit` record
+**and** finalize), with the reset as its unwind form (RV-013 N1). The error
+still propagates, as it does today: this is a reset, not suppression.
 
 The patch adapter's results carry no error class. Patch runs therefore never
 evict (residual; IMP-005 remainder). A rotated key used only by patch is healed
@@ -297,15 +325,20 @@ In `satan-patch-runner-tick`, when enabled and idle:
    - `(error . MSG)` → `message`, return nil, as `claim-next` errors are
      handled today.
    - `(ok . ROWS)` → continue. The peeked row is never used as the job.
-2. **Readiness**: `(satan-credential-ready-p satan-patch-adapter-pi-api-key-vars)`.
+2. **Readiness**: `(satan-credential-ready-p process-environment
+   satan-patch-adapter-pi-api-key-vars)`.
    Nil → `message` plus a journal-only line `credential_deferred patch`, then
    return nil. The job stays `queued` and the next idle-timer poke retries it
    (DEC-020). Nothing is read, so nothing prompts.
 3. **Claim**: `claim-next` as today. `(ok . nil)` (another runner won) → return
    nil. The readiness probe was the only cost.
-4. **Resolve**: `(satan-credential-resolve vars "satan patch-adapter/pi")`,
+4. **Resolve**: `(satan-credential-resolve process-environment vars
+   "satan patch-adapter/pi")`,
    passed to the adapter in the input plist as `:env`. Per-var failures become
-   entries in the adapter result's `:warnings`. The job proceeds, and pi fails
+   entries in the adapter result's `:warnings`. The runner's failure path
+   (`satan-patch-runner--finish-with-row`, `adapter_failed`) persists
+   `:warnings` alongside `:error`, so a key failure is recorded on the failure
+   it explains (RV-013 N9). The job proceeds, and pi fails
    loudly on its own if the provider it needed is the one that failed.
    `satan-patch-adapter-pi-invoke` binds `process-environment` to
    `(satan-credential-scrub (append ENV process-environment))`. `--resolved-env`
@@ -317,9 +350,19 @@ The residual is that jobs starve if every broker mode stops running. They stay
 visible as `queued`. The A2 race (the session expires between readiness and
 resolve) costs one visible prompt, as for broker runs.
 
+**The var list is a superset, and SATAN cannot narrow it** (RV-013 F-6, N2).
+The runner calls `satan-patch-prompt-build` with no `:provider`, so pi picks its
+provider from its own configuration and SATAN never learns which key a job
+needs. Readiness over all seven vars therefore holds a job back while *any*
+listed ref is cold and no session exists, even when the key pi will use is
+cached. The cost is bounded: the job runs at the first live session, which any
+accepted prompt provides. Narrowing `satan-patch-adapter-pi-api-key-vars` to
+the provider pi is configured for is the keeper's config lever. Choosing the
+provider per job is future work (the design debt below).
+
 Design debt noted, not addressed: the runner names the pi adapter's var list,
-and only pi rows exist. With a second adapter, the var list should become an
-adapter protocol operation.
+and only pi rows exist. With a second adapter, or per-job providers, the
+required keys should become an adapter protocol operation.
 
 <!-- doctrine:section sec-8 -->
 ## 8. Attended override
@@ -347,17 +390,18 @@ policy is `prompt` whatever the mode says (sec-4).
 
 **Test seam.** Every behaviour is testable against a fake
 `satan-credential-function`: a plist-driven closure recording calls and
-returning scripted `ref-p`/`lookup`/`session-p`/`read` results. Tests that need
+returning scripted `lookup`/`session-p`/`read`/`forget` results. Acquisition
+functions take ENV as an argument, so tests pass a literal env list. Tests that need
 real runs use the existing temp runs-dir fixtures. No test calls `op`.
 
 | VT | behaviour |
 |---|---|
 | VT-1 | acquire: literal / unset / cached / session-live-read / no-session-defer / no-session-prompt / prompt-read-signals → `:unavailable` |
-| VT-2 | defer mode, no session → `credential_deferred` no-child run; backend saw only `ref-p`/`lookup`/`session-p`, never `read` |
+| VT-2 | defer mode, no session → `credential_deferred` no-child run; backend saw only `lookup`/`session-p`, never `read` |
 | VT-3 | prompt mode, no session → `read` called with the mode's context label |
 | VT-4 | escalation: streak older than threshold → `read`; younger → deferred; `session_blocked` skipped; a success resets |
 | VT-5 | live session, cold cache → spawns without prompting (`read` after `session-p` t) |
-| VT-6 | `auth` failure → `forget` on the mode's ref; `credits`/`unknown` → no `forget` |
+| VT-6 | classified `auth` failure → `forget` on the ref the run used; `credits`/`unknown` → no `forget`; a `done` run, or a final whose reason is `"auth"` without a classified slot → no `forget` (N4) |
 | VT-7 | patch: nothing queued → zero backend calls; deferred → job stays `queued`; ok → adapter env carries resolved key, refs scrubbed |
 | VT-8 | attended `satan-run` → prompt even for a `defer` mode |
 | VT-9 | acquisition precedes allocation: a blocking `read` stub advances the clock and the run id carries the later time |
@@ -367,7 +411,12 @@ real runs use the existing temp runs-dir fixtures. No test calls `op`.
 | VT-13 | broker end-to-end `credential_unavailable`: `.FAILED` dir, `final.json` reason, journal line, same-cause streak position (F-4) |
 | VT-14 | `run_busy`: with `spawn-running` set, no acquisition call and a `run_busy` no-child run; still `run_busy` when the flag clears before the `cond` (nil `cred`); skipped by both the failure and credential streaks (F-3) |
 | VT-15 | `forget` signals during an `auth` finalize → `evict-failed` audit event; rename, announce and the `spawn-running` reset still happen (F-5) |
-| VT-19 | a finalize that signals from the sentinel still clears `satan-run--spawn-running` (ISS-020) |
+| VT-19 | a signal from the sentinel's `child-exit` record **or** from finalize still clears `satan-run--spawn-running` (ISS-020, N1) |
+| VT-20 | a key ref present only in the direnv-merged env is acquired, and the child receives exactly that base env (N5) |
+| VT-21 | an invalid defcustom duration, or a signalling streak walk → recorded `credential_unavailable` run, not a lost trigger (N6) |
+| VT-22 | busy at entry plus a perceive error → `perceive_failed`; busy plus session active → `session_blocked` (N7 precedence) |
+| VT-23 | a `done` run whose final reason is `credential_deferred`/`run_busy`/`session_blocked` ends both streaks rather than extending or being skipped (N8) |
+| VT-24 | patch `adapter_failed` job row carries the per-var resolution warnings (N9) |
 | VT-16 | patch: peek error → no backend call; readiness passes but claim returns nil → no resolve; one failing var of seven → job runs with a warning (F-6, F-7) |
 | VT-17 | unattended entry: `satan-run` called non-interactively, and `satan-tick`, leave `satan-run-attended` nil, so a `defer` mode defers (F-10) |
 | VT-18 | registration refuses a policy other than `prompt`/`defer` and a negative or non-numeric duration (F-8) |

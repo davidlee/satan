@@ -172,5 +172,95 @@ Reviewer: gpt-5.6-sol via codex exec (adversarial).
 disposition = "fixed"
 response = "Correct. Added VT-11..VT-18 covering no backend + ref, backend signals, unavailable end-to-end, run_busy, eviction failure, patch peek/claim paths, unattended entry, and policy validation."
 
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "blocker"
+title = "[sec-6] Sentinel child-exit audit write precedes the proposed unwind-protect"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-broker.el:425 records child-exit before finalize; a signal there skips the spawn-running reset, so MCP and every scheduled run (run_busy) refuse until restart."
+disposition = "fixed"
+response = "Correct (satan-broker.el:425). sec-6: unwind-protect now wraps the child-exit record and finalize, with the reset as its unwind form. VT-19."
+
+[[finding]]
+id = "F-12"
+status = "answered"
+severity = "major"
+title = "[sec-7] Patch readiness still gated on all seven Pi key vars (F-6 not fixed)"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). ready-p over satan-patch-adapter-pi-api-key-vars: an unrelated cold ref with no session holds a job whose own key is cached."
+disposition = "tolerated"
+response = "Observation correct; prescription impossible: the runner calls satan-patch-prompt-build with no :provider, so pi chooses its provider from its own configuration and SATAN cannot know the required key. Cost is bounded (the job runs at the first live session). Documented in sec-7; narrowing satan-patch-adapter-pi-api-key-vars is the keeper's config lever; per-job providers recorded as design debt."
+
+[[finding]]
+id = "F-13"
+status = "answered"
+severity = "major"
+title = "[sec-6] Eviction error contract contradicts sec-2; diagnostic write unguarded"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). sec-2 says no backend signal escapes the module while sec-6 catches a forget signal; the evict-failed audit write can itself signal."
+disposition = "fixed"
+response = "Contradiction correct: satan-credential-forget now never signals and returns ERR (sec-2); the broker records evict-failed. Contested: a special guard on the diagnostic write — if the audit cannot write, finalize fails regardless, and F-11's unwind-protect still resets the flag."
+
+[[finding]]
+id = "F-14"
+status = "answered"
+severity = "major"
+title = "[sec-6] final.json reason auth is insufficient proof of a provider 401"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-broker--failure-reason prefers final.json's reason; a model final can carry reason auth and evict a good key."
+disposition = "fixed"
+response = "Correct. Trigger is status failed AND the broker-classified failure-reason slot = auth; final.json is not consulted. The verdict carries :refs, stored in a new satan-run slot credential-refs, so eviction targets the ref the run used. VT-6."
+
+[[finding]]
+id = "F-15"
+status = "answered"
+severity = "major"
+title = "[sec-2/sec-3] Acquisition reads getenv but spawn uses the direnv-merged env"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-broker.el:846 merges direnv; a key ref supplied only by direnv is skipped as unset at acquisition and the child fails with a missing key."
+disposition = "fixed"
+response = "Correct. Acquisition functions take ENV; the broker computes the direnv-merged base env once before acquisition and passes it to --spawn (removing the second direnv call). Also makes acquisition pure. VT-20."
+
+[[finding]]
+id = "F-16"
+status = "answered"
+severity = "major"
+title = "[sec-4] Invalid default escalation duration signals before a run exists (F-8 not fixed)"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). The defcustom fallback is not validated at registration; a bad value signals during acquisition, before allocation."
+disposition = "fixed"
+response = "Correct. Policy evaluation, streak walk, duration check and direnv sit inside sec-3's single acquisition error boundary: any signal becomes (:unavailable ERR) and is recorded. Registration validation stays. VT-21."
+
+[[finding]]
+id = "F-17"
+status = "answered"
+severity = "minor"
+title = "[sec-3] run_busy precedence behind perceive_failed/session_blocked unstated"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). A busy trigger whose perceive fails records and announces perceive_failed rather than a silent run_busy."
+disposition = "fixed"
+response = "Contested as a defect: a perceive failure is real and should announce even when the run is busy. Precedence now stated explicitly in sec-3 (perceive_failed > session_blocked > run_busy > budget_denied > credential) and tested. VT-22."
+
+[[finding]]
+id = "F-18"
+status = "answered"
+severity = "minor"
+title = "[sec-4/sec-5] Streak predicates match reason without status"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). A done run carrying a final reason credential_deferred or run_busy extends or skips streaks."
+disposition = "fixed"
+response = "Correct. Both new predicates require status failed; class sibling in the existing satan-broker--failure-streak skip predicate fixed the same way. VT-23."
+
+[[finding]]
+id = "F-19"
+status = "answered"
+severity = "minor"
+title = "[sec-7] Patch resolution warnings lost on the adapter_failed path"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-patch-runner.el:150 persists error/summary/output but not warnings."
+disposition = "fixed"
+response = "Correct (satan-patch-runner.el:150). The adapter_failed path persists :warnings. VT-24."
+
+[[finding]]
+id = "F-20"
+status = "answered"
+severity = "nit"
+title = "[sec-7/sec-9] Seven-key sweep over-built; test seam still names ref-p"
+detail = "Reviewer: gpt-6-sol verification pass (codex exec). VT-2 and the test-seam text still script ref-p, removed from the protocol."
+disposition = "fixed"
+response = "ref-p removed from the test seam and VT-2. Seven-key sweep: see F-12 (tolerated, pre-existing)."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
