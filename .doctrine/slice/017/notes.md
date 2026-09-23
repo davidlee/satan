@@ -62,7 +62,7 @@ their `/audit`.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · design locked (dr-01a0cc0b, rev 45) · slice status plan
+fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready
 
 ### Produced
 - SL-017 (this slice)
@@ -79,7 +79,7 @@ fresh-as-of: 2026-09-23 · design locked (dr-01a0cc0b, rev 45) · slice status p
 - mem.pattern.doctrine.design-run-defects (extended: adopt_authored recipe; run-bound RV)
 
 ### Open
-- next: `/plan` (design locked); code review at `/audit` for the sec-4 and sec-5 phases
+- next: `/phase-plan` PHASE-01, then `/execute`; deploy the harness before PHASE-07 goes live (plan.md Notes); code review at `/audit` for PHASE-05 and PHASE-06
 - backlog to file: record before side effect for sway, inbox, proposal and patch (design sec-5)
 - REVs: the ledger row 4 standing note (operational alarms); optionally a REQ-003 acceptance criterion
 - memory mem_eb8e5cff794c48bd86597f94fa50b0ac: correct its session_blocked streak claim (after landing)
