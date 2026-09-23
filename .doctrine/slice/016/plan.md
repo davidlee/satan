@@ -99,7 +99,7 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
 
 | risk | mitigation |
 |---|---|
-| Round-3 review answers (design sec-2 emit date, sec-5 window-end judgement) never independently verified | encoded as tests, not prose: VT-24, VT-25, VT-31 (emit date), VT-15, VT-23 (window end). Re-read both sections at PHASE-03 and PHASE-07 phase-plan |
+| Round-3 review answers (design sec-2 emit date, sec-5 window-end judgement) never independently verified | encoded as tests, not prose: VT-24, VT-25, VT-31 (emit date), VT-15, VT-23 (window end). Re-read sec-2 at PHASE-03 and PHASE-07 phase-plan, sec-5 at PHASE-09 |
 | The live goad unit runs `backend.py` from the corpus tree — every edit is live on save | PHASE-01/02 develop test-first; the format switch and data conversion land together; with no queue file PHASE-02 is inert; one live evaluate after each commit |
 | Tick timer dormant (ISS-022) | PHASE-08's live asks come from a driven tick-pulse run |
 | The user's uncommitted corpus changes (`goad/data/*`, `goad/goad.service` deleted, `motd.txt`) | not touched; the day-file conversion in PHASE-01 asks first, since today's file is uncommitted and live |

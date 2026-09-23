@@ -6,8 +6,10 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** stage `design`, run `dr-01a0c179` **locked** (revision 47),
-head after `e1cd05a`, 2026-09-23. Nothing implemented. Next: `/plan`.
+**fresh-as-of:** stage `plan`, 2026-09-23. Plan authored (`plan.toml` /
+`plan.md`, nine phases, PHASE-09 runs before PHASE-08), phase sheets
+materialised. Awaiting user approval of the plan (PHASE-01 EN-1). Nothing
+implemented. Next: `/phase-plan PHASE-01`.
 
 ### Produced
 
@@ -91,8 +93,12 @@ head after `e1cd05a`, 2026-09-23. Nothing implemented. Next: `/plan`.
 - **[[ISS-021]]** (new): the observer's `crosses_midnight` guard slices dates
   from GMT-rendered `ts`, tripping for every intervention emitted 00:00–09:59
   local. Pre-existing, all kinds; SL-016 avoids it for asks by construction.
-- **Unverified, plan must check:** whether goad re-evaluates when an `engaged`
-  exchange ends (design sec-4).
+- ~~Unverified: whether goad re-evaluates when an `engaged` exchange ends~~ —
+  **resolved at plan**: yes, the `engaged` exchange is itself the evaluation
+  (plan.md § Resolved during planning).
+- **Corpus working tree is dirty with the user's changes** (2026-09-23:
+  `goad/data/*` modified/untracked, `goad/goad.service` deleted, `motd.txt`).
+  PHASE-01 must not sweep them into its commits.
 - **Risks carried** — design sec-9's table is current.
 - **Revision candidates for `/reconcile` at close** (none caused by this slice):
   POL-001's seat rationale does not contemplate a non-editor human surface;
