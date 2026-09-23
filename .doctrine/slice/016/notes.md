@@ -6,9 +6,8 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** stage `design`, run `dr-01a0c179` at `reviewing` (revision 40),
-head `041ba2f`, 2026-09-23. design.md revised twice today and materialised.
-Nothing implemented.
+**fresh-as-of:** stage `design`, run `dr-01a0c179` **locked** (revision 47),
+head after `e1cd05a`, 2026-09-23. Nothing implemented. Next: `/plan`.
 
 ### Produced
 
@@ -74,37 +73,33 @@ Nothing implemented.
 
 ### Open
 
-- **The design is unlocked.** Review policy `adversarial-only`; the lock gate
-  needs `section-reviewed` (adversarial lane), `review-disposed` and
-  `design-accepted`. `design-accepted` is a user act regardless of policy.
-- **RV-007 round 2 done** (Claude raiser, at `041ba2f`): all 11 answers
-  verified. **Five new findings open, awaiting responder:** F-28 major (goad
-  handles still count in motive ranking — can outrank the subject motive, F-5
-  returns), F-29 major (which day file the unbounded goad read uses — midnight
-  crossing; goad quiet-hours default unstated), F-30 minor (`presented_at` first
-  vs latest render), F-31 minor (answer after window has no precedence row),
-  F-32 nit (stale text at design.md ~:736, ~:469, ~:562). Adjudicate via
-  `/feedback`; details on the ledger.
-- **Lock disposition plan (not yet user-agreed):** the run's pass ledger RV-006
-  is empty and STALE; the adversarial history is RV-007. Proposed:
-  `review-disposed` as `waived`, reason citing RV-007 — needs the user's
-  assent, then `design-accepted` + adversarial attestations for all 10 sections.
-- **User may overrule one call:** presented-then-bulk-`Enough` classifies
-  `:ignored :medium` `dismissed` (design sec-5); alternative `:unknown :low`.
+- **Design locked 2026-09-23** (user: "lock it"). `review-disposed` recorded
+  `waived`: RV-006 (the run's pass ledger) empty and stale; the adversarial pass
+  ran on RV-007 — three rounds, 36 findings, all answered. **Round-3 answers
+  (F-33..F-36) were not independently verified** — RV-007 sits at
+  await=raiser; the plan should re-read sec-2 (emit date) and sec-5 (window-end
+  judgement) with that in mind. `design-accepted` + adversarial attestations for
+  all ten sections.
+- **RV-007 rounds 2–3 outcome** (`aa776b6`, `e1cd05a`): asks credit the emit-time
+  motive (F-28, DEC-007 amended); a SATAN ask's events file under its local emit
+  date, read per ask by percept and observer (F-29, F-33, F-34; DEC-009
+  amended; backend change 6); ask exempt from `crosses_midnight`;
+  `satan-goad-quiet-hours` default `(22 . 9)`; `presented_at` first render only
+  (F-30); the record is judged as it stood at window end, so a late answer
+  classifies `untouched` (F-31, F-35 — user choice); bulk `Enough` stays
+  `:ignored :medium dismissed` (user choice).
+- **[[ISS-021]]** (new): the observer's `crosses_midnight` guard slices dates
+  from GMT-rendered `ts`, tripping for every intervention emitted 00:00–09:59
+  local. Pre-existing, all kinds; SL-016 avoids it for asks by construction.
 - **Unverified, plan must check:** whether goad re-evaluates when an `engaged`
   exchange ends (design sec-4).
-- **Six risks carried, not resolved** — see design §10. `ASM-001` unvalidated;
-  the decorrelation race (`motive_replace` between emit and maturity, detectable
-  via `related_motive_id`, home is [[IMP-002]]); suppression-alert throttle
-  unspecified; quiet hours off; two-repo landing; `ISS-001` truncation cap.
-  (Superseded in part: design sec-9 now carries the current risk table.)
+- **Risks carried** — design sec-9's table is current.
 - **Revision candidates for `/reconcile` at close** (none caused by this slice):
   POL-001's seat rationale does not contemplate a non-editor human surface;
-  `.doctrine/state/boot.md` still says the protocol tech spec and authority
-  ledger are *"not written yet"* when both exist; RFC-017 D1 rows G1/G2 read
-  *"not written"* when both landed.
-- **Scope document deliberately uncorrected.** The design supersedes it and says
-  where (§9, §10); per-slice artefacts are `/reconcile`'s to write at close.
+  `.doctrine/state/boot.md` "not written yet" for the protocol tech spec and
+  authority ledger; RFC-017 D1 rows G1/G2 "not written".
+- **Scope document deliberately uncorrected** — per-slice artefacts are
+  `/reconcile`'s to write at close.
 
 ### Tooling defects hit (doctrine 0.44.3, not SATAN)
 
