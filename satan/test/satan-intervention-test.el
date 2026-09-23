@@ -648,6 +648,28 @@ and a record that signals never reaches the projection."
              (should (equal "worked" (plist-get outcome :classification)))
              (should (equal iv-id (plist-get outcome :revises))))))))))
 
+(ert-deftest satan-intervention/project-with-verdict-is-one-transaction ()
+  "An intervention and its verdict land together or not at all: a
+verdict the projection rejects leaves no parent row to look pending."
+  (satan-intervention-test--with-db
+   (satan-intervention-test--with-ctx ctx
+     (let* ((payload (apply #'satan-intervention-record :ctx ctx
+                            satan-intervention-test--notify-args))
+            (iv-id (plist-get payload :intervention_id))
+            (verdict (apply #'satan-intervention-classify-record
+                            :ctx ctx :intervention-id iv-id
+                            satan-intervention-test--verdict-args)))
+       (should-error (satan-intervention-project-with-verdict
+                      payload (plist-put (copy-sequence verdict)
+                                         :classification "bogus"))
+                     :type 'user-error)
+       (should (= 0 (satan-intervention-test--count "satan_interventions")))
+       (satan-intervention-project-with-verdict payload verdict)
+       (should (equal "ignored"
+                      (plist-get (plist-get (satan-intervention-lookup iv-id)
+                                            :outcome)
+                                 :classification)))))))
+
 (ert-deftest satan-intervention/classify-rejects-auto-harmful ()
   (satan-intervention-test--with-db
    (satan-intervention--reset-counters)

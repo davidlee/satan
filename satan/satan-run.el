@@ -43,6 +43,9 @@ is the handler that writes SATAN's self-curated memory there."
   ;; placeholder slots (`:evidence' `:percept' `:sensor_status'
   ;; `:pre_spawn' `:motive' `:observer') that later phases populate.
   prepare
+  ;; Non-nil once the broker's pre-spawn window has run to its end; a
+  ;; spawn that fails before then reports it in its crash context.
+  pre-spawn-completed
   ;; SL-017 sec-7: the harness's parsed error class, or "spawn_failed".
   ;; First write wins — see `satan-broker--on-error'.
   failure-reason)

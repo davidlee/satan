@@ -1339,13 +1339,16 @@ row would be long stale and never surface as pending."
 
 (ert-deftest satan-observer/process-rejects-ctx-without-time-now ()
   "A ctx with no frozen `:time-now' is refused before any read.
-There is no wall-clock fallback: the motive reader is never reached."
+There is no wall-clock fallback: the motive reader is never reached.
+The ctx is the canonical builder's over a prepare without `:time_now',
+so the key is present but nil."
   (let ((read nil))
     (should-error
      (satan-observer-process
-      (list :id "20260523T120000-morning-a1b2c3" :mode-name "morning"
-            :audit 'AUDIT)
-      (list :motive-fn (lambda (_) (setq read t) nil)))
+      (satan-run-tool-ctx
+       (make-satan-run :id "20260523T120000-morning-a1b2c3"
+                       :mode '(:name "morning") :audit 'AUDIT :prepare '()))
+      (list :motive-fn (lambda (_) (setq read t) (error "motive read"))))
      :type 'user-error)
     (should-not read)))
 

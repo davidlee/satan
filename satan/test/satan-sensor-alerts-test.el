@@ -122,7 +122,7 @@ from it through the canonical builder."
 (defun satan-sensor-alerts-test--silence-notify (body-fn)
   "Run BODY-FN with a live pop counter; COUNTER is a 1-cell list
 incremented once per announcement that carries `:title' (i.e. an actual
-pop, not a journal-only entry).  Only the two projection writes are
+pop, not a journal-only entry).  Only the projection writes are
 stubbed (`satan-tools-notify-test--with-projection'); the record runs
 for real against the run's audit."
   (let ((counter (list 0)))
@@ -326,7 +326,7 @@ happen."
                            (satan-tools-notify-test--fns calls)))
             (should (equal created
                            (list (satan-tools-notify-test--as-recorded
-                                  (cdar calls)))))))))))
+                                  (cadar calls)))))))))))
 
 ;; SL-017 DEC-018 — the cooldown arms on the record (I3, I4)
 
@@ -337,8 +337,7 @@ a check inside the window records nothing more."
   (satan-sensor-alerts-test--with-tmp-state path
     (satan-sensor-alerts-test--with-run run
       (satan-tools-notify-test--with-projection
-          (calls '(satan-intervention-project
-                   satan-intervention-classify-project))
+          (calls '(satan-intervention-project-with-verdict))
         (let* ((satan-announce-sink (lambda (_) (error "no D-Bus today")))
                (ss (list :current_window "stale-28m" :focus "ok"
                          :browser "ok"))
@@ -364,7 +363,7 @@ a check inside the window records nothing more."
                                   run "intervention.outcome_classified"))))
           (should (equal "cooldown" (plist-get (car e2) :reason)))
           (should (= 1 (length (satan-sensor-alerts-test--created run))))
-          (should (equal '(satan-intervention-project)
+          (should (equal '(satan-intervention-project-with-verdict)
                          (satan-tools-notify-test--fns calls))))))))
 
 ;; A17 — dispatch routes through notify_send + capability check

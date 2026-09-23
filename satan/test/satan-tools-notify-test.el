@@ -8,7 +8,7 @@
 ;;               (ert-run-tests-batch-and-exit))"
 ;;
 ;; The record half of the intervention write API runs for real against a
-;; tmp run's audit handle; only the two projection writes are stubbed
+;; tmp run's audit handle; only the projection writes are stubbed
 ;; (`satan-tools-notify-test--with-projection'), so no test here reaches
 ;; Postgres (SL-017 design sec-5, R9).  The sensor-alert suite reuses
 ;; these fixtures.
@@ -67,26 +67,27 @@ The mode is the one named in RUN's id, with CAPS as `:capabilities'."
    :object-type 'plist :array-type 'list :null-object :null))
 
 (defmacro satan-tools-notify-test--with-projection (spec &rest body)
-  "SPEC is ([CALLS [FAILING]]).  Evaluate BODY with only the two
-projection writes stubbed.  CALLS, when given, is bound to the list of
-`(FN . PAYLOAD)' calls, in call order.  Each FN in the list FAILING
+  "SPEC is ([CALLS [FAILING]]).  Evaluate BODY with only the projection
+writes stubbed.  CALLS, when given, is bound to the list of
+`(FN PAYLOAD...)' calls, in call order.  Each FN in the list FAILING
 signals `user-error', as `satan-intervention--exec-sql' does when
 Postgres is down; its call is still captured."
   (declare (indent 1))
   (let ((calls (or (car spec) (make-symbol "calls")))
-        (failing (make-symbol "failing"))
-        (stub (make-symbol "stub")))
-    `(let* ((,calls '())
-            (,failing ,(cadr spec))
-            (,stub (lambda (fn)
-                     (lambda (payload &rest _)
-                       (setq ,calls (append ,calls (list (cons fn payload))))
-                       (when (memq fn ,failing)
-                         (user-error "satan-intervention SQL: %s down" fn))))))
-       (cl-letf (((symbol-function 'satan-intervention-project)
-                  (funcall ,stub 'satan-intervention-project))
-                 ((symbol-function 'satan-intervention-classify-project)
-                  (funcall ,stub 'satan-intervention-classify-project)))
+        (failing (make-symbol "failing")))
+    `(let ((,calls '())
+           (,failing ,(cadr spec)))
+       (cl-letf ,(mapcar
+                  (lambda (fn)
+                    `((symbol-function ',fn)
+                      (lambda (&rest args)
+                        (setq ,calls (append ,calls (list (cons ',fn args))))
+                        (when (memq ',fn ,failing)
+                          (user-error "satan-intervention SQL: %s down"
+                                      ',fn)))))
+                  '(satan-intervention-project
+                    satan-intervention-classify-project
+                    satan-intervention-project-with-verdict))
          ,@body))))
 
 ;; ---------------------------------------------------------------------
@@ -150,7 +151,7 @@ tool-ctx with the `notify' capability; evaluate BODY."
           (should (equal (satan-tools-notify-test--events
                           run "intervention.created")
                          (list (satan-tools-notify-test--as-recorded
-                                (cdar calls))))))))))
+                                (cadar calls))))))))))
 
 (ert-deftest satan-notify/intervention-args-shape ()
   "The recorded `intervention.created' carries the §3.1 metadata."
@@ -231,7 +232,7 @@ tool-ctx with the `notify' capability; evaluate BODY."
 
 (ert-deftest satan-tools-notify/undelivered-pop-classified-unknown ()
   "I4 — a failed pop is `ok' with `:delivered :false', and the record
-carries an undelivered `unknown' verdict, projected after its parent."
+carries an undelivered `unknown' verdict, projected with its parent."
   (satan-tools-notify-test--with-ctx (run ctx)
     (satan-tools-notify-test--with-projection (calls)
       (let* ((satan-announce-sink (lambda (_) (error "no D-Bus today")))
@@ -259,20 +260,22 @@ carries an undelivered `unknown' verdict, projected after its parent."
         (should (equal satan-tools-notify-test--now (plist-get v :next_revisit_at)))
         (should (equal "undelivered: no D-Bus today" (plist-get v :notes)))
         (should-not (plist-member v :revises))
-        (should (equal '(satan-intervention-project
-                         satan-intervention-classify-project)
+        (should (equal '(satan-intervention-project-with-verdict)
                        (satan-tools-notify-test--fns calls)))
-        (should (equal "unknown" (plist-get (cdr (cadr calls))
-                                            :classification)))))))
+        (should (equal (list (satan-tools-notify-test--as-recorded
+                              (nth 1 (car calls)))
+                             (satan-tools-notify-test--as-recorded
+                              (nth 2 (car calls))))
+                       (list (car (satan-tools-notify-test--events
+                                   run "intervention.created"))
+                             v)))))))
 
 (ert-deftest satan-tools-notify/undelivered-with-db-down-still-ok ()
-  "I4 with Postgres down (RV-009 F-2): the verdict is still recorded, the
-result is still `ok', and the verdict projection is not attempted
-without its parent row."
+  "I4 with Postgres down (RV-009 F-2): the verdict is still recorded and
+the result is still `ok'; the one projection's failure is a note."
   (satan-tools-notify-test--with-ctx (run ctx)
     (satan-tools-notify-test--with-projection
-        (calls '(satan-intervention-project
-                 satan-intervention-classify-project))
+        (calls '(satan-intervention-project-with-verdict))
       (let* ((satan-announce-sink (lambda (_) (error "no D-Bus today")))
              (res (satan-tools-notify-test--send ctx '(:title "t" :body "b")))
              (result (plist-get res :result)))
@@ -286,8 +289,27 @@ without its parent row."
                        (mapcar (lambda (p) (plist-get p :notes))
                                (satan-tools-notify-test--events
                                 run "intervention.outcome_classified"))))
-        (should (equal '(satan-intervention-project)
+        (should (equal '(satan-intervention-project-with-verdict)
                        (satan-tools-notify-test--fns calls)))))))
+
+(ert-deftest satan-tools-notify/undelivered-verdict-record-fails ()
+  "I4 with the verdict record failing (RV-012 F-2): the result is still
+`ok' with a `:verdict' note, and nothing is projected — the intervention
+alone would look pending."
+  (satan-tools-notify-test--with-ctx (run ctx)
+    (satan-tools-notify-test--with-projection (calls)
+      (cl-letf (((symbol-function 'satan-intervention-classify-record)
+                 (lambda (&rest _) (error "disk full"))))
+        (let* ((satan-announce-sink (lambda (_) (error "no D-Bus today")))
+               (res (satan-tools-notify-test--send ctx '(:title "t" :body "b")))
+               (result (plist-get res :result)))
+          (should (eq t (plist-get res :ok)))
+          (should (equal :false (plist-get result :delivered)))
+          (should (equal "failed: disk full" (plist-get result :verdict)))
+          (should-not (plist-member result :projection))
+          (should (= 1 (length (satan-tools-notify-test--events
+                                run "intervention.created"))))
+          (should-not calls))))))
 
 (provide 'satan-tools-notify-test)
 ;;; satan-tools-notify-test.el ends here

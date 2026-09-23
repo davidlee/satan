@@ -35,25 +35,25 @@
   "The result note for a step that signalled ERR."
   (format "failed: %s" (error-message-string err)))
 
-(defun satan-tools-notify--project (fn payload)
-  "Call projection FN on PAYLOAD.  Never signals.
+(defun satan-tools-notify--project (fn &rest payloads)
+  "Call projection FN on PAYLOADS.  Never signals.
 Returns nil, or `(:projection \"failed: MSG\")' when FN signalled."
   (condition-case err
-      (progn (funcall fn payload) nil)
+      (progn (apply fn payloads) nil)
     (error (list :projection (satan-tools-notify--failed err)))))
 
 (defun satan-tools-notify--mark-undelivered (ctx payload err)
   "Mark the recorded intervention PAYLOAD as never seen: its pop signalled ERR.
 Appends an `unknown'/`high'/`mature'/`auto' verdict noted
 `undelivered: ERR' to CTX's audit, then projects the intervention and
-the verdict, in foreign-key order.  Never signals: each step's failure
-becomes a note, and a failed step skips the ones after it — an
+the verdict in one transaction.  Never signals: a failed step becomes
+a note, and a failed verdict record skips the projection — an
 intervention projected without its verdict would look pending, and
 the observer would score an alert the keeper never saw.  No attribute
 enqueue: an unseen alert teaches the attribute daemon nothing.
 
 Returns the result-note plist — `:verdict' or `:projection' as a
-\"failed: MSG\" string for the first failed step — or nil."
+\"failed: MSG\" string for the failed step — or nil."
   (let ((now (plist-get ctx :time-now)))
     (condition-case verr
         (let ((verdict (satan-intervention-classify-record
@@ -64,9 +64,8 @@ Returns the result-note plist — `:verdict' or `:projection' as a
                         :classified-at now :next-revisit-at now
                         :notes (format "undelivered: %s"
                                        (error-message-string err)))))
-          (or (satan-tools-notify--project #'satan-intervention-project payload)
-              (satan-tools-notify--project
-               #'satan-intervention-classify-project verdict)))
+          (satan-tools-notify--project
+           #'satan-intervention-project-with-verdict payload verdict))
       (error (list :verdict (satan-tools-notify--failed verr))))))
 
 (defun satan-tool/notify-send (args ctx)

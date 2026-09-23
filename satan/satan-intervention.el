@@ -224,23 +224,25 @@ become vectors before serialization."
    "marked_by = EXCLUDED.marked_by, "
    "notes = EXCLUDED.notes;"))
 
+(defun satan-intervention--transaction-sql (statements)
+  "Return SQL STATEMENTS wrapped in one `BEGIN; … COMMIT;' transaction."
+  (mapconcat #'identity `("BEGIN;" ,@statements "COMMIT;") "\n"))
+
 (defun satan-intervention--build-rebuild-script (events)
   "Build the full rebuild transaction SQL for EVENTS (already sorted).
 Wraps TRUNCATE + per-event INSERT/UPSERT in a single transaction."
-  (let ((lines (list "BEGIN;"
-                     "TRUNCATE satan_intervention_outcomes, satan_interventions RESTART IDENTITY;")))
-    (dolist (ev events)
-      (let ((event (plist-get ev :event))
-            (payload (plist-get ev :payload)))
-        (push (pcase event
+  (satan-intervention--transaction-sql
+   (cons "TRUNCATE satan_intervention_outcomes, satan_interventions RESTART IDENTITY;"
+         (mapcar
+          (lambda (ev)
+            (let ((payload (plist-get ev :payload)))
+              (pcase (plist-get ev :event)
                 ("intervention.created"
                  (satan-intervention--insert-created-sql payload))
                 ((or "intervention.outcome_classified"
                      "intervention.outcome_revised")
-                 (satan-intervention--upsert-outcome-sql payload)))
-              lines)))
-    (push "COMMIT;" lines)
-    (mapconcat #'identity (nreverse lines) "\n")))
+                 (satan-intervention--upsert-outcome-sql payload)))))
+          events))))
 
 ;; ---------- public rebuild ----------
 
@@ -344,11 +346,12 @@ implicitly through the audit record's `:ts'."
   (clrhash satan-intervention--counters))
 
 (defun satan-intervention--ctx-required (ctx)
-  "Validate CTX exposes the keys the write API depends on; signal otherwise."
-  (unless (and (plist-member ctx :id)
-               (plist-member ctx :mode-name)
-               (plist-member ctx :time-now)
-               (plist-member ctx :audit))
+  "Validate CTX carries a value for each key the write API depends on.
+Signals otherwise.  A present but nil key fails too: the canonical
+builder always writes `:time-now', and nil would stamp or query no
+time at all."
+  (unless (cl-every (lambda (key) (plist-get ctx key))
+                    '(:id :mode-name :time-now :audit))
     (user-error
      "satan-intervention: tool-ctx missing :id/:mode-name/:time-now/:audit")))
 
@@ -409,9 +412,8 @@ propagates an append failure; in every such case nothing is recorded."
 Idempotent (`ON CONFLICT (id) DO NOTHING').  Signals `user-error' on
 psql failure; the record is untouched and rebuild can replay it."
   (satan-intervention--exec-sql
-   db (concat "BEGIN;\n"
-              (satan-intervention--insert-created-sql payload)
-              "\nCOMMIT;\n")))
+   db (satan-intervention--transaction-sql
+       (list (satan-intervention--insert-created-sql payload)))))
 
 (cl-defun satan-intervention-create
     (&key ctx kind target-surface message
@@ -486,9 +488,18 @@ propagates an append failure."
 Signals `user-error' on psql failure, including a missing
 `satan_interventions' parent row (foreign key)."
   (satan-intervention--exec-sql
-   db (concat "BEGIN;\n"
-              (satan-intervention--upsert-outcome-sql payload)
-              "\nCOMMIT;\n")))
+   db (satan-intervention--transaction-sql
+       (list (satan-intervention--upsert-outcome-sql payload)))))
+
+(cl-defun satan-intervention-project-with-verdict
+    (payload verdict &key (db satan-memory-migrate-database))
+  "Project intervention PAYLOAD and its VERDICT payload in one transaction.
+Both rows land or neither does, so the intervention never looks
+pending without its verdict.  Signals `user-error' on psql failure."
+  (satan-intervention--exec-sql
+   db (satan-intervention--transaction-sql
+       (list (satan-intervention--insert-created-sql payload)
+             (satan-intervention--upsert-outcome-sql verdict)))))
 
 (cl-defun satan-intervention-classify
     (&key ctx intervention-id classification confidence evidence

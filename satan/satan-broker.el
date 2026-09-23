@@ -222,7 +222,6 @@ when `:error' is not JSON at all."
   "Build a crash-context snapshot plist for a non-done terminal path.
 Pure data assembly from run-ctx and mode spec — no I/O."
   (let* ((mode (satan-run-mode run-ctx))
-         (prepare (satan-run-prepare run-ctx))
          (start (satan-run-start-time run-ctx))
          (elapsed (and start (float-time (time-subtract nil start)))))
     (list :status (symbol-name (satan-run-status run-ctx))
@@ -232,7 +231,8 @@ Pure data assembly from run-ctx and mode spec — no I/O."
           :max_budget_tokens (or (plist-get mode :max-budget-tokens) 1000000)
           :elapsed_seconds (and elapsed (round elapsed))
           :timeout_seconds (or (plist-get mode :timeout-seconds) 0)
-          :pre_spawn_completed (not (null prepare))
+          :pre_spawn_completed
+          (if (satan-run-pre-spawn-completed run-ctx) t :false)
           :failure_reason (satan-run-failure-reason run-ctx))))
 
 (defun satan-broker--finalize (run-ctx)
@@ -552,6 +552,23 @@ desktop alert; DEC-8 deferral)."
            run-id (plist-get mode :name) status
            (or announce-reason reason) new-dir))))))
 
+(defun satan-broker--write-failed-no-child-run (mode prepare dir reason err)
+  "Write the terminal record of a run that failed with ERR before any child.
+REASON names the failed stage in snake case (\"perceive_failed\"); it
+is the `failure_reason' and, kebab-cased, the `broker' event carrying
+ERR's message.  Thin caller of `satan-broker--write-no-child-run'
+\(status `failed', rename + announce)."
+  (let ((msg (error-message-string err)))
+    (satan-broker--write-no-child-run
+     mode prepare dir 'failed reason
+     :event (intern (string-replace "_" "-" reason))
+     :event-payload (list :error msg)
+     :final (list :summary (format "%s: %s"
+                                   (string-replace "_" " " reason) msg)
+                  :actions []
+                  :reason reason)
+     :rename-announce t)))
+
 (defun satan-broker--write-budget-denied-run (mode prepare dir spent ceiling)
   "Write a slim audit bundle marking the run in PREPARE as budget-exceeded.
 No child is spawned; the run terminates with status `budget-exceeded'
@@ -611,13 +628,8 @@ without launching the child."
           (error (setq perceive-error err)))
         (cond
          (perceive-error
-          (satan-broker--write-no-child-run
-           mode prepare dir 'failed "perceive_failed"
-           :final (list :summary (format "perceive failed: %s"
-                                         (error-message-string perceive-error))
-                        :actions []
-                        :reason "perceive_failed")
-           :rename-announce t)
+          (satan-broker--write-failed-no-child-run
+           mode prepare dir "perceive_failed" perceive-error)
           (satan-trace-outcome "perceive_failed")
           run-id)
          ;; DEC-8: refuse to spawn while an interactive session is open.
@@ -796,7 +808,9 @@ owns that run's finalisation and its stderr buffer."
                   (satan-ingest-cursor-advance))
               (error nil)))
            (prepare (setf (satan-run-prepare run-ctx)
-                          (plist-put prepare :pre_spawn pre-spawn))))
+                          (plist-put prepare :pre_spawn pre-spawn)))
+           (_pre-spawn-completed
+            (setf (satan-run-pre-spawn-completed run-ctx) t)))
     (let* ((bundle (satan-trace-stage "spawn.bundle"
                      (funcall (or (plist-get mode :context-fn) #'ignore)
                               mode prepare)))
@@ -904,28 +918,22 @@ RUN-CTX is the run struct when the audit is already open, else nil
 \(the manifest build or `satan-audit-open' threw).  Either way the run
 ends `failed' with reason `spawn_failed', `.FAILED'-renamed and
 announced, and the tick trace stops calling it spawned."
-  (let ((msg (error-message-string err)))
-    (satan-trace-outcome "spawn_failed")
-    (if run-ctx
-        (let ((audit (satan-run-audit run-ctx)))
-          (satan-audit-record audit 'broker 'spawn-failed (list :error msg))
-          (unless (file-exists-p (satan-run-bundle-path run-ctx))
-            (satan-audit-attach-bundle
-             audit (satan-broker--percept-bundle (satan-run-prepare run-ctx))))
-          (setf (satan-run-failure-reason run-ctx) "spawn_failed"
-                (satan-run-status run-ctx) 'failed)
-          (satan-broker--finalize run-ctx))
-      (satan-broker--write-no-child-run
-       mode prepare dir 'failed "spawn_failed"
-       :event 'spawn-failed
-       :event-payload (list :error msg)
-       :final (list :summary (format "spawn failed: %s" msg)
-                    :actions []
-                    :reason "spawn_failed")
-       :rename-announce t)
-      ;; `--finalize' clears it on the other branch; the no-child writer
-      ;; does not, and `--spawn' set it before the manifest.
-      (setq satan-memory-store--current-run-id nil))))
+  (satan-trace-outcome "spawn_failed")
+  (if run-ctx
+      (let ((audit (satan-run-audit run-ctx)))
+        (satan-audit-record audit 'broker 'spawn-failed
+                            (list :error (error-message-string err)))
+        (unless (file-exists-p (satan-run-bundle-path run-ctx))
+          (satan-audit-attach-bundle
+           audit (satan-broker--percept-bundle (satan-run-prepare run-ctx))))
+        (setf (satan-run-failure-reason run-ctx) "spawn_failed"
+              (satan-run-status run-ctx) 'failed)
+        (satan-broker--finalize run-ctx))
+    (satan-broker--write-failed-no-child-run
+     mode prepare dir "spawn_failed" err)
+    ;; `--finalize' clears it on the other branch; the no-child writer
+    ;; does not, and `--spawn' set it before the manifest.
+    (setq satan-memory-store--current-run-id nil)))
 
 (provide 'satan-broker)
 ;;; satan-broker.el ends here

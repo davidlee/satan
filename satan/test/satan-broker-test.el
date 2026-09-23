@@ -793,7 +793,8 @@ the stage wraps inside the shared perceive fn record onto the tick."
            (delete-directory root t)))))))
 
 (ert-deftest satan-broker/run-tick-row-outcome-perceive-failed ()
-  "VT-1: a perceive error stamps `outcome' \"perceive_failed\" on the tick row."
+  "VT-1: a perceive error stamps `outcome' \"perceive_failed\" on the tick
+row, and the run's transcript names the error (RV-012 F-6)."
   (satan-broker-test--with-tool-descriptions
    satan-broker-test--morning-tool-descriptions
    (lambda ()
@@ -811,7 +812,14 @@ the stage wraps inside the shared perceive fn record onto the tick."
                (let ((ticks (satan-broker-test--tick-rows trace-dir)))
                  (should (= 1 (length ticks)))
                  (should (equal "perceive_failed"
-                                (plist-get (car ticks) :outcome)))))
+                                (plist-get (car ticks) :outcome))))
+               (should (equal "sensor exploded"
+                              (plist-get (satan-broker-test--broker-event
+                                          (car (file-expand-wildcards
+                                                (expand-file-name
+                                                 "*/*.FAILED" root)))
+                                          "perceive-failed")
+                                         :error))))
            (delete-directory root t)))))))
 
 (ert-deftest satan-broker/run-tick-row-outcome-session-blocked ()
@@ -1027,7 +1035,8 @@ entirely so untouched runs keep the original four-partition shape."
                          :status 'failed
                          :tool-calls-done 3
                          :audit audit
-                         :prepare prepare)))
+                         :prepare prepare
+                         :pre-spawn-completed t)))
           (cl-letf (((symbol-function 'satan-broker--mark-failed-on-disk)
                      (lambda (&rest _) nil)))
             (satan-broker--finalize run-ctx))
@@ -1217,8 +1226,10 @@ ROOT is bound to a tmp `satan-runs-dir' and DIR to a run dir under it
 alerts, probe commits, ingest cursor), env shaping and the
 `most-recent' symlink; the record path (manifest, audit, finalize)
 stays real.  Binds `satan-run--spawn-running',
-`satan-memory-store--current-run-id' and a tmp `satan-hippocampus-dir'.
-Deletes ROOT afterwards, so a `.FAILED'-renamed DIR goes with it."
+`satan-memory-store--current-run-id', a tmp `satan-hippocampus-dir' and
+a tmp `satan-tools-descriptions-dir' holding only `satan_final', so the
+real manifest build never reads the live corpus.  Deletes ROOT
+afterwards, so a `.FAILED'-renamed DIR goes with it."
   (declare (indent 2))
   `(let* ((,root (make-temp-file "satan-spawn-" t))
           (,dir (expand-file-name "run" ,root))
@@ -1228,32 +1239,35 @@ Deletes ROOT afterwards, so a `.FAILED'-renamed DIR goes with it."
           (satan-hippocampus-dir (expand-file-name "hippocampus" ,root)))
      (make-directory ,dir)
      (unwind-protect
-         (cl-letf (((symbol-function 'satan-observer-process)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'satan-run-enrich)
-                    (lambda (prepare &rest _) prepare))
-                   ((symbol-function 'satan-sensor-alerts-check)
-                    (lambda (&rest _) nil))
-                   ;; DR-010 §3: --spawn now calls the consume-side
-                   ;; -probe-commit variants (perceive took the reads).
-                   ((symbol-function 'satan-sensor-curiosity-probe-commit)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'satan-sensor-content-probe-commit)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'satan-sensor-wpm-probe-commit)
-                    (lambda (&rest _) nil))
-                   ;; Writes the live state root's cursor file otherwise.
-                   ((symbol-function 'satan-ingest-cursor-advance)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'my/scrub-op-refs-env)
-                    (lambda (env) env))
-                   ((symbol-function 'satan-broker--direnv-env)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'satan-broker--exec-path-from-env)
-                    (lambda (&rest _) exec-path))
-                   ((symbol-function 'satan-broker--update-most-recent)
-                    (lambda (&rest _) nil)))
-           ,@body)
+         (satan-broker-test--with-tool-descriptions
+          (list (assoc "satan_final" satan-broker-test--morning-tool-descriptions))
+          (lambda ()
+            (cl-letf (((symbol-function 'satan-observer-process)
+                       (lambda (&rest _) nil))
+                      ((symbol-function 'satan-run-enrich)
+                       (lambda (prepare &rest _) prepare))
+                      ((symbol-function 'satan-sensor-alerts-check)
+                       (lambda (&rest _) nil))
+                      ;; DR-010 §3: --spawn now calls the consume-side
+                      ;; -probe-commit variants (perceive took the reads).
+                      ((symbol-function 'satan-sensor-curiosity-probe-commit)
+                       (lambda (&rest _) nil))
+                      ((symbol-function 'satan-sensor-content-probe-commit)
+                       (lambda (&rest _) nil))
+                      ((symbol-function 'satan-sensor-wpm-probe-commit)
+                       (lambda (&rest _) nil))
+                      ;; Writes the live state root's cursor file otherwise.
+                      ((symbol-function 'satan-ingest-cursor-advance)
+                       (lambda (&rest _) nil))
+                      ((symbol-function 'my/scrub-op-refs-env)
+                       (lambda (env) env))
+                      ((symbol-function 'satan-broker--direnv-env)
+                       (lambda (&rest _) nil))
+                      ((symbol-function 'satan-broker--exec-path-from-env)
+                       (lambda (&rest _) exec-path))
+                      ((symbol-function 'satan-broker--update-most-recent)
+                       (lambda (&rest _) nil)))
+              ,@body)))
        (delete-directory ,root t))))
 
 (defmacro satan-broker-test--with-spawn-stubs (dir &rest body)
@@ -1477,7 +1491,25 @@ any bundle, so the percept is mirrored into `bundle.json'."
                                        :error)))
       ;; Finalised through the open audit (the run struct), not re-opened
       ;; by the no-child writer: only `--finalize' records crash context.
-      (should (satan-broker-test--broker-event failed "crash-context")))))
+      ;; The context-fn runs after the pre-spawn window, which completed.
+      (should (eq t (plist-get (satan-broker-test--broker-event
+                                failed "crash-context")
+                               :pre_spawn_completed))))))
+
+(ert-deftest satan-broker/spawn-error-in-pre-spawn-reports-incomplete ()
+  "A pre-spawn stage that throws (enrich) is a pre-child failure whose
+crash context says the pre-spawn window did not complete (RV-012 F-4)."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (cl-letf (((symbol-function 'satan-run-enrich)
+               (lambda (&rest _) (error "enrich exploded"))))
+      (let* ((mode '(:name "test" :harness (:cmd "true")))
+             (failed (satan-broker-test--should-spawn-fail
+                      (satan-broker-test--spawn-failing
+                       mode (satan-broker-test--spawn-prepare) dir)
+                      dir)))
+        (should (eq :false (plist-get (satan-broker-test--broker-event
+                                       failed "crash-context")
+                                      :pre_spawn_completed)))))))
 
 (ert-deftest satan-broker/manifest-error-finalizes-spawn-failed ()
   "A manifest that cannot be built (before the audit opens) still ends
