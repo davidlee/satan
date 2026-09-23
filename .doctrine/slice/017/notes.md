@@ -834,7 +834,7 @@ judgement). In-tree, no worktree isolation.
   `satan-run.el` changes, no new require (I8); journal lines are ASCII
   (asserted directly in `announce-journals-every-failure-ascii`).
 
-## PHASE-08 deploy and live evidence (2026-09-23) — in progress
+## PHASE-08 deploy and live evidence (2026-09-23) — completed, VH-1 pending live
 
 - **EX-1 met.** origin/main and ~/flakes `flake.lock` `satan` both at
   b331b94 (contains d0054cf harness + 2d6c0da audit fixes). Keeper pushed,
@@ -860,18 +860,20 @@ judgement). In-tree, no worktree isolation.
   20260923T180000-vh2-scratch-000000`. Live `--announce-due-p` for positions
   1..5: t t nil t nil (quiet nil, notify t), i.e. pops at 1, 2, 4 only. The
   script ran twice by mistake (duplicate journal sequence, temp dirs only).
+- **VH-2 confirmed by the keeper:** desktop pops at x1, x2, x4 only, each round.
+- **Keeper decision:** close SL-017 with VH-1 pending live evidence; ISS-016
+  stays open until a degraded-sensor run shows the intervention line and
+  `last_notified_at`.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-01..07 landed (7069160..82de4c5); audit RV-011 done, code review RV-012 done; audit fixes 417a831, 2d6c0da · slice status reconcile
+fresh-as-of: 2026-09-23 · closed: PHASE-01..08 complete; RV-011, RV-012 done; REV-002 done; deployed at b331b94 · slice status done
 
 ### Produced
-- SL-017 (this slice); PHASE-01..07 commits 7069160, 09f71df, d0054cf, e1ea308, 3a11272, d6e849c, 82de4c5
-- ISS-017 — split from ISS-012 (loudness half); ISS-016 — root cause corrected (two tool-ctx builders); ISS-015 closed by PHASE-01
-- CHR-008 — stale `.doctrine/governance.md:15` gate claim
-- DEC-014 through DEC-019; RV-008, RV-009, RV-010 (design reviews)
-- RV-011 (reconciliation audit, 14 findings, brief written); RV-012 (PHASE-04..06 code review, 5 fixed + 1 withdrawn)
-- backlog: ISS-018 (live ingest cursor), ISS-019 (tests enqueue into production satan_outcome_inbox), IMP-022, IMP-023, CHR-009
+- SL-017 (this slice); PHASE-01..07 commits 7069160, 09f71df, d0054cf, e1ea308, 3a11272, d6e849c, 82de4c5; audit fixes 417a831, 2d6c0da; reconcile b331b94
+- ISS-015, ISS-017 resolved (fixed); ISS-016 started (awaits VH-1 live evidence)
+- CHR-008; DEC-014 through DEC-019; RV-008, RV-009, RV-010 (design), RV-011 (audit), RV-012 (code review); REV-002 (ADR-017 authority-ledger row 4 note)
+- backlog: ISS-018, ISS-019, IMP-022, IMP-023, IMP-024, CHR-009
 - research/research.md (runtime tier, gitignored)
 
 ### Learned
@@ -880,9 +882,13 @@ fresh-as-of: 2026-09-23 · PHASE-01..07 landed (7069160..82de4c5); audit RV-011 
 - mem.fact.satan.op-cache-has-no-invalidation
 - mem.pattern.doctrine.design-run-defects (extended: adopt_authored recipe; run-bound RV)
 - mem.fact.satan.run-prepare-present-with-nil (new, RV-012 F-4)
-- per-phase deviations and gotchas: the "PHASE-NN executed" entries above (phase sheets are runtime tier)
+- mem.fact.satan.perceive-consume-seam (corrected: per-mode streak)
+- per-phase deviations and gotchas: the "PHASE-NN executed" entries above
 
 ### Open
-- next: `/reconcile` against RV-011's Reconciliation Brief (design sec-4/5/6, selector add/rm, ADR-017 row 4 REV, REQ-003 stays pending, mem_eb8e5cff794c48bd86597f94fa50b0ac correction)
-- PHASE-08: keeper approval for push + `nix flake update satan` + home-switch, then VH-1 live check; PHASE-08 EX-2 files the backlog item for record before side effect (sway, inbox, proposal, patch)
-- test-suite production reach: ISS-008/ISS-009 (host guard), ISS-018, ISS-019
+- VH-1 / ISS-016: on the next degraded-sensor run, check the transcript for `<run-id>.ivNNN` `intervention.created`, `pre_spawn` `:dispatched_at`, notified.json `last_notified_at`; then resolve ISS-016
+- ISS-012 (turn-0 expired-key failures): not this slice's cause; motd ran `done` 2026-09-23 17:53
+- IMP-005: only the narrow part (class carried into the run record) landed
+- test-suite production reach: ISS-008/ISS-009, ISS-018, ISS-019
+- IMP-024 (record before side effect for sway, inbox, proposal, patch); REQ-003 stays pending until it lands
+- SL-018 builds on DEC-014, DEC-015 and DEC-019; the keeper wants close review of its OQ-1 and OQ-2

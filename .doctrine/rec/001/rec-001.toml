@@ -1,0 +1,40 @@
+id    = 1
+slug  = "accept-req-003"
+title = "accept REQ-003"
+# no status — a REC is the immutable record of ONE reconciliation act (SPEC-002
+# D-Q3): it has no lifecycle, so no status is stored. The act is the commit.
+
+[rec]
+move = "accept"              # accept | revise | redesign
+owning_slice = "SL-017"
+
+# status_deltas — the requirement-status facts THIS act already applied. May be
+# EMPTY for a `redesign`, which records the reconcile→design escalation, not an
+# instance-truth write (SPEC-002 F7/D7). The reconcile writer (Slice B) appends
+# them as `[[status_delta]]` tables; a fresh `rec new` writes none:
+#   [[status_delta]]
+#   requirement = "REQ-NNN"
+#   from = "pending"
+#   to   = "active"
+#
+# evidence_refs — the coverage entries this act rests on, cited by the stable
+# 4-tuple key (slice, requirement, contributing_change, mode), never a file#line:
+#   [[evidence_ref]]
+#   slice = "SL-NNN"
+#   requirement = "REQ-NNN"
+#   contributing_change = "SL-NNN"
+#   mode = "VT"
+
+# SL-017 close: REQ-003 stays `pending` — SL-017 records the notify path
+# before its emit (VT coverage below); sway / inbox / proposal / patch remain
+# (IMP-024). RV-011 F-11; REV-002 narrative.
+[[status_delta]]
+requirement = "REQ-003"
+from = "pending"
+to   = "pending"
+
+[[evidence_ref]]
+slice = "SL-017"
+requirement = "REQ-003"
+contributing_change = "SL-017"
+mode = "VT"
