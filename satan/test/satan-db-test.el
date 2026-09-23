@@ -177,6 +177,23 @@ the resolved host, not this literal.  Kept as a sentinel for test bodies.")
      (satan-db-resolve-host "/run/postgresql")
      :type 'error)))
 
+(ert-deftest satan-db/resolve-host-guard-fires-on-trailing-slash ()
+  "The guard compares canonical paths: `/run/postgresql/' is the same
+socket directory and is refused too (ISS-009)."
+  (skip-unless noninteractive)
+  (let ((satan-db-host-override "/run/postgresql/"))
+    (should-error (satan-db-resolve-host "/run/postgresql") :type 'error)))
+
+(ert-deftest satan-db/production-host-p ()
+  "Canonical comparison against the default host; TCP hosts never match."
+  (let ((satan-db-default-host "/run/postgresql"))
+    (should (satan-db-production-host-p "/run/postgresql"))
+    (should (satan-db-production-host-p "/run/postgresql/"))
+    (should (satan-db-production-host-p "/run/postgresql//"))
+    (should-not (satan-db-production-host-p "127.0.0.1"))
+    (should-not (satan-db-production-host-p "/tmp/other"))
+    (should-not (satan-db-production-host-p nil))))
+
 (ert-deftest satan-db/resolve-host-guard-passes-with-override ()
   "In batch with override set, the guard does not fire."
   (skip-unless noninteractive)
@@ -204,9 +221,11 @@ the resolved host, not this literal.  Kept as a sentinel for test bodies.")
     (should-not (satan-db-test-db-available-p "satan_memory_test"))))
 
 (ert-deftest satan-db/test-db-available-p-probes-test-host ()
-  "Predicate probes the test host and returns t when reachable."
-  (let ((satan-db-host-override "127.0.0.1"))
-    (should (satan-db-test-db-available-p "satan_memory_test"))))
+  "Predicate probes the configured test host (SATAN_DB_HOST, seeded into
+the override) and returns t when reachable.  `just test' requires the
+test DBs unless SATAN_TEST_ALLOW_NO_DB opts out."
+  (skip-unless (and noninteractive (not (getenv "SATAN_TEST_ALLOW_NO_DB"))))
+  (should (satan-db-test-db-available-p "satan_memory_test")))
 
 (ert-deftest satan-db/test-db-available-p-returns-nil-for-bad-host ()
   "Predicate returns nil for an unreachable host."

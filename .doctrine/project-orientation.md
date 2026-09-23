@@ -76,12 +76,16 @@ roots are literal `~` strings, so `expand-file-name` before `call-process`.
 ## Tooling & Development Workflow
 
 - Enter the Nix devshell (`nix develop` / direnv): provides Emacs, Python,
-  doctrine, Postgres env (`PGHOST`/`PGPORT`/`PGUSER`/`PGPASSWORD`).
-- `just check` — lint + test. `just lint` — paren check per file
-  (`bin/elisp-locate-paren-error`). `just test` — ert in `emacs --batch`,
-  interpreted, never byte-compiled.
-- `just db-setup` — create the test databases once per checkout. Without them
-  ~130 DB tests silently skip and the suite still reports green.
+  psql, supabase, doctrine.
+- Test DB: the local Supabase Postgres (127.0.0.1:54322). The justfile exports
+  `PG*` + `SATAN_DB_HOST` for it (override with `SATAN_TEST_PG*`); nothing
+  falls back to the system socket. One-time: `just db-start` (outside the
+  jail), then `just db-setup`.
+- `just check` — lint + test. `just lint` — paren balance only
+  (`bin/elisp-locate-paren-error`). `just test` — ert in `emacs --batch`
+  (interpreted, never byte-compiled) + Python harness unittests. Fails if a
+  test fails or a test DB is unreachable (`SATAN_TEST_ALLOW_NO_DB=1` opts out).
+- Run the suite serially: concurrent runs corrupt the shared test DBs (ISS-013).
 
 ## Further Reading
 

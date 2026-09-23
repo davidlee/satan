@@ -1,62 +1,42 @@
-# Verifying green in SATAN: five ways the suite reports a false result
+# Verifying green in SATAN: what `just check` does and doesn't prove
 
-`just check` will not run bare (needs SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB); `just lint` is paren balance only; ~130 tests skip-and-pass without the test DBs; the exit status is always 0 (ISS-008); and concurrent runs corrupt the shared test databases (ISS-013).
+## How the suite reaches a database (fixed 2026-09-23, ISS-008 + ISS-009)
 
-## The five traps
+- The justfile exports one test target to every recipe: `PGHOST=127.0.0.1`,
+  `PGPORT=54322`, `PGUSER`/`PGPASSWORD=postgres`, `SATAN_DB_HOST=$PGHOST` —
+  the local Supabase Postgres, same as the dev jail's `supabaseJailOptions`.
+  Override with `SATAN_TEST_PG{HOST,PORT,USER,PASSWORD}`.
+- Deliberately **not** in the devshell env: direnv applies it to Emacs buffers
+  and the broker merges `satan-direnv-dir`'s env into spawns, so a `PGPORT`
+  there could redirect the live broker.
+- `SATAN_DB_HOST` is a `psql -h` host (hostname or socket dir), **not** a
+  URL. Port/user/password come from `PG*`.
+- Setup: `just db-start` (outside the jail — `supabase start` fails inside),
+  then `just db-setup` (idempotent).
+- `just test` refuses (exit 1) if any test DB is unreachable;
+  `SATAN_TEST_ALLOW_NO_DB=1` opts out (~142 DB tests then skip).
+- The production-host guard (`satan-db-production-host-p`) compares canonical
+  paths, so `/run/postgresql/` or `/var/run/postgresql` no longer slip past.
+  The old invocation `SATAN_DB_HOST=/run/postgresql/ just check` is dead.
+- Exit status is real: `satan-test-run-batch-and-exit` exits 1 unless PASS.
 
-1. **`just check` will not run bare.** The test step exits 255 with:
+Baseline (2026-09-23): `just check` → 1091 ran, 1085 expected, 0 unexpected,
+6 skipped (3 grammar drift = ISS-007, jail integration, 2 patch); 54 Python
+harness tests OK.
 
-   ```
-   satan-test: refusing to run batch tests against production socket;
-   set SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB
-   ```
+## Remaining traps
 
-   The devshell sets neither. `SATAN_DB_HOST` appears only at `flake.nix:85`,
-   inside `supabaseJailOptions` — so it reaches jailed processes, not your
-   shell. Set one of the two explicitly.
+1. **`just lint` is not a linter** — paren balance only, no byte-compile. It
+   can't see a missing `require`, `void-function`, or unused binding.
+2. **Two runs at once corrupt each other** (ISS-013): fixed DB names, each
+   suite `reset-and-migrate`s at setup, no lock. Run serially.
+3. **Some tests reach for production DB names** (ISS-007 grammar drift,
+   ISS-019 outcome inbox). On the test host those DBs don't exist, so they
+   log `database "satan_memory" does not exist` noise rather than touching
+   real data — against the system socket they would hit production.
+4. **Tests run interpreted** (project governance), so load-time defects that
+   byte-compilation would catch surface only in a fresh interactive Emacs.
 
-2. **`just lint` is not a linter.** `justfile:3-8` runs only
-   `bin/elisp-locate-paren-error` per file — paren balance, no byte-compile.
-   It cannot see a missing `(require ...)`, a `void-function`, an unused
-   binding, or any other load-time or semantic breakage. "Zero warnings" from
-   `just lint` means "the parens close".
-
-3. **Green can be empty.** `justfile:18-20` warns that without the test
-   databases roughly 130 tests `skip-unless` out and the run still reports
-   success.
-
-4. **The exit status is a constant.** `satan-test-run-batch` calls
-   `ert-run-tests-batch`, not `…-and-exit`, and `emacs --batch --eval`
-   discards the return value, so the recipe exits **0** with any number of
-   failures. `set -euo pipefail` never sees a non-zero. Never trust `$?` —
-   grep stdout for `unexpected`. Filed **ISS-008**.
-
-5. **Two runs at once corrupt each other.** The DB suites target fixed
-   database names by defconst (`satan_memory_test`, `trace_test`,
-   `patch_live_test`) and each runs `reset-and-migrate` at setup. No
-   namespacing, no lock. Overlapping invocations produce phantom failures —
-   observed 14, all `satan-memory-store/*` and `satan-memory-renormalize/*`,
-   with `duplicate key … (typname)=(schema_migrations)` and
-   `relation "satan_interventions" does not exist`. A serial re-run of the
-   same command was clean. Filed **ISS-013**. Run the suite serially; if you
-   backgrounded one, wait for it.
-
-## Consequence
-
-A load-time defect — the classic being a module that references
-`satan-custom.el`'s roots without requiring it — passes lint, and passes the
-suite too if the DB env is missing enough tests. It then fails only in a fresh
-interactive Emacs.
-
-So: any plan gate, phase criterion, or PR claim of the form "`just check`
-green" must name the invocation it was green under **and the counts it saw**.
-The working invocation on this machine is `SATAN_DB_HOST=/run/postgresql/ just
-check` (1044 ran / 1040 expected / 1 unexpected / 3 skipped; the one unexpected
-is the environment-dependent `satan-db/test-db-available-p-probes-test-host`).
-The trailing slash is what slips past the production-socket guard, which is
-itself a defect — **ISS-009** — so fixing that guard invalidates this
-invocation; they move together. Tests run interpreted via
-`emacs --batch`, never byte-compiled (project governance), which removes the
-other channel that would have caught it.
+So a claim of "`just check` green" should still name the counts it saw.
 
 Related: [[mem.signpost.satan.orientation]].

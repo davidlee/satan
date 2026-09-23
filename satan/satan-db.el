@@ -52,16 +52,30 @@ redirect the live broker's production traffic.")
 ;; host resolution — the single routing point for every psql/connection spawn
 ;; ---------------------------------------------------------------------
 
+(defun satan-db--canonical-host (host)
+  "HOST with a socket-directory path canonicalised; a TCP host unchanged.
+Trailing slashes and symlinks (`/var/run' -> `/run') name the same
+socket directory to libpq, so they must compare equal here (ISS-009)."
+  (if (file-name-absolute-p host)
+      (directory-file-name (file-truename (expand-file-name host)))
+    host))
+
+(defun satan-db-production-host-p (host)
+  "Non-nil when HOST names the production host, `satan-db-default-host'."
+  (and host
+       (equal (satan-db--canonical-host host)
+              (satan-db--canonical-host satan-db-default-host))))
+
 (defun satan-db-resolve-host (host)
   "Effective psql host: the override carrier wins over HOST.
-Refuses the production socket in batch unless SATAN_FAILOVER_TO_SYSTEM_DB
+Refuses the production host in batch unless SATAN_FAILOVER_TO_SYSTEM_DB
 is set.  Every psql/connection spawn — chokepoint or not — routes its
 host through this so the test redirect is universal."
   (let ((h (or satan-db-host-override host)))
     (when (and noninteractive
-            (equal h "/run/postgresql")
+            (satan-db-production-host-p h)
             (not (getenv "SATAN_FAILOVER_TO_SYSTEM_DB")))
-      (error "satan-db: refusing production socket \"/run/postgresql\" in batch; set SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB"))
+      (error "satan-db: refusing production host %S in batch; set SATAN_DB_HOST to a test host or SATAN_FAILOVER_TO_SYSTEM_DB" h))
     h))
 
 (defun satan-db-database-url (db &optional host)
@@ -193,7 +207,7 @@ In batch without SATAN_DB_HOST, the guard inside satan-db-resolve-host
 errors before we ever reach psql."
   (let ((host (satan-db-resolve-host "/run/postgresql")))
     (cond
-     ((equal host "/run/postgresql")
+     ((satan-db-production-host-p host)
       nil)               ; skip — never touch prod (interactive path)
      (t
       (eq 'ok (car (satan-db-psql

@@ -33,6 +33,7 @@
 
 (require 'ert)
 (require 'satan-announce)
+(require 'satan-db)
 
 (defconst satan-test--repo-root
   (file-name-directory
@@ -69,14 +70,18 @@ with \"test-\".")
 Clears previously-defined tests first so only freshly-loaded files
 run.  DB-backed tests `skip-unless' their test database is reachable.
 
-In batch mode without SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB,
-errors loudly before loading any test files — never touches the
-production database from a test run."
-  ;; Pre-flight: refuse to run batch tests against the production socket.
-  (when (and noninteractive
-             (not (getenv "SATAN_DB_HOST"))
-             (not (getenv "SATAN_FAILOVER_TO_SYSTEM_DB")))
-    (error "satan-test: refusing to run batch tests against production socket; set SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB"))
+In batch mode, unless SATAN_FAILOVER_TO_SYSTEM_DB is set, errors
+loudly before loading any test files when SATAN_DB_HOST is unset or
+names the production host (in any spelling: see
+`satan-db-production-host-p') — never touches the production database
+from a test run."
+  ;; Pre-flight: refuse to run batch tests against the production host.
+  (let ((host (getenv "SATAN_DB_HOST")))
+    (when (and noninteractive
+               (not (getenv "SATAN_FAILOVER_TO_SYSTEM_DB"))
+               (or (null host) (string-empty-p host)
+                   (satan-db-production-host-p host)))
+      (error "satan-test: refusing to run batch tests against the production host; set SATAN_DB_HOST to a test host (see justfile) or SATAN_FAILOVER_TO_SYSTEM_DB")))
   (ert-delete-all-tests)
   ;; Hermeticity floor (design.md sec-2): the whole load-and-run happens
   ;; under the recording sink, so nothing any test forgets to stub can

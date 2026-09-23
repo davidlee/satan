@@ -4,10 +4,10 @@ schema_version = 1
 lifespan = "semantic"
 memory_type = "fact"
 status = "active"
-title = "Verifying green in SATAN: five ways the suite reports a false result"
-summary = "`just check` will not run bare (needs SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB); `just lint` is paren balance only; ~130 tests skip-and-pass without the test DBs; the exit status is always 0 (ISS-008); and concurrent runs corrupt the shared test databases (ISS-013)."
+title = "Verifying green in SATAN: what just check does and doesn't prove"
+summary = "just check targets the local Supabase test DB (justfile exports PG*/SATAN_DB_HOST) and fails if a test DB is unreachable or a test fails; just lint is paren balance only; concurrent runs corrupt the shared test DBs (ISS-013); a few tests still reach for production DB names (ISS-007, ISS-019)."
 created = "2026-08-24"
-updated = "2026-09-17"
+updated = "2026-09-23"
 
 [scope]
 paths = ["justfile", "flake.nix"]
