@@ -77,7 +77,6 @@ fresh-as-of: 2026-09-23 · design reviewing (dr-01a0cc0b, rev 34) · RV-009 disp
 - ISS-017 — split from ISS-012 (loudness half)
 - ISS-016 — root cause corrected (two tool-ctx builders)
 - CHR-008 — stale `.doctrine/governance.md:15` gate claim
-
 - DEC-014 through DEC-019 (DEC-015 to DEC-019 amended after RV-009); RV-008 (auto-opened by the run); RV-009 (adversarial pass, 14 findings)
 - research/research.md (runtime tier, gitignored)
 
