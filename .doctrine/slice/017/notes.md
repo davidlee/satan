@@ -834,6 +834,33 @@ judgement). In-tree, no worktree isolation.
   `satan-run.el` changes, no new require (I8); journal lines are ASCII
   (asserted directly in `announce-journals-every-failure-ascii`).
 
+## PHASE-08 deploy and live evidence (2026-09-23) — in progress
+
+- **EX-1 met.** origin/main and ~/flakes `flake.lock` `satan` both at
+  b331b94 (contains d0054cf harness + 2d6c0da audit fixes). Keeper pushed,
+  flake-updated (after adding `satan` to the flakes `update_local` recipe) and
+  home-switched. emacs.service restarted 17:51; live Emacs loads SATAN from
+  `~/dev/satan/satan/` (working tree), confirmed by `fboundp` on
+  `satan-intervention-project-with-verdict` / `satan-broker--failure-streak`
+  (t) and `satan-broker--failure-streak-count` (nil).
+- **EX-2 met.** IMP-024 filed (466265d), related to REQ-003 and ISS-016.
+- **ISS-012 evidence.** `systemctl --user start satan-motd.service` at 17:53 →
+  run 20260923T175332-motd-b05ebc ended `done` (earlier motd runs today were
+  `.FAILED`).
+- **VH-1 pending.** That run's sensors were all `ok`, so no alert fired
+  (`pre_spawn` null; notified.json unchanged — `panopticon_current_stale`
+  still has only `last_evaluated_at` 08:30, the pre-fix ISS-016 symptom). Needs
+  the next degraded-sensor run: check its transcript for a `<run-id>.ivNNN`
+  `intervention.created`, `pre_spawn` `:dispatched_at`, and notified.json
+  `last_notified_at`.
+- **VH-2 evidence (synthetic runs, live seam).** In the live Emacs, 5 failed
+  `vh2-scratch` runs (reason `server`) written one at a time into a temp
+  `satan-runs-dir`, `satan-broker--announce-failure` after each, real sink.
+  `journalctl --user -t satan`: `x1`, then `x2 … x5 since
+  20260923T180000-vh2-scratch-000000`. Live `--announce-due-p` for positions
+  1..5: t t nil t nil (quiet nil, notify t), i.e. pops at 1, 2, 4 only. The
+  script ran twice by mistake (duplicate journal sequence, temp dirs only).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · PHASE-01..07 landed (7069160..82de4c5); audit RV-011 done, code review RV-012 done; audit fixes 417a831, 2d6c0da · slice status reconcile
