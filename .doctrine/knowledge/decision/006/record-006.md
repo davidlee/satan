@@ -55,3 +55,17 @@ has any business changing. That is scope creep dressed as a safety control.
 
 The contained solution is a **goad-specific emission window** owned by the ask
 path, which stops the doorbell without touching global scheduling.
+
+
+## Amendment, 2026-09-23 — two drift corrections
+
+1. **Precondition.** SL-018's locked design gives `tick-*` modes credential
+   policy `defer`: no credential session, no child process. The autonomous
+   producer therefore asks only when an unattended run can authenticate (ISS-012
+   decides until SL-018 lands). Construction and verification do not depend on
+   it; enablement does.
+2. **The emission window reuses the quiet-hours predicate.**
+   `satan-tick-quiet-p` now has three consumers (tick, sensor alerts, failure
+   announcements). Rather than a parallel predicate, it gains an optional
+   window argument defaulting to `satan-tick-quiet-hours`; the ask passes
+   `satan-goad-quiet-hours`. Design sec-7 carries both.

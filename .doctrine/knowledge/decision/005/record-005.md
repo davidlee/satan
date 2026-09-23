@@ -41,3 +41,16 @@ fixtures and no check recipe:
 Together these carry [[DEC-013]]'s reframe. The projection-and-record split is
 unchanged; the work to make the record say what the slice needs is real and
 belongs in the plan as its own phase, fixtures first.
+
+
+## Amendment, 2026-09-23 — record and row are now two things
+
+SL-017 `DEC-018` split the intervention write: `satan-intervention-record`
+appends `intervention.created` to the run's transcript (canonical, no
+database), `satan-intervention-project` writes the Postgres row. The ask's
+durable identity is the transcript record; the row is its projection. The
+queue still regenerates from the **rows**, deliberately: the observer scores
+only what `satan-intervention-pending` returns from Postgres, so a row-less ask
+must not be asked. The ask handler records, projects, then rewrites the queue;
+a failed projection or rewrite leaves the `undelivered` auto-verdict notify
+already uses. Design sec-3 and sec-6 carry this.

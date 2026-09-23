@@ -11,6 +11,17 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ### Produced
 
+- **Drift revision, 2026-09-23** (run revision 37, materialised 38), against
+  HEAD `1fbdc67` — 55 commits after the RV-007 rebuild. SL-017's record/project
+  split (ask records → projects → rewrites queue; `undelivered` verdict on
+  failure, writer moved to `satan-intervention.el`); a kind-`"ask"` branch in
+  `classify-negative` so non-engagement has a writer (the rebuild named none —
+  it fell through to the focus path); quiet window via `satan-tick-quiet-p`
+  window arg; SL-018 `defer` gates producer enablement. Amendments appended to
+  `DEC-005`, `DEC-006`, `DEC-013`. goad advanced 28 commits (slice 010, exit
+  codes) — no ingress or backend-contract change. All ten sections now
+  outstanding review; RV-007 awaits its raiser.
+
 - **design.md** — ten sections, 816 lines, materialised from the run's runtime
   sections. Committed.
 - **Eleven durable records.** `DEC-004` PERCEIVE route (forced, not a

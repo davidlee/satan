@@ -23,18 +23,18 @@ no authority item and adds no ledger row — §8.
 ## The shape
 
 ```
-   ~/satan/goad/  (corpus repo)              ~/dev/satan/  (mechanism repo)
+   goad's files                              ~/dev/satan/  (mechanism repo)
  +------------------------------+
- | queue.json  (SATAN-authored) |<-(2) PROMPT---- ask tool (consume phase)
- |   a projection, not a record |                  emits kind "ask"
+ | queue.json     (state root)  |<-(2) PROMPT---- ask tool (consume phase)
+ |   a projection, not a record |                  records kind "ask"
  |   ALSO: the canon trigger    |--(1) PERCEIVE--> evidence assembler
  +------------------------------+                       |
- | data/YYYY-MM-DD.json         |--------------->  canon rule --> handles
+ | data/YYYY-MM-DD.json (corpus)|--------------->  canon rule --> handles
  |   presented_at . value . at  |                       |
  |   deferral provenance        |                  the answer, and
  |   intervention_id            |                  non-engagement
  +------------------------------+
- | backend.py  merges, prioritises, stamps, persists  |
+ | backend.py (corpus)  merges, prioritises, stamps, persists |
  +------------------------------+
         ^ evaluate / respond
    +----+-----+
@@ -43,8 +43,9 @@ no authority item and adds no ledger row — §8.
 ```
 
 Three capabilities, each independently useful. **No goad host change** — the
-queue lives backend-side, which is what preserves that, and is goad's own
-architectural review question #1.
+queue is read backend-side, which is what preserves that, and is goad's own
+architectural review question #1. The queue file sits under SATAN's state root
+(§4); the day record and `backend.py` are corpus-tracked.
 
 The **queue file is the perceptual trigger** as well as the delivery channel: it
 exists exactly when SATAN has something outstanding. Keying the canon rule on the
@@ -91,11 +92,11 @@ never called** (`:587-599`).
 
 ## What does not work
 
-`satan-intervention-create` accepts `:cue-handles`, persists it to
-`cue_handles_json`, and **no production call site passes it**. That looks like
+`satan-intervention-record` accepts `:cue-handles`, and its projection persists
+it to `cue_handles_json`; **no production call site passes it**. That looks like
 the hook the correlator forgot to use. It is not: the correlator reads
 `bundle.json` and never the column. `cue_handles` feeds
-`satan-intervention--counter-memory-handles` (`:518-532`) — the resonance path.
+`satan-intervention--counter-memory-handles` (`satan-intervention.el:597`) — the resonance path.
 Worth passing for auditability; it will never make an ask correlate.
 
 ## SATAN may only ask about what it already perceives
@@ -122,9 +123,9 @@ grounds to ask.
 
 ```
 satan-percept-build --> percept :handles
-     |-> run ctx :percept-handles        (satan-run.el:250)
+     |-> tool ctx :percept-handles       (satan-run-tool-ctx, satan-run.el:334)
      |      |-> the ask tool reads it here, at emit
-     |      +-> satan-intervention-create reads it here  (:386)
+     |      +-> satan-intervention-record reads it here  (satan-intervention.el:396)
      +-> bundle.json :percept :handles
             +-> the correlator reads it here, at maturity
 ```
@@ -135,7 +136,7 @@ ask whose refusal cannot be perceived.
 
 **Prohibited in interactive MCP** ([[RV-007]] F-12). Interactive sessions mint a
 synthetic bundle with no percept and freeze tool context immediately
-(`satan/satan-mcp.el:154,177,197`), so `:percept-handles` is nil there and the
+(`satan/satan-mcp.el:155-197`), so `:percept-handles` is nil there and the
 maturity bundle has no percept either. The tool refuses in that mode. Repairing
 MCP run-state coherence is a separate concern and goes to the backlog.
 
@@ -267,9 +268,10 @@ One `satan-tool-register` spec: `:name`, `:risk`, `:capability`, `:args-schema`,
 1. resolves the correlating motive on the **question's subject handle** (§2) and
    **fails closed** if none, recording the suppression;
 2. refuses outright in interactive MCP mode ([[RV-007]] F-12);
-3. emits an intervention of the reserved kind `"ask"`, passing
-   `:related-motive-id` and `:cue-handles`;
-4. rewrites the queue projection whole.
+3. **records** the intervention of the reserved kind `"ask"` —
+   `satan-intervention-record`, passing `:related-motive-id` and `:cue-handles`;
+4. **projects** it — `satan-intervention-project`;
+5. rewrites the queue projection whole, from the open rows.
 
 `"ask"` is already in the closed intervention-kind set in all three registries
 (`satan-memory-grammar.el:72`, `satan-audit.el:233`,
@@ -277,19 +279,57 @@ One `satan-tool-register` spec: `:name`, `:risk`, `:capability`, `:args-schema`,
 closed set is touched. Emission is an enactment and must appear in the transcript
 (SPEC-001 REQ-003).
 
+## Record, project, then ask
+
+SL-017 split the intervention write in two (`DEC-018`, `satan-intervention.el`
+header): a **record** half that appends to the run's transcript — the canonical
+record, no database — and a **project** half that writes the Postgres row.
+`notify_send` established the discipline for an emitter whose side effect must
+be recorded first: record, act, project (`satan-tool/notify-send`).
+
+The ask follows the record-first rule but projects **before** it acts, and the
+difference is deliberate. `satan-intervention-pending` — the observer's only
+source of work — reads Postgres. An ask with no row is never classified, so
+showing it spends the keeper's attention and learns nothing. Notify's invariant
+is *a Postgres outage never suppresses the act*; the ask's is **the queue holds
+exactly the asks the observer will score**.
+
+```
+record (transcript) ──► project (row) ──► rewrite queue.json from open rows
+      │                      │ fails                  │ fails
+      ▼ fails                ▼                        ▼
+  nothing asked      undelivered verdict,     undelivered verdict,
+  (error)            recorded only            recorded and projected
+```
+
+Both failure arms reuse notify's existing verdict for *recorded but never seen*:
+`unknown` / `high` / `mature` / `auto`, noted `undelivered: ERR`. Today that
+lives as `satan-tools-notify--mark-undelivered`; it moves to
+`satan-intervention.el` as a shared writer rather than being cloned. On the
+project-failed arm the verdict is recorded only — the database is down — and
+`satan-rebuild-interventions` later replays record and verdict together, so the
+rebuilt row is never mistaken for pending. A verdict row also removes the
+intervention from `satan-intervention-pending` at once, so an undelivered ask
+never matures into a false `:ignored`.
+
 ## The queue is a projection
 
-A question's durable identity is its intervention row ([[DEC-005]]). The queue
-file is a **disposable projection** of the open asks, so it belongs under
+A question's durable identity is its intervention record ([[DEC-005]]) — the
+transcript line, with the Postgres row as its projection. The queue file is a
+**disposable projection** of the open rows, so it belongs under
 `satan-state-path`, whose *"discardable"* contract is then exactly right.
+Regenerating it from rows rather than transcripts is correct, not a shortcut: a
+row-less ask is one the observer cannot score, and by the invariant above it
+should not be asked.
 
 One file, rewritten whole and atomically ([[DEC-010]]) — and rewritten at **two**
 triggers, not one. The first design specified only the ask handler, but the
 observer retires rows independently at classification
-(`satan/satan-observer.el:424`), so a matured ask kept its queue entry until some
-later ask happened to rewrite the file, and the backend kept re-presenting it
-([[RV-007]] F-11). The rewrite therefore also fires at classification. That is
-what makes the regenerability property [[DEC-005]] leans on actually hold.
+(`satan-observer-persist-verdict`, `satan/satan-observer.el:413`), so a matured
+ask kept its queue entry until some later ask happened to rewrite the file, and
+the backend kept re-presenting it ([[RV-007]] F-11). The rewrite therefore also
+fires at classification. That is what makes the regenerability property
+[[DEC-005]] leans on actually hold.
 
 ## What `backend.py` must become
 
@@ -417,25 +457,31 @@ independent anchors, so a refusal is an edge case. **No retry machinery**:
 This is also why the doorbell can ship last, or not at all in v1 — it optimises
 latency over a queue that already works.
 
+A failed ring is recorded in the transcript by `satan-trace-call` already. If it
+is ever also journalled, that goes through `satan-announce :journal` — the one
+seam for SATAN's journal lines and pops since SL-017 (`satan/satan-announce.el`)
+— never a fresh `logger` call.
+
 <!-- doctrine:section sec-5 -->
 # The loop — the answer, and the silence
 
-The positive leg is an observer predicate. The negative leg is **not** the
-observer's ack-event path, and getting that wrong is what a 19-finding review
-cost.
+The positive leg is an observer predicate. The negative leg is a kind-specific
+branch of the observer's negative path that reads the same record — **not** the
+ack-event path over focus telemetry, and getting that wrong is what a 19-finding
+review cost.
 
 ```
-  ask emitted --> queue.json --> backend prioritises --> goad renders
-                                                            |
-                                            backend writes presented_at
-                                                            |
-              +---------------------------+----------------+-----------------+
-          answered                   Later (explicit)                  nothing,
-       value + at + iv_id        deferred_at + provenance            slot elapsed
-              |                            |                              |
-              v                            v                              v
-      predicate fires                 engaged, unanswered          NON-ENGAGEMENT
-         :worked                          :unknown                 <-- THE KEYSTONE
+  ask recorded --> queue.json --> backend prioritises --> goad renders?
+                                                              |
+                          +------------- no ------------------+-- yes: presented_at
+                          |                                   |
+                  never presented          +------------------+------------------+
+                          |            answered         Later (explicit)    Enough, or nothing
+                          |         value + at + iv_id   deferred_at +      by maturity
+                          |                |             provenance              |
+                          v                v                  v                  v
+                  :unknown :high    predicate fires    :unknown :low      :ignored :medium
+                   "undelivered"       :worked        engaged, postponed  <-- THE KEYSTONE
 ```
 
 Every branch is a fact in one file, written by the process that asked the
@@ -463,7 +509,7 @@ the rule: *"Auto kinds (worked/neutral/ignored/unknown) belong to the auto
 classifier and must not reach here."* Using it for success would amend an
 invariant that exists to keep the two apart and touch authority-ledger row 4.
 
-## Why the negative leg is not the observer's
+## Why the negative leg is not focus telemetry
 
 **[[RV-007]] F-2, F-3, F-17.** The original narrowed `--count-ack-events` by
 target surface so `:ignored` would mean *ignoring* rather than *absent*. Four
@@ -475,8 +521,9 @@ things were wrong underneath it:
    (`satan-observer-classify.el:271-277`). `(eq 'ok "ok")` is nil. So
    `--count-ack-events` **never runs**, the `:unknown` branch is unreachable, and
    every user-facing intervention firing no predicate classifies `:ignored :low`
-   unconditionally. Raised as [[ISS-014]] — a live bug, no longer this slice's
-   prerequisite.
+   unconditionally. Raised as [[ISS-014]] and fixed separately. Neither state
+   of that fix may decide an ask's verdict: broken, it reports every ask
+   ignored; fixed, it puts the keystone back on focus telemetry.
 2. **The boundary excludes presence.** Ack-events count only segments whose
    `start_ts` is strictly after the emit (`:279`), so a keeper continuously
    focused from before it counts as absent.
@@ -492,9 +539,32 @@ surfaces, against a possible self-focus artefact, is not a design.
 
 ## The negative leg, as it now stands
 
-Non-engagement is **presented, not answered, not deferred, slot elapsed** — all
-four facts in the day record and the queue. It needs no panopticon, no compositor
-behaviour, no retention policy, and no fix to [[ISS-014]].
+Non-engagement is **presented, not answered, not explicitly deferred, window
+elapsed** — facts in the day record, read at maturity (the observer runs only
+once the outcome window has passed, so *elapsed* is given).
+
+The mechanism is one branch in `satan-observer-classify-negative`
+(`satan/satan-observer-classify.el:292`), dispatched on kind `"ask"` **before**
+the user-facing focus path, reading the goad record out of `after` exactly as
+the positive predicate does. Precedence, first match wins:
+
+| the record, for this `intervention_id` | verdict | evidence |
+|---|---|---|
+| no `presented_at` | `:unknown :high` | `undelivered` — delivery unproven, never the keeper's silence |
+| `deferred_at` with `later` provenance | `:unknown :low` | `deferred` — engaged, postponed |
+| presented, then bulk `enough` | `:ignored :medium` | `dismissed` — saw it and refused the slot |
+| presented, nothing else | `:ignored :medium` | `untouched` — **the keystone** |
+
+The `undelivered` row uses the vocabulary `notify_send` already writes for a
+recorded-but-unseen intervention (§4), so the two tools agree on what *never
+delivered* means. A `dismissed` ask is a refusal the keeper made with the
+question in front of them, which RFC-016 counts as disengagement; `enough`
+reaches only questions *not* presented through the first row.
+
+The branch keeps `satan-observer--assert-auto-classification` satisfied — every
+verdict it returns is an auto kind. It needs no panopticon, no compositor
+behaviour, no retention policy, and is indifferent to [[ISS-014]]. Every other
+kind keeps the focus path unchanged.
 
 It is also a *truer* claim. Absence of a focus segment was only ever a proxy for
 disengagement; a presented question left untouched past its slot **is**
@@ -524,7 +594,7 @@ anti-candidate clause (*tiny single-file state stays*) appear to conflict here,
 and ADR-018 VA-4 is checked at design review. [[DEC-005]] dissolves it rather
 than adjudicating: the state SL-016 appeared to need already exists.
 
-An ask **is** an intervention. `satan-intervention-create` already persists
+An ask **is** an intervention. `satan-intervention-record` already records
 `intervention_id`, `run_id`, `ts`, `mode`, `kind`, `message`,
 `related_motive_id`, `cue_handles`, `percept_handles`, `expected_outcome`,
 `outcome_window_minutes`, `severity`. So D5 is **satisfied, not waived**, and
@@ -532,8 +602,9 @@ POL-001's clause is never engaged — the two authorities do not meet.
 
 | tier | holds | where | on loss |
 |---|---|---|---|
-| record | the ask, as an intervention row | `satan_memory` (Postgres) | the question is gone |
-| projection | the open asks, for `backend.py` | `satan-state-path` | regenerate from the rows |
+| record | the ask, as `intervention.created` | the run's `transcript.jsonl` | the question is gone |
+| row | its projection, what the observer scores | `satan_memory` (Postgres) | `satan-rebuild-interventions` |
+| queue | the open rows, for `backend.py` | `satan-state-path` | regenerate from the rows |
 | answer | what happened to each question | goad's `data/*.json` | goad's concern, corpus-tracked |
 
 What the reframe changes is not this split but **how much the third tier has to
@@ -586,8 +657,9 @@ substrate already.
 design said the answer *"becomes a memory trace ... written under tick-pulse's
 existing `memory-write` capability"*. Both halves were wrong: the observer's
 trace records intervention id, motive id, predicates, classification and
-confidence (`satan/satan-observer.el:131,141`) — **not** the question or the
-submitted value — and it writes via `satan-memory-store-mark` directly (`:149`),
+confidence (`satan-observer--persist-positive`, `satan/satan-observer.el:110`) —
+**not** the question or the submitted value — and it writes via
+`satan-memory-store-mark` directly,
 not through a capability-gated tool. So the answer trace is designed, with the
 question and value in it, on a stated path. If it is not worth its cost, dropping
 the third landing place is the honest alternative — a decision, not an omission.
@@ -600,7 +672,7 @@ enactment so SPEC-001 REQ-003 does not reach it.
 
 **Not a sensor alert** ([[RV-007]] F-8). Alerts are derived **pre-spawn** from a
 closed sensor-status table covering only current-window, focus and browser faults
-(`satan/satan-sensor-alerts.el:102,322`). Suppression happens later, inside a
+(`satan/satan-sensor-alerts.el:102,311`). Suppression happens later, inside a
 tool handler. There is no enqueue API and no status source; the first design
 asserted a mechanism that does not exist.
 
@@ -632,10 +704,12 @@ Two triggers would flip that, and the design avoids both by construction:
 
 1. **goad gating an enactment** — §1 assigns that to Emacs permanently; an ADR
    amendment, not a slice decision.
-2. **goad answers writing outcomes by any path other than the existing writer** —
-   that touches ledger row 4 (append-only audit), already flagged as a latent
-   dual-write hazard. §6 routes the positive leg through a predicate and writes
-   no outcome directly.
+2. **goad answers writing outcomes by a new path** — that touches ledger row 4
+   (append-only audit), already flagged as a latent dual-write hazard. Both
+   legs are observer verdicts (§6), and the only other outcome this slice
+   writes — `undelivered` at emit (§4) — goes through the auto-verdict writer
+   `notify_send` already uses, accepted with SL-017 under REV-002 (ADR-017
+   row 4 note). The slice moves that writer to a shared home; it adds no path.
 
 **Elicit-only exempts the new tools from the *authority* question, not the
 *protocol* one** (ADR-017 §2). The ask and the doorbell are enactments and
@@ -692,7 +766,16 @@ reading "not written" when both landed.
 
 ## Autonomy, and the window it needs
 
-The autonomous producer ships in v1 ([[DEC-006]]). Research delta 9 reported
+The autonomous producer ships in v1 ([[DEC-006]]), with a precondition it
+does not own. SL-018's locked design gives `tick-*` modes the credential policy
+`defer`: with no credential session a tick records `credential_deferred` and
+spawns nothing, escalating to a prompt only after a streak (default 4h,
+`.doctrine/slice/018/design.md` sec-4). Until SL-018 lands, ISS-012's expired
+key decides instead. Either way SATAN asks unprompted **only when an unattended
+run can authenticate** — which, under `defer`, loosely tracks the keeper having
+unlocked the vault. The slice builds and verifies without it: every
+verification item drives the tool directly. Enabling the producer in anger
+waits on SL-018. Research delta 9 reported
 `tick-pulse` holds neither `notify` nor `inbox-write`, citing
 `satan-mode.el:146-154` — which is `self-edit-mech`'s spec. `tick-pulse` is
 registered at `satan/satan-tick.el:95` from the `satan-tick-register` defaults
@@ -715,10 +798,18 @@ window, and a slice that answers RFC-016 by earning the right to interrupt and
 then interrupts at 3am spends the attention it was built to conserve.
 
 But restoring the **global** switch was the wrong remedy. `satan-tick-quiet-p` is
-consulted by `satan-tick` **before any mode is selected** (`satan-tick.el:124`),
+consulted by `satan-tick` **before any mode is selected** (`satan-tick.el:129`),
 so it would suppress overnight observer processing, memory work and inbox work —
 none of which this slice has any business changing. The window belongs to the ask
 path.
+
+It does not get a predicate of its own. `satan-tick-quiet-p` now has three
+consumers — the tick, sensor alerts (`satan-sensor-alerts.el:331`) and failure
+announcements (`satan-broker--quiet-p`) — each reading the one global
+defcustom. The ask path calls the same predicate with **its own window**:
+`satan-tick-quiet-p` gains an optional window argument defaulting to
+`satan-tick-quiet-hours`, and the ask passes `satan-goad-quiet-hours`. One
+predicate, two windows, no parallel implementation.
 
 <!-- doctrine:section sec-8 -->
 # Verification
@@ -729,19 +820,23 @@ path.
 |---|---|---|
 | 1 | SATAN emits an `"ask"`, it takes priority in `pending()`, and goad renders it without a host change | VT |
 | 2 | the keeper answers; the answer is readable and **attributable to the originating intervention** via the option id, and **survives `save()`** | VT — [[ASM-001]]'s round trip |
-| 3 | a presented, unanswered, undeferred ask **with the keeper present** is recorded as non-engagement once its slot elapses | VT — the keystone |
-| 4 | an explicit `Later` is distinguishable in the record from a bulk `Enough` | VT — without it, item 3 cannot be read |
+| 3 | a presented ask left untouched, or dismissed by a bulk `Enough`, classifies `:ignored :medium` at maturity through the `"ask"` branch, whichever way the ack gate reads | VT — the keystone |
+| 4 | an explicit `Later` is distinguishable in the record from a bulk `Enough`, and classifies `:unknown :low` | VT — without it, item 3 cannot be read |
 | 5 | a refused or failed `goad-emit` loses nothing: the question is still asked at the next poll | VT |
 | 6 | an ask with no correlating motive is suppressed, and the suppression is perceptible as an attribute | VT |
 | 7 | a matured `:no_correlation` is likewise perceptible | VT |
 | 8 | the queue projection regenerates totally from the open intervention rows, and retires an entry at classification | VT |
 | 9 | `goad_ask` refuses in interactive MCP mode | VT |
 | ~~10~~ | ~~sensor watermark advance, seeded with a source-format watermark~~ | **moot** — no probe, no watermark |
+| 11 | an ask whose projection or queue rewrite fails carries the `undelivered` verdict, never enters `satan-intervention-pending`, and survives `satan-rebuild-interventions` with its verdict | VT |
+| 12 | an ask never presented matures `:unknown :high` `undelivered`, not `:ignored` | VT |
 
 ## What the reframe bought, tested
 
 Item 3 is the RFC-016 D3 keystone and it is now testable **without a compositor
-fixture, without panopticon, and without fixing [[ISS-014]]**. Present an ask,
+fixture, without panopticon, and independently of [[ISS-014]]** — the test runs
+it with the ack gate reading both checked and unchecked, proving the branch
+dispatches first. Present an ask,
 touch nothing, let the slot pass, read the record. Under the original design it
 required a keeper physically absent from the machine, which is not disengagement,
 and rested on an ack gate that never opens.
@@ -749,7 +844,9 @@ and rested on an ack gate that never opens.
 Items 4, 6, 7 and 9 are new, each the consequence of a finding: the record could
 not express deferral provenance (F-19), suppression had no mechanism (F-8),
 the correlation loop can break after emit (F-4), and interactive mode has no
-percept (F-12).
+percept (F-12). Items 11 and 12 hold the rule that a delivery failure is never
+recorded as the keeper's silence — the F-1 lesson, applied to emit and to
+maturity.
 
 ## The outcome window, stated
 
@@ -777,7 +874,7 @@ functions to prove purity (ADR-001 on the perceive leg).
 changes live there.
 
 **A fixture must not build the value under test.** [[ISS-014]] survived because
-`satan/test/satan-observer-test.el:682` constructs `sensor_status` as the symbol
+`satan/test/satan-observer-test.el` (`:715`, `:751`) constructs `sensor_status` as the symbol
 `'ok` by hand while the assembler emits the string `"ok"`. The test passed;
 production never behaved as tested. Fixtures here pin to the producer's own
 output.
@@ -804,16 +901,17 @@ Neither is this slice's to fix; both are this slice's to not be fooled by.
 |---|---|
 | `satan-memory-evidence.el` | goad record + queue join the evidence window (§3) |
 | `satan-memory-canon.el` | the canon rule, triggered by the queue file (§3) |
-| `satan-observer-classify.el` | the fourth predicate **only** — the negative path is no longer touched (§6) |
-| `satan-tick.el` | the `goad-ask` capability (§8) |
+| `satan-observer-classify.el` | the fourth predicate, and the `"ask"` branch of `classify-negative` — no other kind's path changes (§6) |
+| `satan-tick.el` | the `goad-ask` capability; `satan-tick-quiet-p` gains a window argument (§8) |
+| `satan-intervention.el` | the `undelivered` auto-verdict writer, moved from `satan-tools-notify.el` (§4) |
 | `satan-attribute.el` | suppression and `:no_correlation` as attributes (§7) |
 
 Scope-relevant: `satan-tools.el` (registration and the capability token — note
 `satan/satan-tools-*.el` does **not** match it, the hyphen is required),
-`satan-tools-*.el` (the new tool module), `satan-custom.el`
-(`satan-goad-enabled`, the emission window), `satan-mode.el`,
-`satan-intervention.el`, `satan-percept.el`, `satan-context.el`,
-`satan/test/**`.
+`satan-tools-*.el` (the new tool module), `satan-tools-notify.el` (calls the
+moved writer), `satan-custom.el` (`satan-goad-enabled`,
+`satan-goad-quiet-hours`), `satan-mode.el`, `satan-percept.el`,
+`satan-context.el`, `satan/test/**`.
 
 **Left the surface** since the first design: `satan-sensor-*.el` (no probe leg),
 and `satan-sensor-alerts.el` (suppression is an attribute, not an alert).
@@ -831,6 +929,12 @@ goad already polls, and it is the only leg whose exit code carries no meaning.
 `backend.py` fixtures come before any of its four changes. It carries the slice
 and has no tests.
 
+**SL-018 gates enablement, not construction** (§8). Nothing in this slice
+needs an unattended run to be built or verified. Turning the autonomous
+producer on for real waits on SL-018 landing; until then asks come only from
+`tick-pulse` runs whose key happens to work (ISS-012) — interactive MCP refuses
+the tool (§2).
+
 ## Risks carried, not resolved
 
 | risk | why it is not closed here | where it goes |
@@ -838,7 +942,8 @@ and has no tests.
 | **[[ASM-001]] is inference, not evidence** — the option-id round trip is unproven, and `save()` would drop the answer until F-7 lands | proving it requires implementing it | verification item 2 |
 | **The correlation loop can break after emit** — the observer rereads live motives and ignores the persisted id ([[RV-007]] F-4) | fixing it changes classification semantics for every kind | made perceptible (§2, §7); correlator fix to backlog |
 | **The gate constrains what SATAN may ask** — only about what it already perceives (§2) | it is the fix, and it is a real limitation | documented as the operating contract |
-| **[[ISS-014]]** — every user-facing intervention currently classifies `:ignored :low` unconditionally | a live bug this slice no longer depends on | its own backlog life |
+| **[[ISS-014]]** — the ack gate never opens | fixed separately; the `"ask"` branch dispatches before it, so neither state reaches an ask | its own backlog life |
+| **The autonomous producer needs an authenticating unattended run** — ISS-012 today, SL-018's `defer` policy once it lands | SL-018 owns credentials | enablement waits on SL-018 |
 | **Interactive MCP has no percept** ([[RV-007]] F-12) | repairing run-state coherence is separate | tool refuses there; MCP fix to backlog |
 | **`satan-attrd` rejects unknown outcome reasons** ([[ISS-011]]) | cross-repo dependency for the suppression attribute | name it at plan time |
 | **`backend.py` has no tests** (R2) | fixtures are phase-one work | §4 |
@@ -852,7 +957,7 @@ and has no tests.
 - **Fixing [[ISS-014]]**, the correlator's motive handling, or MCP run-state
   coherence — all real, all separately owned.
 - **Global quiet hours** ([[RV-007]] F-15) — the emission window is goad's own.
-- **Reviving the `:staged` action path** (`satan-broker.el:239`) — the approval
+- **Reviving the `:staged` action path** (`satan-broker.el:263`) — the approval
   story, not the elicitation one.
 - **SATAN rewriting `backend.py` via satan-patcher** — [[IMP-020]]. Note its
   prerequisites move with this slice: `backend.py` gains the fixtures IMP-020

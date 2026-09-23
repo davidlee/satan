@@ -76,3 +76,21 @@ Correlation. A goad-derived predicate still runs inside
 gate on every classification. [[RV-007]] F-4 (the motive-mutation race) and F-5
 (the gate correlates ambient percept, not the question) survive the reframe
 untouched and are fixed separately — see the revised [[DEC-007]].
+
+
+## Amendment, 2026-09-23 — the negative leg needs a mechanism
+
+The choice above says the observer's negative path is not changed. That left
+non-engagement with no writer: an ask maturing without the answer predicate
+falls through to `satan-observer-classify-negative`'s user-facing focus path —
+`:ignored :low` for every ask while ISS-014 stands, and focus telemetry again
+once it is fixed. Either way the verdict ignored the record this decision chose.
+
+Amended (user-agreed, design review 2026-09-23): `classify-negative` gains one
+branch for kind `"ask"`, dispatched before the focus path, reading the goad
+record out of `after`. Precedence: no `presented_at` → `:unknown :high`
+`undelivered`; `later` deferral → `:unknown :low`; presented then bulk
+`enough` → `:ignored :medium` `dismissed`; presented and untouched →
+`:ignored :medium` `untouched`. No other kind's path changes. The consequence
+"the observer's negative path leaves the design targets" is withdrawn; the
+rest of this decision stands. Design sec-5 carries the table.
