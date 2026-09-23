@@ -172,6 +172,14 @@ satan-failure-syslog) ...)' guard) — the recorder stays empty."
 
 ;; ── Announce policy back-off (PHASE-07, design sec-6) ───────────────────────
 
+(defmacro satan-broker-test--outside-quiet-hours (&rest body)
+  "Run BODY with `satan-tick-quiet-p' stubbed to nil, so whether a pop is
+due never depends on the wall clock or `satan-tick-quiet-hours'."
+  (declare (indent 0) (debug t))
+  `(cl-letf (((symbol-function 'satan-tick-quiet-p)
+              (lambda (&optional _time) nil)))
+     ,@body))
+
 (ert-deftest satan-broker/announce-due-at-powers-of-two ()
   "For an ordinary reason, a pop is due only at streak positions that are
 powers of two (1, 2, 4, 8)."
@@ -194,13 +202,14 @@ composed announce sends critical urgency for it regardless of position."
          (dir (satan-run-test--mkrun root "20260520T100000-tick-pulse-aaaaaa"
                                      "failed" "auth" t)))
     (unwind-protect
-        (satan-announce-with-recorder
-          (satan-broker--announce-failure
-           "20260520T100000-tick-pulse-aaaaaa" "tick-pulse" 'failed "auth"
-           dir)
-          (should (eq (plist-get (car satan-announce-recorded) :urgency)
-                     'critical))
-          (should (plist-get (car satan-announce-recorded) :title)))
+        (satan-broker-test--outside-quiet-hours
+          (satan-announce-with-recorder
+            (satan-broker--announce-failure
+             "20260520T100000-tick-pulse-aaaaaa" "tick-pulse" 'failed "auth"
+             dir)
+            (should (eq (plist-get (car satan-announce-recorded) :urgency)
+                        'critical))
+            (should (plist-get (car satan-announce-recorded) :title))))
       (delete-directory root t))))
 
 (ert-deftest satan-broker/announce-budget-once ()
@@ -209,36 +218,37 @@ policy match is against `final.json's raw :reason (\"budget_daily_tokens\"),
 never the human-readable display REASON argument (\"500000/400000 tokens\"),
 which is what A1 warns could be silently conflated."
   (should (satan-broker--announce-due-p
-          '(:status budget-exceeded :reason "budget_daily_tokens") 1))
+           '(:status budget-exceeded :reason "budget_daily_tokens") 1))
   (should-not (satan-broker--announce-due-p
-              '(:status budget-exceeded :reason "budget_daily_tokens") 2))
+               '(:status budget-exceeded :reason "budget_daily_tokens") 2))
   (should-not (satan-broker--announce-due-p
-              '(:status budget-exceeded :reason "budget_daily_tokens") 4))
+               '(:status budget-exceeded :reason "budget_daily_tokens") 4))
   (let* ((root (make-temp-file "satan-runs-announce-budget-" t))
          (satan-runs-dir root)
          (satan-failure-syslog t)
          (satan-failure-notify t))
     (unwind-protect
-        (satan-announce-with-recorder
-          ;; Each run's dir is created just before its own announce call,
-          ;; mirroring production (the walk always sees the just-renamed
-          ;; dir as the newest on disk) — creating both dirs up front
-          ;; would make the first call's walk see the second run too.
-          (let ((dir1 (satan-run-test--mkrun
-                      root "20260520T080000-morning-aaaaaa"
-                      "budget-exceeded" "budget_daily_tokens" t)))
-            (satan-broker--announce-failure
-             "20260520T080000-morning-aaaaaa" "morning" 'budget-exceeded
-             "500000/400000 tokens" dir1))
-          (should (plist-get (car satan-announce-recorded) :title))
-          (let ((dir2 (satan-run-test--mkrun
-                      root "20260520T090000-morning-bbbbbb"
-                      "budget-exceeded" "budget_daily_tokens" t)))
-            (satan-broker--announce-failure
-             "20260520T090000-morning-bbbbbb" "morning" 'budget-exceeded
-             "500000/400000 tokens" dir2))
-          (should-not (plist-get (car satan-announce-recorded) :title))
-          (should (plist-get (car satan-announce-recorded) :journal)))
+        (satan-broker-test--outside-quiet-hours
+          (satan-announce-with-recorder
+            ;; Each run's dir is created just before its own announce call,
+            ;; mirroring production (the walk always sees the just-renamed
+            ;; dir as the newest on disk) — creating both dirs up front
+            ;; would make the first call's walk see the second run too.
+            (let ((dir1 (satan-run-test--mkrun
+                         root "20260520T080000-morning-aaaaaa"
+                         "budget-exceeded" "budget_daily_tokens" t)))
+              (satan-broker--announce-failure
+               "20260520T080000-morning-aaaaaa" "morning" 'budget-exceeded
+               "500000/400000 tokens" dir1))
+            (should (plist-get (car satan-announce-recorded) :title))
+            (let ((dir2 (satan-run-test--mkrun
+                         root "20260520T090000-morning-bbbbbb"
+                         "budget-exceeded" "budget_daily_tokens" t)))
+              (satan-broker--announce-failure
+               "20260520T090000-morning-bbbbbb" "morning" 'budget-exceeded
+               "500000/400000 tokens" dir2))
+            (should-not (plist-get (car satan-announce-recorded) :title))
+            (should (plist-get (car satan-announce-recorded) :journal))))
       (delete-directory root t))))
 
 (ert-deftest satan-broker/failure-streak-restarts-on-new-cause ()
@@ -344,14 +354,13 @@ clock) suppress the desktop pop but not the journal line."
         (progn
           (satan-announce-with-recorder
             (cl-letf (((symbol-function 'satan-tick-quiet-p)
-                      (lambda (&optional _time) t)))
+                       (lambda (&optional _time) t)))
               (satan-broker--announce-failure
                "20260520T080000-motd-aaaaaa" "motd" 'failed "unknown" dir))
             (should (plist-get (car satan-announce-recorded) :journal))
             (should-not (plist-get (car satan-announce-recorded) :title)))
           (satan-announce-with-recorder
-            (cl-letf (((symbol-function 'satan-tick-quiet-p)
-                      (lambda (&optional _time) nil)))
+            (satan-broker-test--outside-quiet-hours
               (satan-broker--announce-failure
                "20260520T080000-motd-aaaaaa" "motd" 'failed "unknown" dir))
             (should (plist-get (car satan-announce-recorded) :journal))
