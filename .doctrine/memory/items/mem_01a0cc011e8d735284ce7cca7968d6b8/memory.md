@@ -29,3 +29,11 @@ whoami` exits 0) yet make a later read re-authenticate, after some interval or
 condition. Positive reads are no evidence that this never happens, so ASM-002
 is held and watched, not "validated by one clean test". Its cost is bounded:
 one visible, labelled prompt.
+
+- **The dialog expires on its own after ~1–2 min**, and `op` reports that as
+  `authorization prompt dismissed`, the same as a keeper dismissal (observed
+  2026-09-23, SL-018 PHASE-08, run `20260923T221713-motd`). A blocking read
+  therefore waits for the keeper for about a minute or two, not indefinitely.
+  An unattended prompting run with nobody at the desk fails
+  (`credential_unavailable`), and no late acceptance is possible. See ISS-023
+  and DEC-020's RV-014 note.

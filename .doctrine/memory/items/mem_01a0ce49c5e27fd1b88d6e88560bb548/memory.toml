@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ce49c5e27fd1b88d6e88560bb548"
+memory_key = "mem.pattern.elisp.quit-is-not-error"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "quit is not an error: a condition-case over (error ...) does not catch C-g"
+summary = "C-g signals quit, which is outside the error hierarchy; boundaries around blocking calls must catch (error quit)"
+created = "2026-09-23"
+updated = "2026-09-23"
+
+[scope]
+paths = ["satan/satan-credential.el", "satan/satan-broker.el"]
+globs = []
+commands = []
+tags = ["elisp", "satan"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6604fe1d8f886c61a707c2baf813881c3b88c14d"
+ref_name = "refs/heads/main"
+checkout_state_id = "bb29b995952547b2351d5b264c16dc2b407f0e83a097b0ae6bfce3bf06b87e8a"
+base_commit = "d35773a009f3fa4ab7bd18878538f8373230a9f9"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "67adae4"
+

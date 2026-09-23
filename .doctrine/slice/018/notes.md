@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · audit done (RV-014 terminal, brief written) · next: /reconcile
+fresh-as-of: 2026-09-23 · closed (RV-014 reconciled; ISS-012/ISS-020 fixed, IMP-021 done)
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -27,7 +27,10 @@ fresh-as-of: 2026-09-23 · audit done (RV-014 terminal, brief written) · next: 
 - mem.fact.satan.op-cache-has-no-invalidation
 - design-run mechanics: inquiries resolve via cp- dispose; adopt needs the record to exist in a prior apply; att- attests sections (mem.pattern.doctrine.design-run-defects)
 - codex MCP down; `codex exec -s read-only -o FILE -` works for adversarial passes
-- memory candidates (not yet recorded): 1Password auth dialog self-expires after ~1–2 min and `op` reports it as "authorization prompt dismissed" (PHASE-08); `quit` is not `error` — acquisition boundaries catch `(error quit)`; ~/.emacs.d `dev/dl-test.el` under `-Q` needed `load-prefer-newer` (stale .elc shadowed source; fixed); `called-interactively-p 'interactive` is nil under --batch
+- mem.fact.satan.op-prompts-on-session-not-read — extended at close: the dialog self-expires after ~1–2 min, reported as dismissed
+- mem.pattern.elisp.quit-is-not-error (new, close)
+- mem.fact.elisp.called-interactively-p-nil-in-batch (new, close)
+- rejected: ~/.emacs.d `dev/dl-test.el` needed `load-prefer-newer`. Fixed at the root, and mem_4e5a470… (stale .elc) already covers the class
 
 ### Open
 - ASM-002: held; watched, not validated. Design sec-9 VH-1 corrected at /plan; armed as a watch in PHASE-08
@@ -35,8 +38,7 @@ fresh-as-of: 2026-09-23 · audit done (RV-014 terminal, brief written) · next: 
 - RV-014 F-3: escalation is per mode (a dismissal quiets only that mode); tolerated by the keeper, design sec-4 prose fixed at /reconcile
 - ISS-023: 1Password's dialog expires in about 1–2 min, so an unattended motd/morning fails loudly (accepted, RV-014 F-1)
 - DEC-023 consequence: a queued daily mode can lose its day to run_busy
-- close at /close: ISS-020 (fixed 1a201a6), ISS-012 (fixed; residual ISS-023), IMP-021
-- /reconcile: RV-014 brief (design sec-3/4/9 text, selectors, DEC-020 note, REQ-010 coverage)
+- carried forward: ISS-022 (tick timer dormant), ISS-023 (prompt-mode runs lost when the keeper is away)
 - PHASE-05 review F1 (ref in ERR text) rejected with rationale in ## Progress — revisit only if a backend puts secrets in conditions
 - pre-existing warning: `satan-run-mint-id` arg `mode-name` shadows a dynamic var (out of scope)
 

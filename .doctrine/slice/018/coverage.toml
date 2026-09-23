@@ -4,7 +4,7 @@ requirement = "REQ-010"
 contributing_change = "SL-018"
 mode = "VT"
 status = "verified"
-git_anchor = "e4e4ba2ad482e54e55835ea144d34187d1c6140f"
+git_anchor = "80801947ded80f0e2a02019e484711f6a61caa17"
 
 [entry.check]
 command = ["emacs", "--batch", "-L", "satan", "-L", "dev", "-L", "satan/test", "-l", "satan-credential-test", "--eval", '(ert-run-tests-batch-and-exit "satan-credential/no-backend-\\|satan-credential/scrub-\\|satan-credential/backend-signals-never-escape\\|satan-credential/quit-during")']

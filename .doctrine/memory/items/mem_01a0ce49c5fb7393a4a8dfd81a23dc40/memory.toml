@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0ce49c5fb7393a4a8dfd81a23dc40"
+memory_key = "mem.fact.elisp.called-interactively-p-nil-in-batch"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "called-interactively-p 'interactive is always nil under emacs --batch"
+summary = "ERT tests cannot exercise the attended branch by calling interactively in batch; stub called-interactively-p for the positive case"
+created = "2026-09-23"
+updated = "2026-09-23"
+
+[scope]
+paths = ["satan/satan.el"]
+globs = []
+commands = []
+tags = ["elisp", "testing", "satan"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6604fe1d8f886c61a707c2baf813881c3b88c14d"
+ref_name = "refs/heads/main"
+checkout_state_id = "ba37b3143facdf27e70e218cb7a9e2177bcc1ff4756c403eefdf91dcf74592fa"
+base_commit = "d35773a009f3fa4ab7bd18878538f8373230a9f9"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "low"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "6843f76"
+
