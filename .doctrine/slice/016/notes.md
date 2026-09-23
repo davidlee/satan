@@ -6,11 +6,82 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** stage `plan`, 2026-09-23. Plan authored (`plan.toml` /
-`plan.md`, nine phases, PHASE-09 runs before PHASE-08), phase sheets
-materialised. Plan **approved by the user 2026-09-23**; slice status `ready`.
-PHASE-01 runtime sheet filled, phase still `planned`. Nothing implemented.
-Next: `/execute PHASE-01`.
+**fresh-as-of:** PHASE-01 implemented, 2026-09-23 — `goad/backend.py` has a
+test harness (17 tests, stdlib `unittest`, `just check`), the day record is
+JSON (DEC-009), and the corpus's `data/*.toml` files are converted in place.
+Not yet committed (orchestrator's to commit). Next: `/execute PHASE-02` (or
+audit if PHASE-01 is the last phase touched before a checkpoint).
+
+### PHASE-01
+
+- **`goad/backend.py`** — guarded `main()` under `if __name__ == "__main__"`;
+  extracted `run(request, now, data=DATA)` (pure over its args except the
+  day-file I/O); `record_path`/`load`/`save` take a `data` param (default
+  `DATA`, unchanged call sites); `save` now writes JSON atomically — tmp file
+  in the same dir, `os.replace`, `tmp.unlink` on any exception before the
+  replace; `record_path` returns `.json`; `tomllib` import and the TOML
+  serializer are gone. Two incidental corrections while the import line was
+  already touched: dropped the unused `time` import, and the module
+  docstring's `data/YYYY-MM-DD.toml` reference is now `.json`.
+- **`goad/test_backend.py`** (new) — `class Characterisation` (12 tests):
+  `slot_start`/`next_slot` at the three boundaries in the sheet; `pending`
+  order = `ITEMS` order; yes/no final across slots; `later` defers for the
+  slot only then reappears; `enough` defers every currently-pending item and
+  leaves an already-answered item alone; `view` = first pending item with the
+  four option ids; `view: null` once nothing is pending; `next_check` = next
+  slot; `is_deferred` compares instants across an offset change. `class
+  Record` (5 tests): `record_path` suffix; save→load round-trip; `save`
+  writes via a `.tmp` in the same dir then `os.replace`s it (asserted via a
+  `mock.patch` wrapping the real `os.replace`, and no leftover `.tmp` after);
+  a `json.dump` failure mid-write leaves the prior record's bytes untouched
+  and no `.tmp` behind; a legacy-TOML day converts to JSON with the same
+  items tomllib saw. The legacy fixture is a literal TOML string captured
+  from a real day file rather than a read of `goad/data/` — that directory's
+  contents are user data, live and mutating, not a stable test fixture.
+- **`goad/justfile`** — `check` recipe: `python3 -m unittest -v test_backend`
+  from the justfile's directory.
+- **`goad/convert_toml_days.py`** (new, one-off) — `convert_one(toml_path,
+  data)` reads a day file with `tomllib`, writes it through `backend.save`,
+  asserts `backend.load(...) == tomllib items`, then removes the `.toml`;
+  `convert_all(data)` runs it over every `*.toml` under `data`, sorted, and
+  returns the count. Stays in the code commit for review; deleted in the data
+  commit that records its effect (not deleted by this phase — the
+  orchestrator commits).
+- **`goad/README.md`** — record-format table row is `data/YYYY-MM-DD.json`; a
+  `just check` line added to the recipe block; new "The record" section: JSON
+  shape example, and the atomic-write rationale (SATAN may read while the
+  keeper answers).
+
+**Verification:**
+- VT-39 — `class Characterisation` diffed byte-for-byte between the pre-T4
+  and post-T4 snapshot: identical. Green both before and after the JSON
+  switch (12/12 both times).
+- VT-40 — `class Record`'s round-trip, atomic-failure, and legacy-conversion
+  tests, plus the real conversion below. 5/5 green.
+- EX-1 — `just check` broke on a deliberately wrong `slot_start` assertion:
+  `error: recipe check failed on line 8 with exit code 1` (non-zero),
+  reverted immediately after.
+- EX-4 — `convert_toml_days.py`'s per-file assert (round-trip equality)
+  passed for every file, in both the dry run and the real conversion.
+- Live — the goad unit's live `data/` dir (7 `.toml` files: 2026-09-14, -15,
+  -16, -20, -21 tracked, -22/-23 untracked user answers) was backed up to
+  `/tmp/.../scratchpad/goad-data-backup/`, the conversion dry-run against a
+  second scratch copy converted 7/7 with every assert passing, then the real
+  `data/` dir was converted immediately after (7/7, same asserts). A
+  post-conversion diff of each converted `.json` against the backed-up
+  `.toml` (via `tomllib`) confirmed all 7 identical. `echo '{"type":
+  "evaluate"}' | python3 backend.py` against the real (now-JSON) `data/`
+  returned the same pending item, counts, and `next_check` as the pre-switch
+  baseline capture (same command, run before T1's edit).
+
+**Findings:** none — no bug surfaced during characterisation; T1's refactor
+and T4's format switch were both behaviour-preserving by the tests above.
+
+**Files changed** (corpus repo `~/satan`, none staged/committed):
+`goad/backend.py`, `goad/test_backend.py` (new), `goad/convert_toml_days.py`
+(new), `goad/justfile`, `goad/README.md`, `goad/data/*.toml` → `*.json` (7
+files converted in place). `goad/goad.service` (deleted) and `motd.txt`
+(modified) are the user's pre-existing, unrelated changes — untouched.
 
 ### Produced
 

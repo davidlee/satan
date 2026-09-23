@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0ce78-0eb6-7751-8b20-71763cf1c557"
+recorded_at = "2026-09-23T13:32:49.718585197Z"
+kind = "friction"
+summary = "capsule-worker hand-back routed to driver seat instead of its capsule-orchestrator"
+detail = "SL-016 PHASE-01: worker's SubagentHandback failed repeatedly ('agent that spawned you is no longer running') then was delivered to the top-level driver session; driver had to forward it to cap-orch-1 by SendMessage. Orchestrator was alive (it had just messaged the driver). Also: CLAUDE_CODE_DISABLE_BACKGROUND_TASKS was not set for this session, so children may have been backgrounded."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
