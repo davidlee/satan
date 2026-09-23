@@ -120,3 +120,17 @@ The run then logs `section_fingerprint_changed` for the edited sections and
 absorbs their bodies. `design materialise` afterwards should produce a
 byte-identical file — diff to confirm. Edited sections' attestations go stale,
 as with any body change.
+
+## 7. `review-disposed` binds to the run's own auto-opened RV only
+
+`design start` opens a review ledger for the run (SL-017: RV-008). A
+`review-disposed` act naming any other RV is refused ("not the pass this run
+is on"), even a sibling review of the same slice. Conducted also needs that RV
+concluded (`doctrine review conclude RV-NNN --as raiser`), or it is refused
+("no concluded-pass marker").
+
+**Do:** ledger adversarial findings on the run-bound RV from the start. If a
+pass already landed on a sibling RV, conclude the run-bound one and dispose it
+`conducted`, naming the sibling ledgers in `acceptance.basis` (keeper's
+ruling, SL-017 2026-09-23). Note `review new` roles: `--as` accepts only
+`raiser`/`responder`; `--raiser adversary` is just a label.

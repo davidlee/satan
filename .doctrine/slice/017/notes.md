@@ -62,24 +62,24 @@ their `/audit`.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · design reviewing (dr-01a0cc0b, rev 34) · RV-009 disposed
+fresh-as-of: 2026-09-23 · design locked (dr-01a0cc0b, rev 45) · slice status plan
 
 ### Produced
 - SL-017 (this slice)
 - ISS-017 — split from ISS-012 (loudness half)
 - ISS-016 — root cause corrected (two tool-ctx builders)
 - CHR-008 — stale `.doctrine/governance.md:15` gate claim
-- DEC-014 through DEC-019 (DEC-015 to DEC-019 amended after RV-009); RV-008 (auto-opened by the run); RV-009 (adversarial pass, 14 findings)
+- DEC-014 through DEC-019 (DEC-015 to DEC-019 amended after RV-009; DEC-016/018/019 again after RV-010); RV-008 (run-bound, concluded empty); RV-009 (14 findings); RV-010 (focused second pass, 10 findings)
 - research/research.md (runtime tier, gitignored)
 
 ### Learned
 - mem.fact.satan.op-prompts-on-session-not-read (new)
 - mem.fact.satan.op-read-blocks-emacs-server (rewritten: popup now surfaced)
 - mem.fact.satan.op-cache-has-no-invalidation
+- mem.pattern.doctrine.design-run-defects (extended: adopt_authored recipe; run-bound RV)
 
 ### Open
-- design run: `review.passes` (second pass, or discharge), then the user's section review and `design-accepted`; then the `review-disposed` act and lock
-- RV-009: the raiser must verify or contest the 14 answered findings (await=raiser)
+- next: `/plan` (design locked); code review at `/audit` for the sec-4 and sec-5 phases
 - backlog to file: record before side effect for sway, inbox, proposal and patch (design sec-5)
 - REVs: the ledger row 4 standing note (operational alarms); optionally a REQ-003 acceptance criterion
 - memory mem_eb8e5cff794c48bd86597f94fa50b0ac: correct its session_blocked streak claim (after landing)
