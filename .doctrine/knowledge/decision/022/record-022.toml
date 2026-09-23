@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 22
+slug = "unattended-credential-policy-per-mode-prompt-or-defer-time-based-escalation-attended-override"
+title = "Unattended credential policy: per-mode prompt or defer, time-based escalation, attended override"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-018 OQ-3..OQ-5 and the dismissed-prompt question, on top of the policy settled before the slice (per mode: motd/morning prompt, tick/patch defer, a deferring mode escalates after sustained deferral; op whoami is the non-prompting probe) and DEC-020/DEC-021. Patch jobs are not broker runs, so DEC-014's streak does not cover them. The 1Password session is shared by every consumer in Emacs. Tick never runs in quiet hours. Run ids begin with a %Y%m%dT%H%M%S timestamp."
+choice = "(1) Each broker mode spec carries :credential-policy, either prompt or (defer :escalate-after DURATION). (2) Acquisition: cached value -> use; session live (op whoami) -> read; otherwise apply the policy. (3) A defer mode escalates to prompt when the oldest run of its current credential_deferred streak (DEC-014 walk; counts credential_deferred, skips session_blocked) is older than :escalate-after, measured from the run-id timestamp. A dismissed escalation prompt ends the streak, so the next escalation is a full threshold later. (4) The patch runner defers only and never escalates: any accepted prompt warms the shared session, and its jobs stay visibly queued. (5) No quiet-hours logic: tick is already suppressed in quiet hours, motd/morning prompt anyway, patch never escalates. (6) Attended runs always prompt: satan-run-attended (defvar, nil) is bound to t only by an interactive satan-run call; systemd, tick, the patch timer and MCP stay unattended (fail closed). (7) A failed prompting read (dismissed dialog or any op error; op does not distinguish them reliably) records a no-child run, status failed, reason credential_unavailable, renamed .FAILED and announced under DEC-015's back-off. It is not the auth class: auth stays reserved for provider 401s (critical pop, cache eviction)."
+alternatives = ["Fixed deferral count N per mode: same cost for broker modes, but N means different wall-clock time for each tick mode (weighted pool) and has no patch analogue.", "Time-based with patch escalation on oldest queued job age: needs a new psql query and a deferral record the patch runner does not have; the shared session makes it redundant.", "Quiet-hours hold on escalation: inert given the above, since no escalating mode runs in quiet hours.", "Classify a dismissed prompt as auth: triggers critical pops and cache eviction for what is keeper intent."]
+rationale = "Keeper preferred time-based escalation provided simpler was not much cheaper. Dropping patch escalation and the quiet hold removes the costly parts; time-based escalation for broker modes then costs about the same as a fixed N and reads as intended (deferred longer than X). Everything is derived from run bundles (ADR-018 D5, DEC-014), with no new state."
+consequences = ["satan-mode specs gain :credential-policy with defaults per mode.", "A streak that begins just before quiet hours escalates at the first tick after quiet hours.", "If every broker mode stops running, patch jobs can starve; they remain visible as queued.", "satan-run gains a dynamic binding; interactive callers bypass defer.", "credential_unavailable is a failure cause of its own in DEC-015's same-cause streak."]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"
