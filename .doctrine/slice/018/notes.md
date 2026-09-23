@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-07 in_progress (red tests uncommitted) · head dd26021 · next: PHASE-07 green (see handover.md)
+fresh-as-of: 2026-09-23 · PHASE-07 completed (7d8b90d) · next: PHASE-08 (live, human: restart Emacs, VH-2, VH-3, arm VH-1 watch), then /audit
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -16,7 +16,7 @@ fresh-as-of: 2026-09-23 · PHASE-07 in_progress (red tests uncommitted) · head 
 - ISS-020 (sentinel reset) — absorbed into SL-018 (scope objective 8, design sec-6)
 - RV-013 — 20 findings over two adversarial passes, concluded
 - design.md sec-1..sec-9; 12 design-target selectors
-- plan.toml/plan.md (8 phases; VT-25..VT-29 minted); PHASE-01 in ~/.emacs.d (45e346d, 634a878); PHASE-02..06 (e3faba6, 1a201a6, 6843f76, 723c205, aacf085) + quit fix 67adae4
+- plan.toml/plan.md (8 phases; VT-25..VT-29 minted); PHASE-01 in ~/.emacs.d (45e346d, 634a878); PHASE-02..06 (e3faba6, 1a201a6, 6843f76, 723c205, aacf085) + quit fix 67adae4; PHASE-07 7d8b90d
 
 ### Learned
 - mem.fact.satan.op-prompts-on-session-not-read (new)
@@ -181,3 +181,7 @@ fresh-as-of: 2026-09-23 · PHASE-07 in_progress (red tests uncommitted) · head 
 - VA-1: no `ignore-errors` / `(error nil)` wraps key resolution in broker or
   adapter-pi; the only suppression is the seam's documented `session-p` → nil.
 - Suite 1139/1145 (6 known skips); no byte-compile warnings on touched files.
+- VT-7 / VT-16 keyword mandates retargeted to test names (the tests exercise
+  `ready-p` / `resolve` through the tick, not by name); VT-7 also anchors the
+  adapter-pi `child-env-is-scrubbed` test. Delta tightened to 041ba2f..7d8b90d
+  (041ba2f is SL-016, foreign).

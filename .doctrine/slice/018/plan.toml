@@ -250,8 +250,8 @@ exit_criteria = [
   { id = "EX-4", text = "`just check` green" },
 ]
 verification = [
-  { id = "VT-7", expects = "nothing queued → zero backend calls; deferred → job stays queued; ok → adapter env carries the resolved key, refs scrubbed", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["satan-credential-ready-p", "queued"], waived = false },
-  { id = "VT-16", expects = "peek error → no backend call; ready but claim returns nil → no resolve; one failing var of seven → job runs with a warning", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["satan-patch-store-list", "satan-credential-resolve", ":warnings"], waived = false },
+  { id = "VT-7", expects = "nothing queued → zero backend calls; deferred → job stays queued; ok → adapter env carries the resolved key, refs scrubbed", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["idle-queue-never-probes", "no-session-leaves-the-job-queued", "ready-job-gets-resolved-keys", "child-env-is-scrubbed"], waived = false },
+  { id = "VT-16", expects = "peek error → no backend call; ready but claim returns nil → no resolve; one failing var of seven → job runs with a warning", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["peek-error-makes-no-backend-call", "lost-claim-race-reads-nothing", "one-failing-key-warns-but-runs"], waived = false },
   { id = "VT-24", expects = "an adapter_failed job row carries the per-var resolution warnings", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["adapter_failed", ":warnings"], waived = false },
   { id = "VT-10", expects = "standing guard: no satan/*.el source mentions a dl-secret symbol (my/op-*, my/scrub-op*)", test_file = "satan/test/satan-credential-test.el", keywords = ["no-dl-secret-coupling"], waived = false },
   { id = "VA-1", text = "by inspection: no `(error nil)` / `ignore-errors` wraps key resolution in satan-broker.el or satan-patch-adapter-pi.el (design VT-10's second half, which a substring test cannot express)" },
