@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-05 done (723c205; review pending) · status started · next: /phase-plan PHASE-06
+fresh-as-of: 2026-09-23 · PHASE-06 done (aacf085); PHASE-05 review closed (67adae4) · status started · next: /phase-plan PHASE-07
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -129,3 +129,31 @@ fresh-as-of: 2026-09-23 · PHASE-05 done (723c205; review pending) · status sta
 - VT-14 / VT-20 keyword mandates now point at the test names (behaviour is
   tested through `satan-broker-run`).
 - Suite 1125/1131.
+
+#### PHASE-05 adversarial review (codex gpt-6-sol, 2 findings)
+
+- **F1 rejected** (raised as a blocker): "the `op://` ref in ERR reaches
+  `final.json` / the audit event through `error-message-string`". A ref is a
+  vault path, not a secret; `~/.config/zsh/env.zsh` already holds refs in
+  plain text. Rendering ERR is the locked design's choice (RV-013 F-4). The
+  claim that "a backend error could carry a resolved secret" does not apply:
+  `read` signals only when it failed, so it holds no plaintext, and the
+  dl-secret message is `op read REF failed (N): STDERR`. Revisit only if a
+  backend ever puts secret material into its conditions.
+- **F2 accepted** (major): `quit` (C-g while a read blocks) is not an `error`.
+  It escaped both acquisition boundaries, so the trigger was lost with no run
+  recorded, and a patch job would have been stranded `claimed`. Fixed in
+  67adae4: `acquire`, `resolve` and `satan-broker--acquire` catch
+  `(error quit)`. The fixture gained `:quit`.
+
+### PHASE-06 — rotation self-heal (aacf085)
+
+- `satan-broker--evict-on-auth` runs in `--finalize` right after the
+  crash-context record, before `satan-audit-close`, so `evict-failed` lands
+  in the transcript. The announce (inside `--mark-failed-on-disk`) follows.
+- `--on-error` marks a run `failed`, so "classified auth plus a final" is a
+  failed run and does evict. The `done`-with-slot case is tested directly on
+  `--evict-on-auth`.
+- VT-29 (recovery): cache `sk-dead` → evict → the next acquire re-reads
+  `sk-rotated`.
+- Suite 1130/1136 after the quit fix.
