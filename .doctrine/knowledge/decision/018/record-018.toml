@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 18
+slug = "record-before-emit-audit-append-gates"
+title = "Record before emit: the audit append gates the alert; the psql projection follows it"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SPEC-001 REQ-003 requires every enacted action to be in the durable audit log. satan_notify_send emits before satan-intervention-create (satan-tools-notify.el:56-65). For pre-spawn sensor alerts the create always fails, so the alert is shown and never recorded (ISS-016). The create appends the canonical audit line (satan-intervention.el:392) and then runs a psql projection that signals on failure."
+choice = "Split satan-intervention-create into two steps: a record step (validate, then append via satan-audit-record, returning the iv-id) and a project step (the psql insert). notify_send runs record, then satan-announce, then project. If the append fails, nothing is emitted and the tool returns an error. If the projection fails, the tool returns ok with a projection_failed note and the sensor cooldown arms. A broker failure announce follows finalize, where the run bundle is the record. Listener-death alarms are unrecorded operational alarms that leave only a :journal line; the ledger row 4 standing note says so. Optionally, a D-Bus delivery failure after the append is added as a follow-up event through the same writer."
+alternatives = ["Atomic create, then emit: a Postgres outage silences every alert (R1), and when the projection fails the audit line is already written, so every run adds a duplicate record and shows nothing.", "Emit with a degraded marker: shows an unrecorded action, so REQ-003 is not met; it is only labelled."]
+rationale = "REQ-003 holds by construction, because nothing is shown before the audit line exists. The projection can be rebuilt from the transcript, so its failure must not gate the alert. The only possible edge is over-recording (recorded but not shown), which is the safe direction. No third audit writer is added (ledger row 4)."
+consequences = ["satan-intervention-create is replaced by a record step and a project step. Callers are updated.", "The per-cause cooldown arms on a successful record, not on the projection.", "A REV to the ledger row 4 standing note names the listener-death alarms and the logger line as channels that are not audit writers.", 'The SPEC-001 REQ-003 acceptance criterion "a side effect whose record fails is not enacted" becomes testable.']
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"

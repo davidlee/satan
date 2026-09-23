@@ -1,0 +1,37 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 15
+slug = "failure-streak-doubling-backoff"
+title = "Failure streaks re-announce on a doubling back-off"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "satan-broker--announce-failure notifies only at streak == 1 (satan-broker.el:341-343), so a persistent failure goes silent after one pop (ISS-017). Re-announcing on every failure nags a broken tick about 48 times a day."
+choice = "A failure is re-announced when its per-mode streak position (DEC-014) is a power of two: 1, 2, 4, 8 and so on. The body carries the count and the first failing run. Three overrides apply. An auth-class failure always announces, at critical urgency. budget-exceeded announces only at position 1. The logger journal line is written for every failure regardless. D-Bus pops are suppressed while satan-tick-quiet-p holds, which is the ledger row 7 owner."
+alternatives = ["Every failure announces: this nags on tick modes and trains the keeper to ignore it.", "Time-based re-announce: needs last-announce state, which DEC-014's derive-only stance rejects."]
+rationale = "The rule is stateless because the position comes from the derived streak. Noise is bounded at about log2(n) pops. No streak goes silent forever. Auth failures need a human, so they are never rate-limited. Quiet hours stay single-owner."
+consequences = ["A tick broken all day produces about 6 pops. A daily mode pops on days 1, 2, 4 and 8.", "Quiet-hours suppression is inert until satan-tick-quiet-hours is set again. A position that falls in quiet hours is not replayed.", "SL-018 can reuse the same position rule to escalate credential_deferred."]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

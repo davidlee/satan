@@ -4,6 +4,44 @@ Durable per-slice scratchpad — tracked in git. The place to lift anything from
 disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 `rm -rf` before the slice close-out audit harvests it.
 
+## Design triage (2026-09-23, run dr-01a0cc0b)
+
+Evidence: `research/research.md` (runtime tier; ✓ = re-verified).
+
+**Constraining governance.**
+- SPEC-001 REQ-003: record the alert before it is sent.
+- REQ-009: one ctx contract and one inhibit point.
+- REQ-011: every surface.
+- REQ-005: kill switches survive.
+- ADR-017 ledger row 4: `satan-audit-record` is the one writer, with no third writer. Row 7: quiet hours owned by `satan-tick-quiet-p`.
+- DEC-001: `satan-run.el` owns tool-ctx and run discovery. It stays a leaf, so it cannot host the announcer.
+- ADR-018 D5: no new elisp state layer.
+
+**Shaping facts (✓).**
+- OQ-1 collapses. The live audit handle is in scope at the sensor-alerts call (`satan-broker.el:612-636`), so one builder needs no relaxing of `--ctx-required`.
+- OQ-2 splits. `satan-intervention-create` appends to audit (the canonical record) before the psql projection, so "record" = the append.
+- Streak defects:
+  - It is global across modes and keys only on the dir suffix.
+  - A `session_blocked` run *resets* it, contrary to the DEC-8 comment.
+  - It must become outcome-aware and per mode for SL-018.
+- Class:
+  - `class` is double-encoded in `error`, and the init path has none (`runloop.py:178`).
+  - It never reaches the run record.
+  - `runloop.py` changes deploy only via push + flake lock + home-switch.
+- Test leaks come from unstubbed budget-denied tests. The slice claim that the `logger` call can't be stubbed is wrong.
+- Timeline: the last failure notify was 2026-09-22 09:16, not 07:47.
+- ISS-016 costs more than stated: alerts re-fire every run (221 unarmed dispatches).
+
+**Risks.**
+- R1: resolved by OQ-2's split.
+- R2: nagging. `budget-exceeded` under re-announce would fire every tick until midnight.
+- R3 (new): unrecorded out-of-run emits, i.e. listener deaths. Recording them would need a third writer.
+- R4 (new): intervention id shape changes to `<run-id>.ivNNN`. It must still pass the observer and IMP-001/IMP-002 checks.
+
+**Assumptions.**
+- A1: holds for 401 only. Init-path missing-key failures are unclassified.
+- A2: confirmed and stronger than stated.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · proposed (scoped, pre-research) · dcb4d59 + uncommitted scoping

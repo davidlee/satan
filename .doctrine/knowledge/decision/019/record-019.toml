@@ -1,0 +1,37 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 19
+slug = "harness-class-is-failed-run-reason"
+title = "Harness error class becomes the failed run's recorded reason"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = 'The harness classifies provider errors (classify_error, runloop.py:115) and JSON-encodes the class inside the error string (runloop.py:201-208). satan-broker--on-error (satan-broker.el:166) records the error and drops the class. A run with no final gets final.json {"status":"invalid"}, and its announce reason is the literal "failed". IMP-005 (partial). SL-018 needs the auth class, durably recorded, to evict stale credentials.'
+choice = "satan-broker--on-error parses the class from the error payload and stores it in a new satan-run slot, error-class. The value is unknown when the payload is unclassified, e.g. an init-path error. When finalize synthesises final.json for a run with no final, it adds :reason <class>. crash-context adds :error_class. satan-broker--failure-reason falls back to the class before the status name. runloop.py is unchanged."
+alternatives = ["Also classify init-path errors in runloop.py: needs a push, a flake lock bump and a home-switch, and SL-018 moves key resolution before spawn anyway.", "Record the class only in the crash-context transcript event: the streak walk and SL-018 would have to scan transcript.jsonl per run."]
+rationale = "A single field, final.json reason, carries the outcome for DEC-014's walk, DEC-015's auth override, the announce line, and SL-018's eviction. It is transport only, with no typed exception layer (IMP-005 remainder)."
+consequences = ["Outcomes read failed/auth, failed/rate_limit and so on. Init failures read failed/unknown until SL-018 removes the missing-key path.", "final.json for a failed run without a final gains a reason key. satan-audit-p consumers of final.json are checked at execution.", "A1 holds only for provider 401/403 errors."]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

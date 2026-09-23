@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 17
+slug = "satan-announce-sink-seam"
+title = "All SATAN user-facing emits go through satan-announce and a function-valued sink"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "There are four notifications-notify sites (satan-broker.el:346, satan-tools-notify.el:56, satan-attribute-listener.el:272, satan-patch-listener.el:109) and one logger call (satan-broker.el:339). None share a helper, and tests stub them per file. Unstubbed budget-denied tests leak journal lines and D-Bus pops into the evidence SATAN reads (ISS-015)."
+choice = "A new thin module, satan-announce.el, provides (satan-announce &key app title body urgency timeout journal). It delivers by calling the function in satan-announce-sink, a defvar. The production sink calls notifications-notify, plus logger -t satan when :journal is given. Test code binds a recording sink and asserts on what was recorded. Scope covers the four notify sites and the logger call. message and display-warning are out: they are Emacs-local and never reach the journal or D-Bus. Category switches such as satan-failure-notify and satan-failure-syslog stay with their callers. The seam owns delivery only."
+alternatives = ["Boolean inhibit: tests that assert still need their own stubs, which makes two mechanisms (REQ-009).", "Extend satan-tools-notify.el: couples the broker and the listeners to the model-tool module."]
+rationale = "One mechanism does delivery, silencing and assertion (REQ-009). The seam is a thin keeper-facing shell (POL-001). It is surface-agnostic, so ADR-018 D4.4 can move it later. It adds no audit writer (ledger row 4)."
+consequences = ["The per-file cl-letf stubs of notifications-notify and logger are removed.", 'Adding an emit site anywhere else becomes a review finding. The rg selector is notifications-notify|\"logger\" outside satan-announce.el.', "app-name defcustoms stay per caller and are passed in as :app."]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"

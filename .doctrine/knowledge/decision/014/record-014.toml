@@ -1,0 +1,37 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 14
+slug = "run-outcome-streak-per-mode-predicate-walk"
+title = "Run-outcome streak is a per-mode predicate walk over run bundles"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The failure streak (satan-broker--failure-streak-count, satan-broker.el:311) walks every run dir across modes and counts only the .FAILED suffix. Any other mode's success resets it, and a session_blocked run resets it too, contrary to the DEC-8 comment at satan-broker.el:535-537. SL-018 needs a count of consecutive credential_deferred runs per mode."
+choice = "satan-run.el exposes satan-run-outcome-streak (MODE COUNTS-P SKIPS-P). An outcome is the run's status plus its final.json reason. The function walks MODE's runs from newest back: it counts runs where COUNTS-P holds, steps over runs where SKIPS-P holds, and stops at anything else. It is derived from bundles, so no new state is added. The failure streak skips session_blocked and credential_deferred. SL-018 counts credential_deferred with its own predicates."
+alternatives = ["Global outcome-aware walk: a success in another mode resets the streak, and it breaks SL-018's per-mode count.", "Persisted per-mode counter: a new stateful layer (ADR-018 D5) that can drift from the bundles."]
+rationale = "Per mode is what both consumers mean. Predicates keep the walk policy-free. DEC-001 puts run discovery in satan-run.el. Deriving from bundles honours ADR-018 D5 and the ledger row 4 no-third-writer note."
+consequences = ["The DEC-8 intent becomes true: session_blocked is transparent, where today it resets the streak.", "The walk reads status and final.json per dir until it stops, where today it reads names only. Cost is bounded by streak length.", "Interactive and MCP runs no longer affect scheduled-mode streaks."]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-017"
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

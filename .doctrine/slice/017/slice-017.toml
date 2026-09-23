@@ -12,43 +12,93 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "satan/satan-broker.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
 selector = "satan/satan-tools-notify.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
 selector = "satan/satan-sensor-alerts.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
 selector = "satan/satan-run.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
 selector = "satan/satan-intervention.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
 selector = "satan/satan-attribute-listener.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
 selector = "satan/satan-patch-listener.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
-selector = "satan/harness/runloop.py"
-intent = "scope-relevant"
+selector = "satan/satan-announce.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
-selector = "satan/test/**"
-intent = "scope-relevant"
+selector = "dev/satan-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[selector]]
-selector = "justfile"
-intent = "scope-relevant"
+selector = "satan/test/satan-announce-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-run-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-broker-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-sensor-alerts-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-tools-notify-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-intervention-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-attribute-listener-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-patch-listener-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
+
+[[selector]]
+selector = "satan/test/satan-tools-test.el"
+intent = "design-target"
+note = "SL-017 design sec-8 code impact"
 
 [[relation]]
 label = "fulfils"
