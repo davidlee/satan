@@ -188,8 +188,8 @@ verification = [
   { id = "VT-8", expects = "attended satan-run → prompt even for a defer mode", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-run-attended", "read"], waived = false },
   { id = "VT-9", expects = "a blocking read stub advances the clock; the run id carries the later time", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-run-id-time", "satan-broker-run"], waived = false },
   { id = "VT-13", expects = "credential_unavailable end-to-end: .FAILED dir, final.json reason, journal line, same-cause streak position", test_file = "satan/test/satan-broker-test.el", keywords = ["credential_unavailable", ".FAILED"], waived = false },
-  { id = "VT-14", expects = "spawn-running set → no acquisition call, run_busy run; flag cleared before the cond with nil cred → still run_busy; skipped by both streaks", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "satan-broker--acquire"], waived = false },
-  { id = "VT-20", expects = "a key ref present only in the direnv-merged env is acquired; the child receives exactly that base env", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--direnv-env", "satan-broker--acquire"], waived = false },
+  { id = "VT-14", expects = "spawn-running set → no acquisition call, run_busy run; flag cleared before the cond with nil cred → still run_busy; skipped by both streaks", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "busy-run-never-touches-the-backend"], waived = false },
+  { id = "VT-20", expects = "a key ref present only in the direnv-merged env is acquired; the child receives exactly that base env", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--direnv-env", "key-ref-from-direnv-env-is-acquired", "child-env-is-base-plus-resolved-key"], waived = false },
   { id = "VT-21", expects = "invalid effective duration, or a signalling streak walk → recorded credential_unavailable run, not a lost trigger", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-credential-escalate-after", "credential_unavailable"], waived = false },
 ]
 specs        = []

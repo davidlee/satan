@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-04 done (6843f76) · status started · next: /phase-plan PHASE-05
+fresh-as-of: 2026-09-23 · PHASE-05 done (723c205; review pending) · status started · next: /phase-plan PHASE-06
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -100,3 +100,32 @@ fresh-as-of: 2026-09-23 · PHASE-04 done (6843f76) · status started · next: /p
 - Existing warning, out of scope: `satan-run-mint-id`'s `mode-name` argument
   shadows a dynamic variable.
 - Suite 1115/1121.
+
+### PHASE-05 — broker credential gate (723c205)
+
+- `satan-broker--acquire` wraps direnv, the policy and the seam in one
+  `condition-case`. The verdict gains `:base`, the direnv-merged env, which
+  `--spawn` uses instead of a second direnv call. A mode with no key var yields
+  `(:env nil :refs nil :base BASE)`.
+- New cond arms after `budget_denied`: `credential_deferred` goes through
+  `satan-broker--write-credential-deferred-run` (silent-run helper plus a
+  journal line gated by `satan-failure-syslog`); `credential_unavailable` goes
+  through `--write-failed-no-child-run`. `run_busy` now reads
+  `(or (null cred) satan-run--spawn-running)`.
+- `--spawn` takes a 4th argument, CRED. `credential-refs` is a new run-struct
+  slot. The broker keeps no `my/` symbol; `satan-broker--key-var` replaces the
+  inline assq.
+- **Hermetic floor:** the runner now binds `process-environment` to
+  `(satan-credential-scrub process-environment)`. Without it, the existing
+  `satan-broker-run "morning"` tests (morning now prompts) would have depended
+  on whether the developer's shell held an `op://` ref in
+  `OPENROUTER_API_KEY`.
+- Test mechanics: the gate helper `satan-broker-test--gate-run` takes
+  `:policy :env :backend :attended :setup` and captures announcements through
+  the recorder. VT-9 uses a real 1.2 s sleep, because mint-id reads the C
+  clock. The `--with-spawn-collaborators` stubs for `my/scrub-op-refs-env` and
+  direnv are gone.
+- Fixed the older `_probe-snapshots` warning (the variable is used; renamed).
+- VT-14 / VT-20 keyword mandates now point at the test names (behaviour is
+  tested through `satan-broker-run`).
+- Suite 1125/1131.
