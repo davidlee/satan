@@ -12,15 +12,15 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "satan/satan-broker.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/satan-mode.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/satan-patch-adapter-pi.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/satan-custom.el"
@@ -33,6 +33,42 @@ intent = "scope-relevant"
 [[selector]]
 selector = "satan/test/**"
 intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-credential.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-run.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tick.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-patch-runner.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-credential-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-broker*-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-patch-*-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-run*-test.el"
+intent = "design-target"
 
 [[relation]]
 label = "fulfils"
