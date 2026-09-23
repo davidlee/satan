@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-06 done (aacf085); PHASE-05 review closed (67adae4) · status started · next: /phase-plan PHASE-07
+fresh-as-of: 2026-09-23 · PHASE-07 in_progress (red tests uncommitted) · head dd26021 · next: PHASE-07 green (see handover.md)
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -16,6 +16,7 @@ fresh-as-of: 2026-09-23 · PHASE-06 done (aacf085); PHASE-05 review closed (67ad
 - ISS-020 (sentinel reset) — absorbed into SL-018 (scope objective 8, design sec-6)
 - RV-013 — 20 findings over two adversarial passes, concluded
 - design.md sec-1..sec-9; 12 design-target selectors
+- plan.toml/plan.md (8 phases; VT-25..VT-29 minted); PHASE-01 in ~/.emacs.d (45e346d, 634a878); PHASE-02..06 (e3faba6, 1a201a6, 6843f76, 723c205, aacf085) + quit fix 67adae4
 
 ### Learned
 - mem.fact.satan.op-prompts-on-session-not-read (new)
@@ -23,12 +24,15 @@ fresh-as-of: 2026-09-23 · PHASE-06 done (aacf085); PHASE-05 review closed (67ad
 - mem.fact.satan.op-cache-has-no-invalidation
 - design-run mechanics: inquiries resolve via cp- dispose; adopt needs the record to exist in a prior apply; att- attests sections (mem.pattern.doctrine.design-run-defects)
 - codex MCP down; `codex exec -s read-only -o FILE -` works for adversarial passes
+- memory candidates (not yet recorded): `quit` is not `error` — acquisition boundaries catch `(error quit)`; ~/.emacs.d `dev/dl-test.el` under `-Q` needed `load-prefer-newer` (stale .elc shadowed source; fixed); `called-interactively-p 'interactive` is nil under --batch
 
 ### Open
 - ASM-002: held; watched, not validated. Design sec-9 VH-1 corrected at /plan; armed as a watch in PHASE-08
 - RV-013 F-9 (DST skew) and F-12 (Pi key superset) tolerated
 - DEC-023 consequence: a queued daily mode can lose its day to run_busy
-- two-repo rollout: dl-secret.el first (design sec-9)
+- close at /close: ISS-020 (fixed 1a201a6), ISS-012, IMP-021
+- PHASE-05 review F1 (ref in ERR text) rejected with rationale in ## Progress — revisit only if a backend puts secrets in conditions
+- pre-existing warning: `satan-run-mint-id` arg `mode-name` shadows a dynamic var (out of scope)
 
 ## Progress
 
