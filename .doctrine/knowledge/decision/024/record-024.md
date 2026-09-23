@@ -1,0 +1,10 @@
+A SATAN ask carries an optional `form`: an ordered list of options, each `{id, label, fields?}`, with fields in goad SPEC-001's shape — kinds text / boolean / datetime / number / choice, `min`/`max` on number, `options` (id + label) on choice (SPEC-001 R-15, R-16, R-53). No form means the default form: Yes / No, no fields.
+
+The form is durable on the intervention record, because the queue is a disposable projection regenerated from open rows (DEC-005, DEC-010): `satan-intervention-record` gains an optional `:form` key on the `intervention.created` payload (the audit validator accepts it absent or as a list); `satan_interventions` gains a nullable `form_json JSONB` column (migration 0008); `satan-intervention-project` writes it; `satan-rebuild-interventions` replays it; the queue rewrite selects it into each entry.
+
+Rejected: a form file under the state root beside the queue (a new stateful layer — ADR-018 D5 — and a second source of truth the rebuild cannot replay); packing the form into `message` (overloads the human-readable field the observer trace quotes).
+
+Basis: user direction 2026-09-24 — "strongly prefer supporting options / all supported field types", accepted at an estimated ~1.5 phases of added cost over keeping Yes/No only.
+
+
+**Landing (RV-015 F-4).** Migration 0008 runs only when invoked (`satan-memory-migrate`), and the INSERT is shared by every intervention kind, including the undelivered fallback and the rebuild. So `form_json` is named in the INSERT only when the payload carries a form, and every other kind projects unchanged whether or not 0008 has run. Applying 0008 is an explicit landing step, done before `satan-goad-enabled` is switched on. Until it has run, a question with a form fails to project and takes the undelivered verdict (sec-3), which is the safe failure.

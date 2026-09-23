@@ -12,6 +12,33 @@ and canon's `goad.outstanding` rule. Inert in production until a queue exists.
 PHASE-02 landed as corpus `e3ac87c` / dev `528079c`. Next: `/phase-plan
 PHASE-04`.
 
+### Design revision — answer forms (2026-09-24)
+
+User-approved. SATAN's questions can carry a goad-protocol answer form, not
+Yes / No only. Decisions DEC-024 (the form, stored on the intervention record
+via migration 0008), DEC-025 (`opt:` option ids; the answer is an
+`{option, values}` object), DEC-026 (one validator, at emit), DEC-027 (empty
+`XDG_STATE_HOME`, with one shared helper) and DEC-028 (intervention rows read as
+JSON, plus an open-asks query). Adversarial review RV-015 raised 10 findings;
+all were verified and integrated.
+
+**Consequence for the plan:** PHASE-02 (corpus `e3ac87c`) and PHASE-03
+(`d036427`) are built on boolean answers and `yes:ask:` ids. Rework phases are
+appended; phase ids never change. ISS-024 duplicates ISS-010, and DEC-027 fixes
+both. `goad/convert_toml_days.py` is still tracked, although corpus `e0a3c9b`'s
+message says it was retired.
+
+**A further review pass would probe:**
+- whether a form of goad kinds can express what SATAN actually wants to ask, by
+  drafting 3–4 real questions against the tool description;
+- whether the JSON row read keeps `satan-intervention-lookup`/`-recent`
+  callers' plist shapes identical (the same pipe-split pattern elsewhere is
+  ISS-025);
+- how `enough:` interacts with a form whose option id happens to be `enough`.
+  That is harmless under `opt:` namespacing, but should be pinned by a test.
+
+None of these blocks the lock. They are verification or plan-time checks.
+
 ### PHASE-03
 
 **Orchestrator resolutions** (sheet OQs):

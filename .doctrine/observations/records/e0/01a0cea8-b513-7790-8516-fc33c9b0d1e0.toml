@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0cea8-b513-7790-8516-fc33c9b0d1e0"
+recorded_at = "2026-09-23T14:25:58.035207723Z"
+kind = "friction"
+summary = "capsule-driver: SendMessage to a running capsule-orchestrator never reached it"
+detail = "SL-016, 2026-09-24. Driver sent cap-orch-1 five messages (user assent for ~/satan commits x2, two forwarded misrouted worker/planner hand-backs, HOLD before PHASE-03, charter change). All returned success ('sent to inbox'), but the orchestrator's final hand-back shows it saw none of them: it still asked for data-commit assent, ran PHASE-03 through the HOLD, and treated the driver's design revision as an unknown writer. Worker/planner hand-backs were also delivered to the driver instead of the orchestrator. The driver has no working downward channel mid-charter; the only lever is TaskStop. CLAUDE_CODE_DISABLE_BACKGROUND_TASKS was not set in this session."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

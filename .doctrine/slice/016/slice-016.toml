@@ -1,7 +1,7 @@
 id = 16
 slug = "goad-elicitation"
 title = "goad as SATAN's elicitation surface"
-status = "ready"
+status = "plan"
 created = "2026-09-21"
 updated = "2026-09-23"
 tags = ["elicitation", "goad", "intervention", "perception", "satan"]
@@ -24,7 +24,8 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "satan/satan-intervention.el"
-intent = "scope-relevant"
+intent = "design-target"
+note = "sec-9 design targets: queue rewrite + answer trace + evidence labels (observer); undelivered writer + :form on record/project/rebuild (intervention, DEC-024); suppression attributes; audit validator accepts :form; form_json migration; empty-XDG state root (DEC-027)."
 
 [[selector]]
 selector = "satan/satan-memory-canon.el"
@@ -53,8 +54,8 @@ note = "Tool registration and the capability token, the satan-goad-enabled kill 
 
 [[selector]]
 selector = "satan/satan-custom.el"
-intent = "scope-relevant"
-note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
+intent = "design-target"
+note = "sec-9 design targets: queue rewrite + answer trace + evidence labels (observer); undelivered writer + :form on record/project/rebuild (intervention, DEC-024); suppression attributes; audit validator accepts :form; form_json migration; empty-XDG state root (DEC-027)."
 
 [[selector]]
 selector = "satan/satan-mode.el"
@@ -65,6 +66,36 @@ note = "Tool registration and the capability token, the satan-goad-enabled kill 
 selector = "satan/test/**"
 intent = "scope-relevant"
 note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
+
+[[selector]]
+selector = "satan/satan-observer.el"
+intent = "design-target"
+note = "sec-9 design targets: queue rewrite + answer trace + evidence labels (observer); undelivered writer + :form on record/project/rebuild (intervention, DEC-024); suppression attributes; audit validator accepts :form; form_json migration; empty-XDG state root (DEC-027)."
+
+[[selector]]
+selector = "satan/satan-attribute.el"
+intent = "design-target"
+note = "sec-9 design targets: queue rewrite + answer trace + evidence labels (observer); undelivered writer + :form on record/project/rebuild (intervention, DEC-024); suppression attributes; audit validator accepts :form; form_json migration; empty-XDG state root (DEC-027)."
+
+[[selector]]
+selector = "satan/satan-audit.el"
+intent = "design-target"
+note = "sec-9 design targets: queue rewrite + answer trace + evidence labels (observer); undelivered writer + :form on record/project/rebuild (intervention, DEC-024); suppression attributes; audit validator accepts :form; form_json migration; empty-XDG state root (DEC-027)."
+
+[[selector]]
+selector = "satan/memory/migrations/0008_*.sql"
+intent = "design-target"
+note = "sec-9 design targets: queue rewrite + answer trace + evidence labels (observer); undelivered writer + :form on record/project/rebuild (intervention, DEC-024); suppression attributes; audit validator accepts :form; form_json migration; empty-XDG state root (DEC-027)."
+
+[[selector]]
+selector = "satan/satan-sensor-curiosity.el"
+intent = "design-target"
+note = "State-home readers moved onto the shared empty-XDG helper (DEC-027, RV-015 F-9)."
+
+[[selector]]
+selector = "satan/satan-tools-content.el"
+intent = "design-target"
+note = "State-home readers moved onto the shared empty-XDG helper (DEC-027, RV-015 F-9)."
 
 [[relation]]
 label = "governed_by"

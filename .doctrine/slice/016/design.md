@@ -362,15 +362,18 @@ One `satan-tool-register` spec: `:name`, `:risk`, `:capability`, `:args-schema`,
    else, so a refusal there never records a false suppression (F-26);
 2. refuses inside the goad quiet window (§8) — a refusal, not a suppression:
    nothing was decided about the question;
-3. resolves the correlating motive among those whose cue holds the **question's
+3. refuses an invalid answer form, with the reason ([[DEC-026]]) — also a
+   refusal, not a suppression (see *The answer form* below);
+4. resolves the correlating motive among those whose cue holds the **question's
    subject handle** (§2), and **fails closed** if there is none, recording the
    suppression;
-4. **records** the intervention of the reserved kind `"ask"` —
+5. **records** the intervention of the reserved kind `"ask"` —
    `satan-intervention-record`, passing `:related-motive-id` (the winner),
-   `:cue-handles` (the subject) and `:outcome-window-minutes 60`;
-5. **projects** it — `satan-intervention-project`;
-6. rewrites the queue projection whole, from the open rows;
-7. rings the doorbell (§5) — the primary delivery path, not an optimisation.
+   `:cue-handles` (the subject), `:outcome-window-minutes 60` and the optional
+   `:form` ([[DEC-024]]);
+6. **projects** it — `satan-intervention-project`;
+7. rewrites the queue projection whole, from the open rows;
+8. rings the doorbell (§5) — the primary delivery path, not an optimisation.
 
 **The window is 60 minutes** ([[RV-007]] F-10), the value
 `docs/attributes/outcome-semantics.md:103` recommends for kind `"ask"`. With the
@@ -437,7 +440,17 @@ the backend kept re-presenting it ([[RV-007]] F-11). The rewrite therefore also
 fires at classification. That is what makes the regenerability property
 [[DEC-005]] leans on actually hold.
 
-**Each entry carries `emitted_at` and `expires_at`** (emit plus window).
+**The open rows need their own query** ([[DEC-028]]).
+`satan-intervention-pending` returns *matured* rows, whose window has closed.
+The queue needs the *open* ones, so it gets its own query sharing pending's
+row-to-plist mapping. Every intervention reader (lookup, pending, recent, and
+this query) reads rows as JSON (`json_agg(row_to_json(…))`) rather than
+splitting `psql` output on `|` and newlines. A split read silently drops
+any row whose question contains either character, and that ask would then never
+be queued or classified.
+
+**Each entry carries `emitted_at` and `expires_at`** (emit plus window), and the
+ask's `form` when it has one, selected from the row's `form_json` ([[DEC-024]]).
 `backend.py` never renders an expired entry ([[RV-007]] F-24), and it files the
 ask's events under `emitted_at`'s date (F-29). Both rewrite triggers run inside
 SATAN runs, and runs can stop: under SL-018's `defer` policy no child spawns and
@@ -451,7 +464,8 @@ invisible to the backend.
 
 **This is the load-bearing part of the slice**, and the first design badly
 understated it. "Merge the queue into `pending()`" is six changes, none
-optional, to a file with no tests, no fixtures and no check recipe (slice R2):
+optional, to a file with no tests, no fixtures and no check recipe (slice R2).
+The answer form ([[DEC-025]]) adds a seventh:
 
 | # | change | why | finding |
 |---|---|---|---|
@@ -461,6 +475,7 @@ optional, to a file with no tests, no fixtures and no check recipe (slice R2):
 | 4 | **serialize queued items** | `save()` iterates `ITEMS` alone (`:77-90`), so a SATAN answer would render, mutate the in-memory map, and vanish on write | F-7 |
 | 5 | **skip expired entries** | an entry past `expires_at` is not rendered, so the queue is self-limiting when SATAN is not running | F-24 |
 | 6 | **file a SATAN ask under its emit date** — its events go to the day file of its `emitted_at` date, and `pending()` reads its state from there | `record_path(now)` keys every write by the date of the event (`:65-66`, `:151`). An ask answered at 23:40 would be pending again at 00:10 and asked twice, and its record would be split across two files | F-29 |
+| 7 | **render the ask's form; store the chosen option and its values** — Yes / No when it has none | a SATAN question is not always a yes-or-no one; the host already draws every field kind, so only the backend changes | [[DEC-025]] |
 
 Fixtures come first. goad degrades safely on a backend fault — the host does not
 crash — but prompts stop, and goad's own field notes record that *"waiting and
@@ -480,6 +495,64 @@ Constraint: option ids must remain parseable back to an `intervention_id`, and
 `answer()` currently parses with `verb, _, item_id = option.partition(":")` — a
 single split. An encoding must survive that, or `answer()` changes with it.
 
+## The answer form
+
+A SATAN question carries an optional **form** ([[DEC-024]]): an ordered list of
+options, each `{id, label, fields?}`, with fields in goad SPEC-001's own shape —
+kinds `text`, `boolean`, `datetime`, `number` and `choice`, `min`/`max` on a
+number, `options` (id and label only) on a choice (SPEC-001 R-15, R-16, R-53).
+No form means the default: Yes / No, no fields. The host already draws all five
+kinds, so this is still **no goad host change**.
+
+```
+queue entry  { intervention_id, question, subject, emitted_at, expires_at, form? }
+                                                                             │
+backend view   options: opt:<option>:ask:<id> …  +  later:ask:<id>  +  enough:
+                                                                             │
+respond        { option: "opt:rate:ask:<id>", values: { "energy": 7 } }
+                                                                             │
+day record     asks.<id> = { presented_at, value: { option: "rate",
+                                                    values: { "energy": 7 } }, at }
+```
+
+**Option ids** ([[DEC-025]]). Every option of a SATAN ask, the default Yes / No
+included, is `opt:<option-id>:ask:<intervention_id>`. `answer()` keeps its single
+verb split, then splits the option id off at its first `:`. SATAN's option ids
+are therefore `[a-z0-9_-]+`. `later:` and `enough:` are unchanged; `yes:` and
+`no:` remain the checklist's verbs only.
+
+**The value** ([[DEC-025]]). An ask's answer is `{"option": …, "values": …}`,
+`values` being the host's `response.values` verbatim; it merges into the ask's
+record beside `at`, so `presented_at` survives. The backend never interprets it:
+SPEC-001 R-57 fixes each value's JSON type by its field's kind. One shape for
+every ask, so no reader branches. Checklist answers keep their boolean.
+
+**A value cannot tell answered from untouched.** goad submits a value for every
+field it drew, including one nobody touched: `false`, `""`, the number's `min`
+or `0`, the first choice alternative, the epoch (SPEC-001 §6.2, R-58). A form
+that needs that difference builds it in, for example with an explicit "skip"
+alternative. `tools/goad_ask.md` teaches the model this.
+
+**Validation happens once, at emit** ([[DEC-026]]). The host rejects a whole
+message on any protocol error, and asks render first, so a bad form would blank
+goad, checklist included, until the ask expired. It must be caught before step
+5. SATAN's `:args-schema` validator has no closed objects and no rules keyed to
+a field's kind, so the schema only declares `form` an optional array. One pure
+function, `satan-goad-form-validate`, owns every rule:
+- closed keys at every level (SATAN emits no hints);
+- kind-scoped keys (R-50), and choice alternatives of exactly `{id, label}` (R-53);
+- unique option, field and alternative ids (R-14, R-52);
+- `min <= max`;
+- ids matching `[a-z0-9_-]+`;
+- a present `form` must not be empty;
+- size caps: at most 8 options, at most 8 fields per option, labels of at most
+  200 characters, at most 8 KiB serialised.
+
+It returns the form rebuilt from the named keys, and that is what is recorded.
+`backend.py` does not re-validate the protocol. Its per-entry shape check only
+requires `form` to be absent or a non-empty list of objects with string `id` and
+`label`, and drops the entry otherwise.
+
 ## Two repos, one landing
 
 `satan-tool--description` reads the model-facing description from the **corpus**
@@ -487,7 +560,7 @@ repo and **signals when it is missing** (`satan/satan-tools.el:208-209`), with
 the manifest built per-spawn. Landing `goad_ask` without
 `~/satan/tools/goad_ask.md` **breaks every run of every mode that allowlists it**.
 
-Corpus-side change set: `goad/backend.py` (the six above), `goad/README.md:16`
+Corpus-side change set: `goad/backend.py` (the seven above), `goad/README.md:16`
 (the record format), `tools/goad_ask.md`, and the one-off day-file conversion.
 The corpus repo is ungoverned by this doctrine corpus, which makes the coupling a
 sequencing hazard rather than a governance one — and is why they land together.
@@ -633,6 +706,8 @@ It fires when the record holds an entry carrying this intervention's
 `intervention_id` with a `value` present and an `at` **within the declared
 outcome window** — emit plus 60 minutes (§4, §9). The goad source is not cut to
 `after`'s 30-minute horizon (§3), so the predicate applies the ask's own window.
+It never reads what the value says: any answer to the form, whatever its option
+or fields, is an answer ([[DEC-025]]).
 
 This is the first predicate that is **direct evidence** rather than ambient
 inference. The other three ask whether the editor focused, whether a commit
@@ -651,8 +726,11 @@ answered ask classifies `:worked`, so it already passes through
 `satan-observer--persist-positive` (`satan/satan-observer.el:110`), which writes
 the `observation` trace via `satan-memory-store-mark`. For kind `"ask"` that
 trace's metadata gains the question (the intervention's `message`) and the
-submitted value, read from the same record. One writer, one trigger, an existing
-module — no new path.
+submitted value — the `{option, values}` object — read from the same record.
+One writer, one trigger, an existing module — no new path. A free-text answer
+has no length limit, and the trace reaches `psql` as one argument, so string
+values longer than 1 KiB are truncated, with a marker, in the trace and in the
+`:goad` evidence. The day record keeps them whole.
 
 **Not the manual writer.** `satan-intervention-write-manual-outcome` enforces
 `--manual-classifications` = `("harmful" "contradicted")`, and its docstring is
@@ -774,9 +852,24 @@ An ask **is** an intervention. `satan-intervention-record` already records
 `outcome_window_minutes`, `severity`. So D5 is **satisfied, not waived**, and
 POL-001's clause is never engaged — the two authorities do not meet.
 
+The answer form ([[DEC-024]]) keeps it that way. It is one more optional field
+on the same record — `:form` on the `intervention.created` payload, which the
+audit validator already admits — and one nullable `form_json JSONB`
+column on the same table (migration `0008`), written by
+`satan-intervention-project` and replayed by `satan-rebuild-interventions`. A
+column on an existing row is not a new layer.
+
+Migrations run only when invoked, and every intervention kind shares one INSERT.
+So the INSERT names `form_json` only when the payload carries a form, and every
+other kind projects the same whether or not `0008` has run. **Applying `0008` is
+a landing step, done before `satan-goad-enabled` is turned on.** Before that, a
+question with a form fails to project and takes the undelivered verdict (sec-3). The alternative, a form file
+beside the queue, would be one, and a second source of truth the rebuild could
+not replay.
+
 | tier | holds | where | on loss |
 |---|---|---|---|
-| record | the ask, as `intervention.created` | the run's `transcript.jsonl` | the question is gone |
+| record | the ask, as `intervention.created`, with its form | the run's `transcript.jsonl` | the question is gone |
 | row | its projection, what the observer scores | `satan_memory` (Postgres) | `satan-rebuild-interventions` |
 | queue | the open rows, for `backend.py` | `satan-state-path` | regenerate from the rows |
 | answer | what happened to each question | goad's `data/*.json` | goad's concern, corpus-tracked |
@@ -811,7 +904,20 @@ Two fields the first design did not see:
   `Enough` (§6).
 
 A SATAN ask's entry, with these fields and its answer, lives in the day file of
-the ask's emit date, not of the event (§4).
+the ask's emit date, not of the event (§4). Its answer is the `{option, values}`
+object ([[DEC-025]]); a checklist item's stays a boolean.
+
+## One state root, one queue path
+
+`satan-state-root` treats an empty `XDG_STATE_HOME` as unset ([[DEC-027]]), as
+the XDG Base Directory spec says and as `backend.py`'s `queue_path` already
+does. Today `(or (getenv "XDG_STATE_HOME") …)` keeps `""`, so in a shell that
+exports it empty the root resolves against the current directory, and SATAN and
+the backend name different queue files. The fix is the root's default, so every
+`satan-state-path` join moves together. The same defect is copied in
+`satan-sensor-curiosity-segments-dir` and `satan-tools-content-dir`. All three
+read the state home through one helper in `satan-custom.el`, which returns the
+variable when it is non-empty and `~/.local/state` otherwise.
 
 Plus the one-off conversion of the five existing day files, a reviewable commit
 since they are corpus-tracked.
@@ -1035,6 +1141,17 @@ setting correct is the emit-date filing (§4), not the default.
 | 23 | an answer after the window classifies `:ignored` `untouched` with no answer trace, the same whether the observer runs before or after the answer arrives | VT — F-31, F-35 |
 | 24 | under a UTC database session and a +10:00 local zone, an ask emitted at 09:30 local is filed and read under its local date | VT — F-33 |
 | 25 | a run after midnight perceives an ask answered before midnight as answered, not outstanding | VT — F-34 |
+| 45 | an ask with a form renders its options and fields; answering one stores `{option, values}` with the host's values verbatim, attributable to the intervention, with `presented_at` intact | VT — [[DEC-024]], [[DEC-025]] |
+| 46 | an ask with no form renders Yes / No and stores the same `{option, values}` shape | VT — [[DEC-025]] |
+| 47 | an invalid form is refused at emit with its reason, and nothing is recorded or suppressed. Invalid means: an unknown key at any level; a key on the wrong kind; a choice alternative with more than `{id, label}`; a duplicate option, field or alternative id; an unknown kind; `min > max`; an id outside `[a-z0-9_-]+`; an empty form; a size cap exceeded | VT — [[DEC-026]] |
+| 48 | an ask's form survives projection, `satan-rebuild-interventions`, and queue regeneration | VT — [[DEC-024]] |
+| 49 | `backend.py` drops a queue entry whose `form` is not a non-empty list of objects with string `id` and `label` | VT — [[DEC-026]] |
+| 50 | with `XDG_STATE_HOME` set empty, `satan-state-root`, the curiosity segments dir and the content dir all resolve under `~/.local/state`, and SATAN's queue path equals `backend.py`'s | VT — [[DEC-027]] |
+| 51 | an ask whose question contains `\|` and a newline is returned by `satan-intervention-pending` and by the open-asks query, and is queued | VT — [[DEC-028]] |
+| 52 | an intervention of another kind, or an ask with no form, projects when migration `0008` has not been applied | VT — [[DEC-024]] |
+
+Numbers 26–44 belong to the plan's own verification ids, so the design's rows
+continue from 45 and one number never names two claims.
 
 ## What the reframe bought, tested
 
@@ -1076,7 +1193,7 @@ temp dir plus defcustom rebinding (record and queue paths), `cl-letf` subprocess
 stubbing (`goad-emit` without a live host), and `ert-fail` spies on mutating
 functions to prove purity (ADR-001 on the perceive leg).
 
-`backend.py` needs fixtures of its own — it has none, and six of the slice's
+`backend.py` needs fixtures of its own — it has none, and seven of the slice's
 changes live there.
 
 **A fixture must not build the value under test.** [[ISS-014]] survived because
@@ -1110,7 +1227,11 @@ Neither is this slice's to fix; both are this slice's to not be fooled by.
 | `satan-observer.el` | queue rewrite at classification; the answer trace in `--persist-positive`; the ask's evidence labels in `--verdict-classify-args` (§4, §6) |
 | `satan-observer-classify.el` | the answer predicate; kind-scoped predicate selection; the `"ask"` branch of `classify-negative`; kind `"ask"` credits its emit-time motive in `classify-for-motives` and is exempt from the `crosses_midnight` guard — no other kind's verdicts change (§2, §6) |
 | `satan-tick.el` | the `goad-ask` capability; `satan-tick-quiet-p` gains a window argument (§8) |
-| `satan-intervention.el` | the `undelivered` auto-verdict writer, moved from `satan-tools-notify.el` (§4) |
+| `satan-intervention.el` | the `undelivered` auto-verdict writer, moved from `satan-tools-notify.el` (§4); `:form` on record, project and rebuild ([[DEC-024]]); rows read as JSON, and the open-asks query ([[DEC-028]]) |
+| `satan-audit.el` | no change: the `intervention.created` validator already admits extra keys; a test pins that it admits `:form` ([[DEC-024]]) |
+| `satan/memory/migrations/0008_*.sql` | nullable `satan_interventions.form_json` ([[DEC-024]]) |
+| `satan-custom.el` | the state-home helper; `satan-state-root` treats an empty `XDG_STATE_HOME` as unset ([[DEC-027]]) |
+| `satan-sensor-curiosity.el`, `satan-tools-content.el` | read the state home through the helper ([[DEC-027]]) |
 | `satan-attribute.el` | suppression and `:no_correlation` as attributes (§7) |
 
 Scope-relevant: `satan-tools.el` (registration and the capability token — note
@@ -1124,8 +1245,8 @@ moved writer), `satan-custom.el` (`satan-goad-enabled`,
 and `satan-sensor-alerts.el` (suppression is an attribute, not an alert).
 
 **Corpus repo** (`~/satan`) — lands together with the above (§4):
-`goad/backend.py` (six changes), `goad/README.md`, `tools/goad_ask.md`, and the
-one-off day-file conversion.
+`goad/backend.py` (seven changes), `goad/README.md`, `tools/goad_ask.md` (which
+teaches the model the form), and the one-off day-file conversion.
 
 ## Sequencing
 
@@ -1135,7 +1256,7 @@ doorbell ships with PROMPT**, not after it: without it `backend.py`'s two-hour
 slot poll matures most asks `undelivered` (§5, [[RV-007]] F-22). Its exit code
 still carries no meaning.
 
-`backend.py` fixtures come before any of its six changes. It carries the slice
+`backend.py` fixtures come before any of its seven changes. It carries the slice
 and has no tests.
 
 **SL-018 gates enablement, not construction** (§8). Nothing in this slice
@@ -1156,6 +1277,8 @@ credential session. Interactive MCP refuses the tool (§2).
 | **`satan-attrd` rejects unknown outcome reasons** ([[ISS-011]]) | cross-repo dependency for the suppression attribute | name it at plan time |
 | **`backend.py` has no tests** (R2) | fixtures are phase-one work | §4 |
 | **Evidence truncation cap unenforced** ([[ISS-001]]) | pre-existing | keep the contribution compact |
+| **Migration `0008` must be applied before goad asks are enabled** ([[DEC-024]]) | migrations run only when invoked | a landing step; before it, a question with a form takes the undelivered verdict, and every other kind is unaffected |
+| **A hand-edited queue can carry a form the host rejects** — `backend.py` checks shape only ([[DEC-026]]) | the queue's one writer validates at emit; a second validator in Python would drift | goad shows nothing until that ask expires, at most 60 minutes; documented |
 
 ## Out of scope, deliberately
 

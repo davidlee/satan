@@ -43,7 +43,7 @@ Three capabilities, in dependency order. Each is independently useful.
 ```
             ~/satan/goad/                        ~/dev/satan/satan/
   ┌──────────────────────────────┐
-  │  data/YYYY-MM-DD.toml        │ ──(1) PERCEIVE──►  percept / sensor
+  │  data/YYYY-MM-DD.json        │ ──(1) PERCEIVE──►  percept / sensor
   │    answers + deferrals       │                    (pure; perceive phase)
   ├──────────────────────────────┤
   │  <queue>/    SATAN-authored  │ ◄─(2) PROMPT────   ask tool
@@ -57,8 +57,10 @@ Three capabilities, in dependency order. Each is independently useful.
        └──────────┘   /run/user/1000/goad.sock        (refusal-aware)
 ```
 
-**1. PERCEIVE.** SATAN reads `~/satan/goad/data/*.toml` as a percept/sensor
-source — per-item `value` (bool) and `deferred_at`. Read-only; no goad change;
+**1. PERCEIVE.** SATAN reads `~/satan/goad/data/*.json` ([[DEC-009]]) as a
+percept/sensor source — per-item `value` (a boolean for checklist items, the
+chosen option and its field values for SATAN's asks — [[DEC-025]]) and
+`deferred_at`. Read-only; no goad change;
 no governance surface. Lands in the **perceive** phase, which [[ADR-001]] /
 DE-010 require to be pure (its only write is `percept.json`).
 
@@ -68,7 +70,10 @@ hardcoded `ITEMS`; answers are written back for SATAN to read. Keeping the queue
 backend-side satisfies goad's own architectural review question #1 ("could this
 behaviour live entirely in the backend?") and therefore needs **no goad host
 change**. Emitting the prompt is an effect → **consume** phase, recorded as an
-intervention of the reserved kind `"ask"`.
+intervention of the reserved kind `"ask"`. A question may carry its own answer
+form — options, each with goad's field kinds — rather than Yes / No only
+([[DEC-024]]); the form is persisted on the intervention record and validated by
+SATAN at emit ([[DEC-026]]).
 
 **3. DOORBELL.** SATAN chooses the moment via
 `goad-emit --source satan --kind K --data JSON`. `source: "host"` is reserved
@@ -99,7 +104,13 @@ SATAN (`~/dev/satan`) — the mechanism repo:
 - a new sensor/percept reader for the goad day files
 - a new thin tool module for the doorbell and the ask queue
 - `satan-context.el` (bundle assembly), if the goad state joins the capsule
-- intervention emission at the reserved kind `"ask"`
+- intervention emission at the reserved kind `"ask"`, carrying an optional
+  answer form (`:form`, a `form_json` column, the audit validator)
+- `satan-custom.el` — `satan-state-root` treats an empty `XDG_STATE_HOME` as
+  unset, through one helper shared with the curiosity and content readers
+  ([[DEC-027]])
+- `satan-intervention.el` — rows read as JSON, not split on `|`, and an
+  open-asks query for the queue ([[DEC-028]])
 
 Corpus (`~/satan`) — separate repo, separate patch job if ever automated:
 
@@ -166,7 +177,7 @@ Done is judged by a closed loop, observed end to end:
 1. SATAN emits an intervention of kind `"ask"`; the question reaches the goad
    window without a goad host change.
 2. The keeper answers; the answer is readable by SATAN and attributable to the
-   originating intervention.
+   originating intervention — whatever form SATAN gave the question.
 3. An *unanswered* prompt matures and classifies as `:ignored` through the
    existing observer path — the [[RFC-016]] D3 keystone, demonstrated.
 4. A refused `goad-emit` (`too_soon` / `engaged`) loses nothing: the queued

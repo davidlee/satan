@@ -1,0 +1,107 @@
+id    = 15
+slug  = "design-review-of-sl-016"
+title = "design review of SL-016"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-016"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "major"
+title = "DEC-026: :args-schema cannot enforce the shape the design assigns to it"
+detail = "DEC-026 and design sec-3 'The answer form' say the tool's :args-schema fixes the shape — kind from the five, min/max only on number, options required on choice with id+label only, 'no other keys' — and the pure function checks only what 'a schema cannot'. The validator cannot do most of that. satan-tools.el:60-121 (satan-tool--validate-value) supports :type/:required/:enum/:pattern/:shape/:items only: a :shape checks listed keys and ignores every other key (no closed objects / additionalProperties), and it has no conditional or kind-scoped rules, so 'min on a text field', 'options on a boolean', 'fields on a choice alternative' and 'options required only on choice' are all inexpressible. The generated JSON Schema (satan-tool--args-schema-to-jsonschema :240-282) emits no additionalProperties either, so the model is invited to add hints. Consequence: an unchecked key reaches form_json and the queue; goad rejects the whole message for a hints object (R-18), a named key on the wrong kind (R-50) or fields on an alternative (R-53) (R-12 style whole-message rejection, spec §5 'Everything else fails the whole message'). Because asks render first, goad then shows nothing at all — the keeper's checklist included — until the ask expires, and the ask matures undelivered. DEC-026's residual risk attributes this only to hand-edited queues; it is reachable from ordinary model output. Fix: make the pure function own every kind-scoped and closedness rule, and have it return a normalised form rebuilt from the named keys only (parse, don't validate), with :args-schema kept to coarse types; restate DEC-026 and the residual risk accordingly. VT item 28 already lists 'a key on the wrong kind' — it will pass only if the function, not the schema, checks it."
+disposition = "fixed"
+response = "Verified satan-tools.el satan-tool--validate-value: no closed objects, no kind-conditional rules. DEC-026 amended: :args-schema declares form an optional array only; the pure satan-goad-form-validate owns every rule (closed keys, R-50, R-53, uniqueness, min<=max, id pattern, non-empty, size caps) and returns the rebuilt form, which is what is recorded. design sec-3 'Validation happens once'; verification row 47."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "Plan not revised: no phase owns DEC-024..027; PHASE-02 and the goldens encode the rejected answer shape"
+detail = """plan.toml has no mention of form, form_json, migration 0008, the audit validator change, the lookup/pending column, goad_ask.md form teaching, or DEC-027 (grep: only line 74, the old queue path). PHASE-02 (implemented, committed 528079c) stores asks as value: true/false with yes:/no: option verbs (~/satan/goad/backend.py answer() — 'value': verb == 'yes'; view_for yes:/no:), and its golden fixtures (satan/test/goad-fixtures/data/2026-09-23.json: "value": true) are what PHASE-03's in-tree readers and tests pin (satan/test/satan-goad-test.el:154,176,213,216 test :value truthiness / :false). DEC-025 replaces both with opt:<option>:ask:<id> and {option, values}. The plan must say which phase reworks backend.py (view_for with a form, answer() opt parsing, parse_ask accepting form, README 'SATAN asks' schema) and regenerates the goldens with new provenance, and whether PHASE-03 lands before or after that regeneration; otherwise PHASE-03 commits readers pinned to a shape the design has already abandoned, and PHASE-08's VT-43 (goldens match backend) is the first thing to notice. Also unassigned: 0008 + record/project/rebuild/audit (PHASE-04 or 06?), the form validator (PHASE-06), trace value shape (PHASE-09), DEC-027 (satan-custom.el)."""
+disposition = "accepted"
+response = "Correct: no phase owns DEC-024..028, and PHASE-02 (corpus e3ac87c) and PHASE-03 (d036427, now committed) are built on boolean values and yes:/no: ids. Integrated at the plan stage after lock: rework phases appended (ids immutable) for backend + goldens regeneration, then PHASE-03's fixture tests, before PHASE-04."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "major"
+title = "Design verification items 26-31 collide with plan VT-26..VT-31"
+detail = "plan.toml's header binds design sec-8 item numbers to VT ids ('VT-1..VT-25 are design.md sec-8's own item numbers ... New rows continue from VT-26'), and VT-26..VT-44 are already allocated in the plan with other meanings: VT-26 ask renders first, VT-27 deferred_by, VT-28 queue regenerates, VT-29 goad motive cannot absorb, VT-30 23:15 filing, VT-31 local emit date. The revision adds design items 26-31 (form renders, default Yes/No shape, invalid form refused, form survives rebuild, backend drops bad form, XDG) under the same numbers. Criteria ids are immutable (boot guardrail), so the design rows are the ones that must move: renumber them from 45 upward (after the plan's highest, VT-44) and cite those ids when the plan is revised."
+disposition = "fixed"
+response = "Verified plan.toml VT ids run to VT-44 and reuse design row numbers. Design rows renumbered 45-52, with a note in sec-8."
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "major"
+title = "Migration 0008 is manual and the INSERT is shared by every kind: code-before-migration breaks all intervention projection"
+detail = "Migrations are applied only by the interactive satan-memory-migrate (satan/satan-memory-migrate.el:183-228); nothing applies them at load or broker start (no call sites outside the module). satan-intervention--insert-created-sql (satan-intervention.el:164-189) is the one INSERT for every kind, reused by satan-intervention-project, -project-with-verdict (the undelivered writer notify_send and goad_ask share) and the rebuild script (:231-244). Adding form_json to that column list means that, between loading the new code and running migration 0008, every projection of every kind fails — notify's normal path and its undelivered fallback alike — and satan-rebuild-interventions fails outright. The design names 0008 (sec-6, sec-9) but gives no landing order, no guard and no verification. Fix options: emit the form_json column only when the payload carries a form (non-ask kinds stay valid on an unmigrated DB), and/or make 'migration 0008 applied' an explicit landing step with a check (satan-memory-migrate-status) before the code lands; add a VT that a form-less intervention projects against a schema without the column, or document the ordering as a hard precondition."
+disposition = "fixed"
+response = "Verified: migrations run only on satan-memory-migrate, and the INSERT is shared (satan-intervention.el:165). DEC-024 amended: form_json named only when the payload carries a form; applying 0008 is an explicit landing step before satan-goad-enabled is switched on. sec-6 and a sec-9 risk row; verification row 52."
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "major"
+title = "Queue source: satan-intervention-pending returns matured rows, and its '|'-split row parse silently drops rows whose text contains '|' or a newline"
+detail = "Two problems on the path DEC-024 says 'the queue rewrite selects it'. (1) satan-intervention-pending (satan-intervention.el:839-875) returns rows whose ts + window <= now — matured, not open. The queue needs the opposite (window still ahead), so plan PHASE-06 step 6 ('satan-intervention-pending filtered to kind ask with created_at + window still ahead. No new query') is self-contradictory: filtered that way it is always empty. A new query (or a parameterised one) is needed; the design's 'the queue rewrite selects it into each entry' should name it. (2) Every lookup/pending/recent query renders columns with psql -A -F '|' and splits on newline and '|' (:867-874), keeping a row only when the cell count matches (when (= (length cells) ...)). A form_json cell whose label, question or choice text contains '|' — or a message (the ask's question) containing '|' or a newline — gives a mismatched count and the row is silently dropped: the ask is never classified, never retired, never queued. This predates the slice for message, but asks make model-authored free text the norm and forms multiply it. Fix: select form_json (and ideally the whole row) as one json_build_object/row_to_json cell and parse JSON, or forbid '|' and newlines at the validator; add a VT with a '|' in a label and a newline in the question."
+disposition = "fixed"
+response = "Verified: pending returns matured rows (satan-intervention.el:839-864), and rows are split on '|' and newlines (:867-874), dropping mismatched rows silently. That defect affects every kind. New DEC-028: rows are read as JSON (json_agg/row_to_json), and an open-asks query shares the row mapping. sec-3 'The open rows need their own query'; row 51."
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "minor"
+title = "Untouched fields submit as-drawn defaults, so 'values verbatim' cannot tell an answer from an untouched widget"
+detail = """goad submits a value for every drawn field (R-58), and for a field nobody touched it submits what the widget was drawn showing: boolean false, text "", number its min or 0 (even above a max-only bound), choice the first alternative, datetime the epoch 1970-01-01T00:00:00+00:00 (~/dev/goad/crates/goad/src/view_model.rs as_drawn ~:688-700, drawn_number ~:655; controller::answer applies it). DEC-025 stores values verbatim and DEC-011's trace carries them as what the keeper said; nothing tells the model that an unticked box, a first-alternative choice or a 1970 datetime may be no answer at all. The keystone (answered vs not) is unaffected, but the value content is the 'first direct human-sourced outcome signal'. Also sec-5's closing line ('Per R-58, to distinguish unanswered from false the field is omitted rather than defaulted') now reads as if it applied to form fields, where the host always defaults. Fix: state the as-drawn defaults in sec-3 'The answer form' and require tools/goad_ask.md to teach them (e.g. prefer choice with an explicit 'unsure' alternative first, avoid bare boolean/datetime where unanswered matters); reword the sec-5 line to scope it to the option-level answer."""
+disposition = "fixed"
+response = "Verified against SPEC-001 §6.2's untouched-value table. DEC-025 amended; sec-3 now says a value cannot tell answered from untouched, and forms that need the distinction build it in; goad_ask.md teaches it. The R-58 sentence reworded."
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "minor"
+title = "An empty form array is parsed as absent and silently becomes Yes/No"
+detail = "Tool args are decoded with :array-type 'list (satan-jsonl.el:88-93), so form: [] arrives as nil, and satan-tool--validate-arg treats nil as not supplied (satan-tools.el:66-69). DEC-026's 'at least one option' check therefore never sees an empty form: the model's [] is rendered as the default Yes/No instead of being refused, contradicting design sec-8 item 28 ('no options ... is refused'). Same for fields: [] (harmless) and options: [] on a choice (caught only as 'missing required'). Fix: either define [] as absent in DEC-024/026 and drop 'no options' from item 28, or detect it before decoding loses it; either way make the item 28 test use the decoded path, not a hand-built plist."
+disposition = "fixed"
+response = "DEC-026 amended: a present-but-empty form is refused. Row 47 lists it."
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "minor"
+title = "Free-text answers are unbounded into the evidence window and into a psql argv"
+detail = "A text field has no length key in the protocol (R-16), and DEC-025 stores values verbatim. Two sinks: (1) the :goad evidence slice carries each outstanding ask with its record, so an answered-but-not-yet-classified ask's text rides every percept until retirement — sec-2 claims the contribution is 'compact by construction' (ISS-001, cap unenforced); (2) the answer trace goes through satan-memory-store-mark, whose whole payload is passed as one psql -v argument (satan-db.el:110-112, via satan-memory-store.el:124-127); Linux caps a single argv string at 128 KiB (MAX_ARG_STRLEN), so a long paste makes the trace write fail. Low likelihood, cheap to close: truncate values' strings (or omit values) in the evidence slice, and cap/truncate text in the trace metadata with a marker; state the bound in sec-2 and sec-5."
+disposition = "fixed"
+response = "DEC-026 amended with size caps on the SATAN-authored form: 8 options, 8 fields per option, 200-character labels, 8 KiB serialised. Keeper free text is the host's input and is stored verbatim. The answer-trace argument cap is left to the plan: the reader truncates long string values when building evidence and the trace. Noted for PHASE-07."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "minor"
+title = "DEC-027: two sibling XDG_STATE_HOME readers keep the empty-string defect; production impact is nil"
+detail = """DEC-027 fixes satan-state-root (satan-custom.el:105-107) but the same (or (getenv "XDG_STATE_HOME") ...) pattern also lives in satan-sensor-curiosity.el:23-26 (panopticon segments dir) and satan-tools-content.el:24-27 (panopticon content dir), which are not satan-state-path joins and so do not 'move together'. Blast radius of the change itself checked and benign: the live Emacs has XDG_STATE_HOME unset (emacsclient: (getenv "XDG_STATE_HOME") => nil, satan-state-root => ~/.local/state/satan, where runs/ patch-agent/ etc. live), so the fix changes nothing in production and moves no runs dir, worktree or cursor — worth saying in DEC-027, whose premise ('the operator's shell does') is not true of this session's shell either. Fix: one shared helper for the XDG state base used by all three sites, or note the two panopticon sites as a backlog item; optionally treat a relative value as unset (XDG spec) on both sides."""
+disposition = "fixed"
+response = "Verified satan-sensor-curiosity.el:23 and satan-tools-content.el:24. DEC-027 amended: one state-home helper in satan-custom.el serves all three readers. Selectors added; row 50."
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "nit"
+title = "Cross-reference drift in DEC-025/026"
+detail = "DEC-026 says validation happens 'before step 4 (record)'; in design sec-3 record is step 5 (step 3 is the form refusal). DEC-026's residual risk cites 'sec-3' for the 60-minute bound while the design's prose calls that section §4 (the design mixes display §N with sec-N ids; a cold reader cannot map them). DEC-025 says the id pattern 'keeps them clear of goad's reserved verbs' — goad reserves none (OptionId is an unrestricted String, ~/dev/goad/crates/goad-semantics/src/protocol/canonical.rs:57); the verbs (later/enough/yes/no/opt) are backend.py's."
+disposition = "fixed"
+response = "DEC-026 now cites step 3 for validation and step 5 for record; DEC-025 now says yes:/no: are backend.py's checklist verbs and goad reserves none."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

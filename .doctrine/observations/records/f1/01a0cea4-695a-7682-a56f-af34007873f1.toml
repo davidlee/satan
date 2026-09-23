@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0cea4-695a-7682-a56f-af34007873f1"
+recorded_at = "2026-09-23T14:21:16.50650893Z"
+kind = "friction"
+summary = "design apply adopt_authored: sections map value semantics undocumented"
+detail = "Contract says sections {id(sec-): text}; error only says 'marker map ... N mismatched'. Took ~8 guesses (titles, markers, bodies, 12-hex fingerprints) to find the value is the full sha256 hex of each section body (md chunk after the marker, trailing newlines collapsed to one). Also: inq- declarations reject resolution/body/dispose with 'inert at inq-' — resolution goes via a cp- checkpoint declaration, which the contract doesn't say. SL-016 revision, 2026-09-24."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

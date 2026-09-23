@@ -1,0 +1,8 @@
+**Context (RV-015 F-5).** `satan-intervention-pending` selects rows with `psql -A -t -F "|"` and splits on newlines and `|` (`satan-intervention.el:867-874`). A row whose cell count does not match is dropped silently. A question, which becomes the intervention's `message`, may contain a `|` or a newline, and a form label may contain either. Such an ask would never be classified. The defect already affects every intervention kind whose message contains a `|`. Separately, `pending` returns *matured* rows, where the window has closed, while the queue needs *open* ones, where it has not. So the queue cannot reuse `pending`.
+
+**Decision.** Intervention reads go through JSON: `SELECT json_agg(row_to_json(...))` parsed with `json-parse-string`. That covers `satan-intervention-pending` and the new open-asks query the queue rewrite uses: kind `ask`, no outcome row, and `ts + outcome_window_minutes` not yet passed. The same row-to-plist mapping serves both, so there is one reader, not two.
+
+**Rejected:** choosing a rarer separator (it moves the collision rather than removing it), and escaping on write (it would need every writer changed).
+
+
+**Scope.** Every reader in `satan-intervention.el` that splits on `|` moves to the JSON read and the shared row mapping: the lookup (`:823`), `pending` (`:867`) and `recent` (`:903`). This leaves one row reader, not three. The same pattern in `satan-pattern.el:260` and `satan-memory-migrate.el:92` is outside this slice and is logged in the backlog.

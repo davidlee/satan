@@ -1,0 +1,4 @@
+`satan-state-root` treats an empty `XDG_STATE_HOME` as unset and falls back to `~/.local/state`, as the XDG Base Directory spec requires ("either not set or empty") and as `backend.py`'s `queue_path` already does. Otherwise the two resolve different queue files in any shell that exports the variable empty, which the operator's shell does. The change is the root's default in `satan-custom.el`, which moves every `satan-state-path` join together; it is correct for all of them. User-approved 2026-09-24.
+
+
+**Amended (RV-015 F-9).** The same defect has two more copies: `satan-sensor-curiosity-segments-dir` (`satan-sensor-curiosity.el:23`) and `satan-tools-content-dir` (`satan-tools-content.el:24`). All three state-home readers go through one helper in `satan-custom.el` (a zero-dependency leaf). It returns `XDG_STATE_HOME` when that is non-empty, and `~/.local/state` otherwise. The live Emacs has the variable unset, so no production path moves.
