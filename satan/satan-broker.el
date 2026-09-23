@@ -341,7 +341,7 @@ switch and happens for every failure regardless of this one."
   :type 'boolean :group 'satan)
 
 (defconst satan-broker--streak-transparent-reasons
-  '("session_blocked" "credential_deferred")
+  '("session_blocked" "credential_deferred" "run_busy")
   "Reasons of runs that neither extend nor break a failure streak.")
 
 (defun satan-broker--failure-streak (mode-slug newest)
@@ -422,12 +422,17 @@ is not worth failing finalize over."
     (when (string-match-p "\\(finished\\|exited\\|signal\\|broken\\|killed\\|deleted\\)" event)
       (let ((tt (satan-run-timeout-timer run-ctx)))
         (when tt (cancel-timer tt)))
-      (satan-audit-record (satan-run-audit run-ctx) 'broker 'child-exit
-                             (list :event (string-trim event)))
-      (satan-broker--finalize run-ctx)
       ;; DEC-8: clear the mutual-exclusion flag on async completion so
-      ;; a crashed/killed process does not permanently block MCP sessions.
-      (setq satan-run--spawn-running nil))))
+      ;; a crashed/killed process does not permanently block MCP sessions
+      ;; or, via `run_busy' (DEC-023), every scheduled run.  An unwind
+      ;; form, so a signal from either step still clears it (ISS-020);
+      ;; the signal itself propagates.
+      (unwind-protect
+          (progn
+            (satan-audit-record (satan-run-audit run-ctx) 'broker 'child-exit
+                                (list :event (string-trim event)))
+            (satan-broker--finalize run-ctx))
+        (setq satan-run--spawn-running nil)))))
 
 (defun satan-broker--build-manifest (mode run-id)
   "Return the manifest plist for MODE and RUN-ID.
@@ -552,6 +557,19 @@ desktop alert; DEC-8 deferral)."
            run-id (plist-get mode :name) status
            (or announce-reason reason) new-dir))))))
 
+(defun satan-broker--write-silent-run (mode prepare dir reason summary)
+  "Record a refused run: status `failed', REASON, no child, no announce.
+No rename and no pop, so the refusal neither pollutes the failure streak
+\(REASON is in `satan-broker--streak-transparent-reasons') nor alerts.
+SUMMARY is the synthetic final's summary.  Stamps REASON as the trace
+outcome and returns the run-id."
+  (satan-broker--write-no-child-run
+   mode prepare dir 'failed reason
+   :final (list :summary summary :actions [] :reason reason)
+   :rename-announce nil)
+  (satan-trace-outcome reason)
+  (plist-get prepare :run_id))
+
 (defun satan-broker--write-failed-no-child-run (mode prepare dir reason err)
   "Write the terminal record of a run that failed with ERR before any child.
 REASON names the failed stage in snake case (\"perceive_failed\"); it
@@ -637,14 +655,16 @@ without launching the child."
          ;; deferral must not pollute the failure-streak counter or alert.
          (satan-run--session-active
           (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
-          (satan-broker--write-no-child-run
-           mode prepare dir 'failed "session_blocked"
-           :final (list :summary "Scheduled run blocked by active interactive session (DEC-8)"
-                        :actions []
-                        :reason "session_blocked")
-           :rename-announce nil)
-          (satan-trace-outcome "session_blocked")
-          run-id)
+          (satan-broker--write-silent-run
+           mode prepare dir "session_blocked"
+           "Scheduled run blocked by active interactive session (DEC-8)"))
+         ;; DEC-023: refuse while another run's child is live — the memory
+         ;; store's current-run state is process-global and would race.
+         (satan-run--spawn-running
+          (message "SATAN broker: a run's child is live — refusing scheduled run (DEC-023)")
+          (satan-broker--write-silent-run
+           mode prepare dir "run_busy"
+           "Scheduled run refused: another run's child is live (DEC-023)"))
          ((satan-budget-exceeded-p satan-runs-dir)
           (let ((spent (satan-budget-today-total satan-runs-dir)))
             (satan-broker--write-budget-denied-run

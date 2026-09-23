@@ -274,7 +274,7 @@ regression)."
       (delete-directory root t))))
 
 (ert-deftest satan-broker/session-blocked-transparent-to-failure-streak ()
-  "`session_blocked' and `credential_deferred' outcomes are transparent:
+  "`session_blocked', `credential_deferred' and `run_busy' are transparent:
 they neither extend nor break a same-cause failure streak, and the walk's
 position numbering steps over them (EX-3)."
   (let* ((root (make-temp-file "satan-runs-streak-transparent-" t))
@@ -287,6 +287,8 @@ position numbering steps over them (EX-3)."
                                  "failed" "session_blocked")
           (satan-run-test--mkrun root "20260520T090000-motd-cccccc"
                                  "failed" "credential_deferred")
+          (satan-run-test--mkrun root "20260520T093000-motd-eeeeee"
+                                 "failed" "run_busy")
           (let* ((newest-dir (satan-run-test--mkrun
                               root "20260520T100000-motd-dddddd"
                               "failed" "auth" t))
@@ -727,6 +729,70 @@ pop a desktop alert).  The bundle is verify-clean."
                ;; Bundle remains verify-clean.
                (should (eq (satan-audit-verify-run dir) t))))
          (delete-directory root t))))))
+
+;; ---------- SL-018 PHASE-03: run_busy gate (DEC-023) ----------
+
+(cl-defun satan-broker-test--gate-run (&key busy session perceive-error)
+  "Run `satan-broker-run' \"morning\" through the pre-spawn gates.
+BUSY binds `satan-run--spawn-running', SESSION `satan-run--session-active';
+PERCEIVE-ERROR non-nil makes perceive signal.  `--spawn' is stubbed.
+Returns (:reason R :dir DIR :announced BOOL :spawned BOOL), R nil when
+it spawned; the temp
+runs root is deleted afterwards, so DIR is for its name only."
+  (let (result)
+    (satan-broker-test--with-tool-descriptions
+     satan-broker-test--morning-tool-descriptions
+     (lambda ()
+       (let* ((root (make-temp-file "satan-gate-" t))
+              (satan-runs-dir root)
+              (satan-budget-daily-tokens 2500000)
+              (satan-run--spawn-running busy)
+              (satan-run--session-active session)
+              (satan-trace-enabled nil)
+              (announced nil) (spawned nil))
+         (unwind-protect
+             (cl-letf (((symbol-function 'satan-run-perceive)
+                        (if perceive-error
+                            (lambda (&rest _) (error "perceive boom"))
+                          #'satan-broker-test--minimal-perceive))
+                       ((symbol-function 'satan-broker--announce-failure)
+                        (lambda (&rest _) (setq announced t)))
+                       ((symbol-function 'satan-broker--spawn)
+                        (lambda (&rest _) (setq spawned t) "spawned")))
+               (let* ((run-id (satan-broker-run "morning"))
+                      (dir (satan-run-locate-dir run-id root)))
+                 ;; A stubbed spawn writes nothing; a gated run must be
+                 ;; a complete, verify-clean bundle.
+                 (unless spawned
+                   (should (eq (satan-audit-verify-run dir) t)))
+                 (setq result
+                       (list :reason (and (not spawned)
+                                          (plist-get (satan-broker-test--run-json
+                                                      dir "final.json")
+                                                     :reason))
+                             :dir dir :announced announced
+                             :spawned spawned))))
+           (delete-directory root t)))))
+    result))
+
+(ert-deftest satan-broker/run-busy-refuses-silently ()
+  "VT-27: a live child → `run_busy' no-child run: no spawn, no rename, no pop."
+  (let ((r (satan-broker-test--gate-run :busy t)))
+    (should (equal (plist-get r :reason) "run_busy"))
+    (should-not (plist-get r :spawned))
+    (should-not (string-suffix-p ".FAILED" (plist-get r :dir)))
+    (should-not (plist-get r :announced))))
+
+(ert-deftest satan-broker/run-busy-gate-precedence ()
+  "VT-22: real failures outrank run_busy: perceive_failed, then session_blocked."
+  (should (equal (plist-get (satan-broker-test--gate-run
+                             :busy t :perceive-error t)
+                            :reason)
+                 "perceive_failed"))
+  (should (equal (plist-get (satan-broker-test--gate-run :busy t :session t)
+                            :reason)
+                 "session_blocked"))
+  (should (plist-get (satan-broker-test--gate-run) :spawned)))
 
 ;; ---------- VT-1 (SL-011): one tick trace row per satan-broker-run ----------
 
@@ -1378,6 +1444,23 @@ old regex missed."
       (cl-letf (((symbol-function 'satan-audit-record) (lambda (&rest _) nil))
                 ((symbol-function 'satan-broker--finalize) (lambda (&rest _) nil)))
         (funcall sentinel nil event))
+      (should-not satan-run--spawn-running))))
+
+(ert-deftest satan-broker/sentinel-clears-flag-when-finalize-or-exit-record-signals ()
+  "VT-19 (ISS-020): a signal from the `child-exit' record or from finalize
+still clears `--spawn-running', and still propagates."
+  (dolist (failing '(satan-audit-record satan-broker--finalize))
+    (let* ((satan-run--spawn-running t)
+           (run-ctx (make-satan-run
+                     :id "rid" :mode '(:name "test")
+                     :start-time (current-time) :dir "/tmp"
+                     :status 'running :audit '(:audit t)))
+           (sentinel (satan-broker--make-sentinel run-ctx)))
+      (cl-letf (((symbol-function 'satan-audit-record) #'ignore)
+                ((symbol-function 'satan-broker--finalize) #'ignore))
+        (cl-letf (((symbol-function failing)
+                   (lambda (&rest _) (error "%s boom" failing))))
+          (should-error (funcall sentinel nil "finished\n"))))
       (should-not satan-run--spawn-running))))
 
 ;; ── SL-017 I7: a spawn that cannot fail silently ───────────────────────────
