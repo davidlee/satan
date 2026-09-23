@@ -93,6 +93,11 @@ role = "concerns"
 descriptor = "extends QUE-001 to cover pre-spawn lifecycle gates incl. the credential gate"
 target = "QUE-001"
 
+[[relation]]
+label = "references"
+role = "concerns"
+target = "ISS-020"
+
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
 # relation axes — the `[relationships]` table above holds only the dep/seq payload

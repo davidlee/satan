@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 23
+slug = "broker-refuses-run-while-child-live"
+title = "Broker refuses a scheduled run while a child is live (run_busy)"
+record_kind = "decision"
+status = "proposed"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "RV-013 F-3 (SL-018 design review). satan-broker-run never checks satan-run--spawn-running, so scheduled runs can overlap; satan-memory-store--current-run-id and runs/most-recent are process-global and race. Overlap is possible today (tick timeout 1800 s vs motd 08:15 / morning 09:15). DEC-020 makes a prompt block the Emacs server before allocation, so every trigger queued behind the dialog fires once it is answered."
+choice = "A pre-spawn gate run_busy: while satan-run--spawn-running holds, satan-broker-run writes a no-child run (status failed, reason run_busy), with no rename, no pop and no journal line, and returns. Credential acquisition is skipped while busy, so a refused run never prompts, and the cond re-checks after perceive. run_busy joins satan-broker--streak-transparent-reasons and is skipped by the credential-deferral streak."
+alternatives = ["Park the pre-existing concurrency as a backlog issue and leave SL-018 unchanged", "Queue or coalesce refused runs: new state and a scheduler inside Emacs", "Allow concurrency: the process-global run id and most-recent keep racing"]
+rationale = "It follows the session_blocked precedent (DEC-8) at about ten lines, needs no new state, and removes a race that SL-018 would otherwise make routine. Skip-only matches DEC-020."
+consequences = ["An overlapping tick is refused instead of running concurrently", "A daily mode (motd or morning) whose trigger queued behind another run's prompt loses that day's run", "QUE-001's list of pre-spawn gates gains run_busy"]
+decided_by = "user (keeper)"
+decided_on = "2026-09-23"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-018"

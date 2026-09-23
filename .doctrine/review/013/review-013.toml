@@ -12,5 +12,165 @@ responder = "responder"
 [target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
 ref   = "SL-018"
 
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "blocker"
+title = "[sec-2] The no-backend path is fail-open and directly contradicts DEC-021."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** The design says an absent backend makes every value non-reference and passes `op://…` through literally (design.md:72); DEC-021 requires such runs to defer or fail closed (record-021.toml:15). The existing scrubber explicitly prevents reference leakage (dl-secret.el:132).
+
+   **Failure scenario:** SATAN loads before the adapter is registered. It spawns the harness with `OPENROUTER_API_KEY=op://…`, leaks reference metadata to the provider, and relies on a downstream 401 to stop the run.
+
+   **Suggested fix:** Remove backend-owned `ref-p`; make reference recognition and scrubbing SATAN-owned as DEC-021 requires. With no backend, recognized references must produce `:deferred` or `:unavailable`, while genuine literal keys may pass."""
+disposition = "fixed"
+response = "Correct: sec-2 had drifted from DEC-021 (which lists four ops, no ref-p). SATAN now owns reference recognition (satan-credential-ref-regexp, default op://) and scrubbing; with no backend, lookup/session-p read nil and read signals, so a ref defers or yields :unavailable and never reaches a child (scrub on every spawn). VT-11."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "[sec-2/sec-3] Only `read` failures are typed; `ref-p`, `lookup`, and `session-p` signals escape before any run exists."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** The acquisition algorithm converts only a signaling `read` to `:unavailable` (design.md:62), and acquisition precedes `satan-run-new-ctx` (design.md:93). The proposed `session-p` backend ultimately calls an external executable, like the existing signaling `call-process` path (dl-secret.el:78).
+
+   **Failure scenario:** `op` is missing, the adapter is malformed, or its cache operation signals. `satan-broker-run` aborts without a run id, final status, journal line, or typed credential outcome; the patch timer similarly emits only a timer error.
+
+   **Suggested fix:** Normalize failures from every backend operation inside `satan-credential-acquire`. Credential inspection/probe failures must fail closed into a documented verdict; no backend signal should escape the acquisition boundary."""
+disposition = "fixed"
+response = "Correct: session-p runs op through call-process and can signal. sec-2 adds one error boundary: any backend signal becomes (:unavailable ERR) in acquire, not-ready in ready-p, a per-var failure in resolve. VT-12."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "major"
+title = "[sec-3] A long prompt can release a burst of queued entrypoints into concurrent broker runs, which the broker cannot safely support."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** The synchronous backend blocks in `call-process` (dl-secret.el:78). `satan-broker-run` checks MCP session and budget, but not `satan-run--spawn-running` (satan-broker.el:629). Each spawn overwrites the global current run id (satan-broker.el:689), and either finalize clears it (satan-broker.el:286).
+
+   **Failure scenario:** A motd prompt remains open while morning, tick, and timers queue. After acceptance, motd spawns asynchronously; the queued morning invocation immediately spawns too. Memory attribution, `most-recent`, sensor commits, and global lifecycle flags then race.
+
+   **Suggested fix:** Specify broker serialization/coalescing before acquisition, using the existing spawn-running state or a real queue. Add a VT that invokes a second broker run while the first child remains live."""
+disposition = "fixed"
+response = "Correct; overlap predates SL-018 (no spawn-running check in satan-broker-run) and a blocking prompt makes bursts likely. Keeper chose a run_busy gate: DEC-023. Acquisition is skipped while busy; the cond treats nil cred or spawn-running as run_busy (self-review closed a nil-cred spawn hole). Streak-transparent. Consequence recorded: a queued daily mode loses that day's run. VT-14."
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "major"
+title = "[sec-5] The proposed `:unavailable MESSAGE` value is incompatible with the existing no-child failure helper."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** Acquisition returns a string message (design.md:62), while sec-5 says to pass it through `satan-broker--write-failed-no-child-run` (design.md:181). That helper calls `error-message-string` on an error condition object (satan-broker.el:555); passing a string signals `wrong-type-argument listp`.
+
+   **Failure scenario:** The keeper dismisses a prompt. Instead of recording `failed/credential_unavailable`, the writer itself signals after run allocation and perception, leaving an incomplete run directory.
+
+   **Suggested fix:** Either preserve the original condition object in the verdict or change the helper to accept an already-rendered message. Add an end-to-end broker test for the complete `.FAILED`, `final.json`, announcement, and streak path."""
+disposition = "fixed"
+response = "Correct: write-failed-no-child-run calls error-message-string (satan-broker.el:555). The verdict now carries the condition object, (:unavailable ERR). End-to-end VT-13."
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "major"
+title = "[sec-6] Credential eviction is allowed to break finalization, and the design relies on idempotence the current finalizer does not provide."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** The design inserts `forget` into finalize and calls duplicate eviction harmless (design.md:196). Current finalize can rerun output handling and append another crash-context record (satan-broker.el:238). If finalize signals, the sentinel never reaches its spawn-running cleanup (satan-broker.el:420).
+
+   **Failure scenario:** The backend’s `forget` operation signals during an auth failure. Audit close, `.FAILED` rename, critical notification, and lifecycle-flag clearing are all skipped, potentially blocking MCP thereafter.
+
+   **Suggested fix:** Make eviction explicitly best-effort and audited, never finalization-critical. Record the exact reference used by the run, guard eviction with a per-run completion flag, and ensure sentinel cleanup uses `unwind-protect`."""
+disposition = "fixed"
+response = "Partly correct. Eviction is now best-effort: condition-case records a broker evict-failed audit event and never escapes finalize (VT-15). Contested: double finalize needs no once-only flag, since remhash of an absent key is harmless. The sentinel's missing unwind-protect predates SL-018 and is filed as ISS-020 (severity raised by DEC-023)."
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "major"
+title = "[sec-7] Patch preflight is adapter-blind and treats Pi’s entire provider-key superset as jointly required."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** The design acquires every Pi key variable before claim (design.md:223); Pi lists seven provider keys (satan-patch-adapter-pi.el:35). Yet the runner dispatches according to the claimed row’s adapter (satan-patch-runner.el:269), and the adapter protocol is intentionally generic (satan-patch-adapter.el:43).
+
+   **Failure scenario:** A valid OpenRouter-backed job is queued while an unrelated Mistral reference is stale; the unrelated read fails and the job never runs. A non-Pi row is still gated on Pi credentials.
+
+   **Suggested fix:** Put credential requirements in adapter metadata/preflight and bind them to the specific queued job/provider. Alternatively, explicitly constrain this runner to Pi rows and resolve only the provider actually selected."""
+disposition = "fixed"
+response = "Correct: strict acquisition of seven Pi vars lets one unrelated stale ref block every job. sec-7 splits the gate: ready-p before the claim (no read, never prompts), then lenient resolve after it, with per-var failures as adapter warnings. The coupling to the Pi-only var list is recorded as design debt (only Pi rows exist). VT-16."
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "minor"
+title = "[sec-7] The peek-before-acquire sequence leaves database errors and the peek/claim race undefined."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** The design treats peek as “row or nothing” (design.md:225), but `satan-patch-store-list` returns `(error . MSG)` too (satan-patch-store.el:208). Claim is a separate atomic transaction (satan-patch-store.el:275).
+
+   **Failure scenario:** A competing runner claims the sole row during acquisition, or peek fails. The implementation may probe/read credentials unnecessarily or mishandle an error string as queue contents.
+
+   **Suggested fix:** Specify exhaustive `pcase` handling for peek errors and post-acquisition `(ok . nil)`. Test both cases; never treat the peeked row as the row later claimed."""
+disposition = "fixed"
+response = "Correct. sec-7 now handles peek (ok . nil), (error . MSG) and a claim-next (ok . nil) after readiness explicitly; the peeked row is never used as the job. VT-16."
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "minor"
+title = "[sec-4] The policy representation diverges from DEC-022 and has no malformed-policy guard."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** DEC-022 specifies `prompt` or `(defer :escalate-after DURATION)` (record-022.toml:15); the design instead introduces separate `:credential-policy` and `:credential-escalate-after` keys (design.md:123). The current mode registry accepts arbitrary plists without validation (satan-mode.el:42).
+
+   **Failure scenario:** A typo such as `promt`, a string duration, or a negative threshold silently falls into defer or signals before allocation, defeating the intended per-mode policy.
+
+   **Suggested fix:** Reconcile the representation with DEC-022 and validate the closed policy vocabulary plus a non-negative numeric duration during registration."""
+disposition = "fixed"
+response = "Correct divergence. Kept the two flat keys (idiomatic, profile-mergeable) and appended a representation note to DEC-022; satan-mode-register validates the policy vocabulary and a non-negative numeric duration. VT-18."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "minor"
+title = "[sec-4] Run-id timestamps cannot reliably support elapsed-time escalation across DST or timezone changes."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** IDs encode a timezone-free local timestamp (satan-run.el:55); streak order is lexicographic by that id (satan-run.el:268); the design proposes reconstructing absolute time from the same prefix (design.md:153).
+
+   **Failure scenario:** During Melbourne’s repeated DST hour, two chronological runs can sort in the wrong order, and parsing the older id can select the wrong offset, moving a four-hour escalation by an hour.
+
+   **Suggested fix:** Use persisted zoned/epoch start time for ordering and age, with run-id parsing only as a legacy fallback, or explicitly mint future ids in a fixed timezone."""
+disposition = "tolerated"
+response = "Real but minor: zone-less run-id time can skew the escalation age by up to 1 h at a DST change against a 4 h threshold. Documented in sec-4 and sec-9 risks; no new mechanism. Ordering within the repeated hour belongs to DEC-014's walk and predates this slice."
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "minor"
+title = "[sec-9] The VT list would allow the principal failure paths above to ship."
+detail = """
+Reviewer: gpt-5.6-sol via codex exec (adversarial).
+
+**Evidence:** VT-1 tests only unit acquisition, VT-6 only successful `forget` selection, VT-7 only empty/deferred/success patch paths, and VT-8 only the positive interactive `satan-run` case (design.md:276). There is no coverage for nil backend, non-`read` backend signals, `credential_unavailable` plumbing, eviction failure/double finalize, queued broker calls, peek error/claim disappearance, or negative systemd/tick/MCP attendance.
+
+   **Failure scenario:** All listed VTs pass while the fail-open literal-ref path and incomplete-run failure remain present.
+
+   **Suggested fix:** Add explicit negative-path VTs for each boundary, especially “no backend + `op://`”, full broker unavailable handling, failing `forget`, concurrent broker entry, and unattended entrypoint assertions."""
+disposition = "fixed"
+response = "Correct. Added VT-11..VT-18 covering no backend + ref, backend signals, unavailable end-to-end, run_busy, eviction failure, patch peek/claim paths, unattended entry, and policy validation."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
