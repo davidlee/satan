@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0cea7-fc2b-7e90-a1fb-d2229eb40110"
+recorded_at = "2026-09-23T14:25:10.699515033Z"
+kind = "friction"
+summary = "concurrent SL-016 design revision in main tree during a capsule charter"
+detail = "During PHASE-03 (2026-09-24 00:15-00:21) another session revised the SL-016 design (DEC-024..027, RV-015, design.md, slice-016.*) in the same worktree, though the charter said no other agent writes it. The revision (answer forms, opt:<option>:ask:<id> option ids, value {option, values}) invalidates PHASE-02's committed backend contract and the goldens PHASE-03 tests against. The orchestrator committed only its own files."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

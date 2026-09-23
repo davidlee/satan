@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0cea7-fc28-7b20-b983-c227b221e843"
+recorded_at = "2026-09-23T14:25:10.696719948Z"
+kind = "friction"
+summary = "capsule children end without SubagentHandback; reports never reach the orchestrator"
+detail = "SL-016 charter PHASE-01..03: all five children (2 workers, 1 planner, 1 opus worker, 1 planner) returned 'ended without delivering a report'; SendMessage resume said the report was delivered as a message, but it never arrived in the orchestrator's context. Verification was done independently from the tree each time. The PHASE-03 planner also hit its 40-turn limit mid-research with only a stub written, and needed a resume to write the sheet."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
