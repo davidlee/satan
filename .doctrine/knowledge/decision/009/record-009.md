@@ -57,3 +57,16 @@ distinguish *the keeper saw this and postponed it* from *the keeper cleared the
 slot, quite possibly without ever seeing it* — and since only the first pending
 item is rendered, the bulk case routinely defers questions nobody saw. For this
 slice those are opposite signals, so they need distinct spellings.
+
+
+## Amendment, 2026-09-23 — a SATAN ask is filed under its emit date (RV-007 F-29)
+
+`backend.py` keys every write by the date of the event (`record_path(now)`), so
+an ask answered after midnight split its record across two files, and one
+answered at 23:40 was pending again at 00:10 and asked twice. A SATAN ask's
+events (`presented_at`, deferral, answer) are filed in the day file of the ask's
+`emitted_at` date, carried on its queue entry, and `pending()` reads its state
+from there. The goad evidence source reads the day file of the window start's
+date (for the observer, the emit date) — never the classification date. One file
+per ask, nothing merged. `presented_at` is stamped on first render only (F-30).
+User-accepted 2026-09-23.

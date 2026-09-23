@@ -124,3 +124,21 @@ changes:
 Making the correlator honour the persisted motive id is the real fix. It changes
 shared classification semantics for every intervention kind, so it goes to the
 backlog as its own item rather than into this slice.
+
+
+## Amendment, 2026-09-23 — maturity reads the emit-time decision for kind "ask" (RV-007 F-28)
+
+Goad-minted handles (`app:goad`, `topic:<Subject>`) enter later percepts, and
+motives may cue on them. Under overlap ranking against the whole percept, such a
+motive outranks the subject's motive: at emit it suppresses every ask on another
+subject; at maturity it takes the credit (F-5's misattribution again).
+
+So for kind `"ask"` only emit ranks. The tool considers only motives whose cue
+holds the subject, ranks them by overlap with the percept (ties by file order),
+and records the winner as `related_motive_id` with the subject as `:cue-handles`.
+At maturity the correlator credits the live motive with that id when it is not
+dormant and its cue still holds the subject; otherwise `:no_correlation`, which is
+perceptible. Other kinds keep live ranking; honouring the persisted id for all
+kinds stays backlog work. This supersedes the alternative above that called any
+use of `cue_handles` by the correlator a cross-kind change: this use is
+kind-scoped. User-accepted 2026-09-23.

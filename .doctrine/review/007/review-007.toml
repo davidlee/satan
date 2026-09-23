@@ -59,7 +59,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "Daily bootstrap deadlock: no day record exists until the keeper answers, so SATAN can never ask first"
 detail = "Design sec-3 conditions the new app:goad handle on the presence of today's day record, precisely so it does not depend on window focus. But backend.py load() returns {} when the file is absent (~/satan/goad/backend.py:69-74) and save() runs only on a 'respond' request (:153). CONFIRMED by read. So before the keeper answers an existing checklist item on any given day, there is no day record, no goad handle, no correlation, and the ask suppresses itself. The elicitation surface cannot be the first goad interaction of the day — which is most of what an autonomous producer is for. The handle's trigger needs rethinking (backend presence? the queue file itself? a daily bootstrap write?)."
@@ -86,7 +86,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The memory trace does not hold the answer, and is not written under the tick's memory-write capability"
 detail = "The positive observer trace records intervention id, motive id, predicates, classification and confidence (satan/satan-observer.el:131, :141) — not the question, not the submitted value. It calls satan-memory-store-mark directly (:149) rather than being dispatched through a tool under the mode's capability. CONFIRMED. Design sec-7 claims the answer 'becomes a memory trace ... written under tick-pulse's existing memory-write capability, so the answer path needs no new capability'. Both halves are wrong: the existing trace records that an intervention worked, not what the keeper said, and the capability claim describes a path that is not taken. DEC-011's third landing place needs designing rather than asserting."
@@ -95,7 +95,7 @@ response = "User-accepted 2026-09-23; design revision 39. The answer trace is wr
 
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The ask outcome window (60min) and the observer evidence window (30min) disagree, and the predicate has no upper bound"
 detail = "docs/attributes/outcome-semantics.md:103 recommends a 60-minute outcome window for kind 'ask'. Observer evidence always ends at a fixed 30 minutes (satan-observer-classify.el:28, :80). The predicate design sec-6 proposes requires only `at > emitted_at` with no upper bound. CONFIRMED. So a deferral or focus at minute 45 is invisible to focus evidence, while a late day-record answer can still fire the predicate as :worked if classification runs late. The design never states what outcome-window-minutes the ask handler actually passes."
@@ -185,7 +185,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-20"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "Queue-derived goad handles can never correlate the ask that creates them; the subject gate is circular"
 detail = "Design sec-10 (§2) requires the ask to name a handle in ctx :percept-handles AND have that handle in the winning motive's cue; sec-2 (§3) says the canon rule emits app:goad plus topic:<Subject> 'per outstanding question' from the queue file, and that 'the topic: emissions are load-bearing'. But the percept is frozen pre-spawn (satan-percept.el:65-67; tool ctx :percept-handles = prepare :percept :handles, satan-run.el:325-334), and the maturity correlator reads the SAME emitting run's bundle.json (satan-observer-classify.el:500-509). The queue entry for question Q is written by the tool inside that run, so neither app:goad (first ask, empty queue) nor topic:<Q-subject> can be in the percept that gates or correlates Q. No other source emits topic: in a percept: satan-percept-build passes hints=nil to canonicalize (satan-percept.el:67), and hint.topic (satan-memory-canon.el:452-459) is the only topic: rule. Failure scenario: SATAN wants to ask about subject S for the first time; percept has no topic:S; gate fails closed; suppression recorded; repeat forever — F-6's 'SATAN can never ask first' deadlock recurs per subject. F-6's answer ('an ask writes the queue, the queue makes the handle, the handle permits correlation') only holds for a LATER run, never for the ask itself. If instead the subject may be any perceived handle (app:, bough_node:, artifact:...), then the goad canon rule is decorative for correlation, DEC-004's 'only this route produces handles' rationale no longer carries the route choice, and sec-2's load-bearing claim is false. The design must say which handles may serve as subject and where they come from for a first ask."
@@ -194,7 +194,7 @@ response = "User-accepted 2026-09-23; design revision 39. sec-10: the subject mu
 
 [[finding]]
 id = "F-21"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Ambient predicates P1-P3 run before the ask branch, so an undelivered ask can mature :worked"
 detail = "Design sec-5 says the ask's verdict is read from goad's record ('Nothing is inferred from where the keeper's eyes were'; never-presented -> :unknown :high undelivered; verification item 12). But satan-observer-classify (satan-observer-classify.el:470-485) runs ALL of satan-observer--predicates first and only calls classify-negative when none fire. The three existing predicates are kind-agnostic: P1 editor_edit_in_window reads :focus_segments (focus telemetry — exactly what DEC-013 removed), P2 git_commit_observed and P3 fs_recent_delta read git/recentf (satan-observer-classify.el:147-250), each firing whenever the winning motive has :project_cwd. Scenario: SATAN asks about subject S under a motive with :project_cwd ~/dev/satan; goad never renders it (slot not reached, backend dead); the keeper commits in ~/dev/satan within 30 min; P2 fires -> :worked :medium, motive worked_count bumped and a positive trace written (satan-observer.el:110-163) for a question never seen. The precedence table's first row is unreachable whenever any ambient predicate fires, and the goad answer predicate can co-fire with ambient ones to reach :high (sec-5 endorses this). Needs: for kind 'ask', dispatch on the goad record before (or instead of) the ambient predicates, or gate P1-P3 by kind; and a VT for 'undelivered ask + in-window commit'."
@@ -203,7 +203,7 @@ response = "User-accepted 2026-09-23; design revision 39. sec-5: predicates scop
 
 [[finding]]
 id = "F-22"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Doorbell is not optional: backend.py's next_check pins goad to 2-hour slots, so queued asks mature before presentation"
 detail = "Design sec-4 (§5): 'The queue file is the durable carrier and goad polls on its own schedule (default_poll 30m)' and 'the doorbell can ship last, or not at all in v1'; sec-9 repeats it; verification item 5 claims a refused goad-emit 'loses nothing: the question is still asked at the next poll'. False for this backend: backend.py main() always returns next_check = next_slot(now) (~/satan/goad/backend.py:40,54-60,160) — slots at 9,11,...,23, and 23:00 -> 09:00 next day. goad's schedule takes the backend's instruction over default_poll; default_poll applies only when next_check is absent (~/dev/goad/crates/goad-semantics/src/schedule.rs:233-248). None of the four backend changes (sec-3 table) alters next_check. Scenario: ask recorded 13:10 with a 60-min window, doorbell absent or refused (exit 1/2); goad next evaluates at 15:00; the observer's first run after 14:10 classifies :unknown :high undelivered and the classification-time queue rewrite (sec-3) retires it — it is never shown. Roughly any ask whose window does not straddle a slot boundary, and every ask after 23:00, is lost. Either the doorbell is mandatory for v1 (and a refused ring is not harmless), or backend.py must shorten next_check while SATAN asks are queued (a fifth backend change), or the outcome window must exceed the slot interval."
@@ -212,7 +212,7 @@ response = "User-accepted 2026-09-23; design revision 39. sec-4: the doorbell is
 
 [[finding]]
 id = "F-23"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The ask branch reads goad state out of a fixed 30-minute 'after' window and measures elapsed time from emit, not presentation"
 detail = "Design sec-5 reads presented_at/deferral/answer 'out of after exactly as the positive predicate does', and sec-8 says the predicate requires the answer inside the declared outcome window. But 'after' is assembled for [emit, emit+satan-observer-window-mature-seconds=1800s] regardless of outcome_window_minutes (satan-observer-classify.el:28,78-85,112-126), with the day file keyed by (substring end 0 10) (satan-memory-evidence.el:506). The design never says whether the goad evidence source honours [start,end]. If it does: with outcome-semantics.md:109's 60-min window for 'ask', a presentation, Later or answer at minute 31-60 is invisible, so a delivered ask classifies :unknown :high undelivered and a timely answer never fires :worked. If it does not (reads the file as of classification): the verdict depends on when the observer happens to run (anywhere in the 24h mature band), and post-window Laters/answers change it. Separately, 'presented, nothing else -> :ignored :medium untouched' has no exposure bound: an ask first rendered at minute 59 of a 60-min window (likely, given slot-bound presentation — see the next_check finding) and classified at minute 60 is recorded as the keeper ignoring it after seconds of exposure — the F-1 lesson (a delivery artefact recorded as the keeper's silence) reintroduced. Needs: the goad source's bound semantics, the window value, and an exposure criterion (e.g. presented_at + minimum dwell <= window end, else :unknown)."
@@ -221,7 +221,7 @@ response = "User-accepted 2026-09-23; design revision 39. sec-2: the goad source
 
 [[finding]]
 id = "F-24"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "'Open rows' is undefined; stale asks are never classified and never leave the queue"
 detail = "Design sec-3 rewrites queue.json 'from the open rows' at emit and at classification (F-11 fix), and verification item 8 tests total regeneration. No existing query returns them: satan-intervention-pending returns only MATURED rows without outcome and EXCLUDES rows past window+24h (satan-intervention.el:839-875); satan-intervention-recent ignores outcomes (:877-910). outcome-semantics.md:221: after :stale 'the auto-classifier ignores the intervention'. So an ask not classified within window+24h never gets an outcome row. If 'open' = 'no outcome row', it stays in the queue forever and backend.py (which gives SATAN asks priority, sec-3 change 1) re-presents it ahead of the checklist indefinitely. This is not an edge case once SL-018 lands: the observer runs only inside satan-broker--spawn (satan-broker.el:749-753), and SL-018's credential_deferred branch spawns nothing (.doctrine/slice/018/design.md sec-1 diagram, sec-3 step 4), so a keeper away with the vault locked for >24h strands every outstanding ask as stale. The design's SL-018 paragraph (sec-7, sec-9) considers only the producer, not the observer. Needs: a defined open-set predicate with a staleness cutoff (and the new query named in satan-intervention.el's surface row), plus a VT for a stale ask leaving the queue."
@@ -230,7 +230,7 @@ response = "User-accepted 2026-09-23; design revision 39. sec-3: open rows defin
 
 [[finding]]
 id = "F-25"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Affected surface omits satan-observer.el, whose verdict mapping drops the ask branch's evidence labels"
 detail = "The design needs two changes in satan-observer.el yet lists it nowhere in sec-9: (1) the queue rewrite at classification, which sec-3 itself locates at satan-observer-persist-verdict (satan-observer.el:264); (2) satan-observer--verdict-classify-args (satan-observer.el:180-262) persists :unknown evidence as only (:source_events :reason) and :ignored evidence as target_surface/ack fields. The ask branch's labels undelivered / deferred / dismissed / untouched (sec-5 table) are therefore not persisted unless mapped, so 'dismissed' and 'untouched' become indistinguishable in the outcome row and audit. Sec-5's claim that the undelivered row 'uses the vocabulary notify_send already writes' is also unmet: notify writes it as :notes 'undelivered: ERR' (satan-tools-notify.el:65), a field the observer path never sets. The matured-:no_correlation attribute (item 7) and the answer memory trace likewise need an observer-side writer that the surface does not name."
@@ -239,7 +239,7 @@ response = "User-accepted 2026-09-23; design revision 39. sec-9 surface gains sa
 
 [[finding]]
 id = "F-26"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Ask handler checks correlation before the MCP refusal, so interactive use records spurious suppression"
 detail = "Design sec-3 handler order: step 1 resolves the motive and 'fails closed ... recording the suppression' (an attribute, sec-6); step 2 refuses in interactive MCP mode. In MCP, :percept-handles is nil (sec-10, satan-mcp.el:155-197), so step 1 always fails and enqueues a suppression attribute before step 2 refuses — polluting the very signal meant to report SATAN's muteness. Swap steps 1 and 2 (and state where the goad quiet-window check sits in the list; it is absent from the steps though sec-7 requires it)."
@@ -248,12 +248,57 @@ response = "User-accepted 2026-09-23; design revision 39. sec-3 handler order: M
 
 [[finding]]
 id = "F-27"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Governance cites REV-002 / ledger row-4 note as accepting the undelivered auto-verdict writer; it does not"
 detail = "Design sec-7 (§8) trigger 2: the undelivered verdict 'goes through the auto-verdict writer notify_send already uses, accepted with SL-017 under REV-002 (ADR-017 row 4 note)'. REV-002 and the row-4 standing note (.doctrine/adr/017/authority-ledger.md:71-81) cover operational alarms (failure announcements, listener death reports) as non-audit emits; neither mentions satan-tools-notify--mark-undelivered or any outcome writer. The substantive conclusion survives — the writer appends via satan-audit-record through satan-intervention-classify-record (satan-intervention.el:448-483), the single row-4 writer — but the cited acceptance does not exist. Cite the actual basis instead. Also stale: sec-5 point 1 and the sec-9 risk row still describe the ack gate as eq vs string; ISS-014 is fixed in code (satan-observer-classify.el:271-277 now uses equal)."
 disposition = "fixed"
 response = "User-accepted 2026-09-23; design revision 39. sec-7 trigger 2 no longer cites REV-002 as accepting the writer; it states the reuse of the existing auto-verdict writer and leaves a possible ledger note to /reconcile. Stale ISS-014 text removed (fixed at 6ff52f7) in sec-5, sec-8, sec-9."
+
+[[finding]]
+id = "F-28"
+status = "answered"
+severity = "major"
+title = "Goad-minted handles still count in motive ranking, so the follow-up motives the design invites outrank and suppress (or take credit from) every other ask"
+detail = "041ba2f bars goad-minted handles only as a SUBJECT (design.md:117-120). They stay in the frozen percept, and design.md:246-251 invites motives to cue on them ('to follow up, or to back off'). The correlator ranks motives by |cue ∩ ALL percept handles| and credits the top one (satan-observer-classify.el:521-541, :587-599). The design says the emit check uses 'same list, same arithmetic' (design.md:154) with the subject in 'the winning motive's cue' (:120). But sec-3 step 3 (:305) 'resolves the correlating motive on the question's subject handle', which is a different rule. Scenario: run N queued question X. In run N+1 the percept holds {app:goad, topic:X, artifact:Y}. Motive M_goad cues 'app:goad topic:X' (overlap 2); M_Y cues 'artifact:Y' (overlap 1). SATAN asks about artifact:Y. (a) If the tool ranks as the observer does, M_goad wins, artifact:Y is not in its cue, and the ask is suppressed. So while any question is outstanding, no ask on any other subject can pass. (b) If the tool resolves on the subject, it records related_motive_id=M_Y, but at maturity the observer credits M_goad: persist-positive bumps M_goad's worked_count (satan-observer.el:110-129). That brings back F-5's misattribution. The same happens when the keeper has goad focused at spawn, because current_window emits app:goad (satan-memory-canon.el:256-268). Needs: say which motive the ask credits, and make the emit check and the correlator agree. For example, exclude goad-minted handles from ranking for kind ask, or restrict ranking to motives whose cue holds the subject. Add a VT for 'question outstanding + goad-cued motive + ask on another subject'."
+disposition = "fixed"
+response = 'User-accepted 2026-09-23; design revision 41. Kind "ask" no longer re-ranks at maturity. At emit the tool ranks only motives whose cue holds the subject (overlap with the percept, ties by file order) and records the winner as related_motive_id, with the subject as :cue-handles. At maturity the correlator credits that live motive when it is not dormant and its cue still holds the subject; otherwise the ask matures :no_correlation, which is perceptible. Goad-cued motives therefore neither suppress nor absorb asks on other subjects. sec-10 ("Emit decides; maturity reads the decision"), sec-2, sec-3 step 3/4, sec-9 surface and risks. VT items 19 and 20. DEC-007 amended.'
+
+[[finding]]
+id = "F-29"
+status = "answered"
+severity = "major"
+title = "Unbounded goad read leaves 'which day file' undefined; asks near or across midnight lose their record and mature :ignored or undelivered"
+detail = "design.md:223-227 says the goad source ignores the assembler's bounds and contributes 'the day record as it stands'. It never says which day. backend.py keys every write by the local date at write time (record_path(now), ~/satan/goad/backend.py:65-66, :150-156), and presented_at (change 2) is also written at render time. The observer's midnight guard checks only its own 30-min window (satan-observer-classify.el:87-96). The after-state ctx :time_now is emit+30 (:98-115), and the assembler keys day files by (substring END 0 10) (satan-memory-evidence.el:506). Scenarios. (1) Ask emitted 23:15 with a 60-min window: the guard passes (end 23:45). The keeper answers at 00:05, which lands in D+1's file. If the source reads the emit/end date, the record shows presented with no value, so the ask classifies :ignored :medium 'untouched', a false keystone signal. The answer trace is also lost. (2) If the source reads 'as it stands' at classification time, any ask that matures after midnight reads the wrong file. That covers every ask emitted after 23:00, and every evening ask when no run spawns overnight (SL-018 defer; the observer runs only in satan-broker--spawn). The whole record is then invisible, so a presented and answered ask matures :unknown :high 'undelivered'. The 23:00 slot (SLOT_HOURS, :40) makes late-evening asks routine unless satan-goad-quiet-hours covers them, and the design gives it no default. Needs: the goad source reads every day file that [emit, emit+window] touches, joined by intervention_id. Or the midnight guard uses the ask's 60-min window and quiet hours cover 23:00 onward. Add a VT for an answer after midnight."
+disposition = "fixed"
+response = """User-accepted 2026-09-23; design revision 41. backend.py change 6: a SATAN ask's events are filed in the day file of its emitted_at date (carried on the queue entry), and pending() reads its state there. This also stops an ask answered before midnight from being asked again after it. The goad source reads the day file of the window start's date (the emit date, for the observer), never the classification date. Kind "ask" is exempt from the 30-min crosses_midnight guard, which protects panopticon segment files that the ask branch does not read. satan-goad-quiet-hours defaults to (22 . 9). sec-2, sec-3, sec-5, sec-6, sec-7; VT item 21. DEC-009 amended."""
+
+[[finding]]
+id = "F-30"
+status = "answered"
+severity = "minor"
+title = "short_exposure keys on a presented_at whose first-vs-latest render semantics are unstated; re-rendering at a slot boundary downgrades the keystone"
+detail = "The negative-leg table (design.md:636-637) turns 'presented_at in the window's last 10 minutes' into :unknown :low short_exposure. presented_at is 'written when an item is actually rendered' (design.md:722-723, backend change 2 at :397). But backend.py re-renders waiting[0] on EVERY evaluation until it is answered (~/satan/goad/backend.py:158-160), and next_check pins an evaluation at each 2-hour slot boundary (:40, :160). Scenario: ask emitted and rung at 12:10, rendered, left untouched. At 13:00 the slot evaluation renders it again. If presented_at is overwritten, it reads 13:00, which is inside the last 10 minutes of the 12:10-13:10 window, so the ask matures short_exposure instead of :ignored 'untouched'. With 2-hour slots and 60-min windows, roughly 1 in 12 asks is hit this way (a slot boundary in the window's last 10 minutes). Every re-shown ask after a Later is hit too. Needs: presented_at is stamped on FIRST render only (setdefault), stated in change 2 and pinned by a fixture."
+disposition = "fixed"
+response = "Design revision 41. sec-3 change 2 and sec-6: presented_at is stamped on first render only and never moved. VT item 22 (backend.py fixture)."
+
+[[finding]]
+id = "F-31"
+status = "answered"
+severity = "minor"
+title = "Precedence table has no row for an answer arriving after the window; a late answer classifies :ignored 'untouched' and the answer is discarded"
+detail = "The positive predicate fires only for 'at' within emit+60 (design.md:568-571). The negative table (:634-640) has no 'answered late' row, so a presented ask carrying a value with at > emit+60 falls to 'presented, nothing else' and becomes :ignored :medium 'untouched', the keystone. Backend change 5 (:400) stops RENDERING expired entries, but a view already on screen stays answerable: goad sends respond with the option id and answer() writes value/at (~/satan/goad/backend.py:141-142, :153-156). Scenario: ask presented at minute 20, keeper answers at minute 65, observer classifies at minute 70. The record holds a value, yet it is filed as the keeper ignoring SATAN, and persist-positive never writes the answer trace (DEC-011's durable human-sourced evidence). Needs: a row, for example value present after window gives :unknown :low 'late_answer', or the backend refuses responses to expired entries. Plus a VT."
+disposition = "fixed"
+response = "Design revision 41. sec-5 precedence table gains a second row: a value whose at is past the window gives :unknown :low late_answer. It earns no :worked and no answer trace; the answer stays in the day record for later percepts. VT item 23."
+
+[[finding]]
+id = "F-32"
+status = "answered"
+severity = "nit"
+title = "Stale text contradicts the 041ba2f reframe: percept still does 'correlation', doorbell still 'demoted'"
+detail = "design.md:736 (sec-6, Where the answer lands, item 2): 'the percept — visibility and correlation, via §3'. After F-20 the goad percept contribution does not do correlation (design.md:50-54, :220-221; DEC-004 amendment). design.md:469-470 (sec-4): 'the correction is the reason the doorbell is demoted'. After F-22 the doorbell is the primary delivery path (:312, :507-515). Also :562-563 says first-fire-wins, but satan-observer-classify.el:476-485 collects all firers. Reword all three."
+disposition = "fixed"
+response = 'Design revision 41. All three rewritten. sec-6 item 2: percept is "visibility for later runs; never correlation". sec-4: F-1 is "why the doorbell proves nothing about delivery". sec-5: every firing predicate is collected, and two or more raise confidence to :high. The same sweep also updated sec-7/sec-9 SL-018 text to match the landed broker gate (723c205): tick modes defer, escalate after 4h, and a deferred run runs no observer. It also updated sec-10 "What does not work" to note the ask route reads cue_handles.'
 
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

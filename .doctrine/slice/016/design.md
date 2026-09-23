@@ -91,6 +91,9 @@ never called** (`:587-599`).
       +-- ranked EMPTY -------> :unknown :no_correlation, nothing else runs
 ```
 
+Kind `"ask"` goes through the same gate by a narrower route: it credits the motive
+recorded at emit instead of re-ranking (below).
+
 ## What does not work
 
 `satan-intervention-record` accepts `:cue-handles`, and its projection persists
@@ -98,7 +101,8 @@ it to `cue_handles_json`; **no production call site passes it**. That looks like
 the hook the correlator forgot to use. It is not: the correlator reads
 `bundle.json` and never the column. `cue_handles` feeds
 `satan-intervention--counter-memory-handles` (`satan-intervention.el:597`) — the resonance path.
-Worth passing for auditability; it will never make an ask correlate.
+Passing it does not by itself make an ask correlate. It does carry the ask's
+subject, which the ask's route through the gate reads back (below).
 
 ## SATAN may only ask about what it already perceives
 
@@ -117,7 +121,12 @@ derived from what is already perceived. Therefore the ask tool requires:
 1. the question to name a **subject handle** present in ctx `:percept-handles`;
 2. that handle **not** to be goad-minted (`app:goad`, or a `topic:` the goad rule
    emitted); **and**
-3. *that* handle to appear in the winning motive's cue.
+3. a live, non-dormant motive whose cue holds *that* handle.
+
+Only motives whose cue holds the subject compete. Among them the tool ranks by
+overlap with the percept, ties by file order (the correlator's own rule), and
+records the winner as `related_motive_id`. A motive cued on `app:goad` therefore
+cannot outrank or absorb an ask about something else ([[RV-007]] F-28).
 
 **Goad handles cannot be the subject** ([[RV-007]] F-20). The goad canon rule
 (§3) emits handles only for questions *already* in the queue, and a question
@@ -140,20 +149,41 @@ This is a real constraint on what SATAN may ask, and it is the right one: a
 question about something outside SATAN's perceptual field is a question it has no
 grounds to ask.
 
-## The check is exact at emit
+## Emit decides; maturity reads the decision
+
+**[[RV-007]] F-28.** Re-ranking every motive against the whole percept at
+maturity, as the correlator does for other kinds, does not survive goad's own
+handles. Once a question is outstanding, later percepts carry `app:goad` and
+`topic:<Subject>`, and a motive cued on them (§3 invites exactly that) outranks
+the subject's motive. At emit that would suppress every ask on another subject.
+At maturity it would credit the goad motive with an answer about something else,
+which is F-5's misattribution again.
+
+So for kind `"ask"` only one side ranks. The tool decides once, at emit, and the
+correlator reads that decision back:
 
 ```
-satan-percept-build --> percept :handles
-     |-> tool ctx :percept-handles       (satan-run-tool-ctx, satan-run.el:334)
-     |      |-> the ask tool reads it here, at emit
-     |      +-> satan-intervention-record reads it here  (satan-intervention.el:396)
-     +-> bundle.json :percept :handles
-            +-> the correlator reads it here, at maturity
+emit      motives whose cue holds the subject
+            -- rank by |cue ∩ percept|, ties by file order --> winner
+          satan-intervention-record :related-motive-id winner
+                                    :cue-handles (subject)
+
+maturity  kind "ask":  live motive with id = related_motive_id,
+                       not dormant, subject still in its cue?
+                         yes --> satan-observer-classify
+                         no  --> :unknown :no_correlation
+          other kinds: rank by overlap, unchanged
 ```
 
-Same list, same arithmetic. With no winner the tool **does not emit** and records
-the suppression — SPEC-001 REQ-005/010: an ask that cannot be classified is an
-ask whose refusal cannot be perceived.
+`satan-intervention-pending` already returns `related_motive_id` and
+`cue_handles`, so the correlator needs no new query. The percept handles the tool
+ranks against are ctx `:percept-handles` (`satan-run-tool-ctx`,
+`satan-run.el:334`). That is the list `satan-intervention-record` persists
+(`satan-intervention.el:396`) and `bundle.json` carries.
+
+With no winner the tool **does not emit** and records the suppression. SPEC-001
+REQ-005/010 is the reason: an ask that cannot be classified is an ask whose
+refusal cannot be perceived.
 
 **Prohibited in interactive MCP** ([[RV-007]] F-12). Interactive sessions mint a
 synthetic bundle with no percept and freeze tool context immediately
@@ -164,22 +194,25 @@ MCP run-state coherence is a separate concern and goes to the backlog.
 ## The loop can still break, and that is now visible
 
 **[[RV-007]] F-4.** The observer rereads **live** motives on every pass
-(`satan/satan-observer.el:383`) and never consults the persisted
-`related_motive_id`. `tick-pulse` holds `motive_replace`. So an ask that passed
-the gate at emit can still mature `:no_correlation` if SATAN rewrote the motive
-in between.
+(`satan/satan-observer.el:383`). `tick-pulse` holds `motive_replace`. So an ask
+that passed the gate at emit can still mature `:no_correlation` if SATAN
+rewrote or removed the motive in between.
 
-The original phrasing — *correlate by construction* — overclaimed, and detecting
-a broken loop is not having an unbroken one. So:
+For kind `"ask"` the correlator honours the persisted `related_motive_id`
+(above). A rewrite that keeps the motive and its subject keeps the credit. One
+that drops either yields an explicit `:no_correlation`, never a silent
+re-attribution to whichever motive now ranks highest. The original phrasing,
+*correlate by construction*, still overclaimed: detecting a broken loop is not
+having an unbroken one. So:
 
-- correlation is asserted **at emit and nowhere else**; the design does not claim
-  the loop is closed;
+- correlation is decided **at emit** and read back at maturity; the design does
+  not claim the loop is closed;
 - a goad ask that matures `:no_correlation` is **perceptible**, through the same
   attribute channel as suppression (§7) — the slice's thesis applied to itself.
 
-Making the correlator honour the persisted motive id is the real fix. It changes
-shared classification semantics for every kind, so it is backlog work, not this
-slice's.
+Honouring the persisted motive id for **every** kind changes shared
+classification semantics, so that remains backlog work. The ask's route is
+kind-scoped, like its predicates (§6).
 
 ## Suppression is an outcome, not an early return
 
@@ -220,11 +253,20 @@ The evidence assembler is the one source both consumers of goad state read:
 It does **not** make an ask correlate; nothing goad-minted can (§2, [[RV-007]]
 F-20). [[DEC-004]] is amended accordingly.
 
-**The goad source ignores the assembler's time bounds** ([[RV-007]] F-23).
-`after` is assembled for emit to emit + 30 minutes (`satan-observer--after-state`,
-`satan-observer-classify.el:102`) whatever the intervention's own window. The
-goad contribution is the day record as it stands, keyed by `intervention_id`,
-and the consumers apply the ask's window themselves (§6).
+**The goad source ignores the assembler's time bounds** ([[RV-007]] F-23),
+except to choose the day file. `after` is assembled for emit to emit + 30
+minutes (`satan-observer--after-state`, `satan-observer-classify.el:102`)
+whatever the intervention's own window. The goad contribution is the whole day
+record for the **window start's date**, keyed by `intervention_id`. For the
+observer that date is the emit date. The consumers apply the ask's window
+themselves (§6). The source never reads the classification date's file, because
+the observer can run the next day.
+
+One file is enough because `backend.py` files every event of a SATAN ask
+(presentation, deferral, answer) in the day file of the ask's **emit date**,
+which the ask's queue entry carries. The date the event happens does not matter
+(§4, [[RV-007]] F-29). An answer at 00:05 to an ask emitted at 23:15 is filed
+beside its presentation.
 
 *(The stronger phrasing "handles exist only for what reaches the evidence window"
 is false and was corrected — canon also emits context- and hint-derived handles,
@@ -248,7 +290,8 @@ rule does a different job: it lets **later** runs perceive SATAN's outstanding
 questions and what the keeper did with them. It reads the queue file and the
 day record, and emits `app:goad` plus `topic:<Subject>` per outstanding
 question. A motive may cue on those to act on the goad state — to follow up, or
-to back off — but no ask may use them as its subject.
+to back off. No ask may use them as its subject, and they never change which
+motive an ask credits (§2, [[RV-007]] F-28).
 
 ## The handle vocabulary is a public surface
 
@@ -302,11 +345,12 @@ One `satan-tool-register` spec: `:name`, `:risk`, `:capability`, `:args-schema`,
    else, so a refusal there never records a false suppression (F-26);
 2. refuses inside the goad quiet window (§8) — a refusal, not a suppression:
    nothing was decided about the question;
-3. resolves the correlating motive on the **question's subject handle** (§2) and
-   **fails closed** if none, recording the suppression;
+3. resolves the correlating motive among those whose cue holds the **question's
+   subject handle** (§2), and **fails closed** if there is none, recording the
+   suppression;
 4. **records** the intervention of the reserved kind `"ask"` —
-   `satan-intervention-record`, passing `:related-motive-id`, `:cue-handles` and
-   `:outcome-window-minutes 60`;
+   `satan-intervention-record`, passing `:related-motive-id` (the winner),
+   `:cue-handles` (the subject) and `:outcome-window-minutes 60`;
 5. **projects** it — `satan-intervention-project`;
 6. rewrites the queue projection whole, from the open rows;
 7. rings the doorbell (§5) — the primary delivery path, not an optimisation.
@@ -376,8 +420,9 @@ the backend kept re-presenting it ([[RV-007]] F-11). The rewrite therefore also
 fires at classification. That is what makes the regenerability property
 [[DEC-005]] leans on actually hold.
 
-**Each entry carries `expires_at`** — emit plus window — and `backend.py` never
-renders an expired entry ([[RV-007]] F-24). Both rewrite triggers run inside
+**Each entry carries `emitted_at` and `expires_at`** (emit plus window).
+`backend.py` never renders an expired entry ([[RV-007]] F-24), and it files the
+ask's events under `emitted_at`'s date (F-29). Both rewrite triggers run inside
 SATAN runs, and runs can stop: under SL-018's `defer` policy no child spawns and
 the observer (inside `satan-broker--spawn`) never runs. Without expiry the queue
 would keep presenting questions whose window closed hours ago. With it the queue
@@ -388,16 +433,17 @@ invisible to the backend.
 ## What `backend.py` must become
 
 **This is the load-bearing part of the slice**, and the first design badly
-understated it. "Merge the queue into `pending()`" is five changes, none
+understated it. "Merge the queue into `pending()`" is six changes, none
 optional, to a file with no tests, no fixtures and no check recipe (slice R2):
 
 | # | change | why | finding |
 |---|---|---|---|
 | 1 | **priority** for SATAN asks in `pending()` | `main()` renders only `waiting[0]`, and `pending()` returns `ITEMS` order — the comment at `:22` says *"Order is ask order."* Behind fourteen checklist entries, an appended question is effectively never shown | F-18 |
-| 2 | **`presented_at`** written when an item is actually rendered | the only real delivery proof — see §5 | F-1 |
+| 2 | **`presented_at`** written on an item's **first** render, never overwritten | the only real delivery proof (§5). `main()` re-renders `waiting[0]` on every evaluation (`:158-160`), so a later render must not move the stamp into the window's last minutes | F-1, F-30 |
 | 3 | **deferral provenance** | `answer()` writes the same `deferred_at` for `later:` and `enough:` (`:132-146`). Here those are opposite signals, and `enough:` bulk-defers questions the keeper never saw | F-19 |
 | 4 | **serialize queued items** | `save()` iterates `ITEMS` alone (`:77-90`), so a SATAN answer would render, mutate the in-memory map, and vanish on write | F-7 |
 | 5 | **skip expired entries** | an entry past `expires_at` is not rendered, so the queue is self-limiting when SATAN is not running | F-24 |
+| 6 | **file a SATAN ask under its emit date** — its events go to the day file of its `emitted_at` date, and `pending()` reads its state from there | `record_path(now)` keys every write by the date of the event (`:65-66`, `:151`). An ask answered at 23:40 would be pending again at 00:10 and asked twice, and its record would be split across two files | F-29 |
 
 Fixtures come first. goad degrades safely on a backend fault — the host does not
 crash — but prompts stop, and goad's own field notes record that *"waiting and
@@ -424,7 +470,7 @@ repo and **signals when it is missing** (`satan/satan-tools.el:208-209`), with
 the manifest built per-spawn. Landing `goad_ask` without
 `~/satan/tools/goad_ask.md` **breaks every run of every mode that allowlists it**.
 
-Corpus-side change set: `goad/backend.py` (the five above), `goad/README.md:16`
+Corpus-side change set: `goad/backend.py` (the six above), `goad/README.md:16`
 (the record format), `tools/goad_ask.md`, and the one-off day-file conversion.
 The corpus repo is ungoverned by this doctrine corpus, which makes the coupling a
 sequencing hazard rather than a governance one — and is why they land together.
@@ -466,8 +512,8 @@ two-buffer fallback, no structured-refusal parser, no new mechanism.**
 
 ## Exit 0 does not mean delivered
 
-**[[RV-007]] F-1 — the first design got this wrong and the correction is the
-reason the doorbell is demoted.** goad replies `accepted` **before** calling the
+**[[RV-007]] F-1 — the first design got this wrong, and the correction is why
+the doorbell proves nothing about delivery.** goad replies `accepted` **before** calling the
 backend. `crates/goad/src/controller.rs:735`, verbatim:
 
 > *"accepted. The reply leaves **before** the backend is called: the listener
@@ -559,9 +605,10 @@ question. Nothing is inferred from where the keeper's eyes were.
 
 ## The positive leg
 
-One entry in `satan-observer--predicates` — an ordered alist of keyword to
-function, uniform `(baseline after motive intervention)` signature,
-first-fire-wins. It reads the goad day record out of `after`, the assembled
+One entry in `satan-observer--predicates`, an ordered alist of keyword to
+function with the uniform signature `(baseline after motive intervention)`. Every
+predicate runs and every one that fires is collected; two or more raise the
+confidence to `:high` (`satan-observer-classify.el:476-485`). It reads the goad day record out of `after`, the assembled
 evidence window that §3 already populates, so it needs no database query and no
 side channel.
 
@@ -634,6 +681,7 @@ the positive predicate does. Precedence, first match wins:
 | the record, for this `intervention_id` | verdict | evidence |
 |---|---|---|
 | no `presented_at` | `:unknown :high` | `undelivered` — delivery unproven, never the keeper's silence |
+| a `value` whose `at` is past the window | `:unknown :low` | `late_answer` — engaged, but outside the window; never silence |
 | `presented_at` in the last 10 minutes of the window | `:unknown :low` | `short_exposure` — too little time to call it ignored |
 | `deferred_at` with `later` provenance | `:unknown :low` | `deferred` — engaged, postponed |
 | presented, then bulk `enough` | `:ignored :medium` | `dismissed` — saw it and refused the slot |
@@ -647,6 +695,20 @@ column reach the persisted outcome through the observer's verdict mapping
 today carries no such labels and gains them ([[RV-007]] F-25). A `dismissed` ask is a refusal the keeper made with the
 question in front of them, which RFC-016 counts as disengagement; `enough`
 reaches only questions *not* presented through the first row.
+
+A `late_answer` exists because goad keeps a view already on screen answerable
+after `backend.py` stops rendering the entry ([[RV-007]] F-31): `respond` still
+reaches `answer()` (`backend.py:141-142`). The answer stays in the day record,
+where later percepts see it, but it earns no `:worked` and no answer trace.
+
+**Midnight does not bound an ask** ([[RV-007]] F-29). `satan-observer-classify`
+returns `:unknown :crosses_midnight` before any predicate runs when the 30-minute
+window spans two dates (`satan-observer-classify.el:87-96`, `:472`). That guard
+protects the panopticon segment file, which the assembler keys by the window's
+end date. Kind `"ask"` reads no segments (its only positive predicate is the
+answer), and its record is one file keyed by the emit date (§3). So the guard
+does not apply to it. Without that exemption every ask emitted after 23:30 would
+mature `:unknown`, whatever the keeper did.
 
 The branch keeps `satan-observer--assert-auto-classification` satisfied — every
 verdict it returns is an auto kind. It needs no panopticon, no compositor
@@ -719,10 +781,13 @@ answering.
 
 Two fields the first design did not see:
 
-- **`presented_at`** — written when an item is actually rendered. The only proof
-  of delivery, because `goad-emit` exit 0 does not carry one (§5).
+- **`presented_at`** — written on an item's first render and never moved. The
+  only proof of delivery, because `goad-emit` exit 0 does not carry one (§5).
 - **deferral provenance** — so an explicit `Later` is distinguishable from a bulk
   `Enough` (§6).
+
+A SATAN ask's entry, with these fields and its answer, lives in the day file of
+the ask's emit date, not of the event (§4).
 
 Plus the one-off conversion of the five existing day files, a reviewable commit
 since they are corpus-tracked.
@@ -733,7 +798,7 @@ Three places, each doing one job ([[DEC-011]]):
 
 1. **the day record** — arrival, keyed by `intervention_id` via the option id
    ([[ASM-001]]);
-2. **the percept** — visibility and correlation, via §3;
+2. **the percept** — visibility for later runs, via §3; never correlation (§2);
 3. **a memory trace** — durable human-sourced evidence.
 
 **Not the inbox.** The slice names `satan-tools-inbox.el` under deliberate
@@ -859,15 +924,20 @@ reading "not written" when both landed.
 ## Autonomy, and the window it needs
 
 The autonomous producer ships in v1 ([[DEC-006]]), with a precondition it
-does not own. SL-018's locked design gives `tick-*` modes the credential policy
-`defer`: with no credential session a tick records `credential_deferred` and
-spawns nothing, escalating to a prompt only after a streak (default 4h,
-`.doctrine/slice/018/design.md` sec-4). Until SL-018 lands, ISS-012's expired
-key decides instead. Either way SATAN asks unprompted **only when an unattended
-run can authenticate** — which, under `defer`, loosely tracks the keeper having
-unlocked the vault. The slice builds and verifies without it: every
-verification item drives the tool directly. Enabling the producer in anger
-waits on SL-018. Research delta 9 reported
+does not own: an unattended run that can authenticate. SL-018's broker
+credential gate is in the tree (`723c205`; `satan/satan-broker.el:754`), though
+the slice is still open. An unattended run of any mode without
+`:credential-policy prompt` defers when no credential session is live. That
+covers every `tick-*` mode, since `satan-tick-register` sets no policy. A
+deferring run records `credential_deferred` and spawns nothing. Once the
+deferral streak reaches `satan-credential-escalate-after` (default 4h,
+`satan-broker.el:380`), the next run prompts instead. So SATAN asks unprompted
+**only when an unattended run can authenticate**, which loosely tracks the
+keeper having unlocked the vault. A deferred run also runs no observer, which
+lives in `satan-broker--spawn`. Asks that mature meanwhile wait for the next
+spawned run, and `expires_at` stops the queue presenting them (§4). The slice
+builds and verifies without any of this, because every verification item
+drives the tool directly. Research delta 9 reported
 `tick-pulse` holds neither `notify` nor `inbox-write`, citing
 `satan-mode.el:146-154` — which is `self-edit-mech`'s spec. `tick-pulse` is
 registered at `satan/satan-tick.el:95` from the `satan-tick-register` defaults
@@ -903,6 +973,12 @@ defcustom. The ask path calls the same predicate with **its own window**:
 `satan-tick-quiet-hours`, and the ask passes `satan-goad-quiet-hours`. One
 predicate, two windows, no parallel implementation.
 
+`satan-goad-quiet-hours` defaults to **`(22 . 9)`**: no ask from 22:00 through
+08:59 ([[RV-007]] F-29). Asks resume at goad's first slot (09:00). Under the
+default, every 60-minute window closes before the 23:00 slot and before
+midnight, so no ask's record straddles two dates at all. What keeps a narrower
+setting correct is the emit-date filing (§4), not the default.
+
 <!-- doctrine:section sec-8 -->
 # Verification
 
@@ -928,6 +1004,11 @@ predicate, two windows, no parallel implementation.
 | 16 | `backend.py` never renders an entry past `expires_at` | VT — F-24 |
 | 17 | an answered ask's trace carries the question and the value | VT — F-9 |
 | 18 | the ask's evidence labels reach the persisted outcome row | VT — F-25 |
+| 19 | with a question outstanding and a motive cued on `app:goad`, an ask on another perceived subject emits and credits the subject's motive, at emit and at maturity | VT — F-28 |
+| 20 | an ask whose recorded motive has been removed, made dormant, or no longer cues the subject matures `:no_correlation` | VT — F-28, F-4 |
+| 21 | with quiet hours off, an ask emitted at 23:15 and answered at 00:05 classifies `:worked` from the emit date's file, and is not presented again after midnight | VT — F-29 |
+| 22 | `presented_at` keeps its first render's stamp across later evaluations | VT — F-30 (a `backend.py` fixture) |
+| 23 | an answer after the window classifies `:unknown :low` `late_answer`, with no answer trace | VT — F-31 |
 
 ## What the reframe bought, tested
 
@@ -969,7 +1050,7 @@ temp dir plus defcustom rebinding (record and queue paths), `cl-letf` subprocess
 stubbing (`goad-emit` without a live host), and `ert-fail` spies on mutating
 functions to prove purity (ADR-001 on the perceive leg).
 
-`backend.py` needs fixtures of its own — it has none, and four of the slice's
+`backend.py` needs fixtures of its own — it has none, and six of the slice's
 changes live there.
 
 **A fixture must not build the value under test.** [[ISS-014]] survived because
@@ -1001,7 +1082,7 @@ Neither is this slice's to fix; both are this slice's to not be fooled by.
 | `satan-memory-evidence.el` | goad record + queue join the evidence window (§3) |
 | `satan-memory-canon.el` | the canon rule, triggered by the queue file (§3) |
 | `satan-observer.el` | queue rewrite at classification; the answer trace in `--persist-positive`; the ask's evidence labels in `--verdict-classify-args` (§4, §6) |
-| `satan-observer-classify.el` | the answer predicate; kind-scoped predicate selection; the `"ask"` branch of `classify-negative` — no other kind's verdicts change (§6) |
+| `satan-observer-classify.el` | the answer predicate; kind-scoped predicate selection; the `"ask"` branch of `classify-negative`; kind `"ask"` credits its emit-time motive in `classify-for-motives` and is exempt from the `crosses_midnight` guard — no other kind's verdicts change (§2, §6) |
 | `satan-tick.el` | the `goad-ask` capability; `satan-tick-quiet-p` gains a window argument (§8) |
 | `satan-intervention.el` | the `undelivered` auto-verdict writer, moved from `satan-tools-notify.el` (§4) |
 | `satan-attribute.el` | suppression and `:no_correlation` as attributes (§7) |
@@ -1017,7 +1098,7 @@ moved writer), `satan-custom.el` (`satan-goad-enabled`,
 and `satan-sensor-alerts.el` (suppression is an attribute, not an alert).
 
 **Corpus repo** (`~/satan`) — lands together with the above (§4):
-`goad/backend.py` (five changes), `goad/README.md`, `tools/goad_ask.md`, and the
+`goad/backend.py` (six changes), `goad/README.md`, `tools/goad_ask.md`, and the
 one-off day-file conversion.
 
 ## Sequencing
@@ -1028,24 +1109,23 @@ doorbell ships with PROMPT**, not after it: without it `backend.py`'s two-hour
 slot poll matures most asks `undelivered` (§5, [[RV-007]] F-22). Its exit code
 still carries no meaning.
 
-`backend.py` fixtures come before any of its five changes. It carries the slice
+`backend.py` fixtures come before any of its six changes. It carries the slice
 and has no tests.
 
 **SL-018 gates enablement, not construction** (§8). Nothing in this slice
-needs an unattended run to be built or verified. Turning the autonomous
-producer on for real waits on SL-018 landing; until then asks come only from
-`tick-pulse` runs whose key happens to work (ISS-012) — interactive MCP refuses
-the tool (§2).
+needs an unattended run to be built or verified. SL-018's broker gate has
+landed, so unattended asks come only from `tick-pulse` runs that find a live
+credential session. Interactive MCP refuses the tool (§2).
 
 ## Risks carried, not resolved
 
 | risk | why it is not closed here | where it goes |
 |---|---|---|
 | **[[ASM-001]] is inference, not evidence** — the option-id round trip is unproven, and `save()` would drop the answer until F-7 lands | proving it requires implementing it | verification item 2 |
-| **The correlation loop can break after emit** — the observer rereads live motives and ignores the persisted id ([[RV-007]] F-4) | fixing it changes classification semantics for every kind | made perceptible (§2, §7); correlator fix to backlog |
+| **The correlation loop can break after emit** — SATAN can rewrite or remove the credited motive before maturity ([[RV-007]] F-4) | for kind `"ask"` the correlator reads the emit-time motive, so a break is an explicit `:no_correlation`; honouring the persisted id for every kind changes shared semantics | made perceptible (§2, §7); the all-kinds correlator fix to backlog |
 | **The gate constrains what SATAN may ask** — only about what it already perceives (§2) | it is the fix, and it is a real limitation | documented as the operating contract |
 | **Whether goad re-evaluates when an `engaged` exchange ends** — a refused ring's question otherwise waits for the next slot | unverified | plan verifies before relying on it (§5) |
-| **The autonomous producer needs an authenticating unattended run** — ISS-012 today, SL-018's `defer` policy once it lands | SL-018 owns credentials | enablement waits on SL-018 |
+| **The autonomous producer needs an authenticating unattended run** — SL-018's `defer` policy (broker gate landed at `723c205`) | SL-018 owns credentials | asks flow only while a credential session is live (§8) |
 | **Interactive MCP has no percept** ([[RV-007]] F-12) | repairing run-state coherence is separate | tool refuses there; MCP fix to backlog |
 | **`satan-attrd` rejects unknown outcome reasons** ([[ISS-011]]) | cross-repo dependency for the suppression attribute | name it at plan time |
 | **`backend.py` has no tests** (R2) | fixtures are phase-one work | §4 |
@@ -1056,7 +1136,8 @@ the tool (§2).
 - **Approval gating.** ADR-017 §1 assigns it to Emacs permanently (§8).
 - **Any change to the goad host.** If the design finds one unavoidable, that is a
   signal to re-examine the design, not to widen scope.
-- **The correlator's motive handling, or MCP run-state coherence** — both
+- **The correlator's motive handling for kinds other than `"ask"`, or MCP
+  run-state coherence** — both
   real, both separately owned. ([[ISS-014]] is fixed at `6ff52f7`; the `"ask"`
   branch does not depend on it either way.)
 - **Global quiet hours** ([[RV-007]] F-15) — the emission window is goad's own.
