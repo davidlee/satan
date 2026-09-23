@@ -267,9 +267,13 @@ Guards (DEC-019 consequences):
 - Evicting twice is harmless (`remhash` of an absent key), so no once-only
   flag is needed.
 
-Out of scope, noted: the sentinel clears `satan-run--spawn-running` after
-`--finalize` without `unwind-protect`, so an unrelated finalize error already
-leaves the flag set. Captured as a backlog item, not fixed here.
+**Sentinel reset (ISS-020, absorbed).** `satan-broker--make-sentinel` clears
+`satan-run--spawn-running` *after* `--finalize` without `unwind-protect`, so any
+finalize error leaves the flag set. The MCP server then refuses sessions, and
+with DEC-023's `run_busy` every scheduled run is refused until Emacs restarts.
+The finalize call is wrapped in `unwind-protect`, with the reset as its unwind
+form. The error still propagates, as it does today: this is a reset, not
+suppression.
 
 The patch adapter's results carry no error class. Patch runs therefore never
 evict (residual; IMP-005 remainder). A rotated key used only by patch is healed
@@ -363,6 +367,7 @@ real runs use the existing temp runs-dir fixtures. No test calls `op`.
 | VT-13 | broker end-to-end `credential_unavailable`: `.FAILED` dir, `final.json` reason, journal line, same-cause streak position (F-4) |
 | VT-14 | `run_busy`: with `spawn-running` set, no acquisition call and a `run_busy` no-child run; still `run_busy` when the flag clears before the `cond` (nil `cred`); skipped by both the failure and credential streaks (F-3) |
 | VT-15 | `forget` signals during an `auth` finalize → `evict-failed` audit event; rename, announce and the `spawn-running` reset still happen (F-5) |
+| VT-19 | a finalize that signals from the sentinel still clears `satan-run--spawn-running` (ISS-020) |
 | VT-16 | patch: peek error → no backend call; readiness passes but claim returns nil → no resolve; one failing var of seven → job runs with a warning (F-6, F-7) |
 | VT-17 | unattended entry: `satan-run` called non-interactively, and `satan-tick`, leave `satan-run-attended` nil, so a `defer` mode defers (F-10) |
 | VT-18 | registration refuses a policy other than `prompt`/`defer` and a negative or non-numeric duration (F-8) |

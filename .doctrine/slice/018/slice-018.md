@@ -80,6 +80,10 @@ How resolution works today:
    prompting modes carry `my/op-read-context`. Any remaining dialog therefore
    arrives with a label and a cause. The announce that IMP-021 chose is already
    built.
+8. **Overlap is refused, and the refusal cannot stick** (added in design, RV-013).
+   A `run_busy` gate refuses a scheduled run while a child is live (DEC-023). The
+   sentinel always clears `spawn-running`, even when finalize signals (ISS-020,
+   absorbed).
 
 ## Non-Goals
 
