@@ -5,13 +5,14 @@
 ;; suite file (no -test suffix): suites `require' it.
 ;;
 ;; The goldens are read-only inputs.  Nothing here writes into them; the
-;; scratch-directory macro writes only inside its own temp dir.
+;; scratch-directory macros write only inside their own temp dir.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'json)
 (require 'satan-custom)
+(require 'satan-jsonl)
 (require 'satan-goad)
 
 (defconst satan-goad-fixture-dir
@@ -48,6 +49,16 @@ test.")
     (cl-find-if (lambda (e) (equal iid (plist-get e :intervention_id)))
                 entries)))
 
+(defun satan-goad-fixture-answer (outcome entries)
+  "The answer value in the record of OUTCOME's element of ENTRIES (slice
+elements), or nil."
+  (plist-get (plist-get (satan-goad-fixture-find outcome entries) :record)
+             :value))
+
+(defun satan-goad-fixture-iids (entries)
+  "The intervention ids of ENTRIES, in order."
+  (mapcar (lambda (e) (plist-get e :intervention_id)) entries))
+
 (defmacro satan-goad-fixture-with-goldens (&rest body)
   "Run BODY with the goad readers bound to the goldens, in the goldens' zone."
   (declare (indent 0))
@@ -62,17 +73,73 @@ test.")
 The queue file is VAR/queue.json and the data dir VAR/data/; neither
 exists until BODY writes it.  The dir is removed afterwards."
   (declare (indent 1))
-  `(let* ((,var (make-temp-file "satan-goad-test-" t))
-          (satan-goad-queue-file (expand-file-name "queue.json" ,var))
-          (satan-goad-data-dir (expand-file-name "data" ,var))
-          (satan-goad--zone satan-goad-fixture-zone))
-     (unwind-protect (progn ,@body)
-       (delete-directory ,var t))))
+  (let ((dir (make-symbol "dir")))
+    `(let* ((,dir (make-temp-file "satan-goad-test-" t))
+            (,var ,dir)
+            (satan-goad-queue-file (expand-file-name "queue.json" ,dir))
+            (satan-goad-data-dir (expand-file-name "data" ,dir))
+            (satan-goad--zone satan-goad-fixture-zone))
+       (unwind-protect (progn ,@body)
+         (delete-directory ,dir t)))))
+
+;; ── the goldens, decoded directly ───────────────────────────────────────────
+;;
+;; The producer's bytes as `satan-jsonl-read-object-file' decodes them,
+;; bypassing SATAN's goad readers: the reference a reader's output is
+;; compared against.
+
+(defconst satan-goad-fixture-day "2026-09-23"
+  "The golden day file's date: every golden ask files under it.")
+
+(defun satan-goad-fixture--golden (file)
+  "FILE, relative to `satan-goad-fixture-dir', decoded."
+  (satan-jsonl-read-object-file (expand-file-name file satan-goad-fixture-dir)))
+
+(defun satan-goad-fixture-golden-entry (outcome)
+  "OUTCOME's entry in the golden `queue.json', decoded as it stands."
+  (satan-goad-fixture-find
+   outcome (plist-get (satan-goad-fixture--golden "queue.json") :asks)))
+
+(defun satan-goad-fixture-golden-record (outcome)
+  "OUTCOME's record in the golden day file, decoded as it stands; nil if none."
+  (plist-get (plist-get (satan-goad-fixture--golden
+                         (format "data/%s.json" satan-goad-fixture-day))
+                        :asks)
+             (intern (concat ":" (satan-goad-fixture-id outcome)))))
+
+(defun satan-goad-fixture-keys (plist)
+  "The keys of PLIST, in order."
+  (cl-loop for (k _) on plist by #'cddr collect k))
+
+;; ── scratch dirs ────────────────────────────────────────────────────────────
 
 (defun satan-goad-fixture-write (path content)
   "Write the string CONTENT to PATH, creating its directory."
   (make-directory (file-name-directory path) t)
   (with-temp-file path (insert content)))
+
+(defmacro satan-goad-fixture-with-golden-copy (var &rest body)
+  "Like `satan-goad-fixture-with-tmp', with the goldens copied into VAR first.
+BODY may alter one value (`satan-goad-fixture-replace') and keep every
+other byte the producer's.  The goldens themselves are never written."
+  (declare (indent 1))
+  `(satan-goad-fixture-with-tmp ,var
+     (copy-file (expand-file-name "queue.json" satan-goad-fixture-dir)
+                satan-goad-queue-file)
+     (copy-directory (expand-file-name "data" satan-goad-fixture-dir)
+                     satan-goad-data-dir nil nil t)
+     ,@body))
+
+(defun satan-goad-fixture-replace (file from to)
+  "Replace the text FROM with TO in the copied FILE.
+Signals when FROM is absent, so a regenerated golden cannot leave a
+test silently checking nothing."
+  (let ((text (with-temp-buffer
+                (insert-file-contents file)
+                (buffer-string))))
+    (unless (string-search from text)
+      (error "satan-goad-fixture: %S not in %s" from file))
+    (satan-goad-fixture-write file (string-replace from to text))))
 
 (defun satan-goad-fixture-write-queue (entries)
   "Write ENTRIES (plists) as the queue document at `satan-goad-queue-file'."

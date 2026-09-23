@@ -419,17 +419,19 @@ admitted `topic:'; one that slugifies to nothing yields no `topic:', and
                    (satan-memory-canon-test--goad-handles
                     "2026-09-23T09:35:00+10:00")))))
 
-(ert-deftest satan-memory-canon/goad-outstanding-a-no-answer-is-an-answer ()
-  "A keeper's No is JSON false, decoded `:false': answered, not outstanding."
-  (satan-goad-fixture-with-tmp _dir
-    (let ((ask (satan-goad-fixture-ask)))
-      (satan-goad-fixture-write-queue (list ask))
-      (satan-goad-fixture-write
-       (expand-file-name "2026-09-23.json" satan-goad-data-dir)
-       (format "{\"asks\": {\"%s\": {\"value\": false}}}"
-               (plist-get ask :intervention_id)))
-      (should-not (satan-memory-canon-test--goad-handles
-                   "2026-09-23T09:35:00+10:00")))))
+(ert-deftest satan-memory-canon/goad-outstanding-a-form-answer-is-an-answer ()
+  "At 13:30, inside the golden `form' ask's window and after its answer,
+its `{option, values}' answer makes it answered, not outstanding.  Every
+other golden ask has expired or carries an answer by then (`midnight',
+queued later, already holds the answer it gets at 00:05), so nothing
+is emitted."
+  (satan-goad-fixture-with-goldens
+    (let* ((now "2026-09-23T13:30:00+10:00")
+           (form (satan-goad-fixture-find 'form (satan-goad-read-queue))))
+      (should (time-less-p (satan-memory-canon-parse-instant now)
+                           (satan-memory-canon-parse-instant
+                            (plist-get form :expires_at))))
+      (should-not (satan-memory-canon-test--goad-handles now)))))
 
 (ert-deftest satan-memory-canon/goad-outstanding-without-goad-emits-nothing ()
   "VT-33 — no `:goad' key (the queue is absent) and nothing is emitted; nor

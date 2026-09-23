@@ -498,8 +498,9 @@ contribute the same app, emit `app:<slug>' from the hint side."
 
 (defun satan-memory-canon--goad-outstanding-p (ask now)
   "Non-nil when the goad ASK is still open at the instant NOW.
-Outstanding means no answer in its record — a No is `:false', which is
-an answer — and `:expires_at' still ahead of NOW, compared as instants.
+Outstanding means no `:value' in its record — an answer is goad's
+`{option, values}' object (DEC-025), never inspected here — and
+`:expires_at' still ahead of NOW, compared as instants.
 A Later or Enough deferral leaves an ask outstanding (SL-016 OQ-1)."
   (let ((expires (satan-memory-canon-parse-instant (plist-get ask :expires_at))))
     (and (not (plist-get (plist-get ask :record) :value))

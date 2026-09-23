@@ -6,13 +6,14 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-10 implemented, 2026-09-24 (uncommitted; orchestrator
-commits). `goad/backend.py` now speaks the answer form (DEC-024/025): an ask's
-options render as `opt:<option>:ask:<iid>`, `yes:`/`no:` are the checklist's
-verbs only, and an ask's answer is `{"option", "values"}`. Goldens regenerated
-with a `form` ask; `convert_toml_days.py` retired. PHASE-02 landed as corpus
-`e3ac87c` / dev `528079c`; PHASE-10 reworks its answer-shape code (see "Design
-revision" below). Next: `/phase-plan PHASE-11`.
+**fresh-as-of:** PHASE-11 implemented, 2026-09-24 (uncommitted; orchestrator
+commits). SATAN's goad readers now carry an ask's answer form on its queue
+entry, read the ask's answer as goad's `{option, values}` object without
+interpreting it, and truncate string values over 1 KiB in the `:goad`
+evidence slice (`satan-goad-truncate-value`, reused by PHASE-09's trace). No
+boolean ask fixture remains. PHASE-10 (corpus answer forms, goldens with a
+`form` ask) landed as dev `a6eca02`, corpus `ab00411`. Next: `/phase-plan` the
+next phase.
 
 ### Design revision — answer forms (2026-09-24)
 
@@ -40,6 +41,119 @@ message says it was retired.
   That is harmless under `opt:` namespacing, but should be pinned by a test.
 
 None of these blocks the lock. They are verification or plan-time checks.
+
+### PHASE-11
+
+PERCEIVE rework of PHASE-03 onto the revised record (DEC-024 the form,
+DEC-025 the answer object). Dev only; the corpus was not touched
+(`git -C ~/satan status --short` before and after: the user's own
+` D goad/goad.service`, ` M motd.txt`, nothing else).
+
+**Files:**
+- `satan/satan-goad.el` — `satan-goad--form-p` (mirrors backend `is_form`);
+  `satan-goad--queue-entry` appends `:form` verbatim when present and
+  well-formed, returns nil when present and malformed; truncation:
+  `satan-goad-truncate-bytes` (1024), `satan-goad-truncate-marker`
+  (`"…[truncated from %d bytes]"`), `satan-goad--utf8-bytes`,
+  `satan-goad--prefix-within`, `satan-goad--truncate-string`, public
+  `satan-goad-truncate-value`; `satan-goad--evidence-record` maps each slice
+  record's `:value` through it. Header comment and docstrings updated.
+- `satan/satan-memory-canon.el` — docstring only
+  (`satan-memory-canon--goad-outstanding-p`: the stale "a No is `:false`" is
+  now "no `:value` … an answer is DEC-025's `{option, values}`, never
+  inspected here"). No code change; purity lint green.
+- `satan/test/satan-goad-fixture.el` — golden direct-decode accessors
+  (`satan-goad-fixture-day`, `-golden-entry`, `-golden-record`), `-keys`,
+  `-answer`, `-iids`; `-with-golden-copy` (built on `-with-tmp`) and
+  `-replace` (errors when FROM is absent). `-with-tmp` made hygienic: it
+  now uses an uninterned symbol for the dir, so a `_dir` binding is
+  genuinely unused (cleared 5 pre-existing + 2 new byte-compile warnings).
+- `satan/test/satan-goad-test.el` — new/updated tests below; the malformed
+  form cases build their entry from `satan-goad-fixture-ask` plus raw form
+  JSON (`satan-goad-test--ask-json-with-form`).
+- `satan/test/satan-memory-canon-test.el` — boolean
+  `goad-outstanding-a-no-answer-is-an-answer` replaced by
+  `goad-outstanding-a-form-answer-is-an-answer`.
+
+**A1–A6 as landed:**
+- A1 — `:form` rides the entry as decoded, after the five fields; absent
+  (no key) on a formless entry.
+- A2 (orchestrator-approved) — a `form` key present but malformed drops the
+  whole entry, `null`/`[]`/`{}` included (detected with `plist-member`). The
+  ordering matters: `plist-member` on a non-list signals, so the entry's
+  plist check runs first (caught by the existing
+  `read-queue-drops-a-bad-entry-alone`, whose queue holds a bare `7`). R3
+  holds: `[false, true]` decodes to `(:false t)` and is dropped, because
+  each *option* must be a plist with string `:id`/`:label`.
+- A3 — bytes are UTF-8 (`encode-coding-string … 'utf-8`), not
+  `string-bytes` of the internal form; marker counted against the cap; cut
+  on a character boundary; idempotent.
+- A4 — structural walk: string → maybe cut; cons → `mapcar` itself; else
+  unchanged. Fresh lists, input never mutated.
+- A5 — applied to the record's `:value` only, in `satan-goad-slice`;
+  `satan-goad-read-record` stays whole.
+- A6 (orchestrator-approved) — VT-55's long string is one golden value
+  (`"steady after lunch"`) replaced in a temp copy of the goldens.
+
+**VT evidence** (`satan/test/satan-goad-test.el`):
+- VT-54 — `satan-goad/queue-entry-keeps-form`,
+  `satan-goad/answer-is-option-and-values`; also
+  `read-queue-reads-the-goldens-in-file-order` (keys = five + `:form` iff the
+  golden entry has one), `read-queue-drops-a-malformed-form` (13 bad forms,
+  each between two good entries; a well-formed one-option form kept),
+  `read-record-matches-the-scenario-table` (now includes `form`).
+- VT-55 — `satan-goad-truncate-value/{keeps-strings-within-the-cap,
+  cuts-a-long-string-to-the-cap, cuts-on-a-character-boundary, is-idempotent,
+  passes-non-strings-unchanged, walks-a-value-without-mutating-it}`,
+  `satan-goad/long-string-truncated`. Short values passing unchanged over the
+  goldens is pinned by the existing `slice-pairs-every-entry-with-its-record`
+  (slice `:record` `equal` to `satan-goad-read-record`'s).
+- T6 wire — `satan-goad/slice-survives-json`: persists the golden slice
+  through the real writer `satan-percept-persist` and reads it back `equal`
+  (no existing `:goad` wire test to extend).
+- VT-32 — `satan-memory-evidence/goad-slice-is-pure` untouched, green.
+
+**EX-1 sweep:** `rg -n '\\"value\\": *(true|false)|:value (t|:false)' satan/test`
+— before T3: 2 hits (`satan-goad-test.el:175`, `satan-memory-canon-test.el:429`);
+after: no output, exit 1. A wider `rg -n '\\"value\\"|:value '` over the goad,
+canon and evidence suites and the fixture finds only the key-list assertion
+`'(:presented_at :value :at)`.
+
+**Counts** (dev `just check`, serial, `SATAN_DB_HOST` from the justfile):
+- T0: 1175 ran / 1169 expected / 0 unexpected / 6 skipped.
+- T7: 1186 ran / 1180 expected / 0 unexpected / 6 skipped (+11: goad
+  suite 38 → 49; canon test replaced one for one). Harness 54 OK.
+- Skip set, both runs: `satan-integration/morning-end-to-end`,
+  `satan-memory-grammar/db-sync-{aliases,current-version,default-weights}`,
+  `satan-patch-listener/integration-fires-from-real-pg`,
+  `satan-patch-runner/real-pi-edits-and-commits`.
+- `just lint` clean. Scratch byte-compile of `satan-goad.el`,
+  `satan-memory-canon.el`, `satan-goad-fixture.el`, `satan-goad-test.el`,
+  `satan-memory-canon-test.el`, `satan-memory-evidence-test.el`: HEAD's four
+  gave 5 warnings (all `_dir` not left unused); now 0 in touched files. One
+  pre-existing, untouched: `satan-memory-evidence-test.el:471` unused
+  `git-start-iso`.
+
+**R1 observed:** the golden form serialises to 330 bytes; the whole golden
+`:goad` slice to 3068 bytes.
+
+**Deviations from the sheet:**
+- `read-record-without-a-usable-day-file-is-nil`'s positive checks run over
+  `-with-goldens`, not `-with-golden-copy`: they alter nothing, so a copy
+  adds nothing.
+- T5's third bullet (over unmodified goldens, slice record `equal` to
+  `satan-goad-read-record`'s) was already pinned by
+  `slice-pairs-every-entry-with-its-record`; not duplicated.
+- T6 goes through `satan-percept-persist` rather than restating
+  `json-serialize (satan-jsonl-prepare …)` — the persist path is exactly that
+  call, and testing it pins the real wire.
+- Added fixture helpers beyond the sheet (`-golden-entry`, `-golden-record`,
+  `-keys`, `-answer`, `-iids`, `-day`) and the `-with-tmp` hygiene fix — per
+  T7's "belongs in the fixture as one helper".
+
+**Findings:** none requiring action here. `satan-jsonl--plist-p` is used
+cross-module as a private (`--`) function by `satan-goad.el` — a candidate
+for promotion to public if a third consumer appears.
 
 ### PHASE-10
 

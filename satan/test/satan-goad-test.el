@@ -1,9 +1,11 @@
-;;; satan-goad-test.el --- goad readers (SL-016 PHASE-03) -*- lexical-binding: t; -*-
+;;; satan-goad-test.el --- goad readers (SL-016) -*- lexical-binding: t; -*-
 
-;; SATAN's read side of goad: the emit date of an ask, the queue, and an
-;; ask's record in its emit date's day file.  Records are read from the
-;; golden output of goad's `backend.py' (`goad-fixtures/'), never from
-;; hand-built plists; malformed inputs use a scratch dir.
+;; SATAN's read side of goad: the emit date of an ask, the queue (with
+;; its answer forms), an ask's record in its emit date's day file, and
+;; the truncation of long values in the `:goad' slice.  Records are read
+;; from the golden output of goad's `backend.py' (`goad-fixtures/'),
+;; never from hand-built plists; malformed inputs use a scratch dir, and
+;; a long value is one golden value replaced in a copy of the goldens.
 
 ;;; Code:
 
@@ -12,6 +14,8 @@
 (require 'satan-custom)
 (require 'satan-goad)
 (require 'satan-intervention)
+(require 'satan-jsonl)
+(require 'satan-percept)
 (require 'satan-goad-fixture)
 (require 'satan-custom-test)
 
@@ -89,15 +93,75 @@ answered ask in 2026-09-23.json, the day file of its local emit date."
   '(:intervention_id :question :subject :emitted_at :expires_at))
 
 (ert-deftest satan-goad/read-queue-reads-the-goldens-in-file-order ()
+  "The five fields of every golden entry, plus `:form' exactly when the
+golden entry has one."
   (satan-goad-fixture-with-goldens
     (let ((queue (satan-goad-read-queue)))
       (should (equal (mapcar #'cdr satan-goad-fixture-ids)
-                     (mapcar (lambda (e) (plist-get e :intervention_id)) queue)))
+                     (satan-goad-fixture-iids queue)))
+      (cl-loop for (outcome . _) in satan-goad-fixture-ids
+               for entry in queue
+               do (should (equal (append satan-goad-test--queue-fields
+                                         (and (plist-member
+                                               (satan-goad-fixture-golden-entry
+                                                outcome)
+                                               :form)
+                                              '(:form)))
+                                 (satan-goad-fixture-keys entry)))
+               (dolist (k satan-goad-test--queue-fields)
+                 (should (stringp (plist-get entry k))))))))
+
+(ert-deftest satan-goad/queue-entry-keeps-form ()
+  "VT-54 — the golden `form' entry keeps its form verbatim, after the five
+fields; no other golden entry carries a `:form' key."
+  (satan-goad-fixture-with-goldens
+    (let ((queue (satan-goad-read-queue)))
+      (let ((entry (satan-goad-fixture-find 'form queue)))
+        (should (plist-get entry :form))
+        (should (equal (plist-get (satan-goad-fixture-golden-entry 'form) :form)
+                       (plist-get entry :form)))
+        (should (equal (append satan-goad-test--queue-fields '(:form))
+                       (satan-goad-fixture-keys entry))))
       (dolist (entry queue)
-        (should (equal satan-goad-test--queue-fields
-                       (cl-loop for (k _) on entry by #'cddr collect k)))
-        (dolist (k satan-goad-test--queue-fields)
-          (should (stringp (plist-get entry k))))))))
+        (unless (equal (satan-goad-fixture-id 'form)
+                       (plist-get entry :intervention_id))
+          (should-not (plist-member entry :form)))))))
+
+(defun satan-goad-test--ask-json-with-form (form &rest overrides)
+  "A queue entry as JSON text, with FORM (raw JSON text) as its `form'.
+Raw text, since `null', `[]' and `{}' do not survive `json-serialize' of
+a plist.  OVERRIDES as for `satan-goad-fixture-ask'."
+  (concat (string-remove-suffix
+           "}" (json-serialize (apply #'satan-goad-fixture-ask overrides)))
+          ", \"form\": " form "}"))
+
+(ert-deftest satan-goad/read-queue-drops-a-malformed-form ()
+  "A `form' key that is present but not a non-empty list of options, each
+with a string `id' and `label', drops the whole entry, as goad's
+`parse_ask' does (`null' included).  A well-formed form is kept."
+  (satan-goad-fixture-with-tmp _dir
+    (let ((good (json-serialize (satan-goad-fixture-ask
+                                 :intervention_id "keep")))
+          (bad (lambda (form)
+                 (satan-goad-test--ask-json-with-form
+                  form :intervention_id "drop"))))
+      (dolist (form '("null" "[]" "{}" "{\"id\": \"a\", \"label\": \"A\"}"
+                      "\"x\"" "[7]" "[{}]" "[null]" "[false, true]"
+                      "[{\"id\": \"a\"}]" "[{\"label\": \"A\"}]"
+                      "[{\"id\": 7, \"label\": \"A\"}]"
+                      "[{\"id\": \"a\", \"label\": \"A\"}, {\"id\": \"b\"}]"))
+        (satan-goad-fixture-write
+         satan-goad-queue-file
+         (format "{\"asks\": [%s, %s, %s]}" good (funcall bad form) good))
+        (should (equal '("keep" "keep")
+                       (satan-goad-fixture-iids (satan-goad-read-queue)))))
+      (satan-goad-fixture-write
+       satan-goad-queue-file
+       (format "{\"asks\": [%s]}"
+               (satan-goad-test--ask-json-with-form
+                "[{\"id\": \"a\", \"label\": \"A\", \"fields\": []}]")))
+      (should (equal '((:id "a" :label "A" :fields nil))
+                     (plist-get (car (satan-goad-read-queue)) :form))))))
 
 (ert-deftest satan-goad/read-queue-without-a-usable-document-is-empty ()
   "An absent or malformed queue means no asks, never a signal."
@@ -121,8 +185,7 @@ answered ask in 2026-09-23.json, the day file of its local emit date."
                          (satan-goad-fixture-ask :expires_at "soon")))
         (satan-goad-fixture-write-queue (list good bad good))
         (should (equal '("keep" "keep")
-                       (mapcar (lambda (e) (plist-get e :intervention_id))
-                               (satan-goad-read-queue)))))
+                       (satan-goad-fixture-iids (satan-goad-read-queue)))))
       (satan-goad-fixture-write satan-goad-queue-file
                                 "{\"asks\": [7, \"x\", null, []]}")
       (should-not (satan-goad-read-queue)))))
@@ -132,13 +195,12 @@ answered ask in 2026-09-23.json, the day file of its local emit date."
     (satan-goad-fixture-write-queue
      (list (satan-goad-fixture-ask :extra "ignored")))
     (should (equal satan-goad-test--queue-fields
-                   (cl-loop for (k _) on (car (satan-goad-read-queue))
-                            by #'cddr collect k)))))
+                   (satan-goad-fixture-keys (car (satan-goad-read-queue)))))))
 
 ;; ── records ─────────────────────────────────────────────────────────────────
 
-(defun satan-goad-test--golden-record (outcome)
-  "The record the goldens hold for OUTCOME's ask, read by its queue entry."
+(defun satan-goad-test--read-record (outcome)
+  "OUTCOME's record as `satan-goad-read-record' reads it, by its queue entry."
   (let ((entry (satan-goad-fixture-find outcome (satan-goad-read-queue))))
     (satan-goad-read-record (plist-get entry :intervention_id)
                             (plist-get entry :emitted_at))))
@@ -146,22 +208,24 @@ answered ask in 2026-09-23.json, the day file of its local emit date."
 (ert-deftest satan-goad/read-record-matches-the-scenario-table ()
   "Each golden outcome reads as the README's scenario table says."
   (satan-goad-fixture-with-goldens
-    (let ((answered (satan-goad-test--golden-record 'answered))
-          (later (satan-goad-test--golden-record 'later))
-          (seen (satan-goad-test--golden-record 'enough-seen))
-          (unseen (satan-goad-test--golden-record 'enough-unseen))
-          (untouched (satan-goad-test--golden-record 'untouched)))
-      (should (plist-get answered :value))
-      (should (stringp (plist-get answered :at)))
-      (should (stringp (plist-get answered :presented_at)))
+    (let ((answered (satan-goad-test--read-record 'answered))
+          (later (satan-goad-test--read-record 'later))
+          (seen (satan-goad-test--read-record 'enough-seen))
+          (unseen (satan-goad-test--read-record 'enough-unseen))
+          (untouched (satan-goad-test--read-record 'untouched))
+          (form (satan-goad-test--read-record 'form)))
+      (dolist (record (list answered form))
+        (should (equal '(:presented_at :value :at)
+                       (satan-goad-fixture-keys record)))
+        (should (stringp (plist-get record :at)))
+        (should (stringp (plist-get record :presented_at))))
       (should (equal "later" (plist-get later :deferred_by)))
       (should (equal "enough" (plist-get seen :deferred_by)))
       (should (plist-get seen :presented_at))
       (should (equal "enough" (plist-get unseen :deferred_by)))
       (should-not (plist-member unseen :presented_at))
-      (should (equal '(:presented_at) (cl-loop for (k _) on untouched
-                                               by #'cddr collect k)))
-      (should-not (satan-goad-test--golden-record 'expired)))))
+      (should (equal '(:presented_at) (satan-goad-fixture-keys untouched)))
+      (should-not (satan-goad-test--read-record 'expired)))))
 
 (ert-deftest satan-goad/read-record-without-a-usable-day-file-is-nil ()
   (satan-goad-fixture-with-tmp _dir
@@ -171,10 +235,109 @@ answered ask in 2026-09-23.json, the day file of its local emit date."
       (dolist (doc '("{\"asks\": {\"x\": " "[]" "{\"asks\": []}"
                      "{\"asks\": {\"x\": 7}}" "{\"items\": {}}"))
         (satan-goad-fixture-write day doc)
-        (should-not (satan-goad-read-record "x" at)))
-      (satan-goad-fixture-write day "{\"asks\": {\"x\": {\"value\": false}}}")
-      (should (eq :false (plist-get (satan-goad-read-record "x" at) :value)))
-      (should-not (satan-goad-read-record "x" "2026-09-23 09:30:00+10")))))
+        (should-not (satan-goad-read-record "x" at)))))
+  (satan-goad-fixture-with-goldens
+    (let* ((entry (satan-goad-fixture-golden-entry 'answered))
+           (iid (plist-get entry :intervention_id))
+           (at (plist-get entry :emitted_at)))
+      (should (satan-goad-read-record iid at))
+      (should-not (satan-goad-read-record
+                   iid (string-replace "T" " " at))))))
+
+(ert-deftest satan-goad/answer-is-option-and-values ()
+  "VT-54 — an answered ask's record carries goad's `{option, values}' object
+verbatim, whatever the form: no reader interprets it (DEC-025)."
+  (satan-goad-fixture-with-goldens
+    (let ((slice (satan-goad-slice)))
+      (pcase-dolist (`(,outcome . ,option) '((form . "rate")
+                                             (answered . "yes")
+                                             (midnight . "yes")))
+        (let ((value (satan-goad-fixture-answer outcome slice)))
+          (should (equal (plist-get (satan-goad-fixture-golden-record outcome)
+                                    :value)
+                         value))
+          (should (equal '(:option :values) (satan-goad-fixture-keys value)))
+          (should (equal option (plist-get value :option)))))
+      (dolist (outcome '(expired later enough-seen enough-unseen untouched))
+        (should-not (plist-member (plist-get (satan-goad-fixture-find
+                                              outcome slice)
+                                             :record)
+                                  :value))))))
+
+;; ── VT-55: long strings are truncated, with a marker ────────────────────────
+
+(defun satan-goad-test--bytes (s)
+  "The UTF-8 length of the string S."
+  (string-bytes (encode-coding-string s 'utf-8 t)))
+
+(defun satan-goad-test--should-be-cut (original cut)
+  "CUT is ORIGINAL truncated: within the cap, a character-whole prefix of
+ORIGINAL followed by the marker naming ORIGINAL's size."
+  (let ((marker (format satan-goad-truncate-marker
+                        (satan-goad-test--bytes original))))
+    (should (string-match-p "truncated from [0-9]+ bytes" marker))
+    (should (<= (satan-goad-test--bytes cut) satan-goad-truncate-bytes))
+    (should (string-suffix-p marker cut))
+    (should (string-prefix-p (string-remove-suffix marker cut) original))
+    (should (< (length marker) (length cut)))))
+
+(defun satan-goad-test--form-answer-with-note (note)
+  "The golden `form' answer, NOTE in place of its note.  A fresh value:
+the golden read is copied, never altered."
+  (let* ((golden (plist-get (satan-goad-fixture-golden-record 'form) :value))
+         (values (plist-put (copy-sequence (plist-get golden :values))
+                            :note note)))
+    (plist-put (copy-sequence golden) :values values)))
+
+(ert-deftest satan-goad-truncate-value/keeps-strings-within-the-cap ()
+  (dolist (s (list "" "steady after lunch"
+                   (make-string satan-goad-truncate-bytes ?a)
+                   (apply #'concat (make-list 512 "é"))))
+    (should (equal s (satan-goad-truncate-value s)))))
+
+(ert-deftest satan-goad-truncate-value/cuts-a-long-string-to-the-cap ()
+  (dolist (n (list (1+ satan-goad-truncate-bytes) 5120))
+    (let* ((s (make-string n ?a))
+           (cut (satan-goad-truncate-value s)))
+      (satan-goad-test--should-be-cut s cut)
+      (should (= satan-goad-truncate-bytes (satan-goad-test--bytes cut))))))
+
+(ert-deftest satan-goad-truncate-value/cuts-on-a-character-boundary ()
+  "Multibyte text loses whole characters, never a byte of one."
+  (dolist (s (list (apply #'concat (make-list 600 "é"))
+                   (concat "a" (apply #'concat (make-list 400 "語")))
+                   (apply #'concat (make-list 300 "🜏"))))
+    (let ((cut (satan-goad-truncate-value s)))
+      (satan-goad-test--should-be-cut s cut)
+      (should (> (satan-goad-test--bytes cut)
+                 (- satan-goad-truncate-bytes 4))))))
+
+(ert-deftest satan-goad-truncate-value/is-idempotent ()
+  (dolist (v (list (make-string 5120 ?a)
+                   (apply #'concat (make-list 600 "é"))
+                   (satan-goad-test--form-answer-with-note
+                    (make-string 5120 ?n))))
+    (let ((once (satan-goad-truncate-value v)))
+      (should (equal once (satan-goad-truncate-value once))))))
+
+(ert-deftest satan-goad-truncate-value/passes-non-strings-unchanged ()
+  (dolist (v (list 0 6 2.5 t :false nil :option))
+    (should (eq v (satan-goad-truncate-value v)))))
+
+(ert-deftest satan-goad-truncate-value/walks-a-value-without-mutating-it ()
+  "The golden form answer with a long note comes back with only the note
+cut; every other key and value is as goad wrote it, and the input is
+untouched."
+  (let* ((long (make-string 5120 ?n))
+         (input (satan-goad-test--form-answer-with-note long))
+         (before (copy-tree input))
+         (out (satan-goad-truncate-value input)))
+    (should (equal before input))
+    (satan-goad-test--should-be-cut
+     long (plist-get (plist-get out :values) :note))
+    (should (equal (satan-goad-test--form-answer-with-note
+                    (plist-get (plist-get out :values) :note))
+                   out))))
 
 ;; ── the slice ───────────────────────────────────────────────────────────────
 
@@ -195,6 +358,40 @@ fields and its record; an ask with no record carries none."
                slice queue)
       (should-not (plist-member (car slice) :record))
       (should (plist-get (nth 1 slice) :record)))))
+
+(ert-deftest satan-goad/long-string-truncated ()
+  "VT-55 — a note over 1 KiB in goad's day file reaches the `:goad' slice
+truncated with a marker, its sibling values unchanged; the day file,
+read by `satan-goad-read-record', keeps it whole."
+  (satan-goad-fixture-with-golden-copy _dir
+    (let ((long (make-string 5120 ?n)))
+      (satan-goad-fixture-replace
+       (expand-file-name (format "%s.json" satan-goad-fixture-day)
+                         satan-goad-data-dir)
+       "\"steady after lunch\"" (format "\"%s\"" long))
+      (let* ((slice-value (satan-goad-fixture-answer 'form (satan-goad-slice)))
+             (cut (plist-get (plist-get slice-value :values) :note))
+             (whole (plist-get (satan-goad-test--read-record 'form) :value)))
+        (satan-goad-test--should-be-cut long cut)
+        (should (equal (satan-goad-test--form-answer-with-note cut)
+                       slice-value))
+        (should (equal (satan-goad-test--form-answer-with-note long)
+                       whole))))))
+
+(ert-deftest satan-goad/slice-survives-json ()
+  "The golden slice persists into `percept.json' and reads back equal: the
+form's list of option objects and an empty `values' ({}) survive the
+wire, and the `form' ask's form and answer are goad's own."
+  (satan-goad-fixture-with-golden-copy dir
+    (let* ((slice (satan-goad-slice))
+           (back (plist-get (satan-jsonl-read-object-file
+                             (satan-percept-persist dir (list :goad slice)))
+                            :goad)))
+      (should (equal slice back))
+      (should (equal (plist-get (satan-goad-fixture-golden-entry 'form) :form)
+                     (plist-get (satan-goad-fixture-find 'form back) :form)))
+      (should (equal (plist-get (satan-goad-fixture-golden-record 'form) :value)
+                     (satan-goad-fixture-answer 'form back))))))
 
 (ert-deftest satan-goad/slice-of-no-queue-is-empty ()
   (satan-goad-fixture-with-tmp _dir
