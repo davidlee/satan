@@ -1,25 +1,27 @@
 `my/op-read` (`~/.emacs.d/lisp/dl-secret.el`) resolves a secret with a
-synchronous `call-process`. Emacs is single-threaded, so while 1Password is
-deciding whether to prompt — and while the prompt sits unanswered — **the whole
-Emacs server is wedged**. `emacsclient -e '(+ 1 1)'` hangs.
+synchronous `call-process`. Emacs is single-threaded, so while `op` waits on a
+1Password authorization dialog **the whole Emacs server is blocked** —
+`emacsclient -e '(+ 1 1)'` hangs until the dialog is answered.
 
-Observed 2026-09-23: a diagnostic `(my/op-read … t)` left `op read` (child of
-the Emacs PID) blocked for 60s+ with Emacs in `anon_pipe_read`, until the user
-authorized the dialog.
+Only a read that must *establish* a session prompts; a read inside a live
+session is silent (see [[mem.fact.satan.op-prompts-on-session-not-read]]).
 
-Why it bites: the failure presents as **"Emacs has hung"** with nothing on
-screen connecting it to a credential read. The 1Password dialog attests only
-the requesting desktop app, never the code path (see [[IMP-021]]), and it may
-surface minutes after the call.
+**Updated 2026-09-23 — the hazard is smaller than first recorded.** When this
+was first observed the dialog could open on a hidden sway scratchpad layer, so
+the block presented as "Emacs has hung" with nothing on screen. The keeper has
+since fixed that at the window-manager level: the dialog now takes focus and
+is pinned, interrupting whatever is on screen; accept/dismiss is one keystroke.
+A blocking read is now a *visible interruption*, not a silent wedge.
 
-Consequences for design:
-- Any unattended path that can reach a cache-cold `op read` can wedge the
-  editor, not merely fail its own run.
-- This is the argument against "just make the read work headlessly" (a service
-  account token): a token fixes the *failure* but not the *blocking*. Deferring
-  when the vault is locked addresses both.
+Do not reach for a timeout to bound it: killing `op` leaves the dialog up and
+orphans the prompt (same memory as above).
 
-Diagnose it with: `ps -eo pid,ppid,etimes,args | grep '[o]p read'` — the parent
-PID is the Emacs server.
+Design consequence (superseding the original note, which argued against a
+service-account token on wedge grounds — the token was rejected by the keeper
+on 2026-09-23 regardless): unattended callers should not *start* a session
+unasked. Probe with `op whoami` first; decide prompt-vs-defer by policy.
+
+Diagnose a live block with: `ps -eo pid,ppid,etimes,args | grep '[o]p read'` —
+the parent PID is the Emacs server.
 
 Related: [[mem.fact.satan.op-cache-has-no-invalidation]], [[ISS-012]].

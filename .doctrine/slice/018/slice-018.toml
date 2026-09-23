@@ -1,0 +1,67 @@
+id = 18
+slug = "unattended-credential-policy"
+title = "Unattended runs acquire credentials by per-mode policy: probe, then prompt or defer"
+status = "proposed"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = ["auth", "op", "runs", "satan"]
+
+[relationships]
+needs = ["SL-017"]                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "satan/satan-broker.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-mode.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-patch-adapter-pi.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-custom.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-credential*.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/**"
+intent = "scope-relevant"
+
+[[relation]]
+label = "fulfils"
+target = "ISS-012"
+
+[[relation]]
+label = "fulfils"
+target = "IMP-021"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "references"
+role = "implements"
+target = "REQ-010"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "extends QUE-001 to cover pre-spawn lifecycle gates incl. the credential gate"
+target = "QUE-001"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`, SL-060). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-018
+#   doctrine link SL-NNN governed_by ADR-010
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

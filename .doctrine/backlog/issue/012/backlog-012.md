@@ -67,3 +67,14 @@ Emacs — see [[mem.fact.satan.op-cache-has-no-invalidation]].
 Item 2 of the original ("a run that fails on auth should be loud") stands, and
 is now better served by [[ISS-016]] — the alert path that would have shouted is
 itself broken.
+
+---
+
+## Split (2026-09-23)
+
+The "should be loud" half now lives in [[ISS-017]], owned by SL-017. This item
+is **credential acquisition only**. A service-account token was considered and
+rejected by the keeper (2026-09-23); governance and the off-disk / off-argv
+posture both point the same way (see SL-017 preflight). The open decision is:
+*when an unattended run lacks a cached credential, does it call `op` at all?*
+— cache-only vs probe-then-read (`op whoami` does not prompt).

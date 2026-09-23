@@ -1,0 +1,86 @@
+id = 17
+slug = "satan-reports-on-satan"
+title = "SATAN reports on SATAN: one emit seam, record before emit, persistent failures stay loud"
+status = "proposed"
+created = "2026-09-23"
+updated = "2026-09-23"
+tags = ["intervention", "observability", "satan", "testing"]
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "satan/satan-broker.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-tools-notify.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-sensor-alerts.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-run.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-intervention.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-attribute-listener.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-patch-listener.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/harness/runloop.py"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "justfile"
+intent = "scope-relevant"
+
+[[relation]]
+label = "fulfils"
+target = "ISS-015"
+
+[[relation]]
+label = "fulfils"
+target = "ISS-016"
+
+[[relation]]
+label = "fulfils"
+degree = "partial"
+target = "IMP-005"
+
+[[relation]]
+label = "fulfils"
+target = "ISS-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "references"
+role = "implements"
+target = "REQ-003"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis (SL-048 "the cut"). Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`, SL-060). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-018
+#   doctrine link SL-NNN governed_by ADR-010
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

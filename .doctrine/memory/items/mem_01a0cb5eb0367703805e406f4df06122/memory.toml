@@ -6,7 +6,7 @@ status = "active"
 title = "op read blocks the entire Emacs server, not just the caller"
 summary = "A cache-cold op read freezes the whole Emacs server: call-process is synchronous and Emacs is single-threaded."
 created = "2026-09-22"
-updated = "2026-09-22"
+updated = "2026-09-23"
 
 [scope]
 paths = []
@@ -37,7 +37,7 @@ review_by = ""
 trust_level = "medium"
 
 [ranking]
-severity = "high"
+severity = "medium"
 weight = 0
 
 [[source]]

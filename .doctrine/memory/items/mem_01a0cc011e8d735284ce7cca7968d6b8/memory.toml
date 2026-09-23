@@ -1,0 +1,55 @@
+memory_uid = "mem_01a0cc011e8d735284ce7cca7968d6b8"
+memory_key = "mem.fact.satan.op-prompts-on-session-not-read"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "1Password CLI prompts on session establishment, not per read; op whoami is a free probe; killing op orphans its popup"
+summary = "op signin prompts, op read in a live session does not; op whoami exits 1 instantly when signed out; a killed op read leaves its popup up"
+created = "2026-09-23"
+updated = "2026-09-23"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "auth", "op", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "45ce72742d0a63d4864a78d0988dea2b7ca1b90d"
+ref_name = "refs/heads/main"
+checkout_state_id = "d7410adc99fab67c0766c724b767005966c21d074e2ca604a663fa6da591ac90"
+base_commit = "dcb4d5998e796d617459d0a31de91453b6a765eb"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "observation"
+ref = "keeper-test-2026-09-23"
+
+[[relation]]
+label = "related"
+target = "mem.fact.satan.op-read-blocks-emacs-server"
+
+[[relation]]
+label = "related"
+target = "mem.fact.satan.op-cache-has-no-invalidation"
+

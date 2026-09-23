@@ -59,3 +59,15 @@ ends up containing — not a free choice.
 
 Related: [[ISS-012]] (auth failures went unsurfaced for ~3 weeks) — the same
 theme: SATAN's ability to report on SATAN. Candidate for a shared slice.
+
+---
+
+## Root cause corrected (2026-09-23)
+
+The "drifted docstring" diagnosis above is stale: `satan-tool/notify-send`'s
+docstring (`satan/satan-tools-notify.el:35`) already lists `:audit`. The real
+drift is **two parallel tool-ctx builders** — `satan-run-tool-ctx`
+(`satan/satan-run.el:225`, carries `:audit`) and
+`satan-sensor-alerts--make-tool-ctx` (`satan/satan-sensor-alerts.el:297`,
+omits it). The fix is one builder, plus record-before-emit in `notify-send`.
+Owned by SL-017; the `:audit` decision is SL-017's OQ-1.
