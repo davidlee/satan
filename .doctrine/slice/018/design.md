@@ -154,7 +154,10 @@ fires the moment it is answered.
 
 **Consequences.**
 - A prompt accepted at 11:40 yields an 11:40 run id, `time_now` and percept.
-  No expiry exists.
+  SATAN adds no expiry, but 1Password does: its dialog closes itself after
+  about 1–2 min and `op` reports that as a dismissal. An unattended
+  prompt-mode run therefore records `credential_unavailable` rather than
+  waiting (PHASE-08; accepted, RV-014 F-1; residual ISS-023).
 - **R1:** the prompt now fires before perceive, never inside it. Defer-mode
   runs only call `session-p` (`op whoami`, no dialog) at that point.
 - A prompt can be wasted when the run is then `session_blocked` or
@@ -221,6 +224,13 @@ writes. Any other outcome ends the streak: a success, a dismissed escalation
 (`credential_unavailable`), or a spawned failure. The next escalation is
 therefore a full threshold later. `run_busy` is skipped too. No state is added
 (ADR-018 D5, DEC-014).
+
+The streak is per mode, and so is that guarantee. Each defer mode escalates on
+its own streak (tick-pulse and tick-agent both draw from `satan-tick-pool`), so
+a dismissal quiets only the mode that prompted, and another mode past its
+threshold may prompt at its next run. Accepted as rare (RV-014 F-3): it needs a
+vault locked past the threshold plus a dismissal, and an accepted prompt warms
+the shared session for every mode.
 
 Run ids carry local time with no zone, so across a DST change the measured age
 can be off by up to an hour against a 4 h threshold. That is accepted (RV-013
@@ -430,7 +440,9 @@ real runs use the existing temp runs-dir fixtures. No test calls `op`.
 - VH-2: with 1Password locked, a tick writes `credential_deferred` and no dialog
   appears. After the threshold, the next tick raises one labelled dialog.
 - VH-3: the 08:15 motd raises a labelled dialog; accepting later runs motd with
-  a fresh run id.
+  a fresh run id. "Later" is bounded by the dialog's lifetime (about 1–2 min);
+  after that `op` reports a dismissal and the run records
+  `credential_unavailable` (PHASE-08, RV-014 F-1).
 
 **Risks.**
 - R2: when the cache is cold, each run adds one `op whoami` (~0 s). A warm

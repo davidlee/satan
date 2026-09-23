@@ -48,7 +48,7 @@ intent = "design-target"
 
 [[selector]]
 selector = "satan/satan-tick.el"
-intent = "design-target"
+intent = "scope-relevant"
 
 [[selector]]
 selector = "satan/satan-patch-runner.el"
@@ -68,6 +68,18 @@ intent = "design-target"
 
 [[selector]]
 selector = "satan/test/satan-run*-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "dev/satan-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-credential-fixture.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-mode-test.el"
 intent = "design-target"
 
 [[relation]]

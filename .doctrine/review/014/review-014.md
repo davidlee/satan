@@ -123,3 +123,37 @@ appears in the rendered error), kept as the locked design's choice.
 
 - Resolve ISS-020 (fixed, 1a201a6), ISS-012 (fixed; residual ISS-023) and
   IMP-021 (done).
+
+## Reconciliation Outcome
+
+### Direct edits applied
+- design.md sec-3 Consequences: the late-accept bullet now records 1Password's
+  ~1–2 min dialog expiry and the `credential_unavailable` outcome (RV-014 F-1;
+  residual ISS-023).
+- design.md sec-4: the streak and its "full threshold later" guarantee are
+  stated per mode; the independent escalation is accepted as rare (RV-014 F-3).
+- design.md sec-9 VH-3: "accepting later" bounded by the dialog's lifetime
+  (RV-014 F-1).
+- Selector registry: `satan/satan-tick.el` re-intented to `scope-relevant`
+  (F-4); `dev/satan-test.el`, `satan/test/satan-credential-fixture.el`,
+  `satan/test/satan-mode-test.el` added as `design-target` (F-5).
+  `doctrine slice conformance 18` → 14 conformant, 0 undelivered; the only
+  undeclared paths are the two bookkeeping files F-6 marked aligned.
+
+### Governance writes (no REV)
+Neither item is a REV target, so no REV was opened.
+- DEC-020: dated note appended to the record body ("the wait is bounded"),
+  append-only, following DEC-022's RV-013 F-8 precedent (RV-014 F-1). ISS-023
+  already links DEC-020 as `related` (a DEC cannot author that label).
+- REQ-010: VT coverage cell SL-018/REQ-010/SL-018 recorded and verified
+  (planned → verified). It runs the 7 fail-closed credential tests: no-backend
+  ×3, scrub ×2, contained backend signals, contained `quit`. The authored
+  status stays `pending`, because the daemon half of REQ-010 is not built
+  (RV-014 F-7).
+
+### Withdrawn / tolerated
+- RV-014 F-6: aligned (bookkeeping paths).
+- RV-014 F-3: behaviour tolerated by the keeper; the prose now says so.
+- RV-013 F-9 and F-12: remain tolerated from the design review.
+
+Reconcile pass complete; hand off to /close.
