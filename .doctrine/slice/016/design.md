@@ -89,6 +89,12 @@ never called** (`:587-599`).
       |
       +-- ranked non-empty --> satan-observer-classify --> predicates, else negative
       +-- ranked EMPTY -------> :unknown :no_correlation, nothing else runs
+
+  kind "ask":
+  motive  <- live motive with id = related_motive_id,
+             not dormant, subject (cue_handles) still in its cue
+      +-- found -----> satan-observer-classify --> answer predicate, else ask branch
+      +-- not found --> :unknown :no_correlation
 ```
 
 Kind `"ask"` goes through the same gate by a narrower route: it credits the motive
@@ -113,10 +119,10 @@ motives carried the handle, file order picked which was credited. The gate prove
 *some motive overlaps the ambient percept*, which is not a useful claim.
 
 The machinery forces the fix. The percept is frozen at spawn, **before any
-question exists**, and the observer correlates against that same frozen percept
-at maturity (`satan-observer--intervention-percept-handles`, `:500`) — it never
-rebuilds it. So a question-specific handle can correlate only if the question is
-derived from what is already perceived. Therefore the ask tool requires:
+question exists**, and nothing rebuilds it: the tool decides against it at emit,
+and the observer reads that decision back at maturity (below). So a
+question-specific handle can correlate only if the question is derived from what
+is already perceived. Therefore the ask tool requires:
 
 1. the question to name a **subject handle** present in ctx `:percept-handles`;
 2. that handle **not** to be goad-minted (`app:goad`, or a `topic:` the goad rule
@@ -253,20 +259,31 @@ The evidence assembler is the one source both consumers of goad state read:
 It does **not** make an ask correlate; nothing goad-minted can (§2, [[RV-007]]
 F-20). [[DEC-004]] is amended accordingly.
 
-**The goad source ignores the assembler's time bounds** ([[RV-007]] F-23),
-except to choose the day file. `after` is assembled for emit to emit + 30
-minutes (`satan-observer--after-state`, `satan-observer-classify.el:102`)
-whatever the intervention's own window. The goad contribution is the whole day
-record for the **window start's date**, keyed by `intervention_id`. For the
-observer that date is the emit date. The consumers apply the ask's window
-themselves (§6). The source never reads the classification date's file, because
-the observer can run the next day.
+**The goad source ignores the assembler's time bounds** ([[RV-007]] F-23).
+`after` is assembled for emit to emit + 30 minutes (`satan-observer--after-state`,
+`satan-observer-classify.el:102`) whatever the intervention's own window. The
+source reads each ask's record, keyed by `intervention_id`, from the day file of
+**that ask's emit date**, and the consumers apply the ask's window themselves
+(§6). The percept takes each outstanding ask's emit date from its queue entry;
+the observer takes it from the intervention. Neither ever reads by its own
+window's date or by the classification date ([[RV-007]] F-34).
 
-One file is enough because `backend.py` files every event of a SATAN ask
+One file per ask is enough because `backend.py` files every event of a SATAN ask
 (presentation, deferral, answer) in the day file of the ask's **emit date**,
 which the ask's queue entry carries. The date the event happens does not matter
 (§4, [[RV-007]] F-29). An answer at 00:05 to an ask emitted at 23:15 is filed
 beside its presentation.
+
+**The emit date is the keeper's local calendar date**, the one `backend.py`'s
+`record_path` uses, and it is always derived from a parsed instant: the local
+date of the time, never a substring of a timestamp string ([[RV-007]] F-33). The
+distinction is real. `satan-intervention-pending` returns `ts` as psql renders it
+in the `satan_memory` session zone, which is `GMT`, so under AEST an ask emitted
+at 09:30 local carries the previous day's date in its first ten characters.
+The queue entry's `emitted_at` and `expires_at` are written with the local
+offset, and `backend.py` compares them as instants, as `is_deferred` already does.
+(The existing `crosses_midnight` guard has exactly this defect for every kind:
+[[ISS-021]].)
 
 *(The stronger phrasing "handles exist only for what reaches the evidence window"
 is false and was corrected — canon also emits context- and hint-derived handles,
@@ -676,12 +693,16 @@ once the outcome window has passed, so *elapsed* is given).
 The mechanism is one branch in `satan-observer-classify-negative`
 (`satan/satan-observer-classify.el:292`), dispatched on kind `"ask"` **before**
 the user-facing focus path, reading the goad record out of `after` exactly as
-the positive predicate does. Precedence, first match wins:
+the positive predicate does.
+
+**The record is judged as it stood at window end** ([[RV-007]] F-35). Both legs
+treat any stamp after emit + 60 minutes (`presented_at`, `deferred_at`, or an
+answer's `at`) as absent. The verdict therefore does not depend on when the
+observer happens to run within its 24-hour band. Precedence, first match wins:
 
 | the record, for this `intervention_id` | verdict | evidence |
 |---|---|---|
 | no `presented_at` | `:unknown :high` | `undelivered` — delivery unproven, never the keeper's silence |
-| a `value` whose `at` is past the window | `:unknown :low` | `late_answer` — engaged, but outside the window; never silence |
 | `presented_at` in the last 10 minutes of the window | `:unknown :low` | `short_exposure` — too little time to call it ignored |
 | `deferred_at` with `later` provenance | `:unknown :low` | `deferred` — engaged, postponed |
 | presented, then bulk `enough` | `:ignored :medium` | `dismissed` — saw it and refused the slot |
@@ -696,10 +717,13 @@ today carries no such labels and gains them ([[RV-007]] F-25). A `dismissed` ask
 question in front of them, which RFC-016 counts as disengagement; `enough`
 reaches only questions *not* presented through the first row.
 
-A `late_answer` exists because goad keeps a view already on screen answerable
-after `backend.py` stops rendering the entry ([[RV-007]] F-31): `respond` still
-reaches `answer()` (`backend.py:141-142`). The answer stays in the day record,
-where later percepts see it, but it earns no `:worked` and no answer trace.
+**A late answer counts as no answer** ([[RV-007]] F-31, F-35). goad keeps a
+view already on screen answerable after `backend.py` stops rendering the entry:
+`respond` still reaches `answer()` (`backend.py:141-142`). `backend.py` stores
+the answer, and later percepts see it, but the ask's verdict is what the record
+held at window end: presented and unanswered, so `:ignored` `untouched`, with no
+`:worked` and no answer trace. That holds whether the observer ran before the
+answer or after it.
 
 **Midnight does not bound an ask** ([[RV-007]] F-29). `satan-observer-classify`
 returns `:unknown :crosses_midnight` before any predicate runs when the 30-minute
@@ -1008,7 +1032,9 @@ setting correct is the emit-date filing (§4), not the default.
 | 20 | an ask whose recorded motive has been removed, made dormant, or no longer cues the subject matures `:no_correlation` | VT — F-28, F-4 |
 | 21 | with quiet hours off, an ask emitted at 23:15 and answered at 00:05 classifies `:worked` from the emit date's file, and is not presented again after midnight | VT — F-29 |
 | 22 | `presented_at` keeps its first render's stamp across later evaluations | VT — F-30 (a `backend.py` fixture) |
-| 23 | an answer after the window classifies `:unknown :low` `late_answer`, with no answer trace | VT — F-31 |
+| 23 | an answer after the window classifies `:ignored` `untouched` with no answer trace, the same whether the observer runs before or after the answer arrives | VT — F-31, F-35 |
+| 24 | under a UTC database session and a +10:00 local zone, an ask emitted at 09:30 local is filed and read under its local date | VT — F-33 |
+| 25 | a run after midnight perceives an ask answered before midnight as answered, not outstanding | VT — F-34 |
 
 ## What the reframe bought, tested
 

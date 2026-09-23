@@ -70,3 +70,15 @@ from there. The goad evidence source reads the day file of the window start's
 date (for the observer, the emit date) — never the classification date. One file
 per ask, nothing merged. `presented_at` is stamped on first render only (F-30).
 User-accepted 2026-09-23.
+
+
+## Amendment, 2026-09-23 — the emit date is local and per ask (RV-007 F-33, F-34)
+
+The emit date is the keeper's local calendar date (`record_path`'s), always
+derived from a parsed instant, never sliced from a timestamp string:
+`satan-intervention-pending` returns `ts` rendered in the `satan_memory` session
+zone (GMT). Queue `emitted_at`/`expires_at` carry the local offset and
+`backend.py` compares them as instants. Both goad consumers read each ask's
+record from that ask's own emit-date file — the percept via the queue entry,
+the observer via the intervention — never by their own window's date.
+Agent correction under the user-accepted emit-date filing (RV-007 F-33, F-34), 2026-09-23.
