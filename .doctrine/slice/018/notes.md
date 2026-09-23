@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-03 done (1a201a6) · status started · next: /phase-plan PHASE-04
+fresh-as-of: 2026-09-23 · PHASE-04 done (6843f76) · status started · next: /phase-plan PHASE-05
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -81,3 +81,22 @@ fresh-as-of: 2026-09-23 · PHASE-03 done (1a201a6) · status started · next: /p
   (`_probe-snapshots` not left unused, in `--spawn`). Fix it in PHASE-05,
   which rewrites `--spawn`.
 - Suite 1105/1111 (6 skipped).
+
+### PHASE-04 — policy, escalation, attended (6843f76)
+
+- `satan-broker--credential-policy MODE &optional NOW` → `(:policy SYM
+  :context LABEL)`. The escalated label is `satan broker/NAME (escalated:
+  deferred 5h00m)`. The VH-1 watch keys on the absence of "escalated".
+- Escalation is due at age **>=** the threshold (so 0 means "escalate after one
+  deferral"). The threshold is checked before the streak walk, so a bad value
+  always signals.
+- `satan-broker--failed-with-p` is the shared status-guarded predicate (N8),
+  used by the failure streak and the credential streak.
+- `satan-run-id-time` returns nil on a non-matching id; the policy signals.
+- Batch caveat: `called-interactively-p 'interactive` is always nil under
+  `--batch`, so the attended test stubs it for the positive case.
+- `satan-broker-test.el` now requires `satan-run-test` (it used `--mkrun`
+  relying only on the runner's load order), plus `satan` and `satan-tick`.
+- Existing warning, out of scope: `satan-run-mint-id`'s `mode-name` argument
+  shadows a dynamic variable.
+- Suite 1115/1121.
