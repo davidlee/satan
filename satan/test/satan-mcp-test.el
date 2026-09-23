@@ -458,6 +458,18 @@ Uses a unique id.  Blocks until one response line is received."
    (setq satan-mcp-enabled nil)
    (satan-mcp-test--stop)))
 
+(ert-deftest satan-mcp/start-is-idempotent ()
+  "Starting a running server keeps the same listener and returns its socket."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "desc")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (server satan-mcp--server-process))
+     (should (equal (satan-mcp-start) sock))
+     (should (eq satan-mcp--server-process server))
+     (should (process-live-p server))
+     (satan-mcp-test--stop))))
+
 (ert-deftest satan-mcp/session-prepare-is-the-canonical-run-ctx ()
   "SL-013 F5: the session's run_ctx comes from `satan-run-new-ctx'.
 

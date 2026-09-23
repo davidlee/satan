@@ -422,38 +422,38 @@ does not error the session)."
 ;;;###autoload
 (defun satan-mcp-start ()
   "Start the SATAN MCP server on a unix-domain socket.
-Returns the socket path.  Refuses to start if disabled, if a scheduled
-run is live (DEC-8), if a tool lacks a description (R7 fail-fast),
-or if socket hardening checks fail (DEC-10)."
+Returns the socket path.  No-op when already running.  Refuses to start
+if disabled, if a scheduled run is live (DEC-8), if a tool lacks a
+description (R7 fail-fast), or if socket hardening checks fail (DEC-10)."
   (interactive)
   (unless satan-mcp-enabled
     (user-error "SATAN MCP: disabled (set `satan-mcp-enabled' non-nil)"))
-  (when satan-run--spawn-running
-    (user-error "SATAN MCP: scheduled run in progress — refuse to start (DEC-8)"))
-  (when (and satan-mcp--server-process
-          (process-live-p satan-mcp--server-process))
-    (user-error "SATAN MCP: already running"))
-  ;; Always re-register interactive mode — picks up newly-registered tools
-  ;; (satan-mode-register replaces existing entries by name).
-  (satan-mcp-register-interactive-mode)
-  ;; R7 fail-fast precondition: refuse if any tool lacks a description
-  (satan-mcp--check-tool-descriptions)
-  (satan-mcp--check-socket-dir)
-  (let* ((socket-path (satan-mcp--socket-path)))
-    (when (file-exists-p socket-path)
-      (delete-file socket-path))
-    (setq satan-mcp--server-process
-      (make-network-process
-        :name "satan-mcp"
-        :server t
-        :family 'local
-        :service socket-path
-        :coding 'utf-8
-        :noquery t
-        :log #'satan-mcp--accept-filter))
-    (set-file-modes socket-path #o600)
-    (message "SATAN MCP: listening on %s" socket-path)
-    socket-path))
+  (if (and satan-mcp--server-process
+        (process-live-p satan-mcp--server-process))
+    (process-contact satan-mcp--server-process :service)
+    (when satan-run--spawn-running
+      (user-error "SATAN MCP: scheduled run in progress — refuse to start (DEC-8)"))
+    ;; Always re-register interactive mode — picks up newly-registered tools
+    ;; (satan-mode-register replaces existing entries by name).
+    (satan-mcp-register-interactive-mode)
+    ;; R7 fail-fast precondition: refuse if any tool lacks a description
+    (satan-mcp--check-tool-descriptions)
+    (satan-mcp--check-socket-dir)
+    (let* ((socket-path (satan-mcp--socket-path)))
+      (when (file-exists-p socket-path)
+        (delete-file socket-path))
+      (setq satan-mcp--server-process
+        (make-network-process
+          :name "satan-mcp"
+          :server t
+          :family 'local
+          :service socket-path
+          :coding 'utf-8
+          :noquery t
+          :log #'satan-mcp--accept-filter))
+      (set-file-modes socket-path #o600)
+      (message "SATAN MCP: listening on %s" socket-path)
+      socket-path)))
 
 ;;;###autoload
 (defun satan-mcp-stop ()
@@ -483,12 +483,6 @@ Calls `satan-mcp-start' and reports the socket path."
   (let ((path (satan-mcp-start)))
     (message "SATAN MCP pi session active on %s — start pi with the satan extension" path)
     path))
-
-(defun my/hello-satan ()
-  "start satan mcp up if not running"
-  (interactive)
-  (set 'satan-mcp-enabled t)
-  (or satan-mcp--server-process (satan-mcp-start)))
 
 ;; ── Global tool registration (DEC-13) ──────────────────────────────────────
 
