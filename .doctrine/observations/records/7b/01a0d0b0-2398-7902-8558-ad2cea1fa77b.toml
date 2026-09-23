@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d0b0-2398-7902-8558-ad2cea1fa77b"
+recorded_at = "2026-09-23T23:53:19.512855258Z"
+kind = "friction"
+summary = "SL-016 research baseline drift unrefreshed"
+detail = "doctrine slice research SL-016 reports drift (slice-016.md changed; design.md, plan.md, plan.toml added). Refreshing requires editing authored research.md and restamping; no planner or worker is chartered to do it."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

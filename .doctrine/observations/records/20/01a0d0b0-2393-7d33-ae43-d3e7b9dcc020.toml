@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d0b0-2393-7d33-ae43-d3e7b9dcc020"
+recorded_at = "2026-09-23T23:53:19.507535334Z"
+kind = "friction"
+summary = "Skeleton phase sheets drift from plan.toml"
+detail = "SL-016 PHASE-04 skeleton sheet predated the DEC-027/RV-015 F-9 amendment and silently omitted the state-home item; the planner caught it only by rereading plan.toml. Skeleton sheets are not refreshed when plan.toml changes."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d0b0-2390-74f3-b899-ccfad86b8f31"
+recorded_at = "2026-09-23T23:53:19.504933602Z"
+kind = "friction"
+summary = "Phase planner hit 40-turn cap without writing its sheet"
+detail = "SL-016 PHASE-04 first capsule-phase-planner spent all 40 turns exploring and wrote nothing; SendMessage was unavailable to the orchestrator to resume it. A respawn told to write the sheet by its ~25th call finished in 20 calls. Planners should write the sheet early and refine."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

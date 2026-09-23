@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d0b0-2396-70b1-9cad-14125db54587"
+recorded_at = "2026-09-23T23:53:19.510137485Z"
+kind = "friction"
+summary = "doctrine CLI ergonomics seen by planners"
+detail = "doctrine memory retrieve takes --query, not a positional arg; review show --json omits findings (planners grep the ledger TOML); findings takes no review id; backlog edit cannot cite a resolving decision (needs a separate doctrine link); no duplicate relation label exists."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
