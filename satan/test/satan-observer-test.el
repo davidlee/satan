@@ -712,7 +712,7 @@ ratchets up to `:medium'."
                                    :recent_files nil)
                    :focus_segments nil
                   
-                   :sensor_status (list :focus 'ok)))
+                   :sensor_status (list :focus "ok")))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
                            :run_dir dir)))
@@ -748,7 +748,7 @@ vocabulary."
                    (list (list :app_id "firefox"
                                :start_ts "2026-05-22T10:05:00+1000"))
                   
-                   :sensor_status (list :focus 'ok)))
+                   :sensor_status (list :focus "ok")))
             (motive (satan-observer-test--motive))
             (iv (plist-put (satan-observer-test--intervention)
                            :run_dir dir)))
@@ -759,6 +759,24 @@ vocabulary."
            (should (eq :unknown (plist-get out :classification)))
            (should (eq :low (plist-get out :confidence)))
            (should (null (plist-get out :reason)))))))))
+
+(ert-deftest satan-observer/ack-gate-reads-real-after-state ()
+  "ISS-014 — the ack gate consumes the assembler's own `:sensor_status',
+not a hand-built fixture.  A fresh focus segment after the emit makes
+the probe checkable and the ack count non-zero → `:unknown'."
+  (satan-observer-test--in-tmp
+   (lambda (root)
+     (let ((segments-dir (expand-file-name "segments" root)))
+       (make-directory segments-dir t)
+       (with-temp-file (expand-file-name "focus-2026-05-22.jsonl" segments-dir)
+         (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-22T10:05:00+10:00\",\"end_ts\":\"2026-05-22T10:10:00+10:00\",\"duration_s\":300}\n"))
+       (let* ((satan-tools-activity-dir (file-name-as-directory root))
+              (iv (satan-observer-test--intervention))
+              (after (satan-observer--after-state
+                      iv (satan-observer-test--motive :project_cwd root)))
+              (out (satan-observer-classify-negative iv after)))
+         (should (satan-observer--ack-checked-p after))
+         (should (eq :unknown (plist-get out :classification))))))))
 
 (ert-deftest satan-observer/classify-a12-fs-coincidence-does-not-fire ()
   "A12 — recent_files delta outside `:project_cwd' must not fire P3.

@@ -270,11 +270,12 @@ listed (`delay', `quarantine', plus any future
 
 (defun satan-observer--ack-checked-p (after)
   "Return non-nil when AFTER's panopticon focus probe succeeded.
-The probe status is `ok' iff the focus-segments JSONL was
-readable across the maturity window; any other state
-(`absent', `error', etc.) means we cannot assert presence or
-absence of acknowledgement events."
-  (eq 'ok (plist-get (plist-get after :sensor_status) :focus)))
+The probe status is the string \"ok\" iff the focus-segments JSONL
+was readable and fresh across the maturity window; any other
+status (\"stale-Nm\", \"missing\", \"malformed\") means we cannot
+assert presence or absence of acknowledgement events.  See
+`satan-memory-evidence--segments-status'."
+  (equal "ok" (plist-get (plist-get after :sensor_status) :focus)))
 
 (defun satan-observer--count-ack-events (after intervention)
   "Count AFTER's `:focus_segments' starting strictly after

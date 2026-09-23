@@ -498,9 +498,9 @@ matches `satan-memory-evidence-assemble' (the wrapper's
 Same shape as the wrapper.  Sensor freshness probes still derive
 from CTX `:time_now', which the observer's caller can either pass
 as the intervention-emitted-at (treating probes as historical
-metadata) or as the real clock (ignoring the probes' values).  In
-practice the observer ignores `:sensor_status' — it cares only
-about substrate slices."
+metadata) or as the real clock (ignoring the probes' values).  The
+observer passes the window end and reads only `:sensor_status'
+`:focus', to gate its acknowledgement check."
   (let* ((time-now (plist-get ctx :time_now))
          (now-t (date-to-time time-now))
          (today (substring end 0 10))
@@ -521,14 +521,14 @@ about substrate slices."
                           (satan-memory-evidence--current-window-status
                            current-path now-t)))
          (focus-probe (if cue-only
-                          (cons 'ok '())
+                          (cons "ok" '())
                         (satan-trace-stage "evidence.focus_segments"
                           (satan-memory-evidence--segments-status
                            (expand-file-name
                             (format "segments/focus-%s.jsonl" today) root)
                            start end seg-limit now-t))))
          (browser-probe (if cue-only
-                            (cons 'ok '())
+                            (cons "ok" '())
                           (satan-trace-stage "evidence.browser_segments"
                             (satan-memory-evidence--segments-status
                              (expand-file-name

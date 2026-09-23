@@ -82,3 +82,35 @@ narrowing a count that is never taken changes nothing while this bug stands.
 SL-016's design §6 also describes a "today" behaviour (`:ignored` requires zero
 focus segments, so it means the keeper was away) that is **not** the current
 behaviour; the truth table needs correcting once this is fixed.
+
+## Resolution (2026-09-23)
+
+Worked direct off the backlog (no slice; sized small, sketch agreed).
+
+- **Root cause was two-sided.** Besides the `eq 'ok` consumer, the
+  producer's cue-only arms emitted the *symbol* `'ok` for `:focus` /
+  `:browser` (`satan-memory-evidence-assemble-with-bounds`), while
+  `:git` / `:content` emitted the string. Normalised: every
+  `:sensor_status` value is now the documented string.
+- **Consumer:** `satan-observer--ack-checked-p` compares
+  `(equal "ok" …)`; docstring corrected to the real vocabulary.
+- **Other consumers checked:** `satan-sensor-alerts--match-kind` already
+  string-compares; context/broker/run pass through (JSON-encoded) —
+  unaffected.
+- **Tests:** `satan-observer/ack-gate-reads-real-after-state` runs the
+  real `satan-observer--after-state` against a tmp panopticon dir and
+  feeds it to the gate — pinned to assembler output, red before the fix.
+  `assemble-cue-only-skips-heavy-probes` now asserts string statuses.
+  Hand-built fixtures (`'ok`) changed to `"ok"`.
+- Stale docstring on `assemble-with-bounds` ("observer ignores
+  `:sensor_status`") corrected.
+
+**Behaviour change (agreed):** user-facing no-fire interventions now
+classify `:unknown :low` whenever any focus segment follows the emit
+(v1 ack counting is surface-blind), `:ignored :medium` when the probe is
+fresh and none follow, `:ignored :low` only when the probe is not `"ok"`.
+`:ignored` becomes rare until SL-016's DEC-012 narrows counting by
+target surface.
+
+**Follow-up (SL-016):** design §6's "today" truth table is now
+correctable against the behaviour above.

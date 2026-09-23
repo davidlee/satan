@@ -198,7 +198,11 @@ sources would otherwise populate them.  Keeps current_window."
        (should (equal (plist-get (plist-get out :current_window) :app_id)
                       "firefox"))
        (should (equal (plist-get out :focus_segments) '()))
-       (should (equal (plist-get out :browser_segments) '()))))))
+       (should (equal (plist-get out :browser_segments) '()))
+       ;; ISS-014 — cue-only statuses keep the string vocabulary.
+       (let ((ss (plist-get out :sensor_status)))
+         (dolist (key '(:focus :browser :git :content))
+           (should (equal "ok" (plist-get ss key)))))))))
 
 (ert-deftest satan-memory-evidence/budget-exhausted-skips-optional-stages ()
   "Phase 5 — under an exhausted tick budget the OPTIONAL evidence
