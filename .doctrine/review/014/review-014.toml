@@ -1,0 +1,94 @@
+id    = 14
+slug  = "sl-018-reconciliation-audit-unattended-credential-policy-phase-0108"
+title = "SL-018 reconciliation audit: unattended credential policy (PHASE-01..08)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-018"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "DEC-020 and design sec-3/sec-9 assume a prompting run waits for the keeper; 1Password's dialog expires after ~1–2 min"
+detail = """
+Expected (DEC-020 context + rationale, design sec-3 "Consequences", sec-9 VH-3): a prompt-mode read "already waits for the keeper"; "a prompt accepted at 11:40 yields an 11:40 run id"; "no expiry exists"; VH-3 "accepting later runs motd with a fresh run id".
+Observed (PHASE-08, notes.md): the 1Password authorization dialog closes itself after ~1–2 min and `op` reports it as "authorization prompt dismissed". Run 20260923T221713-motd → credential_unavailable, .FAILED, pop. So an 08:15 motd or 09:15 morning with nobody at the desk fails loudly instead of waiting. SATAN adds no expiry, but 1Password imposes one, so "accept later" is bounded by the dialog's lifetime.
+Code behaves as designed: `satan-credential-acquire` treats the failed read as `(:unavailable ERR)` (DEC-022 (7)). The defect is in the recorded premise and the stated consequence, and it touches ISS-012's intent ("a deferred run at 09:30 beats a failed one at 07:47"): for prompt-mode runs with the keeper absent, the day's run is still lost, now loudly and labelled rather than as `KEY not set`."""
+disposition = "verified"
+response = """Observation confirmed; the code is correct per DEC-022 (7). Keeper (2026-09-23) accepts the behaviour for SL-018: a loud, labelled credential_unavailable replaces the silent `KEY not set`, which meets ISS-012's corrected intent, so ISS-012 closes as fixed at /close. The residual, where a prompt-mode run is lost when the keeper is away, is filed as ISS-023. Text corrections go to /reconcile (Reconciliation Brief): DEC-020 context/rationale ("already waits for the keeper", "no expiry exists"), and design sec-3 Consequences plus sec-9 VH-3 bounded by the dialog's lifetime."""
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "RV-013 (SL-018 design review) is still active: 20 findings answered, none verified, incl. blockers F-1 and F-11"
+detail = """
+Expected: the design review is terminal before the slice leaves audit (review-ledger §6; notes.md Harvest records RV-013 as "concluded").
+Observed: `review_show RV-013` → status active, awaiting raiser; F-1..F-20 all `answered` (18 fixed, F-9/F-12 tolerated), none verified or withdrawn. F-1 (no-backend fail-open) and F-11 (sentinel child-exit write outside unwind-protect) are blockers; an unresolved blocker on an active RV targeting SL-018 can refuse `slice status 18 reconcile` (D-C9b).
+Implementation evidence that each answer landed: F-1 → VT-11 (no-backend defers/unavailable, scrub); F-11 → VT-19 (sentinel reset under unwind-protect, satan-broker.el make-sentinel); F-2 → VT-12; F-3 → VT-14/VT-22; F-4 → VT-13; F-5/F-13 → VT-15; F-6/F-7/F-20 → VT-16; F-8/F-16 → VT-18/VT-21; F-10 → VT list; F-14 → VT-6; F-15 → VT-20; F-17 → VT-22; F-18 → VT-23; F-19 → VT-24."""
+disposition = "fix-now"
+response = "Fixed in audit: F-1..F-20 on RV-013 verified as raiser against the VT evidence listed in the detail. All VTs PASS (`doctrine slice verify-vt 18`). RV-013 is now done · await=none. F-9 and F-12 stay tolerated as answered."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = """Escalation streak is per mode, so a dismissed escalation can be followed by another tick mode's escalation, not "a full threshold later""""
+detail = """
+Expected (design sec-4, DEC-022 (3)): "A dismissed escalation prompt ends the streak, so the next escalation is a full threshold later."
+Observed: `satan-broker--credential-streak-age` walks `satan-run-outcome-streak` for one mode slug. `satan-tick-pool` holds two defer modes (tick-pulse weight 5, tick-agent weight 3), each with its own credential_deferred streak. With the vault locked for longer than the threshold, a dismissed tick-pulse escalation ends only tick-pulse's streak; the next tick that picks tick-agent finds its streak also past the threshold and prompts again. The claim holds per mode, not per keeper. PHASE-08 notes already record "the escalation streak is per mode" but the design prose does not.
+Impact is bounded: it only arises after ≥4 h locked and only after a dismissal; an accepted prompt warms the shared session, so the other mode then reads silently."""
+disposition = "verified"
+response = 'Behaviour tolerated by keeper decision (2026-09-23). It is rare: it needs ≥ threshold locked plus a dismissal, and an accepted prompt warms the shared session for every mode. No code change. The prose is wrong, though, so it goes to /reconcile: design sec-4 must say the streak and the "full threshold later" guarantee are per mode, and that each defer mode (tick-pulse, tick-agent) can escalate independently.'
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "conformance: design-target satan/satan-tick.el undelivered"
+detail = """
+Expected: every design-target selector matches a delivered edit.
+Observed: `doctrine slice conformance 18` lists satan/satan-tick.el as undelivered. The design needed no edit there: tick modes inherit `defer` because an absent `:credential-policy` means defer (sec-4), and `satan-tick` calling `satan-run` non-interactively leaves `satan-run-attended` nil (sec-8, VT-17). The selector is spurious. (2cdae19, a tick-pulse timeout change made after PHASE-08, is outside SL-018 and not in any recorded phase delta.)"""
+disposition = "verified"
+response = "Spurious selector. /reconcile removes it: `doctrine slice selector rm 18 satan/satan-tick.el` (design-target), mirrored in design.md's selector prose if listed."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "conformance: three code/test paths edited but undeclared"
+detail = """
+Expected: edited source paths are covered by a design-target selector.
+Observed undeclared: `dev/satan-test.el` (hermetic runner binds `satan-credential-function` nil and scrubs refs from `process-environment`, PHASE-02/05), `satan/test/satan-credential-fixture.el` (the fake backend, design sec-9 "test seam"), `satan/test/satan-mode-test.el` (VT-18 registration checks). All three are legitimate and implied by design sec-9, but no selector names them."""
+disposition = "verified"
+response = "Legitimate touches, implied by design sec-9's test seam. /reconcile adds design-target selectors for dev/satan-test.el, satan/test/satan-credential-fixture.el and satan/test/satan-mode-test.el (`doctrine slice selector add`)."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "conformance: slice notes.md and ASM-002 record reported undeclared"
+detail = '`doctrine slice conformance 18` lists .doctrine/slice/018/notes.md and .doctrine/knowledge/assumption/002/record-002.md as undeclared. Both are lifecycle bookkeeping: phase evidence and the PHASE-08 "Watch armed" section for VH-1.'
+disposition = "aligned"
+response = "Lifecycle bookkeeping (phase evidence, the VH-1 watch on ASM-002), not design scope. Same treatment as RV-011 F-8. No selector."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "REQ-010 has no coverage observation for SL-018's share"
+detail = """
+Expected: SL-018 `implements` REQ-010 (fail closed), so its verified evidence is recorded as coverage.
+Observed: `doctrine coverage show REQ-010` → status pending, observed none. SL-018 delivers the credential half of fail-closed: no ref reaches a child (VT-11 scrub, adapter-pi scrub in VT-7), and no backend or a failed backend means deferral or recorded unavailability, never a fall-open (VT-11, VT-12). REQ-010 itself is about daemons with the client absent, so it should stay `pending` overall; only the observation is missing."""
+disposition = "verified"
+response = "/reconcile records SL-018's coverage observation on REQ-010 (`doctrine coverage record`, VT recipe citing VT-11/VT-12). REQ-010's authored status stays pending, because the daemon half is not built."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

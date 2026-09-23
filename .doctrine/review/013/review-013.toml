@@ -15,7 +15,7 @@ ref   = "SL-018"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "[sec-2] The no-backend path is fail-open and directly contradicts DEC-021."
 detail = """
@@ -31,7 +31,7 @@ response = "Correct: sec-2 had drifted from DEC-021 (which lists four ops, no re
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-2/sec-3] Only `read` failures are typed; `ref-p`, `lookup`, and `session-p` signals escape before any run exists."
 detail = """
@@ -47,7 +47,7 @@ response = "Correct: session-p runs op through call-process and can signal. sec-
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-3] A long prompt can release a burst of queued entrypoints into concurrent broker runs, which the broker cannot safely support."
 detail = """
@@ -63,7 +63,7 @@ response = "Correct; overlap predates SL-018 (no spawn-running check in satan-br
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-5] The proposed `:unavailable MESSAGE` value is incompatible with the existing no-child failure helper."
 detail = """
@@ -79,7 +79,7 @@ response = "Correct: write-failed-no-child-run calls error-message-string (satan
 
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-6] Credential eviction is allowed to break finalization, and the design relies on idempotence the current finalizer does not provide."
 detail = """
@@ -95,7 +95,7 @@ response = "Partly correct. Eviction is now best-effort: condition-case records 
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-7] Patch preflight is adapter-blind and treats Pi’s entire provider-key superset as jointly required."
 detail = """
@@ -111,7 +111,7 @@ response = "Correct: strict acquisition of seven Pi vars lets one unrelated stal
 
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "[sec-7] The peek-before-acquire sequence leaves database errors and the peek/claim race undefined."
 detail = """
@@ -127,7 +127,7 @@ response = "Correct. sec-7 now handles peek (ok . nil), (error . MSG) and a clai
 
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "[sec-4] The policy representation diverges from DEC-022 and has no malformed-policy guard."
 detail = """
@@ -143,7 +143,7 @@ response = "Correct divergence. Kept the two flat keys (idiomatic, profile-merge
 
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "[sec-4] Run-id timestamps cannot reliably support elapsed-time escalation across DST or timezone changes."
 detail = """
@@ -159,7 +159,7 @@ response = "Real but minor: zone-less run-id time can skew the escalation age by
 
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "[sec-9] The VT list would allow the principal failure paths above to ship."
 detail = """
@@ -175,7 +175,7 @@ response = "Correct. Added VT-11..VT-18 covering no backend + ref, backend signa
 
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "[sec-6] Sentinel child-exit audit write precedes the proposed unwind-protect"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-broker.el:425 records child-exit before finalize; a signal there skips the spawn-running reset, so MCP and every scheduled run (run_busy) refuse until restart."
@@ -184,7 +184,7 @@ response = "Correct (satan-broker.el:425). sec-6: unwind-protect now wraps the c
 
 [[finding]]
 id = "F-12"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-7] Patch readiness still gated on all seven Pi key vars (F-6 not fixed)"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). ready-p over satan-patch-adapter-pi-api-key-vars: an unrelated cold ref with no session holds a job whose own key is cached."
@@ -193,7 +193,7 @@ response = "Observation correct; prescription impossible: the runner calls satan
 
 [[finding]]
 id = "F-13"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-6] Eviction error contract contradicts sec-2; diagnostic write unguarded"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). sec-2 says no backend signal escapes the module while sec-6 catches a forget signal; the evict-failed audit write can itself signal."
@@ -202,7 +202,7 @@ response = "Contradiction correct: satan-credential-forget now never signals and
 
 [[finding]]
 id = "F-14"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-6] final.json reason auth is insufficient proof of a provider 401"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-broker--failure-reason prefers final.json's reason; a model final can carry reason auth and evict a good key."
@@ -211,7 +211,7 @@ response = "Correct. Trigger is status failed AND the broker-classified failure-
 
 [[finding]]
 id = "F-15"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-2/sec-3] Acquisition reads getenv but spawn uses the direnv-merged env"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-broker.el:846 merges direnv; a key ref supplied only by direnv is skipped as unset at acquisition and the child fails with a missing key."
@@ -220,7 +220,7 @@ response = "Correct. Acquisition functions take ENV; the broker computes the dir
 
 [[finding]]
 id = "F-16"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "[sec-4] Invalid default escalation duration signals before a run exists (F-8 not fixed)"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). The defcustom fallback is not validated at registration; a bad value signals during acquisition, before allocation."
@@ -229,7 +229,7 @@ response = "Correct. Policy evaluation, streak walk, duration check and direnv s
 
 [[finding]]
 id = "F-17"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "[sec-3] run_busy precedence behind perceive_failed/session_blocked unstated"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). A busy trigger whose perceive fails records and announces perceive_failed rather than a silent run_busy."
@@ -238,7 +238,7 @@ response = "Contested as a defect: a perceive failure is real and should announc
 
 [[finding]]
 id = "F-18"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "[sec-4/sec-5] Streak predicates match reason without status"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). A done run carrying a final reason credential_deferred or run_busy extends or skips streaks."
@@ -247,7 +247,7 @@ response = "Correct. Both new predicates require status failed; class sibling in
 
 [[finding]]
 id = "F-19"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "[sec-7] Patch resolution warnings lost on the adapter_failed path"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). satan-patch-runner.el:150 persists error/summary/output but not warnings."
@@ -256,7 +256,7 @@ response = "Correct (satan-patch-runner.el:150). The adapter_failed path persist
 
 [[finding]]
 id = "F-20"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "[sec-7/sec-9] Seven-key sweep over-built; test seam still names ref-p"
 detail = "Reviewer: gpt-6-sol verification pass (codex exec). VT-2 and the test-seam text still script ref-p, removed from the protocol."
