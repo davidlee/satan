@@ -58,17 +58,21 @@ How resolution works today:
    `--spawn`. Order: cached → spawn; `op whoami` live → read → spawn; no session
    → apply the mode's policy. A deferral writes a no-child run with a distinct
    status/reason (e.g. `credential_deferred`), following the `session_blocked`
-   precedent.
+   precedent. **Acquisition precedes run allocation** (`satan-run-new-ctx`), so a
+   late-accepted prompt gets a fresh run id, time and percept (DEC-020).
 2. **Per-mode `:credential-policy prompt|defer`** on the mode spec, next to
    `:provider`, with an escalation threshold for `defer`.
-3. **Escalation from defer to prompt** after N consecutive credential
-   deferrals. The count comes from SL-017's run-outcome streak; this slice
+3. **Escalation from defer to prompt** when a broker mode's current
+   `credential_deferred` streak is older than its `:escalate-after` (DEC-022).
+   The streak comes from SL-017's run-outcome walk (DEC-014); this slice
    consumes that contract and does not build its own counter.
 4. **Patch adapter under the same policy.** `satan-patch-adapter-pi` resolves
-   through the same gate/seam, not a parallel copy.
+   through the same gate/seam, not a parallel copy. The patch runner checks
+   before claiming a job, defers only, and never escalates (DEC-020, DEC-022).
 5. **Resolution failures are loud and typed.** Replace `(error nil)` /
    `ignore-errors` with an outcome the run records: `credential_deferred`
-   (policy), or a failure whose class is `auth` (surfaced by SL-017).
+   (policy), `credential_unavailable` (a prompting read failed or was
+   dismissed; DEC-022), or a failure whose class is `auth` (surfaced by SL-017).
 6. **Rotation self-heals.** An `auth`-class run failure evicts that ref from
    the credential cache. The next run re-resolves instead of replaying the
    dead key. This retires the manual `my/op-forget` step.
@@ -95,11 +99,12 @@ How resolution works today:
   resolution, `satan-broker--read-env`
 - `satan/satan-mode.el`: mode spec `:credential-policy` (+ defaults)
 - `satan/satan-patch-adapter-pi.el`: `--resolved-env`
-- `satan/satan-custom.el` or a new credential module, if OQ-2 lands on a
-  SATAN-owned seam
+- A new SATAN credential module owning the backend seam (DEC-021)
+- `satan/satan-patch-runner.el`: check before `claim-next`
+- `satan/satan.el`: `satan-run` binds `satan-run-attended` when interactive
 - `satan/test/**`
-- Outside the repo, possibly: `~/.emacs.d/lisp/dl-secret.el` (a
-  `whoami`-probe helper and per-ref eviction), depending on OQ-2
+- Outside the repo: `~/.emacs.d/lisp/dl-secret.el` supplies the 1Password
+  backend (`whoami` probe, per-ref forget, registration) — DEC-021
 
 ## Dependencies
 
@@ -108,8 +113,8 @@ How resolution works today:
 
 ## Risks & assumptions
 
-- **A1:** a read inside a live session never prompts. Observed once, not
-  proven ([[mem.fact.satan.op-prompts-on-session-not-read]]).
+- **A1 (ASM-002):** a read inside a live session never prompts. Observed
+  once, not proven ([[mem.fact.satan.op-prompts-on-session-not-read]]).
 - **A2:** the whoami→read race (the session expires in between) costs one
   visible prompt. That is acceptable, including for defer-policy modes.
 - **R1:** the gate moves key resolution *before* spawn, and perceive already
@@ -120,6 +125,10 @@ How resolution works today:
   none when the cache was warm.
 
 ## Open questions (for /design)
+
+**All resolved 2026-09-23:** OQ-1 → DEC-020, OQ-2 → DEC-021, OQ-3/OQ-4/OQ-5
+and the dismissed-prompt outcome → DEC-022 (QUE-001 extended). Original text
+kept below for the record.
 
 - **OQ-1: deferred-run disposition.** For a deferring tick, "skip, the next one
   is in 30 min" is probably enough. Does any deferring mode need catch-up
