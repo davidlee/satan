@@ -101,6 +101,10 @@ Next: `/execute PHASE-01`.
   `goad/data/*` modified/untracked, `goad/goad.service` deleted, `motd.txt`).
   PHASE-01 must not sweep them into its commits.
 - **Risks carried** — design sec-9's table is current.
+- **[[IMP-025]]** (new, 2026-09-23): SATAN perceives no checklist answers
+  and no past goad days — the design narrowed scope item 1 to outstanding
+  asks. Two options backlogged (`goad_read` tool / compact percept), decision
+  deferred. Reconcile the scope document's PERCEIVE item against it at close.
 - **Revision candidates for `/reconcile` at close** (none caused by this slice):
   POL-001's seat rationale does not contemplate a non-editor human surface;
   `.doctrine/state/boot.md` "not written yet" for the protocol tech spec and
