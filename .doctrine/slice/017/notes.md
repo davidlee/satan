@@ -258,6 +258,118 @@ new design judgement). In-tree, no worktree isolation.
   untouched; `--announce-failure`, `--failure-streak-count` and
   `--failure-streak-count`'s callers untouched.
 
+## PHASE-04 executed (2026-09-23) — GREEN
+
+Capsule worker (opus — PHASE-04 restructures `satan-broker--spawn`'s `let*`,
+whose ordering is load-bearing, and deletes four parallel tool-ctx builders
+across broker / observer / sensor-alerts / intervention-mark / atsatan).
+In-tree, no worktree isolation.
+
+- **`satan-run.el`:** new `satan-run-manual-tool-ctx (run-id audit now)` in
+  the tool-ctx section — `(:id :mode-name "manual-mark" :time-now :audit
+  :capabilities ())`. Requires unchanged (I8); `satan-run-tool-ctx` key order
+  unchanged.
+- **`satan-intervention-mark.el` / `satan-tools-atsatan.el`:** call
+  `satan-run-manual-tool-ctx`; `--build-ctx` and `--intervention-ctx`
+  deleted (EX-4).
+- **`satan-observer.el`:** `satan-observer-process (tool-ctx &optional
+  opts)` — `satan-intervention--ctx-required` first, NOW = ctx `:time-now`,
+  persist gets `:ctx tool-ctx`. Deleted: `--ctx-from-run-ctx`, the
+  wall-clock fallback, the `:ctx` opt (EX-3). `persist-verdict`'s own `:ctx`
+  opt kept (internal transport). A bad ctx now signals even with zero
+  pending interventions (A3); the broker call is inside `condition-case`, so
+  the tick still proceeds.
+- **`satan-sensor-alerts.el`:** `satan-sensor-alerts-check (sensor-status
+  &key tool-ctx state-file quiet-p-fn)` (O1); NOW derives from the ctx's
+  `:time-now` (one source of frozen time); `--make-tool-ctx` deleted (EX-2).
+  A17 rides on the run's `:capabilities` (EX-5).
+- **`satan-broker.el` (`--spawn`):** `run-ctx` (same slot list) bound
+  immediately after `audit`; the prepare `:audit` plist-put dropped (O2/A1);
+  observer and alerts get `(satan-run-tool-ctx run-ctx)`, the alerts ctx
+  built at the call site after enrich's sync; all three rebinds use
+  `(prepare (setf (satan-run-prepare run-ctx) …))` (A2); inner `run-ctx`
+  binding deleted. Stage order unchanged; outer `condition-case` handler
+  untouched (PHASE-05). Side effect of A1: the audit handle's `run-ctx`
+  (the prepare cons) no longer carries a back-reference to the handle.
+- **Docs:** `satan-context.el` docstring `:audit` line removed;
+  `docs/governance.md` observer row now says `TOOL-CTX`.
+- **Tests:**
+  - `satan-run-test.el`: VT-1 `satan-run/manual-tool-ctx-satisfies-ctx-required`
+    (exact plist; negative control without `:audit` → `user-error`).
+  - `satan-observer-test.el`: VT-3 `satan-observer/process-uses-run-tool-ctx`
+    (DB; R0 minted via `satan-run-tool-ctx` → `R0.iv001`, processed on R1's
+    tool-ctx at T0+6h → `:mature`, `outcome_classified` in R1's transcript
+    only) and `satan-observer/process-rejects-ctx-without-time-now` (pure).
+    Ten call sites migrated to a new `--process-ctx` helper
+    (`satan-run-manual-tool-ctx` over a fresh audit); `--transcript-events`
+    helper added.
+  - `satan-sensor-alerts-test.el`: `--mode` replaced by `--with-run` (tmp
+    dir + real audit, fixed hex run-id, counter reset) and `--ctx RUN CAPS
+    TIME-NOW` (canonical `satan-run-tool-ctx` over a copy of the run).
+    EX-6: `--silence-notify` and `dispatch-goes-through-tool-dispatch` now
+    stub only `satan-intervention--exec-sql` (via a `--without-db` macro).
+    VT-2 `pre-spawn-intervention-joins-run` (new) and
+    `capability-denied-still-suppresses` (the old
+    `capability-denied-when-mode-lacks-notify`, renamed in place, plus a
+    no-`intervention.created` assertion). Eleven call sites migrated. R9: every
+    `satan-sensor-alerts-check` call in tests sits under the exec-sql stub or
+    (broker-test) stubs the check itself.
+  - `satan-broker-test.el`: dec8 stub set extracted to
+    `satan-broker-test--with-spawn-stubs DIR` (for PHASE-05 reuse), dec8
+    rewritten on it; EX-1 test
+    `satan-broker/spawn-hands-run-tool-ctx-to-observer-and-alerts` (enrich
+    returns a fresh list; captures observer/alerts ctxs and the filter's
+    struct).
+- **TDD:** each red observed before green — VT-1 `void-function`; VT-3 red
+  for the right reason (wall-clock NOW made the row stale → processed 0) and
+  the rejects test red (no signal); sensor tests red on the old signature;
+  the broker test red on `observer-ctx :id` nil.
+- **Gate:** `SATAN_DB_HOST=/run/postgresql/ just check` → `Ran 1068 tests,
+  1064 results as expected, 1 unexpected, 3 skipped` (baseline
+  1063/1059/1/3 + 5 new; unexpected is the pre-existing
+  `satan-db/test-db-available-p-probes-test-host`; skips unchanged at 3, so
+  the observer DB suite ran). `just lint`: all `{"ok":true}`.
+- **Byte-compile** (scratch copies of HEAD and the working tree, `-L satan
+  -L dev -L satan/test`, all 11 touched `.el` files): warning sets identical
+  (pre-existing: `mode-name` shadow in `satan-run.el`, `_probe-snapshots`,
+  `satan-pattern-rebuild` unknown, two wide `satan-context.el` docstrings,
+  `_captured` in observer tests). No `.elc` in the tree.
+- **VA-1:** `rg -n 'make-tool-ctx|ctx-from-run-ctx|mark--build-ctx|atsatan--intervention-ctx|failure-streak-count|satan-context--run-id-regexp' satan/ dev/`
+  → only `satan-broker--failure-streak-count` (`satan-broker.el:333, 370`;
+  `satan-broker-test.el:152-176`), PHASE-07's. Positive control
+  `rg -n 'satan-run-tool-ctx' satan/` hits. EX-1: `rg -n 'make-satan-run'
+  satan/satan-broker.el` → one hit (`:642`), the binding after `audit`
+  (a 4-line comment sits between them).
+- **VA-2 (R4), discharged per sheet — IMP-001/IMP-002 cross-check code does
+  not exist (both open, blocked backlog items):** (a) observer half —
+  `process-uses-run-tool-ctx` processes a `<run-id>.iv001` minted through
+  `satan-run-tool-ctx` and classifies it into the current run's transcript;
+  (b) A16 half — `a16-one-to-one-causes-and-entries` green on a real ctx,
+  and in `pre-spawn-intervention-joins-run` the fired cause's
+  `:last_notified_at` is in the state file (cooldown armed). The live
+  evidence is the first degraded run after load (PHASE-08 VH-1).
+- **Deviations:** none of substance. `--process-ctx` builds a manual ctx
+  (design's wording) — VT-3 uses the canonical builder. The sensor ctx
+  helper takes a run struct (tmp audit opened once per test, since
+  `satan-audit-open` truncates the transcript) rather than the sheet's
+  `(caps time-now)` shape.
+- **STOP guards:** not tripped — outer handler untouched, no new
+  `notifications-notify`/`logger` stubs, no new `require` in
+  `satan-run.el`, `satan-run-tool-ctx` key order unchanged.
+- **Findings (candidate backlog, out of scope):**
+  - `satan-intervention-mark--run-id-of` (`satan-intervention-mark.el:28`)
+    and `satan-tools-atsatan--intervention-run-id-of`
+    (`satan-tools-atsatan.el`) are a second parallel pair — both parse
+    `<run-id>.ivNNN`. A `satan-run-id-from-intervention-id` beside
+    `satan-run-mode-from-id` would finish the job.
+  - Test-side ctx builders are still parallel: `satan-observer-test--build-ctx`,
+    `satan-intervention-test--build-ctx`, `satan-pattern-test--build-ctx`
+    each hand-build a tool-ctx plist; they could build through
+    `satan-run-tool-ctx` / `satan-run-manual-tool-ctx`.
+  - `satan-sensor-alerts-check` now signals (`date-to-time nil`) on a ctx
+    without `:time-now`, rather than using the wall clock; the broker's
+    `condition-case` absorbs it. The run's tool-ctx always carries it.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready

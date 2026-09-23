@@ -9,6 +9,10 @@
 (require 'satan-sensor-alerts)
 (require 'satan-context)
 (require 'satan-tools-notify)
+(require 'satan-audit)
+(require 'satan-intervention)
+(require 'satan-jsonl)
+(require 'satan-run)
 
 ;; ---------------------------------------------------------------------
 ;; --render-status (pure)
@@ -94,23 +98,64 @@
        (when (file-exists-p (concat ,var ".tmp"))
          (delete-file (concat ,var ".tmp"))))))
 
-(defun satan-sensor-alerts-test--mode (caps)
-  "Return a stub mode-spec with CAPS as `:capabilities'."
-  (list :name "test-mode" :capabilities caps))
+(defconst satan-sensor-alerts-test--run-id "20260522T100000-test-mode-a1b2c3"
+  "The run pre-spawn alerts join; a valid hex run-id (PHASE-02 regexp).")
+
+(defmacro satan-sensor-alerts-test--with-run (var &rest body)
+  "Bind VAR to a `satan-run' with a live audit in a tmp dir; evaluate BODY.
+The run is what `satan-broker--spawn' has built by the time it checks
+sensor alerts; `satan-sensor-alerts-test--ctx' derives each call's ctx
+from it through the canonical builder."
+  (declare (indent 1))
+  (let ((dir (make-symbol "dir")))
+    `(let* ((,dir (make-temp-file "satan-sensor-run-" t))
+            (,var (make-satan-run
+                   :id satan-sensor-alerts-test--run-id :dir ,dir
+                   :audit (satan-audit-open ,dir '(:manifest t) nil))))
+       (satan-intervention--reset-counters)
+       (unwind-protect (progn ,@body)
+         (delete-directory ,dir t)))))
+
+(defun satan-sensor-alerts-test--ctx (run caps time-now)
+  "RUN's tool-ctx under a mode with CAPS as `:capabilities', frozen at TIME-NOW."
+  (let ((r (copy-satan-run run)))
+    (setf (satan-run-mode r) (list :name "test-mode" :capabilities caps)
+          (satan-run-prepare r) (list :time_now time-now))
+    (satan-run-tool-ctx r)))
+
+(defun satan-sensor-alerts-test--transcript (run)
+  "Return RUN's transcript records."
+  (satan-jsonl-read-file
+   (expand-file-name "transcript.jsonl" (satan-run-dir run))
+   :null-object :null))
+
+(defun satan-sensor-alerts-test--created (run)
+  "Return the payloads of RUN's `intervention.created' records."
+  (cl-loop for r in (satan-sensor-alerts-test--transcript run)
+           when (equal "intervention.created" (plist-get r :event))
+           collect (plist-get r :payload)))
 
 (defun satan-sensor-alerts-test--ok-sensor ()
   (list :current_window "ok" :focus "ok"
         :browser "ok"))
 
+(defmacro satan-sensor-alerts-test--without-db (&rest body)
+  "Evaluate BODY with the intervention projection write stubbed out.
+Only the DB boundary (`satan-intervention--exec-sql') is stubbed: the
+notify handler's `satan-intervention-create' runs for real, so its
+`intervention.created' record lands in the run's transcript."
+  (declare (indent 0))
+  `(cl-letf (((symbol-function 'satan-intervention--exec-sql)
+              (lambda (&rest _) nil)))
+     ,@body))
+
 (defun satan-sensor-alerts-test--silence-notify (body-fn)
   "Run BODY-FN with a live pop counter; COUNTER is a 1-cell list
 incremented once per announcement that carries `:title' (i.e. an actual
-pop, not a journal-only entry).  Also stubs `satan-intervention-create'
-so the notify_send handler's T7 intervention path does not require a
-live audit handle / DB."
+pop, not a journal-only entry).  The projection write is stubbed at the
+DB boundary (`satan-sensor-alerts-test--without-db')."
   (let ((counter (list 0)))
-    (cl-letf (((symbol-function 'satan-intervention-create)
-               (lambda (&rest _) "iv-sensor-stub-01")))
+    (satan-sensor-alerts-test--without-db
       (let ((satan-announce-sink
              (lambda (a)
                (when (plist-get a :title) (cl-incf (car counter)))
@@ -122,120 +167,126 @@ live audit handle / DB."
 
 (ert-deftest satan-sensor-alerts/no-degradation-no-entries ()
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (_)
-       (let ((entries (satan-sensor-alerts-check
-                       (satan-sensor-alerts-test--ok-sensor)
-                       (satan-sensor-alerts-test--mode '(notify))
-                       :time-now "2026-05-22T10:00:00+10:00"
-                       :state-file path
-                       :quiet-p-fn (lambda (&rest _) nil))))
-         (should-not entries))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (_)
+         (let ((entries (satan-sensor-alerts-check
+                         (satan-sensor-alerts-test--ok-sensor)
+                         :tool-ctx (satan-sensor-alerts-test--ctx
+                                    run '(notify) "2026-05-22T10:00:00+10:00")
+                         :state-file path
+                         :quiet-p-fn (lambda (&rest _) nil))))
+           (should-not entries)))))))
 
 (ert-deftest satan-sensor-alerts/git-degraded-never-alerts ()
   "The git feed renders its status but carries NO alert cause: a
 \"malformed\" git status must not dispatch (commits are bursty; a quiet
 or broken feed is not page-worthy — see `--causes')."
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (_)
-       (let ((entries (satan-sensor-alerts-check
-                       (list :current_window "ok" :focus "ok"
-                             :browser "ok" :git "malformed")
-                       (satan-sensor-alerts-test--mode '(notify))
-                       :time-now "2026-05-22T10:00:00+10:00"
-                       :state-file path
-                       :quiet-p-fn (lambda (&rest _) nil))))
-         (should-not entries))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (_)
+         (let ((entries (satan-sensor-alerts-check
+                         (list :current_window "ok" :focus "ok"
+                               :browser "ok" :git "malformed")
+                         :tool-ctx (satan-sensor-alerts-test--ctx
+                                    run '(notify) "2026-05-22T10:00:00+10:00")
+                         :state-file path
+                         :quiet-p-fn (lambda (&rest _) nil))))
+           (should-not entries)))))))
 
 (ert-deftest satan-sensor-alerts/stale-fires-once-then-cooldown ()
   "First call dispatches; second call within cooldown suppresses with reason `cooldown'."
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (counter)
-       (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok"))
-              (mode (satan-sensor-alerts-test--mode '(notify)))
-              (e1 (satan-sensor-alerts-check
-                   ss mode
-                   :time-now "2026-05-22T10:00:00+10:00"
-                   :state-file path
-                   :quiet-p-fn (lambda (&rest _) nil)))
-              (e2 (satan-sensor-alerts-check
-                   ss mode
-                   :time-now "2026-05-22T10:15:00+10:00"
-                   :state-file path
-                   :quiet-p-fn (lambda (&rest _) nil))))
-         (should (= 1 (length e1)))
-         (should (equal "panopticon_current_stale"
-                        (plist-get (car e1) :cause)))
-         (should (eq :false (plist-get (car e1) :suppressed)))
-         (should (stringp (plist-get (car e1) :dispatched_at)))
-         (should (= 1 (length e2)))
-         (should (eq t (plist-get (car e2) :suppressed)))
-         (should (equal "cooldown" (plist-get (car e2) :reason)))
-         (should (= 1 (car counter))))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (counter)
+         (let* ((ss (list :current_window "stale-28m" :focus "ok"
+                          :browser "ok"))
+                (e1 (satan-sensor-alerts-check
+                     ss
+                     :tool-ctx (satan-sensor-alerts-test--ctx
+                                run '(notify) "2026-05-22T10:00:00+10:00")
+                     :state-file path
+                     :quiet-p-fn (lambda (&rest _) nil)))
+                (e2 (satan-sensor-alerts-check
+                     ss
+                     :tool-ctx (satan-sensor-alerts-test--ctx
+                                run '(notify) "2026-05-22T10:15:00+10:00")
+                     :state-file path
+                     :quiet-p-fn (lambda (&rest _) nil))))
+           (should (= 1 (length e1)))
+           (should (equal "panopticon_current_stale"
+                          (plist-get (car e1) :cause)))
+           (should (eq :false (plist-get (car e1) :suppressed)))
+           (should (stringp (plist-get (car e1) :dispatched_at)))
+           (should (= 1 (length e2)))
+           (should (eq t (plist-get (car e2) :suppressed)))
+           (should (equal "cooldown" (plist-get (car e2) :reason)))
+           (should (= 1 (car counter)))))))))
 
 (ert-deftest satan-sensor-alerts/cooldown-elapsed-refires ()
   "Past 24h+ refires."
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (counter)
-       (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok"))
-              (mode (satan-sensor-alerts-test--mode '(notify))))
-         (satan-sensor-alerts-check
-          ss mode
-          :time-now "2026-05-21T10:00:00+10:00"
-          :state-file path
-          :quiet-p-fn (lambda (&rest _) nil))
-         (let ((e2 (satan-sensor-alerts-check
-                    ss mode
-                    :time-now "2026-05-22T11:00:00+10:00"
-                    :state-file path
-                    :quiet-p-fn (lambda (&rest _) nil))))
-           (should (eq :false (plist-get (car e2) :suppressed)))
-           (should (= 2 (car counter)))))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (counter)
+         (let ((ss (list :current_window "stale-28m" :focus "ok"
+                         :browser "ok")))
+           (satan-sensor-alerts-check
+            ss
+            :tool-ctx (satan-sensor-alerts-test--ctx
+                       run '(notify) "2026-05-21T10:00:00+10:00")
+            :state-file path
+            :quiet-p-fn (lambda (&rest _) nil))
+           (let ((e2 (satan-sensor-alerts-check
+                      ss
+                      :tool-ctx (satan-sensor-alerts-test--ctx
+                                 run '(notify) "2026-05-22T11:00:00+10:00")
+                      :state-file path
+                      :quiet-p-fn (lambda (&rest _) nil))))
+             (should (eq :false (plist-get (car e2) :suppressed)))
+             (should (= 2 (car counter))))))))))
 
 (ert-deftest satan-sensor-alerts/quiet-hours-suppress ()
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (counter)
-       (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok"))
-              (mode (satan-sensor-alerts-test--mode '(notify)))
-              (entries (satan-sensor-alerts-check
-                        ss mode
-                        :time-now "2026-05-22T03:00:00+10:00"
-                        :state-file path
-                        :quiet-p-fn (lambda (&rest _) t))))
-         (should (= 1 (length entries)))
-         (should (eq t (plist-get (car entries) :suppressed)))
-         (should (equal "quiet_hours"
-                        (plist-get (car entries) :reason)))
-         (should (= 0 (car counter))))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (counter)
+         (let ((entries (satan-sensor-alerts-check
+                         (list :current_window "stale-28m" :focus "ok"
+                               :browser "ok")
+                         :tool-ctx (satan-sensor-alerts-test--ctx
+                                    run '(notify) "2026-05-22T03:00:00+10:00")
+                         :state-file path
+                         :quiet-p-fn (lambda (&rest _) t))))
+           (should (= 1 (length entries)))
+           (should (eq t (plist-get (car entries) :suppressed)))
+           (should (equal "quiet_hours"
+                          (plist-get (car entries) :reason)))
+           (should (= 0 (car counter)))))))))
 
 ;; A16 — every degradation produces an entry, fired or suppressed
 
 (ert-deftest satan-sensor-alerts/every-degradation-recorded ()
   "Mix of stale + malformed → multiple entries this run."
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (_)
-       (let* ((ss (list :current_window "stale-28m"
-                        :focus "malformed"
-                        :browser "malformed"))
-              (mode (satan-sensor-alerts-test--mode '(notify)))
-              (entries (satan-sensor-alerts-check
-                        ss mode
-                        :time-now "2026-05-22T10:00:00+10:00"
-                        :state-file path
-                        :quiet-p-fn (lambda (&rest _) nil)))
-              (causes (mapcar (lambda (e) (plist-get e :cause)) entries)))
-         (should (member "panopticon_current_stale" causes))
-         (should (member "panopticon_focus_malformed" causes))
-         (should (member "panopticon_browser_malformed" causes))
-         (should (= 3 (length entries))))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (_)
+         (let* ((entries (satan-sensor-alerts-check
+                          (list :current_window "stale-28m"
+                                :focus "malformed"
+                                :browser "malformed")
+                          :tool-ctx (satan-sensor-alerts-test--ctx
+                                     run '(notify) "2026-05-22T10:00:00+10:00")
+                          :state-file path
+                          :quiet-p-fn (lambda (&rest _) nil)))
+                (causes (mapcar (lambda (e) (plist-get e :cause)) entries)))
+           (should (member "panopticon_current_stale" causes))
+           (should (member "panopticon_focus_malformed" causes))
+           (should (member "panopticon_browser_malformed" causes))
+           (should (= 3 (length entries)))))))))
 
 (ert-deftest satan-sensor-alerts/a16-one-to-one-causes-and-entries ()
   "A16 — causes touched in notified.json this run match pre_spawn entries.
@@ -243,61 +294,95 @@ Fired, suppressed-by-cooldown and suppressed-by-quiet all share the
 invariant: |state.:causes keys| == |entries| with matching cause
 names."
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (_)
-       (let* ((ss (list :current_window "stale-28m"
-                        :focus "malformed"
-                        :browser "ok"))
-              (mode (satan-sensor-alerts-test--mode '(notify)))
-              (entries (satan-sensor-alerts-check
-                        ss mode
-                        :time-now "2026-05-22T10:00:00+10:00"
-                        :state-file path
-                        :quiet-p-fn (lambda (&rest _) nil)))
-              (entry-causes (sort (mapcar (lambda (e) (plist-get e :cause))
-                                          entries)
-                                  #'string<))
-              (state (satan-sensor-alerts--read-state path))
-              (state-causes
-               (sort
-                (cl-loop for (k _) on (plist-get state :causes) by #'cddr
-                         collect (substring (symbol-name k) 1))
-                #'string<)))
-         (should (equal entry-causes state-causes))
-         (should (= (length entries) (length state-causes))))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (_)
+         (let* ((entries (satan-sensor-alerts-check
+                          (list :current_window "stale-28m"
+                                :focus "malformed"
+                                :browser "ok")
+                          :tool-ctx (satan-sensor-alerts-test--ctx
+                                     run '(notify) "2026-05-22T10:00:00+10:00")
+                          :state-file path
+                          :quiet-p-fn (lambda (&rest _) nil)))
+                (entry-causes (sort (mapcar (lambda (e) (plist-get e :cause))
+                                            entries)
+                                    #'string<))
+                (state (satan-sensor-alerts--read-state path))
+                (state-causes
+                 (sort
+                  (cl-loop for (k _) on (plist-get state :causes) by #'cddr
+                           collect (substring (symbol-name k) 1))
+                  #'string<)))
+           (should (equal entry-causes state-causes))
+           (should (= (length entries) (length state-causes)))))))))
+
+;; SL-017 DEC-016 — the pre-spawn alert joins its run (ISS-016)
+
+(ert-deftest satan-sensor-alerts/pre-spawn-intervention-joins-run ()
+  "On the run's own tool-ctx a fired alert mints `<run-id>.iv001'.
+The handler's `satan-intervention-create' now succeeds: the entry is
+dispatched, the run's transcript holds its `intervention.created', and
+the cause's cooldown arms (`:last_notified_at'), which the synthetic
+ctx's failure never let happen."
+  (satan-sensor-alerts-test--with-tmp-state path
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (counter)
+         (let* ((entries (satan-sensor-alerts-check
+                          (list :current_window "stale-28m" :focus "ok"
+                                :browser "ok")
+                          :tool-ctx (satan-sensor-alerts-test--ctx
+                                     run '(notify) "2026-05-22T10:00:00+10:00")
+                          :state-file path
+                          :quiet-p-fn (lambda (&rest _) nil)))
+                (created (satan-sensor-alerts-test--created run))
+                (cs (satan-sensor-alerts--cause-state
+                     (satan-sensor-alerts--read-state path)
+                     "panopticon_current_stale")))
+           (should (= 1 (length entries)))
+           (should (eq :false (plist-get (car entries) :suppressed)))
+           (should (= 1 (car counter)))
+           (should (= 1 (length created)))
+           (should (equal (concat satan-sensor-alerts-test--run-id ".iv001")
+                          (plist-get (car created) :intervention_id)))
+           (should (equal satan-sensor-alerts-test--run-id
+                          (plist-get (car created) :run_id)))
+           (should (equal "2026-05-22T10:00:00+10:00"
+                          (plist-get cs :last_notified_at)))))))))
 
 ;; A17 — dispatch routes through notify_send + capability check
 
-(ert-deftest satan-sensor-alerts/capability-denied-when-mode-lacks-notify ()
+(ert-deftest satan-sensor-alerts/capability-denied-still-suppresses ()
+  "A17 — the run's `:capabilities' gate the alert: no pop, no intervention."
   (satan-sensor-alerts-test--with-tmp-state path
-    (satan-sensor-alerts-test--silence-notify
-     (lambda (counter)
-       (let* ((ss (list :current_window "stale-28m" :focus "ok"
-                        :browser "ok"))
-              (mode (satan-sensor-alerts-test--mode '()))
-              (entries (satan-sensor-alerts-check
-                        ss mode
-                        :time-now "2026-05-22T10:00:00+10:00"
-                        :state-file path
-                        :quiet-p-fn (lambda (&rest _) nil))))
-         (should (= 1 (length entries)))
-         (should (eq t (plist-get (car entries) :suppressed)))
-         (should (equal "capability_denied"
-                        (plist-get (car entries) :reason)))
-         (should (= 0 (car counter))))))))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--silence-notify
+       (lambda (counter)
+         (let ((entries (satan-sensor-alerts-check
+                         (list :current_window "stale-28m" :focus "ok"
+                               :browser "ok")
+                         :tool-ctx (satan-sensor-alerts-test--ctx
+                                    run '() "2026-05-22T10:00:00+10:00")
+                         :state-file path
+                         :quiet-p-fn (lambda (&rest _) nil))))
+           (should (= 1 (length entries)))
+           (should (eq t (plist-get (car entries) :suppressed)))
+           (should (equal "capability_denied"
+                          (plist-get (car entries) :reason)))
+           (should (= 0 (car counter)))
+           (should-not (satan-sensor-alerts-test--created run))))))))
 
 (ert-deftest satan-sensor-alerts/dispatch-goes-through-tool-dispatch ()
   "Successful dispatch shows up as a recorded announcement."
   (satan-sensor-alerts-test--with-tmp-state path
-    (let* ((mode (satan-sensor-alerts-test--mode '(notify)))
-           (ss (list :current_window "stale-28m" :focus "ok"
-                     :browser "ok")))
-      (cl-letf (((symbol-function 'satan-intervention-create)
-                 (lambda (&rest _) "iv-sensor-stub-02")))
+    (satan-sensor-alerts-test--with-run run
+      (satan-sensor-alerts-test--without-db
         (satan-announce-with-recorder
           (satan-sensor-alerts-check
-           ss mode
-           :time-now "2026-05-22T10:00:00+10:00"
+           (list :current_window "stale-28m" :focus "ok" :browser "ok")
+           :tool-ctx (satan-sensor-alerts-test--ctx
+                      run '(notify) "2026-05-22T10:00:00+10:00")
            :state-file path
            :quiet-p-fn (lambda (&rest _) nil))
           (should satan-announce-recorded)

@@ -315,7 +315,7 @@ Returns plist:
           :new_worked_count (and result (plist-get result :new_worked_count)))))
 
 ;; ---------------------------------------------------------------------
-;; Broker entry — observer.process(run_ctx)
+;; Broker entry — observer.process(tool_ctx)
 ;; ---------------------------------------------------------------------
 
 (defun satan-observer--lookup-motive (motive-id motives)
@@ -325,20 +325,12 @@ Returns plist:
                 :key (lambda (m) (plist-get m :id))
                 :test #'equal)))
 
-(defun satan-observer--ctx-from-run-ctx (run-ctx)
-  "Build the tool-ctx plist `satan-intervention-classify' needs.
-RUN-CTX is the broker prepare plist (carries `:run_id', `:time_now',
-`:mode_name', and `:audit' as of T7 PR 5).  Slot names are
-normalised to the kebab-case `tool-ctx' convention."
-  (list :id (plist-get run-ctx :run_id)
-        :mode-name (plist-get run-ctx :mode_name)
-        :time-now (plist-get run-ctx :time_now)
-        :audit (plist-get run-ctx :audit)))
-
-(defun satan-observer-process (run-ctx &optional opts)
+(defun satan-observer-process (tool-ctx &optional opts)
   "Classify + persist every pending intervention.
-RUN-CTX is the broker prepare plist; `:time_now' supplies NOW and
-`:audit' supplies the live audit handle for outcome events.
+TOOL-CTX is the current run's tool-ctx (`satan-run-tool-ctx'): its
+frozen `:time-now' supplies NOW and its `:audit' receives the outcome
+events.  It is checked with `satan-intervention--ctx-required' before
+anything is read — there is no wall-clock fallback.
 
 Sequence:
   1. Read motive file (default `satan-motive-file').
@@ -356,7 +348,7 @@ captured into that entry's `:error' slot; the loop continues so
 one bad bundle (or postgres outage) does not block the rest of the
 tick.
 
-T1.5b PR 3 — the broker's frozen `:time_now' threads into
+T1.5b PR 3 — the run's frozen `:time-now' threads into
 `satan-observer-classify-for-motives' to drive the maturity
 guard (outcome-semantics §3 + §6.1).  A nil verdict from the
 classifier means `:stale' (defence-in-depth — `satan-
@@ -368,7 +360,6 @@ OPTS forwards to the lower-level helpers (used in tests):
   :motive-path        override `satan-motive-file'
   :runs-dir           override `satan-runs-dir'
   :db                 override the migrate database
-  :ctx                explicit tool-ctx (skips RUN-CTX-derived ctx)
   :motive-fn          stub `satan-motive-read'
   :memory-mark-fn     stub `satan-memory-store-mark'
   :touch-footer-fn    stub `satan-motive-touch-footer'
@@ -380,9 +371,9 @@ Returns a summary plist for audit visibility:
                        :classification :confidence :predicates
                        :reason :maturity :classify_event
                        :skipped? :error?))"
+  (satan-intervention--ctx-required tool-ctx)
   (let* ((opts (or opts '()))
-         (now (or (plist-get run-ctx :time_now)
-                  (format-time-string "%Y-%m-%dT%T%:z")))
+         (now (plist-get tool-ctx :time-now))
          (motive-path (or (plist-get opts :motive-path)
                           satan-motive-file))
          (runs-dir (plist-get opts :runs-dir))
@@ -394,10 +385,8 @@ Returns a summary plist for audit visibility:
          (pending (condition-case _err
                       (satan-observer-pending now runs-dir db)
                     (error nil)))
-         (ctx (or (plist-get opts :ctx)
-                  (satan-observer--ctx-from-run-ctx run-ctx)))
          (persist-opts
-          (append (list :ctx ctx)
+          (append (list :ctx tool-ctx)
                   (when db (list :db db))
                   (let ((kept '()))
                     (dolist (k '(:motive-path :touch-footer-fn :memory-mark-fn))

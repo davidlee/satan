@@ -465,16 +465,6 @@ or `(error MSG)' on failure."
         (buffer-substring-no-properties (point) (line-end-position)))
     (error nil)))
 
-(defun satan-tools-atsatan--intervention-ctx (run-id audit now)
-  "Build a tool-ctx for the manual-outcome writer (parallels the
-interactive command's `mark--build-ctx').  AUDIT is the reopened
-handle for the iv's run-dir."
-  (list :id run-id
-        :mode-name "manual-mark"
-        :time-now now
-        :audit audit
-        :capabilities '()))
-
 (defun satan-tools-atsatan--intervention-run-id-of (iv-id)
   "Extract the run-id prefix from `<run-id>.iv<NNN>'."
   (cond
@@ -531,8 +521,7 @@ or (error . STR) on lookup / run-dir failure."
       (cons 'error (format "no run-dir on disk for %s" iv-run-id)))
      (t
       (let* ((audit (satan-audit-reopen run-dir))
-             (mark-ctx (satan-tools-atsatan--intervention-ctx
-                        iv-run-id audit now))
+             (mark-ctx (satan-run-manual-tool-ctx iv-run-id audit now))
              (maturity (satan-tools-atsatan--iv-maturity-string iv now))
              (revisit (satan-tools-atsatan--iv-next-revisit-at iv))
              (event (satan-intervention-write-manual-outcome

@@ -110,7 +110,6 @@ Threaded keys (set by this function on PREPARE):
   :motive         — plist from satan-motive-read (via enrich).
 
 Caller-threaded keys (NOT set by this function):
-  :audit          — set by broker before calling.
   :observer       — set by broker before calling.
   :pre_spawn      — set by broker after calling."
   (satan-run-enrich (satan-run-perceive prepare mode dir)))

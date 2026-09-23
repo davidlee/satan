@@ -626,7 +626,8 @@ Returns the run-id."
     ;; `intervention.outcome_classified' events into the current run's
     ;; transcript), so the broker opens the handle here — manifest is
     ;; built up-front, `bundle.json' is deferred until the context-fn
-    ;; has assembled it (see `satan-audit-attach-bundle' below).
+    ;; has assembled it (see `satan-audit-attach-bundle' below).  The
+    ;; handle reaches the observer inside the run's tool-ctx (SL-017).
     ;;
     ;; Observer errors are caught so a stale bundle / postgres outage
     ;; cannot fail the tick — the run proceeds without an observer pass
@@ -634,16 +635,39 @@ Returns the run-id."
     (let* ((manifest (satan-broker--build-manifest mode run-id))
            (audit (satan-trace-stage "spawn.audit_open"
                     (satan-audit-open dir manifest nil prepare)))
-           (prepare (plist-put prepare :audit audit))
+           ;; SL-017 DEC-016 — the run struct exists from here on, so
+           ;; every pre-spawn consumer takes `satan-run-tool-ctx' of it
+           ;; (the one tool-ctx builder).  Each later rebind of PREPARE
+           ;; is written back to its slot in the same binding.
+           (run-ctx (make-satan-run
+                     :id run-id
+                     :mode mode
+                     :start-time (plist-get prepare :start_time)
+                     :dir dir
+                     :bundle-path bundle-path
+                     :pending-tool-calls (make-hash-table :test 'equal)
+                     :tool-calls-done 0
+                     :applied-actions nil
+                     :staged-actions nil
+                     :rejected-actions nil
+                     :failed-actions nil
+                     :final nil
+                     :status 'running
+                     :audit audit
+                     :stdout-log-path stdout-log
+                     :prepare prepare))
            (observer (condition-case _err
                          (satan-trace-stage "spawn.observer"
-                           (satan-observer-process prepare))
+                           (satan-observer-process
+                            (satan-run-tool-ctx run-ctx)))
                        (error nil)))
-           (prepare (plist-put prepare :observer observer))
+           (prepare (setf (satan-run-prepare run-ctx)
+                          (plist-put prepare :observer observer)))
            ;; DR-010 §3: percept already built upstream by perceive; enrich
            ;; derives resonance + motive over PREPARE's `:percept' (consume-
            ;; only).  `:percept'/`:evidence'/`:sensor_status' are already set.
-           (prepare (satan-run-enrich prepare))
+           (prepare (setf (satan-run-prepare run-ctx)
+                          (satan-run-enrich prepare)))
            (sensor-status (plist-get prepare :sensor_status))
            ;; §S6 — sensor_alerts.check runs in the pre-spawn window
            ;; alongside the rest of evidence assembly.  Returns the
@@ -653,9 +677,8 @@ Returns the run-id."
            (pre-spawn (condition-case _err
                           (satan-trace-stage "spawn.sensor_alerts"
                             (satan-sensor-alerts-check
-                             sensor-status mode
-                             :time-now (plist-get prepare :time_now)
-                             :run-dir dir))
+                             sensor-status
+                             :tool-ctx (satan-run-tool-ctx run-ctx)))
                         (error nil)))
            ;; DR-010 §3 — consume-side probe COMMIT.  The pure read-
            ;; snapshots were taken upstream by `satan-run-perceive'
@@ -694,28 +717,12 @@ Returns the run-id."
                 (satan-trace-stage "spawn.ingest_cursor"
                   (satan-ingest-cursor-advance))
               (error nil)))
-           (prepare (plist-put prepare :pre_spawn pre-spawn)))
+           (prepare (setf (satan-run-prepare run-ctx)
+                          (plist-put prepare :pre_spawn pre-spawn))))
     (let* ((bundle (satan-trace-stage "spawn.bundle"
                      (funcall (or (plist-get mode :context-fn) #'ignore)
                               mode prepare)))
-           (_attached (satan-audit-attach-bundle audit bundle))
-           (run-ctx (make-satan-run
-                     :id run-id
-                     :mode mode
-                     :start-time (plist-get prepare :start_time)
-                     :dir dir
-                     :bundle-path bundle-path
-                     :pending-tool-calls (make-hash-table :test 'equal)
-                     :tool-calls-done 0
-                     :applied-actions nil
-                     :staged-actions nil
-                     :rejected-actions nil
-                     :failed-actions nil
-                     :final nil
-                     :status 'running
-                     :audit audit
-                     :stdout-log-path stdout-log
-                     :prepare prepare)))
+           (_attached (satan-audit-attach-bundle audit bundle)))
       (let* ((cmd (plist-get (plist-get mode :harness) :cmd))
              (args (plist-get (plist-get mode :harness) :args))
              (provider (plist-get mode :provider))

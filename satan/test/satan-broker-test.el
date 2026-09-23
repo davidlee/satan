@@ -1069,68 +1069,127 @@ precedence — the Risks section's named regression)."
 
 ;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
 
+(defmacro satan-broker-test--with-spawn-stubs (dir &rest body)
+  "Evaluate BODY with DIR bound to a tmp run dir and `--spawn' made hermetic.
+Stubs every collaborator `satan-broker--spawn' reaches before and
+around `make-process' (manifest, audit, observer, enrich, sensor
+alerts, probe commits, env shaping, finalize); the harness command
+still runs for real.  Tests override individual stubs with an inner
+`cl-letf'.  Binds `satan-run--spawn-running' and a tmp
+`satan-hippocampus-dir'; removes both tmp dirs afterwards."
+  (declare (indent 1))
+  `(let ((,dir (make-temp-file "satan-spawn-" t))
+         (satan-run--spawn-running nil)
+         (satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
+     (unwind-protect
+         (cl-letf (((symbol-function 'satan-broker--build-manifest)
+                    (lambda (&rest _) '(:manifest t)))
+                   ((symbol-function 'satan-audit-open)
+                    (lambda (&rest _) '(:audit t)))
+                   ((symbol-function 'satan-audit-attach-bundle)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'satan-audit-record)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'satan-observer-process)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'satan-run-enrich)
+                    (lambda (prepare &rest _) prepare))
+                   ((symbol-function 'satan-sensor-alerts-check)
+                    (lambda (&rest _) nil))
+                   ;; DR-010 §3: --spawn now calls the consume-side
+                   ;; -probe-commit variants (perceive took the reads).
+                   ((symbol-function 'satan-sensor-curiosity-probe-commit)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'satan-sensor-content-probe-commit)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'satan-sensor-wpm-probe-commit)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'my/scrub-op-refs-env)
+                    (lambda (env) env))
+                   ((symbol-function 'satan-broker--direnv-env)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'satan-broker--exec-path-from-env)
+                    (lambda (&rest _) exec-path))
+                   ((symbol-function 'satan-broker--update-most-recent)
+                    (lambda (&rest _) nil))
+                   ((symbol-function 'satan-broker--finalize)
+                    (lambda (&rest _) nil)))
+           ,@body)
+       (delete-directory ,dir t)
+       (when (file-directory-p satan-hippocampus-dir)
+         (delete-directory satan-hippocampus-dir t)))))
+
 (ert-deftest satan-broker/dec8-spawn-running-persists-until-sentinel ()
   "AUD-008 F-001: `satan-run--spawn-running' stays t across the live
 async run and is cleared ONLY by the child sentinel — never at the
 synchronous launch return (the original unwind-protect bug)."
-  (let ((dir (make-temp-file "satan-spawn-flag-" t))
-        (satan-run--spawn-running nil)
-        (satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
-    (unwind-protect
-        (cl-letf (((symbol-function 'satan-broker--build-manifest)
-                   (lambda (&rest _) '(:manifest t)))
-                  ((symbol-function 'satan-audit-open)
-                   (lambda (&rest _) '(:audit t)))
-                  ((symbol-function 'satan-audit-attach-bundle)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'satan-audit-record)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'satan-observer-process)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'satan-run-enrich)
-                   (lambda (prepare &rest _) prepare))
-                  ((symbol-function 'satan-sensor-alerts-check)
-                   (lambda (&rest _) nil))
-                  ;; DR-010 §3: --spawn now calls the consume-side
-                  ;; -probe-commit variants (perceive took the reads).
-                  ((symbol-function 'satan-sensor-curiosity-probe-commit)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'satan-sensor-content-probe-commit)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'satan-sensor-wpm-probe-commit)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'my/scrub-op-refs-env)
-                   (lambda (env) env))
-                  ((symbol-function 'satan-broker--direnv-env)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'satan-broker--exec-path-from-env)
-                   (lambda (&rest _) exec-path))
-                  ((symbol-function 'satan-broker--update-most-recent)
-                   (lambda (&rest _) nil))
-                  ((symbol-function 'satan-broker--finalize)
-                   (lambda (&rest _) nil)))
-          (let* ((prepare (list :run_id "rid-flag"
-                                :time_now "2026-06-03T00:00:00Z"
-                                :start_time (current-time)))
-                 ;; A real but long-lived child so the run is genuinely "live"
-                 ;; after spawn returns; no :timeout-seconds so no timer.
-                 (mode '(:name "test" :harness (:cmd "sleep" :args ("30"))))
-                 (run-id (satan-broker--spawn mode prepare dir)))
-            (should (equal run-id "rid-flag"))
-            ;; Child still running → flag MUST still be set.  The bug cleared
-            ;; it here, at synchronous return.
-            (should satan-run--spawn-running)
-            (let ((proc (get-process "satan-rid-flag")))
-              (should (process-live-p proc))
-              ;; Kill it: "killed" event → sentinel finalises + clears flag
-              ;; (regex now matches "killed", AUD-008 F-001).
-              (delete-process proc)
-              (accept-process-output nil 0.3)
-              (sleep-for 0.1)
-              (should-not satan-run--spawn-running))))
-      (delete-directory dir t)
-      (when (file-directory-p satan-hippocampus-dir)
-        (delete-directory satan-hippocampus-dir t)))))
+  (satan-broker-test--with-spawn-stubs dir
+    (let* ((prepare (list :run_id "rid-flag"
+                          :time_now "2026-06-03T00:00:00Z"
+                          :start_time (current-time)))
+           ;; A real but long-lived child so the run is genuinely "live"
+           ;; after spawn returns; no :timeout-seconds so no timer.
+           (mode '(:name "test" :harness (:cmd "sleep" :args ("30"))))
+           (run-id (satan-broker--spawn mode prepare dir)))
+      (should (equal run-id "rid-flag"))
+      ;; Child still running → flag MUST still be set.  The bug cleared
+      ;; it here, at synchronous return.
+      (should satan-run--spawn-running)
+      (let ((proc (get-process "satan-rid-flag")))
+        (should (process-live-p proc))
+        ;; Kill it: "killed" event → sentinel finalises + clears flag
+        ;; (regex now matches "killed", AUD-008 F-001).
+        (delete-process proc)
+        (accept-process-output nil 0.3)
+        (sleep-for 0.1)
+        (should-not satan-run--spawn-running)))))
+
+;; ── SL-017 DEC-016: one tool-ctx, from the run struct ──────────────────────
+
+(ert-deftest satan-broker/spawn-hands-run-tool-ctx-to-observer-and-alerts ()
+  "The observer and the pre-spawn alerts both see the run's own tool-ctx.
+The struct is built right after the audit opens, and every later
+`prepare' rebind is synced into it: enrich is stubbed to return a
+FRESH list, so only an explicit `setf' can carry its keys into the
+struct the filter is handed."
+  (satan-broker-test--with-spawn-stubs dir
+    (let* ((audit (list :audit 'sentinel))
+           (run-id "20260603T000000-test-a1b2c3")
+           (prepare (list :run_id run-id
+                          :time_now "2026-06-03T00:00:00Z"
+                          :start_time (current-time)
+                          :percept '(:handles ("h1" "h2"))))
+           (mode '(:name "test" :capabilities (notify)
+                   :harness (:cmd "true" :args nil)))
+           observer-ctx alerts-ctx run-ctx)
+      (cl-letf (((symbol-function 'satan-audit-open)
+                 (lambda (&rest _) audit))
+                ((symbol-function 'satan-observer-process)
+                 (lambda (ctx &rest _) (setq observer-ctx ctx) 'OBS))
+                ((symbol-function 'satan-run-enrich)
+                 (lambda (p &rest _) (append p (list :resonance 'R))))
+                ((symbol-function 'satan-sensor-alerts-check)
+                 (lambda (_ss &rest kw)
+                   (setq alerts-ctx (plist-get kw :tool-ctx))
+                   'PRE))
+                ((symbol-function 'satan-broker--make-filter)
+                 (lambda (ctx) (setq run-ctx ctx) #'ignore)))
+        (should (equal run-id (satan-broker--spawn mode prepare dir)))
+        (let ((proc (get-process (format "satan-%s" run-id))))
+          (while (process-live-p proc) (accept-process-output proc 0.1))
+          (accept-process-output nil 0.1)))
+      (should (equal run-id (plist-get observer-ctx :id)))
+      (should (eq audit (plist-get observer-ctx :audit)))
+      (should (equal "2026-06-03T00:00:00Z"
+                     (plist-get observer-ctx :time-now)))
+      (should (equal '("h1" "h2") (plist-get observer-ctx :percept-handles)))
+      (should (equal run-id (plist-get alerts-ctx :id)))
+      (should (eq audit (plist-get alerts-ctx :audit)))
+      (should (equal '(notify) (plist-get alerts-ctx :capabilities)))
+      (let ((final (satan-run-prepare run-ctx)))
+        (should (eq 'OBS (plist-get final :observer)))
+        (should (eq 'R (plist-get final :resonance)))
+        (should (eq 'PRE (plist-get final :pre_spawn)))))))
 
 (ert-deftest satan-broker/dec8-sentinel-clears-flag-on-exit-events ()
   "AUD-008 F-001: the child sentinel clears `--spawn-running' on every

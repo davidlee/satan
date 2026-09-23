@@ -375,7 +375,7 @@ justification):
 | `satan-percept.el` | Perceptual-loop §S1: percept builder, persist (`percept.json`), capsule render. Phase 1. |
 | `satan-resonance.el` | Perceptual-loop §S2: cue derivation + sensor-observed-handle gate + capsule resonance block. Phase 2. |
 | `satan-motive.el` | Perceptual-loop §S3 + §S4 + Phase 6: motives.org parser, atomic writer, footer rewriter (`satan-motive-touch-footer`), capsule render with cooldown annotation (`[cooling-down (Nm remaining)]`). |
-| `satan-observer.el` | Perceptual-loop §S5: 24h transcript scan, window-mature gate, baseline-vs-after diff, positive predicate classifier, multi-motive resolver, verdict persistence; broker entry `satan-observer-process RUN-CTX`. Phase 5. |
+| `satan-observer.el` | Perceptual-loop §S5: 24h transcript scan, window-mature gate, baseline-vs-after diff, positive predicate classifier, multi-motive resolver, verdict persistence; broker entry `satan-observer-process TOOL-CTX` (the run's `satan-run-tool-ctx`). Phase 5. |
 | `satan-sensor-alerts.el` | Perceptual-loop §S6: freshness check dispatcher, per-cause cooldown, quiet-hours suppression, dispatch through `notify_send` tool path, records into `actions.json.pre_spawn`. Phase 4. Renders the `git` sensor (no alert cause — commits are bursty, a quiet feed must not page). |
 | `satan-tank.el` | Shared mutable run-context "tank" plist accessors (run_id, time_now, evidence, percept, sensor_status, pre_spawn, motive, observer summary). |
 | `satan-tools-motive.el` | `motive_read` / `motive_replace` handlers + bound validators (≤3 active, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:`). |

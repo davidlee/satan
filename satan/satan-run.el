@@ -329,5 +329,18 @@ lookup APIs)."
           :audit (satan-run-audit run-ctx)
           :percept-handles (and percept (plist-get percept :handles)))))
 
+(defun satan-run-manual-tool-ctx (run-id audit now)
+  "Return the tool-ctx for a manual outcome mark against RUN-ID.
+AUDIT is the reopened audit handle of that run; NOW is the ISO time of
+the mark.  The mode is the synthetic `manual-mark' and capabilities are
+empty: manual paths bypass mode-gated capability checks.  Callers are
+`satan-intervention-mark' (the `M-x' commands) and
+`satan-tools-atsatan' (`@satan' outcome directives)."
+  (list :id run-id
+        :mode-name "manual-mark"
+        :time-now now
+        :audit audit
+        :capabilities '()))
+
 (provide 'satan-run)
 ;;; satan-run.el ends here

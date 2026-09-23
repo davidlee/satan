@@ -132,6 +132,21 @@
         :time-now (or ts "2026-05-23T12:00:00+1000")
         :audit audit))
 
+(defun satan-observer-test--process-ctx (root run-id now)
+  "The tool-ctx `satan-observer-process' takes, for current run RUN-ID.
+A manual ctx over a fresh audit handle under ROOT, frozen at NOW;
+`classify' ignores `:mode-name', so `manual-mark' is harmless here."
+  (satan-run-manual-tool-ctx
+   run-id (satan-observer-test--open-audit root run-id) now))
+
+(defun satan-observer-test--transcript-events (root run-id)
+  "Return the `:event' names in RUN-ID's transcript under ROOT."
+  (mapcar (lambda (r) (plist-get r :event))
+          (satan-jsonl-read-file
+           (expand-file-name "transcript.jsonl"
+                             (satan-observer-test--make-run-dir root run-id))
+           :null-object :null)))
+
 (cl-defun satan-observer-test--mint
     (ctx &key (kind "notify") (target "sway-mainbar")
          (message "do thing") (window 30) (severity "low")
@@ -1269,16 +1284,70 @@ the prior verdict in the projection."
       (satan-motive-test--with-tmp-file
        mpath satan-motive-test--well-formed
        (let ((out (satan-observer-process
-                   (list :time_now "2026-05-23T12:00:00+1000"
-                         :run_id "20260523T120000-morning-zzzzzz"
-                         :mode_name "morning"
-                         :audit (satan-observer-test--open-audit
-                                 root "20260523T120000-morning-zzzzzz"))
+                   (satan-observer-test--process-ctx
+                    root "20260523T120000-morning-zzzzzz"
+                    "2026-05-23T12:00:00+1000")
                    (list :motive-path mpath
                          :runs-dir root))))
          (should (= 0 (plist-get out :processed)))
          (should (= 0 (plist-get out :positive)))
          (should (null (plist-get out :verdicts)))))))))
+
+(ert-deftest satan-observer/process-uses-run-tool-ctx ()
+  "The observer runs on a run's canonical tool-ctx (SL-017 DEC-016).
+Mints a pre-spawn-shaped intervention through `satan-run-tool-ctx' for
+prior run R0, then processes it on current run R1's tool-ctx: the
+verdict lands in R1's transcript (the ctx's audit), and maturity
+follows the ctx's frozen `:time-now' — against the wall clock the
+row would be long stale and never surface as pending."
+  (satan-observer-test--with-db
+   (satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((satan-runs-dir root)
+             (r0 "20260523T110000-morning-a0a0a0")
+             (r1 "20260523T170000-morning-b1b1b1")
+             (run0 (make-satan-run
+                    :id r0 :mode '(:name "morning")
+                    :dir (satan-observer-test--make-run-dir root r0)
+                    :audit (satan-observer-test--open-audit root r0)
+                    :prepare (list :time_now "2026-05-23T11:00:00+1000"
+                                   :percept '(:handles ("topic:nothing-matches")))))
+             (iv-id (satan-observer-test--mint (satan-run-tool-ctx run0))))
+        (should (equal (concat r0 ".iv001") iv-id))
+        (satan-observer-test--write-bundle-with-handles
+         (satan-run-dir run0) (list "topic:nothing-matches"))
+        (satan-motive-test--with-tmp-file
+         mpath ""
+         (let* ((run1 (make-satan-run
+                       :id r1 :mode '(:name "morning")
+                       :dir (satan-observer-test--make-run-dir root r1)
+                       :audit (satan-observer-test--open-audit root r1)
+                       ;; emit + 6 h: mature, well inside the 24 h stale bound
+                       :prepare (list :time_now "2026-05-23T17:00:00+1000")))
+                (out (satan-observer-process
+                      (satan-run-tool-ctx run1)
+                      (list :motive-path mpath :runs-dir root)))
+                (v (car (plist-get out :verdicts))))
+           (should (= 1 (plist-get out :processed)))
+           (should (equal iv-id (plist-get v :intervention_id)))
+           (should (eq :mature (plist-get v :maturity)))
+           (should (member "intervention.outcome_classified"
+                           (satan-observer-test--transcript-events root r1)))
+           (should-not (member "intervention.outcome_classified"
+                               (satan-observer-test--transcript-events
+                                root r0))))))))))
+
+(ert-deftest satan-observer/process-rejects-ctx-without-time-now ()
+  "A ctx with no frozen `:time-now' is refused before any read.
+There is no wall-clock fallback: the motive reader is never reached."
+  (let ((read nil))
+    (should-error
+     (satan-observer-process
+      (list :id "20260523T120000-morning-a1b2c3" :mode-name "morning"
+            :audit 'AUDIT)
+      (list :motive-fn (lambda (_) (setq read t) nil)))
+     :type 'user-error)
+    (should-not read)))
 
 (ert-deftest satan-observer/process-no-correlation-classifies-unknown ()
   "Pending intervention exists but no motive cue overlaps; PR 5 still
@@ -1302,11 +1371,7 @@ no longer surfaces the same intervention."
          (let ((now "2026-05-23T12:00:00+1000")
                (curr-id "20260523T120000-morning-cccccc"))
            (let ((out (satan-observer-process
-                       (list :time_now now
-                             :run_id curr-id
-                             :mode_name "morning"
-                             :audit (satan-observer-test--open-audit
-                                     root curr-id))
+                       (satan-observer-test--process-ctx root curr-id now)
                        (list :motive-path mpath
                              :runs-dir root))))
              (should (= 1 (plist-get out :processed)))
@@ -1321,11 +1386,7 @@ no longer surfaces the same intervention."
            ;; second pass: now matured + classified → empty pending
            (let* ((curr2-id "20260523T120500-morning-dddddd")
                   (out2 (satan-observer-process
-                         (list :time_now now
-                               :run_id curr2-id
-                               :mode_name "morning"
-                               :audit (satan-observer-test--open-audit
-                                       root curr2-id))
+                         (satan-observer-test--process-ctx root curr2-id now)
                          (list :motive-path mpath
                                :runs-dir root))))
              (should (= 0 (plist-get out2 :processed)))))))))))
@@ -1359,11 +1420,7 @@ locks the full pending → classify path on the realistic wire shape."
          (let* ((now "2026-05-23T17:00:00+1000") ; emit + 6 h, window open until 05-24 11:30
                 (curr-id "20260523T170000-morning-cccccc")
                 (out (satan-observer-process
-                      (list :time_now now
-                            :run_id curr-id
-                            :mode_name "morning"
-                            :audit (satan-observer-test--open-audit
-                                    root curr-id))
+                      (satan-observer-test--process-ctx root curr-id now)
                       (list :motive-path mpath :runs-dir root))))
            (should (= 1 (plist-get out :processed)))
            (let ((v (car (plist-get out :verdicts))))
@@ -1414,11 +1471,7 @@ and git head changed; motive footer bumps, projection holds worked."
                      :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-cccccc")
                     (out (satan-observer-process
-                          (list :time_now "2026-05-23T12:00:00+1000"
-                                :run_id curr-id
-                                :mode_name "morning"
-                                :audit (satan-observer-test--open-audit
-                                        root curr-id))
+                          (satan-observer-test--process-ctx root curr-id "2026-05-23T12:00:00+1000")
                           (list :motive-path mpath
                                 :runs-dir root
                                 :memory-mark-fn mark-fn))))
@@ -1496,11 +1549,7 @@ and continues with the next."
                      :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-cccccc")
                     (out (satan-observer-process
-                          (list :time_now "2026-05-23T12:00:00+1000"
-                                :run_id curr-id
-                                :mode_name "morning"
-                                :audit (satan-observer-test--open-audit
-                                        root curr-id))
+                          (satan-observer-test--process-ctx root curr-id "2026-05-23T12:00:00+1000")
                           (list :motive-path mpath
                                 :runs-dir root
                                 :touch-footer-fn failing-touch
@@ -1743,11 +1792,7 @@ are intact."
                        :focus_segments nil)
                (let* ((curr-id "20260523T120000-morning-cccccc")
                       (out (satan-observer-process
-                            (list :time_now "2026-05-23T12:00:00+1000"
-                                  :run_id curr-id
-                                  :mode_name "morning"
-                                  :audit (satan-observer-test--open-audit
-                                          root curr-id))
+                            (satan-observer-test--process-ctx root curr-id "2026-05-23T12:00:00+1000")
                             (list :motive-path mpath
                                   :runs-dir root
                                   :memory-mark-fn mark-fn))))
@@ -1806,11 +1851,7 @@ swallowed; the observer returns normally and classification is intact."
                          :focus_segments nil)
                  (let* ((curr-id "20260523T120000-morning-dddddd")
                         (out (satan-observer-process
-                              (list :time_now "2026-05-23T12:00:00+1000"
-                                    :run_id curr-id
-                                    :mode_name "morning"
-                                    :audit (satan-observer-test--open-audit
-                                            root curr-id))
+                              (satan-observer-test--process-ctx root curr-id "2026-05-23T12:00:00+1000")
                               (list :motive-path mpath
                                     :runs-dir root
                                     :memory-mark-fn mark-fn))))
@@ -1847,11 +1888,7 @@ classification + outcome projection are intact."
                      :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-ffffff")
                     (out (satan-observer-process
-                          (list :time_now "2026-05-23T12:00:00+1000"
-                                :run_id curr-id
-                                :mode_name "morning"
-                                :audit (satan-observer-test--open-audit
-                                        root curr-id))
+                          (satan-observer-test--process-ctx root curr-id "2026-05-23T12:00:00+1000")
                           (list :motive-path mpath
                                 :runs-dir root
                                 :memory-mark-fn mark-fn))))
@@ -1900,11 +1937,7 @@ rebuild succeeds or fails."
                      :focus_segments nil)
              (let* ((curr-id "20260523T120000-morning-hhhhhh")
                     (out (satan-observer-process
-                          (list :time_now "2026-05-23T12:00:00+1000"
-                                :run_id curr-id
-                                :mode_name "morning"
-                                :audit (satan-observer-test--open-audit
-                                        root curr-id))
+                          (satan-observer-test--process-ctx root curr-id "2026-05-23T12:00:00+1000")
                           (list :motive-path mpath
                                 :runs-dir root
                                 :memory-mark-fn mark-fn))))

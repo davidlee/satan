@@ -294,18 +294,6 @@ requires notify')."
 ;; Public entry — sensor_alerts.check (§S1, Phase 4.3)
 ;; ---------------------------------------------------------------------
 
-(defun satan-sensor-alerts--make-tool-ctx (mode time-now run-dir)
-  "Return a pre-spawn synthetic tool-ctx mirroring MODE's :capabilities.
-Removing `notify' from the actual mode-spec propagates to the synthetic
-ctx, which makes the dispatcher refuse with `capability_denied' (A17)."
-  (list :id (format "pre-spawn-%s" (or (plist-get mode :name) "?"))
-        :mode-name (concat (or (plist-get mode :name) "?") "/pre-spawn")
-        :capabilities (plist-get mode :capabilities)
-        :run-dir run-dir
-        :hippocampus-dir nil
-        :run-started-at time-now
-        :time-now time-now))
-
 (defun satan-sensor-alerts--entry (cause base &rest extras)
   "Compose a pre_spawn entry plist from BASE + EXTRAS.
 BASE is the cause tuple plist from `--derive-causes'; EXTRAS are
@@ -320,8 +308,14 @@ appended keyword overrides."
     entry))
 
 (cl-defun satan-sensor-alerts-check
-    (sensor-status mode &key time-now run-dir state-file quiet-p-fn)
-  "Compute the pre_spawn entries for SENSOR-STATUS under MODE.
+    (sensor-status &key tool-ctx state-file quiet-p-fn)
+  "Compute the pre_spawn entries for SENSOR-STATUS.
+TOOL-CTX is the run's own tool-ctx (`satan-run-tool-ctx'): its frozen
+`:time-now' is NOW, and a dispatched alert mints its intervention as
+`<run-id>.ivNNN' into the run's audit.  Its `:capabilities' are the
+mode's, so removing `notify' from a mode yields `capability_denied'
+\(A17).
+
 For each degraded sensor:
   - quiet hours suppress dispatch (entry recorded with reason `quiet_hours');
   - per-cause cooldown suppresses dispatch (`cooldown');
@@ -331,14 +325,11 @@ For each degraded sensor:
 Updates the notified.json state file in-place; returns the list of
 pre_spawn entries (one per degraded cause; never nil unless every
 sensor was `ok')."
-  (let* ((now (and time-now (date-to-time time-now)))
-         (now (or now (current-time)))
-         (now-iso (or time-now (format-time-string "%Y-%m-%dT%T%:z" now)))
+  (let* ((now-iso (plist-get tool-ctx :time-now))
+         (now (date-to-time now-iso))
          (path (or state-file satan-sensor-state-file))
          (quiet-p (funcall (or quiet-p-fn #'satan-tick-quiet-p) now))
          (state (satan-sensor-alerts--read-state path))
-         (tool-ctx (satan-sensor-alerts--make-tool-ctx
-                    mode now-iso run-dir))
          (causes (satan-sensor-alerts--derive-causes sensor-status))
          entries)
     (dolist (base causes)

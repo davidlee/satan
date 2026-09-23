@@ -94,16 +94,6 @@ INCLUDE-STALE forwards to `satan-intervention-recent'."
                    satan-intervention-mark--confidences
                    nil t nil nil "medium"))
 
-(defun satan-intervention-mark--build-ctx (run-id audit now)
-  "Build the tool-ctx plist the writer demands.
-The `:mode-name' is the synthetic `manual-mark'; capabilities are
-empty (manual marks bypass mode-gated tool capability checks)."
-  (list :id run-id
-        :mode-name "manual-mark"
-        :time-now now
-        :audit audit
-        :capabilities '()))
-
 (defun satan-intervention-mark--dispatch (classification include-stale)
   "Shared body of `mark-harmful' / `mark-contradicted'.
 CLASSIFICATION is `\"harmful\"' or `\"contradicted\"'.  INCLUDE-STALE
@@ -130,7 +120,7 @@ toggles whether :stale interventions appear in the completion list."
            (_ (unless run-dir
                 (user-error "no run-dir on disk for %s" run-id)))
            (audit (satan-audit-reopen run-dir))
-           (ctx (satan-intervention-mark--build-ctx run-id audit now))
+           (ctx (satan-run-manual-tool-ctx run-id audit now))
            (maturity (satan-intervention-mark--maturity iv now))
            (next-revisit-at
             (satan-intervention-mark--next-revisit-at iv))

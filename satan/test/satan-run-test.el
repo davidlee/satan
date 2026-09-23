@@ -34,6 +34,7 @@
 (require 'cl-lib)
 (require 'cl-macs)                      ; cl-letf, in the tool-ctx spy
 (require 'satan-run)
+(require 'satan-intervention)           ; --ctx-required, the manual ctx's judge
 
 (defconst satan-run-test--id-re
   "\\`[0-9]\\{8\\}T[0-9]\\{6\\}-tick-[0-9a-f]\\{6\\}\\'"
@@ -179,6 +180,19 @@ constructor call here would return a new run-id and an unfrozen time."
                                  :percept '(:handles ("h1" "h2"))))))
     (should (equal (plist-get (satan-run-tool-ctx run-ctx) :percept-handles)
                    '("h1" "h2")))))
+
+(ert-deftest satan-run/manual-tool-ctx-satisfies-ctx-required ()
+  "The manual-mark ctx carries exactly what the intervention write API demands."
+  (let ((ctx (satan-run-manual-tool-ctx "rid" 'AUDIT "2026-01-01T00:00:00+0000")))
+    (should (equal ctx '(:id "rid" :mode-name "manual-mark"
+                         :time-now "2026-01-01T00:00:00+0000"
+                         :audit AUDIT :capabilities nil)))
+    (satan-intervention--ctx-required ctx)
+    ;; Negative control: the check is live — without :audit it refuses.
+    (should-error (satan-intervention--ctx-required
+                   (cl-loop for (k v) on ctx by #'cddr
+                            unless (eq k :audit) append (list k v)))
+                  :type 'user-error)))
 
 ;; ── Directories ─────────────────────────────────────────────────────────────
 
