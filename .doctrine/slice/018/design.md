@@ -422,7 +422,11 @@ real runs use the existing temp runs-dir fixtures. No test calls `op`.
 | VT-18 | registration refuses a policy other than `prompt`/`defer` and a negative or non-numeric duration (F-8) |
 
 **VA/VH.**
-- VH-1: validate ASM-002 on the live host (live session, cold ref → no dialog).
+- VH-1: **watch, not validate** (corrected at /plan, 2026-09-23). ASM-002's open
+  case is a session that reports live yet later demands re-auth; positive reads
+  cannot rule it out. Any dialog raised by a defer-mode run whose context lacks
+  "escalated", while `op whoami` reported live, invalidates ASM-002 (see its
+  validation plan). Closure does not wait on it.
 - VH-2: with 1Password locked, a tick writes `credential_deferred` and no dialog
   appears. After the threshold, the next tick raises one labelled dialog.
 - VH-3: the 08:15 motd raises a labelled dialog; accepting later runs motd with
@@ -442,5 +446,5 @@ real runs use the existing temp runs-dir fixtures. No test calls `op`.
    set `satan-credential-function` in config (inert until SATAN reads it).
 2. SATAN: the credential module, gate, policy, patch runner and eviction in
    phases, `just check` green at each.
-3. Restart Emacs (the live Emacs loads the working tree), then VH-1..VH-3.
+3. Restart Emacs (the live Emacs loads the working tree), then VH-2, VH-3, and arm the VH-1 watch.
 

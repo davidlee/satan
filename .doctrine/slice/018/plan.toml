@@ -1,0 +1,280 @@
+# Implementation plan for SL-018 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# VT numbering is slice-wide, not per phase: VT-1..VT-24 are design.md sec-9's
+# own ids, kept verbatim so a phase row and its design row share one id. New
+# rows minted by this plan continue from VT-25. VA/VH ids are per phase.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-018"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "dl-secret backend adapter (~/.emacs.d)"
+objective = """
+In ~/.emacs.d/lisp/dl-secret.el, add `my/op-session-p` (a non-prompting
+`op whoami` probe, non-nil on exit 0) and `my/satan-credential`, the four-op
+backend adapter of design sec-2 (lookup = cache hit, no subprocess; session-p;
+read = `my/op-read` with `my/op-read-context` bound to CONTEXT; forget = remhash
+of one ref). Set `satan-credential-function` to it in init.el's
+`use-package satan` block. Inert until SATAN reads the variable (PHASE-05).
+`my/op-read`, `my/op-read-env`, `my/scrub-op-refs-env` and `my/op-forget` stay
+unchanged: other consumers use them.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-018 plan approved; ~/.emacs.d `just check` green at start" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`my/op-session-p` returns non-nil iff `op whoami` exits 0; never reads, never prompts" },
+  { id = "EX-2", text = "`my/satan-credential` implements lookup / session-p / read / forget per design sec-2; unknown op signals" },
+  { id = "EX-3", text = "`forget` evicts one ref only; other `my/op--cache` entries survive" },
+  { id = "EX-4", text = "init.el sets `satan-credential-function` to `my/satan-credential`; live Emacs behaviour unchanged (nothing reads it yet)" },
+  { id = "EX-5", text = "~/.emacs.d `just check` green; committed in ~/.emacs.d before any SATAN phase" },
+]
+verification = [
+  { id = "VT-25", expects = "my/op-session-p: a stub `my/op-cli` exiting 0 → non-nil, exiting 1 → nil; argv is `whoami`, never `read`", test_file = "/home/david/.emacs.d/lisp/test/dl-secret-test.el", keywords = ["my/op-session-p", "whoami"], waived = true, waived_reason = "out-of-repo test (~/.emacs.d); verify-vt cannot attribute it. Verified by ~/.emacs.d `just check`, recorded in notes.md" },
+  { id = "VT-26", expects = "my/satan-credential: lookup hits/misses the cache without a subprocess; read binds my/op-read-context to CONTEXT; forget evicts one ref and leaves others", test_file = "/home/david/.emacs.d/lisp/test/dl-secret-test.el", keywords = ["my/satan-credential", "my/op-read-context", "my/op--cache"], waived = true, waived_reason = "out-of-repo test (~/.emacs.d); verify-vt cannot attribute it. Verified by ~/.emacs.d `just check`, recorded in notes.md" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "satan-credential module: seam, acquisition, scrub"
+objective = """
+New `satan/satan-credential.el` (design sec-2): `satan-credential-ref-regexp`,
+`satan-credential-function`, one internal error-boundary wrapper over every
+backend call, and the public API `ready-p` / `acquire` (strict) / `resolve`
+(lenient) / `scrub` / `forget`, all taking ENV explicitly and never calling
+`getenv`. No-backend behaviour fails closed. A reusable fake backend (scripted
+results, call log) lives in a test fixture file so PHASE-04..PHASE-07 share it.
+No caller changes in this phase.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 committed in ~/.emacs.d" },
+  { id = "EN-2", text = "`just check` green at start" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`satan-credential.el` exists with the sec-2 API; zero SATAN dependencies beyond `satan-custom`" },
+  { id = "EX-2", text = "no backend signal escapes any public function (acquire → :unavailable, ready-p → nil, resolve → per-var failure, forget → returns ERR)" },
+  { id = "EX-3", text = "acquire verdicts carry `:refs ((VAR . REF) …)` for eviction (sec-6)" },
+  { id = "EX-4", text = "fake backend fixture `satan/test/satan-credential-fixture.el` is loadable by other suites" },
+  { id = "EX-5", text = "`just check` green (lint + test)" },
+]
+verification = [
+  { id = "VT-1", expects = "acquire: literal / unset / cached / session-live-read / no-session-defer / no-session-prompt / prompt-read-signals → :unavailable", test_file = "satan/test/satan-credential-test.el", keywords = ["satan-credential-acquire", ":deferred", ":unavailable"], waived = false },
+  { id = "VT-11", expects = "no backend: ref var → defer :deferred, prompt :unavailable; literal passes; scrub removes the ref", test_file = "satan/test/satan-credential-test.el", keywords = ["satan-credential-scrub", "satan-credential-no-backend"], waived = false },
+  { id = "VT-12", expects = "a signal from lookup / session-p / read → acquire :unavailable, ready-p nil, resolve per-var failure; none escapes", test_file = "satan/test/satan-credential-test.el", keywords = ["satan-credential-ready-p", "satan-credential-resolve", ":failed"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Overlap refusal: run_busy gate and sentinel reset"
+objective = """
+Scope objective 8, independent of credentials and a live bug today. Wrap the
+sentinel body after the timer cancel (child-exit record and finalize) in
+`unwind-protect`, clearing `satan-run--spawn-running` as the unwind form; the
+error still propagates (ISS-020, design sec-6). Add the `run_busy` branch to
+`satan-broker-run`'s cond on `satan-run--spawn-running`, after
+`session_blocked` and before `budget_denied` (sec-3 precedence): a no-child run,
+no rename, no pop, no journal line, added to
+`satan-broker--streak-transparent-reasons`. PHASE-05 extends the branch to a
+nil acquisition verdict.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete; `just check` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "a signal in child-exit recording or finalize still clears `satan-run--spawn-running` and still propagates" },
+  { id = "EX-2", text = "with `satan-run--spawn-running` set, a scheduled run writes a `run_busy` no-child run and spawns nothing" },
+  { id = "EX-3", text = "`run_busy` is transparent to `satan-broker--failure-streak`" },
+  { id = "EX-4", text = "precedence: perceive_failed > session_blocked > run_busy > budget_denied" },
+  { id = "EX-5", text = "`just check` green" },
+]
+verification = [
+  { id = "VT-19", expects = "a signal from the sentinel's child-exit record or from finalize still clears satan-run--spawn-running", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--make-sentinel", "satan-run--spawn-running"], waived = false },
+  { id = "VT-22", expects = "busy plus a perceive error → perceive_failed; busy plus session active → session_blocked", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "perceive_failed", "session_blocked"], waived = false },
+  { id = "VT-27", expects = "spawn-running set → run_busy no-child run: no .FAILED rename, no announce, no child, skipped by the failure streak", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "satan-broker--streak-transparent-reasons"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Per-mode policy, escalation and attended flag"
+objective = """
+Design sec-4 and sec-8, without touching the gate. Mode spec keys
+`:credential-policy` (prompt|defer, absent → defer) and
+`:credential-escalate-after` (seconds; absent → defcustom
+`satan-credential-escalate-after`, 14400), validated at
+`satan-mode-register`; the built-in morning and motd
+specs (satan-mode.el) set `prompt`. `satan-run-id-time`
+parses a run id's timestamp prefix. `satan-broker--credential-policy` returns
+the effective policy and context label from mode, attended flag, now and the
+credential streak (`satan-run-outcome-streak`, status-guarded). The existing
+failure-streak skip predicate gains the same `status failed` guard (RV-013 N8).
+`satan-run-attended` (defvar in satan-broker.el) is bound by `satan-run` only
+when called interactively.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete; `just check` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "registration refuses a bad policy or duration; profile merge carries both keys" },
+  { id = "EX-2", text = "policy function: attended → prompt; prompt → prompt; defer + streak older than threshold → prompt with an \"escalated\" context; else defer" },
+  { id = "EX-3", text = "a bad effective duration signals from the policy function (caught by PHASE-05's acquisition boundary)" },
+  { id = "EX-4", text = "both streak predicates require status `failed`" },
+  { id = "EX-5", text = "`satan-run` binds `satan-run-attended` only when interactive; `satan-tick` and non-interactive calls leave it nil" },
+  { id = "EX-6", text = "`just check` green" },
+]
+verification = [
+  { id = "VT-18", expects = "registration refuses a policy other than prompt/defer and a negative or non-numeric duration", test_file = "satan/test/satan-mode-test.el", keywords = [":credential-policy", ":credential-escalate-after"], waived = false },
+  { id = "VT-4", expects = "escalation: streak older than threshold → prompt; younger → defer; session_blocked / run_busy skipped; a success resets", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--credential-policy", "credential_deferred", "escalated"], waived = false },
+  { id = "VT-23", expects = "a done run whose final reason is credential_deferred / run_busy / session_blocked ends both streaks", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--failure-streak", "satan-broker--credential-policy"], waived = false },
+  { id = "VT-17", expects = "satan-run called non-interactively, and satan-tick, leave satan-run-attended nil", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-run-attended", "satan-tick"], waived = false },
+  { id = "VT-28", expects = "satan-run-id-time parses a satan-run-mint-id id back to its minting time", test_file = "satan/test/satan-run-test.el", keywords = ["satan-run-id-time", "satan-run-mint-id"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Broker credential gate"
+objective = """
+Design sec-3 and sec-5. `satan-broker-run` acquires before
+`satan-run-new-ctx`: `satan-broker--acquire` (skipped → nil while busy)
+builds the direnv base env once, collects the key var, policy and context, and
+calls `satan-credential-acquire`, all inside one `condition-case` that turns
+any signal into `(:unavailable ERR)`. The cond gains `credential_deferred`
+(no-child, no rename, journal-only line) and `credential_unavailable`
+(`satan-broker--write-failed-no-child-run`), and `run_busy` extends to a nil
+verdict. `--spawn` takes the verdict: its `:env` joins `provider-env`, its base
+env replaces the second direnv call, `satan-credential-scrub` replaces
+`my/scrub-op-refs-env`, and its `:refs` land in a new `satan-run` slot
+`credential-refs`. `satan-broker--read-env`, the key `condition-case` and every
+`my/*` declaration in satan-broker.el are deleted.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete; `just check` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "acquisition precedes run allocation; a busy run never calls the backend" },
+  { id = "EX-2", text = "defer mode, no session: `credential_deferred` run, backend saw only lookup / session-p" },
+  { id = "EX-3", text = "prompt / attended / escalated: `read` called with the context label; failure → `credential_unavailable` .FAILED run" },
+  { id = "EX-4", text = "the child env is the acquired base env plus the resolved key, with refs scrubbed" },
+  { id = "EX-5", text = "no `my/` symbol remains in satan-broker.el" },
+  { id = "EX-6", text = "`just check` green" },
+]
+verification = [
+  { id = "VT-2", expects = "defer mode, no session → credential_deferred no-child run; backend saw only lookup / session-p, never read", test_file = "satan/test/satan-broker-test.el", keywords = ["credential_deferred", "satan-credential-function"], waived = false },
+  { id = "VT-3", expects = "prompt mode, no session → read called with the mode's context label", test_file = "satan/test/satan-broker-test.el", keywords = ["satan broker/"], waived = false },
+  { id = "VT-5", expects = "live session, cold cache → spawns; read follows session-p t", test_file = "satan/test/satan-broker-test.el", keywords = ["session-p", "satan-broker--spawn"], waived = false },
+  { id = "VT-8", expects = "attended satan-run → prompt even for a defer mode", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-run-attended", "read"], waived = false },
+  { id = "VT-9", expects = "a blocking read stub advances the clock; the run id carries the later time", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-run-id-time", "satan-broker-run"], waived = false },
+  { id = "VT-13", expects = "credential_unavailable end-to-end: .FAILED dir, final.json reason, journal line, same-cause streak position", test_file = "satan/test/satan-broker-test.el", keywords = ["credential_unavailable", ".FAILED"], waived = false },
+  { id = "VT-14", expects = "spawn-running set → no acquisition call, run_busy run; flag cleared before the cond with nil cred → still run_busy; skipped by both streaks", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "satan-broker--acquire"], waived = false },
+  { id = "VT-20", expects = "a key ref present only in the direnv-merged env is acquired; the child receives exactly that base env", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--direnv-env", "satan-broker--acquire"], waived = false },
+  { id = "VT-21", expects = "invalid effective duration, or a signalling streak walk → recorded credential_unavailable run, not a lost trigger", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-credential-escalate-after", "credential_unavailable"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Rotation self-heal"
+objective = """
+Design sec-6. `satan-broker--evict-on-auth` runs in `satan-broker--finalize`
+after status and `failure-reason` are final and before the announce. On status
+`failed` with the classified `failure-reason` slot exactly `"auth"`, it calls
+`satan-credential-forget` on each ref in the run's `credential-refs` slot; an
+ERR return is recorded as a `broker` `evict-failed` audit event. final.json's
+reason is never consulted.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete; `credential-refs` slot populated by --spawn; `just check` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "only a classified `auth` failure evicts, and only the refs the run used" },
+  { id = "EX-2", text = "a failed forget records `evict-failed`; rename, announce and the sentinel reset still happen" },
+  { id = "EX-3", text = "`just check` green" },
+]
+verification = [
+  { id = "VT-6", expects = "classified auth → forget on the used ref; credits / unknown → none; done run, or final reason \"auth\" without the slot → none", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--evict-on-auth", "credential-refs"], waived = false },
+  { id = "VT-15", expects = "forget signals during an auth finalize → evict-failed audit event; rename, announce and spawn-running reset still happen", test_file = "satan/test/satan-broker-test.el", keywords = ["evict-failed", "satan-broker--finalize"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Patch runner under the seam"
+objective = """
+Design sec-7. `satan-patch-runner-tick`, enabled and idle: peek with
+`satan-patch-store-list :state "queued" :limit 1` (empty → no backend call;
+error → message), check `satan-credential-ready-p` over
+`satan-patch-adapter-pi-api-key-vars` (nil → message plus journal-only
+`credential_deferred patch`, job stays queued), claim, then
+`satan-credential-resolve` leniently and pass the result as `:env`. Per-var
+failures become adapter `:warnings`, persisted on `adapter_failed`.
+`satan-patch-adapter-pi-invoke` binds `process-environment` to
+`(satan-credential-scrub (append ENV process-environment))`;
+`--resolved-env` and every `my/*` declaration go. Patch never escalates and
+never evicts.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete; `just check` green with the patch DB suites reachable (not skipped)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "an idle runner makes zero backend calls; a not-ready runner claims nothing" },
+  { id = "EX-2", text = "one failing var of seven: the job runs and carries a warning" },
+  { id = "EX-3", text = "no `my/` symbol remains under satan/ (package-wide)" },
+  { id = "EX-4", text = "`just check` green" },
+]
+verification = [
+  { id = "VT-7", expects = "nothing queued → zero backend calls; deferred → job stays queued; ok → adapter env carries the resolved key, refs scrubbed", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["satan-credential-ready-p", "queued"], waived = false },
+  { id = "VT-16", expects = "peek error → no backend call; ready but claim returns nil → no resolve; one failing var of seven → job runs with a warning", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["satan-patch-store-list", "satan-credential-resolve", ":warnings"], waived = false },
+  { id = "VT-24", expects = "an adapter_failed job row carries the per-var resolution warnings", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["adapter_failed", ":warnings"], waived = false },
+  { id = "VT-10", expects = "standing guard: no satan/*.el source mentions a dl-secret symbol (my/op-*, my/scrub-op*)", test_file = "satan/test/satan-credential-test.el", keywords = ["no-dl-secret-coupling"], waived = false },
+  { id = "VA-1", text = "by inspection: no `(error nil)` / `ignore-errors` wraps key resolution in satan-broker.el or satan-patch-adapter-pi.el (design VT-10's second half, which a substring test cannot express)" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "Live rollout and watch"
+objective = """
+Restart the live Emacs (it loads the working tree) and verify on the host.
+VH-2 and VH-3 are one-shot acceptance checks. VH-1 is a standing watch, not a
+test: ASM-002 (a read in a live session never prompts) cannot be validated by
+positive reads, so this phase records the watch condition and its trigger.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01..PHASE-07 complete and committed in both repos; `just check` green in both" },
+  { id = "EN-2", text = "keeper available to lock 1Password and answer dialogs" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "VH-2 and VH-3 observed and recorded in notes.md" },
+  { id = "EX-2", text = "VH-1 watch armed: condition and response recorded against ASM-002; slice closure does not wait on it" },
+]
+verification = [
+  { id = "VH-1", text = "WATCH (ASM-002; corrects design sec-9 VH-1): any 1Password dialog raised by a defer-mode run whose context lacks \"escalated\", while `op whoami` reported a live session, invalidates ASM-002 → record EVD, set ASM-002 invalidated, revisit DEC-020/DEC-022. Absence of such a dialog is not validation." },
+  { id = "VH-2", text = "with 1Password locked, a tick writes `credential_deferred` and no dialog appears; after the threshold the next tick raises one labelled (escalated) dialog" },
+  { id = "VH-3", text = "the 08:15 motd raises a labelled dialog; accepting later runs motd with a fresh run id" },
+]
+specs        = []
+requirements = []
