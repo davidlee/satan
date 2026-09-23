@@ -61,6 +61,8 @@
             socat
             bun
             jailLib.agentsByName.codex
+            jailLib.agentsByName.claude
+
             coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           ]
           ++ [doctrine-pkg];
