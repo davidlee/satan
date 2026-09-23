@@ -13,6 +13,7 @@
 (require 'ert)
 (require 'cl-lib)
 (require 'json)
+(require 'satan-announce)
 (require 'satan-attribute-listener)
 (require 'satan-audit)
 
@@ -198,6 +199,26 @@ dir holding an empty transcript.jsonl, bound as `tmp' inside BODY."
         (should (null received))
         (funcall filter nil (substring full mid))
         (should (equal '(55) received))))))
+
+;; ---------------------------------------------------------------------
+;; --report-death (mirrors satan-patch-listener-test.el)
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-attribute-listener/report-death-fires-critical-notification ()
+  (satan-announce-with-recorder
+    (satan-attribute-listener--report-death 'exit 1 "boom\nfatal\n")
+    (should (= 1 (length satan-announce-recorded)))
+    (let ((a (car satan-announce-recorded)))
+      (should (equal 'critical (plist-get a :urgency)))
+      (should (string-match-p "satan-attribute" (plist-get a :title)))
+      (should (string-match-p "boom" (plist-get a :body)))
+      (should (plist-get a :journal)))))
+
+(ert-deftest satan-attribute-listener/report-death-handles-nil-stderr ()
+  (satan-announce-with-recorder
+    (satan-attribute-listener--report-death 'signal 9 nil)
+    (should (= 1 (length satan-announce-recorded)))
+    (should (stringp (plist-get (car satan-announce-recorded) :body)))))
 
 ;; ---------------------------------------------------------------------
 ;; --check-schema unit

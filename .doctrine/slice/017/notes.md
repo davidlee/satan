@@ -60,6 +60,64 @@ named tests in sec-9 pin down. The execution phases that touch the spawn
 handler (sec-4) and the classify split (sec-5) should get a code review at
 their `/audit`.
 
+## PHASE-01 executed (2026-09-23) — GREEN
+
+Capsule worker (sonnet — keeper's model choice for PHASE-01..03, mechanical
+seam introduction against a T1-T11 sheet, design judgement locked at
+dr-01a0cc0b). In-tree, no worktree isolation.
+
+- **New:** `satan/satan-announce.el` (seam: `satan-notify-app` moved,
+  `-sink`, `-deliver`, `-record`, `-recorded`, `-with-recorder`; requires only
+  `cl-lib` + `satan-custom`). `satan/test/satan-announce-test.el` (VT-1 five
+  cases + VT-2 self-check).
+- **Routed through the seam:** `satan-broker--announce-failure` (kept 4-arg,
+  streak==1 gate, per-A1), `satan-tool/notify-send`, both listeners'
+  `--report-death`. `dev/satan-test.el` let-binds `satan-announce-sink` to
+  the recorder around `satan-test-run-batch`'s whole load+run.
+- **T7 (6 sites) de-stubbed**, all via `satan-announce-with-recorder` or a
+  direct `satan-announce-sink` let-bind, none via `notifications-notify`:
+  `satan-broker-test.el` (2, rewritten to assert on the recorded plist's
+  `:journal`/`:title` presence, not call counts — R8), `satan-tools-notify-
+  test.el` (2 — `dispatch-ok`'s literal `42` moved to the recorder's fake id
+  and captured plist per A2; `handler-error-propagates` induces failure by
+  let-binding `satan-announce-sink` to a signalling lambda, A3 option (a)),
+  `satan-patch-listener-test.el` (2), `satan-sensor-alerts-test.el` (2 —
+  `--silence-notify`'s counter now increments on `:title`-bearing recorder
+  entries), `satan-tools-test.el` (1 — asserts `(null satan-announce-recorded)`).
+- **T8 new:** `satan-broker/budget-denied-run-is-recorded-not-delivered` —
+  the ISS-015 leak, now caught structurally with no per-test stub.
+- **Additional scope (driver decision):** two tests mirroring
+  `satan-patch-listener`'s `report-death-*` pair, added for
+  `satan-attribute-listener--report-death` (previously untested), asserting
+  via the recorder.
+- **satan-announce-test.el's 4 delivery tests call `satan-announce-deliver`
+  directly**, not `satan-announce` — inside the full suite the harness binds
+  `satan-announce-sink` to the recorder, so going through the seam entry
+  point would hit the recorder instead of the local `notifications-notify`/
+  `call-process` stubs. This is the "own unit tests" exception's actual
+  mechanics; worth remembering for any future seam-adjacent test.
+- **satan-announce-test.el requires `notifications` eagerly** — otherwise
+  `satan-announce-deliver`'s lazy `(require 'notifications)` reloads the real
+  definition over a `cl-letf` stub mid-test (same trick already used in
+  `satan-patch-listener-test.el`).
+- **Gate:** `SATAN_DB_HOST=/run/postgresql/ just check` → `Ran 1053 tests,
+  1049 results as expected, 1 unexpected, 3 skipped` (1044/1040/1/3 baseline
+  + 9 new tests; the 1 unexpected is the pre-existing
+  `satan-db/test-db-available-p-probes-test-host`). `just lint`: all
+  `{"ok":true}`. Byte-compile of every new/changed file: clean (three
+  pre-existing warnings elsewhere confirmed present at HEAD, untouched).
+- **VA-1** (design sec-8 selectors): selector 1 hits only
+  `satan-announce.el`; selector 2 (`notifications-notify` in `satan/test/`
+  outside `satan-announce-test.el`) came back empty only after rewording two
+  test docstrings that named the function in prose (false positives against
+  the literal grep, not real stubs).
+- **VA-2/V1:** `just check` bracketed with `journalctl -t satan --since/
+  --until` — zero lines in the window (journalctl itself verified live via a
+  wider `--since` query showing real prior entries).
+- **Deviation:** none from the sheet's task list; the delivery-test dynamic-
+  scope interaction (above) was not called out in the sheet and was found
+  during the gate run, not before.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready

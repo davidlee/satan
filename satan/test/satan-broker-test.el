@@ -11,6 +11,7 @@
 (require 'json)                          ; budget gating test parses final.json
 (require 'satan-jsonl)
 (require 'satan-audit)
+(require 'satan-announce)
 (require 'satan-broker)
 (require 'satan-budget)               ; budget gating cross-cutter
 (require 'cl-macs)                       ; cl-letf used in tool-ctx tests
@@ -176,21 +177,13 @@ read from the prepare-phase run_ctx plist."
       (delete-directory root t))))
 
 (ert-deftest satan-broker/announce-failure-syslog-and-streak-gate ()
-  "Always logs via syslog; only notifies on streak == 1."
-  (let* ((logged nil)
-         (notified 0)
-         (root (make-temp-file "satan-runs-announce-" t))
+  "Always journals; only pops (carries `:title') on streak == 1."
+  (let* ((root (make-temp-file "satan-runs-announce-" t))
          (satan-runs-dir root)
          (satan-failure-syslog t)
          (satan-failure-notify t))
     (unwind-protect
-        (cl-letf
-            (((symbol-function 'call-process)
-              (lambda (cmd &rest args)
-                (when (equal cmd "logger") (push args logged))
-                0))
-             ((symbol-function 'notifications-notify)
-              (lambda (&rest _args) (cl-incf notified) 42)))
+        (satan-announce-with-recorder
           ;; No prior runs → streak == 0 before rename; the just-renamed
           ;; dir is what bumps it to 1.  Emulate by creating that dir
           ;; first, then calling announce.
@@ -200,40 +193,39 @@ read from the prepare-phase run_ctx plist."
           (satan-broker--announce-failure
            "20260520T100000-tick-pulse-aaaaaa" "tick-pulse"
            'failed "child-exit-1")
-          (should (= 1 (length logged)))
-          (should (= 1 notified))
-          ;; Second consecutive failure → still logged, NOT notified.
+          (should (= 1 (length satan-announce-recorded)))
+          (should (plist-get (car satan-announce-recorded) :journal))
+          (should (plist-get (car satan-announce-recorded) :title))
+          ;; Second consecutive failure → still journalled, but no pop
+          ;; (streak != 1).
           (make-directory
            (expand-file-name
             "2026-05-20/20260520T110000-tick-pulse-bbbbbb.FAILED" root) t)
           (satan-broker--announce-failure
            "20260520T110000-tick-pulse-bbbbbb" "tick-pulse"
            'failed "child-exit-1")
-          (should (= 2 (length logged)))
-          (should (= 1 notified)))
+          (should (= 2 (length satan-announce-recorded)))
+          (should (plist-get (car satan-announce-recorded) :journal))
+          (should-not (plist-get (car satan-announce-recorded) :title)))
       (delete-directory root t))))
 
 (ert-deftest satan-broker/announce-failure-respects-disables ()
   "Both syslog and notify are gated by their respective defcustom flags."
-  (let* ((logged 0) (notified 0)
-         (root (make-temp-file "satan-runs-announce2-" t))
+  (let* ((root (make-temp-file "satan-runs-announce2-" t))
          (satan-runs-dir root)
          (satan-failure-syslog nil)
          (satan-failure-notify nil))
     (unwind-protect
-        (cl-letf
-            (((symbol-function 'call-process)
-              (lambda (&rest _args) (cl-incf logged) 0))
-             ((symbol-function 'notifications-notify)
-              (lambda (&rest _args) (cl-incf notified) 42)))
+        (satan-announce-with-recorder
           (make-directory
            (expand-file-name
             "2026-05-20/20260520T100000-tick-pulse-aaaaaa.FAILED" root) t)
           (satan-broker--announce-failure
            "20260520T100000-tick-pulse-aaaaaa" "tick-pulse"
            'failed "child-exit-1")
-          (should (= 0 logged))
-          (should (= 0 notified)))
+          (should (= 1 (length satan-announce-recorded)))
+          (should-not (plist-get (car satan-announce-recorded) :journal))
+          (should-not (plist-get (car satan-announce-recorded) :title)))
       (delete-directory root t))))
 
 ;; ---------- satan-run-new-ctx (Phase 0.1) ----------
@@ -474,6 +466,31 @@ Secondary subject: satan-budget (gating policy)."
                                          (plist-get final :summary)))
                  (should (equal (plist-get final :reason)
                                 "budget_daily_tokens")))))
+         (delete-directory root t))))))
+
+(ert-deftest satan-broker/budget-denied-run-is-recorded-not-delivered ()
+  "ISS-015: a budget-denied run's failure announcement lands in the
+recorder, never the real announcer — structurally, with no per-test
+D-Bus/logger stub needed."
+  (satan-broker-test--with-tool-descriptions
+   satan-broker-test--morning-tool-descriptions
+   (lambda ()
+     (let* ((root (make-temp-file "satan-bud-recorded-" t))
+            (now (current-time))
+            (today (format-time-string "%Y%m%dT" now))
+            (existing (expand-file-name (concat today "080000-x-eeeeee") root))
+            (satan-runs-dir root)
+            (satan-budget-daily-tokens 400000)
+            (satan-trace-enabled nil))
+       (unwind-protect
+           (cl-letf (((symbol-function 'satan-run-perceive)
+                      #'satan-broker-test--minimal-perceive))
+             (satan-broker-test--write-transcript
+              existing (list (satan-broker-test--usage-record 500000)))
+             (satan-announce-with-recorder
+               (satan-broker-run "morning")
+               (should satan-announce-recorded)
+               (should (plist-get (car satan-announce-recorded) :journal))))
          (delete-directory root t))))))
 
 ;; ---------- VT-budget-denied-perceives (DR-010 §5, ISSUE-001) ----------

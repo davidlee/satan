@@ -5,6 +5,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'satan-announce)
 (require 'satan-patch-listener)
 (require 'satan-patch-store)
 (require 'satan-patch-inbox)
@@ -139,22 +140,20 @@ handoff pushes the row onto RECEIVED-VAR."
 ;; ---------------------------------------------------------------------
 
 (ert-deftest satan-patch-listener/report-death-fires-critical-notification ()
-  (require 'notifications)
-  (let ((notif-args nil))
-    (cl-letf (((symbol-function 'notifications-notify)
-               (lambda (&rest args) (setq notif-args args) 42)))
-      (satan-patch-listener--report-death 'exit 1 "boom\nfatal\n"))
-    (should (equal 'critical (plist-get notif-args :urgency)))
-    (should (string-match-p "satan-patch" (plist-get notif-args :title)))
-    (should (string-match-p "boom" (plist-get notif-args :body)))))
+  (satan-announce-with-recorder
+    (satan-patch-listener--report-death 'exit 1 "boom\nfatal\n")
+    (should (= 1 (length satan-announce-recorded)))
+    (let ((a (car satan-announce-recorded)))
+      (should (equal 'critical (plist-get a :urgency)))
+      (should (string-match-p "satan-patch" (plist-get a :title)))
+      (should (string-match-p "boom" (plist-get a :body)))
+      (should (plist-get a :journal)))))
 
 (ert-deftest satan-patch-listener/report-death-handles-nil-stderr ()
-  (require 'notifications)
-  (let ((notif-args nil))
-    (cl-letf (((symbol-function 'notifications-notify)
-               (lambda (&rest args) (setq notif-args args) 42)))
-      (satan-patch-listener--report-death 'signal 9 nil))
-    (should (stringp (plist-get notif-args :body)))))
+  (satan-announce-with-recorder
+    (satan-patch-listener--report-death 'signal 9 nil)
+    (should (= 1 (length satan-announce-recorded)))
+    (should (stringp (plist-get (car satan-announce-recorded) :body)))))
 
 ;; ---------------------------------------------------------------------
 ;; integration — gated on SATAN_PATCH_LIVE

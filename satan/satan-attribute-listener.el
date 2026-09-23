@@ -27,8 +27,7 @@
 (require 'satan-attribute)
 (require 'satan-jsonl)
 (require 'satan-run)
-
-(declare-function notifications-notify "notifications" (&rest args))
+(require 'satan-announce)
 
 ;; ---------------------------------------------------------------------
 ;; customisation
@@ -267,13 +266,12 @@ on-disk line shape is identical."
          (body  (or stderr-tail "(no stderr captured)")))
     (message "%s\n%s" title body)
     (condition-case err
-        (progn
-          (require 'notifications)
-          (notifications-notify
-           :title title
-           :body  body
-           :urgency 'critical
-           :app-name satan-attribute-listener-notify-app))
+        (satan-announce
+         :app satan-attribute-listener-notify-app
+         :title title
+         :body body
+         :urgency 'critical
+         :journal (format "%s: %s" title body))
       (error
        (message "satan-attribute-listener: notify failed: %s"
                 (error-message-string err))))))

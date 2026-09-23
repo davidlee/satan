@@ -5,6 +5,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'satan-announce)
 (require 'satan-sensor-alerts)
 (require 'satan-context)
 (require 'satan-tools-notify)
@@ -102,15 +103,20 @@
         :browser "ok"))
 
 (defun satan-sensor-alerts-test--silence-notify (body-fn)
-  "Stub `notifications-notify' to a counter; call BODY-FN with counter ref.
-Also stubs `satan-intervention-create' so the notify_send handler's
-T7 intervention path does not require a live audit handle / DB."
+  "Run BODY-FN with a live pop counter; COUNTER is a 1-cell list
+incremented once per announcement that carries `:title' (i.e. an actual
+pop, not a journal-only entry).  Also stubs `satan-intervention-create'
+so the notify_send handler's T7 intervention path does not require a
+live audit handle / DB."
   (let ((counter (list 0)))
-    (cl-letf (((symbol-function 'notifications-notify)
-               (lambda (&rest _) (cl-incf (car counter)) 42))
-              ((symbol-function 'satan-intervention-create)
+    (cl-letf (((symbol-function 'satan-intervention-create)
                (lambda (&rest _) "iv-sensor-stub-01")))
-      (funcall body-fn counter))))
+      (let ((satan-announce-sink
+             (lambda (a)
+               (when (plist-get a :title) (cl-incf (car counter)))
+               (satan-announce-record a)))
+            (satan-announce-recorded nil))
+        (funcall body-fn counter)))))
 
 ;; A15 — one dispatch per cause per cooldown window
 
@@ -281,26 +287,23 @@ names."
          (should (= 0 (car counter))))))))
 
 (ert-deftest satan-sensor-alerts/dispatch-goes-through-tool-dispatch ()
-  "Successful dispatch shows up as a `notifications-notify' invocation."
+  "Successful dispatch shows up as a recorded announcement."
   (satan-sensor-alerts-test--with-tmp-state path
-    (let* ((seen nil)
-           (mode (satan-sensor-alerts-test--mode '(notify)))
+    (let* ((mode (satan-sensor-alerts-test--mode '(notify)))
            (ss (list :current_window "stale-28m" :focus "ok"
                      :browser "ok")))
-      (cl-letf (((symbol-function 'notifications-notify)
-                 (lambda (&rest args)
-                   (setq seen args)
-                   42))
-                ((symbol-function 'satan-intervention-create)
+      (cl-letf (((symbol-function 'satan-intervention-create)
                  (lambda (&rest _) "iv-sensor-stub-02")))
-        (satan-sensor-alerts-check
-         ss mode
-         :time-now "2026-05-22T10:00:00+10:00"
-         :state-file path
-         :quiet-p-fn (lambda (&rest _) nil)))
-      (should seen)
-      (should (string-match-p "SATAN sensor: panopticon_current_stale"
-                              (plist-get seen :title))))))
+        (satan-announce-with-recorder
+          (satan-sensor-alerts-check
+           ss mode
+           :time-now "2026-05-22T10:00:00+10:00"
+           :state-file path
+           :quiet-p-fn (lambda (&rest _) nil))
+          (should satan-announce-recorded)
+          (should (string-match-p
+                   "SATAN sensor: panopticon_current_stale"
+                   (plist-get (car satan-announce-recorded) :title))))))))
 
 ;; ---------------------------------------------------------------------
 ;; SL-002 PHASE-04 — retired-cause state prune (RN-17)

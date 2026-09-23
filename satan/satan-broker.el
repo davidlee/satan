@@ -15,6 +15,7 @@
 (require 'subr-x)
 (require 'satan-custom)
 (require 'satan-run)
+(require 'satan-announce)
 (require 'satan-audit)
 (require 'satan-budget)
 (require 'satan-jsonl)
@@ -57,8 +58,6 @@ before spawning the child.  Set to nil to disable."
 ;; without this, lexical-binding would make it a dead local.
 (defvar my/op-read-context)
 (declare-function my/scrub-op-refs-env "dl-secret" (env))
-(declare-function notifications-notify "notifications" (&rest args))
-
 (defun satan-broker--read-env (var)
   "Return VAR from the environment, resolving `op://' refs when possible.
 Falls back to `getenv' if `my/op-read-env' is unavailable."
@@ -329,26 +328,27 @@ newest run is non-failed or no runs exist."
     streak))
 
 (defun satan-broker--announce-failure (run-id mode-slug status reason)
-  "Emit syslog + (streak-gated) notify-send for a failed run.
-RUN-ID, MODE-NAME, STATUS (symbol), REASON (short string) compose the
-log line and notification body."
+  "Emit syslog + (streak-gated) notify-send for a failed run, via the
+announce seam (`satan-announce').  RUN-ID, MODE-NAME, STATUS (symbol),
+REASON (short string) compose the log line and notification body.
+Journalling and popping are independent switches: `satan-failure-syslog'
+gates the journal line, `satan-failure-notify' plus streak == 1 gates the
+pop.  Delivery mechanics (best-effort journal) live in
+`satan-announce-deliver'; a pop failure propagates out of `satan-announce'
+by design (section 5's contract), so this caller wraps the whole
+announcement in `ignore-errors', as it did before the seam existed —
+a failed-run notification is not worth failing finalize over."
   (let ((line (format "%s %s %s %s"
                       (symbol-name status) mode-slug run-id reason)))
-    (when satan-failure-syslog
-      (ignore-errors
-        (call-process "logger" nil 0 nil
-                      "-t" "satan" "-p" "user.warn" line)))
-    (when (and satan-failure-notify
-               (= 1 (satan-broker--failure-streak-count
-                     satan-runs-dir)))
-      (ignore-errors
-        (require 'notifications)
-        (notifications-notify
-         :app-name "SATAN"
-         :title (format "SATAN %s (%s)" (symbol-name status) mode-slug)
-         :body line
-         :urgency 'normal
-         :timeout 6000)))))
+    (ignore-errors
+      (satan-announce
+       :journal (and satan-failure-syslog line)
+       :title (and satan-failure-notify
+                   (= 1 (satan-broker--failure-streak-count satan-runs-dir))
+                   (format "SATAN %s (%s)" (symbol-name status) mode-slug))
+       :body line
+       :urgency 'normal
+       :timeout 6000))))
 
 (defun satan-broker--make-sentinel (run-ctx)
   (lambda (_proc event)

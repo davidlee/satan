@@ -22,8 +22,7 @@
 (require 'subr-x)
 (require 'satan-patch-store)
 (require 'satan-patch-inbox)
-
-(declare-function notifications-notify "notifications" (&rest args))
+(require 'satan-announce)
 
 ;; ---------------------------------------------------------------------
 ;; customisation
@@ -104,13 +103,12 @@ CHANNEL is informational; payload is already on a registered channel."
          (body  (or stderr-tail "(no stderr captured)")))
     (message "%s\n%s" title body)
     (condition-case err
-        (progn
-          (require 'notifications)
-          (notifications-notify
-           :title title
-           :body  body
-           :urgency 'critical
-           :app-name satan-patch-listener-notify-app))
+        (satan-announce
+         :app satan-patch-listener-notify-app
+         :title title
+         :body body
+         :urgency 'critical
+         :journal (format "%s: %s" title body))
       (error
        (message "satan-patch-listener: notify failed: %s"
                 (error-message-string err))))))

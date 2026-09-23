@@ -7,6 +7,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'satan-announce)
 (require 'satan-tools)
 (require 'satan-tools-notify)
 
@@ -156,19 +157,17 @@ dispatcher can enforce it without each mode having to opt in."
 
 (ert-deftest satan-tools/dispatch-rejects-notify-without-capability ()
   "Remove `notify' from a mode's tool-ctx; `notify_send' is rejected by
-the dispatcher, the handler stub records zero calls."
-  (let ((handler-called 0))
-    (cl-letf (((symbol-function 'notifications-notify)
-               (lambda (&rest _args) (cl-incf handler-called) 42)))
-      (let ((res (satan-tool-dispatch
-                  '(:type "tool_call" :id "n0" :name "notify_send"
-                    :args (:title "t" :body "b"))
-                  '("notify_send")
-                  '(:capabilities (inbox-write memory-write)))))
-        (should (equal (plist-get res :ok) :false))
-        (should (string-match-p "capability" (plist-get res :error)))
-        (should (string-match-p "notify" (plist-get res :error)))
-        (should (= 0 handler-called))))))
+the dispatcher before it ever reaches the announce seam."
+  (satan-announce-with-recorder
+    (let ((res (satan-tool-dispatch
+                '(:type "tool_call" :id "n0" :name "notify_send"
+                  :args (:title "t" :body "b"))
+                '("notify_send")
+                '(:capabilities (inbox-write memory-write)))))
+      (should (equal (plist-get res :ok) :false))
+      (should (string-match-p "capability" (plist-get res :error)))
+      (should (string-match-p "notify" (plist-get res :error)))
+      (should (null satan-announce-recorded)))))
 
 ;; ---------- JSON Schema builder ----------
 

@@ -1,18 +1,14 @@
 ;;; satan-tools-notify.el --- notify_send tool handler -*- lexical-binding: t; -*-
 
-;; Desktop notification via D-Bus.  Thin wrapper around
-;; `notifications-notify' (built-in).  Visible to the user immediately,
-;; so risk is `low' but never `read': included in the audit transcript
-;; like any other tool call.
+;; Desktop notification via D-Bus, through the announce seam
+;; (`satan-announce').  Visible to the user immediately, so risk is `low'
+;; but never `read': included in the audit transcript like any other tool
+;; call.
 
 (require 'cl-lib)
-(require 'notifications)
+(require 'satan-announce)
 (require 'satan-tools)
 (require 'satan-intervention)
-
-(defcustom satan-notify-app "SATAN"
-  "Application name shown in D-Bus notifications."
-  :type 'string :group 'satan)
 
 (defcustom satan-notify-default-timeout 8000
   "Default notification timeout in milliseconds."
@@ -36,7 +32,7 @@ CTX:   broker-supplied tool-ctx with `:id', `:mode-name', `:time-now',
        and `:audit'.
 
 Side effects:
-  - Fires the D-Bus notification (`notifications-notify').
+  - Fires the D-Bus notification via `satan-announce'.
   - Emits `intervention.created' into the run's transcript and INSERTs
     the row into `satan_interventions' via `satan-intervention-create'.
 
@@ -53,10 +49,9 @@ failures propagate as user-error from the intervention layer."
       (cons 'error "title and body must be strings"))
      (t
       (condition-case err
-          (let ((notify-id (notifications-notify
+          (let ((notify-id (satan-announce
                             :title title
                             :body body
-                            :app-name satan-notify-app
                             :urgency (pcase urgency
                                        ("low"      'low)
                                        ("critical" 'critical)

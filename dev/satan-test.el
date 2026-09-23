@@ -31,6 +31,7 @@
 ;;; Code:
 
 (require 'ert)
+(require 'satan-announce)
 
 (defconst satan-test--repo-root
   (file-name-directory
@@ -76,33 +77,39 @@ production database from a test run."
              (not (getenv "SATAN_FAILOVER_TO_SYSTEM_DB")))
     (error "satan-test: refusing to run batch tests against production socket; set SATAN_DB_HOST or SATAN_FAILOVER_TO_SYSTEM_DB"))
   (ert-delete-all-tests)
-  (let ((load-errors '()))
-    (dolist (f (satan-test--suite-files))
-      ;; A sibling suite file may `require' this one for its fixture
-      ;; macros, which loads it (and defines its tests) before the loop
-      ;; reaches it.  Loading again re-runs every `ert-deftest', which
-      ;; errors in batch ("redefined (or loaded twice)").  Skip files
-      ;; whose feature is already provided.
-      (unless (featurep (intern (file-name-base f)))
-        (condition-case err
-            (load f nil t)
-          (error (push (format "%s: %s" (file-name-base f)
-                               (error-message-string err))
-                       load-errors)))))
-    (let* ((stats (ert-run-tests-batch t))
-           (total (ert-stats-total stats))
-           (unexpected (ert-stats-completed-unexpected stats))
-           (expected (ert-stats-completed-expected stats))
-           (skipped (if (fboundp 'ert-stats-skipped)
-                        (ert-stats-skipped stats) 0))
-           (loaderr (when load-errors
-                      (format " | LOADERR %d: %s"
-                              (length load-errors)
-                              (string-join (nreverse load-errors) "; ")))))
-      (if (and (zerop unexpected) (null load-errors))
-          (format "PASS %d/%d passed (%d skipped)" expected total skipped)
-        (format "FAIL %d unexpected / %d total (%d skipped)%s"
-                unexpected total skipped (or loaderr ""))))))
+  ;; Hermeticity floor (design.md sec-2): the whole load-and-run happens
+  ;; under the recording sink, so nothing any test forgets to stub can
+  ;; still reach D-Bus or the journal.  A `let', not a `setq' — running
+  ;; this from a live Emacs (check-interactive) never silences its real
+  ;; alerts once the run ends.
+  (let ((satan-announce-sink #'satan-announce-record))
+    (let ((load-errors '()))
+      (dolist (f (satan-test--suite-files))
+        ;; A sibling suite file may `require' this one for its fixture
+        ;; macros, which loads it (and defines its tests) before the loop
+        ;; reaches it.  Loading again re-runs every `ert-deftest', which
+        ;; errors in batch ("redefined (or loaded twice)").  Skip files
+        ;; whose feature is already provided.
+        (unless (featurep (intern (file-name-base f)))
+          (condition-case err
+              (load f nil t)
+            (error (push (format "%s: %s" (file-name-base f)
+                                 (error-message-string err))
+                         load-errors)))))
+      (let* ((stats (ert-run-tests-batch t))
+             (total (ert-stats-total stats))
+             (unexpected (ert-stats-completed-unexpected stats))
+             (expected (ert-stats-completed-expected stats))
+             (skipped (if (fboundp 'ert-stats-skipped)
+                          (ert-stats-skipped stats) 0))
+             (loaderr (when load-errors
+                        (format " | LOADERR %d: %s"
+                                (length load-errors)
+                                (string-join (nreverse load-errors) "; ")))))
+        (if (and (zerop unexpected) (null load-errors))
+            (format "PASS %d/%d passed (%d skipped)" expected total skipped)
+          (format "FAIL %d unexpected / %d total (%d skipped)%s"
+                  unexpected total skipped (or loaderr "")))))))
 
 (provide 'satan-test)
 ;;; satan-test.el ends here

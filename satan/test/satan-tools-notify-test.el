@@ -7,6 +7,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'satan-announce)
 (require 'satan-tools)
 (require 'satan-tools-notify)
 (require 'satan-intervention)
@@ -23,21 +24,21 @@
 ignores it.")
 
 (defmacro satan-notify-test--with-stubs (&rest body)
-  "Stub `notifications-notify' (returns 42) and capture intervention writes.
-Inside BODY, the symbol `satan-notify-test--captured' is a list of
-keyword-args plists handed to `satan-intervention-create'."
+  "Bind the recording announce sink and capture intervention writes.
+Inside BODY, `satan-notify-test--captured' is a list of keyword-args
+plists handed to `satan-intervention-create'; `satan-announce-recorded'
+carries whatever `notify_send' announced."
   (declare (indent 0))
   `(let ((satan-notify-test--captured '()))
-     (cl-letf (((symbol-function 'notifications-notify)
-                (lambda (&rest _args) 42))
-               ((symbol-function 'satan-intervention-create)
+     (cl-letf (((symbol-function 'satan-intervention-create)
                 (lambda (&rest args)
                   (push args satan-notify-test--captured)
                   "iv-stub-01")))
-       ,@body)))
+       (satan-announce-with-recorder
+         ,@body))))
 
 (ert-deftest satan-notify/dispatch-ok ()
-  "notify.send dispatches via the registry, stubbing the D-Bus call."
+  "notify.send dispatches via the registry, recording the announcement."
   (satan-notify-test--with-stubs
     (let ((res (satan-tool-dispatch
                 '(:type "tool_call" :id "n1" :name "notify_send"
@@ -45,7 +46,10 @@ keyword-args plists handed to `satan-intervention-create'."
                 '("notify_send")
                 satan-notify-test--ctx)))
       (should (eq (plist-get res :ok) t))
-      (should (equal 42 (plist-get (plist-get res :result) :id))))))
+      (should (equal 1 (plist-get (plist-get res :result) :id)))
+      (should (= 1 (length satan-announce-recorded)))
+      (should (equal "hi" (plist-get (car satan-announce-recorded) :title)))
+      (should (equal "there" (plist-get (car satan-announce-recorded) :body))))))
 
 (ert-deftest satan-notify/dispatch-surfaces-intervention-id ()
   "tool_result carries the intervention_id minted by the write API."
@@ -105,18 +109,20 @@ keyword-args plists handed to `satan-intervention-create'."
     (should (string-match-p "urgency" (plist-get res :error)))))
 
 (ert-deftest satan-notify/handler-error-propagates ()
-  "If `notifications-notify' signals, the result is `error' with message."
-  (cl-letf (((symbol-function 'notifications-notify)
-             (lambda (&rest _args) (error "no D-Bus today")))
-            ((symbol-function 'satan-intervention-create)
-             (lambda (&rest _args) "iv-unused")))
-    (let ((res (satan-tool-dispatch
-                '(:type "tool_call" :id "n4" :name "notify_send"
-                  :args (:title "t" :body "b"))
-                '("notify_send")
-                satan-notify-test--ctx)))
-      (should (equal (plist-get res :ok) :false))
-      (should (string-match-p "no D-Bus" (plist-get res :error))))))
+  "A pop failure at the seam still surfaces as a tool error.  Induced by
+let-binding `satan-announce-sink' directly (the seam's own unit tests
+in satan-announce-test.el own the D-Bus stub; this caller-side test
+does not)."
+  (let ((satan-announce-sink (lambda (&rest _) (error "no D-Bus today"))))
+    (cl-letf (((symbol-function 'satan-intervention-create)
+               (lambda (&rest _args) "iv-unused")))
+      (let ((res (satan-tool-dispatch
+                  '(:type "tool_call" :id "n4" :name "notify_send"
+                    :args (:title "t" :body "b"))
+                  '("notify_send")
+                  satan-notify-test--ctx)))
+        (should (equal (plist-get res :ok) :false))
+        (should (string-match-p "no D-Bus" (plist-get res :error)))))))
 
 (provide 'satan-tools-notify-test)
 ;;; satan-tools-notify-test.el ends here
