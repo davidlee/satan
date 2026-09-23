@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0ccfc-9912-7d21-9d09-57fc1a37b512"
+recorded_at = "2026-09-23T06:38:21.458875233Z"
+kind = "friction"
+summary = "Phase-05 planner and worker hand-backs also undelivered"
+detail = "SL-017 PHASE-05: planner and worker (general-purpose, opus) again ended without SubagentHandback reaching orch-b and did not SendMessage the fallback either; orchestrator verified from tree/notes.md. Every capsule spawn this charter (4/4) hit it."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

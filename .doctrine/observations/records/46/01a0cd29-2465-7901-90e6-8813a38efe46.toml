@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0cd29-2465-7901-90e6-8813a38efe46"
+recorded_at = "2026-09-23T07:27:00.709922048Z"
+kind = "friction"
+summary = "coverage show reads stale after coverage verify"
+detail = "SL-017 audit: doctrine coverage verify 17 re-derived REQ-003's VT entry verified→verified (git_anchor moved to HEAD), but coverage show REQ-003 still reports observed=stale verdict=Indeterminate. Also: doctrine check gate fails in satan ('justfile does not contain recipe gate'); project gate is just check."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0cd22-e216-7872-b423-39936f79d0a0"
+recorded_at = "2026-09-23T07:20:10.518298075Z"
+kind = "friction"
+summary = "coverage record --command rejects argv elements that look like flags"
+detail = "doctrine coverage record --command --batch fails ('unexpected argument'); argv elements starting with '-' need --command=--batch. After committing coverage.toml, coverage show REQ-003 reports observed 'stale' / verdict Indeterminate with git_anchor at the phase commit."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

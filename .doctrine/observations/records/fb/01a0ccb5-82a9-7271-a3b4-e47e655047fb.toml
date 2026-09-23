@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0ccb5-82a9-7271-a3b4-e47e655047fb"
+recorded_at = "2026-09-23T05:20:42.665954323Z"
+kind = "friction"
+summary = "capsule sub-subagent hand-back misrouted to driver"
+detail = "SL-017 capsule-driver: capsule-* agent types not installed in project, so orchestrator ran as general-purpose teammate and spawned planner as general-purpose. Planner's SubagentHandback failed with 'the agent that spawned you is no longer running' although orchestrator was still running; report arrived at the driver session as a teammate message and had to be relayed manually."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

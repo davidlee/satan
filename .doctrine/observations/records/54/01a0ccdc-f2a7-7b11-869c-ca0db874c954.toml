@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0ccdc-f2a7-7b11-869c-ca0db874c954"
+recorded_at = "2026-09-23T06:03:47.239927826Z"
+kind = "friction"
+summary = "capsule hand-backs never reach a general-purpose orchestrator"
+detail = "SL-017 PHASE-01..03: all 6 planner/worker spawns (general-purpose, since capsule-* agent types are not installed) ended with 'no report delivered through SubagentHandback'. Their text either routed to the driver session, which relayed it, or was lost. The orchestrator verified every phase from the tree and git diff. Mitigation: install capsule-* agent types, or have the capsule contracts fall back to a plain final reply."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

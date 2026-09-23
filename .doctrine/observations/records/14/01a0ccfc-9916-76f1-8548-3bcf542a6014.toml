@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0ccfc-9916-76f1-8548-3bcf542a6014"
+recorded_at = "2026-09-23T06:38:21.462022003Z"
+kind = "friction"
+summary = "Spawn tests wrote live ingest cursor"
+detail = "Worker found --with-spawn-stubs tests (dec8, PHASE-04) ran real satan-ingest-cursor-advance, writing the live state-root cursor from the suite; now stubbed. Other suites may still reach it — hermeticity sweep candidate."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

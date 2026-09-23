@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0ccc2-c46e-7790-9e72-bce197e715c8"
+recorded_at = "2026-09-23T05:35:11.470564936Z"
+kind = "friction"
+summary = "capsule path: verify-vt UNATTRIBUTABLE until manual record-delta"
+detail = "SL-017 capsule orchestrator (main worktree, no dispatch): after committing PHASE-01, 'doctrine slice verify-vt 17' still reported every VT as UNATTRIBUTABLE ('not modified by this slice'). Only 'doctrine slice record-delta 17 PHASE-01 --commit <sha>' fixed it. The capsule-orchestrator contract does not mention record-delta; the capsule loop should include it (or bind the phase delta automatically on commit)."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

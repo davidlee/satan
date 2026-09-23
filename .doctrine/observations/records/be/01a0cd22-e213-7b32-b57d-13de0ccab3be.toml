@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0cd22-e213-7b32-b57d-13de0ccab3be"
+recorded_at = "2026-09-23T07:20:10.515895292Z"
+kind = "friction"
+summary = "Capsule subagent hand-backs never reach the orchestrator"
+detail = "SL-017 PHASE-06/07: all five general-purpose subagents (2 planners, 2 workers, 1 body writer) ended with 'no report delivered through SubagentHandback'. Orchestrator verified from the tree, sheets and notes.md instead. Known routing fault; hand-backs go to the driver."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
