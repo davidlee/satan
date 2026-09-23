@@ -1,0 +1,350 @@
+# Implementation plan for SL-016 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# VT numbering is slice-wide, not per phase: VT-1..VT-25 are design.md sec-8's
+# own item numbers, kept verbatim so a phase row and its design row share one
+# id (VT-10 is moot in the design and is never used). Where a design item spans
+# two phases, the design id sits in the phase that completes the claim and the
+# other half gets a new id. New rows continue from VT-26. VA/VH ids are per
+# phase.
+#
+# Out-of-repo tests (~/satan corpus, ~/dev/satan-attrd) carry waived = true:
+# verify-vt cannot attribute a file outside this repo. They are verified by
+# that repo's own test run, recorded in notes.md (SL-018 precedent).
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-016"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "backend.py: fixtures, then the JSON record (corpus)"
+objective = """
+Give ~/satan/goad/backend.py a test harness before any behaviour change
+(slice R2, design sec-3). Stdlib `unittest` only (no new dependency), run by a
+`check` recipe in ~/satan/goad/justfile. Guard `main()` under
+`if __name__ == "__main__"` so the module imports. Characterise today's
+checklist behaviour first (slots, pending order, later/enough/yes/no, next
+check), green against the unchanged code. Then switch the record to JSON
+(DEC-009): `load`/`save` read and write `data/YYYY-MM-DD.json` via `json.dump`
+through tmp+rename; the characterisation tests stay green. One-off conversion
+of the existing `data/*.toml` files to JSON, committed as its own reviewable
+commit. `README.md:16` updated to the new format.
+
+The live goad unit runs this file on every exchange: every edit is live on
+save. Land the format switch and the conversion together, in one short window.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-016 plan approved" },
+  { id = "EN-2", text = "~/satan working tree state recorded in notes.md; the user's uncommitted corpus changes (goad/data/*, goad/goad.service, motd.txt) are theirs — not staged, reverted or committed by this phase without asking" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`just check` in ~/satan/goad runs the backend tests and fails on a failure (non-zero exit proven once by a deliberately broken assertion)" },
+  { id = "EX-2", text = "characterisation tests pass against the pre-change backend, then against the JSON backend, unchanged" },
+  { id = "EX-3", text = "`save` is atomic (tmp + rename in the same directory); no TOML code remains" },
+  { id = "EX-4", text = "every existing day file converted; a converted file loads to the same items map the TOML file did" },
+  { id = "EX-5", text = "README.md describes the JSON record; committed in ~/satan" },
+]
+verification = [
+  { id = "VT-39", expects = "characterisation: pending order, slot boundaries, later/enough/yes/no effects, next_check — identical before and after the format switch", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["class Characterisation", "next_slot", "pending"], waived = true, waived_reason = "out-of-repo test (~/satan corpus); verified by ~/satan/goad `just check`, recorded in notes.md" },
+  { id = "VT-40", expects = "JSON record: save→load round-trips the items map; save leaves no partial file on failure; a converted legacy TOML day loads equal", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["class Record", "os.replace", "tomllib"], waived = true, waived_reason = "out-of-repo test (~/satan corpus); verified by ~/satan/goad `just check`, recorded in notes.md" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "backend.py: SATAN asks (corpus)"
+objective = """
+The six backend changes of design sec-3, each test-first against PHASE-01's
+harness:
+
+1. read the queue projection (default
+   `$XDG_STATE_HOME/satan/goad/queue.json`, else
+   `~/.local/state/satan/goad/queue.json`; `GOAD_SATAN_QUEUE` overrides, for
+   tests); an absent or unreadable queue means no asks, never a crash;
+2. SATAN asks come first in `pending()`;
+3. `presented_at` stamped on an ask's first render (an `evaluate`, not only a
+   `respond`, may now save) and never overwritten;
+4. deferral provenance: `deferred_by` = `later` | `enough` beside
+   `deferred_at`;
+5. asks are serialised by `save` (a separate `asks` map keyed by
+   `intervention_id`, so the checklist `items` map is untouched);
+6. an ask's events are filed in the day file of its `emitted_at` local date,
+   and `pending()` reads its state from there;
+
+plus: entries past `expires_at` are never rendered. Option ids carry the
+intervention: `yes:ask:<intervention_id>` — the existing single
+`partition(":")` yields verb `yes`, item `ask:<id>`. v1 asks are yes/no with
+Later and Enough, the checklist's own four buttons.
+
+With an empty or absent queue, behaviour is byte-identical to PHASE-01 —
+proven by the characterisation tests.
+
+Also generate golden day files and a golden queue into
+`satan/test/goad-fixtures/` (this repo) from the tests' own runs, so SATAN's
+tests read the producer's output, never a hand-built value (design sec-8,
+the ISS-014 lesson).
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete; ~/satan/goad `just check` green" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "all six changes plus expiry implemented and covered; characterisation tests still green" },
+  { id = "EX-2", text = "the queue file schema (entry fields: intervention_id, question, subject, emitted_at, expires_at) is written down once, in README.md, and matches the golden queue" },
+  { id = "EX-3", text = "golden fixtures committed under satan/test/goad-fixtures/ with a one-line provenance note (generated by which test)" },
+  { id = "EX-4", text = "committed in ~/satan; the live unit keeps serving the checklist (checked by one live evaluate)" },
+]
+verification = [
+  { id = "VT-2", expects = "an answer to `yes:ask:<id>` is stored under asks[<id>] with value and at, and survives save→load (ASM-001's round trip, backend half)", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["class Asks", "yes:ask:", "\"asks\""], waived = true, waived_reason = "out-of-repo test (~/satan corpus); verified by ~/satan/goad `just check`, recorded in notes.md" },
+  { id = "VT-16", expects = "an entry past expires_at is never rendered", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["expires_at"], waived = true, waived_reason = "out-of-repo test; verified by ~/satan/goad `just check`" },
+  { id = "VT-22", expects = "presented_at keeps its first render's stamp across later evaluations", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["presented_at"], waived = true, waived_reason = "out-of-repo test; verified by ~/satan/goad `just check`" },
+  { id = "VT-26", expects = "a queued ask renders ahead of every pending checklist item", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["test_ask_renders_first"], waived = true, waived_reason = "out-of-repo test; verified by ~/satan/goad `just check`" },
+  { id = "VT-27", expects = "Later writes deferred_by=later on the rendered item only; Enough writes deferred_by=enough on every pending item", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["deferred_by"], waived = true, waived_reason = "out-of-repo test; verified by ~/satan/goad `just check`" },
+  { id = "VT-30", expects = "an ask emitted 23:15 and answered 00:05 is filed in the emit date's file and not rendered again after midnight", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["test_ask_filed_under_emit_date"], waived = true, waived_reason = "out-of-repo test; verified by ~/satan/goad `just check`" },
+  { id = "VT-31", expects = "emitted_at 09:30+10:00 files under that local date, whatever the process zone renders", test_file = "/home/david/satan/goad/test_backend.py", keywords = ["test_emit_date_is_local"], waived = true, waived_reason = "out-of-repo test; verified by ~/satan/goad `just check`" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "PERCEIVE: goad reader, evidence slice, canon rule"
+objective = """
+New `satan/satan-goad.el`: pure readers only — the local date of a parsed
+instant (never a timestamp substring, design sec-2 / F-33); read the queue;
+read one ask's record from its emit date's day file. Path defcustoms in
+`satan-custom.el` as root joins: `satan-goad-data-dir`
+(`satan-corpus-path "goad/data"`) and `satan-goad-queue-file`
+(`satan-state-path "goad/queue.json"`).
+
+`satan-memory-evidence-assemble-with-bounds` gains a compact `:goad` slice:
+each outstanding queue entry with its record, read by the entry's emit date,
+ignoring the assembler's time bounds (design sec-2, F-23). New canon rule
+`goad.outstanding` emits `app:goad` plus `topic:<subject value>` per
+outstanding ask. The perceive leg stays pure (ADR-001).
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete; golden fixtures in satan/test/goad-fixtures/" },
+  { id = "EN-2", text = "`just check` green with SATAN_DB_HOST set, and the ran/skipped counts recorded (green-is-not-green)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-goad.el readers covered against the golden fixtures, not hand-built plists" },
+  { id = "EX-2", text = "the :goad slice appears in the evidence window only when the queue has entries; absent or malformed files yield an empty slice, never a signal" },
+  { id = "EX-3", text = "the canon rule's handles pass `satan-motive--cue-handles-well-formed-p` and fall in the admitted namespaces" },
+  { id = "EX-4", text = "lint clean; `just check` green with counts recorded" },
+]
+verification = [
+  { id = "VT-24", expects = "under a GMT-rendered ts and a +10:00 local zone, an ask emitted 09:30 local resolves to its local date and reads that day's file", test_file = "satan/test/satan-goad-test.el", keywords = ["satan-goad-local-date", "satan-goad/local-date"] },
+  { id = "VT-25", expects = "a run after midnight perceives an ask answered before midnight as answered, reading the emit date's file", test_file = "satan/test/satan-goad-test.el", keywords = ["satan-goad/after-midnight-reads-emit-date"] },
+  { id = "VT-32", expects = "assembling evidence with a goad queue writes nothing: every file-writing and DB function is an ert-fail spy", test_file = "satan/test/satan-memory-evidence-test.el", keywords = ["goad", "ert-fail"] },
+  { id = "VT-33", expects = "the goad.outstanding rule emits app:goad and one topic: per outstanding ask, well-formed and admitted; nothing when the queue is empty", test_file = "satan/test/satan-memory-canon-test.el", keywords = ["goad.outstanding", "app:goad"] },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Shared seams: undelivered writer, quiet window, goad switches"
+objective = """
+Refactor and plumbing, no new behaviour for existing kinds:
+
+- move `satan-tools-notify--mark-undelivered` to `satan-intervention.el` as a
+  shared, public writer (design sec-3); `notify_send` calls it; its tests stay
+  green unchanged except for the renamed symbol;
+- `satan-tick-quiet-p` gains an optional window argument defaulting to
+  `satan-tick-quiet-hours` (design sec-7); its three existing callers
+  unchanged;
+- defcustoms `satan-goad-enabled` (default nil) and `satan-goad-quiet-hours`
+  (default `(22 . 9)`), plus `satan-goad-emit-program` and
+  `satan-goad-emit-timeout`, in `satan-custom.el`;
+- the `goad-ask` capability token, distinct from `notify`.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "no definition of the undelivered writer remains in satan-tools-notify.el; notify tests green" },
+  { id = "EX-2", text = "satan-tick-quiet-p with no window argument behaves exactly as before (existing tests green)" },
+  { id = "EX-3", text = "lint clean; `just check` green with counts recorded" },
+]
+verification = [
+  { id = "VT-34", expects = "the shared undelivered writer appends unknown/high/mature/auto noted `undelivered: ERR` and projects intervention+verdict together; a failed verdict skips the projection", test_file = "satan/test/satan-intervention-test.el", keywords = ["satan-intervention-mark-undelivered", "undelivered: "] },
+  { id = "VT-35", expects = "satan-tick-quiet-p honours an explicit window, including one that wraps midnight, and defaults to satan-tick-quiet-hours", test_file = "satan/test/satan-tick-test.el", keywords = ["satan-tick-quiet-p", "(22 . 9)"] },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "satan-attrd: reasons for ask suppression and loss of correlation"
+objective = """
+Cross-repo (~/dev/satan-attrd, design sec-6, ISS-011): attrd rejects unknown
+reasons, so the two new attribute signals need attrd support before SATAN
+enqueues them. Add reasons `ask_suppressed` (the tool declined to ask: no
+correlating motive) and `ask_uncorrelated` (an ask matured
+`:no_correlation`) in the source family the attrd contract fits (read at
+phase-plan), with base-delta rows in `tuning.rs`. The delta values are a
+user decision, taken at phase-plan. Plus the matching SATAN-side payload
+builder in `satan-attribute.el`, reusing an existing builder if the family
+already has one.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete" },
+  { id = "EN-2", text = "attrd source family and delta rows agreed with the user" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "attrd parses both reasons and applies their deltas; attrd's own check green; committed in ~/dev/satan-attrd" },
+  { id = "EX-2", text = "deployment note in notes.md: attrd must be redeployed before `satan-goad-enabled` is turned on" },
+  { id = "EX-3", text = "SATAN payload builder covered; lint clean; `just check` green" },
+]
+verification = [
+  { id = "VT-36", expects = "attrd FromStr accepts ask_suppressed and ask_uncorrelated and round-trips as_str; each has a delta row", test_file = "/home/david/dev/satan-attrd/src/types.rs", keywords = ["ask_suppressed", "ask_uncorrelated"], waived = true, waived_reason = "out-of-repo (~/dev/satan-attrd); verified by that repo's check, recorded in notes.md" },
+  { id = "VT-37", expects = "the SATAN builder produces a payload attrd's schema accepts for each reason", test_file = "satan/test/satan-attribute-test.el", keywords = ["ask_suppressed", "ask_uncorrelated"] },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "PROMPT + DOORBELL: the goad_ask tool"
+objective = """
+New `satan/satan-tools-goad.el`: one `satan-tool-register` spec `goad_ask`
+under capability `goad-ask`, args `question` + `subject`. Handler order is
+design sec-3's, verbatim:
+
+1. refuse in interactive MCP mode (before anything else);
+2. refuse when `satan-goad-enabled` is nil or inside
+   `satan-goad-quiet-hours` — refusals, not suppressions;
+3. subject gate (design sec-10): subject in ctx `:percept-handles`, not
+   goad-minted (`app:goad`, or a `topic:` of an outstanding queue entry), and
+   held by a live non-dormant motive's cue; rank those motives by
+   |cue ∩ percept|, ties by file order; no winner → no emit, enqueue
+   `ask_suppressed`;
+4. `satan-intervention-record` kind "ask" with `:related-motive-id`,
+   `:cue-handles (subject)`, `:outcome-window-minutes 60`;
+5. `satan-intervention-project`;
+6. rewrite queue.json whole and atomically from the open rows (kind "ask",
+   no outcome, window not passed) — `satan-goad-queue-rewrite`;
+7. ring via `satan-trace-call` on `goad-emit --source satan`, bounded by
+   `satan-goad-emit-timeout`; the exit code is logged, never interpreted
+   beyond the doorbell (design sec-4).
+
+A failed step 5 or 6 takes the shared undelivered writer (PHASE-04). Model
+description `~/satan/tools/goad_ask.md` lands in the corpus in the same
+window — a missing description breaks every run of an allowlisting mode.
+`tick-pulse` gains the tool and capability.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "every handler branch covered; goad-emit stubbed with cl-letf, never a live host in tests" },
+  { id = "EX-2", text = "~/satan/tools/goad_ask.md committed in the corpus before the tick-pulse allowlist change is committed here" },
+  { id = "EX-3", text = "`satan-goad-enabled` still nil by default; lint clean; `just check` green with counts recorded" },
+]
+verification = [
+  { id = "VT-5", expects = "a refused (exit 1) or failed (exit 2, timeout) goad-emit leaves the question in queue.json and records the ask normally", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-tools-goad/refused-ring-keeps-queue"] },
+  { id = "VT-6", expects = "an ask with no correlating motive is not recorded and enqueues ask_suppressed", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-tools-goad/suppressed-enqueues-attribute", "ask_suppressed"] },
+  { id = "VT-9", expects = "goad_ask refuses in interactive MCP mode and records no suppression", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-tools-goad/refuses-in-mcp"] },
+  { id = "VT-11", expects = "a failed projection or queue rewrite leaves the undelivered verdict, the ask absent from satan-intervention-pending, and survives satan-rebuild-interventions with its verdict", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-tools-goad/projection-failure-undelivered", "satan-rebuild-interventions"] },
+  { id = "VT-13", expects = "first-ever ask correlates on a perceived non-goad subject; app:goad or an outstanding topic: subject is refused", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-tools-goad/first-ask-correlates", "satan-tools-goad/goad-subject-refused"] },
+  { id = "VT-28", expects = "queue.json regenerates wholly from the open ask rows, atomically, excluding classified and expired rows", test_file = "satan/test/satan-goad-test.el", keywords = ["satan-goad-queue-rewrite", "satan-goad/queue-regenerates"] },
+  { id = "VT-29", expects = "with an ask outstanding and a motive cued on app:goad, an ask on another perceived subject emits and records the subject's motive (emit half of design item 19)", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-tools-goad/goad-motive-cannot-absorb"] },
+  { id = "VT-38", expects = "goad_ask refuses when disabled and inside satan-goad-quiet-hours, recording neither an intervention nor a suppression", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-tools-goad/quiet-window-refuses", "satan-goad-enabled"] },
+  { id = "VT-41", expects = "the ring goes through satan-trace-call with the configured timeout and --source satan; exit 0/1/2/timeout all return the same tool result", test_file = "satan/test/satan-tools-goad-test.el", keywords = ["satan-trace-call", "--source"] },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "The loop: observer legs for kind \"ask\""
+objective = """
+Observer changes, all scoped to kind "ask" (design sec-5, sec-10); every
+other kind's verdicts unchanged:
+
+- `classify-for-motives`: kind "ask" credits the live motive with id
+  `related_motive_id`, non-dormant, subject still in its cue; else
+  `:unknown :no_correlation` and enqueue `ask_uncorrelated`;
+- exempt kind "ask" from the `crosses_midnight` guard;
+- kind-scoped predicate selection: for "ask" the answer predicate is the only
+  positive predicate; it fires on a record entry for this intervention with
+  `value` and `at` within emit + 60 minutes;
+- the "ask" branch of `classify-negative`, before the ack gate, judging the
+  record as it stood at window end, first match wins: undelivered →
+  short_exposure → deferred → dismissed → untouched;
+- evidence labels carried to the persisted outcome through
+  `satan-observer--verdict-classify-args`;
+- `--persist-positive`'s trace gains the question and the value for kind
+  "ask";
+- the queue rewrite also fires at classification.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "every verdict row of design sec-5's table covered, reading golden fixtures" },
+  { id = "EX-2", text = "the existing observer suite green unchanged — no non-ask verdict moved" },
+  { id = "EX-3", text = "lint clean; `just check` green with counts recorded" },
+]
+verification = [
+  { id = "VT-3", expects = "a presented ask left untouched, or dismissed by bulk Enough, classifies :ignored :medium, with the ack gate reading both checked and unchecked", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-untouched-ignored", "satan-observer/ask-dismissed-ignored"] },
+  { id = "VT-4", expects = "an explicit Later classifies :unknown :low deferred", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-later-deferred"] },
+  { id = "VT-7", expects = "a matured :no_correlation ask enqueues ask_uncorrelated", test_file = "satan/test/satan-observer-test.el", keywords = ["ask_uncorrelated"] },
+  { id = "VT-8", expects = "classifying an ask rewrites queue.json without it", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-classification-retires-queue-entry"] },
+  { id = "VT-12", expects = "a never-presented ask matures :unknown :high undelivered", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-never-presented-undelivered"] },
+  { id = "VT-14", expects = "a never-presented ask does not classify :worked when an ambient predicate would fire", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-ignores-ambient-predicates"] },
+  { id = "VT-15", expects = "an answer after emit+60 does not fire the predicate; presentation in the last 10 minutes matures short_exposure", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-late-answer-no-predicate", "short_exposure"] },
+  { id = "VT-17", expects = "an answered ask's observation trace carries the question and the value", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-answer-trace"] },
+  { id = "VT-18", expects = "the ask's evidence label reaches the persisted outcome row", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-evidence-label-persisted"] },
+  { id = "VT-19", expects = "maturity half: with a goad-cued motive present, the ask credits its recorded motive", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-credits-recorded-motive"] },
+  { id = "VT-20", expects = "an ask whose recorded motive was removed, made dormant, or no longer cues the subject matures :no_correlation", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-motive-gone-no-correlation"] },
+  { id = "VT-21", expects = "quiet hours off: an ask emitted 23:15 and answered 00:05 classifies :worked from the emit date's file", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-across-midnight-worked"] },
+  { id = "VT-23", expects = "an answer after the window classifies :ignored untouched with no answer trace, whether the observer runs before or after the answer", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/ask-late-answer-untouched"] },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "End to end, then enable"
+objective = """
+One integration test drives the real loop with no goad host: `goad_ask`
+writes the queue; the real `backend.py` (run as a subprocess against a temp
+data dir, `skip-unless` the corpus is present) evaluates and renders the ask
+first; a scripted `respond` answers it; the observer classifies it `:worked`
+from the record backend.py wrote. The goldens from PHASE-02 are checked
+against the live backend's output so they cannot drift.
+
+Then the rollout, with the user: redeploy attrd; set `satan-goad-enabled`;
+one live ask end to end; one live ask left untouched to maturity.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "integration test green and counted (not skipped) in `just check`" },
+  { id = "EX-2", text = "live checks recorded in notes.md with intervention ids" },
+  { id = "EX-3", text = "`satan-goad-enabled` set in the user's config only after EX-2's first live ask" },
+]
+verification = [
+  { id = "VT-1", expects = "an ask emitted by goad_ask takes priority in backend.py's pending() and is the rendered view", test_file = "satan/test/satan-goad-integration-test.el", keywords = ["satan-goad-integration/ask-renders-first"] },
+  { id = "VT-42", expects = "answer round trip through the real backend: the respond option id reaches the observer as this intervention's answer and classifies :worked", test_file = "satan/test/satan-goad-integration-test.el", keywords = ["satan-goad-integration/answer-round-trip"] },
+  { id = "VT-43", expects = "golden fixtures equal what the real backend.py produces for the same script", test_file = "satan/test/satan-goad-integration-test.el", keywords = ["satan-goad-integration/goldens-match-backend"] },
+  { id = "VH-1", expects = "live: a tick-pulse (or driven) goad_ask pops the goad window; the keeper answers; the next observer pass records :worked with the question and value in the trace" },
+  { id = "VH-2", expects = "live: an ask presented and left untouched matures :ignored :medium untouched" },
+]
+specs        = []
+requirements = []
