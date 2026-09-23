@@ -6,10 +6,18 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** stage `design`, run `dr-01a0c179` at `reviewing`, head `d960f08`,
-2026-09-21. design.md authored and materialised. Nothing implemented.
+**fresh-as-of:** stage `design`, run `dr-01a0c179` at `reviewing` (revision 40),
+head `041ba2f`, 2026-09-23. design.md revised twice today and materialised.
+Nothing implemented.
 
 ### Produced
+
+- **RV-007 round 1 (Claude raiser, 2026-09-23)** — F-1..F-19: 16 verified, F-6/
+  F-9/F-10 contested; F-20..F-27 raised (F-20 blocker: goad-minted handles can
+  never correlate the ask that creates them). All 11 answered `fixed`, user
+  accepted every disposition; design revision 39 (`041ba2f`). Amendments
+  appended to `DEC-004`, `DEC-011`, `DEC-012`. Memory
+  [[mem.fact.satan.bough-deprecated]].
 
 - **Drift revision, 2026-09-23** (run revision 37, materialised 38), against
   HEAD `1fbdc67` — 55 commits after the RV-007 rebuild. SL-017's record/project
@@ -69,10 +77,22 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 - **The design is unlocked.** Review policy `adversarial-only`; the lock gate
   needs `section-reviewed` (adversarial lane), `review-disposed` and
   `design-accepted`. `design-accepted` is a user act regardless of policy.
+- **RV-007 round 2 launched** at `041ba2f` (Claude raiser) over F-6, F-9, F-10,
+  F-20..F-27 plus new defects in `041ba2f`. Check `doctrine review status
+  RV-007` for its outcome; answer anything contested or raised via `/feedback`.
+- **Lock disposition plan (not yet user-agreed):** the run's pass ledger RV-006
+  is empty and STALE; the adversarial history is RV-007. Proposed:
+  `review-disposed` as `waived`, reason citing RV-007 — needs the user's
+  assent, then `design-accepted` + adversarial attestations for all 10 sections.
+- **User may overrule one call:** presented-then-bulk-`Enough` classifies
+  `:ignored :medium` `dismissed` (design sec-5); alternative `:unknown :low`.
+- **Unverified, plan must check:** whether goad re-evaluates when an `engaged`
+  exchange ends (design sec-4).
 - **Six risks carried, not resolved** — see design §10. `ASM-001` unvalidated;
   the decorrelation race (`motive_replace` between emit and maturity, detectable
   via `related_motive_id`, home is [[IMP-002]]); suppression-alert throttle
   unspecified; quiet hours off; two-repo landing; `ISS-001` truncation cap.
+  (Superseded in part: design sec-9 now carries the current risk table.)
 - **Revision candidates for `/reconcile` at close** (none caused by this slice):
   POL-001's seat rationale does not contemplate a non-editor human surface;
   `.doctrine/state/boot.md` still says the protocol tech spec and authority
