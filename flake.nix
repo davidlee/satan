@@ -5,13 +5,14 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     devshell.url = "github:numtide/devshell";
-    emacs-overlay.url = "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz";
 
     pub = {
       url = "github:davidlee/nix-config?dir=flakes/pub";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.emacs-overlay.follows = "emacs-overlay";
     };
+    # Wrapped Emacs (the manual package list). Own pins, no follows, so
+    # every devshell shares one build.
+    emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
   };
@@ -46,7 +47,7 @@
           then inputs.pub.lib.${system}.mkJailedAgents {}
           else {};
         doctrine-pkg = doctrine.packages.${system}.default;
-        wrappedEmacs = inputs.pub.packages.${system}.emacs;
+        wrappedEmacs = inputs.emacs.packages.${system}.default;
         projectPkgs = with pkgs;
           [
             zigPackage
