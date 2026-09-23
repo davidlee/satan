@@ -85,8 +85,8 @@ amended to match.
   PHASE-05 is the first that changes live behaviour. Do not restart the live
   Emacs before PHASE-08 unless every phase through PHASE-05 is complete.
 - **VT numbering is slice-wide.** VT-1..VT-24 are design sec-9's ids,
-  unchanged. This plan adds VT-25..VT-28 (backend probe, backend adapter,
-  plain `run_busy`, `satan-run-id-time`). PHASE-01's VTs are waived for
+  unchanged. This plan adds VT-25..VT-29 (backend probe, backend adapter,
+  plain `run_busy`, `satan-run-id-time`, two-run rotation recovery). PHASE-01's VTs are waived for
   `verify-vt` only because the test file is outside this repo.
 - **VT-10 splits.** Its `my/*`-absence half becomes a standing test; its "no
   error-swallowing around key resolution" half cannot be expressed as a
@@ -94,3 +94,12 @@ amended to match.
 - **Tolerated from RV-013:** F-9 (DST can skew the escalation age by up to an
   hour) and F-12 (Pi's seven-key list is a superset; narrowing it is the
   keeper's config lever).
+- **Plan review (2026-09-23, codex gpt-6-sol, 6 findings, all accepted).**
+  Six changes followed. PHASE-01 must show its suite actually ran, because
+  dl-test passes on zero files. PHASE-05 updates every `--spawn` caller and
+  stub. PHASE-07 has the runner merge resolve failures into `:warnings` and
+  persist them on `adapter_failed`. The ban on `my/` symbols is narrowed to
+  credential symbols. VT-29 proves recovery, not only eviction. The pi-var
+  readiness gate also holds back `fake`-adapter test jobs; the tests bind the
+  backend and env. Per-adapter readiness stays design debt (design sec-7), not
+  a plan change.

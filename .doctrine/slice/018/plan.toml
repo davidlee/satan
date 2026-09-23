@@ -7,7 +7,7 @@
 #
 # VT numbering is slice-wide, not per phase: VT-1..VT-24 are design.md sec-9's
 # own ids, kept verbatim so a phase row and its design row share one id. New
-# rows minted by this plan continue from VT-25. VA/VH ids are per phase.
+# rows minted by this plan continue from VT-25 (VT-25..VT-29). VA/VH ids are per phase.
 schema  = "doctrine.plan.overview"
 version = 1
 slice   = "SL-018"
@@ -41,7 +41,8 @@ exit_criteria = [
   { id = "EX-2", text = "`my/satan-credential` implements lookup / session-p / read / forget per design sec-2; unknown op signals" },
   { id = "EX-3", text = "`forget` evicts one ref only; other `my/op--cache` entries survive" },
   { id = "EX-4", text = "init.el sets `satan-credential-function` to `my/satan-credential`; live Emacs behaviour unchanged (nothing reads it yet)" },
-  { id = "EX-5", text = "~/.emacs.d `just check` green; committed in ~/.emacs.d before any SATAN phase" },
+  { id = "EX-5", text = "`lisp/test/dl-secret-test.el` exists and its tests are counted in the ~/.emacs.d `just check` run (dl-test skips absent suite dirs and passes on zero tests, so a green run alone proves nothing); test count recorded in notes.md" },
+  { id = "EX-6", text = "~/.emacs.d `just check` green; committed in ~/.emacs.d before any SATAN phase" },
 ]
 verification = [
   { id = "VT-25", expects = "my/op-session-p: a stub `my/op-cli` exiting 0 → non-nil, exiting 1 → nil; argv is `whoami`, never `read`", test_file = "/home/david/.emacs.d/lisp/test/dl-secret-test.el", keywords = ["my/op-session-p", "whoami"], waived = true, waived_reason = "out-of-repo test (~/.emacs.d); verify-vt cannot attribute it. Verified by ~/.emacs.d `just check`, recorded in notes.md" },
@@ -176,7 +177,8 @@ exit_criteria = [
   { id = "EX-2", text = "defer mode, no session: `credential_deferred` run, backend saw only lookup / session-p" },
   { id = "EX-3", text = "prompt / attended / escalated: `read` called with the context label; failure → `credential_unavailable` .FAILED run" },
   { id = "EX-4", text = "the child env is the acquired base env plus the resolved key, with refs scrubbed" },
-  { id = "EX-5", text = "no `my/` symbol remains in satan-broker.el" },
+  { id = "EX-5", text = "no `my/op-*` / `my/scrub-op*` symbol remains in satan-broker.el or satan-broker-test.el (the test fixture's `my/scrub-op-refs-env` stub goes with it)" },
+  { id = "EX-7", text = "every direct caller and stub of `satan-broker--spawn` (tests included) takes the new verdict argument" },
   { id = "EX-6", text = "`just check` green" },
 ]
 verification = [
@@ -215,6 +217,7 @@ exit_criteria = [
 verification = [
   { id = "VT-6", expects = "classified auth → forget on the used ref; credits / unknown → none; done run, or final reason \"auth\" without the slot → none", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--evict-on-auth", "credential-refs"], waived = false },
   { id = "VT-15", expects = "forget signals during an auth finalize → evict-failed audit event; rename, announce and spawn-running reset still happen", test_file = "satan/test/satan-broker-test.el", keywords = ["evict-failed", "satan-broker--finalize"], waived = false },
+  { id = "VT-29", expects = "recovery, two runs: classified auth evicts the used ref; the next acquisition reads the ref again and the child gets the new value, not the dead one", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--evict-on-auth", "satan-credential-acquire"], waived = false },
 ]
 specs        = []
 requirements = []
@@ -240,8 +243,10 @@ entrance_criteria = [
 ]
 exit_criteria = [
   { id = "EX-1", text = "an idle runner makes zero backend calls; a not-ready runner claims nothing" },
-  { id = "EX-2", text = "one failing var of seven: the job runs and carries a warning" },
-  { id = "EX-3", text = "no `my/` symbol remains under satan/ (package-wide)" },
+  { id = "EX-2", text = "one failing var of seven: the job runs and carries a warning; the runner merges resolve `:failed` into the adapter result's `:warnings` (so it holds on every adapter path, including the early missing-executable failure)" },
+  { id = "EX-5", text = "`satan-patch-runner--finish-with-row` persists `:warnings` on `adapter_failed` (today it drops them)" },
+  { id = "EX-6", text = "tests that enqueue `fake`-adapter jobs bind `satan-credential-function` and `process-environment` explicitly, so the pi-var readiness gate is deterministic and never touches the developer's real env" },
+  { id = "EX-3", text = "no dl-secret credential symbol (`my/op-*`, `my/scrub-op*`) remains in satan/*.el; unrelated `my/` couplings (e.g. `my/journal--week-file` in satan-tools-org.el) are out of scope" },
   { id = "EX-4", text = "`just check` green" },
 ]
 verification = [
