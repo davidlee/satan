@@ -1,0 +1,237 @@
+# Implementation plan for SL-017 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-017"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# Suite invocation for every Elisp VT: `SATAN_DB_HOST=/run/postgresql/ just check`,
+# then grep the output for `unexpected` (mem_01a0316176b17672988b91759e145e5d).
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Announce seam and test hermeticity"
+objective = """
+Add satan/satan-announce.el (design sec-2) and route all five existing emit
+sites through it, with each site's current policy unchanged. Bind the recording
+sink around the whole batch harness, and remove every per-file cl-letf stub of
+notifications-notify / call-process "logger". Closes ISS-015.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "Design dr-01a0cc0b locked; the suite is green at the phase's base commit (or its failures are recorded as pre-existing)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-announce.el exists with satan-notify-app (moved), -sink, -deliver, -record, -recorded, -with-recorder; it requires only cl-lib and satan-custom." },
+  { id = "EX-2", text = "The broker's announce-failure, satan-tool/notify-send, and both listeners' --report-death call satan-announce. The broker keeps its streak==1 policy for now (PHASE-07 replaces it). The listeners pass a critical pop plus :journal." },
+  { id = "EX-3", text = "satan-test-run-batch let-binds satan-announce-sink to satan-announce-record around load and run." },
+  { id = "EX-4", text = "No cl-letf of notifications-notify or of logger remains in satan/test/ outside satan-announce-test.el." },
+  { id = "EX-5", text = "Production code has no noninteractive branch that decides delivery (I10)." },
+]
+verification = [
+  { id = "VT-1", expects = "seam unit tests: deliver pops and journals; journal-only when no title; journal failure swallowed; pop failure propagates; recorder captures and isolates", test_file = "satan/test/satan-announce-test.el", keywords = ["satan-announce/deliver-pops-and-journals", "satan-announce/journal-only-when-no-title", "satan-announce/journal-failure-is-swallowed", "satan-announce/pop-failure-propagates", "satan-announce/with-recorder-captures-and-isolates"], waived = false },
+  { id = "VT-2", expects = "self-check inside the suite: the batch harness has bound the recording sink", test_file = "satan/test/satan-announce-test.el", keywords = ["satan-announce/batch-harness-binds-recorder"], waived = false },
+  { id = "VT-3", expects = "budget-denied runs land in the recorder instead of the real announcer (the ISS-015 leak)", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker/budget-denied-run-is-recorded-not-delivered", "satan-announce-with-recorder"], waived = false },
+  { id = "VA-1", text = "Selectors 1 and 2 of design sec-8 give their stated hit sets: notifications-notify|\"logger\" only in satan-announce.el outside tests; notifications-notify in no test file except satan-announce-test.el." },
+  { id = "VA-2", text = "V1: bracket a full `just test` with journalctl -t satan --since/--until; no line in the window names a run-id absent from the real satan-runs-dir." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Run outcomes and the per-mode streak walk"
+objective = """
+Add run identity and outcome reading to the satan-run.el leaf (design sec-3):
+satan-run-id-regexp, -mode-from-id, -outcome, and the policy-free
+-outcome-streak. Move satan-tank and satan-context onto the shared id grammar.
+No caller policy changes yet.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 completed (the suite is hermetic)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-run.el exports satan-run-id-regexp, satan-run-mode-from-id, satan-run-outcome and satan-run-outcome-streak (MODE COUNTS-P &optional SKIPS-P RUNS-DIR), returning outcome plists newest first." },
+  { id = "EX-2", text = "satan-run.el still requires only cl-lib, subr-x and satan-custom (I8)." },
+  { id = "EX-3", text = "satan-tank uses satan-run-mode-from-id. satan-context builds its date/.FAILED groups on satan-run-id-regexp, and satan-context--run-id-regexp is gone." },
+]
+verification = [
+  { id = "VT-1", expects = "id parsing, outcome reading, and the streak walk: per-mode, steps over skips and unfinished runs, stops at a non-counting outcome", test_file = "satan/test/satan-run-test.el", keywords = ["satan-run/mode-from-id-handles-hyphenated-modes-and-failed-suffix", "satan-run/outcome-nil-without-status", "satan-run/outcome-reads-status-and-reason", "satan-run/streak-is-per-mode", "satan-run/streak-steps-over-skips-and-unfinished", "satan-run/streak-stops-at-non-counting-outcome"], waived = false },
+  { id = "VT-2", expects = "tank and context still parse run-ids correctly through the shared grammar", test_file = "satan/satan-tank.el", keywords = ["satan-run-mode-from-id"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Failure reason: harness class transport"
+objective = """
+Carry the harness's error class into the failed run's record (design sec-7).
+Broker: failure-reason slot (first write wins), --error-class, --on-error,
+finalize synthesising final.json {status invalid, reason}, crash-context
+:failure_reason, --failure-reason precedence. Harness: classify_error by
+status_code (401 auth, 402 credits, 403 not auth, 429, 5xx), then word
+boundaries.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 completed." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-run has a failure-reason slot, appended last." },
+  { id = "EX-2", text = "A child that dies with a harness error and no final leaves final.json with reason = the parsed class (unknown for a non-JSON error)." },
+  { id = "EX-3", text = "classify_error matches design sec-7; test_classify_auth_403 now expects unknown." },
+]
+verification = [
+  { id = "VT-1", expects = "error class parsed from the harness JSON; unknown for a plain string; failed run's final carries the reason", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker/error-class-parsed-from-harness-json", "satan-broker/error-class-unknown-for-plain-string", "satan-broker/failed-run-final-carries-failure-reason"], waived = false },
+  { id = "VT-2", expects = "harness classifier: status-code paths (401, 402, 429, 5xx), no substring false positives, 403 moderation reads unknown", test_file = "satan/harness/test_gptel_harness.py", keywords = ["test_classify_by_status_code", "test_classify_no_substring_false_positives", "test_classify_403_moderation_is_unknown"], waived = false },
+  { id = "VA-1", text = "`python -m unittest` in satan/harness passes, with counts recorded." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "One tool-ctx: every builder in satan-run.el"
+objective = """
+Consolidate tool-ctx construction (design sec-4, DEC-016). Hoist make-satan-run
+to just after satan-audit-open in --spawn and keep its prepare slot in sync.
+The observer and the pre-spawn sensor alerts take (satan-run-tool-ctx run-ctx).
+satan-run-manual-tool-ctx replaces the mark and atsatan builders. Delete the
+four other builders, the observer's wall-clock fallback and its :ctx option.
+Closes the root cause of ISS-016.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 completed (the failure-reason slot exists)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "make-satan-run is called once in --spawn, immediately after satan-audit-open; each of the three later prepare rebinds is followed by a setf of the struct's prepare slot." },
+  { id = "EX-2", text = "satan-sensor-alerts-check takes :tool-ctx (no :run-dir); a pre-spawn intervention mints as <run-id>.ivNNN with its audit line present." },
+  { id = "EX-3", text = "satan-observer-process takes a tool-ctx, checks it with --ctx-required, and has no wall-clock fallback and no :ctx option. The ten test call sites are migrated." },
+  { id = "EX-4", text = "satan-intervention-mark and satan-tools-atsatan both call satan-run-manual-tool-ctx." },
+  { id = "EX-5", text = "The A17 capability gate still yields capability_denied when notify is removed from a mode." },
+]
+verification = [
+  { id = "VT-1", expects = "manual ctx satisfies --ctx-required", test_file = "satan/test/satan-run-test.el", keywords = ["satan-run/manual-tool-ctx-satisfies-ctx-required"], waived = false },
+  { id = "VT-2", expects = "pre-spawn alert joins its run, and the capability gate still suppresses it", test_file = "satan/test/satan-sensor-alerts-test.el", keywords = ["satan-sensor-alerts/pre-spawn-intervention-joins-run", "satan-sensor-alerts/capability-denied-still-suppresses"], waived = false },
+  { id = "VT-3", expects = "observer runs on the run's tool-ctx", test_file = "satan/test/satan-observer-test.el", keywords = ["satan-observer/process-uses-run-tool-ctx"], waived = false },
+  { id = "VA-1", text = "Selector 3 of design sec-8 (the deleted-builder and deleted-name grep) finds nothing, apart from satan-broker--failure-streak-count, which PHASE-07 removes." },
+  { id = "VA-2", text = "The IMP-001/IMP-002 cross-checks are re-run against a <run-id>.ivNNN pre-spawn intervention (R4)." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "A spawn that cannot fail silently"
+objective = """
+Extend the existing --spawn condition-case into the single pre-child handler
+(design sec-4, RV-010 F-2/F-3/F-5/F-10). It always kills the stderr buffer and
+clears the DEC-8 lock. With a child, it re-signals. With no child, it finalises
+failed/spawn_failed (mirroring the percept into bundle.json if absent) or, when
+there is no audit yet, uses the no-child writer. Either way it stamps the trace
+and returns the run-id. Add --manifest-or-stub for the no-child writer.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 completed (the struct is created early; the failure-reason slot exists)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Every run past the satan-broker-run gates ends with a status file, including one whose manifest cannot be built (I7)." },
+  { id = "EX-2", text = "An error after make-process is not finalised by the handler (the sentinel owns it)." },
+  { id = "EX-3", text = "No stderr buffer is leaked and satan-run--spawn-running is nil after a pre-child failure." },
+]
+verification = [
+  { id = "VT-1", expects = "spawn error before the child finalises spawn_failed: lock cleared, stderr killed, bundle.json has the percept, run-id returned, trace stamped spawn_failed", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker/spawn-error-before-child-finalizes-spawn-failed"], waived = false },
+  { id = "VT-2", expects = "manifest failure is recorded, a no-child run survives a broken manifest, and a post-child error is not finalised twice", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker/manifest-error-finalizes-spawn-failed", "satan-broker/no-child-run-survives-broken-manifest", "satan-broker/error-after-child-not-finalized-twice"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Record before emit"
+objective = """
+Split the intervention write APIs (design sec-5, DEC-018): create into record
++ project, classify into classify-record + classify-project, with the composed
+functions unchanged. satan-tool/notify-send runs record -> announce -> project,
+and a failed pop goes to satan-tools-notify--mark-undelivered, which never
+signals and skips projection if its own record fails. The sensor cooldown arms
+on the record. Tests stub only the two project functions.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 completed (pre-spawn alerts carry a real tool-ctx)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Nothing is shown before intervention.created is appended (I2); a failed projection never suppresses an emit or un-arms a cooldown (I3)." },
+  { id = "EX-2", text = "A failed pop leaves an unknown/high/mature/auto verdict noted 'undelivered: ERR' in the same transcript (I4), even with Postgres down, and the tool returns ok with :delivered :false." },
+  { id = "EX-3", text = "Outside satan-intervention-test.el and satan-observer-test.el, no test reaches a real projection; no test stubs satan-intervention-create wholesale for notify/sensor paths." },
+]
+verification = [
+  { id = "VT-1", expects = "record appends before projection; classify-record needs no database; the composed classify is unchanged", test_file = "satan/test/satan-intervention-test.el", keywords = ["satan-intervention/record-appends-before-projection", "satan-intervention/classify-record-needs-no-database", "satan-intervention/classify-composition-unchanged"], waived = false },
+  { id = "VT-2", expects = "notify_send ordering and failure branches, including D-Bus and Postgres both down", test_file = "satan/test/satan-tools-notify-test.el", keywords = ["satan-tools-notify/no-emit-when-record-fails", "satan-tools-notify/emits-and-notes-when-projection-fails", "satan-tools-notify/undelivered-pop-classified-unknown", "satan-tools-notify/undelivered-with-db-down-still-ok"], waived = false },
+  { id = "VT-3", expects = "the sensor cooldown arms on the record", test_file = "satan/test/satan-sensor-alerts-test.el", keywords = ["satan-sensor-alerts/cooldown-arms-on-record"], waived = false },
+  { id = "VA-1", text = "V3: REQ-003 coverage recorded for the notify path, in-run and pre-spawn, per REQ-012." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Announce policy: persistent failures stay loud"
+objective = """
+Replace the global suffix streak with the per-mode same-cause streak, plus the
+DEC-015 back-off (design sec-3 broker policy, sec-6):
+--streak-transparent-reasons, --failure-streak, --announce-due-p,
+--failure-line, --quiet-p, and a rewritten --announce-failure(dir) called with
+the renamed dir from both call sites. Remove --failure-streak-count and the
+notifications declare-function; update the kill-switch docstrings. Closes
+ISS-017.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02, PHASE-03 and PHASE-05 completed (outcome streak, recorded reasons, spawn_failed runs)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "A pop is due at same-cause positions 1, 2, 4, 8 and so on; auth pops every time at critical urgency; budget-exceeded pops only at position 1; quiet hours suppress the pop but not the journal line." },
+  { id = "EX-2", text = "The journal line is `<status> <mode> <run-id> <reason> x<N> since <first>` (no ` since` at 1), ASCII only, written for every failure." },
+  { id = "EX-3", text = "session_blocked and credential_deferred runs neither extend nor break a failure streak." },
+]
+verification = [
+  { id = "VT-1", expects = "announce policy and streak semantics", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker/announce-due-at-powers-of-two", "satan-broker/failure-streak-restarts-on-new-cause", "satan-broker/announce-auth-always-critical", "satan-broker/announce-budget-once", "satan-broker/announce-journals-every-failure-ascii", "satan-broker/announce-quiet-suppresses-pop-not-journal", "satan-broker/session-blocked-transparent-to-failure-streak"], waived = false },
+  { id = "VA-1", text = "V2: all design sec-8 selectors give their stated hit sets." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "Deploy and live evidence"
+objective = """
+Ship and observe (design sec-9 V4, R6). Push, then `nix flake update satan` in
+~/flakes and home-switch so the jail runs the new harness. Load the Elisp in
+the live Emacs. Collect live evidence that closes ISS-016 and ISS-017, and file
+the follow-up backlog item (record before side effect for sway, inbox,
+proposal and patch).
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 to PHASE-07 completed; full suite green with counts recorded." },
+  { id = "EN-2", text = "The keeper approves the push and home-switch." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The jail's harness is the new classify_error (flake lock points at the pushed commit)." },
+  { id = "EX-2", text = "The backlog item for the other intervention-creating tools is filed." },
+]
+verification = [
+  { id = "VH-1", text = "Live: the next degraded-sensor run produces a <run-id>.ivNNN intervention.created line and a pre_spawn entry with :dispatched_at, and notified.json gains last_notified_at (ISS-016)." },
+  { id = "VH-2", text = "Live: a forced failure streak on a scratch mode shows the back-off in `journalctl --user -t satan` (ISS-017)." },
+]
+specs        = []
+requirements = []
