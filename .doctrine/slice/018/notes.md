@@ -161,3 +161,23 @@ fresh-as-of: 2026-09-23 · PHASE-07 in_progress (red tests uncommitted) · head 
 - VT-29 (recovery): cache `sk-dead` → evict → the next acquire re-reads
   `sk-rotated`.
 - Suite 1130/1136 after the quit fix.
+
+### PHASE-07 — patch runner under the seam
+
+- Runner (`satan-patch-runner.el`): `--queue-ready-p` peeks
+  `store-list :state "queued" :limit 1` before `claim-next`; empty or peek
+  error → no backend call; not ready → `message` + journal
+  `credential_deferred patch`, job stays `queued`. The journal line is
+  unconditional (no `satan-failure-syslog` gate — that defcustom lives in
+  the broker, and the runner must not require it).
+- After worktree prep: `satan-credential-resolve` → `:env` in the adapter
+  input; per-var failures become `credential VAR unresolved: MSG` warnings,
+  merged by `--with-warnings` around `on-finish`, so every adapter path
+  (incl. the early missing-executable failure) carries them.
+- `adapter_failed` payload now persists `:warnings` (VT-24).
+- Adapter-pi binds `(satan-credential-scrub (append :env process-environment))`;
+  `--resolved-env` and the three `my/*` declarations deleted. VT-10 guard
+  (`satan-credential/no-dl-secret-coupling`) greps `satan/*.el` for them.
+- VA-1: no `ignore-errors` / `(error nil)` wraps key resolution in broker or
+  adapter-pi; the only suppression is the seam's documented `session-p` → nil.
+- Suite 1139/1145 (6 known skips); no byte-compile warnings on touched files.

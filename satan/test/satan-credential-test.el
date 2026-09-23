@@ -188,5 +188,18 @@ come back as a verdict, or the run it belonged to is lost."
                                       :failed))
                    '("COLD_KEY")))))
 
+;;; VT-10 — SATAN owns the seam: no dl-secret symbol in the package.
+
+(ert-deftest satan-credential/no-dl-secret-coupling ()
+  "No satan/*.el names a dl-secret credential symbol (DEC-021)."
+  (let ((dir (file-name-directory (locate-library "satan-credential.el")))
+        (hits nil))
+    (dolist (f (directory-files dir t "\\.el\\'"))
+      (with-temp-buffer
+        (insert-file-contents f)
+        (when (re-search-forward "my/\\(?:op-\\|scrub-op\\)" nil t)
+          (push (file-name-nondirectory f) hits))))
+    (should-not hits)))
+
 (provide 'satan-credential-test)
 ;;; satan-credential-test.el ends here

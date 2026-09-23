@@ -23,10 +23,7 @@
 (require 'json)
 (require 'subr-x)
 (require 'satan-patch-adapter)
-
-(declare-function my/op-read-env "dl-secret" (var &optional refresh))
-(defvar my/op-read-context)
-(declare-function my/scrub-op-refs-env "dl-secret" (env))
+(require 'satan-credential)
 
 (defcustom satan-patch-adapter-pi-program "jailed-pi"
   "Executable name (or absolute path) of the jailed-pi wrapper."
@@ -36,12 +33,14 @@
   '("ANTHROPIC_API_KEY" "OPENROUTER_API_KEY" "DEEPSEEK_API_KEY"
     "OPENAI_API_KEY" "GEMINI_API_KEY" "MISTRAL_API_KEY"
     "VOYAGE_API_KEY")
-  "Env vars whose `op://' refs are resolved before spawning jailed-pi.
-Mirrors the broker→harness env-cache path: the Emacs side pays the
-biometric prompt once via `my/op-read-env' (cached for the session)
-and the bwrap wrapper forwards each var into the jail via
+  "Env vars whose credential refs are resolved before spawning jailed-pi.
+The patch runner checks readiness over these before claiming a job and
+resolves them through `satan-credential-resolve' after (SL-018 design sec-7);
+the bwrap wrapper forwards each var into the jail via
 `--setenv VAR \"$VAR\"'.  Requires jailed-pi to be built with
-`useOpEnv = false; passApiKeysFromEnv = true'."
+`useOpEnv = false; passApiKeysFromEnv = true'.  Narrow this to the
+provider pi is configured for: a cold ref to an unused provider still
+holds jobs back until a credential session is live."
   :type '(repeat string) :group 'satan-patch)
 
 (defcustom satan-patch-adapter-pi-tools
@@ -226,29 +225,6 @@ stderr."
         (when on-finish (funcall on-finish result))))))
 
 ;; ---------------------------------------------------------------------
-;; env resolution
-;; ---------------------------------------------------------------------
-
-(defun satan-patch-adapter-pi--resolved-env ()
-  "Return `process-environment' with API key `op://' refs pre-resolved.
-For each name in `satan-patch-adapter-pi-api-key-vars', resolve
-the current value via `my/op-read-env' (cached for the Emacs
-session) and prepend `NAME=value' to the returned list.  Any
-remaining `KEY=op://…' entries are scrubbed via
-`my/scrub-op-refs-env' so a transient op failure can't ship a
-literal ref into the jail."
-  (let ((env (copy-sequence process-environment))
-        (my/op-read-context "satan patch-adapter/pi"))
-    (dolist (var satan-patch-adapter-pi-api-key-vars)
-      (when-let* ((val (and (fboundp 'my/op-read-env)
-                            (ignore-errors (my/op-read-env var)))))
-        (unless (string-prefix-p "op://" val)
-          (push (format "%s=%s" var val) env))))
-    (if (fboundp 'my/scrub-op-refs-env)
-        (my/scrub-op-refs-env env)
-      env)))
-
-;; ---------------------------------------------------------------------
 ;; invoke
 ;; ---------------------------------------------------------------------
 
@@ -279,8 +255,11 @@ executable).  See `satan-patch-adapter' for the protocol."
          (stderr-buf (generate-new-buffer
                       (format " *satan-patch-pi-stderr-%s*" job-id)))
          (default-directory (file-name-as-directory wt))
+         ;; INPUT's :env holds the runner's resolved keys; they shadow
+         ;; the refs, and the scrub drops every ref left over.
          (process-environment
-          (satan-patch-adapter-pi--resolved-env)))
+          (satan-credential-scrub
+           (append (plist-get input :env) process-environment))))
     ;; reset log file
     (with-temp-file log-path (insert ""))
     (let* ((proc

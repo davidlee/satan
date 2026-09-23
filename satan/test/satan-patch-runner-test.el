@@ -12,6 +12,9 @@
 (require 'satan-patch-prompt)
 (require 'satan-memory-migrate)
 (require 'satan-tools-patch)
+(require 'satan-patch-adapter-pi)
+(require 'satan-announce)
+(require 'satan-credential-fixture)
 
 (defconst satan-patch-runner-test--db "satan_memory_test")
 
@@ -60,7 +63,11 @@ defcustoms, and ensure the fake adapter is registered before BODY."
             (satan-patch-prompt-system-file prompt-tmp)
             (satan-patch-runner--active nil)
             (satan-patch-runner-enabled t)
-            (satan-patch-runner-hook nil))
+            (satan-patch-runner-hook nil)
+            ;; SL-018: no backend and no inherited credential ref unless a
+            ;; test adds one, so the pi-var readiness gate is deterministic.
+            (satan-credential-function nil)
+            (process-environment (satan-credential-scrub process-environment)))
        (with-temp-file prompt-tmp (insert "# test prompt\n"))
        (cl-letf (((symbol-function 'satan-intervention-create)
                   (lambda (&rest _args) "iv-runner-stub-01")))
@@ -375,6 +382,173 @@ BEHAVIOR is one of:
       (when (file-directory-p repo) (delete-directory repo t))
       (when (file-directory-p wt-root) (delete-directory wt-root t))
       (when (file-directory-p log-root) (delete-directory log-root t)))))
+
+;; ---------------------------------------------------------------------
+;; SL-018 PHASE-07: credentials under the seam (design sec-7)
+;; ---------------------------------------------------------------------
+
+(defconst satan-patch-runner-test--ref-env
+  '("ANTHROPIC_API_KEY=op://v/anthropic/credential"
+    "OPENROUTER_API_KEY=op://v/openrouter/credential")
+  "Two pi key vars holding uncached references.")
+
+(defun satan-patch-runner-test--register-capture (box behavior)
+  "Register adapter \"fake\": store its INPUT in BOX's car, then finish
+with BEHAVIOR (`success' commits a file, `failure' reports failure)."
+  (satan-patch-adapter-register
+   "fake"
+   (cl-function
+    (lambda (job-spec input &key on-finish &allow-other-keys)
+      (setcar box input)
+      (if (eq behavior 'success)
+          (progn
+            (satan-patch-runner-test--commit
+             (plist-get job-spec :worktree_path)
+             "satan/foo.el" ";; ok\n" "self-edit-mech: add foo")
+            (funcall on-finish (list :status 'success :summary "ok")))
+        (funcall on-finish (list :status 'failure :error "boom"
+                                 :summary "")))))))
+
+(defun satan-patch-runner-test--warnings-mention-p (warnings var)
+  "Non-nil when one of WARNINGS names the unresolved credential VAR."
+  (cl-some (lambda (w) (string-match-p (concat "credential " var) w))
+           (append warnings nil)))
+
+(ert-deftest satan-patch-runner/idle-queue-never-probes ()
+  "VT-7: nothing queued → no backend call at all."
+  (satan-patch-runner-test--with-fixture _repo
+    (satan-credential-fixture-with (calls :session t)
+      (let ((process-environment
+             (append satan-patch-runner-test--ref-env process-environment)))
+        (should-not (satan-patch-runner-tick))
+        (should-not (funcall calls))))))
+
+(ert-deftest satan-patch-runner/no-session-leaves-the-job-queued ()
+  "VT-7: refs cold, no session → nothing claimed, nothing read, a journal line."
+  (satan-patch-runner-test--with-fixture repo
+    (satan-patch-runner-test--register-fake :success-commit)
+    (satan-credential-fixture-with (calls)
+      (satan-announce-with-recorder
+        (let* ((process-environment
+                (append satan-patch-runner-test--ref-env process-environment))
+               (job-id (satan-patch-runner-test--enqueue repo)))
+          (should-not (satan-patch-runner-tick))
+          (should (equal "queued" (plist-get (satan-patch-runner-test--row job-id)
+                                             :state)))
+          (should-not (memq 'read (satan-credential-fixture-ops (funcall calls))))
+          (should (member "credential_deferred patch"
+                          (mapcar (lambda (a) (plist-get a :journal))
+                                  satan-announce-recorded))))))))
+
+(ert-deftest satan-patch-runner/ready-job-gets-resolved-keys ()
+  "VT-7: a live session → the adapter's input carries the resolved keys."
+  (satan-patch-runner-test--with-fixture repo
+    (let ((box (list nil)))
+      (satan-patch-runner-test--register-capture box 'success)
+      (satan-credential-fixture-with
+          (_calls :session t
+                  :read '(("op://v/anthropic/credential" . "sk-ant")
+                          ("op://v/openrouter/credential" . "sk-or")))
+        (let* ((process-environment
+                (append satan-patch-runner-test--ref-env process-environment))
+               (job-id (satan-patch-runner-test--enqueue repo)))
+          (should (equal (satan-patch-runner-tick) job-id))
+          (should (equal (plist-get (car box) :env)
+                         '("ANTHROPIC_API_KEY=sk-ant"
+                           "OPENROUTER_API_KEY=sk-or"))))))))
+
+(ert-deftest satan-patch-runner/peek-error-makes-no-backend-call ()
+  "VT-16: a failing queue peek → nil, no backend call, no claim."
+  (let ((satan-patch-runner-enabled t)
+        (satan-patch-runner--active nil)
+        (claimed nil))
+    (satan-credential-fixture-with (calls :session t)
+      (cl-letf (((symbol-function 'satan-patch-store-list)
+                 (lambda (&rest _) '(error . "db down")))
+                ((symbol-function 'satan-patch-store-claim-next)
+                 (lambda (&rest _) (setq claimed t) '(ok . nil))))
+        (should-not (satan-patch-runner-tick))
+        (should-not claimed)
+        (should-not (funcall calls))))))
+
+(ert-deftest satan-patch-runner/lost-claim-race-reads-nothing ()
+  "VT-16: ready, but another runner won the claim → no read."
+  (let ((satan-patch-runner-enabled t)
+        (satan-patch-runner--active nil)
+        (process-environment
+         (append satan-patch-runner-test--ref-env process-environment)))
+    (satan-credential-fixture-with (calls :session t)
+      (cl-letf (((symbol-function 'satan-patch-store-list)
+                 (lambda (&rest _) '(ok . ((:id "j")))))
+                ((symbol-function 'satan-patch-store-claim-next)
+                 (lambda (&rest _) '(ok . nil))))
+        (should-not (satan-patch-runner-tick))
+        (should-not (memq 'read (satan-credential-fixture-ops (funcall calls))))))))
+
+(ert-deftest satan-patch-runner/one-failing-key-warns-but-runs ()
+  "VT-16: one unreadable key does not block the job; it becomes a warning."
+  (satan-patch-runner-test--with-fixture repo
+    (let ((box (list nil)))
+      (satan-patch-runner-test--register-capture box 'success)
+      (satan-credential-fixture-with
+          (_calls :session t
+                  :read '(("op://v/anthropic/credential" . "sk-ant")))
+        (let* ((process-environment
+                (append satan-patch-runner-test--ref-env process-environment))
+               (job-id (satan-patch-runner-test--enqueue repo)))
+          (should (equal (satan-patch-runner-tick) job-id))
+          (should (equal (plist-get (car box) :env) '("ANTHROPIC_API_KEY=sk-ant")))
+          (let ((row (satan-patch-runner-test--row job-id)))
+            (should (equal "needs_review" (plist-get row :state)))
+            (should (satan-patch-runner-test--warnings-mention-p
+                     (plist-get (plist-get row :result_json) :warnings)
+                     "OPENROUTER_API_KEY"))))))))
+
+(ert-deftest satan-patch-runner/adapter-failure-keeps-credential-warnings ()
+  "VT-24: an `adapter_failed' row carries the resolution warnings."
+  (satan-patch-runner-test--with-fixture repo
+    (satan-patch-runner-test--register-capture (list nil) 'failure)
+    (satan-credential-fixture-with
+        (_calls :session t
+                :read '(("op://v/anthropic/credential" . "sk-ant")))
+      (let* ((process-environment
+              (append satan-patch-runner-test--ref-env process-environment))
+             (job-id (satan-patch-runner-test--enqueue repo)))
+        (satan-patch-runner-tick)
+        (let ((err (plist-get (satan-patch-runner-test--row job-id) :error_json)))
+          (should (equal "adapter_failed" (plist-get err :reason)))
+          (should (satan-patch-runner-test--warnings-mention-p
+                   (plist-get err :warnings) "OPENROUTER_API_KEY")))))))
+
+(ert-deftest satan-patch-adapter-pi/child-env-is-scrubbed ()
+  "The pi child gets the runner's resolved keys and no credential reference."
+  (let* ((seen nil)
+         (make-process-fn (symbol-function 'make-process))
+         (wt (make-temp-file "satan-pi-wt-" t))
+         (log (make-temp-file "satan-pi-log-" nil ".jsonl"))
+         (done nil)
+         (satan-patch-adapter-pi-program "true")
+         (process-environment
+          (append '("UNRELATED_KEY=op://v/other/credential"
+                    "ANTHROPIC_API_KEY=op://v/anthropic/credential")
+                  process-environment)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (setq seen process-environment)
+                     (apply make-process-fn args))))
+          (satan-patch-adapter-pi-invoke
+           (list :id "job-env" :worktree_path wt)
+           (list :log-path log :directive "x"
+                 :env '("ANTHROPIC_API_KEY=sk-ant"))
+           :on-finish (lambda (_r) (setq done t)))
+          (with-timeout (5 (ert-fail "pi stub never finished"))
+            (while (not done) (accept-process-output nil 0.05)))
+          (should (equal (getenv-internal "ANTHROPIC_API_KEY" seen) "sk-ant"))
+          (should-not (cl-find-if (lambda (kv) (string-match-p "=op://" kv))
+                                  seen)))
+      (delete-directory wt t)
+      (delete-file log))))
 
 (provide 'satan-patch-runner-test)
 ;;; satan-patch-runner-test.el ends here
