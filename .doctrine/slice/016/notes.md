@@ -6,11 +6,105 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-01 implemented, 2026-09-23 — `goad/backend.py` has a
-test harness (17 tests, stdlib `unittest`, `just check`), the day record is
-JSON (DEC-009), and the corpus's `data/*.toml` files are converted in place.
-Not yet committed (orchestrator's to commit). Next: `/execute PHASE-02` (or
-audit if PHASE-01 is the last phase touched before a checkpoint).
+**fresh-as-of:** PHASE-02 implemented, 2026-09-23. `goad/backend.py` reads
+SATAN's queue, puts asks first, stamps `presented_at`, records `deferred_by`,
+files each ask's events under its emit date, and skips expired entries (65
+tests). Goldens generated into `satan/test/goad-fixtures/`. PHASE-01 is corpus
+commit `51a0f36`; PHASE-02 is uncommitted in both repos (orchestrator's to
+commit). Next: `/phase-plan PHASE-03`.
+
+### PHASE-02
+
+- **`goad/backend.py`**
+  - `instant()`, the one timestamp parser (offset required); `is_deferred`
+    uses it.
+  - Queue: `QUEUE_FIELDS`, `Ask` (NamedTuple; `.item` =
+    `("ask:<iid>", "SATAN asks", question)`, `.place` = emit date),
+    `queue_path(env)` (`GOAD_SATAN_QUEUE`, else `$XDG_STATE_HOME/satan/goad/queue.json`,
+    else `~/.local/state/...`; empty = unset), `parse_ask`, `read_queue`
+    (never raises).
+  - Record: `day_path`/`load_day`/`save_day` over whole documents;
+    `save_day` is the one atomic writer and omits an empty `asks`.
+    `record_path`/`load`/`save` stay as wrappers; `save` keeps the day's
+    `asks`.
+  - `Days`: per-exchange documents, each loaded once, saved only if changed.
+    `holding_ask` searches `data/*.json` newest first (A6). `place_of` maps an
+    item to its record's day/map/key.
+  - `pending(items, cycle, asks=())` asks first (two-arg call unchanged);
+    `waiting` applies `now < expires_at`; `view_for(item, items, still)`;
+    `answer()` is the single answer path; `present` stamps `presented_at` on
+    first render only; `run(request, now, data, queue=None)` resolves the
+    queue per call. `main()` unchanged.
+- **`goad/test_backend.py`** — 65 tests: Characterisation 12 (byte-identical
+  to the start-of-phase snapshot), Record 9, Queue 9, Asks 25, Goldens 10.
+  `BackendTestCase` points `GOAD_SATAN_QUEUE` at a temp path, so no test can
+  read the real queue. Helpers: `write_queue`, `day`, `asks_on`, `exchange`,
+  `queued` (delegates to `goldens.ask`), `morning`, `late_night`,
+  `option_ids`.
+- **`goad/goldens.py`** (new) + `just goldens <dir>` — fixed script (7 asks, 8
+  exchanges, microsecond stamps) through `backend.run`; idempotent; refuses to
+  write over the live `data/`.
+- **`goad/README.md`** — "SATAN asks" (queue path, A3 schema, option ids,
+  emit-date filing, A6, A5 pairing, `presented_at` vs Enough, goldens) and a
+  rewritten "The record". **`goad/.gitignore`** — `__pycache__/`.
+- **`satan/test/goad-fixtures/`** (this repo) — `queue.json`,
+  `data/2026-09-23.json`, `README.md` (recipe, provenance, scenario table).
+
+**PHASE-01 departure, now pinned.** PHASE-01's `save` dumps `items` as given,
+so ids not in `ITEMS` survive a save (its sheet's A3 assumed they were
+dropped). PHASE-02's A10 keeps that and pins it with
+`Asks.test_unknown_item_id_survives_save_and_load`.
+
+**Verification** (waived VT rows, verified here):
+- VT-2 / ASM-001 — `test_yes_ask_round_trips_through_the_day_file`,
+  `test_no_ask_stores_false`: `yes:ask:<iid>` lands in `"asks"` on disk,
+  `items` untouched. ASM-001's plan is met; promotion is the orchestrator's.
+- VT-16 — `test_nothing_renders_at_or_after_expires_at`,
+  `test_expires_at_is_compared_as_an_instant`, Goldens "expired" row.
+- VT-22 — the four `presented_at` tests (first stamp, never moved, stamped
+  after a respond, not stamped when behind another ask).
+- VT-26 — `test_ask_renders_first`.
+- VT-27 — `deferred_by` tests: Later on an ask, Later on a checklist item,
+  Enough across two emit-date files (unseen ask: `deferred_by: enough`, no
+  `presented_at`).
+- VT-30 — `test_ask_filed_under_emit_date`,
+  `test_presented_ask_still_renders_after_midnight_unstamped`.
+- VT-31 — `test_emit_date_is_local`.
+- Live smoke evaluate after every save: identical to baseline, wrote nothing.
+  Dev `just check` exit 0 (1139/1145, 6 skipped); fixtures not picked up.
+
+**A3/A6/A7 as implemented:**
+- A3 — `{"asks": [...]}`, five string fields, offset timestamps, file order.
+  Bad entry dropped alone; absent/malformed file = no asks. Reader ignores
+  extra fields (writer must emit exactly the five; Goldens checks it).
+- **A6 — design gap, flagged.** Late answer: filed under the emit date if the
+  ask is still queued (expired or not); else in the newest day file already
+  holding `asks[<iid>]`; else dropped. The design requires storing late
+  answers (sec-5, F-31) but does not say where to find the emit date once
+  SATAN has retired the entry; this is the least-new-state reading.
+- A7 — `deferred_by` on checklist items too, one `answer()` path. Yes/No
+  replaces a checklist record, merges into an ask's (`presented_at`
+  survives).
+
+**Goldens sha256** (corpus commit pending):
+- `backend.py` `0f506e01446dee9ad5c5ffb1d4a39ef762db238374f5da9e8938d3698e029965`
+- `goldens.py` `595006274b44599e6e55071f3e9282b2d9f954cd8e03bc808d7c1df0602166e4`
+- `queue.json` `a38c1b318da4770a0a671ac7147208289bef4a29867e01291abb0e65abc4bc34`
+- `data/2026-09-23.json` `06d7c94d76f8eb24695eb4f464b293e2350f106e2c679d0395ef54aabe857653`
+
+Reproducibility: regenerate to scratch, `diff -r -x README.md` — empty.
+
+**Findings:**
+- Empty `XDG_STATE_HOME`: backend treats it as unset; `satan-state-root`
+  (`satan/satan-custom.el:105`) accepts `""`. Harmless while unset;
+  PHASE-03's defcustom inherits it.
+- A respond that changes nothing no longer writes a day file (PHASE-01 always
+  wrote on respond).
+- "still to ask" count now includes pending asks.
+- The A6 search reads every day file; a corrupt old one would raise on a late
+  answer (PHASE-01 already has this exposure for today's file).
+- Later on an ask defers to the next 2h slot, usually past its 60-minute
+  window: Later effectively retires the ask.
 
 ### PHASE-01
 
@@ -77,7 +171,8 @@ audit if PHASE-01 is the last phase touched before a checkpoint).
 **Findings:** none — no bug surfaced during characterisation; T1's refactor
 and T4's format switch were both behaviour-preserving by the tests above.
 
-**Files changed** (corpus repo `~/satan`, none staged/committed):
+**Files changed** (corpus repo `~/satan`; code committed as `51a0f36`, the
+`data/` conversion left uncommitted on purpose):
 `goad/backend.py`, `goad/test_backend.py` (new), `goad/convert_toml_days.py`
 (new), `goad/justfile`, `goad/README.md`, `goad/data/*.toml` → `*.json` (7
 files converted in place). `goad/goad.service` (deleted) and `motd.txt`
