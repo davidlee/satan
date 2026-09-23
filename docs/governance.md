@@ -381,7 +381,7 @@ justification):
 | `satan-tank.el` | Shared mutable run-context "tank" plist accessors (run_id, time_now, evidence, percept, sensor_status, pre_spawn, motive, observer summary). |
 | `satan-tools-motive.el` | `motive_read` / `motive_replace` handlers + bound validators (≤3 active, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:`). |
 | `satan-tools-atsatan.el` | `notes_at_satan_scan` (read; `rg --json` over `~/notes/` excluding `satan/`, enriched with headline + context) + `notes_at_satan_done` (claim by replacing `@satan` with `@satan-was-here` + quoted run-id block). Registers `tick-agent` via `satan-tick-register`. |
-| `satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`, excludes `satan/`). |
+| `satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`). |
 | `satan-tools-sway.el` | `sway_border_set` / `sway_border_reset` (visual ephemeral effect). |
 | `satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.emacs.d`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
 | `satan-patch.el` | Patch-agent aggregator + `satan-patch-*` interactive surface. |
@@ -534,9 +534,9 @@ Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 | `docs_read` | read | — | Full body of one chunk by `name` slug. |
 | `motive_read` | read | — | Whole `~/satan/motives.org` parsed: active motives + prose + `:cue:` + footer fields; ruminations. Capsule already includes motive block, so motive_read mostly serves explicit lookups + observer correlation context. |
 | `motive_replace` | low | capability `motive-write` | Atomic full-file motive replace; broker validates ≤3 active, ≤10 ruminations, every active motive's `:cue:` matches the canon handle regex AND includes ≥1 sensor-observed handle, rejects `:ceiling:`. Broker preserves `:worked_count:` + `:last_intervention_at:`. |
-| `notes_at_satan_scan` | read | — | `rg --json --fixed-strings @satan` over `~/notes/`, excluding `satan/**`. Returns each unclaimed directive with headline + ±N lines + stable session id. Only path to user-authored directives. |
+| `notes_at_satan_scan` | read | — | `rg --json --fixed-strings @satan` over `~/notes/`. Returns each unclaimed directive with headline + ±N lines + stable session id. Only path to user-authored directives. |
 | `notes_at_satan_done` | low | capability `write-notes` | Claim a directive by replacing `@satan` with `@satan-was-here` + a quoted run-id + optional comment block. Persistent and grep-able; excluded from future scans. |
-| `notes_recent` | read | — | `fd --changed-after N hours` over `~/notes/` (excludes `satan/`); newest-first, capped at 200, denote-style title/tag parsed. |
+| `notes_recent` | read | — | `fd --changed-after N hours` over `~/notes/`; newest-first, capped at 200, denote-style title/tag parsed. |
 | `patch_job_create` | medium | capability `patch-job-create` | Enqueue a patch job: writes `satan_patch.patch_jobs` row, fires `pg_notify`, runner picks up + allocates `git worktree add` + branch `satan/patch/<job-id>` + spawns adapter in jail. See `docs/patch/{brief,plan,handover}.md`. |
 | `patch_job_status` | read | — | Read job state from `satan_patch.patch_jobs` (queued/claimed/preparing_worktree/running/needs_review/failed/cancelled + 3 optional). |
 | `patch_job_result` | read | — | Read job result JSON when terminal; includes branch ref user can cherry-pick. |

@@ -23,9 +23,6 @@
 ;; gitignore-aware by default — keeps `~/notes/elpa', `~/notes/.git'
 ;; etc. out of results without us having to maintain an exclude list.
 ;;
-;; The `satan/' subtree is always excluded to keep SATAN from
-;; self-spamming on its own inbox/proposals/motd churn.
-;;
 ;; Risk = `read'; no capability required.
 
 (require 'cl-lib)
@@ -52,9 +49,6 @@
 (defconst satan-tools-notes--limit-max 200
   "Hard upper bound on `:limit'; clamped without error.")
 
-(defconst satan-tools-notes--exclude '("satan")
-  "Top-level subdir names dropped from `notes_recent' results.")
-
 (defvar satan-tools-notes--fd-program "fd"
   "Name (or absolute path) of the `fd' binary.  Overridable for tests.")
 
@@ -65,17 +59,14 @@
         (t raw)))
 
 (defun satan-tools-notes--build-argv (hours)
-  (let ((argv (list "--changed-after" (format "%dh" hours)
-                    "-t" "f"
-                    "--print0"
-                    ;; `call-process' performs no shell tilde expansion,
-                    ;; so a literal "~/notes" base-directory would reach
-                    ;; fd as a nonexistent path.  Expand here.
-                    "--base-directory"
-                    (expand-file-name satan-tools-notes-root))))
-    (dolist (name satan-tools-notes--exclude)
-      (setq argv (append argv (list "--exclude" name))))
-    argv))
+  (list "--changed-after" (format "%dh" hours)
+        "-t" "f"
+        "--print0"
+        ;; `call-process' performs no shell tilde expansion, so a literal
+        ;; "~/notes" base-directory would reach fd as a nonexistent path.
+        ;; Expand here.
+        "--base-directory"
+        (expand-file-name satan-tools-notes-root)))
 
 (defun satan-tools-notes--run-fd (argv)
   "Invoke fd with ARGV.

@@ -148,11 +148,9 @@ is a variable watcher that writes on `set` — watch for it firing at load.
 
 ## Follow-Ups
 
-- **RSK-015 is stale:** says attrd lives in a separate `satan_attributes` DB;
-  production has both ledgers in `satan_memory`, overlapping at 0007. Correct it.
+- ~~RSK-015 stale~~ — corrected 2026-09-23 (both ledgers in `satan_memory`).
 - **~40 orphaned `satan_attrd_test_*` DBs** on the system Postgres
   (`/run/postgresql`), leaked by satan-attrd's test harness
   (`tests/common/mod.rs` provisions one per test). Clean up; file in attrd.
-- `satan-tools-notes--exclude` still excludes a `satan/` subtree of `~/notes`
-  — dead since SL-015 moved the corpus out.
+- ~~Dead `satan/` exclude in `satan-tools-notes.el`~~ — removed 2026-09-23.
 - Payload contract fixtures — with the ADR-018 D3 RPC, in SPEC-001.

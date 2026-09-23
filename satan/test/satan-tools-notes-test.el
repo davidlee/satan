@@ -50,7 +50,9 @@ into `satan-tools-notes-test--fd-calls'."
     path))
 
 (ert-deftest satan-notes/builds-correct-fd-argv ()
-  "fd is invoked with --changed-after Nh, -t f, --print0, --base-directory, --exclude satan."
+  "fd is invoked with --changed-after Nh, -t f, --print0, --base-directory.
+No --exclude: the corpus left `~/notes' in SL-015, so there is no SATAN
+subtree to hide; everything under the notes root is the user's."
   (satan-tools-notes-test--with-notes-root
     (satan-tools-notes-test--with-fd-stub "" 0
       (satan-tool/notes-read '(:since-hours 24 :limit 10) nil)
@@ -65,8 +67,7 @@ into `satan-tools-notes-test--fd-calls'."
         (should (member "--print0" args))
         (should (member "--base-directory" args))
         (should (member satan-tools-notes-root args))
-        (should (member "--exclude" args))
-        (should (member "satan" args))))))
+        (should-not (member "--exclude" args))))))
 
 (ert-deftest satan-notes/expands-tilde-base-directory ()
   "A `~'-prefixed root is expanded before fd: `call-process' does no
