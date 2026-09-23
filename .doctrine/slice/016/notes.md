@@ -42,6 +42,153 @@ message says it was retired.
 
 None of these blocks the lock. They are verification or plan-time checks.
 
+### PHASE-04
+
+Shared seams: the undelivered writer moved, `satan-tick-quiet-p` grew a
+window argument, four goad defcustoms, and the DEC-027 state-home helper.
+Refactor and plumbing only — no kind's behaviour changed. Model: sonnet
+(the orchestrator's rationale — mechanical plumbing with a fully-resolved
+design, checked by existing tests plus VT-34/35/50).
+
+**What moved and where (T3, design sec-3):**
+`satan-tools-notify--mark-undelivered` → `satan-intervention-mark-undelivered`
+`(ctx payload err)`, in `satan-intervention.el` after
+`satan-intervention-project-with-verdict`. Its two helpers moved with it
+(A4): `satan-tools-notify--project` → `satan-intervention-try-project`
+(public — PHASE-06's ask handler needs it too), `satan-tools-notify--failed`
+→ `satan-intervention--failed` (private). `notify_send` calls the three new
+names; nothing else in `satan-tools-notify.el` changed. Moving into
+`satan-intervention.el` rather than requiring `satan-tools-notify` back
+avoids the require cycle (notify already requires intervention).
+`satan/test/satan-tools-notify-test.el` is byte-for-byte unchanged
+(`git diff --stat` empty) — the suite drives `notify_send` end to end and
+never names the private symbols, so STOP-1 never triggered.
+
+**Quiet window (T2, design sec-7):** `satan-tick-quiet-p` is now
+`(&optional time window)`, WINDOW defaulting to `satan-tick-quiet-hours`.
+No-arg behaviour is unchanged (EX-2); the three existing callers
+(`satan-tick.el:129`, `satan-broker.el:452`'s `--quiet-p`,
+`satan-sensor-alerts.el:331`) pass no window and are untouched. The two
+`declare-function` arglists (`satan-broker.el`, `satan-sensor-alerts.el`)
+now read `(&optional time window)`. `satan-tick-quiet-hours` itself stays
+`nil` — global quiet hours remain out of scope.
+
+**Goad defcustoms (T4, `satan-custom.el`'s goad block):**
+`satan-goad-enabled` (nil — "the governed kill switch", design sec-7 ledger
+row 6), `satan-goad-quiet-hours` (`(22 . 9)`, same `:type` as
+`satan-tick-quiet-hours` — no ask 22:00–08:59), `satan-goad-emit-program`
+(`"goad-emit"`, resolved on `PATH`) and `satan-goad-emit-timeout` (`10`,
+seconds — `satan-trace-call`'s `TIMEOUT-SECS` unit, read from its
+signature). The program/timeout defaults are OQ-2's proposal (A5),
+unopposed by the orchestrator; both cited in their docstrings against
+design sec-5 "The timeout is mandatory".
+
+**OQ-1 resolution (T5, `goad-ask` token):** no code this phase. Capability
+tokens are bare symbols compared against a tool spec's `:capability`
+(`satan-tool--capability-denied-p`, `satan-tools.el:143-150`) — there is
+no registry to seed. The token comes into existence when PHASE-06
+registers `goad_ask` with `:capability 'goad-ask` and adds it to
+`tick-pulse`'s `:capabilities`. Confirmed by the orchestrator's ruling on
+OQ-1.
+
+**State-home helper (T1, DEC-027 amended RV-015 F-9):** `satan-state-home`
+in `satan-custom.el`, defined before `satan-state-root` — a pure function
+of the environment (no `satan-*` state, no new require; STOP-2 never
+triggered): `XDG_STATE_HOME` when non-empty (`expand-file-name`d), else
+`~/.local/state`. All three readers now go through it:
+`satan-state-root`'s default, `satan-sensor-curiosity-segments-dir`
+(`satan-sensor-curiosity.el`, already required `satan-custom`) and
+`satan-tools-content-dir` (`satan-tools-content.el`, gained
+`(require 'satan-custom)`). The helper reads the environment directly, not
+`satan-state-root`'s value, so the pre-existing
+`satan-custom-behaviour-class-is-not-a-satan-root` test (rebinding
+`satan-state-root`/`satan-corpus-root` and asserting these two dirs don't
+follow either) needed no change — they never coupled to the root variable.
+`satan-goad-queue-file` still derives from `satan-state-root` at load
+(unchanged), so its own test has to rebind `satan-state-root` to its
+re-evaluated default before re-evaluating the queue file's default (R1) —
+skipping that step tests the developer's actual environment, not the fixed
+one. The `:91-99` comment on the falls-back-below-home test was rewritten:
+unset was never the divergent case; it was always empty, and empty is now
+unset too (DEC-027), not the residual defect ISS-010 named.
+
+**T6 — ISS-024 closed, ISS-010 untouched:**
+```
+doctrine backlog edit ISS-024 --status resolved --resolution fixed
+doctrine link ISS-024 references --role concerns --descriptor "fixed by DEC-027 (SL-016 PHASE-04)" DEC-027
+```
+`resolved`/`fixed` matches house convention — `doctrine backlog list --all
+--status resolved` carries nine issues/improvements/chores this way;
+`closed` has exactly one precedent (a chore). The sheet's optional
+"consider a dup-label link to ISS-010" was skipped: no `duplicate` relation
+label exists in the schema (the closest, `references --role concerns`, was
+already spent on DEC-027), and OQ-3's ruling was explicit — "do not touch
+ISS-010" — so no edge touches it in either direction.
+`doctrine backlog inspect ISS-010` confirms it is unchanged (`open`, no
+relationships).
+
+**Verify (T7):**
+- `just lint`: clean (paren-balance only, per `mem.fact.satan.green-is-not-green`).
+- Scratch byte-compile of the eight touched modules, before (HEAD's copies,
+  compiled from a scratch dir) and after: identical four pre-existing
+  warnings in both (`satan--root`/`satan-notify-intervention-window-minutes`
+  docstring width, two unused-lexical-variable warnings in
+  `satan-tools-content.el` unrelated to this phase's edit). No new warning.
+  `.elc` files deleted after (`find satan -name '*.elc' -delete`); confirmed
+  none remain (`git status --short satan/` shows no `.elc`).
+- `just check`, serially, `SATAN_DB_HOST=127.0.0.1`: **1199 ran / 1193
+  expected / 0 unexpected / 6 skipped**, same six names as the T0 baseline
+  (`satan-integration/morning-end-to-end`,
+  `satan-memory-grammar/db-sync-{aliases,current-version,default-weights}`,
+  `satan-patch-listener/integration-fires-from-real-pg`,
+  `satan-patch-runner/real-pi-edits-and-commits`). T0 baseline was 1186/1180/0/6
+  with the identical skip set; the 13 new tests are all this phase's (4
+  `satan-custom-test.el`, 3 `satan-tick-test.el`, 4
+  `satan-intervention-test.el` DB-backed `mark-undelivered` cases — the
+  fourth is real-DB, confirmed it *ran* rather than skipped by executing it
+  with `SATAN_DB_HOST` set before the full run, per R2).
+- EX-1: `rg -n 'defun satan-tools-notify--(mark-undelivered|project|failed)' satan`
+  and `rg -n 'satan-tools-notify--mark-undelivered' satan` both zero hits.
+- EX-4: `rg -n 'getenv "XDG_STATE_HOME"' satan` → one hit, `satan-custom.el`'s
+  `satan-state-home`.
+
+**Deviation from strict red-first order:** T1's helper (`satan-state-home`)
+and the `satan-state-root`/curiosity/content wiring were written before
+their new tests, rather than after watching the tests fail against the old
+code. The new tests were confirmed failing-for-the-right-reason cannot be
+re-created without reverting (never used, per the no-`git checkout`
+constraint), so this is reported as a deviation rather than demonstrated.
+T2, T3 and T4 all followed strict red→green (each new test was run and
+shown failing — `wrong-number-of-arguments` / `void-function` /
+`void-variable` — before its implementation landed).
+
+**Files changed:** `satan/satan-custom.el`, `satan/satan-tick.el`,
+`satan/satan-intervention.el`, `satan/satan-tools-notify.el`,
+`satan/satan-sensor-curiosity.el`, `satan/satan-tools-content.el`,
+`satan/satan-broker.el`, `satan/satan-sensor-alerts.el`,
+`satan/test/satan-custom-test.el`, `satan/test/satan-tick-test.el`,
+`satan/test/satan-intervention-test.el`,
+`.doctrine/backlog/issue/024/backlog-024.toml` (via CLI, T6). Next:
+`/phase-plan` PHASE-12.
+
+**Review fix — explicit nil WINDOW (post-PHASE-06 defect):** the T2 quiet
+window predicate defaulted an explicit `nil` WINDOW back to the global
+`satan-tick-quiet-hours`, contradicting its own docstring and breaking a
+user-disabled (`nil`) `satan-goad-quiet-hours` for PHASE-06's ask path —
+it would inherit the tick window instead of never being quiet.
+`satan-tick-quiet-p` is now `cl-defun` with a supplied-p parameter
+(`(&optional time (window nil window-given))`): an *omitted* WINDOW still
+defaults to `satan-tick-quiet-hours` (no-arg/one-arg callers unchanged,
+EX-2), but an *explicit* WINDOW — including nil — is used as given.
+New test `satan-tick/quiet-p-explicit-nil-window-never-quiet`
+(`satan/test/satan-tick-test.el`), red→green. `declare-function` arglists
+in `satan-broker.el`/`satan-sensor-alerts.el` unchanged (still
+`(&optional time window)` — a correct description of the calling
+convention). Verified: scratch byte-compile of `satan-tick.el`,
+`satan-broker.el`, `satan-sensor-alerts.el` quiet, `.elc` deleted after;
+`just check` serially with `SATAN_DB_HOST=127.0.0.1`: 1200/1194/0/6, same
+six skips as before.
+
 ### PHASE-11
 
 PERCEIVE rework of PHASE-03 onto the revised record (DEC-024 the form,

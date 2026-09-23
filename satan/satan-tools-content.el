@@ -18,14 +18,12 @@
 (require 'subr-x)
 (require 'satan-tools)
 (require 'satan-jsonl)
+(require 'satan-custom)      ; satan-state-home
 
 ;; --- Defcustoms -----------------------------------------------
 
 (defcustom satan-tools-content-dir
-  (let ((xdg (getenv "XDG_STATE_HOME")))
-    (expand-file-name
-     "behaviour/content/"
-     (if xdg (expand-file-name xdg) "~/.local/state/")))
+  (expand-file-name "behaviour/content/" (satan-state-home))
   "Root directory holding panopticon's content store."
   :type 'directory :group 'satan)
 

@@ -5,8 +5,8 @@ id = 24
 slug = "satan-state-root-treats-an-empty-xdg-state-home-as-a-directory"
 title = "satan-state-root treats an empty XDG_STATE_HOME as a directory"
 kind = "issue"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-09-23"
 updated = "2026-09-23"
 tags = []
@@ -20,3 +20,9 @@ tags = []
 needs    = []                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "fixed by DEC-027 (SL-016 PHASE-04)"
+target = "DEC-027"

@@ -501,6 +501,51 @@ pending without its verdict.  Signals `user-error' on psql failure."
        (list (satan-intervention--insert-created-sql payload)
              (satan-intervention--upsert-outcome-sql verdict)))))
 
+(defun satan-intervention--failed (err)
+  "The result note for a step that signalled ERR."
+  (format "failed: %s" (error-message-string err)))
+
+(defun satan-intervention-try-project (fn &rest payloads)
+  "Call projection FN on PAYLOADS.  Never signals.
+Returns nil, or `(:projection \"failed: MSG\")' when FN signalled.
+Shared by every caller whose side effect must be recorded before it
+happens (notify, and PHASE-06's ask handler): the record is already
+durable, so a projection failure is a note, not a lost act."
+  (condition-case err
+      (progn (apply fn payloads) nil)
+    (error (list :projection (satan-intervention--failed err)))))
+
+(defun satan-intervention-mark-undelivered (ctx payload err)
+  "Mark the recorded intervention PAYLOAD as never seen: its pop signalled ERR.
+Appends an `unknown'/`high'/`mature'/`auto' verdict noted
+`undelivered: ERR' to CTX's audit, then projects the intervention and
+the verdict in one transaction (design sec-3, \"Both failure arms reuse
+notify's existing verdict\").  Never signals: a failed step becomes a
+note, and a failed verdict record skips the projection — an
+intervention projected without its verdict would look pending, and
+the observer would score an alert the keeper never saw.  No attribute
+enqueue: an unseen alert teaches the attribute daemon nothing.
+
+Shared by every caller whose side effect must be recorded before it
+happens; moved here from `satan-tools-notify' so `notify_send' and
+PHASE-06's ask handler both call it without a require cycle.
+
+Returns the result-note plist — `:verdict' or `:projection' as a
+\"failed: MSG\" string for the failed step — or nil."
+  (let ((now (plist-get ctx :time-now)))
+    (condition-case verr
+        (let ((verdict (satan-intervention-classify-record
+                        :ctx ctx
+                        :intervention-id (plist-get payload :intervention_id)
+                        :classification "unknown" :confidence "high"
+                        :maturity "mature" :source "auto"
+                        :classified-at now :next-revisit-at now
+                        :notes (format "undelivered: %s"
+                                       (error-message-string err)))))
+          (satan-intervention-try-project
+           #'satan-intervention-project-with-verdict payload verdict))
+      (error (list :verdict (satan-intervention--failed verr))))))
+
 (cl-defun satan-intervention-classify
     (&key ctx intervention-id classification confidence evidence
           maturity next-revisit-at source classified-at

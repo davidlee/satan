@@ -34,6 +34,47 @@
   (let ((satan-tick-quiet-hours nil))
     (should-not (satan-tick-quiet-p))))
 
+;; ── explicit WINDOW argument (design sec-7): one predicate, two windows ────
+
+(defmacro satan-tick-test--at-hour (hour &rest body)
+  "Stub `format-time-string' so its `%H' formatting reports HOUR; run BODY."
+  (declare (indent 1))
+  `(cl-letf (((symbol-function 'format-time-string)
+              (lambda (fmt &optional _time &rest _)
+                (if (equal fmt "%H") ,hour "x"))))
+     ,@body))
+
+(ert-deftest satan-tick/quiet-p-explicit-window-wraps-midnight ()
+  "An explicit (22 . 9) window wraps midnight, same shape as the default."
+  (let ((satan-tick-quiet-hours nil))
+    (satan-tick-test--at-hour "23" (should (satan-tick-quiet-p nil '(22 . 9))))
+    (satan-tick-test--at-hour "03" (should (satan-tick-quiet-p nil '(22 . 9))))
+    (satan-tick-test--at-hour "09" (should-not (satan-tick-quiet-p nil '(22 . 9))))
+    (satan-tick-test--at-hour "21" (should-not (satan-tick-quiet-p nil '(22 . 9))))))
+
+(ert-deftest satan-tick/quiet-p-explicit-window-non-wrapping ()
+  "An explicit non-wrapping window, e.g. (13 . 15)."
+  (satan-tick-test--at-hour "14" (should (satan-tick-quiet-p nil '(13 . 15))))
+  (satan-tick-test--at-hour "13" (should (satan-tick-quiet-p nil '(13 . 15))))
+  (satan-tick-test--at-hour "15" (should-not (satan-tick-quiet-p nil '(13 . 15))))
+  (satan-tick-test--at-hour "12" (should-not (satan-tick-quiet-p nil '(13 . 15)))))
+
+(ert-deftest satan-tick/quiet-p-explicit-window-wins-over-global ()
+  "An explicit window applies even when the global default is nil."
+  (let ((satan-tick-quiet-hours nil))
+    (satan-tick-test--at-hour "23" (should (satan-tick-quiet-p nil '(22 . 9))))))
+
+(ert-deftest satan-tick/quiet-p-explicit-nil-window-never-quiet ()
+  "An explicit nil WINDOW means never quiet, even when the global
+`satan-tick-quiet-hours' covers TIME — an omitted WINDOW still falls
+back to the global (design sec-7: the ask path passes
+`satan-goad-quiet-hours' and a user-disabled (nil) goad window must
+not inherit the tick window)."
+  (let ((satan-tick-quiet-hours '(22 . 9)))
+    (satan-tick-test--at-hour "23"
+      (should-not (satan-tick-quiet-p nil nil))
+      (should (satan-tick-quiet-p nil)))))
+
 (ert-deftest satan-tick/pick-single-deterministic ()
   (should (equal (satan-tick-pick '(("tick-pulse" . 1))) "tick-pulse")))
 

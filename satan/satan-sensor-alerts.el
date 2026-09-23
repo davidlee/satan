@@ -17,7 +17,7 @@
 ;; `satan-tick' itself requires `satan-context' which transitively
 ;; loads this file; declare the function and resolve at call-site so
 ;; the require graph stays acyclic.
-(declare-function satan-tick-quiet-p "satan-tick" (&optional time))
+(declare-function satan-tick-quiet-p "satan-tick" (&optional time window))
 
 (defcustom satan-sensor-state-file
   (satan-state-path "notified.json")

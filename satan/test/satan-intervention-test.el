@@ -670,6 +670,80 @@ verdict the projection rejects leaves no parent row to look pending."
                                             :outcome)
                                  :classification)))))))
 
+;; ---------- shared undelivered writer (PHASE-04 T3; moved from notify) -----
+
+(defun satan-intervention-test--boom-error ()
+  "A live error object carrying the message \"boom\"."
+  (condition-case err (error "boom") (error err)))
+
+(ert-deftest satan-intervention/mark-undelivered-appends-unknown-verdict-and-projects ()
+  "VT-34 — `satan-intervention-mark-undelivered' appends an
+unknown/high/mature/auto verdict noted `undelivered: ERR' and projects
+the intervention and verdict together."
+  (satan-intervention-test--with-ctx ctx
+    (let* ((payload (apply #'satan-intervention-record :ctx ctx
+                           satan-intervention-test--notify-args))
+           (calls '()))
+      (cl-letf (((symbol-function 'satan-intervention-project-with-verdict)
+                 (lambda (&rest args) (push args calls) nil)))
+        (let ((result (satan-intervention-mark-undelivered
+                       ctx payload (satan-intervention-test--boom-error))))
+          (should-not result)
+          (let ((v (car (satan-intervention-test--events-named
+                         ctx "intervention.outcome_classified"))))
+            (should (equal "unknown" (plist-get v :classification)))
+            (should (equal "high"    (plist-get v :confidence)))
+            (should (equal "mature"  (plist-get v :maturity)))
+            (should (equal "auto"    (plist-get v :source)))
+            (should (equal "undelivered: boom" (plist-get v :notes))))
+          (should (= 1 (length calls)))
+          (should (equal (plist-get payload :intervention_id)
+                         (plist-get (car (car calls)) :intervention_id))))))))
+
+(ert-deftest satan-intervention/mark-undelivered-verdict-record-fails ()
+  "A verdict record that signals skips the projection and returns a
+`:verdict' note, never signalling itself."
+  (satan-intervention-test--with-ctx ctx
+    (let* ((payload (apply #'satan-intervention-record :ctx ctx
+                           satan-intervention-test--notify-args))
+           (calls '()))
+      (cl-letf (((symbol-function 'satan-intervention-classify-record)
+                 (lambda (&rest _) (error "disk full")))
+                ((symbol-function 'satan-intervention-project-with-verdict)
+                 (lambda (&rest args) (push args calls) nil)))
+        (let ((result (satan-intervention-mark-undelivered
+                       ctx payload (satan-intervention-test--boom-error))))
+          (should (equal (list :verdict "failed: disk full") result))
+          (should-not calls))))))
+
+(ert-deftest satan-intervention/mark-undelivered-projection-fails ()
+  "A projection that signals is returned as a `:projection' note."
+  (satan-intervention-test--with-ctx ctx
+    (let ((payload (apply #'satan-intervention-record :ctx ctx
+                          satan-intervention-test--notify-args)))
+      (cl-letf (((symbol-function 'satan-intervention-project-with-verdict)
+                 (lambda (&rest _) (user-error "pg down"))))
+        (let ((result (satan-intervention-mark-undelivered
+                       ctx payload (satan-intervention-test--boom-error))))
+          (should (equal '(:projection "failed: pg down") result)))))))
+
+(ert-deftest satan-intervention/mark-undelivered-with-db-projects-together ()
+  "With the DB up, the intervention row and its undelivered verdict land
+together (real-DB half of VT-34)."
+  (satan-intervention-test--with-db
+   (satan-intervention-test--with-ctx ctx
+     (let* ((payload (apply #'satan-intervention-record :ctx ctx
+                            satan-intervention-test--notify-args))
+            (iv-id (plist-get payload :intervention_id)))
+       (satan-intervention-mark-undelivered
+        ctx payload (satan-intervention-test--boom-error))
+       (let* ((row (satan-intervention-lookup iv-id))
+              (outcome (plist-get row :outcome)))
+         (should row)
+         (should outcome)
+         (should (equal "unknown" (plist-get outcome :classification)))
+         (should (equal "undelivered: boom" (plist-get outcome :notes))))))))
+
 (ert-deftest satan-intervention/classify-rejects-auto-harmful ()
   (satan-intervention-test--with-db
    (satan-intervention--reset-counters)

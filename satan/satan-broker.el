@@ -41,7 +41,7 @@
 ;; policy (below), but `satan-tick' requires `satan-broker' (transitively,
 ;; via `satan-context'), so the broker cannot require it back.  Declare +
 ;; resolve at call-site instead; precedent: `satan-sensor-alerts.el:20'.
-(declare-function satan-tick-quiet-p "satan-tick" (&optional time))
+(declare-function satan-tick-quiet-p "satan-tick" (&optional time window))
 
 (defvar satan-memory-store--current-run-id)
 

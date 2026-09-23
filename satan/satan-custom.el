@@ -100,19 +100,32 @@ than resolving somewhere readable but wrong (SL-015 D2)."
   "Join SEGMENTS below `satan-corpus-root' — SATAN's own corpus."
   (satan--join satan-corpus-root segments))
 
-;; ── SATAN's runtime state (SL-015 D1) ───────────────────────────────────────
+;; ── SATAN's runtime state (SL-015 D1, DEC-027) ──────────────────────────────
+
+(defun satan-state-home ()
+  "Return the state home: `XDG_STATE_HOME' when non-empty, else `~/.local/state'.
+A pure function of the environment — no `satan-*' state.  An empty
+`XDG_STATE_HOME' counts as unset (DEC-027: the XDG Base Directory spec's
+\"either not set or empty\", matching goad's `backend.py' `queue_path').
+Every state-home reader (`satan-state-root',
+`satan-sensor-curiosity-segments-dir', `satan-tools-content-dir') resolves
+through this one helper rather than inlining the same expression."
+  (let ((xdg (getenv "XDG_STATE_HOME")))
+    (if (and xdg (not (string= xdg "")))
+        (expand-file-name xdg)
+      (expand-file-name ".local/state" "~"))))
 
 (defcustom satan-state-root
-  (expand-file-name "satan" (or (getenv "XDG_STATE_HOME")
-                                (expand-file-name ".local/state" "~")))
+  (expand-file-name "satan" (satan-state-home))
   "Root directory of SATAN's runtime state.
 Run bundles, sensor cursors, telemetry, patch-agent logs and worktrees.
 Discardable: nothing below it is authored or versioned, and deleting it
 costs history, not correctness.
 
-Honours XDG_STATE_HOME, falling back to ~/.local/state.  This expression
-was inlined at eight call sites in two divergent spellings before SL-015;
-it lives here once now."
+Honours `XDG_STATE_HOME' through `satan-state-home' (DEC-027): an empty
+value counts as unset, falling back to ~/.local/state, the same as an
+unset value.  This expression was inlined at eight call sites in two
+divergent spellings before SL-015; it lives here once now."
   :type 'directory
   :group 'satan)
 
@@ -135,6 +148,40 @@ path on its side (`queue_path' in the corpus's `goad/backend.py')."
 goad's `backend.py' owns and writes them; they are corpus-tracked.
 SATAN only reads them, to perceive what the keeper did with its asks."
   :type 'directory
+  :group 'satan)
+
+(defcustom satan-goad-enabled nil
+  "Non-nil enables the goad ask path.
+The governed kill switch (design sec-7, \"the governed idiom, ledger
+row 6\"): off by default, so goad ships dark until deliberately
+switched on."
+  :type 'boolean
+  :group 'satan)
+
+(defcustom satan-goad-quiet-hours '(22 . 9)
+  "goad's own emission window, as (START-HOUR . END-HOUR) — same shape as
+`satan-tick-quiet-hours'.  No ask from 22:00 through 08:59 by default
+\(design sec-7, \"A goad-specific emission window, not global quiet
+hours\"): passed to `satan-tick-quiet-p' as its WINDOW argument rather
+than reusing the global, so disabling goad's window never silences
+tick's other ambient surfaces."
+  :type '(choice (cons (integer :tag "Start hour")
+                   (integer :tag "End hour"))
+           (const :tag "Disabled" nil))
+  :group 'satan)
+
+(defcustom satan-goad-emit-program "goad-emit"
+  "Program name for goad's emit step, resolved on `PATH'.
+Passed to `satan-trace-call' as PROGRAM (design sec-5)."
+  :type 'string
+  :group 'satan)
+
+(defcustom satan-goad-emit-timeout 10
+  "Timeout in seconds for goad's emit step.
+Passed to `satan-trace-call' as TIMEOUT-SECS (design sec-5, \"The
+timeout is mandatory\") — never nil, so a hung emit cannot wedge a
+run."
+  :type 'integer
   :group 'satan)
 
 (defun satan-notes-today ()

@@ -88,15 +88,65 @@ default that derives from another variable or from the environment."
                    "/tmp/xdg/satan"))))
 
 (ert-deftest satan-custom-state-root-falls-back-below-home ()
-  ;; A bare name with no `=' marks the variable UNSET for `getenv', which is
-  ;; the only case the fallback branch handles.  An *empty* XDG_STATE_HOME
-  ;; yields "" — truthy in elisp, so `or' takes it and the path resolves
-  ;; relative to `default-directory'.  That is inherited behaviour, identical
-  ;; in all eight spellings this slice collapses; PHASE-01 is a pure refactor
-  ;; and does not fix it.  See ISS-010.
+  ;; A bare name with no `=' marks the variable UNSET for `getenv'.  Unset
+  ;; and empty both fall back now (DEC-027; see the two tests below for the
+  ;; empty case, formerly ISS-024/ISS-010's divergent-spellings defect).
   (let ((process-environment (cons "XDG_STATE_HOME" process-environment)))
     (should (equal (satan-custom-test--default-of 'satan-state-root)
                    (expand-file-name ".local/state/satan" "~")))))
+
+;; ── DEC-027 (amended RV-015 F-9): one state-home helper, empty counts as
+;; unset — for `satan-state-root', `satan-sensor-curiosity-segments-dir' and
+;; `satan-tools-content-dir' alike.  Closes ISS-024.
+
+(ert-deftest satan-custom-state-root-treats-empty-xdg-state-home-as-unset ()
+  (let ((process-environment
+         (cons "HOME=/home/k" (cons "XDG_STATE_HOME=" process-environment))))
+    (should (equal (satan-custom-test--default-of 'satan-state-root)
+                   "/home/k/.local/state/satan"))))
+
+(ert-deftest satan-custom-state-root-treats-unset-xdg-state-home-as-unset ()
+  (let ((process-environment
+         (cons "HOME=/home/k" (cons "XDG_STATE_HOME" process-environment))))
+    (should (equal (satan-custom-test--default-of 'satan-state-root)
+                   "/home/k/.local/state/satan"))))
+
+(ert-deftest satan-custom-sensor-curiosity-segments-dir-treats-empty-xdg-as-unset ()
+  (require 'satan-sensor-curiosity)
+  (dolist (env-entry '("XDG_STATE_HOME=" "XDG_STATE_HOME"))
+    (let ((process-environment
+           (cons "HOME=/home/k" (cons env-entry process-environment))))
+      (should (equal (satan-custom-test--default-of
+                       'satan-sensor-curiosity-segments-dir)
+                     "/home/k/.local/state/behaviour/segments")))))
+
+(ert-deftest satan-custom-tools-content-dir-treats-empty-xdg-as-unset ()
+  (require 'satan-tools-content)
+  (dolist (env-entry '("XDG_STATE_HOME=" "XDG_STATE_HOME"))
+    (let ((process-environment
+           (cons "HOME=/home/k" (cons env-entry process-environment))))
+      (should (equal (satan-custom-test--default-of 'satan-tools-content-dir)
+                     "/home/k/.local/state/behaviour/content/")))))
+
+(ert-deftest satan-custom-goad-switches-default-off-and-quiet-9pm-to-9am ()
+  ;; Small smoke test only — PHASE-06's VT-38 tests these properly once the
+  ;; ask handler consumes them.
+  (should-not satan-goad-enabled)
+  (should (equal satan-goad-quiet-hours '(22 . 9))))
+
+(ert-deftest satan-custom-goad-queue-file-matches-backend-queue-path ()
+  ;; Literal pinned against `~/satan/goad/test_backend.py:266-269':
+  ;; XDG_STATE_HOME="" and HOME=/home/k gives
+  ;; /home/k/.local/state/satan/goad/queue.json.  `satan-state-root' must be
+  ;; rebound to its own re-evaluated default first — `satan-goad-queue-file's
+  ;; standard-value reads the *current* `satan-state-root' value, not the
+  ;; environment directly, so skipping the rebind would test the developer's
+  ;; environment instead of the fixed one (R1).
+  (let* ((process-environment
+          (cons "HOME=/home/k" (cons "XDG_STATE_HOME=" process-environment)))
+         (satan-state-root (satan-custom-test--default-of 'satan-state-root)))
+    (should (equal (satan-custom-test--default-of 'satan-goad-queue-file)
+                   "/home/k/.local/state/satan/goad/queue.json"))))
 
 (ert-deftest satan-custom-corpus-root-is-standalone ()
   ;; The corpus is its own repo, not a subtree of the notes (SL-015 D2/P4): the

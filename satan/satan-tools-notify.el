@@ -31,43 +31,6 @@
     ("critical" 'critical)
     (_          'normal)))
 
-(defun satan-tools-notify--failed (err)
-  "The result note for a step that signalled ERR."
-  (format "failed: %s" (error-message-string err)))
-
-(defun satan-tools-notify--project (fn &rest payloads)
-  "Call projection FN on PAYLOADS.  Never signals.
-Returns nil, or `(:projection \"failed: MSG\")' when FN signalled."
-  (condition-case err
-      (progn (apply fn payloads) nil)
-    (error (list :projection (satan-tools-notify--failed err)))))
-
-(defun satan-tools-notify--mark-undelivered (ctx payload err)
-  "Mark the recorded intervention PAYLOAD as never seen: its pop signalled ERR.
-Appends an `unknown'/`high'/`mature'/`auto' verdict noted
-`undelivered: ERR' to CTX's audit, then projects the intervention and
-the verdict in one transaction.  Never signals: a failed step becomes
-a note, and a failed verdict record skips the projection — an
-intervention projected without its verdict would look pending, and
-the observer would score an alert the keeper never saw.  No attribute
-enqueue: an unseen alert teaches the attribute daemon nothing.
-
-Returns the result-note plist — `:verdict' or `:projection' as a
-\"failed: MSG\" string for the failed step — or nil."
-  (let ((now (plist-get ctx :time-now)))
-    (condition-case verr
-        (let ((verdict (satan-intervention-classify-record
-                        :ctx ctx
-                        :intervention-id (plist-get payload :intervention_id)
-                        :classification "unknown" :confidence "high"
-                        :maturity "mature" :source "auto"
-                        :classified-at now :next-revisit-at now
-                        :notes (format "undelivered: %s"
-                                       (error-message-string err)))))
-          (satan-tools-notify--project
-           #'satan-intervention-project-with-verdict payload verdict))
-      (error (list :verdict (satan-tools-notify--failed verr))))))
-
 (defun satan-tool/notify-send (args ctx)
   "Send a desktop notification, recorded as a T7 intervention first.
 
@@ -81,7 +44,7 @@ Side effects, in order (SL-017 DEC-018):
   2. `satan-announce' pops the notification.
   3. `satan-intervention-project' INSERTs into `satan_interventions';
      its failure is only a note.  If the pop signalled instead,
-     `satan-tools-notify--mark-undelivered' records and projects an
+     `satan-intervention-mark-undelivered' records and projects an
      undelivered verdict.
 
 Returns:
@@ -118,7 +81,7 @@ the record."
                   (cons 'ok
                         (append
                          (list :id notify-id :intervention_id iv-id)
-                         (satan-tools-notify--project
+                         (satan-intervention-try-project
                           #'satan-intervention-project payload))))
               (error
                (cons 'ok
@@ -126,7 +89,7 @@ the record."
                       (list :id :null :intervention_id iv-id
                             :delivered :false
                             :error (error-message-string perr))
-                      (satan-tools-notify--mark-undelivered ctx payload perr))))))
+                      (satan-intervention-mark-undelivered ctx payload perr))))))
         (error (cons 'error (error-message-string rerr)))))))
 
 (satan-tool-register

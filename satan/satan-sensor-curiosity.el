@@ -21,9 +21,7 @@ Stores the last-inspected timestamp."
   :type 'string :group 'satan-attribute)
 
 (defcustom satan-sensor-curiosity-segments-dir
-  (expand-file-name "behaviour/segments"
-                    (or (getenv "XDG_STATE_HOME")
-                        (expand-file-name ".local/state" "~")))
+  (expand-file-name "behaviour/segments" (satan-state-home))
   "Directory containing panopticon focus segment JSONL files."
   :type 'string :group 'satan-attribute)
 

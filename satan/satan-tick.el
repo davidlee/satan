@@ -30,15 +30,26 @@ suppresses 22:00 through 06:59).  Set to nil to disable quiet hours."
            (const :tag "Disabled" nil))
   :group 'satan)
 
-(defun satan-tick-quiet-p (&optional time)
-  "Return non-nil if TIME (or now) falls within `satan-tick-quiet-hours'."
-  (when satan-tick-quiet-hours
-    (let* ((h (string-to-number (format-time-string "%H" time)))
-            (start (car satan-tick-quiet-hours))
-            (end   (cdr satan-tick-quiet-hours)))
-      (if (< start end)
-        (and (>= h start) (< h end))
-        (or (>= h start) (< h end))))))
+(cl-defun satan-tick-quiet-p (&optional time (window nil window-given))
+  "Return non-nil if TIME (or now) falls within WINDOW.
+WINDOW is a (START-HOUR . END-HOUR) cons, same shape as
+`satan-tick-quiet-hours' (inclusive of START, exclusive of END; START ≥
+END wraps past midnight).  An *omitted* WINDOW defaults to
+`satan-tick-quiet-hours', so a no-argument or one-argument call is
+unchanged.  An *explicit* WINDOW — including an explicit nil — is used
+as given and never falls back to the global: explicit nil means no
+quiet window, never quiet (design sec-7: one predicate, two windows —
+the ask path passes `satan-goad-quiet-hours' instead of touching the
+global, and a user who disables it via nil must get no goad window,
+not the tick window)."
+  (let ((window (if window-given window satan-tick-quiet-hours)))
+    (when window
+      (let* ((h (string-to-number (format-time-string "%H" time)))
+              (start (car window))
+              (end   (cdr window)))
+        (if (< start end)
+          (and (>= h start) (< h end))
+          (or (>= h start) (< h end)))))))
 
 (defun satan-tick-pick (&optional pool)
   "Sample a tick mode name from POOL by weight.  Defaults to
