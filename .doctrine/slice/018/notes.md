@@ -25,7 +25,7 @@ fresh-as-of: 2026-09-23 · design locked (run dr-01a0cd54, rev 42) · status pla
 - codex MCP down; `codex exec -s read-only -o FILE -` works for adversarial passes
 
 ### Open
-- ASM-002 validation (design sec-9 VH-1) before execution relies on it
+- ASM-002: reproduced again (EVD-003); the open case is a live session that later demands re-auth, so it is watched, not validated. **/plan: correct design sec-9 VH-1** — no one-shot test; it becomes a watch condition (a defer-mode dialog while whoami reports live invalidates ASM-002)
 - RV-013 F-9 (DST skew) and F-12 (Pi key superset) tolerated
 - DEC-023 consequence: a queued daily mode can lose its day to run_busy
 - two-repo rollout: dl-secret.el first (design sec-9)

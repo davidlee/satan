@@ -23,4 +23,9 @@ Design consequences (SATAN unattended runs, ISS-012 / the AUTH slice):
   prompt, not a hidden hang — acceptable.
 - Do not "fix" blocking with a timeout; see the third bullet.
 
-Not proven: that a live-session read can *never* prompt. One clean test.
+Reproduced twice on 2026-09-23 (EVD-003). What remains unproven is the
+*failure* case, not the success case: whether a session can stay live (`op
+whoami` exits 0) yet make a later read re-authenticate, after some interval or
+condition. Positive reads are no evidence that this never happens, so ASM-002
+is held and watched, not "validated by one clean test". Its cost is bounded:
+one visible, labelled prompt.

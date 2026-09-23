@@ -11,10 +11,10 @@ updated = "2026-09-23"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
-claim = "With a live 1Password session (op whoami exits 0), op read of a ref returns silently and never raises the authorization dialog; only establishing a session prompts."
+claim = "While a 1Password session stays live (op whoami exits 0), op read never demands re-authentication. Two reproductions show reads in a fresh live session do not prompt. What is not known is whether, after some interval or condition, a session can still report live yet make a read re-authenticate. Success cases are not evidence that no such failure case exists."
 confidence = "medium"
 basis = "observation"
-validation_plan = "One clean test on the live host before PHASE execution relies on it: lock nothing, confirm op whoami exits 0, run op read on a cold ref (not in my/op--cache) and observe no dialog; repeat after the 1Password session-expiry window elapses to confirm whoami then fails."
+validation_plan = "Cannot be validated by more positive reads. Watch for the failure case in production: with SL-018 live, any 1Password dialog raised by a defer-mode run (context label without 'escalated') while op whoami reported a live session invalidates this. The design already bounds the cost: such a read costs one visible, labelled prompt, as with the A2 whoami->read race, never a hidden hang. On invalidation, revisit DEC-020/DEC-022 (e.g. treat a prompting read in defer mode as credential_unavailable)."
 validated_by    = ""
 validated_on    = ""
 invalidated_by  = ""
