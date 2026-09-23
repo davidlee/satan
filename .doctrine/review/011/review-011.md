@@ -132,3 +132,48 @@ depending on the quiet-hours default) was fixed in 417a831.
   failure-streak counter claim with the per-mode, same-cause streak walked
   from run outcomes. `session_blocked` and `credential_deferred` are
   transparent.
+
+## Reconciliation Outcome
+
+Keeper approved all brief items (2026-09-23).
+
+### Direct edits applied
+
+- design.md sec-4: the handler always clears the lock. It kills the stderr
+  buffer only when no child exists, because the child's sentinel owns it
+  (F-1).
+- design.md sec-5: `:id :null`. `--mark-undelivered` is two steps; step 2 is
+  `satan-intervention-project-with-verdict`, one transaction (RV-012 F-2).
+  The verdict's `evidence` is JSON null. The `satan-intervention-create`
+  sketch has an explicit keyword list, plus the new project-with-verdict
+  signature (F-2).
+- design.md sec-6: `mode-slug` in the `--failure-streak` and
+  `--announce-failure` sketches, with the rationale and the both-switches-off
+  note (F-3).
+- Selector registry: `slice selector add` `docs/governance.md` (F-7).
+  `slice selector rm` `satan/test/satan-context-test.el`,
+  `satan/test/satan-intervention-mark-test.el` and
+  `satan/test/satan-tools-atsatan-test.el` (F-9). Both are mirrored in the
+  design.md file table. `slice conformance 17` now shows 0 undelivered;
+  the only undeclared path is notes.md (F-8, aligned).
+
+### REVs completed
+
+- REV-002 (`reconcile-sl-017`): done. It amends the ADR-017
+  `authority-ledger.md` row 4 standing note to name the two operational
+  alarms (F-13). REQ-003 is unchanged and stays `pending` (F-11). Rationale
+  is in revision-002.md.
+
+### Memory
+
+- mem_eb8e5cff794c48bd86597f94fa50b0ac: replaced the global failure-streak
+  counter claim with the per-mode, same-cause streak walk and its
+  transparent reasons (F-14).
+
+### Tolerated / aligned (no write)
+
+- F-4, F-5 (immutable plan criteria; intent evidenced), F-12 (`:dispatched_at`
+  semantics), F-6, F-8 (aligned), F-10 (fixed in audit, 417a831).
+
+Reconcile pass complete. SL-017 is ready for /close once PHASE-08 (push, flake
+update, home-switch, VH-1 live check) has run.

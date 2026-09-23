@@ -68,6 +68,18 @@ violation-in-waiting: today it is tolerated because both paths run inside the on
 make exactly one side the sole writer and delete the other, or the row is
 malformed.
 
+**Row 4 — operational alarms are not audit writers (SL-017).** Two emits
+report SATAN's own state rather than act on the keeper's world, and neither
+appends audit. **Failure announcements** (`satan-broker--announce-failure`)
+fire after `satan-audit-close` and the `.FAILED` rename; the run bundle
+(`status`, `final.json`, transcript, `crash-context`) is their record, and the
+pop decision is derived from it. **Listener death reports**
+(`satan-attribute-listener--report-death`,
+`satan-patch-listener--report-death`) happen outside any run, with no audit
+handle; their `:journal` line is the only durable trace. Recording them would
+need a third audit writer, which this row forbids. Both emit only through
+`satan-announce`.
+
 **† Row 7 — trigger vs policy; ADR-002 pending.** The *trigger* is a dumb
 external systemd timer (satan-tick.el:4 — "systemd timer fires the broker every
 ~30 min"); it holds no authority. The *policy* — quiet-hours gating, weighted

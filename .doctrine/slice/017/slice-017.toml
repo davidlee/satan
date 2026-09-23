@@ -141,24 +141,14 @@ intent = "design-target"
 note = "SL-017 design sec-8 (RV-009 integration)"
 
 [[selector]]
-selector = "satan/test/satan-intervention-mark-test.el"
-intent = "design-target"
-note = "SL-017 design sec-8 (RV-009 integration)"
-
-[[selector]]
-selector = "satan/test/satan-tools-atsatan-test.el"
-intent = "design-target"
-note = "SL-017 design sec-8 (RV-009 integration)"
-
-[[selector]]
 selector = "satan/test/satan-tank-test.el"
 intent = "design-target"
 note = "SL-017 design sec-8 (RV-009 integration)"
 
 [[selector]]
-selector = "satan/test/satan-context-test.el"
+selector = "docs/governance.md"
 intent = "design-target"
-note = "SL-017 design sec-8 (RV-009 integration)"
+note = "SL-017 reconcile (RV-011 F-7): observer broker-entry row"
 
 [[relation]]
 label = "fulfils"

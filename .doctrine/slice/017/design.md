@@ -294,11 +294,11 @@ cause's own first run.
   '("session_blocked" "credential_deferred")
   "Reasons of runs that neither extend nor break a failure streak.")
 
-(defun satan-broker--failure-streak (mode-name newest)
-  "MODE-NAME's same-cause failure streak ending at outcome NEWEST."
+(defun satan-broker--failure-streak (mode-slug newest)
+  "MODE-SLUG's same-cause failure streak ending at outcome NEWEST."
   (let ((cause (list (plist-get newest :status) (plist-get newest :reason))))
     (satan-run-outcome-streak
-     mode-name
+     mode-slug
      (lambda (o) (equal (list (plist-get o :status) (plist-get o :reason)) cause))
      (lambda (o) (member (plist-get o :reason)
                          satan-broker--streak-transparent-reasons)))))
@@ -449,8 +449,12 @@ sequenceDiagram
   The existing handler becomes the one pre-child handler. `run-ctx` and
   `proc` are bound to nil at the top of the function, so the handler can tell
   how far the spawn got.
-  - **Always.** The handler kills the stderr buffer and clears
-    `satan-run--spawn-running`, as it clears the lock today.
+  - **Always.** The handler clears `satan-run--spawn-running`, as it clears
+    the lock today.
+  - **The stderr buffer is killed only when no child exists.** Killing a live
+    child's stderr buffer breaks its pipe and kills the run. The stderr-flush
+    sentinel wrapper is installed right after `make-process`, so once a child
+    exists its sentinel owns the buffer (RV-011 F-1; PHASE-05 OQ-A).
   - **The child exists (`proc` non-nil).** The error came from the timer or
     sentinel wiring after `make-process`. The child's sentinel owns
     finalisation, so the handler re-signals as it does today and finalises
@@ -583,9 +587,16 @@ nothing has been recorded.")
   "INSERT PAYLOAD into the `satan_interventions' projection (idempotent,
 ON CONFLICT DO NOTHING).  Signals on psql failure.")
 
-(cl-defun satan-intervention-create (&rest args &key db &allow-other-keys)
+(cl-defun satan-intervention-create
+    (&key ctx kind target-surface message related-motive-id cue-handles
+          expected-outcome outcome-window-minutes severity
+          (db satan-memory-migrate-database))
   "Record then project; return the intervention id.  Unchanged contract."
   ...)
+
+(cl-defun satan-intervention-project-with-verdict
+    (payload verdict &key (db satan-memory-migrate-database))
+  "Project PAYLOAD and its VERDICT in one transaction (undelivered pops).")
 
 (cl-defun satan-intervention-classify-record
     (&key ctx intervention-id revision-p classification confidence evidence
@@ -623,14 +634,18 @@ flowchart TD
   PR -- signals --> OK2["(ok :id ID :intervention_id IV :projection \"failed: ...\")"]
   PR --> OK1["(ok :id ID :intervention_id IV)"]
   AN -- "pop signals" --> UD["satan-tools-notify--mark-undelivered<br/>(never signals)"]
-  UD --> OK3["(ok :id nil :intervention_id IV :delivered :false :error ERR)"]
+  UD --> OK3["(ok :id :null :intervention_id IV :delivered :false :error ERR)"]
 ```
 
-`satan-tools-notify--mark-undelivered (ctx payload err)` runs three steps, and
+`satan-tools-notify--mark-undelivered (ctx payload err)` runs two steps, and
 each step's failure is caught and noted on the result, so the branch always
-returns `ok` and the cooldown arms (see below). If step 1 fails, steps 2 and 3
-are skipped: a projected intervention with no verdict would look pending, and
-the observer would score an alert the keeper never saw.
+returns `ok` and the cooldown arms (see below). If step 1 fails, step 2 is
+skipped: a projected intervention with no verdict would look pending, and
+the observer would score an alert the keeper never saw. Step 2 writes both
+rows in one transaction, so the same state cannot arise from a failed verdict
+write either (RV-012 F-2).
+
+The pop result carries `:id :null`, not `nil`: `nil` serialises as `{}`.
 
 1. **`satan-intervention-classify-record`** with `revision-p` nil (a verdict
    minted moments after creation cannot be a revision), and:
@@ -642,12 +657,12 @@ the observer would score an alert the keeper never saw.
    | `maturity` | `mature` | final: `pending` would invite reclassification |
    | `source` | `auto` | the broker decided, not the keeper |
    | `classified-at`, `next-revisit-at` | ctx `:time-now` | no revisit is due |
-   | `evidence` | `()` | |
+   | `evidence` | JSON null | nothing was observed |
    | `notes` | `undelivered: ERR` | |
 
-2. **`satan-intervention-project`** of the intervention payload, then
-3. **`satan-intervention-classify-project`** of the verdict. The order
-   satisfies the foreign key.
+2. **`satan-intervention-project-with-verdict`** of the intervention payload
+   and the verdict: both INSERTs in one transaction, intervention first, so
+   the foreign key holds and either both rows land or neither does.
 
 No attribute-outcome enqueue happens on this path: an alert the keeper never
 saw teaches the attribute daemon nothing.
@@ -753,22 +768,25 @@ otherwise POSITION is a power of two (1, 2, 4, 8, ...)."
         ((eq (plist-get outcome :status) 'budget-exceeded) (= position 1))
         (t (zerop (logand position (1- position))))))
 
-(defun satan-broker--announce-failure (run-id mode-name status reason dir)
+(defun satan-broker--announce-failure (run-id mode-slug status reason dir)
+  ;; MODE-SLUG, not MODE-NAME: `mode-name' is an Emacs special variable
+  ;; (RV-011 F-3).  With both switches off nothing is due, so
+  ;; `satan-announce' is never called.
   ;; both call sites (finalize rename, no-child writer) pass the renamed DIR
   (let* ((newest   (or (satan-run-outcome dir)
                        (list :run-id run-id :status status :reason reason)))
-         (streak   (satan-broker--failure-streak mode-name newest)) ; section 3
+         (streak   (satan-broker--failure-streak mode-slug newest)) ; section 3
          (position (max 1 (length streak)))
          (first-id (plist-get (car (last streak)) :run-id))
          (line     (satan-broker--failure-line
-                    status mode-name run-id reason position first-id))
+                    status mode-slug run-id reason position first-id))
          (pop      (and satan-failure-notify
                         (satan-broker--announce-due-p newest position)
                         (not (satan-broker--quiet-p)))))
     (when (or pop satan-failure-syslog)
       (ignore-errors
         (satan-announce
-         :title (and pop (format "SATAN %s (%s) x%d" status mode-name position))
+         :title (and pop (format "SATAN %s (%s) x%d" status mode-slug position))
          :body line
          :urgency (if (equal (plist-get newest :reason) "auth") 'critical 'normal)
          :journal (and satan-failure-syslog line))))))
@@ -1019,7 +1037,8 @@ flowchart BT
 | `satan/test/satan-sensor-alerts-test.el`, `satan-tools-notify-test.el` | Real record step against a temporary audit handle; both projections stubbed at the DB boundary; `satan-intervention-create`/`notifications-notify` stubs removed. | 4, 5 |
 | `satan/test/satan-observer-test.el` | The ten `satan-observer-process` calls pass a tool-ctx; `:ctx` option uses migrated. Keeps its real test database. | 4 |
 | `satan/test/satan-intervention-test.el` | Both record/project splits (test database `satan_memory_test`). | 5 |
-| `satan/test/satan-{attribute,patch}-listener-test.el`, `satan-tools-test.el`, `satan-intervention-mark-test.el`, `satan-tools-atsatan-test.el`, `satan-tank-test.el`, `satan-context-test.el` | Recorder or new constructor or id parser, where they touch these. | 2, 3, 4 |
+| `satan/test/satan-{attribute,patch}-listener-test.el`, `satan-tools-test.el`, `satan-tank-test.el` | Recorder or new constructor or id parser, where they touch these. The intervention-id parser unification that would touch `satan-intervention-mark-test.el` and `satan-tools-atsatan-test.el` is IMP-022; `satan-context-test.el` needed no change (RV-011 F-9). | 2, 3, 4 |
+| `docs/governance.md` | The `satan-observer.el` row names the new broker entry, `satan-observer-process TOOL-CTX` (RV-011 F-7). | 4 |
 
 ## Design-target selectors
 

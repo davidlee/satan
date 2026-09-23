@@ -6,7 +6,7 @@ status = "active"
 title = "SATAN perceive-consume seam"
 summary = "The boundary between perceive and consume: perceive writes percept.json always; consume handles effects."
 created = "2026-06-16"
-updated = "2026-06-16"
+updated = "2026-09-23"
 
 [scope]
 paths = []

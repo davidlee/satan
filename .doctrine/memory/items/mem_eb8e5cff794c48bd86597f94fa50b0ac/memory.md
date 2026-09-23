@@ -36,8 +36,12 @@ read it THERE, not the sidecar):
 | **session-blocked** | `failed` | `session_blocked` | **NO** | **NO** |
 | perceive-failed | `failed` | `perceive_failed` | yes | yes |
 
-session-blocked is verify-clean (intentional DEC-8 deferral — must NOT pollute the
-failure-streak counter or pop desktop alerts).
+session-blocked is verify-clean (intentional DEC-8 deferral — it must not pop
+desktop alerts). Since SL-017 PHASE-07 there is no global failure-streak counter:
+`satan-broker--failure-streak` walks the per-mode, same-cause streak from run
+outcomes (`satan-run-outcome-streak`), and `session_blocked` /
+`credential_deferred` are transparent (`satan-broker--streak-transparent-reasons`)
+— they neither extend nor break a streak.
 
 ## Related
 
