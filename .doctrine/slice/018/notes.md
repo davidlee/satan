@@ -6,18 +6,26 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · proposed (scoped, pre-research) · dcb4d59 + uncommitted scoping
+fresh-as-of: 2026-09-23 · design locked (run dr-01a0cd54, rev 42) · status plan · next: /plan
 
 ### Produced
 - SL-018 (this slice); needs SL-017
 - ISS-012 — split; now credential-only; service-account token rejected
+- DEC-020 (OQ-1), DEC-021 (OQ-2), DEC-022 (OQ-3..OQ-5 + dismissed prompt), DEC-023 (run_busy gate, RV-013 F-3)
+- ASM-002 (A1); QUE-001 extended (pre-spawn gates incl. run_busy)
+- ISS-020 (sentinel reset) — absorbed into SL-018 (scope objective 8, design sec-6)
+- RV-013 — 20 findings over two adversarial passes, concluded
+- design.md sec-1..sec-9; 12 design-target selectors
 
 ### Learned
 - mem.fact.satan.op-prompts-on-session-not-read (new)
 - mem.fact.satan.op-read-blocks-emacs-server (rewritten: popup now surfaced)
 - mem.fact.satan.op-cache-has-no-invalidation
+- design-run mechanics: inquiries resolve via cp- dispose; adopt needs the record to exist in a prior apply; att- attests sections (mem.pattern.doctrine.design-run-defects)
+- codex MCP down; `codex exec -s read-only -o FILE -` works for adversarial passes
 
 ### Open
-- slice-018.md OQ-1..OQ-5 (deferred-run disposition; seam ownership; escalation N; DEC + QUE-001 extension; attended signal)
-- slice-018.md A1, A2 (assumptions); R1, R2
-- QUE-001 — to be extended (pre-spawn lifecycle gates)
+- ASM-002 validation (design sec-9 VH-1) before execution relies on it
+- RV-013 F-9 (DST skew) and F-12 (Pi key superset) tolerated
+- DEC-023 consequence: a queued daily mode can lose its day to run_busy
+- two-repo rollout: dl-secret.el first (design sec-9)

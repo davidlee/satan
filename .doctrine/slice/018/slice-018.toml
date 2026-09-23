@@ -1,7 +1,7 @@
 id = 18
 slug = "unattended-credential-policy"
 title = "Unattended runs acquire credentials by per-mode policy: probe, then prompt or defer"
-status = "proposed"
+status = "plan"
 created = "2026-09-23"
 updated = "2026-09-23"
 tags = ["auth", "op", "runs", "satan"]
