@@ -250,6 +250,7 @@ Pure data assembly from run-ctx and mode spec — no I/O."
       (satan-audit-record
        (satan-run-audit run-ctx) 'broker 'crash-context
        (satan-broker--crash-context run-ctx)))
+    (satan-broker--evict-on-auth run-ctx)
     (when partition
       (dolist (a (plist-get partition :applied))
         (satan-audit-record (satan-run-audit run-ctx) 'broker 'action-applied a))
@@ -277,6 +278,22 @@ Pure data assembly from run-ctx and mode spec — no I/O."
          (satan-run-audit run-ctx) final-for-audit actions status)))
     (satan-broker--mark-failed-on-disk run-ctx)
     (setq satan-memory-store--current-run-id nil)))
+
+(defun satan-broker--evict-on-auth (run-ctx)
+  "Evict RUN-CTX's credential refs when the provider rejected its key.
+Only a `failed' run whose broker-classified `failure-reason' is exactly
+\"auth\" (DEC-019) evicts; `final.json's reason is never consulted, as a
+model's final may say anything.  Evicts only the refs this run was
+spawned with, so the next run re-reads a rotated key instead of
+replaying the dead one (SL-018 sec-6).  A failed eviction is recorded as
+a `broker' `evict-failed' event and is otherwise harmless."
+  (when (and (eq (satan-run-status run-ctx) 'failed)
+             (equal (satan-run-failure-reason run-ctx) "auth"))
+    (pcase-dolist (`(,var . ,ref) (satan-run-credential-refs run-ctx))
+      (when-let* ((err (satan-credential-forget ref)))
+        (satan-audit-record (satan-run-audit run-ctx) 'broker 'evict-failed
+                            (list :var var
+                                  :error (error-message-string err)))))))
 
 (defun satan-broker--mark-failed-on-disk (run-ctx)
   "If RUN-CTX's status is not `done', rename its dir adding `.FAILED'.

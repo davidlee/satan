@@ -2040,5 +2040,125 @@ a non-interactive call and `satan-tick' leave it nil (fail closed)."
         (satan-run "tick-pulse")))
     (should (equal (reverse seen) '(nil nil t)))))
 
+;; ── SL-018 PHASE-06: rotation self-heal (design sec-6) ─────────────────────
+
+(defconst satan-broker-test--auth-ref "op://API_KEYS/OPENROUTER_API_KEY/credential")
+
+(cl-defun satan-broker-test--auth-run (&key class final backend sentinel)
+  "Finish a run whose harness reported error CLASS (nil: none), then
+return (:calls CALLS :dir DIR :records TRANSCRIPT :announced A :flag F).
+FINAL, when non-nil, is the run's own final.  BACKEND is a plist of
+`satan-credential-fixture-backend' keys (default: the ref cached).  With
+SENTINEL the run ends through the child sentinel, else `--finalize'."
+  (let* ((root (make-temp-file "satan-evict-" t))
+         (satan-runs-dir root)
+         (run-id "20260524T100000-test-abcdef")
+         (dir (satan-run-dir-for-id run-id root))
+         (log (list nil))
+         (satan-credential-function
+          (apply #'satan-credential-fixture-backend log
+                 (or backend
+                     (list :cache (list (cons satan-broker-test--auth-ref
+                                              "sk-dead"))))))
+         (satan-run--spawn-running t))
+    (make-directory dir t)
+    (unwind-protect
+        (satan-announce-with-recorder
+          (let* ((prepare (list :run_id run-id
+                                :time_now "2026-05-24T10:00:00+1000"
+                                :start_time (current-time)))
+                 (mode '(:name "test" :auto-apply none :capabilities ()))
+                 (run-ctx (make-satan-run
+                           :id run-id :mode mode
+                           :start-time (plist-get prepare :start_time)
+                           :dir dir :status 'running :final final
+                           :audit (satan-audit-open
+                                   dir (list :run_id run-id :mode '(:name "test"))
+                                   '(:bundle t) prepare)
+                           :prepare prepare
+                           :credential-refs
+                           (list (cons "OPENROUTER_API_KEY"
+                                       satan-broker-test--auth-ref)))))
+            (when class
+              (satan-broker--on-error
+               run-ctx (list :type "error"
+                             :error (json-serialize
+                                     (list :class class :detail "x")))))
+            (if sentinel
+                (funcall (satan-broker--make-sentinel run-ctx) nil "finished\n")
+              (satan-broker--finalize run-ctx))
+            (let ((d (satan-run-dir run-ctx)))
+              (list :calls (reverse (car log))
+                    :dir d
+                    :records (satan-jsonl-read-file
+                              (expand-file-name "transcript.jsonl" d)
+                              :null-object :null)
+                    :announced satan-announce-recorded
+                    :flag satan-run--spawn-running))))
+      (delete-directory root t))))
+
+(defun satan-broker-test--forgets (r)
+  "The `forget' calls among R's backend calls."
+  (cl-remove-if-not (lambda (c) (eq (car c) 'forget)) (plist-get r :calls)))
+
+(ert-deftest satan-broker/auth-failure-evicts-the-used-ref ()
+  "VT-6: only a classified `auth' failure evicts, and only the ref used."
+  (should (equal (satan-broker-test--forgets
+                  (satan-broker-test--auth-run :class "auth"))
+                 (list (list 'forget satan-broker-test--auth-ref))))
+  (dolist (class '("credits" "unknown" "rate_limit" nil))
+    (should-not (satan-broker-test--forgets
+                 (satan-broker-test--auth-run :class class))))
+  ;; A final whose reason says "auth" proves nothing: the run is `done'.
+  (should-not (satan-broker-test--forgets
+               (satan-broker-test--auth-run :final '(:reason "auth"))))
+  ;; Nor does a `done' status with the slot set, however it came about.
+  (satan-credential-fixture-with (calls)
+    (satan-broker--evict-on-auth
+     (make-satan-run :status 'done :failure-reason "auth"
+                     :credential-refs (list (cons "OPENROUTER_API_KEY"
+                                                  satan-broker-test--auth-ref))))
+    (should-not (funcall calls))))
+
+(ert-deftest satan-broker/eviction-lets-the-next-run-read-the-new-key ()
+  "VT-29: after an `auth' eviction the next acquisition re-reads the ref and
+gets the rotated key, not the dead cached one."
+  (let* ((log (list nil))
+         (satan-credential-function
+          (satan-credential-fixture-backend
+           log
+           :cache (list (cons satan-broker-test--auth-ref "sk-dead"))
+           :session t
+           :read (list (cons satan-broker-test--auth-ref "sk-rotated"))))
+         (env (list (concat "OPENROUTER_API_KEY=" satan-broker-test--auth-ref)))
+         (acquire (lambda ()
+                    (plist-get (satan-credential-acquire
+                                env '("OPENROUTER_API_KEY") 'defer "ctx")
+                               :env))))
+    (should (equal (funcall acquire) '("OPENROUTER_API_KEY=sk-dead")))
+    (let ((run-ctx (make-satan-run
+                    :status 'failed :failure-reason "auth"
+                    :credential-refs (list (cons "OPENROUTER_API_KEY"
+                                                 satan-broker-test--auth-ref)))))
+      (satan-broker--evict-on-auth run-ctx))
+    (should (equal (funcall acquire) '("OPENROUTER_API_KEY=sk-rotated")))))
+
+(ert-deftest satan-broker/failed-eviction-is-recorded-and-finalize-completes ()
+  "VT-15: a signalling forget → `evict-failed' event; the rename, the
+announce and the spawn-running reset all still happen."
+  (let* ((r (satan-broker-test--auth-run
+             :class "auth" :sentinel t
+             :backend (list :signal '(forget))))
+         (evict (cl-find-if (lambda (rec)
+                              (and (equal (plist-get rec :dir) "broker")
+                                   (equal (plist-get rec :event) "evict-failed")))
+                            (plist-get r :records))))
+    (should evict)
+    (should (equal (plist-get (plist-get evict :payload) :var)
+                   "OPENROUTER_API_KEY"))
+    (should (string-suffix-p ".FAILED" (plist-get r :dir)))
+    (should (plist-get r :announced))
+    (should-not (plist-get r :flag))))
+
 (provide 'satan-broker-test)
 ;;; satan-broker-test.el ends here
