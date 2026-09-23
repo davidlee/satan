@@ -149,7 +149,9 @@ Neither item is a REV target, so no REV was opened.
   (planned → verified). It runs the 7 fail-closed credential tests: no-backend
   ×3, scrub ×2, contained backend signals, contained `quit`. The authored
   status stays `pending`, because the daemon half of REQ-010 is not built
-  (RV-014 F-7).
+  (RV-014 F-7). `coverage show REQ-010` reads `pending · stale · Indeterminate`,
+  the same as REQ-003 after SL-017 (RV-011 F-11): a verified cell against a
+  requirement authored `pending`. The cell re-verifies green at 8080194.
 
 ### Withdrawn / tolerated
 - RV-014 F-6: aligned (bookkeeping paths).
