@@ -2,15 +2,16 @@
 
 ;; Drives the SATAN package's ERT suites in its own repo.  Two paths:
 ;;
-;;   `just check'             — batch (emacs --batch), the default.
-;;   `just check-interactive' — live Emacs server (emacsclient),
-;;                              let-binds satan-db-host-override
-;;                              so DB tests hit the test DB without
-;;                              disturbing the production broker.
+;;   `satan-test-run-batch-and-exit' — batch (`just test'): prints the
+;;                              summary, exits non-zero on FAIL.
+;;   `satan-test-run-batch'   — returns the one-line PASS/FAIL summary
+;;                              string; for a live Emacs (emacsclient),
+;;                              let-binding satan-db-host-override so DB
+;;                              tests hit the test DB without disturbing
+;;                              the production broker.
 ;;
-;; The runner returns a one-line summary string; the Justfile recipes
-;; grep it for PASS/FAIL.  Per-test detail lands in *Messages*
-;; (the server's stderr) for check-interactive, or stdout for check.
+;; Per-test detail lands in *Messages* (the server's stderr) for a live
+;; Emacs, or stdout in batch.
 ;;
 ;; Side-effect policy lives in the suites, not here: DB-touching tests
 ;; isolate to a dedicated test database (satan_memory_test / trace_test /
@@ -26,7 +27,7 @@
 ;;
 ;; CLI shape (see ../justfile):
 ;;   emacs --batch -L ./satan -L ./dev -l satan-test \
-;;     --eval '(satan-test-run-batch)'
+;;     -f satan-test-run-batch-and-exit
 
 ;;; Code:
 
@@ -110,6 +111,15 @@ production database from a test run."
             (format "PASS %d/%d passed (%d skipped)" expected total skipped)
           (format "FAIL %d unexpected / %d total (%d skipped)%s"
                   unexpected total skipped (or loaderr "")))))))
+
+(defun satan-test-run-batch-and-exit ()
+  "Run `satan-test-run-batch', print its summary, and exit Emacs.
+Exit status is 0 on PASS and 1 otherwise, so `just check' fails when
+a test does.  Errors (e.g. the production-socket refusal) propagate
+and exit non-zero as usual."
+  (let ((summary (satan-test-run-batch)))
+    (message "%s" summary)
+    (kill-emacs (if (string-prefix-p "PASS" summary) 0 1))))
 
 (provide 'satan-test)
 ;;; satan-test.el ends here
