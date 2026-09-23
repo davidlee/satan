@@ -34,7 +34,7 @@ entrance_criteria = [
 exit_criteria = [
   { id = "EX-1", text = "satan-announce.el exists with satan-notify-app (moved), -sink, -deliver, -record, -recorded, -with-recorder; it requires only cl-lib and satan-custom." },
   { id = "EX-2", text = "The broker's announce-failure, satan-tool/notify-send, and both listeners' --report-death call satan-announce. The broker keeps its streak==1 policy for now (PHASE-07 replaces it). The listeners pass a critical pop plus :journal." },
-  { id = "EX-3", text = "satan-test-run-batch let-binds satan-announce-sink to satan-announce-record around load and run." },
+  { id = "EX-3", text = "dev/satan-test.el requires satan-announce (it is lexical-binding, so an undeclared sink would bind lexically and bind nothing), and satan-test-run-batch let-binds satan-announce-sink to satan-announce-record around load and run." },
   { id = "EX-4", text = "No cl-letf of notifications-notify or of logger remains in satan/test/ outside satan-announce-test.el." },
   { id = "EX-5", text = "Production code has no noninteractive branch that decides delivery (I10)." },
 ]
@@ -112,6 +112,7 @@ Closes the root cause of ISS-016.
 """
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-03 completed (the failure-reason slot exists)." },
+  { id = "EN-2", text = "`just db-setup` has created satan_memory_test (the observer suite skips silently without it)." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "make-satan-run is called once in --spawn, immediately after satan-audit-open; each of the three later prepare rebinds is followed by a setf of the struct's prepare slot." },
@@ -119,6 +120,7 @@ exit_criteria = [
   { id = "EX-3", text = "satan-observer-process takes a tool-ctx, checks it with --ctx-required, and has no wall-clock fallback and no :ctx option. The ten test call sites are migrated." },
   { id = "EX-4", text = "satan-intervention-mark and satan-tools-atsatan both call satan-run-manual-tool-ctx." },
   { id = "EX-5", text = "The A17 capability gate still yields capability_denied when notify is removed from a mode." },
+  { id = "EX-6", text = "Sensor-alert tests that assert the audit line stub only satan-intervention--exec-sql (the DB boundary), not satan-intervention-create; the record/project split comes in PHASE-06." },
 ]
 verification = [
   { id = "VT-1", expects = "manual ctx satisfies --ctx-required", test_file = "satan/test/satan-run-test.el", keywords = ["satan-run/manual-tool-ctx-satisfies-ctx-required"], waived = false },
@@ -169,6 +171,7 @@ on the record. Tests stub only the two project functions.
 """
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-04 completed (pre-spawn alerts carry a real tool-ctx)." },
+  { id = "EN-2", text = "`just db-setup` has created satan_memory_test." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "Nothing is shown before intervention.created is appended (I2); a failed projection never suppresses an emit or un-arms a cooldown (I3)." },
@@ -199,6 +202,7 @@ ISS-017.
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-02, PHASE-03 and PHASE-05 completed (outcome streak, recorded reasons, spawn_failed runs)." },
 ]
+# Live-load constraint (R13): do not load this phase into the live Emacs before the PHASE-03 harness is deployed (PHASE-08 EX-1); the old harness reports a moderation 403 as auth, which this policy pops critically on every run.
 exit_criteria = [
   { id = "EX-1", text = "A pop is due at same-cause positions 1, 2, 4, 8 and so on; auth pops every time at critical urgency; budget-exceeded pops only at position 1; quiet hours suppress the pop but not the journal line." },
   { id = "EX-2", text = "The journal line is `<status> <mode> <run-id> <reason> x<N> since <first>` (no ` since` at 1), ASCII only, written for every failure." },

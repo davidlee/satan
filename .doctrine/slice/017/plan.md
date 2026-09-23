@@ -52,6 +52,18 @@ PHASE-08  deploy + live evidence          01-07, keeper
 
 ## Notes
 
+- **Deploy order (R13).** The live Emacs loads the package from this working
+  tree, but the jail runs the harness from the GitHub flake input. So
+  PHASE-07's policy can be live while the old harness still reports a
+  moderation 403 as `auth`, and it would then pop critically on every run.
+  Deploy the harness (PHASE-08 EX-1) before PHASE-07 is loaded into the live
+  Emacs. Pulling the push forward to just after PHASE-03 is the simplest way,
+  and it needs the keeper's approval.
+- **The harness binding must be dynamic.** `dev/satan-test.el` is
+  lexical-binding. Without `(require 'satan-announce)`, its `let` of the sink
+  is a lexical no-op, the suite is not hermetic, and the self-check test is the
+  only thing that would notice.
+
 - **Code review at `/audit`.** RV-010's conclusion: PHASE-05 (spawn handler)
   and PHASE-06 (classify split) get a code review.
 - **`satan-intervention-test.el` and `satan-observer-test.el`** use the real
