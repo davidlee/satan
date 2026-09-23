@@ -836,14 +836,15 @@ judgement). In-tree, no worktree isolation.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready
+fresh-as-of: 2026-09-23 · PHASE-01..07 landed (7069160..82de4c5); audit RV-011 done, code review RV-012 done; audit fixes 417a831, 2d6c0da · slice status reconcile
 
 ### Produced
-- SL-017 (this slice)
-- ISS-017 — split from ISS-012 (loudness half)
-- ISS-016 — root cause corrected (two tool-ctx builders)
+- SL-017 (this slice); PHASE-01..07 commits 7069160, 09f71df, d0054cf, e1ea308, 3a11272, d6e849c, 82de4c5
+- ISS-017 — split from ISS-012 (loudness half); ISS-016 — root cause corrected (two tool-ctx builders); ISS-015 closed by PHASE-01
 - CHR-008 — stale `.doctrine/governance.md:15` gate claim
-- DEC-014 through DEC-019 (DEC-015 to DEC-019 amended after RV-009; DEC-016/018/019 again after RV-010); RV-008 (run-bound, concluded empty); RV-009 (14 findings); RV-010 (focused second pass, 10 findings)
+- DEC-014 through DEC-019; RV-008, RV-009, RV-010 (design reviews)
+- RV-011 (reconciliation audit, 14 findings, brief written); RV-012 (PHASE-04..06 code review, 5 fixed + 1 withdrawn)
+- backlog: ISS-018 (live ingest cursor), ISS-019 (tests enqueue into production satan_outcome_inbox), IMP-022, IMP-023, CHR-009
 - research/research.md (runtime tier, gitignored)
 
 ### Learned
@@ -851,9 +852,10 @@ fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slic
 - mem.fact.satan.op-read-blocks-emacs-server (rewritten: popup now surfaced)
 - mem.fact.satan.op-cache-has-no-invalidation
 - mem.pattern.doctrine.design-run-defects (extended: adopt_authored recipe; run-bound RV)
+- mem.fact.satan.run-prepare-present-with-nil (new, RV-012 F-4)
+- per-phase deviations and gotchas: the "PHASE-NN executed" entries above (phase sheets are runtime tier)
 
 ### Open
-- next: `/phase-plan` PHASE-01, then `/execute`; deploy the harness before PHASE-07 goes live (plan.md Notes); code review at `/audit` for PHASE-05 and PHASE-06
-- backlog to file: record before side effect for sway, inbox, proposal and patch (design sec-5)
-- REVs: the ledger row 4 standing note (operational alarms); optionally a REQ-003 acceptance criterion
-- memory mem_eb8e5cff794c48bd86597f94fa50b0ac: correct its session_blocked streak claim (after landing)
+- next: `/reconcile` against RV-011's Reconciliation Brief (design sec-4/5/6, selector add/rm, ADR-017 row 4 REV, REQ-003 stays pending, mem_eb8e5cff794c48bd86597f94fa50b0ac correction)
+- PHASE-08: keeper approval for push + `nix flake update satan` + home-switch, then VH-1 live check; PHASE-08 EX-2 files the backlog item for record before side effect (sway, inbox, proposal, patch)
+- test-suite production reach: ISS-008/ISS-009 (host guard), ISS-018, ISS-019

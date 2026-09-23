@@ -1,0 +1,142 @@
+id    = 11
+slug  = "sl-017-reconciliation-audit-satan-reports-on-satan-phase-0107"
+title = "SL-017 reconciliation audit: SATAN reports on SATAN (PHASE-01..07)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-017"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "design sec-4 says the spawn handler always kills the stderr buffer; PHASE-05 kills it only when no child exists"
+detail = "Design sec-4 (spawn-failure handler): 'Always' kill the stderr buffer. Implemented (3a11272, satan-broker.el spawn handler): killed only on the no-child branch; with a live child the stderr-flush sentinel wrapper (moved to right after make-process) owns it. Killing a live child's stderr buffer breaks its pipe and kills the run. Ruled OQ-A during PHASE-05 (notes.md PHASE-05 'R-A / OQ-A'). Design intent (no leak; sentinel owns cleanup) holds; the text is wrong."
+disposition = "verified"
+response = "Design text wrong, implementation right. Reconciliation Brief (per-slice): design.md sec-4 — stderr buffer killed only on the no-child branch; the child's stderr-flush sentinel owns it otherwise."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "design sec-5 sketch differs from the shipped record-before-emit API in four details"
+detail = "PHASE-06 (d6e849c) ruled D1-D5 against the sec-5 sketch: (1) an undelivered pop returns :id :null, not nil (nil serialises to {}); (2) when the intervention projection fails, --mark-undelivered also skips the verdict projection (FK needs the intervention row; the verdict is in the transcript); (3) satan-intervention-create takes an explicit keyword list, not &rest pass-through; (4) the undelivered verdict stores evidence_json as JSON null. Behaviour is within the design's invariants (I2-I4); the sketch text is stale."
+disposition = "verified"
+response = "Sketch stale; behaviour within I2-I4. Reconciliation Brief (per-slice): design.md sec-5 — :id :null, verdict projection skipped when the intervention projection fails, explicit keyword list on satan-intervention-create, evidence_json JSON null."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = "design sec-6 names the announce parameter mode-name; PHASE-07 ships mode-slug"
+detail = "satan-broker--announce-failure (82de4c5) is (run-id mode-slug status reason dir). mode-name shadows Emacs's special variable and added 3 byte-compile warnings; mode-slug is the file's existing convention. Also: with both kill switches off, sec-6's (when (or pop satan-failure-syslog) ...) guard means satan-announce is never called; the ported respects-disables test asserts that."
+disposition = "verified"
+response = "Reconciliation Brief (per-slice): design.md sec-6 — parameter mode-slug; with both switches off satan-announce is not called."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "PHASE-04 VA-2 names IMP-001/IMP-002 cross-checks that cannot run"
+detail = "plan.toml PHASE-04 VA-2 asks to cross-check against IMP-001 and IMP-002; both are blocked backlog items with no code. orch-b discharged the intent with new tests satan-broker/process-uses-run-tool-ctx and pre-spawn-intervention-joins-run, and confirmed the cooldown arms (notes.md PHASE-04). Plan criteria are immutable, so the wording cannot be fixed in place."
+disposition = "tolerated"
+response = "Plan criteria are immutable-append; the intent (one ctx builder, pre-spawn intervention joins the run, cooldown arms) is evidenced by two named tests and passes in the auditor's gate run. No design or governance change needed; noted in synthesis."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "PHASE-02 VT-2 only checks satan-tank.el; EX-3 also requires satan-context.el migrated"
+detail = "plan.toml PHASE-02 EX-3 requires both satan-tank.el and satan-context.el moved onto the shared run-id grammar, but VT-2's check only greps satan-tank.el. The satan-context.el half rests on the sheet's T9: auditor re-ran 'rg -n satan-context--run-id-regexp satan/' at HEAD 46e141a: zero hits (exit 1); satan-run-id-regexp positive control present."
+disposition = "tolerated"
+response = "EX-3's satan-context.el half is evidenced by the auditor's rg zero-hit check at 46e141a plus positive control; VT-2 cannot be amended in place (immutable criteria). Accepted as manual evidence."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "PHASE-07 objective asks to remove a notifications declare-function that PHASE-01 already removed"
+detail = "plan.toml PHASE-07 objective: remove '--failure-streak-count and the notifications declare-function'. The declare-function went in PHASE-01 (7069160) with the announce seam; confirmed by rg in the PHASE-07 sheet (A5). --failure-streak-count is gone (rg zero hits)."
+disposition = "aligned"
+response = "Stale objective wording only; the removal it asks for is done (PHASE-01). Nothing to change."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "conformance: docs/governance.md edited but undeclared"
+detail = "doctrine slice conformance 17 reports docs/governance.md as undeclared. PHASE-04 (e1ea308) updated the satan-observer.el row: broker entry is now 'satan-observer-process TOOL-CTX (the run's satan-run-tool-ctx)'. The edit is correct and in scope (API change documented); the design-target selectors just don't declare it."
+disposition = "verified"
+response = "Reconciliation Brief (per-slice): 'doctrine slice selector add' a design-target selector for docs/governance.md (load-bearing for conformance); mirror in design.md sec-6 file table."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "nit"
+title = "conformance: slice notes.md reported undeclared"
+detail = "notes.md is the slice's own runtime-progress artefact, edited every phase by design; not a source touch."
+disposition = "aligned"
+response = "notes.md is the slice's own progress artefact; its edits are expected and not a scope signal."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "conformance: three declared test files undelivered"
+detail = "design.md sec-6 file table declares satan-context-test.el, satan-intervention-mark-test.el and satan-tools-atsatan-test.el 'where they touch these' (recorder / constructor / id parser). None was touched: satan-context.el's migration is covered by satan-run-test and satan-tank-test; the intervention-id parser unification that would touch intervention-mark and atsatan was not done and is now IMP-022."
+disposition = "verified"
+response = "Reconciliation Brief (per-slice): 'doctrine slice selector rm' the three undelivered test-file selectors (satan-context-test.el, satan-intervention-mark-test.el, satan-tools-atsatan-test.el); mirror in design.md sec-6, pointing the id-parser row at IMP-022."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "PHASE-07 announce tests pass only while satan-tick-quiet-hours defaults to nil"
+detail = "satan-broker/announce-auth-always-critical and announce-budget-once expect a pop but did not stub satan-tick-quiet-p; satan-tick-quiet-hours defaults to nil ('was (22 . 7)'). Red reproduced: with satan-tick loaded and satan-tick-quiet-hours '(0 . 24), both fail (2/63 unexpected). Design R8/sec-8 require no wall-clock dependence."
+disposition = "fix-now"
+response = "Fixed in audit: new satan-broker-test--outside-quiet-hours macro stubs satan-tick-quiet-p to nil; wraps announce-auth-always-critical, announce-budget-once, and the not-quiet half of announce-quiet-suppresses-pop-not-journal. Red→green: under satan-tick-quiet-hours '(0 . 24) 2/63 unexpected before, 63/63 after. just lint clean."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "REQ-003 coverage reads stale / Indeterminate after a verified VT"
+detail = "340cfb0 recorded a VT coverage entry for REQ-003 (9 notify-path tests on the test DB). 'doctrine coverage verify 17' re-derives verified→verified (anchor moved to 46e141a), yet 'coverage show REQ-003' still reports observed=stale, verdict=Indeterminate; REQ-003 authored status is pending. SL-017 covers the notify path only; sway/inbox/proposal/patch record-before-side-effect is PHASE-08 EX-2's backlog item, so REQ-003 is not fully met."
+disposition = "verified"
+response = "Reconciliation Brief (governance/spec): REQ-003 stays pending — SL-017 covers the notify path only; sway/inbox/proposal/patch remain (PHASE-08 EX-2 backlog). Optionally a REV adding a REQ-003 acceptance criterion (plan.md Notes). The stale/Indeterminate read after a verified VT is doctrine tooling behaviour; recorded as friction, not a slice defect."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "an undelivered sensor alert still stamps :dispatched_at in pre_spawn"
+detail = "satan-sensor-alerts.el:358 stamps :dispatched_at on the pre_spawn entry after notify_send returns, including when the pop failed and the tool returned :id :null. It reads as delivered; only the transcript verdict 'undelivered: …' says otherwise. rg: no reader of dispatched_at in satan/*.el. Matches design sec-5."
+disposition = "tolerated"
+response = "Design-conformant (sec-5): the cooldown must arm on the record, and pre_spawn records dispatch, not delivery. No code reads :dispatched_at; the transcript verdict carries delivery. Revisit if an observer ever consumes it."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "minor"
+title = "ADR-017 authority-ledger row 4 standing note does not name the two operational alarms"
+detail = "Design sec 'Emits that are not interventions: operational alarms': failure announcements (sec-6) and listener death reports emit through satan-announce with no intervention record — the run bundle / process state is their record. Row 4 names satan-audit-record as the single audit writer; without a standing note a future audit reads these emits as unrecorded writers. plan.md Notes assigns this REV to reconcile."
+disposition = "verified"
+response = "Reconciliation Brief (governance/spec): REV to ADR-017 authority-ledger row 4 standing note naming the two operational alarms (failure announcements; listener death reports) as non-intervention emits."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "nit"
+title = "mem_eb8e5cff794c48bd86597f94fa50b0ac describes the pre-SL-017 streak counter"
+detail = "mem.fact.satan.perceive-consume-seam (line ~53-57) says session_blocked 'must NOT pollute the failure-streak counter'. After PHASE-07 (82de4c5) there is no global counter: the streak is per-mode, same-cause, walked from run outcomes by satan-broker--failure-streak, with session_blocked and credential_deferred transparent (satan-broker--streak-transparent-reasons). plan.md Notes assigns the correction to reconcile."
+disposition = "verified"
+response = "Reconciliation Brief (memory): correct mem_eb8e5cff794c48bd86597f94fa50b0ac — per-mode same-cause streak walked from run outcomes; session_blocked and credential_deferred transparent; no global counter."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

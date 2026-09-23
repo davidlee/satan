@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0cd36bbb17512abf94f057c4d6ab4"
+memory_key = "mem.fact.satan.run-prepare-present-with-nil"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "satan-run prepare slots are present-with-nil; plist-member is no progress signal"
+summary = "satan-run-new-ctx writes every prepare placeholder key (:evidence :percept :sensor_status :pre_spawn :motive :observer) as nil up front, so plist-member/key presence never tells you a stage ran."
+created = "2026-09-23"
+updated = "2026-09-23"
+
+[scope]
+paths = ["satan/satan-run.el", "satan/satan-broker.el"]
+globs = []
+commands = []
+tags = ["satan", "broker"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "8617cec18f7ff428334fb3cfa05ea7041af6f0e3"
+ref_name = "refs/heads/main"
+checkout_state_id = "fb88e06d2c156c153bed067427d647b6ddf48a82cef55f3dc017e3ddc2ec3f36"
+base_commit = "2d6c0da79d04d0bcad09eedc88e83f365c505875"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-012"
+

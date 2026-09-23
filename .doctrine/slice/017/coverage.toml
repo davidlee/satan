@@ -4,7 +4,7 @@ requirement = "REQ-003"
 contributing_change = "SL-017"
 mode = "VT"
 status = "verified"
-git_anchor = "d6e849ca1662b7ec9eb15eb85f57ab1af1b7a773"
+git_anchor = "46e141a395ce60c5dd1476f791938a9a6ec75acd"
 
 [entry.check]
 command = ["env", "SATAN_DB_HOST=/run/postgresql/", "emacs", "--batch", "-L", "satan", "-L", "dev", "-L", "satan/test", "-l", "satan-announce", "--eval", '''(let ((satan-announce-sink #'satan-announce-record)) (load "satan-intervention-test") (load "satan-sensor-alerts-test") (ert-run-tests-batch-and-exit "satan-intervention/record-appends-before-projection\\|satan-intervention/classify-record-needs-no-database\\|satan-intervention/classify-composition-unchanged\\|satan-tools-notify/\\|satan-sensor-alerts/cooldown-arms-on-record\\|satan-sensor-alerts/pre-spawn-intervention-joins-run"))''']
