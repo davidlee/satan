@@ -83,7 +83,7 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
               :budget-tokens 100000
               :output-handler 'satan-output/tick
               :auto-apply 'owned
-              :timeout-seconds 60
+              :timeout-seconds 120
               :budget-tool-calls 10
               :recent-runs 5))
           (spec defaults))

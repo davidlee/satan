@@ -60,7 +60,7 @@
   (let ((mode (satan-mode-resolve "tick-pulse")))
     (should (equal (plist-get mode :budget-tokens) 100000))
     (should (equal (plist-get mode :budget-tool-calls) 10))
-    (should (equal (plist-get mode :timeout-seconds) 60))
+    (should (equal (plist-get mode :timeout-seconds) 120))
     (should (eq (plist-get mode :output-handler) 'satan-output/tick))
     (should (member "notify_send" (plist-get mode :tools)))
     (should (member "inbox_append" (plist-get mode :tools)))
