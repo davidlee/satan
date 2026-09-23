@@ -927,6 +927,14 @@ the backend saw only lookup / session-p, never read."
     (should (string-match-p "credential_unavailable x2 since 20200101T000000"
                             (car lines)))))
 
+(ert-deftest satan-broker/quit-during-a-prompt-is-recorded ()
+  "C-g during a blocking prompt → a recorded `credential_unavailable' run."
+  (should (equal (plist-get (satan-broker-test--gate-run
+                             :env satan-broker-test--ref-env
+                             :backend (list :quit '(read)))
+                            :reason)
+                 "credential_unavailable")))
+
 (ert-deftest satan-broker/busy-run-never-touches-the-backend ()
   "VT-14: busy at entry → no backend call, `run_busy'; still `run_busy'
 when the child exits before the cond (the verdict is nil)."

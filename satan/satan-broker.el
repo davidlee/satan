@@ -782,7 +782,7 @@ the seam becomes (:unavailable ERR), so the run is recorded, not lost."
             (if (eq (car verdict) :env)
                 (append verdict (list :base base))
               verdict))))
-    (error (list :unavailable err))))
+    ((error quit) (list :unavailable err))))
 
 (defun satan-broker--write-credential-deferred-run (mode prepare dir)
   "Record a `credential_deferred' run: silent, plus one journal line.

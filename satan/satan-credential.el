@@ -15,7 +15,8 @@
 ;;
 ;; Error boundary: no backend signal escapes this module.  `acquire' turns
 ;; one into `(:unavailable ERR)', `ready-p' into nil, `resolve' into a
-;; per-var failure, `forget' into its return value.
+;; per-var failure, `forget' into its return value.  `acquire' and
+;; `resolve' contain `quit' too: C-g while a read blocks.
 ;;
 ;; No backend (nil): lookup and session-p read as nil and read signals
 ;; `satan-credential-no-backend', so a ref defers or is unavailable and
@@ -113,7 +114,8 @@ POLICY is `prompt' or `defer'; CONTEXT labels any read.  Returns
                                           (car p) (cdr p) context))
                                        pending))
                   :refs (plist-get part :refs)))))
-    (error (list :unavailable err))))
+    ;; `quit' too: C-g while a read blocks must still yield a verdict.
+    ((error quit) (list :unavailable err))))
 
 (defun satan-credential-resolve (env vars context)
   "Leniently resolve the refs among VARS in ENV, reading under CONTEXT.
@@ -127,7 +129,7 @@ signals."
     (dolist (p (plist-get part :pending))
       (condition-case err
           (push (satan-credential--read (car p) (cdr p) context) read-ok)
-        (error (push (cons (car p) err) failed))))
+        ((error quit) (push (cons (car p) err) failed))))
     (list :env (append (plist-get part :env) (nreverse read-ok))
           :failed failed)))
 

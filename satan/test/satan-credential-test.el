@@ -173,5 +173,20 @@
   (let ((satan-credential-function nil))
     (should-not (satan-credential-forget "op://v/hot/credential"))))
 
+(ert-deftest satan-credential/quit-during-a-read-is-contained ()
+  "C-g while a prompting read blocks is `quit', not `error': it must still
+come back as a verdict, or the run it belonged to is lost."
+  (satan-credential-fixture-with (_calls :quit '(read))
+    (let ((verdict (satan-credential-acquire
+                    satan-credential-test--env '("COLD_KEY") 'prompt "ctx")))
+      (should (eq (car verdict) :unavailable))
+      (should (eq (car (cadr verdict)) 'quit)))
+    (should (equal (mapcar #'car
+                           (plist-get (satan-credential-resolve
+                                       satan-credential-test--env
+                                       '("COLD_KEY") "ctx")
+                                      :failed))
+                   '("COLD_KEY")))))
+
 (provide 'satan-credential-test)
 ;;; satan-credential-test.el ends here

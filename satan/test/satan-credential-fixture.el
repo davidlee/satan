@@ -10,16 +10,19 @@
 (require 'satan-credential)
 
 (cl-defun satan-credential-fixture-backend
-    (log &key cache session read signal)
+    (log &key cache session read signal quit)
   "Return a fake backend closure that pushes each call onto LOG's car.
 LOG is a cons cell (a one-slot box).  CACHE and READ are alists of
 REF → plaintext answering `lookup' and `read'; a `read' of a ref not
 in READ signals.  SESSION answers `session-p'.  SIGNAL lists ops that
-signal instead of answering.  `forget' removes REF from CACHE."
+signal an error instead of answering; QUIT lists ops that signal `quit'
+\(the keeper pressing C-g while a read blocks).  `forget' removes REF from CACHE."
   (lambda (op &rest args)
     (push (cons op args) (car log))
     (when (memq op signal)
       (error "fake backend: %s signals" op))
+    (when (memq op quit)
+      (signal 'quit nil))
     (pcase op
       ('lookup (cdr (assoc (car args) cache)))
       ('session-p session)
