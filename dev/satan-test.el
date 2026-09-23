@@ -33,6 +33,7 @@
 
 (require 'ert)
 (require 'satan-announce)
+(require 'satan-credential)
 (require 'satan-db)
 
 (defconst satan-test--repo-root
@@ -87,8 +88,11 @@ from a test run."
   ;; under the recording sink, so nothing any test forgets to stub can
   ;; still reach D-Bus or the journal.  A `let', not a `setq' — running
   ;; this from a live Emacs (check-interactive) never silences its real
-  ;; alerts once the run ends.
-  (let ((satan-announce-sink #'satan-announce-record))
+  ;; alerts once the run ends.  Likewise no credential backend (SL-018):
+  ;; a live Emacs wires `satan-credential-function' to 1Password, and no
+  ;; test may reach it; suites that need one bind the fake fixture.
+  (let ((satan-announce-sink #'satan-announce-record)
+        (satan-credential-function nil))
     (let ((load-errors '()))
       (dolist (f (satan-test--suite-files))
         ;; A sibling suite file may `require' this one for its fixture
