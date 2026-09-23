@@ -82,3 +82,4 @@ oauth2-auto.plist
 .doctrine/dispatch/
 
 /.direnv
+.doctrine/observations/**/.tmp.*
