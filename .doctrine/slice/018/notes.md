@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-01 done (~/.emacs.d 45e346d, 634a878) · status started · next: /phase-plan PHASE-02
+fresh-as-of: 2026-09-23 · PHASE-02 done (e3faba6) · status started · next: /phase-plan PHASE-03
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -47,3 +47,18 @@ fresh-as-of: 2026-09-23 · PHASE-01 done (~/.emacs.d 45e346d, 634a878) · status
   unaffected (dl-core sets it). The runner now sets it.
 - `my/op-session-p` lets a missing `op` binary signal: a config fault stays
   loud, and SATAN's boundary (design sec-2) records it as `:unavailable`.
+
+### PHASE-02 — satan-credential seam (e3faba6)
+
+- `satan/satan-credential.el`: `--partition` (env → cached / refs / pending /
+  failed lookups) is the single core shared by `ready-p`, strict `acquire` and
+  lenient `resolve`. `:env` carries only ref-resolved entries; literals already
+  ride the base env. `session-p` is consulted only when something is pending,
+  so a warm cache makes no `op` call (design R2). `resolve` does not probe the
+  session.
+- Fake backend: `satan/test/satan-credential-fixture.el`
+  (`satan-credential-fixture-with (calls :cache :session :read :signal) …`).
+- Hermetic runner: `dev/satan-test.el` binds `satan-credential-function` to
+  nil around the whole run (like `satan-announce-sink`), because the live
+  Emacs is now wired to 1Password (PHASE-01).
+- 16 tests; suite 1102/1108 (6 skipped, the same as baseline). VT-1/11/12 PASS.
