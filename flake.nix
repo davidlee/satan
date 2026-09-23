@@ -8,11 +8,10 @@
     emacs-overlay.url = "https://github.com/nix-community/emacs-overlay/archive/master.tar.gz";
 
     pub = {
-      url = "path:/home/david/flakes/pub";
+      url = "github:davidlee/nix-config?dir=flakes/pub";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.emacs-overlay.follows = "emacs-overlay";
     };
-    llm-agents.url = "github:numtide/llm-agents.nix";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
   };
@@ -44,7 +43,7 @@
 
         jailLib =
           if isLinux
-          then inputs.pub.lib.${system}.mkJailedAgents {inherit (inputs) llm-agents;}
+          then inputs.pub.lib.${system}.mkJailedAgents {}
           else {};
         doctrine-pkg = doctrine.packages.${system}.default;
         wrappedEmacs = inputs.pub.packages.${system}.emacs;
