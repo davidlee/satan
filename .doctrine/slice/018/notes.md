@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-09-23 · PHASE-02 done (e3faba6) · status started · next: /phase-plan PHASE-03
+fresh-as-of: 2026-09-23 · PHASE-03 done (1a201a6) · status started · next: /phase-plan PHASE-04
 
 ### Produced
 - SL-018 (this slice); needs SL-017
@@ -62,3 +62,22 @@ fresh-as-of: 2026-09-23 · PHASE-02 done (e3faba6) · status started · next: /p
   nil around the whole run (like `satan-announce-sink`), because the live
   Emacs is now wired to 1Password (PHASE-01).
 - 16 tests; suite 1102/1108 (6 skipped, the same as baseline). VT-1/11/12 PASS.
+
+### PHASE-03 — run_busy + sentinel reset (1a201a6)
+
+- `run_busy` branch after `session_blocked` (precedence test pins
+  perceive_failed > session_blocked > run_busy). Both refusals go through the
+  new `satan-broker--write-silent-run` (PHASE-05's `credential_deferred`
+  reuses it, adding its journal line). `"run_busy"` is added to
+  `satan-broker--streak-transparent-reasons`.
+- Sentinel: child-exit record + finalize under `unwind-protect`; the flag reset
+  is the unwind form, and the error still propagates. ISS-020's fix has landed:
+  close it at slice close.
+- **Live effect once Emacs reloads:** a scheduled run that fires while a child
+  is live is now refused as `run_busy`, where before it overlapped.
+- VT-27's keyword mandate was corrected in plan.toml: its streak half is
+  covered by the extended transparent-streak test.
+- There is an older byte-compile warning at `satan-broker.el:799`
+  (`_probe-snapshots` not left unused, in `--spawn`). Fix it in PHASE-05,
+  which rewrites `--spawn`.
+- Suite 1105/1111 (6 skipped).

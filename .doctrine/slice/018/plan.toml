@@ -109,7 +109,7 @@ exit_criteria = [
 verification = [
   { id = "VT-19", expects = "a signal from the sentinel's child-exit record or from finalize still clears satan-run--spawn-running", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--make-sentinel", "satan-run--spawn-running"], waived = false },
   { id = "VT-22", expects = "busy plus a perceive error → perceive_failed; busy plus session active → session_blocked", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "perceive_failed", "session_blocked"], waived = false },
-  { id = "VT-27", expects = "spawn-running set → run_busy no-child run: no .FAILED rename, no announce, no child, skipped by the failure streak", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "satan-broker--streak-transparent-reasons"], waived = false },
+  { id = "VT-27", expects = "spawn-running set → run_busy no-child run: no .FAILED rename, no announce, no child, skipped by the failure streak", test_file = "satan/test/satan-broker-test.el", keywords = ["run_busy", "run-busy-refuses-silently", "satan-broker--failure-streak"], waived = false },
 ]
 specs        = []
 requirements = []
