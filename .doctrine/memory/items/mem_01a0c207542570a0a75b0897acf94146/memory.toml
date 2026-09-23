@@ -7,7 +7,7 @@ status = "active"
 title = "Driving a doctrine design run: four defects in 0.44.3"
 summary = "Four reproducible defects in doctrine 0.44.3's design run machine, with the workaround each one needs."
 created = "2026-09-21"
-updated = "2026-09-21"
+updated = "2026-09-23"
 
 [scope]
 paths = []

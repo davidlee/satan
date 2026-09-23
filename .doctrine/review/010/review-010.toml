@@ -1,0 +1,107 @@
+id    = 10
+slug  = "sl-017-design-focused-second-pass-post-rv-009"
+title = "SL-017 design focused second pass (post RV-009)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "adversary"
+responder = "designer"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-017"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Undelivered path cannot work as drawn: classify hits the outcomes FK, reads psql before its append, and its failure is unhandled"
+detail = """Design sec-5 flowchart: record -> announce; on pop failure -> satan-intervention-classify :classification unknown :notes 'undelivered: ERR' -> (ok ... :delivered :false). The projection step (PR) runs only on the success edge. Against the code: (1) satan_intervention_outcomes.intervention_id REFERENCES satan_interventions(id) (satan/memory/migrations/0006_interventions.sql:52-53). The created row was never projected on this branch, so classify's upsert (satan-intervention.el:450) violates the FK and user-errors on every production run where D-Bus is down and Postgres is up. (2) classify calls satan-intervention-lookup (psql) at :422, BEFORE its audit append at :447. When Postgres is down, nothing is appended, so the undelivered mark is missing. That contradicts sec-5's 'its audit event is already down' and invariant I4. (3) The design does not say that notify-send catches a classify signal. Today the whole handler is one condition-case that returns (error ...) (satan-tools-notify.el:55-76). If it keeps that shape, the tool returns error, satan-sensor-alerts--dispatch sees non-ok (:368), and the cooldown does not arm. That is RV-009 F-2 scenario 3 again: one never-shown intervention per run per cause while D-Bus is dead. (4) classify's validator requires confidence, evidence, maturity, next_revisit_at, source and classified_at (satan-audit.el:322-353). The design gives none of these values for the undelivered verdict. (5) classify also enqueues to satan_outcome_inbox via satan-attribute-enqueue, whose DB defaults to the production satan_memory (satan-attribute.el:39). Sec-5's test seam 'stub satan-intervention-project (and classify's projection)' names a seam that does not exist: lookup, upsert and enqueue are all inline. The undelivered test would reach prod unless each is stubbed. Repair: split classify the way create is split, into classify-record (validate + append, no DB read; revision-p nil is known for a just-minted id) and classify-project (upsert + enqueue). The undelivered branch then runs record -> announce fails -> classify-record, then best-effort project(created) and project(outcome) in that order. Fix the payload: e.g. confidence low, evidence (:source_events () :reason "undelivered"), maturity mature, source auto, classified_at and next_revisit_at = ctx :time-now. Add a real-DB case in satan-intervention-test.el for the undelivered sequence, so the FK is exercised."""
+disposition = "fixed"
+response = "Observation verified (FK 0006_interventions.sql:52; lookup before append satan-intervention.el:422; attribute enqueue). Took the prescription: classify splits into classify-record (validate+append, no DB) and classify-project (upsert), composed classify unchanged. notify-send's undelivered branch calls satan-tools-notify--mark-undelivered: classify-record (unknown/high/mature/auto, classified-at=next-revisit-at=time-now, evidence (), notes undelivered: ERR, revision-p nil), then best-effort project intervention then verdict (FK order), no attribute enqueue; never signals, so result is ok and cooldown arms. Test stubs name the two project functions. Design sec-5, sec-8, sec-9; DEC-018 amended."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "Pre-child handler contract omits the DEC-8 flag, the stderr buffer, return vs re-signal, and where its scope ends"
+detail = "Sec-4 gives the pre-child handler three steps: record spawn-failed, set failure-reason/status, call finalize. Against satan-broker--spawn: (1) satan-run--spawn-running is set at satan-broker.el:567. Only two places clear it: the outer condition-case handler (:777) and the child sentinel (:363). If the new handler catches and returns, as the three steps imply, the outer handler never runs and no sentinel exists. The flag then stays t until restart, and every MCP session is refused. That is the AUD-008 F-001 regression the :771-776 comment warns about. (2) stderr-buf is created at :572, before audit-open, and is killed only by the sentinel wrapper. Every spawn_failed run leaks one buffer, and a persistent failure leaks about 48 a day on tick. (3) The design does not say whether the handler re-signals to satan-broker-run/satan-tick (a timer error) or returns run-id. Also, satan-trace-outcome was already stamped 'spawned' (:549), so the tick trace row misreports these runs. (4) Scope: sec-4 says 'until the child process exists', but today's condition-case also wraps the forms after make-process: the timeout timer and set-process-sentinel (:744-767). If the new handler covers those and one throws while the child is live, the run is finalized twice: once by the handler, and again by the sentinel on exit. finalize is not idempotent after the rename. The audit handle keeps the pre-rename dir (satan-audit.el:109-133 writes to (satan-audit-handle-dir handle)), so the second satan-audit-close writes into a missing directory and errors inside the sentinel. Repair: specify the handler as (a) finalize only when (satan-run-process run-ctx) is nil; otherwise delete-process and let the sentinel finalize; (b) always clear satan-run--spawn-running and kill stderr-buf; (c) return run-id (or re-signal; pick one); (d) stamp trace outcome spawn_failed. Extend spawn-error-before-child-finalizes-spawn-failed to assert: flag nil, buffer killed, a single status/final write."
+disposition = "fixed"
+response = "Verified against satan-broker.el:558-788. No second condition-case: the existing handler becomes the single pre-child handler. Always kills stderr-buf and clears satan-run--spawn-running. proc non-nil -> re-signal as today, sentinel finalises (no double finalise/close into renamed dir). No child + audit open -> record spawn-failed, mirror percept bundle if absent, set failure-reason, finalize. No child + no audit -> write-no-child-run spawn_failed. Both no-child branches return run-id, no re-signal. Design sec-4; DEC-016 amended; tests added sec-9."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "I7 overclaims: a missing tool description (build-manifest) fails before audit-open and stays silent for ever"
+detail = "Sec-4 starts the new condition-case at struct creation, right after satan-audit-open. I7 says 'A scheduled run that reached --spawn ends with a status file'. The window from satan-broker.el:567 to :613 is not covered: generate-new-buffer, make-directory satan-hippocampus-dir (:578), satan-broker--build-manifest (:611) and satan-audit-open. build-manifest calls satan-tool-json-schema -> satan-tool--description, which signals 'tool description missing' whenever <satan-tools-descriptions-dir>/<name>.md is absent (satan-tools.el:202-209). That directory is in the corpus (~/satan), a separate repo. A package change that adds a tool to a mode, deployed before the corpus is updated, therefore fails every run of that mode, persistently. Such a run leaves a dir holding only percept.json (from perceive) and no status. The new walk steps over it for ever, nothing announces it, and it is invisible to the SL-018 streak too. This is the silent persistent failure ISS-017 is about. The same missing description also breaks satan-broker--write-no-child-run (:446), so budget-denied and perceive_failed runs of that mode also end with no status. Repair (pick one and state it): build the manifest inside the covered region, so that on a manifest error audit-open gets a minimal manifest (:run_id, :mode, :manifest_error MSG) and the run takes the spawn_failed path; or move audit-open (with a fallback manifest) to the very top of --spawn and hoist the struct with it. Either way, narrow or restate I7 to match, and add a test: a missing description file finalizes as failed/spawn_failed."
+disposition = "fixed"
+response = "Verified: build-manifest (:611) precedes audit-open; satan-tool--description signals (satan-tools.el:209); no-child writer calls same builder (:446); tick caller has no handler. Fix: pre-audit failures route to write-no-child-run, whose manifest comes from new satan-broker--manifest-or-stub (stub (:run_id :mode (:name) :manifest_error)); audit-open only writes manifest.json so a stub is admissible. --spawn keeps the strict builder. I7 reworded: every run past the gates ends with status, exceptions Emacs death and an unwritable run dir. Tests: manifest-error-finalizes-spawn-failed, no-child-run-survives-broken-manifest."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Observer change: ten test call sites pass prepare-shaped plists, a silent wall-clock fallback remains, and :ctx opt becomes a second ctx path"
+detail = "Sec-4 says satan-observer-process takes the tool-ctx and 'Its opts argument is unchanged'. All ten direct callers in satan/test/satan-observer-test.el (1271, 1304, 1323, 1361, 1416, 1498, 1745, 1808, 1849, 1902) pass snake_case prepare plists (:time_now :run_id :mode_name :audit). Under a kebab tool-ctx they need rewriting, and neither the paths table nor the test list says so. Three hazards follow. (a) satan-observer.el:384-385 falls back to the wall clock when the time key is missing. A half-migrated caller therefore runs with now = today instead of the fixture's 2026-05-23, and the maturity window and pending set silently change. The fallback should go: a tool-ctx always carries :time-now. (b) opts :ctx (satan-observer.el:371, 397-398) already means 'explicit tool-ctx'. With the first argument now a tool-ctx, keeping it gives two ways to pass the ctx, which is contrary to DEC-016's one constructor. Remove it. (c) Row 885 of the paths table groups satan-observer-test.el with 'projection stubbed at the DB boundary'. The observer tests deliberately use a real test DB (satan-observer-test--with-db, :32-72, satan_memory_test) and assert on satan-intervention-lookup rows. Stubbing would gut them. They should keep the test-DB binding, which already satisfies R9. Repair: say that the observer reads :time-now with no fallback, drop the :ctx opt, migrate the ten call sites through a small test helper that builds a tool-ctx via satan-run-tool-ctx over a make-satan-run, and correct row 885."
+disposition = "fixed"
+response = "Verified: 10 calls in satan-observer-test.el; wall-clock fallback satan-observer.el:384; :ctx opt; observer tests use satan_memory_test. Fix: observer-process checks ctx with --ctx-required, wall-clock fallback and :ctx option deleted, test calls migrate to satan-run-manual-tool-ctx over a temp audit. Paths table and sec-5 hermeticity bullet corrected: observer and intervention tests keep their real test DB."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "A spawn_failed run before the bundle attach has no bundle.json: audit predicate fails and its pre-spawn interventions lose baseline and correlation"
+detail = "When the context-fn (satan-broker.el:688-690) or satan-audit-attach-bundle throws, the spawn_failed finalize (sec-4/sec-7) closes a run that has no bundle.json. By then the pre-spawn sensor alerts have already recorded <run-id>.ivNNN interventions in it (sec-4 Consequences). Three effects follow. (1) satan-audit-verify-run's has-bundle predicate fails for the run. (2) The observer resolves an intervention's run dir and reads bundle.json for its baseline and percept handles (satan-observer-classify.el:66-78, 500-509). With no bundle, every pre-spawn intervention from such a run classifies :no_baseline or :no_correlation. That contradicts sec-4's claim that pre-spawn interventions 'carry percept_handles so the observer's correlation gate can reach them'. (3) satan-tank--last-run-status (satan-tank.el:430-441) knows nothing of a spawn-failed event and shows the run as in-progress. The no-child writer already solves (1) and (2) by mirroring :percept into bundle.json (satan-broker.el:444-449, DEC-budget-denied-mirror-percept). Repair: in the spawn_failed path, attach (list :percept (plist-get prepare :percept)) as the bundle when none was attached, reusing the no-child mirror, and add that to the spawn-failed test. Optionally, map spawn-failed to 'error in the tank."
+disposition = "fixed"
+response = "Folded into the F-2 handler: with the audit open and no bundle yet attached, the handler attaches (:percept ...) from prepare as bundle.json (the no-child writer's convention) before finalize. Asserted in spawn-error-before-child-finalizes-spawn-failed."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "status_code 403 -> auth misreads OpenRouter's moderation 403: critical pops every run and SL-018 evicts a good key"
+detail = "Sec-7's classify_error maps (401, 403) to auth. Mode providers include openrouter (satan/harness/providers/openrouter.py; OPENROUTER_API_KEY). OpenRouter documents 403 as 'your chosen model requires moderation and your input was flagged', which is a content condition, not a credential one. With DEC-015 an auth outcome pops at critical urgency at every position, and SL-018 objective 6 evicts the cached key on auth. One flagged prompt, repeated by a tick whose percept keeps tripping the filter, therefore gives a critical pop every run and repeated eviction of a valid key. It also counts as a same-cause auth streak. The symmetric gap: OpenRouter's 402 (insufficient credits), which the keeper must act on, falls through to text matching and reads unknown. Repair: map 401 alone to auth; map 403 to auth only when the body matches the auth words, else to a new class forbidden (or unknown); optionally map 402 to credits. Add fixtures for a 403 with a moderation body and for a 402. SL-018 keys eviction on auth only, so the narrowing is safe."
+disposition = "fixed"
+response = "Accepted on OpenRouter semantics (403 = moderation-flagged input, 402 = insufficient credits). classify_error: 401 -> auth, 402 -> credits, 403 not mapped by status (reads auth only on auth wording, else unknown); 403/forbidden dropped from the auth regex. test_classify_auth_403 now expects unknown, stated as intended. SL-018 must not evict on credits or moderation 403 (DEC-019 consequences). R13 added for the pre-deploy window. Design sec-7, sec-9; DEC-019 amended; A1 narrowed in design and slice scope."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "I6 selectors have no crisp hit set, so V2 cannot pass mechanically"
+detail = '''Sec-8 selector 4, rg -n ':mode-name' satan/*.el, is meant to show that tool-ctx construction sits only in satan-run.el. Today it returns 17 hits, and most are readers that stay after the slice: satan-intervention.el:335/339/373, satan-tools-org.el:4/115, satan-tools-inbox.el:90, satan-tools-hippocampus.el:38/182, satan-tools-memory.el:46/63, satan-tools-notify.el:35 and satan-observer.el:287. Sec-4's rg '(list :id' satan/*.el also hits unrelated code: satan-mcp.el:292, satan-audit.el:401, satan-patch-store.el:346, satan-tools-notify.el:74, satan-motive.el:223 and satan-tank.el:480. V2 ('the section 8 rg checks produce the stated hit sets') has no stated hit set for either, so the auditor cannot pass or fail I6 mechanically. Repair: use a construction-shaped pattern with an exact expected set, e.g. rg -n '^\s*(\(list )?:mode-name ' satan/*.el, which should hit only satan-run.el (satan-run-tool-ctx and satan-run-manual-tool-ctx). Drop or correct the '(list :id' claim in sec-4 Consequences.'''
+disposition = "fixed"
+response = "Agreed the two selectors had no exact hit set. Dropped the :mode-name selector and the sec-4 '(list :id' consequence. I6's mechanical check is the deleted-builder selector (exact: no hits); a future stray builder is a review concern, stated explicitly in sec-8."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "nit"
+title = "The streak walk starts at the mode's newest run, not at the run being announced"
+detail = "satan-run-outcome-streak (sec-3) walks MODE's runs 'from newest back'. satan-broker--failure-streak passes NEWEST only for its cause, not as the starting point. Scheduled runs of the same mode are not mutually excluded: DEC-8 only excludes scheduled versus MCP, and satan-broker-run checks session-active, not spawn-running (satan-broker.el:527). Suppose M-x satan-run motd overlaps a scheduled motd, or a timed-out run is finalized after a newer run of its mode. Then a newer run of that mode may already hold an outcome when the older one is announced. If it is done or another cause, the walk stops at it: the streak is empty, the position is forced to 1, and the announced run is not even counted. If it is the same cause, the streak includes a run newer than the one announced. The effect is rare but wrong. Repair: give the walk a starting run-id (optional arg), skip entries whose id sorts after NEWEST's :run-id, and count from there. SL-018's credential streak benefits too."
+disposition = "tolerated"
+response = "Observation holds. Needs overlapping runs of one mode (a run outlasting its cadence, or a manual run overlapping a scheduled one); worst case one pop early or late. Documented as a known limit in sec-3 Properties and R12, rather than adding a start-at parameter to the walk."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "mark-undelivered projects the intervention even when its undelivered verdict failed to record"
+detail = "Sec-5 says satan-tools-notify--mark-undelivered runs three steps (classify-record, project the intervention, classify-project the verdict), and that each step's failure is caught independently. If step 1 fails (an append failure, or a validator rejecting the payload after a later vocabulary change), step 2 still inserts the intervention row with no outcome row. satan-intervention-pending (satan-intervention.el:760-790) then returns it once its window matures, and the observer scores an alert the keeper never saw. That is the RV-009 F-2 harm, now on a narrower path. Repair: make steps 2-3 conditional on step 1. If the verdict is not recorded, leave the projection unwritten and note it on the result. A later rebuild would still replay the lone created event, which is the pre-existing I3 gap and acceptable. Add the step-1-fails case to satan-tools-notify/undelivered-pop-classified-unknown."
+disposition = "fixed"
+response = "Accepted. sec-5: if mark-undelivered's step 1 (classify-record) fails, steps 2 and 3 are skipped, so no verdict-less projected row can look pending to the observer."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "A spawn_failed run's tick trace row still reads 'spawned'"
+detail = """satan-broker-run stamps (satan-trace-outcome "spawned") before calling satan-broker--spawn (satan-broker.el:548-549). With sec-4's handler returning run-id from both no-child branches instead of re-signalling, satan-trace-with-tick flushes outcome 'spawned' for a run that never spawned. Before, the re-signal at least left it flagged only through the error. The trace ledger (SL-011) is used to diagnose tick behaviour, so spawn failures become invisible there. This was part (d) of the RV-010 F-2 repair and the F-2 response does not address it. Repair: in both no-child branches the handler calls (satan-trace-outcome "spawn_failed"), overriding the earlier stamp (satan-trace-outcome sets the slot, so last write wins). Assert it in spawn-error-before-child-finalizes-spawn-failed."""
+disposition = "fixed"
+response = 'Verified satan-trace-outcome is last-write-wins (satan-trace.el:106). sec-4: both no-child branches stamp (satan-trace-outcome "spawn_failed").'
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

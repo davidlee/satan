@@ -15,7 +15,7 @@ ref   = "SL-017"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Un-stubbed record/project tests will write test interventions into the production satan_memory DB"
 detail = """Design sec 8 (test rows for satan-sensor-alerts-test.el / satan-tools-notify-test.el) says to 'exercise the real record step' and remove the satan-intervention-create stubs 'where they hide ISS-016'. After the split, satan-tool/notify-send calls satan-intervention-record then satan-intervention-project, so the existing create stubs (satan-tools-notify-test.el:31-37, satan-sensor-alerts-test.el:111,294) no longer intercept anything. satan-intervention-project defaults :db to satan-memory-migrate-database = "satan_memory" (satan-memory-migrate.el:40), the production database name. The verification invocation in sec 9 is SATAN_DB_HOST=/run/postgresql/ — the trailing slash evades the production-socket guard in satan-db-resolve-host (satan-db.el:61 compares equal to "/run/postgresql"). Result: each notify/sensor test that reaches the projection INSERTs a fake intervention row into the live satan_interventions table, which the observer then classifies. Sec 5 also turns a projection failure into an ok result, so neither outcome is visible to the test. This is ISS-015's defect class (tests writing into evidence) re-opened on the DB side; before SL-017 the pre-spawn create always died at --ctx-required, so this path never reached psql from tests. Repair: name the projection seam in the test plan — tests stub satan-intervention-project (the unit boundary the split creates), or satan-test-run-batch binds satan-memory-migrate-database to the test DB beside the announce sink; add a key test that the projection is invoked with the test db. State in sec 9 that the verification command must not rely on the host guard."""
@@ -24,16 +24,16 @@ response = "Verified: satan_memory is the prod DB, and /run/postgresql/ slips pa
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Recorded-but-undelivered interventions are indistinguishable in the transcript; rebuild resurrects them and the observer scores alerts the keeper never saw"
 detail = """Sec 5 flow: record (intervention.created appended) -> satan-announce -> pop signals -> (error "recorded, not delivered") and the projection is skipped. Sec 5 also asserts 'No new event type is added'. Consequences: (1) the transcript (canonical) holds an intervention.created that the live projection does not; satan-intervention-rebuild (satan-intervention.el:233, TRUNCATE + replay of every intervention.created) will insert it, so rebuild is no longer equivalent to the live projection, contradicting the 'projection can be rebuilt from the transcript' premise the split relies on. (2) After a rebuild the observer classifies an alert that was never shown (likely 'ignored'), feeding satan-intervention-classify -> attribute outcome enqueue, i.e. corrupting efficacy learning. (3) With D-Bus unavailable (e.g. Emacs daemon under systemd without DBUS_SESSION_BUS_ADDRESS) the cooldown never arms (sec 5 'each attempt is recorded'), so every run of every mode appends a fresh never-shown intervention per degraded cause, indefinitely. The only marker of non-delivery is a tool-denied/action-failed record (in-run) or an actions.json pre_spawn reason string (pre-spawn) — neither is read by rebuild or the observer. DEC-018 itself lists the fix as optional ('a D-Bus delivery failure after the append is added as a follow-up event through the same writer'). Repair: make it mandatory — on pop failure append an intervention.delivery_failed (or outcome_classified with a 'undelivered' classification, if the closed set allows) through satan-audit-record, and have rebuild/observer exclude undelivered ids; or, alternatively, arm a short retry cooldown on pop failure so a dead D-Bus does not mint one intervention per run. Also state who reconciles a projection failure (nothing triggers rebuild today), since I3 makes silent projection gaps normal."""
 disposition = "fixed"
-response = "Keeper ruling. A pop that fails after the record is classified unknown with the note 'undelivered: ERR', using the existing classify API and vocabulary. The tool returns (ok ... :delivered :false), so the cooldown arms on the record. A rebuild replays both events. With D-Bus dead there is one record per cause per cooldown window. DEC-018 amended; sec-5; invariant I4."
+response = "Re-disposed after contest. The contest's grounds are RV-010 F-1 (FK violation, Postgres read before append, cooldown unarmed on classify error). All three are fixed by the classify-record/classify-project split and the never-signalling mark-undelivered helper (see RV-010 F-1). New test satan-tools-notify/undelivered-with-db-down-still-ok covers scenario 3."
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Back-off position spans causes: a new failure cause after a budget-denied (or other) streak is announced late and attributed to the wrong first run"
 detail = "Sec 3/6: the failure streak counts every non-done outcome (COUNTS-P = status != done), and DEC-015's power-of-two rule keys on the length of that mixed streak. budget-exceeded counts toward it but only pops at position 1. Scenario (tick-pulse, ~5/8 of 30-min ticks): daily budget exhausted at 14:00 -> ~12 budget-exceeded tick-pulse runs, positions 1..12, one pop. Midnight the budget resets; at 00:30 the provider starts returning 500s (reason server) -> position 13, not a power of two, no pop; next pop at 16, ~1.5h later, and the line reads 'failed tick-pulse ... server x13 since <the 14:00 budget-denied run>', which misattributes the start of the outage. Same for timed-out -> rate_limit transitions etc. Only auth escapes this (always pops). The design's own intent ('a failure keeps being announced ... for as long as it persists', noise bound table) assumes a single-cause streak. Repair (stateless, uses data the walk already returns): also pop when the newest outcome's cause (status + reason) differs from the next-older counted outcome's; or compute position over the leading run of same-cause outcomes and report 'since' from that sub-streak. Alternatively make budget-exceeded transparent (SKIPS-P) since it is a policy gate like session_blocked, and say why. Add a test: budget x3 then server -> pops at the first server run."
@@ -42,7 +42,7 @@ response = "Keeper ruling. The failure streak is same-cause: status plus reason 
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Synchronous --spawn failures leave no status and are stepped over forever: a persistent launch failure is never announced"
 detail = """satan-broker--spawn's condition-case (satan-broker.el:~770-777) only clears satan-run--spawn-running and re-signals. Anything that throws between satan-audit-open and make-process — satan-broker--direnv-env ('direnv failed', satan-broker.el:~81), the mode :context-fn, satan-audit-attach-bundle, make-process itself (file-missing when the harness cmd is absent after a flake bump) — leaves a run dir with manifest/transcript but no status, no final.json, no rename, no announce. 46 such status-less dirs exist in ~/.local/state/satan/runs today (e.g. 2026-06-21/20260621T090011-tick-pulse-8b31a5). The new walk (sec 3 example row 'no status file: in flight or crashed -> step over') makes these permanently invisible: the streak neither counts nor breaks on them, and nothing announces them, so a broken .envrc or missing harness binary is exactly the silent persistent failure ISS-017 is about. After SL-017 such a dir can also contain pre-spawn intervention.created lines (sec 4) with no closed run around them. Repair: in the --spawn error handler, close the already-open audit handle with status failed and a synthesised final (:reason "spawn_failed"), then rename + announce via the same path as write-no-child-run; or at minimum record the gap as an explicit non-goal + backlog item and correct the Intent claim. The 'no status = in flight' step-over should then only apply to genuinely in-flight runs."""
@@ -51,7 +51,7 @@ response = "Verified (the 2026-06-21 tick-pulse dir has an empty transcript and 
 
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The auth class that drives critical every-run pops and SL-018 eviction comes from an unanchored substring heuristic"
 detail = """Sec 7 / DEC-019 make final.json reason = classify_error(e) (runloop.py:115-125), and sec 6 makes reason "auth" pop at every position at critical urgency; SL-018 objective 6 evicts the cached key on it. classify_error is substring matching on str(e).lower() with rate checked first: 'rate' matches 'generate', 'separate', 'accurate', 'moderate'; '429'/'401'/'403'/'500' match any digit run in the detail (request ids, token counts like 'max_tokens 4010', ports); 'auth' matches 'author', 'oauth'. False auth -> a good key is evicted and the keeper gets a critical pop every run; a 401 whose provider body says e.g. 'please generate a new key' -> rate_limit -> backed-off normal pops and no eviction, i.e. the ISS-012 failure mode stays quiet. Sec 7 'A1 is narrowed' acknowledges the heuristic but nothing narrows it in code. Repair options without touching runloop.py: in satan-broker--error-class, derive the class from the detail's HTTP status ('Error code: NNN' prefix the OpenAI-compatible SDKs emit) when present and fall back to the harness class only otherwise; or accept a one-line runloop change to classify on getattr(e, 'status_code') and take the deploy-chain cost. Either way add fixtures for a 401 with 'generate' in the body and a 500 detail containing '401' digits."""
@@ -60,7 +60,7 @@ response = "Keeper ruling. classify_error classifies by status_code first (401/4
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Harness-installed global sink: unsafe if the runner runs in a live Emacs, and single test files lose hermeticity once per-file stubs go"
 detail = "Sec 2 'Test hermeticity': satan-test-run-batch sets satan-announce-sink to the recorder once, before loading tests, and all per-file cl-letf stubs are removed. Two failure scenarios: (1) satan-test-run-batch is not batch-only — it has an explicit non-batch branch (dev/satan-test.el:73 guards only when noninteractive) and the header still documents a live-server path; if it setq's the sink in the keeper's running Emacs, every production announcement (failure pops, sensor alerts, listener deaths) goes to the recorder until restart — the exact silent-alarm failure this slice exists to remove. satan-db.el:43-49 already records the lesson for the analogous host override: let-bind for the dynamic extent, never setq. (2) Any test file run outside the runner (emacs --batch -l satan-broker-test.el -f ert-run-tests-batch-and-exit, as the file headers still document, e.g. satan-tools-notify-test.el:3-6, or M-x ert in a dev Emacs) now has no recorder: tests asserting on satan-announce-recorded fail, and budget-denied/notify paths fire real pops and journal lines — ISS-015 again. Repair: a test helper macro (e.g. satan-test-with-announce-recorder) that let-binds both satan-announce-sink and satan-announce-recorded; every asserting test uses it; the runner additionally let-binds (not setq) the sink around load+run as the backstop. This is still one mechanism (the recorder)."
@@ -69,7 +69,7 @@ response = "The harness let-binds the sink around load and run, never setq. The 
 
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "V1 hermeticity proof is unsound and one-shot; V2 test selector misses multi-line stubs"
 detail = '''V1 brackets 'just test' with journalctl -t satan --since and D-Bus history. On the dev machine the live SATAN Emacs keeps running and emits its own satan journal lines and pops during the window (a real failure, a listener death), so V1 can false-fail, and logger lines carry logger's PID so they cannot be attributed. It also proves hermeticity once, not on every future run. Repair: a tripwire in the runner — while the suite runs, advise notifications-notify and call-process (for "logger") to signal/count; satan-announce-test's local cl-letf replaces the function cell so its unit tests are unaffected; assert zero at the end of satan-test-run-batch. V2: the selector rg 'cl-letf.*notifications-notify' satan/test/ only matches when cl-letf and the symbol share a line; satan-broker-test.el:192 and :227 put ((symbol-function 'notifications-notify) on its own line, so the selector reports clean while those stubs remain. Use rg "'notifications-notify|\"logger\"" satan/test/ -g '!satan-announce-test.el' -> 0. Likewise the production selector will hit the docstrings/comments at satan-tools-notify.el:4,39 unless the plan rewrites them; say so.'''
@@ -78,7 +78,7 @@ response = "V1 now requires that no journal line in the test window names a run-
 
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "satan-run-mode-from-id adds a third run-id parser; DEC-001 puts run identity in satan-run.el, so the existing two should fold into it"
 detail = '''Sec 3 adds satan-run-mode-from-id. Two parsers of the same id shape already exist: satan-context--run-id-regexp (satan-context.el:244, group 6 = mode, [a-z0-9-]+? with a non-hex-anchored suffix) and satan-tank--short-run (satan-tank.el:86, 'T[0-9]+-\\(.+\\)-[a-z0-9]+'). They disagree on edge cases (context allows [A-Za-z0-9]+ suffix of any length, tank any [a-z0-9]+), so a third with 'fixed 6-hex suffix' makes three answers to 'what mode is this run'. Similarly the newest-first sort by satan-run--id-from-leaf is duplicated in satan-broker--failure-streak-count (being deleted) and satan-tank--recent-runs (satan-tank.el:391-396); the walk needs it again. DEC-001 names satan-run.el the sole owner of run identity and discovery. Repair: add satan-run-mode-from-id (and a satan-run-list-dirs-newest-first or an id sort helper) in satan-run.el and replace the tank/context parsers in this slice, or record a backlog item naming them. Low cost, removes a divergence the streak walk would otherwise inherit.'''
@@ -87,7 +87,7 @@ response = "Verified: satan-tank.el:90 and satan-context.el:245. satan-run.el no
 
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "'Two tool-ctx builders' is wrong: the observer, manual-mark and atsatan hand-build ctxs too; the observer one sits in the same pre-spawn window"
 detail = "Sec 4 'Current behaviour' says two functions build the tool-ctx, and DEC-016's rationale is 'one constructor'. Three more exist: satan-observer--ctx-from-run-ctx (satan-observer.el:~326, used by satan-observer-process inside satan-broker--spawn, a few lines above the new struct position), satan-intervention-mark--build-ctx (satan-intervention-mark.el:~97) and satan-tools-atsatan--intervention-ctx (satan-tools-atsatan.el:~467, a verbatim duplicate of the mark builder). After SL-017 the run still has two ctx builders in the same pre-spawn window (observer's and satan-run-tool-ctx). Not a defect today, but the design's claim will mislead the implementer and the auditor checking 'one constructor'. Repair: correct the table and either (a) place the struct before the observer (DEC-016's original 'before enrich' wording) and pass (satan-run-tool-ctx run-ctx) to the observer too, syncing the observer/enrich prepare rebinds, or (b) state explicitly that the observer and manual-mark builders are out of scope and backlog their consolidation."
@@ -96,7 +96,7 @@ response = "Verified five builders. Keeper ruling: every tool-ctx is built in sa
 
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Broker using satan-notify-app couples it to the model-tool module DEC-017 rejected; a void variable would be swallowed by ignore-errors"
 detail = """Sec 2 contract: 'The broker's literal "SATAN" becomes satan-notify-app'. satan-notify-app is a defcustom in satan-tools-notify.el:13, which satan-broker.el does not require (only satan.el:34 and tests do), and the sec 8 dependency graph shows no BR -> TN edge. Either the broker requires satan-tools-notify (pulling satan-intervention -> memory-store, attribute, psql, i.e. the coupling DEC-017's rejected alternative 'Extend satan-tools-notify.el: couples the broker and the listeners to the model-tool module' warned about), or it references a free variable. In the latter case any load order without satan-tools-notify raises void-variable inside the (ignore-errors (satan-announce ...)) in --announce-failure, silently dropping both the pop and the journal line. Repair: move satan-notify-app into satan-announce.el (or satan-custom.el) as the shared keeper-facing app name — owning a default app name is compatible with 'the seam owns delivery only' — and keep the listener-specific app defcustoms as overrides."""
@@ -105,7 +105,7 @@ response = "satan-notify-app moves into satan-announce.el and becomes the seam's
 
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Failure-announce pops are neither audited nor classified as non-audit emits; REQ-003 covers control decisions"
 detail = "SPEC-001 REQ-003: 'Every enacted action and control decision is appended to a durable, immutable audit log.' Sec 5 argues the run bundle is the record for failure announcements, but the bundle records the failure, not the announcement: whether a pop was shown, suppressed by back-off, by quiet hours, or by satan-failure-notify is written nowhere except (optionally) the journal. Meanwhile listener-death pops get an explicit 'unrecorded operational alarm' classification and a REV to the row-4 standing note. The two are treated inconsistently, and an auditor running REQ-012 coverage on REQ-003 has no answer for failure pops. Repair (pick one, state it): (a) include broker failure announcements in the same REV/classification as listener deaths (operational alarms about SATAN itself, journal trace only); or (b) record the decision in the run's transcript before close — the in-memory outcome of the current run plus a walk of prior runs gives the same position, so --announce-failure's decision (position, due-p, quiet) can be appended as a broker event before satan-audit-close, keeping one writer."
@@ -114,7 +114,7 @@ response = "Failure announcements are now explicitly operational alarms. Their r
 
 [[finding]]
 id = "F-12"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Per-mode streak triples the budget-exceeded pop: one global ceiling, one pop per mode"
 detail = "The daily token ceiling is global (satan-budget-exceeded-p satan-runs-dir, satan-broker.el:548), but DEC-014 makes the streak per mode and DEC-015 pops budget-exceeded at position 1. When the ceiling trips, tick-pulse, tick-agent, and each scheduled mode (motd, morning, ...) each hit position 1 on their first denied run and each pop 'SATAN budget-exceeded (<mode>) x1' for the same single condition. Today's global streak pops once. Small, but it is a noise regression the noise-bound table (sec 6) does not show. Repair: for budget-exceeded consult a global streak (the walk with MODE = nil / any mode) or 'first budget-exceeded run of the day across modes'; or accept and add the row to the noise table."
@@ -123,7 +123,7 @@ response = "Verified. Accepted as a bounded limit: at most one budget pop per sc
 
 [[finding]]
 id = "F-13"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "REQ-009 cited for things it does not govern"
 detail = "SPEC-001 REQ-009 is 'No invariant is enforced at more than one point' for trust-boundary invariants. Sec 2 uses it to require removing per-file test stubs ('REQ-009 allows one mechanism'), and sec 4 uses it for keeping one --ctx-required contract; DEC-017 cites it for 'one mechanism does delivery, silencing and assertion'. Test doubles are not enforcement points, and ctx validation is not a ledger authority item. The conclusions are fine on DRY grounds, but citing REQ-009 means the audit will try to verify REQ-009 coverage against test code. Repair: cite the design rationale (single mechanism, DRY) instead; reserve REQ-009 for the genuine claim in sec 2 that the seam adds no second enforcement point for the REQ-005 kill switches."
@@ -132,7 +132,7 @@ response = "Partly correct. REQ-009 ('no invariant enforced at more than one poi
 
 [[finding]]
 id = "F-14"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "satan-announce :journal contract under-specified (content and priority)"
 detail = "Sec 2: 'JOURNAL non-nil requests one logger -t satan -p user.warn line' — it does not say whether the line text is JOURNAL (the broker example passes the line string) or BODY, nor what a listener passes (sec 5 says 'a :journal line' without content). Priority is fixed at user.warn although listener deaths are critical pops. Also the new line format puts a non-ASCII 'x' (U+00D7) into a call-process argument; under a C locale in the systemd Emacs it is encoded per locale-coding-system and may arrive as '?'. Repair: specify ':journal STRING — the exact line logged', let urgency critical map to user.err, and use ASCII 'x' in the journal line."

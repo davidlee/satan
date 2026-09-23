@@ -347,11 +347,17 @@ Result: position 2, first run `0923T0815-motd`.
   are bounded by streak length plus the runs stepped over.
 - **A run with no outcome is rare, and stays rare.** Only two things leave a
   run without a `status` file: a run still in flight, and an Emacs that died
-  mid-run. A spawn error before the child starts now finalises as
-  `failed`/`spawn_failed` (section 4). It is announced and counted, not stepped
-  over.
+  mid-run. A spawn error before the child starts, including a manifest that
+  cannot be built, now finalises as `failed`/`spawn_failed` (section 4). It is
+  announced and counted, not stepped over.
 - **The rename is a view.** The `.FAILED` suffix stays as a human affordance
   for `ls`, but nothing counts it any more.
+- **Known limit: the walk starts at the mode's newest run,** not at the run
+  being announced. If two runs of one mode overlap and the newer finishes
+  first, the older run's announcement can see a shorter or different streak.
+  That needs a run to outlast its mode's cadence, or a manual run to overlap a
+  scheduled one. The worst case is one pop early or late. Accepted rather than
+  adding a start-at parameter.
 - **Timing.** The broker calls the walk *after* `satan-audit-close` and the
   rename, so the run being announced is already visible to the walk as
   position ≥ 1.
@@ -380,12 +386,25 @@ puts tool-ctx ownership, in `satan-run.el`:
 | `satan-intervention-mark--build-ctx` (`satan-intervention-mark.el:97`) | manual `M-x` marks | duplicate of the atsatan builder below |
 | `satan-tools-atsatan--intervention-ctx` (`satan-tools-atsatan.el:468`) | `@satan` outcome directives | duplicate of the mark builder above |
 
-`satan-broker--spawn` also has a gap. If anything throws between
-`satan-audit-open` (`:612`) and `make-process` (the context function, the
-bundle write, the process launch), the run is left with a truncated transcript
-and no `status` file. Nothing announces it. One such run exists from
-2026-06-21 (`20260621T090011-tick-pulse-8b31a5`), and under a per-mode walk
-it would be stepped over for ever.
+`satan-broker--spawn` also has a gap. It already wraps its whole body in one
+`condition-case` (`:568`), but that handler only clears the DEC-8
+scheduled-run lock `satan-run--spawn-running` and re-signals. The error then
+dies in the timer as a `message`. Two windows leave a run with no `status`
+file, and nothing announces either:
+
+- **Before the audit exists.** `satan-broker--build-manifest` (`:611`) runs
+  before `satan-audit-open`. It signals when a tool is unknown or its
+  description file is missing from the corpus (`satan-tools.el:209`). The
+  corpus is a separate repo, so a package deployed ahead of its corpus breaks
+  every run of the affected mode. The no-child writer (`:446`) calls the same
+  builder, so budget-denied and perceive-failed runs of that mode fail the
+  same way.
+- **After the audit, before the child.** If the context function, the bundle
+  write or `make-process` throws, the run has a truncated transcript. One such
+  run exists from 2026-06-21 (`20260621T090011-tick-pulse-8b31a5`).
+
+Under a per-mode walk, a run in either window would be stepped over for ever.
+The handler also leaks the stderr buffer (`:572`) on every failed launch.
 
 ## Target
 
@@ -399,18 +418,21 @@ sequenceDiagram
   participant O as satan-observer-process
   participant A as satan-sensor-alerts-check
   participant F as satan-broker--finalize
-  S->>S: audit <- satan-audit-open
+  participant W as --write-no-child-run
+  Note over S,W: the existing condition-case, from the lock until make-process returns
+  S->>S: manifest <- build-manifest; audit <- satan-audit-open
   S->>R: run-ctx <- make-satan-run (:audit audit :prepare prepare ...)
-  Note over S,F: condition-case from here until the child is started
-  S->>R: satan-run-tool-ctx run-ctx
-  S->>O: process tool-ctx
+  S->>O: process (satan-run-tool-ctx run-ctx)
   S->>S: prepare <- enrich; setf (satan-run-prepare run-ctx)
   S->>A: check ... :tool-ctx (satan-run-tool-ctx run-ctx)
-  S->>S: prepare <- :pre_spawn; setf slot; bundle; make-process
-  alt error before the child starts
-    S->>F: failure-reason <- "spawn_failed"; status 'failed; finalize
+  S->>S: prepare <- :pre_spawn; setf slot; bundle; proc <- make-process
+  alt error, no child, audit open (run-ctx bound)
+    S->>F: kill stderr; clear lock; mirror percept if no bundle; spawn_failed; finalize
     F-->>S: status, final.json, .FAILED, announce (sections 6-7)
+  else error, no child, no audit yet (manifest or audit-open threw)
+    S->>W: kill stderr; clear lock; failed / spawn_failed, stub manifest, rename-announce
   end
+  Note over S: returns run-id; a pre-child error is not re-signalled
 ```
 
 ### `satan-broker--spawn`
@@ -423,17 +445,53 @@ sequenceDiagram
   `(setf (satan-run-prepare run-ctx) prepare)`.** There are three: the
   observer result, enrich, and `:pre_spawn`. Nothing relies on `plist-put`
   mutating a shared cons.
-- **Pre-child errors finalise the run.** Everything from the struct's creation
-  until the child process exists runs inside a `condition-case`. Its handler:
-  1. records `(satan-audit-record audit 'broker 'spawn-failed (:error MSG))`;
-  2. sets the struct's `failure-reason` to `"spawn_failed"` and its status to
-     `'failed`;
-  3. calls `satan-broker--finalize`.
+- **Pre-child errors finalise the run.** No second `condition-case` is added.
+  The existing handler becomes the one pre-child handler. `run-ctx` and
+  `proc` are bound to nil at the top of the function, so the handler can tell
+  how far the spawn got.
+  - **Always.** The handler kills the stderr buffer and clears
+    `satan-run--spawn-running`, as it clears the lock today.
+  - **The child exists (`proc` non-nil).** The error came from the timer or
+    sentinel wiring after `make-process`. The child's sentinel owns
+    finalisation, so the handler re-signals as it does today and finalises
+    nothing. This prevents a double finalise, and a second close into a
+    directory the `.FAILED` rename has already moved.
+  - **No child, audit open (`run-ctx` non-nil).** The handler:
+    1. records `(satan-audit-record audit 'broker 'spawn-failed (:error MSG))`;
+    2. attaches `(:percept …)` from `prepare` as `bundle.json` if the context
+       function had not yet produced a bundle (the no-child writer's
+       convention), so the audit bundle checks and the observer's baseline
+       still find a percept;
+    3. sets the struct's `failure-reason` to `"spawn_failed"` and its status to
+       `'failed`;
+    4. calls `satan-broker--finalize`. Finalize writes `status`, a
+       `final.json` whose reason is `spawn_failed` (section 7), the `.FAILED`
+       rename and the announcement.
+  - **No child, no audit yet.** The manifest build or `satan-audit-open`
+    threw. The handler calls `satan-broker--write-no-child-run` with `'failed`,
+    reason `"spawn_failed"`, the error message in the final's summary and
+    `:rename-announce t`.
+  - **Return value.** In both no-child branches the handler returns the
+    run-id and does not re-signal: the failure is recorded and announced, and
+    a re-signal would only add a timer `message`. This matches the
+    `perceive_failed` path in `satan-broker-run`.
+  - **Trace.** Both no-child branches call
+    `(satan-trace-outcome "spawn_failed")`. `satan-broker-run` stamps
+    `"spawned"` before calling `--spawn` (`satan-broker.el:549`), and the
+    stamp is last-write-wins, so the tick trace no longer calls a failed spawn
+    spawned.
 
-  Finalize then writes `status`, a `final.json` whose reason is
-  `spawn_failed` (section 7), the `.FAILED` rename and the announcement.
   Soft-failing stages that already `condition-case` themselves (the observer,
-  the probes, the sensor alerts) keep their own handling.
+  the probes, the sensor alerts, the ingest cursor) keep their own handling.
+- **The manifest never blocks a record.** `satan-broker--manifest-or-stub`
+  returns the built manifest or, when the build signals, a stub
+  `(:run_id ID :mode (:name NAME) :manifest_error MSG)`. `satan-audit-open`
+  only writes the manifest to `manifest.json`, so the stub is admissible. The
+  no-child writer uses it, so budget-denied, perceive-failed and
+  pre-audit-spawn-failed runs of a mode with a broken manifest still end with
+  a `status`. `--spawn` keeps calling the strict builder: the harness needs the
+  real tool schemas, so a spawn with a broken manifest must fail and be
+  recorded, not proceed.
 - **The probe commits and the ingest cursor are unaffected.** They run after
   the sensor alerts and before the bundle, as today. A `spawn_failed` run
   therefore commits its probes, exactly as a run that spawned and then failed
@@ -449,9 +507,15 @@ sequenceDiagram
   `--notify-call` keeps its tool-call `:id` (`pre-spawn-<cause>`), which names
   the call, not the intervention.
 - **`satan-observer-process`** takes the tool-ctx in place of the `prepare`
-  plist. It reads `:time-now` and passes the tool-ctx to the classify API.
-  `satan-observer--ctx-from-run-ctx` is deleted. Its `opts` argument is
-  unchanged.
+  plist. It checks the ctx with `satan-intervention--ctx-required`, reads
+  `:time-now`, and passes the tool-ctx to the classify API.
+  - `satan-observer--ctx-from-run-ctx` is deleted.
+  - The wall-clock fallback for NOW (`satan-observer.el:384`) is deleted: a ctx
+    without `:time-now` fails the check, so it cannot run with the wrong time.
+  - The `:ctx` option is deleted from `opts`, leaving one way to pass the ctx.
+    The other options are unchanged.
+  - The ten direct calls in `satan-observer-test.el` move to a tool-ctx built
+    with `satan-run-manual-tool-ctx` over a temporary audit handle.
 - **`satan-run-manual-tool-ctx (run-id audit now)`** replaces the two identical
   manual builders. It returns `:id RUN-ID :mode-name "manual-mark" :time-now
   NOW :audit AUDIT :capabilities ()`. `satan-intervention-mark` and
@@ -469,8 +533,6 @@ sequenceDiagram
   (`SATAN sensor: <cause>`) and by the `pre_spawn` block in `actions.json`.
 - **`satan-intervention--ctx-required` is unchanged.** One contract means the
   invariant is enforced at one point (REQ-009).
-- **`rg '(list :id' satan/*.el`** finds tool-ctx construction only in
-  `satan-run.el`.
 
 <!-- doctrine:section sec-5 -->
 # Record before emit
@@ -501,8 +563,10 @@ store reports a tool error for an alert the keeper has already seen.
 
 ## Target
 
-`satan-intervention-create` is split into two halves. It stays as their
-composition, for callers that do not emit (see the end of this section).
+Both write APIs are split the same way: a **record** half that validates and
+appends to the audit log and touches no database, and a **project** half that
+writes Postgres. The composed functions keep their names and contracts, for
+callers that do not emit (see the end of this section).
 
 ```elisp
 ;; satan-intervention.el
@@ -522,7 +586,31 @@ ON CONFLICT DO NOTHING).  Signals on psql failure.")
 (cl-defun satan-intervention-create (&rest args &key db &allow-other-keys)
   "Record then project; return the intervention id.  Unchanged contract."
   ...)
+
+(cl-defun satan-intervention-classify-record
+    (&key ctx intervention-id revision-p classification confidence evidence
+          maturity next-revisit-at source classified-at marked-by notes)
+  "Validate the verdict and append `intervention.outcome_classified' (or
+`outcome_revised' when REVISION-P) to CTX's audit.  No database access.
+Returns the payload plist.  Signals on an invalid ctx, a validator
+failure or an append failure.")
+
+(cl-defun satan-intervention-classify-project
+    (payload &key (db satan-memory-migrate-database))
+  "UPSERT PAYLOAD into `satan_intervention_outcomes'.  Signals on psql
+failure, including a missing `satan_interventions' parent row.")
+
+(cl-defun satan-intervention-classify (&key ctx intervention-id ... db)
+  "Lookup (sets REVISION-P), classify-record, classify-project, then the
+attribute enqueue.  Unchanged contract."
+  ...)
 ```
+
+Today `satan-intervention-classify` reads Postgres (`satan-intervention-lookup`,
+`satan-intervention.el:422`) *before* it appends, and its upsert has a foreign
+key to `satan_interventions` (`0006_interventions.sql:52`). An `unknown`
+verdict for an alert whose projection row was never written therefore cannot
+go through the composed API. The split puts the append first on this path.
 
 `satan-tool/notify-send` becomes:
 
@@ -531,12 +619,38 @@ flowchart TD
   V["validate args"] --> REC["payload <- satan-intervention-record"]
   REC -- signals --> E1["(error ...)<br/>nothing shown, nothing recorded"]
   REC --> AN["id <- satan-announce :title :body :urgency :timeout"]
-  AN -- "pop signals" --> UD["satan-intervention-classify :classification unknown<br/>:notes \"undelivered: ERR\""]
-  UD --> OK3["(ok :id nil :intervention_id IV :delivered :false :error ERR)"]
   AN --> PR["satan-intervention-project payload"]
   PR -- signals --> OK2["(ok :id ID :intervention_id IV :projection \"failed: ...\")"]
   PR --> OK1["(ok :id ID :intervention_id IV)"]
+  AN -- "pop signals" --> UD["satan-tools-notify--mark-undelivered<br/>(never signals)"]
+  UD --> OK3["(ok :id nil :intervention_id IV :delivered :false :error ERR)"]
 ```
+
+`satan-tools-notify--mark-undelivered (ctx payload err)` runs three steps, and
+each step's failure is caught and noted on the result, so the branch always
+returns `ok` and the cooldown arms (see below). If step 1 fails, steps 2 and 3
+are skipped: a projected intervention with no verdict would look pending, and
+the observer would score an alert the keeper never saw.
+
+1. **`satan-intervention-classify-record`** with `revision-p` nil (a verdict
+   minted moments after creation cannot be a revision), and:
+
+   | field | value | why |
+   |---|---|---|
+   | `classification` | `unknown` | nothing was observed |
+   | `confidence` | `high` | the failed pop is certain |
+   | `maturity` | `mature` | final: `pending` would invite reclassification |
+   | `source` | `auto` | the broker decided, not the keeper |
+   | `classified-at`, `next-revisit-at` | ctx `:time-now` | no revisit is due |
+   | `evidence` | `()` | |
+   | `notes` | `undelivered: ERR` | |
+
+2. **`satan-intervention-project`** of the intervention payload, then
+3. **`satan-intervention-classify-project`** of the verdict. The order
+   satisfies the foreign key.
+
+No attribute-outcome enqueue happens on this path: an alert the keeper never
+saw teaches the attribute daemon nothing.
 
 How each branch meets the rule:
 
@@ -545,16 +659,17 @@ How each branch meets the rule:
 - **A Postgres outage cannot silence an alert.** The projection comes last,
   and its failure is only a note on an `ok` result.
 - **A pop that fails after the record is marked in the record itself.** The
-  existing classify API (`satan-intervention.el:404`) appends
-  `intervention.outcome_classified` with classification `unknown` and a note
-  that starts `undelivered:`. No new event type or vocabulary is added.
-  - The observer does not score the intervention as if it had been seen.
-  - `satan-intervention-rebuild` replays both events, so it cannot resurrect a
-    pending, unseen alert.
+  verdict's audit append needs no database, so the mark lands even while
+  D-Bus and Postgres are both down. It uses the existing
+  `intervention.outcome_classified` event and vocabulary; nothing new is
+  added.
+  - Once projected, the outcome row excludes the intervention from
+    `satan-intervention-pending` (`satan-intervention.el:780`), so the
+    observer never scores it as seen.
+  - While the projection is down, `satan-intervention-rebuild` replays both
+    events, so it cannot resurrect a pending, unseen alert.
   - The result is `ok` with `:delivered :false`, because the action was
-    recorded; it tells the model plainly that nothing was shown. The classify
-    step's own projection write may fail too, which is harmless, because its
-    audit event is already down.
+    recorded; it tells the model plainly that nothing was shown.
 - **The result shape passes `satan-protocol--validate-tool-result`**
   (RV-009, verified).
 
@@ -594,13 +709,14 @@ database. The verification invocation `SATAN_DB_HOST=/run/postgresql/`
 reaches the production server (mem_01a0316176b17672988b91759e145e5d). Today
 the tests stub `satan-intervention-create` wholesale. After the split:
 
-- **Tests of `notify_send`, the sensor alerts and the observer** stub
-  `satan-intervention-project` (and classify's projection) at the database
-  boundary, and assert it was called with the recorded payload. The record
-  step runs for real against a temporary audit handle, so ISS-016's class of
-  defect cannot hide behind a stub again.
-- **Only `satan-intervention-test.el`** exercises a real projection, and it
-  uses its own test database.
+- **Tests of `notify_send` and the sensor alerts** stub
+  `satan-intervention-project` and `satan-intervention-classify-project` at
+  the database boundary, and assert they were called with the recorded
+  payloads. The record steps run for real against a temporary audit handle,
+  so ISS-016's class of defect cannot hide behind a stub again.
+- **`satan-intervention-test.el` and `satan-observer-test.el`** exercise a
+  real projection, each against the test database `satan_memory_test`, as
+  they do today.
 
 ## Out of scope, noted
 
@@ -768,20 +884,34 @@ matches whole words.
 ```python
 def classify_error(e: Exception) -> str:
     code = getattr(e, "status_code", None)        # openai.APIStatusError et al.
-    if code in (401, 403):             return "auth"
+    if code == 401:                    return "auth"
+    if code == 402:                    return "credits"
     if code == 429:                    return "rate_limit"
     if isinstance(code, int) and code >= 500: return "server"
     msg = str(e).lower()
     if re.search(r"\b(429|rate[ _-]?limit(ed)?|quota)\b", msg): return "rate_limit"
-    if re.search(r"\b(401|403|unauthori[sz]ed|authentication|forbidden|invalid api key|api key expired)\b", msg): return "auth"
+    if re.search(r"\b(401|unauthori[sz]ed|authentication|invalid api key|api key expired)\b", msg): return "auth"
+    if re.search(r"\b(402|insufficient credits)\b", msg): return "credits"
     if re.search(r"\b(500|502|503|504)\b", msg): return "server"
     if re.search(r"\b(timeout|timed out)\b", msg): return "timeout"
     return "unknown"
 ```
 
-- **Tests.** The existing cases in `test_gptel_harness.py:267` keep passing. New
-  cases cover the false positives (`"generate"`, `"author"`, `"4013 tokens"`)
-  and the `status_code` paths.
+- **403 is not `auth`.** OpenRouter answers 403 when a moderation check flags
+  the input, and the key is fine. Mapping 403 to `auth` would pop critically on
+  every run and, after SL-018, evict a valid key. A 403 whose text names an
+  auth failure still reads as `auth` through the word match; any other 403 is
+  `unknown`.
+- **402 is `credits`.** OpenRouter answers 402 when the account is out of
+  credits. That needs the keeper as much as an expired key does, but it is not
+  a key problem, so it gets its own class, follows the ordinary back-off
+  (section 6), and SL-018 must not evict on it.
+- **Tests.** The existing cases in `test_gptel_harness.py:267` keep passing,
+  except `test_classify_auth_403` (`"Error code: 403 - Forbidden"`), which
+  now expects `unknown`. That change is the point of this rule. New cases cover
+  the false positives (`"generate"`, `"author"`, `"4013 tokens"`), the
+  `status_code` paths, 402 as `credits`, and a 403 moderation error reading as
+  `unknown`.
 - **Init-path errors stay unclassified.** They read as `unknown`. SL-018 moves
   key resolution before the spawn, so `KEY not set` should stop reaching the
   harness.
@@ -801,7 +931,9 @@ def classify_error(e: Exception) -> str:
     `json-parse-string :object-type 'plist` and returns its `:class` if that
     is a string, and `"unknown"` otherwise (including when the error is not
     JSON). The protocol guarantees `:error` is a string.
-  - **The pre-child spawn handler** (section 4) stores `"spawn_failed"`.
+  - **The pre-child spawn handler** (section 4) stores `"spawn_failed"` when
+    the audit is open. Before the audit exists there is no struct, and the
+    no-child writer puts `spawn_failed` in its final directly.
 - **Finalize.** When the run has no final and `failure-reason` is set,
   finalize hands `satan-audit-close` a synthesised final,
   `(:status "invalid" :reason FAILURE-REASON)`. `satan-audit` stays generic;
@@ -814,7 +946,9 @@ def classify_error(e: Exception) -> str:
 
 | failure | `final.json` reason | outcome |
 |---|---|---|
-| provider 401 / 403 | `auth` | failed / auth |
+| provider 401 | `auth` | failed / auth |
+| provider 402 | `credits` | failed / credits |
+| provider 403 (moderation) | `unknown` | failed / unknown |
 | provider 429 | `rate_limit` | failed / rate_limit |
 | init `KEY not set` | `unknown` | failed / unknown (SL-018 removes this path) |
 | error before the child starts | `spawn_failed` | failed / spawn_failed |
@@ -869,11 +1003,11 @@ flowchart BT
 |---|---|---|
 | `satan/satan-announce.el` | **New.** `satan-notify-app` (moved), `satan-announce`, `-sink`, `-deliver`, `-record`, `-recorded`, `-with-recorder`. | 2 |
 | `satan/satan-run.el` | Adds `satan-run-id-regexp`, `-mode-from-id`, `-outcome`, `-outcome-streak` and `-manual-tool-ctx`, plus the `failure-reason` slot. | 3, 4, 7 |
-| `satan/satan-broker.el` | `--announce-failure` rewritten (seam, policy, `dir` argument).<br>Adds `--announce-due-p`, `--failure-streak`, `--streak-transparent-reasons`, `--failure-line`, `--quiet-p`, `--error-class`.<br>Removes `--failure-streak-count` and the `notifications` declare-function.<br>`--spawn`: early struct, prepare sync, pre-child `condition-case`.<br>`--on-error`, finalize, `--crash-context`, `--failure-reason`: failure reason.<br>`--mark-failed-on-disk`, `--write-no-child-run`: pass the renamed `dir`. | 3, 4, 6, 7 |
-| `satan/satan-intervention.el` | `-create` split into `-record` and `-project`; `-create` kept as their composition. | 5 |
-| `satan/satan-tools-notify.el` | record → announce → project, with undelivered classification. Drops `(require 'notifications)` and the `satan-notify-app` defcustom. | 5 |
+| `satan/satan-broker.el` | `--announce-failure` rewritten (seam, policy, `dir` argument).<br>Adds `--announce-due-p`, `--failure-streak`, `--streak-transparent-reasons`, `--failure-line`, `--quiet-p`, `--error-class`.<br>Removes `--failure-streak-count` and the `notifications` declare-function.<br>`--spawn`: early struct, prepare sync, the existing handler extended to finalise pre-child failures.<br>Adds `--manifest-or-stub`, used by `--write-no-child-run`.<br>`--on-error`, finalize, `--crash-context`, `--failure-reason`: failure reason.<br>`--mark-failed-on-disk`, `--write-no-child-run`: pass the renamed `dir`. | 3, 4, 6, 7 |
+| `satan/satan-intervention.el` | `-create` split into `-record` and `-project`; `-classify` split into `-classify-record` and `-classify-project`. The composed functions keep their contracts. | 5 |
+| `satan/satan-tools-notify.el` | record → announce → project; `--mark-undelivered` on a failed pop. Drops `(require 'notifications)` and the `satan-notify-app` defcustom. | 5 |
 | `satan/satan-sensor-alerts.el` | `-check` takes `:tool-ctx`; `--make-tool-ctx` deleted. | 4 |
-| `satan/satan-observer.el` | `-process` takes the tool-ctx; `--ctx-from-run-ctx` deleted. | 4 |
+| `satan/satan-observer.el` | `-process` takes the tool-ctx; `--ctx-from-run-ctx`, the wall-clock fallback and the `:ctx` option deleted. | 4 |
 | `satan/satan-intervention-mark.el`, `satan/satan-tools-atsatan.el` | Use `satan-run-manual-tool-ctx`; own builders deleted. | 4 |
 | `satan/satan-tank.el`, `satan/satan-context.el` | Parse run-ids via `satan-run.el`. | 3 |
 | `satan/satan-attribute-listener.el`, `satan/satan-patch-listener.el` | `--report-death` goes through `satan-announce` (critical pop + `:journal`). | 2, 5 |
@@ -882,8 +1016,9 @@ flowchart BT
 | `satan/test/satan-announce-test.el` | **New.** Delivery unit tests, recorder, macro, batch self-check. | 2 |
 | `satan/test/satan-run-test.el` | Id regexp, outcome, streak and manual ctx. | 3, 4 |
 | `satan/test/satan-broker-test.el` | Streak and announce tests rewritten over outcomes and the recorder; emit stubs removed; class, spawn-failed and early-struct tests. | 3, 4, 6, 7 |
-| `satan/test/satan-sensor-alerts-test.el`, `satan-tools-notify-test.el`, `satan-observer-test.el` | Real record step against a temporary audit handle; projection stubbed at the DB boundary; `satan-intervention-create`/`notifications-notify` stubs removed. | 4, 5 |
-| `satan/test/satan-intervention-test.el` | Record/project split (own test DB). | 5 |
+| `satan/test/satan-sensor-alerts-test.el`, `satan-tools-notify-test.el` | Real record step against a temporary audit handle; both projections stubbed at the DB boundary; `satan-intervention-create`/`notifications-notify` stubs removed. | 4, 5 |
+| `satan/test/satan-observer-test.el` | The ten `satan-observer-process` calls pass a tool-ctx; `:ctx` option uses migrated. Keeps its real test database. | 4 |
+| `satan/test/satan-intervention-test.el` | Both record/project splits (test database `satan_memory_test`). | 5 |
 | `satan/test/satan-{attribute,patch}-listener-test.el`, `satan-tools-test.el`, `satan-intervention-mark-test.el`, `satan-tools-atsatan-test.el`, `satan-tank-test.el`, `satan-context-test.el` | Recorder or new constructor or id parser, where they touch these. | 2, 3, 4 |
 
 ## Design-target selectors
@@ -896,9 +1031,10 @@ with `rg` (mem_019f8fbda1ed74e39d7f558044ccf592):
 - `rg -n 'notifications-notify' satan/test/ -g '!satan-announce-test.el'`
   should find nothing.
 - `rg -n 'make-tool-ctx|ctx-from-run-ctx|mark--build-ctx|atsatan--intervention-ctx|failure-streak-count|satan-context--run-id-regexp' satan/ dev/`
-  should find nothing.
-- `rg -n ':mode-name' satan/*.el`: tool-ctx construction should sit only in
-  `satan-run.el`.
+  should find nothing. This is I6's mechanical check: the four builders
+  outside `satan-run.el` are gone. A new builder added elsewhere later is a
+  review concern; no grep for tool-ctx construction separates it from the
+  many readers of `:mode-name` and `:id`.
 
 <!-- doctrine:section sec-9 -->
 # Invariants, risks and verification
@@ -920,8 +1056,10 @@ with `rg` (mem_019f8fbda1ed74e39d7f558044ccf592):
   per mode and per cause. No counter is stored.
 - **I6. Every tool-ctx is built in `satan-run.el`,** and
   `satan-intervention--ctx-required` is its one check.
-- **I7. No terminal-less spawn.** A scheduled run that reached `--spawn` ends
-  with a `status` file, unless the Emacs process itself dies.
+- **I7. No terminal-less run.** A scheduled run that got past the gates in
+  `satan-broker-run` ends with a `status` file. That includes a run whose
+  manifest cannot be built. The exceptions are an Emacs process that dies
+  mid-run and a run directory that cannot be written at all.
 - **I8. The leaf stays a leaf.** `satan-run.el` requires only
   `cl-lib`/`subr-x`/`satan-custom`.
 - **I9. One audit writer.** No new audit writer is added (ledger row 4).
@@ -941,11 +1079,13 @@ with `rg` (mem_019f8fbda1ed74e39d7f558044ccf592):
 | R9 | Test code reaches the production projection (`satan_memory`). | The projection is stubbed at the DB boundary outside `satan-intervention-test.el` (section 5). |
 | R10 | Hoisting the struct and wrapping the spawn changes the order in the longest function in the broker. | Early-struct and spawn-failed tests cover it. The soft-failing stages keep their own handlers. |
 | R11 | A budget breach pops once per scheduled mode per day. | Accepted limit (section 6). |
+| R12 | Overlapping runs of one mode can skew the older run's streak position. | Accepted limit (section 3); at worst one pop early or late. |
+| R13 | Until the new harness is deployed, a 403 moderation error still arrives as `auth` and pops critically on every run. | Same as R6: a deploy-checklist step. SL-018 must not evict on `auth` before that deploy. |
 
 Assumptions:
 
-- **A1 (narrowed).** The `auth` class is trusted on `status_code` 401/403, or
-  on a whole-word match.
+- **A1 (narrowed).** The `auth` class is trusted on `status_code` 401, or on
+  a whole-word match. A 403 is not trusted as `auth` (section 7).
 - **A2 (confirmed).** The audit handle exists before the sensor alerts run.
 
 ## Verification
@@ -991,8 +1131,15 @@ Evidence names its invocation and counts
   regression.
 - `satan-broker/budget-denied-run-is-recorded-not-delivered`: the ISS-015 leak
   now lands in the recorder.
-- `satan-broker/spawn-error-before-child-finalizes-spawn-failed`: the F-4
-  regression.
+- `satan-broker/spawn-error-before-child-finalizes-spawn-failed`: the RV-009
+  F-4 regression. It also asserts the lock is cleared, the stderr buffer is
+  killed, `bundle.json` carries the percept, and the run-id is returned.
+- `satan-broker/manifest-error-finalizes-spawn-failed`: a missing tool
+  description yields a `failed`/`spawn_failed` run with a stub manifest.
+- `satan-broker/no-child-run-survives-broken-manifest`: a budget-denied run
+  of a mode with a broken manifest still writes `status`.
+- `satan-broker/error-after-child-not-finalized-twice`: an error after
+  `make-process` leaves finalisation to the sentinel.
 - `satan-broker/error-class-parsed-from-harness-json`
 - `satan-broker/error-class-unknown-for-plain-string`
 - `satan-broker/failed-run-final-carries-failure-reason`
@@ -1000,9 +1147,14 @@ Evidence names its invocation and counts
 **`satan-intervention` and `satan-tools-notify`**
 
 - `satan-intervention/record-appends-before-projection`
+- `satan-intervention/classify-record-needs-no-database`
+- `satan-intervention/classify-composition-unchanged`
 - `satan-tools-notify/no-emit-when-record-fails`
 - `satan-tools-notify/emits-and-notes-when-projection-fails`
 - `satan-tools-notify/undelivered-pop-classified-unknown`
+- `satan-tools-notify/undelivered-with-db-down-still-ok`: D-Bus and Postgres
+  both fail; the verdict is in the transcript and the result is `ok`, so the
+  cooldown arms (RV-009 F-2's scenario).
 
 **`satan-sensor-alerts` and `satan-observer`**
 
@@ -1014,8 +1166,9 @@ Evidence names its invocation and counts
 
 **Harness (Python)**
 
-- `test_classify_by_status_code`
+- `test_classify_by_status_code`: 401, 402, 429, 5xx.
 - `test_classify_no_substring_false_positives`
+- `test_classify_403_moderation_is_unknown`
 
 ### Slice-level evidence
 

@@ -66,8 +66,9 @@ Defect 3 is REQ-003 non-conformance; defect 4 corrupts the log REQ-003 protects.
      builder.
    - The duplicated manual-mark and atsatan builders merge into
      `satan-run-manual-tool-ctx`.
-   - A pre-child spawn error finalises the run as `failed`/`spawn_failed`, so
-     it is announced and counted.
+   - A pre-child spawn error, including a manifest that cannot be built,
+     finalises the run as `failed`/`spawn_failed`, so it is announced and
+     counted.
    - `--ctx-required` is unchanged. Pre-spawn interventions mint as
      `<run-id>.ivNNN`. (ISS-016)
 3. **Record before emit (DEC-018).** `satan-intervention-create` splits into
@@ -75,8 +76,8 @@ Defect 3 is REQ-003 non-conformance; defect 4 corrupts the log REQ-003 protects.
    runs record → announce → project.
    - If the append fails, nothing is emitted.
    - If the pop fails after the record, the intervention is classified
-     `unknown`/`undelivered`, and the tool returns ok with
-     `:delivered :false`.
+     `unknown`/`undelivered` through the database-free classify-record half,
+     and the tool returns ok with `:delivered :false`.
    - If the projection fails, the tool returns ok with `projection_failed`.
    - The per-cause cooldown arms on the record.
    - Broker failure announces follow the run bundle, which is their record.
@@ -165,8 +166,9 @@ Defect 3 is REQ-003 non-conformance; defect 4 corrupts the log REQ-003 protects.
   execution.
 - **R5: DEC-015's quiet-hours suppression is inert.** It does nothing until
   `satan-tick-quiet-hours` is set again (`satan-tick.el:24`).
-- **A1: holds only for provider 401/403.** The harness `class` heuristic
-  catches those. Init-path failures (`KEY not set`, `runloop.py:178`) record
+- **A1: holds only for provider 401 and auth-worded errors.** The harness
+  `class` heuristic catches those; a 403 is moderation on OpenRouter, not
+  auth, and 402 (out of credits) is its own class. Init-path failures (`KEY not set`, `runloop.py:178`) record
   `unknown` until SL-018 moves key resolution before spawn.
 - **A2: confirmed, and stronger than stated.** The audit handle already exists
   at the sensor-alerts call (`satan-broker.el:612-636`).

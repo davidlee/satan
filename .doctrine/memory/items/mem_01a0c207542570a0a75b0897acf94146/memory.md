@@ -98,3 +98,25 @@ next reader will think the numbering is a mistake.
   check worth running before discharging it.
 - [[mem.signpost.doctrine.lifecycle-start]] — where the design run sits in the
   slice lifecycle.
+
+## 6. Hand-editing `design.md` blocks `apply` until you re-adopt — format undocumented
+
+Editing `design.md` directly (easier than JSON-escaping whole section bodies)
+makes the next `apply` refuse: `design.md has been edited outside this run —
+the watermark says … and Doctrine reads <HASH>`. The refusal names the
+`adopt_authored` declaration, but neither the contract nor
+`design-payload-contract.md` says what its `sections` map holds.
+
+**Verified shape (0.44.3, SL-017, 2026-09-23):**
+
+- `fingerprint` = sha256 of the whole current `design.md` (the `<HASH>` the
+  refusal prints).
+- `sections` = **every** `sec-N` (a partial map is refused: "N missing"), each
+  value = sha256 hex of that section's body, where body = the text after its
+  `<!-- doctrine:section sec-N -->\n` marker, `.strip()` + `"\n"`. Raw text or
+  the body itself is refused as "mismatched".
+
+The run then logs `section_fingerprint_changed` for the edited sections and
+absorbs their bodies. `design materialise` afterwards should produce a
+byte-identical file — diff to confirm. Edited sections' attestations go stale,
+as with any body change.

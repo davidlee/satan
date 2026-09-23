@@ -42,31 +42,23 @@ Evidence: `research/research.md` (runtime tier; ✓ = re-verified).
 - A1: holds for 401 only. Init-path missing-key failures are unclassified.
 - A2: confirmed and stronger than stated.
 
-## Review passes (2026-09-23, after RV-009 integration)
+## Review passes (2026-09-23)
 
-RV-009 is an adversarial subagent pass that raised 14 findings. All are
-disposed: 13 fixed and F-12 tolerated.
+- **RV-009.** The first adversarial pass: 14 findings, all verified by the
+  raiser (F-12 tolerated).
+- **RV-010.** A focused second pass on the areas RV-009 widened: the spawn
+  handler and the observer change (sec-4), the undelivered path (sec-5), the
+  same-cause read (sec-3), and `runloop.py` (sec-7). It raised 10 findings
+  (3 major). All are answered: F-8 is tolerated (R12), and the rest are
+  fixed. The major ones led to the classify record/project split, the single
+  pre-child spawn handler, and `--manifest-or-stub`. The raiser re-checked
+  the new material and found only two nits (F-9, F-10), both fixed.
 
-The integration widened scope in three places:
-- F-4: a spawn failure is now finalised as `spawn_failed`.
-- F-9: all five tool-ctx builders move into `satan-run.el`.
-- F-5: `runloop.py` changes.
-
-A further focused pass should probe these, all in the design:
-- **sec-4, spawn handling.** Does the `condition-case` around the rest of
-  `--spawn` interact correctly with the soft-failing stages and with the
-  probe commits? Is finalize safe when the error lands before
-  `make-process`, given the stderr buffer and the timeout timer?
-- **sec-4, the observer change.** `satan-observer-process` now takes a
-  tool-ctx instead of `prepare`. Check its ten test references and the `opts`
-  path.
-- **sec-5, the undelivered path.** Classifying `unknown` right after creation:
-  does the classify API accept that timing (maturity guard, `:classified-at`)?
-- **sec-3, the same-cause predicate.** Is the newest outcome read from the
-  renamed dir on both announce call sites?
-
-The keeper decides at the next session: run the second pass, or discharge
-`review.passes` with this note as the reason.
+**No third pass is needed.** RV-010's new findings shrank from major to nit on
+the re-check, and the remaining risk is implementation detail, which the
+named tests in sec-9 pin down. The execution phases that touch the spawn
+handler (sec-4) and the classify split (sec-5) should get a code review at
+their `/audit`.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
