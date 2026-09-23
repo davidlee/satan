@@ -720,7 +720,7 @@ date, although the assembler's window is two days later (RV-007 F-23)."
     (satan-goad-fixture-with-goldens
       (let ((goad (plist-get (satan-memory-evidence-test--assemble-goad tmp)
                              :goad)))
-        (should (= 7 (length goad)))
+        (should (= (length satan-goad-fixture-ids) (length goad)))
         (should (equal (satan-goad-slice) goad))
         (should (plist-get (satan-goad-fixture-find 'answered goad) :record))))))
 
@@ -776,7 +776,7 @@ write, outside this claim."
              (out (satan-memory-evidence-test--forbidding
                    satan-memory-evidence-test--goad-effects
                    (lambda () (satan-memory-evidence-test--assemble-goad tmp)))))
-        (should (= 7 (length (plist-get out :goad))))))))
+        (should (= (length satan-goad-fixture-ids) (length (plist-get out :goad))))))))
 
 (ert-deftest satan-memory-evidence/canon-perceives-outstanding-goad-asks ()
   "Cross-step: the assembled `:goad' slice, canonicalized at a time inside

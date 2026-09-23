@@ -31,6 +31,7 @@
     (enough-seen   . "20260923T093000-tick-pulse-a3f01c.iv003")
     (enough-unseen . "20260923T093000-tick-pulse-a3f01c.iv004")
     (untouched     . "20260923T111000-tick-pulse-c41d5e.iv001")
+    (form          . "20260923T130000-tick-pulse-d82c4f.iv001")
     (midnight      . "20260923T231500-tick-pulse-e90f27.iv001"))
   "Golden intervention ids by scenario outcome, copied from the fixtures
 README's scenario table.  Inputs that select an ask, never values under

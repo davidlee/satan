@@ -6,11 +6,13 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-03 implemented, 2026-09-24 (uncommitted; orchestrator
-commits). SATAN reads goad: `satan-goad.el` readers, a `:goad` evidence slice,
-and canon's `goad.outstanding` rule. Inert in production until a queue exists.
-PHASE-02 landed as corpus `e3ac87c` / dev `528079c`. Next: `/phase-plan
-PHASE-04`.
+**fresh-as-of:** PHASE-10 implemented, 2026-09-24 (uncommitted; orchestrator
+commits). `goad/backend.py` now speaks the answer form (DEC-024/025): an ask's
+options render as `opt:<option>:ask:<iid>`, `yes:`/`no:` are the checklist's
+verbs only, and an ask's answer is `{"option", "values"}`. Goldens regenerated
+with a `form` ask; `convert_toml_days.py` retired. PHASE-02 landed as corpus
+`e3ac87c` / dev `528079c`; PHASE-10 reworks its answer-shape code (see "Design
+revision" below). Next: `/phase-plan PHASE-11`.
 
 ### Design revision — answer forms (2026-09-24)
 
@@ -38,6 +40,89 @@ message says it was retired.
   That is harmless under `opt:` namespacing, but should be pinned by a test.
 
 None of these blocks the lock. They are verification or plan-time checks.
+
+### PHASE-10
+
+Corpus rework of PHASE-02, landing the answer form (DEC-024/025) into
+`goad/backend.py`. Change 7 of design sec-3.
+
+**Files:**
+- Corpus (`~/satan`): `goad/backend.py` (`Ask.form`, `is_form`, `find_ask`,
+  `ask_options`, `DEFAULT_FORM`, `parse_ask`/`view_for`/`answer` reworked;
+  `place_of` reuses `find_ask`), `goad/test_backend.py` (65 → 77: T1 retires
+  one, T2–T6 add 13), `goad/goldens.py` (`ask()` gains `form=`, `option()`
+  rebuilt around `opt:`, a `form` ask added between `untouched` and
+  `midnight`), `goad/README.md` (schema, option ids, the record's `value`
+  row, goldens paragraph), `goad/convert_toml_days.py` **deleted**.
+- Dev (`~/dev/satan`): `satan/test/goad-fixtures/{queue.json,
+  data/2026-09-23.json,README.md}` regenerated/updated;
+  `satan/test/satan-goad-fixture.el` (`form` entry added to
+  `satan-goad-fixture-ids`, between `untouched` and `midnight`);
+  `satan/test/satan-goad-test.el` and `satan-memory-evidence-test.el`
+  (three literal `7`s → `(length satan-goad-fixture-ids)`); this file.
+
+**A1–A6 as landed:**
+- A1 — `response.get("values")` is `None` for both an absent key and a JSON
+  `null` (R-51); `answer()` stores `{}` in both cases, never `or {}` (a
+  falsy-but-present value, e.g. `0` or `false`, is kept). Pinned by
+  `test_opt_answer_without_values_stores_empty_values`.
+- A2 — `parse_ask` drops the whole entry when `"form"` is a key and
+  `is_form()` is false, `null` included — it does not fall back to "absent".
+  Pinned by `test_malformed_form_dropped`'s `"not a list: null"` case.
+- A3 — `ask_options` builds each rendered option from exactly `id` (rewritten
+  to `opt:…`), `label`, and `fields` when present and not `null`; no other
+  key on a queued option is forwarded.
+- A4 — `answer()` guards `opt:` to ask item ids and `yes:`/`no:` to checklist
+  ids; any mismatch returns before any write. Pinned by
+  `test_yes_verb_on_an_ask_writes_nothing` and
+  `test_opt_verb_on_a_checklist_id_writes_nothing`.
+- A5 — the backend never checks that a chosen option belongs to the ask's
+  form; unchanged from the design.
+- A6 — `QUEUE_FIELDS` stays the five required string fields; `form` is
+  checked separately inside `parse_ask`. `test_fields_are_the_five_of_a3`
+  still holds.
+
+**VT-45/46/49/53 evidence** (waived rows — verified by `~/satan/goad just
+check`, not the dev suite):
+- VT-45 — `test_form_ask_renders_its_options_and_fields`,
+  `test_form_answer_stores_option_and_values_verbatim`.
+- VT-46 — `test_default_form_renders_yes_no_as_opt_ids`,
+  `test_default_form_answer_stores_option_and_values`.
+- VT-49 — `test_malformed_form_dropped` (ten `subTest` cases: non-list
+  values, `null`, a non-object option, a non-string/missing `id` or `label`,
+  and a good option followed by a bad one — each beside a good entry that
+  still renders).
+- VT-53 — `goldens.py` contains `form` and `opt:`; covered by
+  `Goldens.test_queue_entries_carry_exactly_the_queue_fields`,
+  `test_each_outcome_leaves_its_record` (now includes `form`),
+  `test_unanswered_asks_have_no_value_key`.
+
+**Counts:**
+- Corpus `just check`: T0 baseline 65 OK → final 77 OK, 0 failures, clean
+  output.
+- Dev `just check`: T0 1175 ran / 1169 expected / 0 unexpected / 6 skipped;
+  T8 (after fixture regen + the three sanctioned edits) same counts. STOP-3
+  not triggered — no reader needed to change.
+- T0 live snapshot (`backend.run` against a copy of the live `goad/data`,
+  fixed `now`, empty queue): byte-identical after every `backend.py` save
+  (T2–T5) and at close-out.
+
+**VT-40 retirement (T1):** the "a converted legacy TOML day loads equal"
+clause of PHASE-01's VT-40 is retired along with `goad/convert_toml_days.py`
+and the `tomllib` keyword — `rg -n 'convert_toml|tomllib' ~/satan/goad`
+returns nothing. `Record.test_legacy_toml_day_loads_equal` removed with it.
+
+**`PENDING-corpus-commit` marker:** `satan/test/goad-fixtures/README.md`'s
+provenance table carries the literal `PENDING-corpus-commit` in the corpus
+commit cell. The orchestrator commits `~/satan` first, then substitutes the
+resulting sha — the recorded shas
+(`backend.py` `3359a75…`, `goldens.py` `3ef31fa…`, `queue.json` `3207449…`,
+`data/2026-09-23.json` `627277d…`) are valid only against the worker's bytes,
+unchanged since.
+
+**Deviations from the sheet:** none. A6's suggested `OPTIONAL_QUEUE_FIELDS`
+constant was not introduced — `parse_ask` checks `form` inline, which the
+sheet allowed ("or inside `parse_ask`").
 
 ### PHASE-03
 

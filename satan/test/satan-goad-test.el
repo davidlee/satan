@@ -184,7 +184,7 @@ fields and its record; an ask with no record carries none."
   (satan-goad-fixture-with-goldens
     (let ((slice (satan-goad-slice))
           (queue (satan-goad-read-queue)))
-      (should (= 7 (length slice)))
+      (should (= (length satan-goad-fixture-ids) (length slice)))
       (cl-mapc (lambda (el entry)
                  (dolist (k satan-goad-test--queue-fields)
                    (should (equal (plist-get entry k) (plist-get el k))))

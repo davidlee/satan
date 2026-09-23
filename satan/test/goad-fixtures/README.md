@@ -19,19 +19,20 @@ path `main()` wraps) with fixed instants, then copies `queue.json` and
 
 | | |
 |---|---|
-| corpus commit | `e3ac87c` |
-| `goad/backend.py` sha256 | `0f506e01446dee9ad5c5ffb1d4a39ef762db238374f5da9e8938d3698e029965` |
-| `goad/goldens.py` sha256 | `595006274b44599e6e55071f3e9282b2d9f954cd8e03bc808d7c1df0602166e4` |
-| `queue.json` sha256 | `a38c1b318da4770a0a671ac7147208289bef4a29867e01291abb0e65abc4bc34` |
-| `data/2026-09-23.json` sha256 | `06d7c94d76f8eb24695eb4f464b293e2350f106e2c679d0395ef54aabe857653` |
+| corpus commit | `ab00411` |
+| `goad/backend.py` sha256 | `3359a7582d30cc1b1027084203c37f4a63648c66d5ef3b2f03b616a946998c7c` |
+| `goad/goldens.py` sha256 | `3ef31fa40653beac26be734faa4acaa4a8e87f7af00da55ab0313111bc02bf1e` |
+| `queue.json` sha256 | `3207449ae17689f9464213a1e4fe5ec8176c5001a2f52776bd5580bf768e7a46` |
+| `data/2026-09-23.json` sha256 | `627277ddd4564abf49b48cabc669d60fa82053fa1d105861c360732ec2a7aee3` |
 
 Same `backend.py` and `goldens.py` bytes give the same output bytes.
 
 ## Files
 
-- `queue.json` — the queue as of the script's last step: all seven asks, in
-  emit order, expired ones included (SATAN had not retired them). The schema is
-  goad's `README.md`, "SATAN asks".
+- `queue.json` — the queue as of the script's last step: all eight asks, in
+  emit order, expired ones included (SATAN had not retired them). One of them
+  (`form`) carries an answer form. The schema is goad's `README.md`, "SATAN
+  asks".
 - `data/2026-09-23.json` — the only day file the script produces. Every ask
   event, including the answer given at 00:05 on the 24th, is filed under its
   emit date, so there is no `2026-09-24.json`.
@@ -44,12 +45,13 @@ microseconds, as `datetime.now()` gives them.
 | outcome | `intervention_id` | emitted → expires | script | record left in `2026-09-23.json` |
 |---|---|---|---|---|
 | expired | `20260923T080000-tick-pulse-7b2e90.iv001` | 08:00 → 09:00 | never rendered | **absent** from every day file |
-| answered | `20260923T093000-tick-pulse-a3f01c.iv001` | 09:30 → 10:30 | evaluate 09:31 (presented); `yes:ask:` 09:32 | `presented_at`, `value: true`, `at` |
+| answered | `20260923T093000-tick-pulse-a3f01c.iv001` | 09:30 → 10:30 | evaluate 09:31 (presented); `opt:yes:ask:` 09:32 | `presented_at`, `value: {option: "yes", values: {}}`, `at` |
 | later | `20260923T093000-tick-pulse-a3f01c.iv002` | 09:30 → 10:30 | rendered after the answer (presented 09:32); `later:ask:` 09:33 | `presented_at`, `deferred_at`, `deferred_by: "later"` |
 | enough-seen | `20260923T093000-tick-pulse-a3f01c.iv003` | 09:30 → 10:30 | rendered after Later (presented 09:33); `enough:` 09:34 | `presented_at`, `deferred_at`, `deferred_by: "enough"` |
 | enough-unseen | `20260923T093000-tick-pulse-a3f01c.iv004` | 09:30 → 10:30 | behind enough-seen at 09:34 | `deferred_at`, `deferred_by: "enough"`, **no** `presented_at` |
 | untouched | `20260923T111000-tick-pulse-c41d5e.iv001` | 11:10 → 12:10 | evaluate 11:15 (presented), nothing more | `presented_at` only |
-| midnight | `20260923T231500-tick-pulse-e90f27.iv001` | 23:15 → 00:15 (24th) | evaluate 23:16; `yes:ask:` 00:05 on the 24th; evaluate 00:10 (not re-rendered) | `presented_at`, `value: true`, `at` (on the 24th) |
+| form | `20260923T130000-tick-pulse-d82c4f.iv001` | 13:00 → 14:00 | evaluate 13:01 (presented; `untouched` already expired at 12:10); `opt:rate:ask:` 13:02 with one value of each field kind | `presented_at`, `value: {option: "rate", values: {energy, blocker, note, walked, back_at}}`, `at` |
+| midnight | `20260923T231500-tick-pulse-e90f27.iv001` | 23:15 → 00:15 (24th) | evaluate 23:16; `opt:yes:ask:` 00:05 on the 24th; evaluate 00:10 (not re-rendered) | `presented_at`, `value: {option: "yes", values: {}}`, `at` (on the 24th) |
 
 The Enough at 09:34 also deferred all fourteen checklist items in the same
 file's `items`, with `deferred_by: "enough"`. That is real output; keep it.
