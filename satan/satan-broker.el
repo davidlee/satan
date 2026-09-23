@@ -162,8 +162,23 @@ audit every denied dispatch in a structure consumers can grep."
 (defun satan-broker--on-log (run-ctx obj)
   (satan-audit-record (satan-run-audit run-ctx) 'in 'log obj))
 
+(defun satan-broker--error-class (obj)
+  "Return the harness error class named in OBJ's `:error' string.
+OBJ's `:error' is either the harness's JSON payload
+\(`{\"class\": \"auth\", ...}') or a plain init-path string.  Returns
+the parsed `:class' when it is a string, else \"unknown\" — including
+when `:error' is not JSON at all."
+  (or (ignore-errors
+        (let ((parsed (json-parse-string (plist-get obj :error)
+                                          :object-type 'plist)))
+          (let ((class (plist-get parsed :class)))
+            (and (stringp class) class))))
+      "unknown"))
+
 (defun satan-broker--on-error (run-ctx obj)
   (satan-audit-record (satan-run-audit run-ctx) 'in 'protocol-error obj)
+  (unless (satan-run-failure-reason run-ctx)
+    (setf (satan-run-failure-reason run-ctx) (satan-broker--error-class obj)))
   (setf (satan-run-status run-ctx) 'failed))
 
 (defun satan-broker--dispatch (run-ctx obj)
@@ -211,7 +226,8 @@ Pure data assembly from run-ctx and mode spec — no I/O."
           :max_budget_tokens (or (plist-get mode :max-budget-tokens) 1000000)
           :elapsed_seconds (and elapsed (round elapsed))
           :timeout_seconds (or (plist-get mode :timeout-seconds) 0)
-          :pre_spawn_completed (not (null prepare)))))
+          :pre_spawn_completed (not (null prepare))
+          :failure_reason (satan-run-failure-reason run-ctx))))
 
 (defun satan-broker--finalize (run-ctx)
   "Output handler + audit close.  Idempotent."
@@ -253,8 +269,13 @@ Pure data assembly from run-ctx and mode spec — no I/O."
         (setq actions (plist-put actions :pre_spawn pre-spawn)))
       (when observer
         (setq actions (plist-put actions :observer observer)))
-      (satan-audit-close
-       (satan-run-audit run-ctx) final actions status))
+      (let ((final-for-audit
+             (or final
+                 (and (satan-run-failure-reason run-ctx)
+                      (list :status "invalid"
+                            :reason (satan-run-failure-reason run-ctx))))))
+        (satan-audit-close
+         (satan-run-audit run-ctx) final-for-audit actions status)))
     (satan-broker--mark-failed-on-disk run-ctx)
     (setq satan-memory-store--current-run-id nil)))
 
@@ -287,12 +308,14 @@ via `satan-broker--announce-failure'."
 
 (defun satan-broker--failure-reason (run-ctx)
   "Return a short reason string for RUN-CTX's failure.
-Pulls from the final plist when available, else the status symbol."
+Precedence: the final plist's `:reason', then the `failure-reason'
+slot, else the status symbol."
   (let* ((final (satan-run-final run-ctx))
          (final-reason (and final (plist-get final :reason))))
     (cond
      ((and (stringp final-reason) (not (string-empty-p final-reason)))
       final-reason)
+     ((satan-run-failure-reason run-ctx) (satan-run-failure-reason run-ctx))
      (t (symbol-name (satan-run-status run-ctx))))))
 
 (defcustom satan-failure-syslog t

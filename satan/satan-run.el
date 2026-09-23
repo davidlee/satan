@@ -42,7 +42,10 @@ is the handler that writes SATAN's self-curated memory there."
   ;; Carries the frozen `:time_now', `:run_id', `:start_time' and v0
   ;; placeholder slots (`:evidence' `:percept' `:sensor_status'
   ;; `:pre_spawn' `:motive' `:observer') that later phases populate.
-  prepare)
+  prepare
+  ;; SL-017 sec-7: the harness's parsed error class, or "spawn_failed".
+  ;; First write wins — see `satan-broker--on-error'.
+  failure-reason)
 
 ;; ── Run ID minting ──────────────────────────────────────────────────────────
 

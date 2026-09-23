@@ -985,6 +985,88 @@ entirely so untouched runs keep the original four-partition shape."
               (should (equal (plist-get p :tool_calls_done) 7)))))
       (delete-directory dir t))))
 
+;; ---------- failure-reason: harness class transport (SL-017 sec-7) --------
+
+(ert-deftest satan-broker/error-class-parsed-from-harness-json ()
+  "`satan-broker--error-class' pulls :class out of the harness's
+double-encoded JSON payload."
+  (let ((obj (list :type "error"
+                    :error (json-serialize '(:class "auth" :detail "Error code: 401 ... API key expired")))))
+    (should (equal (satan-broker--error-class obj) "auth"))))
+
+(ert-deftest satan-broker/error-class-unknown-for-plain-string ()
+  "`satan-broker--error-class' returns \"unknown\" for an init-path error
+that is a plain string, not JSON."
+  (let ((obj (list :type "error" :error "init failed: OPENROUTER_API_KEY not set")))
+    (should (equal (satan-broker--error-class obj) "unknown"))))
+
+(ert-deftest satan-broker/failed-run-final-carries-failure-reason ()
+  "A child that dies with a harness error and no `final' leaves
+`final.json' carrying the parsed class as its reason (EX-2), and
+`crash-context' carries the same class as :failure_reason (T4).  The
+final's own :reason, when present, still wins over the slot (T6
+precedence — the Risks section's named regression)."
+  (let ((dir (make-temp-file "satan-broker-failure-reason-" t)))
+    (unwind-protect
+        (let* ((prepare (list :run_id "rid" :time_now "2026-05-24T10:00:00+1000"
+                              :start_time (current-time)
+                              :evidence nil :percept nil
+                              :sensor_status nil :motive nil :pre_spawn nil))
+               (audit (satan-audit-open
+                       dir '(:run_id "rid" :mode (:name "test"))
+                       '(:bundle t) prepare))
+               (mode '(:name "test" :auto-apply none :timeout-seconds 1800
+                       :budget-tool-calls 100 :budget-tokens 300000
+                       :capabilities ()))
+               (run-ctx (make-satan-run
+                         :id "rid"
+                         :mode mode
+                         :start-time (plist-get prepare :start_time)
+                         :dir dir
+                         :status 'running
+                         :audit audit
+                         :prepare prepare)))
+          (satan-broker--on-error
+           run-ctx (list :type "error"
+                         :error (json-serialize '(:class "auth" :detail "expired"))))
+          (should (equal (satan-run-failure-reason run-ctx) "auth"))
+          ;; first write wins: a second --on-error must not overwrite it.
+          (satan-broker--on-error
+           run-ctx (list :type "error"
+                         :error (json-serialize '(:class "rate_limit" :detail "later"))))
+          (should (equal (satan-run-failure-reason run-ctx) "auth"))
+          ;; precedence: failure-reason alone resolves --failure-reason ...
+          (should (equal (satan-broker--failure-reason run-ctx) "auth"))
+          ;; ... but an explicit final reason still wins over the slot.
+          (setf (satan-run-final run-ctx) '(:status "invalid" :reason "explicit"))
+          (should (equal (satan-broker--failure-reason run-ctx) "explicit"))
+          (setf (satan-run-final run-ctx) nil)
+          (cl-letf (((symbol-function 'satan-broker--mark-failed-on-disk)
+                     (lambda (&rest _) nil)))
+            (satan-broker--finalize run-ctx))
+          (let* ((final-path (expand-file-name "final.json" dir))
+                 (final (with-temp-buffer
+                          (insert-file-contents final-path)
+                          (goto-char (point-min))
+                          (json-parse-buffer
+                           :object-type 'plist
+                           :array-type 'list
+                           :null-object :null
+                           :false-object :false))))
+            (should (equal (plist-get final :status) "invalid"))
+            (should (equal (plist-get final :reason) "auth")))
+          (let* ((records (satan-jsonl-read-file
+                           (expand-file-name "transcript.jsonl" dir) :null-object :null))
+                 (crash-ctx (cl-find-if
+                             (lambda (r)
+                               (and (equal (plist-get r :dir) "broker")
+                                    (equal (plist-get r :event) "crash-context")))
+                             records)))
+            (should crash-ctx)
+            (should (equal (plist-get (plist-get crash-ctx :payload) :failure_reason)
+                           "auth"))))
+      (delete-directory dir t))))
+
 ;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
 
 (ert-deftest satan-broker/dec8-spawn-running-persists-until-sentinel ()

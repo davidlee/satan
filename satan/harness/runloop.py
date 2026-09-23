@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -113,14 +114,28 @@ class RunState:
 # -- Error classification ---------------------------------------------------
 
 def classify_error(e: Exception) -> str:
-    msg = str(e).lower()
-    if "rate" in msg or "429" in msg or "quota" in msg:
-        return "rate_limit"
-    if "auth" in msg or "401" in msg or "403" in msg:
+    # 403 has no status-code branch: OpenRouter answers 403 for a moderation
+    # flag, not a bad key, so it falls through to the word-boundary match on
+    # the message text (design SL-017 sec-7).
+    code = getattr(e, "status_code", None)
+    if code == 401:
         return "auth"
-    if "500" in msg or "502" in msg or "503" in msg:
+    if code == 402:
+        return "credits"
+    if code == 429:
+        return "rate_limit"
+    if isinstance(code, int) and code >= 500:
         return "server"
-    if "timeout" in msg or "timed out" in msg:
+    msg = str(e).lower()
+    if re.search(r"\b(429|rate[ _-]?limit(ed)?|quota)\b", msg):
+        return "rate_limit"
+    if re.search(r"\b(401|unauthori[sz]ed|authentication|invalid api key|api key expired)\b", msg):
+        return "auth"
+    if re.search(r"\b(402|insufficient credits)\b", msg):
+        return "credits"
+    if re.search(r"\b(500|502|503|504)\b", msg):
+        return "server"
+    if re.search(r"\b(timeout|timed out)\b", msg):
         return "timeout"
     return "unknown"
 

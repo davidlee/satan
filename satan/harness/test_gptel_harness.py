@@ -282,9 +282,9 @@ class ErrorClassificationTests(unittest.TestCase):
         e = Exception("Error code: 401 - Unauthorized")
         self.assertEqual(runloop.classify_error(e), "auth")
 
-    def test_classify_auth_403(self):
+    def test_classify_403_moderation_is_unknown(self):
         e = Exception("Error code: 403 - Forbidden")
-        self.assertEqual(runloop.classify_error(e), "auth")
+        self.assertEqual(runloop.classify_error(e), "unknown")
 
     def test_classify_auth_word(self):
         e = Exception("authentication failed")
@@ -309,6 +309,23 @@ class ErrorClassificationTests(unittest.TestCase):
     def test_classify_unknown(self):
         e = Exception("something unexpected happened")
         self.assertEqual(runloop.classify_error(e), "unknown")
+
+    def test_classify_by_status_code(self):
+        def with_status(code):
+            e = Exception("provider error")
+            e.status_code = code
+            return e
+
+        self.assertEqual(runloop.classify_error(with_status(401)), "auth")
+        self.assertEqual(runloop.classify_error(with_status(402)), "credits")
+        self.assertEqual(runloop.classify_error(with_status(429)), "rate_limit")
+        self.assertEqual(runloop.classify_error(with_status(500)), "server")
+        self.assertEqual(runloop.classify_error(with_status(503)), "server")
+
+    def test_classify_no_substring_false_positives(self):
+        self.assertEqual(runloop.classify_error(Exception("generate a response")), "unknown")
+        self.assertEqual(runloop.classify_error(Exception("author unknown")), "unknown")
+        self.assertEqual(runloop.classify_error(Exception("4013 tokens used")), "unknown")
 
 
 class StructuredErrorTests(unittest.TestCase):

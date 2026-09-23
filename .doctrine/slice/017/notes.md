@@ -188,6 +188,76 @@ worktree isolation.
   match-data bug, and the post-review nil-regression fix above — none
   anticipated by the sheet, all found during gate/review runs, not before.
 
+## PHASE-03 executed (2026-09-23) — GREEN
+
+Capsule worker (sonnet — keeper's model choice for PHASE-01..03; PHASE-03 is
+two small, independent, fully-specified changes (design sec-7, T1-T10), no
+new design judgement). In-tree, no worktree isolation.
+
+- **`satan-run.el`:** `failure-reason` slot appended last on `cl-defstruct
+  satan-run` (EX-1). Requires unchanged.
+- **`satan-broker.el`:** new pure `satan-broker--error-class OBJ` (parses
+  `:error` as JSON, returns `:class` string or `"unknown"`, guarded with
+  `ignore-errors` for non-JSON input) placed next to `--on-error`.
+  `--on-error` writes the slot via `unless` (first write wins). `--crash-
+  context` gained `:failure_reason`. `--finalize` synthesises `(:status
+  "invalid" :reason FAILURE-REASON)` for `satan-audit-close` via a new
+  `final-for-audit` local, only when `final` is nil and the slot is set —
+  the earlier output-handler/partition use of the raw `final` is untouched.
+  `--failure-reason` gained the middle precedence clause (final's `:reason`
+  → `failure-reason` slot → status name).
+- **Harness (`satan/harness/runloop.py`, `satan/harness/test_gptel_harness.py`):**
+  `classify_error` rewritten to design's target — `status_code` first (401
+  auth, 402 credits, 429 rate_limit, ≥500 server), then word-boundary regex
+  fallback; 403 has no status-code branch (falls through to the text match,
+  so a 403 with auth wording still reads `auth`; a moderation 403 reads
+  `unknown`). Added `import re` (was missing). Test file:
+  `test_classify_auth_403` renamed to `test_classify_403_moderation_is_
+  unknown` and its assertion flipped to `"unknown"` (A3 — EX-3 and VT-2
+  name the same single change two ways); added `test_classify_by_status_
+  code` (401/402/429/500/503 via a `.status_code`-bearing exception) and
+  `test_classify_no_substring_false_positives` ("generate", "author",
+  "4013 tokens" all → `"unknown"`).
+- **`satan-broker-test.el`:** three new VT-1 tests —
+  `satan-broker/error-class-parsed-from-harness-json`,
+  `satan-broker/error-class-unknown-for-plain-string`,
+  `satan-broker/failed-run-final-carries-failure-reason`. The third also
+  exercises first-write-wins (a second `--on-error` call does not overwrite
+  the slot) and the T6 precedence risk named in the sheet (an explicit
+  final `:reason` still beats the slot) — folded into the one fixture
+  rather than named as separate tests, since the sheet named exactly these
+  three.
+- **TDD:** harness tests written and run red first (3 failures: two
+  assertion flips, one `AssertionError`) before the `classify_error`
+  rewrite, then green (54/54). Elisp tests written and run red first (2
+  `void-function`, 1 failed `should`) via a standalone `satan-broker-test.el`
+  load before the broker edits, then green (31/31 in that file).
+- **Gate (elisp):** `SATAN_DB_HOST=/run/postgresql/ just check` → `Ran 1063
+  tests, 1059 results as expected, 1 unexpected, 3 skipped` (1060/1056/1/3
+  baseline + 3 new tests; the 1 unexpected is the pre-existing
+  `satan-db/test-db-available-p-probes-test-host`). `just lint`: all
+  `{"ok":true}`.
+- **Gate (harness):** `cd satan/harness && python -m unittest
+  test_gptel_harness` → `Ran 54 tests ... OK` (52 baseline − 0 removed +
+  2 new; the 403 case was renamed in place, not added).
+- **Byte-compile** (scratch copy, `-L satan`): `satan-run.el` and
+  `satan-broker.el` each carry one pre-existing warning at HEAD
+  (`satan-run-mint-id`'s dynamic-variable shadow;
+  `_probe-snapshots` not left unused in `satan-broker.el`) — confirmed by
+  byte-compiling the unmodified HEAD versions of both files in the same
+  scratch copy; no new warnings. No `.elc` left in the tree.
+- **Harness deploy (R13):** only `satan/harness/runloop.py` and
+  `satan/harness/test_gptel_harness.py` changed under `satan/harness/`.
+  The keeper still needs to decide whether to pull the harness push/flake-
+  update/home-switch forward to just after this phase, per R13 — the jail
+  runs the harness from the GitHub flake input, not this working tree, so
+  the new classifier is inert in the live jail until that deploy step runs.
+- **Deviation:** none from the sheet's task list (T1-T11 all as specified,
+  including A3's rename resolution).
+- **STOP guards:** not tripped. `satan-broker--spawn` and `make-satan-run`
+  untouched; `--announce-failure`, `--failure-streak-count` and
+  `--failure-streak-count`'s callers untouched.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready
