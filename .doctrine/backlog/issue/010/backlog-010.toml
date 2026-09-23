@@ -5,10 +5,10 @@ id = 10
 slug = "empty-xdg-state-home-is-treated-as-set-defeating-the-state-root-fallback"
 title = "empty XDG_STATE_HOME is treated as set, defeating the state-root fallback"
 kind = "issue"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-08-25"
-updated = "2026-08-25"
+updated = "2026-09-23"
 tags = []
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
@@ -20,3 +20,9 @@ tags = []
 needs    = []                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "fixed by DEC-027 (SL-016 PHASE-04, d63eb7f)"
+target = "DEC-027"

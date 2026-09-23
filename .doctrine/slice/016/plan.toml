@@ -19,6 +19,8 @@
 # answers and `yes:ask:` ids; PHASE-12 is the intervention-record work. The
 # completed phases' rows are left as they landed: PHASE-02's VT-2 keyword
 # `yes:ask:` is superseded by PHASE-10's `opt:` ids (VT-45, VT-46).
+# PHASE-01's VT-40 clause "a converted legacy TOML day loads equal" lost its
+# test when PHASE-10 removed convert_toml_days.py (conversion done, e0a3c9b).
 #
 # Out-of-repo tests (~/satan corpus, ~/dev/satan-attrd) carry waived = true:
 # verify-vt cannot attribute a file outside this repo. They are verified by
