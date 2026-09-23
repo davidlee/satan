@@ -85,11 +85,7 @@ outside an active SATAN run.  Default is 30 minutes."
 
 (defun satan-tank--short-run (run-id)
   "Pull the mode slug from a RUN-ID like `20260520T082808-tick-pulse-e44377'."
-  (cond
-   ((and (stringp run-id)
-         (string-match "T[0-9]+-\\(.+\\)-[a-z0-9]+\\'" run-id))
-    (match-string 1 run-id))
-   (t (or run-id ""))))
+  (or (satan-run-mode-from-id run-id) run-id ""))
 
 (defun satan-tank--summarize-args (args)
   "Compact one-line summary of a tool-call ARGS plist."

@@ -241,10 +241,6 @@ Returns nil when NOW is empty."
           (push "```" lines)))
       (nreverse lines))))
 
-(defconst satan-context--run-id-regexp
-  "\\`\\([0-9]\\{4\\}\\)\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)T\\([0-9]\\{2\\}\\)\\([0-9]\\{2\\}\\)[0-9]\\{2\\}-\\([a-z0-9-]+?\\)-[A-Za-z0-9]+\\(\\.FAILED\\)?\\'"
-  "Match a SATAN run-id leaf name; capture groups: YYYY MM DD HH MM mode FAILED?")
-
 (defconst satan-context--bucket-regexp
   "\\`[0-9]\\{4\\}-[0-9]\\{2\\}-[0-9]\\{2\\}\\'"
   "Match a SATAN runs date-bucket directory name.")
@@ -277,7 +273,8 @@ Returns nil when the runs dir is missing or empty."
                      (cl-remove-if-not
                       (lambda (name)
                         (and (string-match-p
-                              satan-context--run-id-regexp name)
+                              satan-run-id-regexp
+                              (satan-run--id-from-leaf name))
                              (file-directory-p
                               (expand-file-name name bucket-dir))))
                       (directory-files bucket-dir nil nil t))
@@ -326,15 +323,16 @@ contains no tool-call lines.  Counts are in first-occurrence order."
   "Return a recent-runs entry plist for RUN-DIR.
 Keys: :when, :mode, :status (\"ok\" / \"FAILED\"), :summary (or nil),
 :tools (alist of (NAME . COUNT))."
-  (let* ((leaf (file-name-nondirectory (directory-file-name run-dir))))
-    (when (string-match satan-context--run-id-regexp leaf)
-      (let* ((yyyy (match-string 1 leaf))
-             (mm   (match-string 2 leaf))
-             (dd   (match-string 3 leaf))
-             (hh   (match-string 4 leaf))
-             (mi   (match-string 5 leaf))
-             (mode (match-string 6 leaf))
-             (failed (match-string 7 leaf))
+  (let* ((leaf (file-name-nondirectory (directory-file-name run-dir)))
+         (run-id (satan-run--id-from-leaf leaf))
+         (failed (string-suffix-p satan-run--failed-suffix leaf)))
+    (when (string-match satan-run-id-regexp run-id)
+      (let* ((stamp (match-string 1 run-id)) ; YYYYMMDDTHHMMSS, fixed-width
+             (mode  (match-string 2 run-id)) ; captured before any nested
+                                              ; string-match clobbers match-data
+             (date (satan-run--date-bucket run-id))
+             (hh   (substring stamp 9 11))
+             (mi   (substring stamp 11 13))
              (final-path (expand-file-name "final.json" run-dir))
              (summary
               (when (file-readable-p final-path)
@@ -357,7 +355,7 @@ Keys: :when, :mode, :status (\"ok\" / \"FAILED\"), :summary (or nil),
                     satan-context--summary-clip)))
              (tools (satan-context--tally-tool-calls
                      (expand-file-name "transcript.jsonl" run-dir))))
-        (list :when (format "%s-%s-%s %s:%s" yyyy mm dd hh mi)
+        (list :when (format "%s %s:%s" date hh mi)
               :mode mode
               :status (if failed "FAILED" "ok")
               :summary summary-clipped

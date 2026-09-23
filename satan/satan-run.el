@@ -204,6 +204,83 @@ flat layout (filters by prefix on the leaf name)."
              (string-prefix-p date-prefix run-id))))
      (satan-run-list-dirs runs-dir))))
 
+;; ── Run outcomes and the per-mode streak walk (design sec-3) ────────────────
+;; json-parse-buffer is built in (Emacs 27+), so no new require.
+
+(defconst satan-run-id-regexp
+  "\\`\\([0-9]\\{8\\}T[0-9]\\{6\\}\\)-\\(.+\\)-\\([0-9a-f]\\{6\\}\\)\\'"
+  "A run-id: group 1 timestamp, 2 mode name (may contain hyphens), 3 hex.")
+
+(defun satan-run-mode-from-id (run-id)
+  "Return the mode name inside RUN-ID (a leaf with or without `.FAILED'), or nil.
+\"20260923T081501-tick-pulse-33ec98\" -> \"tick-pulse\".  Non-string RUN-ID
+(e.g. nil) returns nil, same as any other non-match."
+  (and (stringp run-id)
+       (let ((id (satan-run--id-from-leaf run-id)))
+         (and (string-match satan-run-id-regexp id)
+              (match-string 2 id)))))
+
+(defun satan-run-outcome (dir)
+  "Return DIR's recorded outcome, or nil when DIR has no `status' file.
+Plist: (:run-id ID :mode MODE :status SYMBOL :reason STRING-OR-NIL :dir DIR).
+A missing or unparseable `final.json' yields :reason nil."
+  (let ((status-path (expand-file-name "status" dir)))
+    (when (file-readable-p status-path)
+      (let* ((run-id (satan-run--id-from-leaf
+                      (file-name-nondirectory (directory-file-name dir))))
+             (status (intern
+                      (string-trim
+                       (with-temp-buffer
+                         (insert-file-contents status-path)
+                         (buffer-string)))))
+             (final-path (expand-file-name "final.json" dir))
+             (reason (and (file-readable-p final-path)
+                          (ignore-errors
+                            (with-temp-buffer
+                              (let ((coding-system-for-read 'utf-8))
+                                (insert-file-contents final-path))
+                              (goto-char (point-min))
+                              (plist-get
+                               (json-parse-buffer :object-type 'plist
+                                                  :array-type 'list
+                                                  :null-object nil
+                                                  :false-object nil)
+                               :reason))))))
+        (list :run-id run-id
+              :mode (satan-run-mode-from-id run-id)
+              :status status
+              :reason reason
+              :dir dir)))))
+
+(defun satan-run-outcome-streak (mode counts-p &optional skips-p runs-dir)
+  "Return MODE's current streak as a list of outcomes, newest first.
+Walks MODE's runs in RUNS-DIR (default `satan-runs-dir') from newest
+back.  A run with no outcome is stepped over; an outcome satisfying
+SKIPS-P is stepped over; one satisfying COUNTS-P is collected; any
+other outcome ends the walk.  SKIPS-P is tested before COUNTS-P."
+  (let* ((base (or runs-dir satan-runs-dir))
+         (sorted (sort
+                  (cl-remove-if-not
+                   (lambda (dir)
+                     (equal (satan-run-mode-from-id (file-name-nondirectory dir))
+                            mode))
+                   (satan-run-list-dirs base))
+                  (lambda (a b)
+                    (string-greaterp
+                     (satan-run--id-from-leaf (file-name-nondirectory a))
+                     (satan-run--id-from-leaf (file-name-nondirectory b))))))
+         streak)
+    (cl-block satan-run-outcome-streak
+      (dolist (dir sorted)
+        (let ((outcome (satan-run-outcome dir)))
+          (cond
+           ((null outcome))
+           ((and skips-p (funcall skips-p outcome)))
+           ((funcall counts-p outcome)
+            (setq streak (nconc streak (list outcome))))
+           (t (cl-return-from satan-run-outcome-streak))))))
+    streak))
+
 ;; ── Lifecycle state (DEC-8) ─────────────────────────────────────────────────
 ;; DEC-8 is a two-flag mutual-exclusion protocol between a scheduled broker
 ;; run and an interactive MCP session: each side refuses to start while the

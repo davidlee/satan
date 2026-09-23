@@ -118,6 +118,76 @@ dr-01a0cc0b). In-tree, no worktree isolation.
   scope interaction (above) was not called out in the sheet and was found
   during the gate run, not before.
 
+## PHASE-02 executed (2026-09-23) — GREEN
+
+Capsule worker (sonnet — keeper's model choice for PHASE-01..03; PHASE-02
+adds pure leaf functions with fully specified signatures (design sec-3) and a
+verified sheet, its only subtlety — walk order (A3) and the no-outcome vs
+non-counting distinction (A2) — spelled out in sheet A2/A3). In-tree, no
+worktree isolation.
+
+- **New in `satan/satan-run.el`:** `satan-run-id-regexp` (defconst),
+  `satan-run-mode-from-id`, `satan-run-outcome`, `satan-run-outcome-streak`
+  (MODE COUNTS-P &optional SKIPS-P RUNS-DIR) — inserted before the DEC-8
+  lifecycle-state section. Requires unchanged: `cl-lib`, `subr-x`,
+  `satan-custom` (EX-2). The streak walk visits newest-first-sorted mode dirs
+  once and `nconc`s onto an accumulator in visitation order (A3) — no
+  push+reverse.
+- **`satan-tank--short-run`** now delegates to `satan-run-mode-from-id`,
+  wrapped `(or (satan-run-mode-from-id run-id) run-id)` to keep the existing
+  passthrough-on-no-match contract (T5).
+- **`satan-context.el`:** `satan-context--run-id-regexp` deleted (EX-3).
+  `--list-recent-runs`'s leaf filter and `--summarize-run`'s field extraction
+  now build on `satan-run-id-regexp` + `satan-run--id-from-leaf` +
+  `satan-run--date-bucket` + `string-suffix-p` (A5 recipe, as suggested).
+- **Bug found and fixed in `--summarize-run`:** `satan-run--date-bucket`
+  runs its own internal `string-match`, which clobbered the outer
+  `satan-run-id-regexp` match-data before `mode` was read via `match-string`
+  — caught by `satan-context/summarize-run/extracts-time-mode-summary-tools`
+  going red (mode rendered as `"05"`, the month group, instead of
+  `"tick-pulse"`). Fixed by capturing `mode` immediately alongside `stamp`,
+  before the `date-bucket` call.
+- **Test fixture fix:** `satan-tank-test.el`'s `read-run-events-fixture` used
+  a non-hex run-id suffix (`fix001`), which the old ad-hoc tank regexp
+  tolerated but `satan-run-id-regexp`'s strict `[0-9a-f]{6}` does not.
+  Corrected to a valid hex suffix (`f19001`) — the fixture id never matched
+  real minted-id shape (`%06x`) to begin with.
+- **T7:** six VT-1 tests added to `satan-run-test.el`, by exact name, plus a
+  local `satan-run-test--mkrun` fixture helper (real files under a temp
+  root, `make-temp-file`/`unwind-protect`, matching the file's existing
+  style). `streak-steps-over-skips-and-unfinished` reproduces design sec-3's
+  worked example verbatim (position 2, first run `0923T0815`).
+- **T9 verification sweep:** `rg -n satan-context--run-id-regexp .` → zero
+  hits; `rg -n satan-run-id-regexp .` → four hits (positive control, same
+  invocation style).
+- **plan.toml note:** VT-3 was drafted and then withdrawn by the driver —
+  `plan.toml` carries no diff for this phase. VT-2 greps only
+  `satan-tank.el`; EX-3's `satan-context.el` migration is checked only by
+  the sheet's T9 zero-hit `rg`, not by an authored VT entry. Flagged here
+  for `/audit` + `/reconcile`.
+- **Post-review fix (orchestrator round, same day):** review found
+  `(satan-tank--short-run nil)` regressed — old code returned `""` for any
+  non-match including nil; the new delegation called `string-match` inside
+  `satan-run-mode-from-id` on a non-string and signalled. Fixed TDD
+  (red/green): `satan-run-mode-from-id` now guards with `stringp` and
+  returns nil for any non-string RUN-ID (new assertion in
+  `satan-run/mode-from-id-handles-hyphenated-modes-and-failed-suffix`);
+  `satan-tank--short-run` restores the nil→`""` contract via
+  `(or (satan-run-mode-from-id run-id) run-id "")` (new test
+  `satan-tank/short-run-nil-yields-empty-string`).
+- **Gate (final, post-fix):** `SATAN_DB_HOST=/run/postgresql/ just check` →
+  `Ran 1060 tests, 1056 results as expected, 1 unexpected, 3 skipped`
+  (1053/1049/1/3 baseline + 6 VT-1 tests + 1 short-run-nil test; the 1
+  unexpected is the pre-existing
+  `satan-db/test-db-available-p-probes-test-host`). `just lint`: all
+  `{"ok":true}`. Byte-compile of the touched files (scratch-copy,
+  `-L satan`): one warning, pre-existing at HEAD and outside this phase's
+  edits (`satan-run-mint-id`'s dynamic-variable shadow) — no new warnings,
+  no `.elc` left in the tree.
+- **Deviation:** none from the sheet's task list beyond the fixture fix, the
+  match-data bug, and the post-review nil-regression fix above — none
+  anticipated by the sheet, all found during gate/review runs, not before.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready

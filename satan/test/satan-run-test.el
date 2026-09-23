@@ -284,5 +284,128 @@ the standard values under a rebound root moves each with its own root only."
             (should-not (member legacy-other-day got))))
       (delete-directory root t))))
 
+;; ── Run outcomes and the per-mode streak walk (PHASE-02, design sec-3) ──────
+
+(defun satan-run-test--mkrun (root run-id &optional status reason failed)
+  "Create a fake bucketed run dir for RUN-ID under ROOT.
+STATUS (a string) writes the `status' file when non-nil.  REASON
+writes `final.json' with that :reason when non-nil.  FAILED appends
+`satan-run--failed-suffix' to the leaf directory name.  Returns the
+dir path."
+  (let* ((bucket (concat (substring run-id 0 4) "-"
+                         (substring run-id 4 6) "-"
+                         (substring run-id 6 8)))
+         (leaf (if failed (concat run-id satan-run--failed-suffix) run-id))
+         (dir (expand-file-name (concat bucket "/" leaf) root)))
+    (make-directory dir t)
+    (when status
+      (let ((coding-system-for-write 'utf-8))
+        (write-region (concat status "\n") nil
+                      (expand-file-name "status" dir) nil 'silent)))
+    (when reason
+      (with-temp-file (expand-file-name "final.json" dir)
+        (insert (json-serialize (list :reason reason)))))
+    dir))
+
+(ert-deftest satan-run/mode-from-id-handles-hyphenated-modes-and-failed-suffix ()
+  "Mode extraction survives a hyphenated mode name and a `.FAILED' suffix."
+  (should (equal (satan-run-mode-from-id
+                  "20260923T081501-tick-pulse-33ec98")
+                 "tick-pulse"))
+  (should (equal (satan-run-mode-from-id
+                  "20260923T081501-tick-pulse-33ec98.FAILED")
+                 "tick-pulse"))
+  (should (null (satan-run-mode-from-id nil)))
+  (should (null (satan-run-mode-from-id "not-a-runid"))))
+
+(ert-deftest satan-run/outcome-nil-without-status ()
+  "A run dir with no `status' file has no outcome."
+  (let ((root (make-temp-file "satan-run-outcome-" t)))
+    (unwind-protect
+        (let ((dir (satan-run-test--mkrun
+                    root "20260923T081501-motd-33ec98")))
+          (should (null (satan-run-outcome dir))))
+      (delete-directory root t))))
+
+(ert-deftest satan-run/outcome-reads-status-and-reason ()
+  "Outcome plist carries id/mode/status/reason/dir; a missing `final.json'
+yields :reason nil without erasing the outcome itself."
+  (let ((root (make-temp-file "satan-run-outcome-" t)))
+    (unwind-protect
+        (progn
+          (let* ((dir (satan-run-test--mkrun
+                       root "20260923T081501-motd-33ec98" "failed" "auth"))
+                 (outcome (satan-run-outcome dir)))
+            (should (equal (plist-get outcome :run-id)
+                           "20260923T081501-motd-33ec98"))
+            (should (equal (plist-get outcome :mode) "motd"))
+            (should (eq (plist-get outcome :status) 'failed))
+            (should (equal (plist-get outcome :reason) "auth"))
+            (should (equal (plist-get outcome :dir) dir)))
+          (let* ((dir (satan-run-test--mkrun
+                       root "20260923T091501-motd-44ec98" "done"))
+                 (outcome (satan-run-outcome dir)))
+            (should (eq (plist-get outcome :status) 'done))
+            (should (null (plist-get outcome :reason)))))
+      (delete-directory root t))))
+
+(ert-deftest satan-run/streak-is-per-mode ()
+  "The walk visits only MODE's own runs, skipping other modes entirely."
+  (let ((root (make-temp-file "satan-run-streak-" t)))
+    (unwind-protect
+        (progn
+          (satan-run-test--mkrun
+           root "20260923T080000-motd-aaaaaa" "failed" "auth")
+          (satan-run-test--mkrun
+           root "20260923T081000-tick-pulse-bbbbbb" "done")
+          (satan-run-test--mkrun
+           root "20260923T082000-motd-cccccc" "failed" "auth")
+          (let ((streak (satan-run-outcome-streak
+                        "motd" (lambda (_) t) nil root)))
+            (should (equal (mapcar (lambda (o) (plist-get o :run-id)) streak)
+                           '("20260923T082000-motd-cccccc"
+                             "20260923T080000-motd-aaaaaa")))))
+      (delete-directory root t))))
+
+(ert-deftest satan-run/streak-steps-over-skips-and-unfinished ()
+  "Design sec-3's worked example: a no-status run and a SKIPS-P run are both
+stepped over without breaking the same-cause streak."
+  (let ((root (make-temp-file "satan-run-streak-" t)))
+    (unwind-protect
+        (progn
+          (satan-run-test--mkrun
+           root "20260924T081500-motd-11111a" "failed" "auth")
+          (satan-run-test--mkrun         ; no status file: stepped over
+           root "20260923T120000-motd-22222b")
+          (satan-run-test--mkrun
+           root "20260923T083000-motd-33333c" "failed" "session_blocked")
+          (satan-run-test--mkrun
+           root "20260923T081500-motd-44444d" "failed" "auth")
+          (let* ((same-cause (lambda (o) (equal (plist-get o :reason) "auth")))
+                 (transparent
+                  (lambda (o) (equal (plist-get o :reason) "session_blocked")))
+                 (streak (satan-run-outcome-streak
+                         "motd" same-cause transparent root)))
+            (should (equal (mapcar (lambda (o) (plist-get o :run-id)) streak)
+                           '("20260924T081500-motd-11111a"
+                             "20260923T081500-motd-44444d")))))
+      (delete-directory root t))))
+
+(ert-deftest satan-run/streak-stops-at-non-counting-outcome ()
+  "A run satisfying neither SKIPS-P nor COUNTS-P ends the walk uncollected."
+  (let ((root (make-temp-file "satan-run-streak-" t)))
+    (unwind-protect
+        (progn
+          (satan-run-test--mkrun
+           root "20260923T081500-motd-11111a" "failed" "auth")
+          (satan-run-test--mkrun
+           root "20260922T081500-motd-22222b" "failed" "unknown")
+          (let* ((same-cause (lambda (o) (equal (plist-get o :reason) "auth")))
+                 (streak (satan-run-outcome-streak
+                         "motd" same-cause nil root)))
+            (should (equal (mapcar (lambda (o) (plist-get o :run-id)) streak)
+                           '("20260923T081500-motd-11111a")))))
+      (delete-directory root t))))
+
 (provide 'satan-run-test)
 ;;; satan-run-test.el ends here

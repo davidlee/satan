@@ -29,6 +29,9 @@
 (ert-deftest satan-tank/short-run-passthrough-on-no-match ()
   (should (equal (satan-tank--short-run "not-a-runid") "not-a-runid")))
 
+(ert-deftest satan-tank/short-run-nil-yields-empty-string ()
+  (should (equal (satan-tank--short-run nil) "")))
+
 (ert-deftest satan-tank/summarize-args-plist ()
   (let ((out (satan-tank--summarize-args
               '(:cue ("mode:motd") :limit 5))))
@@ -167,7 +170,7 @@
 
 (ert-deftest satan-tank/read-run-events-fixture ()
   (let* ((tmp (make-temp-file "satan-tank-runs-" t))
-         (run-id "20260520T100000-tick-pulse-fix001")
+         (run-id "20260520T100000-tick-pulse-f19001")
          (run-dir (expand-file-name run-id tmp))
          (jsonl (expand-file-name "transcript.jsonl" run-dir))
          (lines (list
