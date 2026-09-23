@@ -8,8 +8,9 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 **fresh-as-of:** stage `plan`, 2026-09-23. Plan authored (`plan.toml` /
 `plan.md`, nine phases, PHASE-09 runs before PHASE-08), phase sheets
-materialised. Awaiting user approval of the plan (PHASE-01 EN-1). Nothing
-implemented. Next: `/phase-plan PHASE-01`.
+materialised. Plan **approved by the user 2026-09-23**; slice status `ready`.
+PHASE-01 runtime sheet filled, phase still `planned`. Nothing implemented.
+Next: `/execute PHASE-01`.
 
 ### Produced
 
