@@ -14,7 +14,7 @@ ref   = "SL-016"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "goad-emit exit 0 does not mean the prompt was delivered"
 detail = "goad replies `accepted` BEFORE calling the backend. crates/goad/src/controller.rs:735 says so verbatim: 'accepted. The reply leaves **before** the backend is called: the listener awaits it before accepting the next connection, so a reply that waited for the exchange would put `engaged` out of reach (I-2)'. host.evaluate() runs later, at controller.rs:998. CONFIRMED by read. Design sec-5 claims 'a dead backend.py or an unreachable socket must suppress asking, never bypass. Exit 2 is that case' — false: a dead or crashing backend.py yields exit 0. SATAN then persists an intervention and starts an outcome window for a question that was never rendered, which later matures :ignored. That conflates delivery failure with human disengagement, which is exactly the signal the slice exists to produce. EVD-002's refusal-transport conclusion is unaffected and stands; what is wrong is the delivery inference layered on it."
@@ -23,7 +23,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "The observer ack gate is always false, so DEC-012 narrows a count that is never taken"
 detail = """satan-memory-evidence--segments-status returns the STRING "ok" (satan/satan-memory-evidence.el:163-190, docstring states it) and it reaches :sensor_status :focus verbatim (:555). satan-observer--ack-checked-p compares it to the SYMBOL 'ok with eq (satan/satan-observer-classify.el:271-277), which is nil for every production run. CONFIRMED by read and by `emacs --batch --eval '(eq (quote ok) "ok")'` => nil. Consequence in classify-negative (:326-345): the :unknown branch is unreachable, --count-ack-events never runs, confidence is never :medium, and every user-facing intervention firing no positive predicate classifies :ignored :low unconditionally. Raised separately as ISS-014 because it is a live bug independent of this slice; SL-016 needs ISS-014. Design sec-6's 'today' truth table is therefore wrong, and DEC-012's surface narrowing is inert until ISS-014 is fixed."""
@@ -32,7 +32,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "Focus telemetry cannot support the absent/ignored/engaged truth table even once ISS-014 is fixed"
 detail = 'Three independent defects, all CONFIRMED by GPT against source and telemetry. (a) --count-ack-events counts only segments whose start_ts is STRICTLY AFTER the emit (satan-observer-classify.el:279), so a keeper continuously focused from before the emit counts as absent. (b) Only the newest ten segments survive assembly (satan-memory-evidence.el:63, :185), so an early goad focus can be evicted before maturity. (c) Real telemetry carries transiently wrong surface labels — app_id "goad" appearing with Emacs and Claude window titles in ~/.local/state/behaviour/segments/focus-2026-09-20.jsonl:5. Together: stable presence can read as absent, a genuine deferral can read as ignored, and focus elsewhere can read as goad acknowledgement. DEC-012 assumes a clean surface signal that the data does not provide.'
@@ -41,7 +41,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "The motive-mutation race invalidates 'correlate by construction'; it is not a safely carried risk"
 detail = "The observer rereads LIVE motives on every pass (satan/satan-observer.el:383) and ranks them against the bundle (satan-observer-classify.el:584). It never consults the persisted related_motive_id or cue_handles. CONFIRMED. So an ask that passed the emit-time gate can still mature :no_correlation if motive_replace touched the motive in between — and tick-pulse holds motive-write with motive_replace in its tool list. Design sec-2 and DEC-007 record this as detectable-but-carried, with IMP-002 as the home for an after-the-fact verifier. Detecting a broken loop is not the same as having a closed one, and both legs of the verification intent sit behind it. Either the correlator must honour the persisted motive id, or the design must stop claiming the loop is closed by construction."
@@ -50,7 +50,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "The correlation gate correlates ambient percept to motive, never the question to the motive"
 detail = "Design sec-2's gate compares live motive cues against ambient percept handles only; neither the question text nor its subject participates. The maturity correlator does the same (satan-observer-classify.el:544). CONFIRMED by reading both. So a generic app:goad cue admits ANY question, on any subject, and where several motives carry the handle, file order picks which one is credited (rank ties break by :order). The gate proves 'some motive overlaps the ambient percept', not 'this question concerns that motive'. DEC-007's title and sec-2's claim both overclaim. The per-item topic: handles sec-3 proposes are the obvious lever but the design does not require the ask to carry one."
@@ -64,11 +64,11 @@ severity = "blocker"
 title = "Daily bootstrap deadlock: no day record exists until the keeper answers, so SATAN can never ask first"
 detail = "Design sec-3 conditions the new app:goad handle on the presence of today's day record, precisely so it does not depend on window focus. But backend.py load() returns {} when the file is absent (~/satan/goad/backend.py:69-74) and save() runs only on a 'respond' request (:153). CONFIRMED by read. So before the keeper answers an existing checklist item on any given day, there is no day record, no goad handle, no correlation, and the ask suppresses itself. The elicitation surface cannot be the first goad interaction of the day — which is most of what an autonomous producer is for. The handle's trigger needs rethinking (backend presence? the queue file itself? a daily bootstrap write?)."
 disposition = "fixed"
-response = "THE REFRAME. Disengagement, deferral and delivery are read from goad's own record and queue — the files SATAN already reads for the answer — instead of from panopticon focus telemetry. Accepted. The canon rule keys on SATAN's own queue file, which exists exactly when there is something to ask, rather than on a day record the keeper must create first by answering a checklist item. The deadlock disappears: an ask writes the queue, the queue makes the handle, the handle permits correlation. As a side effect the handle now means 'SATAN has a question outstanding' rather than 'goad has state today', which is the more useful thing for a motive to cue on anyway."
+response = "User-accepted 2026-09-23; design revision 39. Correlation no longer depends on any goad-minted handle, so neither the day-record nor the queue-file keying can deadlock the first ask. sec-2 'What the rule is for' reframes the goad canon rule as perception for later runs; sec-10 requires a perceived non-goad subject (F-20). VT-13."
 
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "backend.py save() serializes only static ITEMS, so a queued SATAN answer is dropped on write"
 detail = "save() iterates `for item_id, _section, label in ITEMS` (~/satan/goad/backend.py:77-90) — the hardcoded list. CONFIRMED by read. Design sec-4 and sec-7 specify merging the queue into pending() and echoing intervention_id, but never say save()'s static enumeration must be replaced. As written, a dynamic SATAN item would render, be answered, mutate the in-memory items map, and then vanish at persist time. ASM-001's round trip would fail silently, and backend.py has no tests to catch it. The fixture must prove a queued id survives respond -> save -> load."
@@ -77,7 +77,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The suppression sensor alert has no implementation path and needs durable state the design denies it"
 detail = "Existing alerts are derived PRE-SPAWN from a closed sensor-status table covering only current-window, focus and browser faults (satan/satan-sensor-alerts.el:102, :322). Goad suppression happens LATER, inside a model-invoked tool handler, with no enqueue API and no sensor-status source. satan-sensor-alerts.el is absent from the design's affected surface (sec-10). And sec-7 states the suppression is not audited, removing the one durable source that could have fed the next tick. CONFIRMED. Verification item 6 ('an ask with no correlating motive is suppressed, and the suppression is perceptible') is not achievable as designed. DEC-011's suppression channel needs a real mechanism or a different one."
@@ -91,7 +91,7 @@ severity = "major"
 title = "The memory trace does not hold the answer, and is not written under the tick's memory-write capability"
 detail = "The positive observer trace records intervention id, motive id, predicates, classification and confidence (satan/satan-observer.el:131, :141) — not the question, not the submitted value. It calls satan-memory-store-mark directly (:149) rather than being dispatched through a tool under the mode's capability. CONFIRMED. Design sec-7 claims the answer 'becomes a memory trace ... written under tick-pulse's existing memory-write capability, so the answer path needs no new capability'. Both halves are wrong: the existing trace records that an intervention worked, not what the keeper said, and the capability claim describes a path that is not taken. DEC-011's third landing place needs designing rather than asserting."
 disposition = "fixed"
-response = "THE REFRAME. Disengagement, deferral and delivery are read from goad's own record and queue — the files SATAN already reads for the answer — instead of from panopticon focus telemetry. Accepted on both halves. The observer's trace records that an intervention worked, not what the keeper said, and it writes via satan-memory-store-mark rather than through a capability-gated tool — so DEC-011's third landing place described something that does not happen. The revised design specifies the answer trace explicitly as its own write, carrying the question and the submitted value, and states which path performs it rather than borrowing the observer's. If that write is not worth its cost, the honest alternative is to drop the third landing place and say the answer lives in the day record and the percept only — but it will be a decision, not an assumption."
+response = "User-accepted 2026-09-23; design revision 39. The answer trace is written by the observer: satan-observer--persist-positive, which already writes the observation trace for :worked, gains the question (message) and submitted value for kind ask. sec-5 positive leg, sec-6. VT-17."
 
 [[finding]]
 id = "F-10"
@@ -100,11 +100,11 @@ severity = "major"
 title = "The ask outcome window (60min) and the observer evidence window (30min) disagree, and the predicate has no upper bound"
 detail = "docs/attributes/outcome-semantics.md:103 recommends a 60-minute outcome window for kind 'ask'. Observer evidence always ends at a fixed 30 minutes (satan-observer-classify.el:28, :80). The predicate design sec-6 proposes requires only `at > emitted_at` with no upper bound. CONFIRMED. So a deferral or focus at minute 45 is invisible to focus evidence, while a late day-record answer can still fire the predicate as :worked if classification runs late. The design never states what outcome-window-minutes the ask handler actually passes."
 disposition = "fixed"
-response = "THE REFRAME. Disengagement, deferral and delivery are read from goad's own record and queue — the files SATAN already reads for the answer — instead of from panopticon focus telemetry. Accepted. The revised design states the outcome-window-minutes the ask handler passes, rather than leaving the 60-minute recommendation in outcome-semantics.md and the observer's fixed 30-minute evidence window to disagree silently. Under the reframe the tension is much reduced — the answer signal comes from the day record, which has no 30-minute horizon — but the predicate still needs an explicit upper bound so a late answer cannot register as :worked outside the declared window, and the design will give it one."
+response = "User-accepted 2026-09-23; design revision 39. outcome-window-minutes is 60 (outcome-semantics.md:103), passed by the handler (sec-3). The predicate bounds at emit+60; the goad record is contributed unbounded by after's 30-min horizon and windowed by its consumers (sec-2, sec-8). VT-15."
 
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The queue projection is only rewritten by the ask handler, so it is not self-maintaining"
 detail = "Design sec-4 specifies the rewrite in the ask handler and sec-4's table claims the whole-rewrite is 'total by construction' with 'no reaping'. But an ask stops being open when the observer classifies it, independently (satan/satan-observer.el:424), and nothing rewrites the queue at that moment. CONFIRMED. So a matured, retired intervention keeps its queue entry until some later ask happens to rewrite the file, and backend.py keeps re-presenting it. Equally, after state loss nothing regenerates until the next ask. The regenerability property DEC-005 rests on needs a trigger, not just a writer."
@@ -113,7 +113,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-12"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "goad_ask in interactive MCP mode has no percept, so it suppresses or never correlates"
 detail = "Interactive mode exposes every registered tool and capability automatically (satan/satan-mcp.el:66). Its session is minted with a synthetic bundle carrying no percept and its tool context is frozen immediately (:154, :177, :197); later boot-context perception runs on a copy and updates neither (satan/satan-context.el:642, satan-mcp.el:358). CONFIRMED by GPT. So an interactive goad_ask reads nil :percept-handles and suppresses at emit, and the maturity bundle has no percept either. The design must either prohibit the tool in interactive mode explicitly or repair MCP run-state coherence — it currently does neither, and sec-2's 'same handle list' claim is silently false on that path."
@@ -122,7 +122,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-13"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "ASM-001's mechanism is wrong: intervention_id must ride an option or field id, not event.data"
 detail = "GPT verified the zero-host-change identity premise is ACHIEVABLE but by a different route than ASM-001 implies. goad echoes backend-owned option and field ids (docs/specs/001-host-backend-protocol.md:87) while only view_id is host-minted (:139); ingress event.data does NOT survive into a 'respond' request. ASM-001's body leans on SPEC-003/R-11's opaque data field and on the `yes:meds` option-id precedent as parallel evidence. The option-id route is the one that works and the record should say so specifically, because it constrains the id encoding (option ids must remain parseable back to an intervention_id)."
@@ -131,7 +131,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-14"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Design sec-9 and sec-6 disagree about what 'saw it and did nothing' classifies as"
 detail = "sec-9 states verification item 3 as 'present, saw it, did nothing' => :ignored. sec-6's truth table says goad focus with no answer => :unknown :low, correctly, because that is a deferral. If the keeper genuinely 'saw it' they focused goad, which sec-6 routes to :unknown. The two sentences are incompatible as written. sec-9 means 'present at the machine but never looked at goad'; it should say that."
@@ -140,7 +140,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-15"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Restoring global quiet hours to protect the doorbell is scope creep with unrelated effects"
 detail = "satan-tick-quiet-hours suppresses the ENTIRE tick before any mode is selected (satan/satan-tick.el:124, satan-tick-quiet-p consulted first in satan-tick). CONFIRMED. Design sec-8 proposes restoring it specifically to stop the goad doorbell ringing overnight. That would also disable overnight observer processing, memory work, inbox work and every other tick behaviour — none of which this slice has any business changing. A goad-specific emission window is the contained solution. The underlying hazard (a doorbell on a round-the-clock ~30min tick) is real and still needs an answer."
@@ -149,7 +149,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-16"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "'Handles exist only for what reaches the evidence window' is overstated"
 detail = "Design sec-3 states handles exist only for what reaches the evidence window and has a rule to name it. Canon rules also emit context- and hint-derived handles (satan/satan-memory-canon.el:429 and the normalized-hints path). GPT confirms this does not create a missed probe or tool route, so DEC-004's route decision is unaffected — but the absolute phrasing is false and a future reader may rely on it."
@@ -158,7 +158,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-17"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "SUSPECTED: presenting the goad window may itself generate a goad focus segment"
 detail = "Rendering a prompt calls window.show() (crates/goad/src/glass.rs:328) and the application id is 'goad' (crates/goad/src/main.rs:124). If the compositor focuses newly shown windows, an untouched prompt produces a goad focus event immediately, and under DEC-012's narrowing that reads as acknowledgement — turning every ignored prompt into :unknown and destroying the keystone from the other direction. GPT rates this SUSPECTED (medium confidence): it did not verify compositor behaviour. Needs a measured fixture — present a prompt, touch nothing, inspect the focus segments — not an assumption either way."
@@ -167,7 +167,7 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-18"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "A SATAN ask merged into pending() renders only if it reaches position 0"
 detail = "Found while verifying the reframe's own premise; neither the adversarial pass nor the original design caught it. backend.py main() renders ONE item per exchange — it takes waiting[0] from pending() and nothing else (~/satan/goad/backend.py:157-159). pending() returns every unanswered, undeferred item in ITEMS order, and the ITEMS comment says so outright: 'id, section, label. Order is ask order.' (:22). There are 14 hardcoded checklist items. CONFIRMED by read. So a SATAN question appended to pending() is not shown until every checklist item ahead of it is answered or deferred — on a normal day, effectively never. The design says merge the queue into pending() and says nothing about position. It must specify priority (SATAN asks at the front, or their own slot) or the PROMPT leg does not work at all. This also bears directly on delivery proof: being in the queue is not being rendered."
@@ -176,12 +176,84 @@ response = "THE REFRAME. Disengagement, deferral and delivery are read from goad
 
 [[finding]]
 id = "F-19"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "The day record cannot distinguish an explicit Later from a bulk Enough dismissal"
 detail = "answer() writes the SAME deferred_at key for both verbs (~/satan/goad/backend.py:132-146): the later verb sets deferred_at on one item; the enough verb loops over every pending item and sets deferred_at on all of them. CONFIRMED by read. For SL-016 these are opposite signals — Later is engagement (the keeper saw this question and postponed it), Enough is dismissal (the keeper cleared the slot, quite possibly without ever seeing the SATAN question, since only the first pending item is ever rendered). The record makes them identical, so no predicate and no reframe can tell them apart. Compounding it, the enough verb defers a SATAN ask the keeper never saw, and is_deferred holds until the next slot boundary (slots every two hours). The reframe onto goad's record therefore requires enriching what the record stores: a presented_at stamp, and distinct deferral provenance. Both are backend.py changes, already in scope."
 disposition = "fixed"
 response = "THE REFRAME. Disengagement, deferral and delivery are read from goad's own record and queue — the files SATAN already reads for the answer — instead of from panopticon focus telemetry. Accepted, self-raised. answer() writes the same deferred_at for the later verb and the enough verb, so the record cannot distinguish 'the keeper saw this question and postponed it' from 'the keeper cleared the slot, probably without ever seeing it' — opposite signals for this slice, and the bulk case can defer a SATAN ask the keeper never saw. The revised design enriches the record with distinct deferral provenance alongside F-1's presented_at stamp. Without both, the reframe cannot actually read engagement out of goad's record, so these two are the reframe's load-bearing backend changes and they are stated as such rather than left implicit."
+
+[[finding]]
+id = "F-20"
+status = "answered"
+severity = "blocker"
+title = "Queue-derived goad handles can never correlate the ask that creates them; the subject gate is circular"
+detail = "Design sec-10 (§2) requires the ask to name a handle in ctx :percept-handles AND have that handle in the winning motive's cue; sec-2 (§3) says the canon rule emits app:goad plus topic:<Subject> 'per outstanding question' from the queue file, and that 'the topic: emissions are load-bearing'. But the percept is frozen pre-spawn (satan-percept.el:65-67; tool ctx :percept-handles = prepare :percept :handles, satan-run.el:325-334), and the maturity correlator reads the SAME emitting run's bundle.json (satan-observer-classify.el:500-509). The queue entry for question Q is written by the tool inside that run, so neither app:goad (first ask, empty queue) nor topic:<Q-subject> can be in the percept that gates or correlates Q. No other source emits topic: in a percept: satan-percept-build passes hints=nil to canonicalize (satan-percept.el:67), and hint.topic (satan-memory-canon.el:452-459) is the only topic: rule. Failure scenario: SATAN wants to ask about subject S for the first time; percept has no topic:S; gate fails closed; suppression recorded; repeat forever — F-6's 'SATAN can never ask first' deadlock recurs per subject. F-6's answer ('an ask writes the queue, the queue makes the handle, the handle permits correlation') only holds for a LATER run, never for the ask itself. If instead the subject may be any perceived handle (app:, bough_node:, artifact:...), then the goad canon rule is decorative for correlation, DEC-004's 'only this route produces handles' rationale no longer carries the route choice, and sec-2's load-bearing claim is false. The design must say which handles may serve as subject and where they come from for a first ask."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-10: the subject must be a perceived handle that is NOT goad-minted (app:goad / goad topic:); goad handles are circular because the percept is frozen before the question exists and the observer reads that frozen percept. The goad canon rule is for perception by later runs (sec-2). DEC-004 amended. VT-13."
+
+[[finding]]
+id = "F-21"
+status = "answered"
+severity = "major"
+title = "Ambient predicates P1-P3 run before the ask branch, so an undelivered ask can mature :worked"
+detail = "Design sec-5 says the ask's verdict is read from goad's record ('Nothing is inferred from where the keeper's eyes were'; never-presented -> :unknown :high undelivered; verification item 12). But satan-observer-classify (satan-observer-classify.el:470-485) runs ALL of satan-observer--predicates first and only calls classify-negative when none fire. The three existing predicates are kind-agnostic: P1 editor_edit_in_window reads :focus_segments (focus telemetry — exactly what DEC-013 removed), P2 git_commit_observed and P3 fs_recent_delta read git/recentf (satan-observer-classify.el:147-250), each firing whenever the winning motive has :project_cwd. Scenario: SATAN asks about subject S under a motive with :project_cwd ~/dev/satan; goad never renders it (slot not reached, backend dead); the keeper commits in ~/dev/satan within 30 min; P2 fires -> :worked :medium, motive worked_count bumped and a positive trace written (satan-observer.el:110-163) for a question never seen. The precedence table's first row is unreachable whenever any ambient predicate fires, and the goad answer predicate can co-fire with ambient ones to reach :high (sec-5 endorses this). Needs: for kind 'ask', dispatch on the goad record before (or instead of) the ambient predicates, or gate P1-P3 by kind; and a VT for 'undelivered ask + in-window commit'."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-5: predicates scoped by kind — for kind ask the answer predicate is the only positive predicate; ambient P1-P3 do not apply. Other kinds unchanged. VT-14."
+
+[[finding]]
+id = "F-22"
+status = "answered"
+severity = "major"
+title = "Doorbell is not optional: backend.py's next_check pins goad to 2-hour slots, so queued asks mature before presentation"
+detail = "Design sec-4 (§5): 'The queue file is the durable carrier and goad polls on its own schedule (default_poll 30m)' and 'the doorbell can ship last, or not at all in v1'; sec-9 repeats it; verification item 5 claims a refused goad-emit 'loses nothing: the question is still asked at the next poll'. False for this backend: backend.py main() always returns next_check = next_slot(now) (~/satan/goad/backend.py:40,54-60,160) — slots at 9,11,...,23, and 23:00 -> 09:00 next day. goad's schedule takes the backend's instruction over default_poll; default_poll applies only when next_check is absent (~/dev/goad/crates/goad-semantics/src/schedule.rs:233-248). None of the four backend changes (sec-3 table) alters next_check. Scenario: ask recorded 13:10 with a 60-min window, doorbell absent or refused (exit 1/2); goad next evaluates at 15:00; the observer's first run after 14:10 classifies :unknown :high undelivered and the classification-time queue rewrite (sec-3) retires it — it is never shown. Roughly any ask whose window does not straddle a slot boundary, and every ask after 23:00, is lost. Either the doorbell is mandatory for v1 (and a refused ring is not harmless), or backend.py must shorten next_check while SATAN asks are queued (a fifth backend change), or the outcome window must exceed the slot interval."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-4: the doorbell is the primary delivery path, rung by the ask tool at emit (sec-3 step 7) and shipped with PROMPT (sec-9). The slot poll is fallback; late delivery matures undelivered, never :ignored. Re-evaluation after an engaged exchange named as unverified, plan verifies. VT-5."
+
+[[finding]]
+id = "F-23"
+status = "answered"
+severity = "major"
+title = "The ask branch reads goad state out of a fixed 30-minute 'after' window and measures elapsed time from emit, not presentation"
+detail = "Design sec-5 reads presented_at/deferral/answer 'out of after exactly as the positive predicate does', and sec-8 says the predicate requires the answer inside the declared outcome window. But 'after' is assembled for [emit, emit+satan-observer-window-mature-seconds=1800s] regardless of outcome_window_minutes (satan-observer-classify.el:28,78-85,112-126), with the day file keyed by (substring end 0 10) (satan-memory-evidence.el:506). The design never says whether the goad evidence source honours [start,end]. If it does: with outcome-semantics.md:109's 60-min window for 'ask', a presentation, Later or answer at minute 31-60 is invisible, so a delivered ask classifies :unknown :high undelivered and a timely answer never fires :worked. If it does not (reads the file as of classification): the verdict depends on when the observer happens to run (anywhere in the 24h mature band), and post-window Laters/answers change it. Separately, 'presented, nothing else -> :ignored :medium untouched' has no exposure bound: an ask first rendered at minute 59 of a 60-min window (likely, given slot-bound presentation — see the next_check finding) and classified at minute 60 is recorded as the keeper ignoring it after seconds of exposure — the F-1 lesson (a delivery artefact recorded as the keeper's silence) reintroduced. Needs: the goad source's bound semantics, the window value, and an exposure criterion (e.g. presented_at + minimum dwell <= window end, else :unknown)."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-2: the goad source ignores the assembler's time bounds; consumers apply the ask's 60-min window. sec-5: short_exposure row — presented in the window's last 10 min matures :unknown :low. VT-15."
+
+[[finding]]
+id = "F-24"
+status = "answered"
+severity = "major"
+title = "'Open rows' is undefined; stale asks are never classified and never leave the queue"
+detail = "Design sec-3 rewrites queue.json 'from the open rows' at emit and at classification (F-11 fix), and verification item 8 tests total regeneration. No existing query returns them: satan-intervention-pending returns only MATURED rows without outcome and EXCLUDES rows past window+24h (satan-intervention.el:839-875); satan-intervention-recent ignores outcomes (:877-910). outcome-semantics.md:221: after :stale 'the auto-classifier ignores the intervention'. So an ask not classified within window+24h never gets an outcome row. If 'open' = 'no outcome row', it stays in the queue forever and backend.py (which gives SATAN asks priority, sec-3 change 1) re-presents it ahead of the checklist indefinitely. This is not an edge case once SL-018 lands: the observer runs only inside satan-broker--spawn (satan-broker.el:749-753), and SL-018's credential_deferred branch spawns nothing (.doctrine/slice/018/design.md sec-1 diagram, sec-3 step 4), so a keeper away with the vault locked for >24h strands every outstanding ask as stale. The design's SL-018 paragraph (sec-7, sec-9) considers only the producer, not the observer. Needs: a defined open-set predicate with a staleness cutoff (and the new query named in satan-intervention.el's surface row), plus a VT for a stale ask leaving the queue."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-3: open rows defined (kind ask, no outcome, window not passed); every queue entry carries expires_at and backend.py change 5 skips expired entries, so the queue is self-limiting when no run spawns (SL-018 defer). VT-16."
+
+[[finding]]
+id = "F-25"
+status = "answered"
+severity = "minor"
+title = "Affected surface omits satan-observer.el, whose verdict mapping drops the ask branch's evidence labels"
+detail = "The design needs two changes in satan-observer.el yet lists it nowhere in sec-9: (1) the queue rewrite at classification, which sec-3 itself locates at satan-observer-persist-verdict (satan-observer.el:264); (2) satan-observer--verdict-classify-args (satan-observer.el:180-262) persists :unknown evidence as only (:source_events :reason) and :ignored evidence as target_surface/ack fields. The ask branch's labels undelivered / deferred / dismissed / untouched (sec-5 table) are therefore not persisted unless mapped, so 'dismissed' and 'untouched' become indistinguishable in the outcome row and audit. Sec-5's claim that the undelivered row 'uses the vocabulary notify_send already writes' is also unmet: notify writes it as :notes 'undelivered: ERR' (satan-tools-notify.el:65), a field the observer path never sets. The matured-:no_correlation attribute (item 7) and the answer memory trace likewise need an observer-side writer that the surface does not name."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-9 surface gains satan-observer.el (classification-time queue rewrite, answer trace, evidence labels in satan-observer--verdict-classify-args). sec-5 says the mapping gains the labels. VT-18."
+
+[[finding]]
+id = "F-26"
+status = "answered"
+severity = "nit"
+title = "Ask handler checks correlation before the MCP refusal, so interactive use records spurious suppression"
+detail = "Design sec-3 handler order: step 1 resolves the motive and 'fails closed ... recording the suppression' (an attribute, sec-6); step 2 refuses in interactive MCP mode. In MCP, :percept-handles is nil (sec-10, satan-mcp.el:155-197), so step 1 always fails and enqueues a suppression attribute before step 2 refuses — polluting the very signal meant to report SATAN's muteness. Swap steps 1 and 2 (and state where the goad quiet-window check sits in the list; it is absent from the steps though sec-7 requires it)."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-3 handler order: MCP refusal first, then quiet-window refusal, then correlation/suppression. Neither refusal records a suppression."
+
+[[finding]]
+id = "F-27"
+status = "answered"
+severity = "nit"
+title = "Governance cites REV-002 / ledger row-4 note as accepting the undelivered auto-verdict writer; it does not"
+detail = "Design sec-7 (§8) trigger 2: the undelivered verdict 'goes through the auto-verdict writer notify_send already uses, accepted with SL-017 under REV-002 (ADR-017 row 4 note)'. REV-002 and the row-4 standing note (.doctrine/adr/017/authority-ledger.md:71-81) cover operational alarms (failure announcements, listener death reports) as non-audit emits; neither mentions satan-tools-notify--mark-undelivered or any outcome writer. The substantive conclusion survives — the writer appends via satan-audit-record through satan-intervention-classify-record (satan-intervention.el:448-483), the single row-4 writer — but the cited acceptance does not exist. Cite the actual basis instead. Also stale: sec-5 point 1 and the sec-9 risk row still describe the ack gate as eq vs string; ISS-014 is fixed in code (satan-observer-classify.el:271-277 now uses equal)."
+disposition = "fixed"
+response = "User-accepted 2026-09-23; design revision 39. sec-7 trigger 2 no longer cites REV-002 as accepting the writer; it states the reuse of the existing auto-verdict writer and leaves a possible ledger note to /reconcile. Stale ISS-014 text removed (fixed at 6ff52f7) in sec-5, sec-8, sec-9."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

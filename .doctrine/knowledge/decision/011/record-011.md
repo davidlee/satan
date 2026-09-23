@@ -70,3 +70,11 @@ question and the value, on a stated path. If that is not worth its cost the
 honest alternative is to drop the third landing place and say the answer lives
 in the day record and the percept only — but that will be a decision rather than
 an assumption.
+
+
+## Amendment, 2026-09-23 — the trace has a named writer (RV-007 F-9)
+
+The memory-trace landing is written by the observer: an answered ask
+classifies `:worked` and passes through `satan-observer--persist-positive`,
+whose existing `observation` trace gains the question and the submitted value
+for kind `"ask"`. No new writer or capability. User-accepted 2026-09-23.

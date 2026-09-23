@@ -106,3 +106,12 @@ absent. Because the ack gate never opens, `classify-negative` in fact awards
 `:ignored :low` **unconditionally** to every user-facing intervention that fires
 no predicate. That is [[ISS-014]]'s blast radius, not this slice's to fix.
 
+
+## Amendment, 2026-09-23 — predicates are scoped by kind (RV-007 F-21)
+
+For kind `"ask"` the answer predicate is the only positive predicate; the
+ambient three (editor focus, git commit, recentf) do not apply, since none is
+evidence of an answer and they would mark a never-presented ask `:worked`. The
+negative leg is the kind-`"ask"` branch of `classify-negative` (DEC-013
+amendment), not the surface-narrowed ack path, which remains withdrawn.
+User-accepted 2026-09-23.

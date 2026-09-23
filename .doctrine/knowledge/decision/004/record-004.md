@@ -97,3 +97,18 @@ emits context- and hint-derived handles (`satan-memory-canon.el:429` and the
 normalized-hints path). The claim that carries the route decision is narrower and
 is the one to rely on — *no probe and no post-percept tool can contribute a
 handle for that run*.
+
+
+## Amendment, 2026-09-23 — the route serves perception, not correlation (RV-007 F-20)
+
+The rationale above — only this route produces handles, so only it lets an ask
+correlate — does not hold. The percept is frozen before any question exists and
+the observer correlates against that same frozen percept, so goad-minted
+handles can only describe questions earlier runs queued; requiring one as an
+ask's subject is circular. The ask now correlates on a perceived non-goad
+subject handle (design sec-10). The choice of route stands on two other
+grounds: it is the only route that puts goad state into the percept for later
+runs, and the same assembler feeds the observer's `after` state, which the
+answer predicate and the `"ask"` branch read. The goad contribution ignores the
+assembler's time bounds; its consumers apply the ask's 60-minute window.
+User-accepted 2026-09-23.
