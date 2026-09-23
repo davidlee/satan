@@ -77,9 +77,14 @@ Nothing implemented.
 - **The design is unlocked.** Review policy `adversarial-only`; the lock gate
   needs `section-reviewed` (adversarial lane), `review-disposed` and
   `design-accepted`. `design-accepted` is a user act regardless of policy.
-- **RV-007 round 2 launched** at `041ba2f` (Claude raiser) over F-6, F-9, F-10,
-  F-20..F-27 plus new defects in `041ba2f`. Check `doctrine review status
-  RV-007` for its outcome; answer anything contested or raised via `/feedback`.
+- **RV-007 round 2 done** (Claude raiser, at `041ba2f`): all 11 answers
+  verified. **Five new findings open, awaiting responder:** F-28 major (goad
+  handles still count in motive ranking — can outrank the subject motive, F-5
+  returns), F-29 major (which day file the unbounded goad read uses — midnight
+  crossing; goad quiet-hours default unstated), F-30 minor (`presented_at` first
+  vs latest render), F-31 minor (answer after window has no precedence row),
+  F-32 nit (stale text at design.md ~:736, ~:469, ~:562). Adjudicate via
+  `/feedback`; details on the ledger.
 - **Lock disposition plan (not yet user-agreed):** the run's pass ledger RV-006
   is empty and STALE; the adversarial history is RV-007. Proposed:
   `review-disposed` as `waived`, reason citing RV-007 — needs the user's
