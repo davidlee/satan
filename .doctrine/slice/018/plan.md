@@ -82,7 +82,8 @@ amended to match.
   pre-staged by a concurrent writer).
 - **Live Emacs loads the working tree.** Mid-slice working-tree states are
   what a restarted Emacs would run. Each phase ends green and self-consistent;
-  PHASE-05 is the first that changes live behaviour. Do not restart the live
+  PHASE-03 (`run_busy`) is the first to change live behaviour; PHASE-05 changes
+  credential handling. Do not restart the live
   Emacs before PHASE-08 unless every phase through PHASE-05 is complete.
 - **VT numbering is slice-wide.** VT-1..VT-24 are design sec-9's ids,
   unchanged. This plan adds VT-25..VT-29 (backend probe, backend adapter,
