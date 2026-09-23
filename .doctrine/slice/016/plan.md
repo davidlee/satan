@@ -5,7 +5,7 @@ verification and links live in the TOML.
 
 ## Overview
 
-Eight phases across three repos: `~/satan` (corpus: `backend.py`, the tool
+Nine phases across three repos: `~/satan` (corpus: `backend.py`, the tool
 description), `~/dev/satan-attrd` (two attribute reasons), and this repo. The
 build goes producer-first: the backend that writes the record lands and is
 tested before any SATAN code reads it, so SATAN's fixtures are the backend's
@@ -31,7 +31,11 @@ PHASE-05  attrd reasons ask_suppressed /        (~/dev/satan-attrd)
 PHASE-06  PROMPT + DOORBELL: goad_ask           disabled by default
           (+ ~/satan/tools/goad_ask.md)
     │
-PHASE-07  the loop: observer legs, kind "ask"   ask-scoped; other kinds unchanged
+PHASE-07  the loop 1: correlation route,        ask-scoped; other kinds unchanged
+          midnight exemption, answer predicate
+    │
+PHASE-09  the loop 2: negative branch, labels,  ask-scoped
+          answer trace, queue retirement
     │
 PHASE-08  end-to-end through real backend.py;   enable, with the user
           redeploy attrd; live VH-1, VH-2
@@ -46,9 +50,10 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
   JSON switch rides in the same phase because it is a pure format change the
   characterisation tests already cover.
 - **Backend asks before SATAN reads them (PHASE-02 → PHASE-03).** Design sec-8:
-  a fixture must not build the value under test (the ISS-014 lesson). The
-  backend tests emit golden day files and a golden queue; SATAN's tests read
-  those. PHASE-08 VT-43 re-derives them from the real backend so they cannot
+  a fixture must not build the value under test (the ISS-014 lesson). A
+  corpus `just goldens <dir>` recipe drives the real backend and writes golden
+  day files and a queue, committed here by hand; SATAN's tests read those. No
+  test writes across repos. PHASE-08 VT-43 re-derives them from the real backend so they cannot
   drift.
 - **Perceive before prompt (PHASE-03 → PHASE-06).** Design sec-9: the evidence
   slice is what both the percept and the observer read. The tool's
@@ -64,6 +69,12 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
   the tool records (`related_motive_id`, `cue_handles`, window 60); the queue
   rewrite function the observer calls at classification is built with the
   tool.
+- **The observer work is split (PHASE-07 → PHASE-09).** PHASE-07 settles
+  *whether* an ask is classified and what counts as its answer; PHASE-09 adds
+  what silence means. The split keeps each observer change reviewable, and
+  PHASE-09's verdict table rests on PHASE-07's routing. PHASE-09 runs before
+  PHASE-08: ids are immutable, so array order, not the number, is execution
+  order.
 - **Disabled until PHASE-08.** `satan-goad-enabled` defaults nil. Nothing
   between PHASE-02 and PHASE-08 changes what the keeper sees: without a queue
   file the backend is byte-identical, and without the switch the tool
@@ -90,6 +101,7 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
 |---|---|
 | Round-3 review answers (design sec-2 emit date, sec-5 window-end judgement) never independently verified | encoded as tests, not prose: VT-24, VT-25, VT-31 (emit date), VT-15, VT-23 (window end). Re-read both sections at PHASE-03 and PHASE-07 phase-plan |
 | The live goad unit runs `backend.py` from the corpus tree — every edit is live on save | PHASE-01/02 develop test-first; the format switch and data conversion land together; with no queue file PHASE-02 is inert; one live evaluate after each commit |
+| Tick timer dormant (ISS-022) | PHASE-08's live asks come from a driven tick-pulse run |
 | The user's uncommitted corpus changes (`goad/data/*`, `goad/goad.service` deleted, `motd.txt`) | not touched; the day-file conversion in PHASE-01 asks first, since today's file is uncommitted and live |
 | attrd delta values are a behavioural tuning choice | taken with the user at PHASE-05 phase-plan |
 | Green is not green (DB tests skip without `SATAN_DB_HOST`; `just check` exits 0 on failures, ISS-008; concurrent runs clobber, ISS-013) | every phase records ran/skipped counts; one `just check` at a time |
@@ -108,6 +120,12 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
 - Queue path default `$XDG_STATE_HOME/satan/goad/queue.json`, with a
   `GOAD_SATAN_QUEUE` override for tests; SATAN's side is
   `satan-state-path "goad/queue.json"`.
+- `topic:` handles are `satan-goad-subject-topic` of the subject, one
+  function over `satan-memory-canon--slugify`, shared by the canon rule and
+  the tool's goad-minted check: raw subject values (`/`, `~`) fail the cue
+  regex.
+- The queue rewrite reuses `satan-intervention-pending`, filtered to kind
+  "ask" inside its window. No new query.
 - New modules: `satan-goad.el` (paths, pure readers, queue rewrite) and
   `satan-tools-goad.el` (the tool). Both POL-001 No-branch tenants
   (DEC-008).
