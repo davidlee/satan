@@ -5,40 +5,43 @@ verification and links live in the TOML.
 
 ## Overview
 
-Nine phases across three repos: `~/satan` (corpus: `backend.py`, the tool
+Twelve phases across three repos: `~/satan` (corpus: `backend.py`, the tool
 description), `~/dev/satan-attrd` (two attribute reasons), and this repo. The
 build goes producer-first: the backend that writes the record lands and is
 tested before any SATAN code reads it, so SATAN's fixtures are the backend's
 own output.
 
 ```
-PHASE-01  backend.py fixtures, JSON record      (~/satan)   behaviour unchanged
+PHASE-01  backend.py fixtures, JSON record      (~/satan)   done
+PHASE-02  backend.py asks + goldens             (~/satan)   done — boolean answers
+PHASE-03  PERCEIVE readers, :goad, canon rule               done
+    │   ── design revised: answer forms (DEC-024..028) ──
+PHASE-10  backend.py answer forms: opt: ids,    (~/satan)   rework of PHASE-02
+          {option, values}, shape check,
+          goldens regenerated
     │
-PHASE-02  backend.py asks: queue, priority,     (~/satan)   inert: queue absent
-          presented_at, provenance, emit date,
-          expiry  ──► golden fixtures into satan/test/goad-fixtures/
+PHASE-11  PERCEIVE rework: form on the queue                rework of PHASE-03
+          entry, object values, 1 KiB truncation
     │
-PHASE-03  PERCEIVE: satan-goad.el readers,      pure; queue still empty
-          evidence :goad slice, canon rule
+PHASE-04  seams: undelivered writer, quiet-p,   refactor; + state-home helper
+          defcustoms, capability, XDG helper    (DEC-027)
     │
-PHASE-04  seams: shared undelivered writer,     refactor; no new behaviour
-          quiet-p window arg, defcustoms,
-          goad-ask capability
+PHASE-12  intervention record: migration 0008,  DEC-024, DEC-028
+          :form, JSON row reads, open-asks query
     │
-PHASE-05  attrd reasons ask_suppressed /        (~/dev/satan-attrd)
-          ask_uncorrelated + SATAN builder
+PHASE-05  attrd reasons + SATAN builder         (~/dev/satan-attrd)
     │
-PHASE-06  PROMPT + DOORBELL: goad_ask           disabled by default
-          (+ ~/satan/tools/goad_ask.md)
+PHASE-06  goad_ask: form validator, refusal,    disabled by default
+          queue from open-asks (+ goad_ask.md)
     │
-PHASE-07  the loop 1: correlation route,        ask-scoped; other kinds unchanged
-          midnight exemption, answer predicate
+PHASE-07  the loop 1: correlation, midnight,    ask-scoped
+          answer predicate (any value shape)
     │
 PHASE-09  the loop 2: negative branch, labels,  ask-scoped
-          answer trace, queue retirement
+          {option, values} trace, retirement
     │
-PHASE-08  end-to-end through real backend.py;   enable, with the user
-          redeploy attrd; live VH-1, VH-2
+PHASE-08  end to end incl. a form ask;          enable, with the user
+          apply 0008, redeploy attrd, VH-1/2
 ```
 
 ## Sequencing & Rationale
@@ -75,6 +78,21 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
   PHASE-09's verdict table rests on PHASE-07's routing. PHASE-09 runs before
   PHASE-08: ids are immutable, so array order, not the number, is execution
   order.
+- **Rework before new work (PHASE-10 → PHASE-11).** PHASE-02/03 landed
+  before the answer-form revision, on boolean answers and `yes:ask:` ids.
+  Phase ids are immutable, so the rework is appended rather than reopening
+  them, and it runs first: every later phase reads the revised record, and
+  SATAN's fixtures must again be the backend's own output before anything
+  new is built on them.
+- **The record before the tool (PHASE-12 → PHASE-06).** The tool records a
+  form and rewrites the queue from the open-asks query; both live in
+  `satan-intervention.el`. Keeping that work in its own phase isolates the
+  riskiest change of the revision — every intervention reader moving from a
+  `|` split to JSON — behind the existing suites, before any goad behaviour
+  depends on it.
+- **The state-home helper rides PHASE-04.** It is a seam fix to shipped code
+  (three copies of one defect), the same character as the phase's other
+  refactors.
 - **Disabled until PHASE-08.** `satan-goad-enabled` defaults nil. Nothing
   between PHASE-02 and PHASE-08 changes what the keeper sees: without a queue
   file the backend is byte-identical, and without the switch the tool
@@ -107,16 +125,20 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
 | Green is not green (DB tests skip without `SATAN_DB_HOST`; `just check` exits 0 on failures, ISS-008; concurrent runs clobber, ISS-013) | every phase records ran/skipped counts; one `just check` at a time |
 | Out-of-repo tests are waived for verify-vt | verified by that repo's check and recorded in notes.md |
 | `goad_ask.md` missing breaks every allowlisting run | PHASE-06 EX-2: corpus description commits before the allowlist change |
+| The JSON switch of every intervention reader (DEC-028) touches shipped code the observer depends on | its own phase (PHASE-12); existing intervention, observer and mark suites must stay green unchanged, with DB tests counted, not skipped |
+| Migration 0008 not applied live — a form ask then fails to project | PHASE-12 keeps formless projection independent of 0008 (VT-52); PHASE-08 EX-4 applies it before enabling |
+| A hand-edited queue can carry a form the host rejects | accepted (design sec-9): the backend checks shape only; goad shows nothing until that ask expires |
 | The autonomous producer needs an authenticating unattended run (SL-018) | enablement only; nothing here needs it to build or verify |
 
 ## Choices made in planning (reversible, stated)
 
-- v1 asks are yes/no, with the checklist's Later and Enough. Free-text or
-  multi-choice asks are a later extension of the args schema.
+- ~~v1 asks are yes/no.~~ Superseded by the answer-form revision
+  (DEC-024, DEC-025): an ask may carry a form of options and fields; with
+  none it is Yes / No. Later and Enough are unchanged.
 - An ask's record is a separate `asks` map in the day file, keyed by
   `intervention_id`; the checklist `items` map is unchanged.
-- Option ids: `yes:ask:<intervention_id>`, which the existing single
-  `partition(":")` already parses.
+- ~~Option ids: `yes:ask:<intervention_id>`.~~ Superseded by DEC-025:
+  `opt:<option-id>:ask:<intervention_id>` for every ask option.
 - Queue path default `$XDG_STATE_HOME/satan/goad/queue.json`, with a
   `GOAD_SATAN_QUEUE` override for tests; SATAN's side is
   `satan-state-path "goad/queue.json"`.
@@ -124,8 +146,9 @@ PHASE-08  end-to-end through real backend.py;   enable, with the user
   function over `satan-memory-canon--slugify`, shared by the canon rule and
   the tool's goad-minted check: raw subject values (`/`, `~`) fail the cue
   regex.
-- The queue rewrite reuses `satan-intervention-pending`, filtered to kind
-  "ask" inside its window. No new query.
+- ~~The queue rewrite reuses `satan-intervention-pending`.~~ Wrong:
+  pending returns matured rows only (RV-015). The queue reads its own
+  open-asks query (DEC-028, PHASE-12).
 - New modules: `satan-goad.el` (paths, pure readers, queue rewrite) and
   `satan-tools-goad.el` (the tool). Both POL-001 No-branch tenants
   (DEC-008).
