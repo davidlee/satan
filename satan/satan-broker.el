@@ -16,6 +16,7 @@
 (require 'satan-custom)
 (require 'satan-run)
 (require 'satan-announce)
+(require 'satan-credential)
 (require 'satan-audit)
 (require 'satan-budget)
 (require 'satan-jsonl)
@@ -59,17 +60,9 @@ before spawning the child.  Set to nil to disable."
     (deepseek   . "DEEPSEEK_API_KEY"))
   "Map SATAN mode `:provider' symbol to its API-key env var name.")
 
-(declare-function my/op-read-env "dl-secret" (var &optional refresh))
-;; Declared special so the `let' below is a dynamic binding dl-secret can see;
-;; without this, lexical-binding would make it a dead local.
-(defvar my/op-read-context)
-(declare-function my/scrub-op-refs-env "dl-secret" (env))
-(defun satan-broker--read-env (var)
-  "Return VAR from the environment, resolving `op://' refs when possible.
-Falls back to `getenv' if `my/op-read-env' is unavailable."
-  (if (fboundp 'my/op-read-env)
-      (my/op-read-env var)
-    (getenv var)))
+(defun satan-broker--key-var (mode)
+  "MODE's provider API-key env var name, or nil when it has none."
+  (cdr (assq (plist-get mode :provider) satan-broker-provider-key-vars)))
 
 (declare-function envrc--export "envrc" (env-dir))
 (declare-function envrc--merged-environment "envrc" (process-env pairs))
@@ -686,6 +679,11 @@ mutual exclusion), or when today's spend has met or exceeded
 audit bundle with the appropriate status and returns the run-id
 without launching the child."
   (let* ((mode (satan-mode-resolve name))
+         ;; SL-018 DEC-020: acquire BEFORE allocating, so a prompt answered
+         ;; late yields a fresh run-id, time and percept.  Skipped (nil)
+         ;; while a child is live: a run refused as busy never prompts.
+         (cred (unless satan-run--spawn-running
+                 (satan-broker--acquire mode)))
          (prepare (satan-run-new-ctx mode))
          (run-id (plist-get prepare :run_id))
          (dir (satan-run-dir-for-id run-id)))
@@ -721,7 +719,11 @@ without launching the child."
            "Scheduled run blocked by active interactive session (DEC-8)"))
          ;; DEC-023: refuse while another run's child is live — the memory
          ;; store's current-run state is process-global and would race.
-         (satan-run--spawn-running
+         ;; Re-checked: a trigger queued behind a blocking prompt fires the
+         ;; moment it is answered.  A nil CRED (acquisition skipped as
+         ;; busy) stays busy even if the child has exited since, so no run
+         ;; spawns without having acquired its key.
+         ((or (null cred) satan-run--spawn-running)
           (message "SATAN broker: a run's child is live — refusing scheduled run (DEC-023)")
           (satan-broker--write-silent-run
            mode prepare dir "run_busy"
@@ -732,15 +734,58 @@ without launching the child."
              mode prepare dir spent satan-budget-daily-tokens)
             (satan-trace-outcome "budget_denied")
             run-id))
+         ((eq (car cred) :deferred)
+          (satan-broker--write-credential-deferred-run mode prepare dir))
+         ((eq (car cred) :unavailable)
+          (satan-broker--write-failed-no-child-run
+           mode prepare dir "credential_unavailable" (cadr cred))
+          (satan-trace-outcome "credential_unavailable")
+          run-id)
          (t
           (satan-trace-outcome "spawned")
-          (satan-broker--spawn mode prepare dir)))))))
+          (satan-broker--spawn mode prepare dir cred)))))))
 
-(defun satan-broker--spawn (mode prepare dir)
+(defun satan-broker--acquire (mode)
+  "Acquire MODE's provider key under its effective policy (design sec-3).
+Returns the `satan-credential-acquire' verdict, its `:env' form extended
+with `:base', the direnv-merged environment the child is built from
+\(computed once here, so the key is looked up where the child gets it).
+A mode with no key var gets (:env nil :refs nil :base BASE).  One error
+boundary: a signal from direnv, the policy (streak walk, threshold) or
+the seam becomes (:unavailable ERR), so the run is recorded, not lost."
+  (condition-case err
+      (let ((base (satan-broker--direnv-env process-environment))
+            (key-var (satan-broker--key-var mode)))
+        (if (not key-var)
+            (list :env nil :refs nil :base base)
+          (let* ((policy (satan-broker--credential-policy mode))
+                 (verdict (satan-credential-acquire
+                           base (list key-var) (plist-get policy :policy)
+                           (plist-get policy :context))))
+            (if (eq (car verdict) :env)
+                (append verdict (list :base base))
+              verdict))))
+    (error (list :unavailable err))))
+
+(defun satan-broker--write-credential-deferred-run (mode prepare dir)
+  "Record a `credential_deferred' run: silent, plus one journal line.
+The line keeps a locked vault visible in `journalctl --user -t satan'
+without a pop every tick (design sec-5)."
+  (let ((run-id (satan-broker--write-silent-run
+                 mode prepare dir "credential_deferred"
+                 "No credential session; mode policy defers (DEC-022)")))
+    (when satan-failure-syslog
+      (satan-announce :journal (format "credential_deferred %s %s"
+                                       (plist-get mode :name) run-id)))
+    run-id))
+
+(defun satan-broker--spawn (mode prepare dir cred)
   "Spawn the jailed harness for MODE under DIR.
 PREPARE is the run_ctx plist returned by `satan-run-new-ctx'
 (carries the frozen run_id + time_now and v0 placeholder slots).
-Returns the run-id.
+CRED is the `satan-broker--acquire' verdict: its `:base' is the child's
+base environment, its `:env' the resolved key, its `:refs' what an
+`auth' failure evicts.  Returns the run-id.
 
 An error before the child exists is recorded, not raised: the run
 ends `failed' with reason `spawn_failed' (see
@@ -826,7 +871,8 @@ owns that run's finalisation and its stderr buffer."
                      :status 'running
                      :audit audit
                      :stdout-log-path stdout-log
-                     :prepare prepare)))
+                     :prepare prepare
+                     :credential-refs (plist-get cred :refs))))
            (observer (condition-case _err
                          (satan-trace-stage "spawn.observer"
                            (satan-observer-process
@@ -857,24 +903,24 @@ owns that run's finalisation and its stderr buffer."
            ;; PREPARE under `:probe_snapshots'.  Committing only here
            ;; means a budget-denied / session-blocked tick perceives but
            ;; never advances any watermark — no sensor signal is lost.
-           (_probe-snapshots (plist-get prepare :probe_snapshots))
+           (probe-snapshots (plist-get prepare :probe_snapshots))
            (_curiosity-signal
             (condition-case _err
                 (satan-trace-stage "probes.commit.curiosity"
                   (satan-sensor-curiosity-probe-commit
-                   (plist-get _probe-snapshots :curiosity)))
+                   (plist-get probe-snapshots :curiosity)))
               (error nil)))
            (_content-signal
             (condition-case _err
                 (satan-trace-stage "probes.commit.content"
                   (satan-sensor-content-probe-commit
-                   (plist-get _probe-snapshots :content)))
+                   (plist-get probe-snapshots :content)))
               (error nil)))
            (_wpm-signal
             (condition-case _err
                 (satan-trace-stage "probes.commit.wpm"
                   (satan-sensor-wpm-probe-commit
-                   (plist-get _probe-snapshots :wpm)))
+                   (plist-get probe-snapshots :wpm)))
               (error nil)))
            ;; DR-010 §3 (DEC-cursor-per-source-intra-day) — consume-side
            ;; ingest-cursor advance.  Reached only on a SUCCESSFUL spawn:
@@ -902,36 +948,27 @@ owns that run's finalisation and its stderr buffer."
              (model (plist-get mode :model))
              (budget-tokens (plist-get mode :budget-tokens))
              (max-budget-tokens (or (plist-get mode :max-budget-tokens) 1000000))
-             (key-var (and provider
-                           (cdr (assq provider
-                                      satan-broker-provider-key-vars))))
-             (key-val (and key-var
-                           (let ((my/op-read-context
-                                  (format "satan broker/%s"
-                                          (or (plist-get mode :name) "?"))))
-                             (condition-case _err
-                                 (satan-broker--read-env key-var)
-                               (error nil)))))
-             (provider-env (delq nil
-                                 (list
-                                  (when provider
-                                    (format "SATAN_PROVIDER=%s" provider))
-                                  (when model
-                                    (format "SATAN_MODEL=%s" model))
-                                  (when budget-tokens
-                                    (format "SATAN_BUDGET_TOKENS=%d" budget-tokens))
-                                  (when max-budget-tokens
-                                    (format "SATAN_MAX_BUDGET_TOKENS=%d" max-budget-tokens))
-                                  (when (and key-var key-val)
-                                    (format "%s=%s" key-var key-val)))))
-             (direnv-env (satan-broker--direnv-env process-environment))
-             (env (my/scrub-op-refs-env
+             (provider-env (append
+                            (delq nil
+                                  (list
+                                   (when provider
+                                     (format "SATAN_PROVIDER=%s" provider))
+                                   (when model
+                                     (format "SATAN_MODEL=%s" model))
+                                   (when budget-tokens
+                                     (format "SATAN_BUDGET_TOKENS=%d" budget-tokens))
+                                   (when max-budget-tokens
+                                     (format "SATAN_MAX_BUDGET_TOKENS=%d" max-budget-tokens))))
+                            (plist-get cred :env)))
+             ;; Fail closed (REQ-010): no credential reference reaches the
+             ;; child, even one the verdict did not need.
+             (env (satan-credential-scrub
                    (append (list (format "SATAN_RUN_ID=%s" run-id)
                                  (format "SATAN_RUN_DIR=%s" dir)
                                  (format "SATAN_BUNDLE=%s" bundle-path))
                            provider-env
                            (plist-get (plist-get mode :harness) :env)
-                           direnv-env)))
+                           (plist-get cred :base))))
              (process-environment env)
              (exec-path (satan-broker--exec-path-from-env env)))
         ;; `setq' INSIDE the stage: `proc' is non-nil the moment a

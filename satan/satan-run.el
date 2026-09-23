@@ -48,7 +48,10 @@ is the handler that writes SATAN's self-curated memory there."
   pre-spawn-completed
   ;; SL-017 sec-7: the harness's parsed error class, or "spawn_failed".
   ;; First write wins — see `satan-broker--on-error'.
-  failure-reason)
+  failure-reason
+  ;; SL-018 sec-6: the ((VAR . REF) …) the run's key was acquired from, so
+  ;; an `auth' failure evicts exactly the ref this run used.
+  credential-refs)
 
 ;; ── Run ID minting ──────────────────────────────────────────────────────────
 
