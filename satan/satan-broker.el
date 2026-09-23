@@ -418,6 +418,25 @@ The harness consumes `:tools' verbatim."
                                    (plist-get mode :name)
                                    (format-time-string "%Y-%m-%d" nil)))))
 
+(defun satan-broker--manifest-or-stub (mode run-id)
+  "Return MODE's manifest for RUN-ID, or a stub when it cannot be built.
+The stub is `(:run_id RUN-ID :mode (:name NAME) :manifest_error MSG)'.
+Admissible for a run that spawns no child: no harness reads its
+manifest, and `satan-audit-open' only writes it — so a broken mode
+\(e.g. an unregistered tool) still leaves a terminal record (I7)."
+  (condition-case err
+      (satan-broker--build-manifest mode run-id)
+    (error
+     (list :run_id run-id
+           :mode (list :name (plist-get mode :name))
+           :manifest_error (error-message-string err)))))
+
+(defun satan-broker--percept-bundle (prepare)
+  "The bundle a run without a context bundle records: PREPARE's percept.
+Consumers (the audit bundle checks, the observer's baseline) read the
+percept from `bundle.json', not the `percept.json' sidecar."
+  (list :percept (plist-get prepare :percept)))
+
 (defun satan-broker--most-recent-target (run-id &optional leaf-suffix)
   "Return the relative symlink target for RUN-ID's run dir.
 For a bucketed run-id (the normal case) this is `<bucket>/<run-id>'
@@ -457,6 +476,8 @@ ISSUE-001 perceive-first fix would be cosmetic).  BUNDLE-EXTRA, when
 supplied, is appended to the bundle plist.  Records a `broker' EVENT
 \(defaulting to STATUS) with EVENT-PAYLOAD (defaulting to `(:reason
 REASON)'), then closes with terminal STATUS and the synthetic FINAL plist.
+The manifest comes from `satan-broker--manifest-or-stub', so a mode
+whose manifest cannot be built still gets its terminal record (I7).
 
 When RENAME-ANNOUNCE is non-nil: `.FAILED'-renames the run dir, repoints
 `most-recent', and dispatches `satan-broker--announce-failure' with
@@ -466,8 +487,8 @@ session-blocked tick does not pollute the failure-streak counter or pop a
 desktop alert; DEC-8 deferral)."
   (unless (file-directory-p dir) (make-directory dir t))
   (let* ((run-id (plist-get prepare :run_id))
-         (manifest (satan-broker--build-manifest mode run-id))
-         (bundle (append (list :percept (plist-get prepare :percept))
+         (manifest (satan-broker--manifest-or-stub mode run-id))
+         (bundle (append (satan-broker--percept-bundle prepare)
                          bundle-extra))
          (audit (satan-audit-open dir manifest bundle prepare)))
     (satan-broker--update-most-recent run-id)
@@ -582,18 +603,31 @@ without launching the child."
   "Spawn the jailed harness for MODE under DIR.
 PREPARE is the run_ctx plist returned by `satan-run-new-ctx'
 (carries the frozen run_id + time_now and v0 placeholder slots).
-Returns the run-id."
+Returns the run-id.
+
+An error before the child exists is recorded, not raised: the run
+ends `failed' with reason `spawn_failed' (see
+`satan-broker--record-spawn-failure') and the run-id is returned.
+An error after `make-process' is re-signalled; the child's sentinel
+owns that run's finalisation and its stderr buffer."
   ;; DEC-8: set the mutual-exclusion flag so the MCP server refuses new
   ;; sessions while this scheduled run is live.  Cleared by the child
   ;; sentinel on exit (`satan-broker--make-sentinel') and by this
   ;; function's error handler if the synchronous launch itself throws.
   (setq satan-run--spawn-running t)
+  ;; SL-017: bound OUTSIDE the `condition-case' so its handler can tell
+  ;; how far the spawn got.  The body assigns them with `setq' and must
+  ;; never re-bind these names — an inner binding would hide the value
+  ;; from the handler (no child seen → double finalise).
+  (let ((run-id (plist-get prepare :run_id))
+        (stderr-buf nil)
+        (run-ctx nil)
+        (proc nil))
   (condition-case err
-      (let* ((run-id (plist-get prepare :run_id))
-         (bundle-path (expand-file-name "bundle.json" dir))
-         (stdout-log (expand-file-name "stdout.log" dir))
-         (stderr-buf (generate-new-buffer
-                      (format " *satan-stderr-%s*" run-id))))
+      (let* ((bundle-path (expand-file-name "bundle.json" dir))
+         (stdout-log (expand-file-name "stdout.log" dir)))
+    (setq stderr-buf (generate-new-buffer
+                      (format " *satan-stderr-%s*" run-id)))
     (unless (file-directory-p dir) (make-directory dir t))
     (satan-broker--update-most-recent run-id)
     (setq satan-memory-store--current-run-id run-id)
@@ -639,7 +673,7 @@ Returns the run-id."
            ;; every pre-spawn consumer takes `satan-run-tool-ctx' of it
            ;; (the one tool-ctx builder).  Each later rebind of PREPARE
            ;; is written back to its slot in the same binding.
-           (run-ctx (make-satan-run
+           (_run-ctx (setq run-ctx (make-satan-run
                      :id run-id
                      :mode mode
                      :start-time (plist-get prepare :start_time)
@@ -655,7 +689,7 @@ Returns the run-id."
                      :status 'running
                      :audit audit
                      :stdout-log-path stdout-log
-                     :prepare prepare))
+                     :prepare prepare)))
            (observer (condition-case _err
                          (satan-trace-stage "spawn.observer"
                            (satan-observer-process
@@ -760,9 +794,11 @@ Returns the run-id."
                            (plist-get (plist-get mode :harness) :env)
                            direnv-env)))
              (process-environment env)
-             (exec-path (satan-broker--exec-path-from-env env))
-             (proc
-              (satan-trace-stage "spawn.exec"
+             (exec-path (satan-broker--exec-path-from-env env)))
+        ;; `setq' INSIDE the stage: `proc' is non-nil the moment a
+        ;; child exists, even if the stage's own bookkeeping throws.
+        (satan-trace-stage "spawn.exec"
+          (setq proc
                 (make-process
                  :name (format "satan-%s" run-id)
                  :command (cons cmd args)
@@ -771,8 +807,24 @@ Returns the run-id."
                  :noquery t
                  :stderr stderr-buf
                  :filter (satan-broker--make-filter run-ctx)
-                 :sentinel (satan-broker--make-sentinel run-ctx)))))
+                 :sentinel (satan-broker--make-sentinel run-ctx))))
         (setf (satan-run-process run-ctx) proc)
+        ;; Wrap the sentinel first, before any other post-child wiring:
+        ;; from here the sentinel owns STDERR-BUF (flush + kill), so an
+        ;; error below leaks nothing and the handler must not kill the
+        ;; buffer — that would break the live child's stderr pipe.
+        (set-process-sentinel
+         proc
+         (let ((existing (process-sentinel proc)))
+           (lambda (p e)
+             (when (buffer-live-p stderr-buf)
+               (let ((coding-system-for-write 'utf-8))
+                 (with-current-buffer stderr-buf
+                   (write-region (point-min) (point-max)
+                                 (expand-file-name "stderr.log" dir)
+                                 nil 'silent))))
+             (funcall existing p e)
+             (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
         (let ((to (plist-get mode :timeout-seconds)))
           (when (and (integerp to) (> to 0))
             (setf (satan-run-timeout-timer run-ctx)
@@ -785,27 +837,51 @@ Returns the run-id."
                         (list :after-seconds to))
                        (setf (satan-run-status run-ctx) 'timed-out)
                        (delete-process proc)))))))
-        (set-process-sentinel
-         proc
-         (let ((existing (process-sentinel proc)))
-           (lambda (p e)
-             (let ((coding-system-for-write 'utf-8))
-               (with-current-buffer stderr-buf
-                 (write-region (point-min) (point-max)
-                               (expand-file-name "stderr.log" dir)
-                               nil 'silent)))
-             (funcall existing p e)
-             (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
         run-id))))
-    ;; DEC-8 (AUD-008 F-001): the flag must persist for the *live* run, not
-    ;; just the synchronous launch window.  make-process is async, so the only
-    ;; correct clear points are the child sentinel (normal/abnormal/killed
-    ;; exit — see `satan-broker--make-sentinel') and this error handler,
-    ;; which fires only if the synchronous launch throws before a sentinel is
-    ;; attached, so a failed launch cannot leave the flag stuck.
+    ;; The one pre-child handler (SL-017 I7).  DEC-8 (AUD-008 F-001): the
+    ;; flag must persist for the *live* run, not just the synchronous
+    ;; launch window.  make-process is async, so the only correct clear
+    ;; points are the child sentinel (normal/abnormal/killed exit — see
+    ;; `satan-broker--make-sentinel') and this handler, so a failed launch
+    ;; cannot leave the flag stuck.  Lock and buffer are handled BEFORE
+    ;; recording, so a record that itself throws still leaves neither.
     (error
      (setq satan-run--spawn-running nil)
-     (signal (car err) (cdr err)))))
+     (if proc
+         ;; The child exists: its sentinel finalises and kills STDERR-BUF.
+         (signal (car err) (cdr err))
+       (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf))
+       (satan-broker--record-spawn-failure mode prepare dir run-ctx err)
+       run-id)))))
+
+(defun satan-broker--record-spawn-failure (mode prepare dir run-ctx err)
+  "Record a spawn that failed with ERR before any child existed.
+RUN-CTX is the run struct when the audit is already open, else nil
+\(the manifest build or `satan-audit-open' threw).  Either way the run
+ends `failed' with reason `spawn_failed', `.FAILED'-renamed and
+announced, and the tick trace stops calling it spawned."
+  (let ((msg (error-message-string err)))
+    (satan-trace-outcome "spawn_failed")
+    (if run-ctx
+        (let ((audit (satan-run-audit run-ctx)))
+          (satan-audit-record audit 'broker 'spawn-failed (list :error msg))
+          (unless (file-exists-p (satan-run-bundle-path run-ctx))
+            (satan-audit-attach-bundle
+             audit (satan-broker--percept-bundle (satan-run-prepare run-ctx))))
+          (setf (satan-run-failure-reason run-ctx) "spawn_failed"
+                (satan-run-status run-ctx) 'failed)
+          (satan-broker--finalize run-ctx))
+      (satan-broker--write-no-child-run
+       mode prepare dir 'failed "spawn_failed"
+       :event 'spawn-failed
+       :event-payload (list :error msg)
+       :final (list :summary (format "spawn failed: %s" msg)
+                    :actions []
+                    :reason "spawn_failed")
+       :rename-announce t)
+      ;; `--finalize' clears it on the other branch; the no-child writer
+      ;; does not, and `--spawn' set it before the manifest.
+      (setq satan-memory-store--current-run-id nil))))
 
 (provide 'satan-broker)
 ;;; satan-broker.el ends here

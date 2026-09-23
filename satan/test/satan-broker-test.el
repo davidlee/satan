@@ -1069,28 +1069,27 @@ precedence — the Risks section's named regression)."
 
 ;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
 
-(defmacro satan-broker-test--with-spawn-stubs (dir &rest body)
-  "Evaluate BODY with DIR bound to a tmp run dir and `--spawn' made hermetic.
-Stubs every collaborator `satan-broker--spawn' reaches before and
-around `make-process' (manifest, audit, observer, enrich, sensor
-alerts, probe commits, env shaping, finalize); the harness command
-still runs for real.  Tests override individual stubs with an inner
-`cl-letf'.  Binds `satan-run--spawn-running' and a tmp
-`satan-hippocampus-dir'; removes both tmp dirs afterwards."
-  (declare (indent 1))
-  `(let ((,dir (make-temp-file "satan-spawn-" t))
-         (satan-run--spawn-running nil)
-         (satan-hippocampus-dir (make-temp-file "satan-hippo-" t)))
+(defvar satan-memory-store--current-run-id) ; `--spawn' sets it; tests bind it
+
+(defmacro satan-broker-test--with-spawn-collaborators (root dir &rest body)
+  "Evaluate BODY with `satan-broker--spawn''s side collaborators stubbed.
+ROOT is bound to a tmp `satan-runs-dir' and DIR to a run dir under it
+\(created).  Stubs the soft pre-spawn stages (observer, enrich, sensor
+alerts, probe commits, ingest cursor), env shaping and the
+`most-recent' symlink; the record path (manifest, audit, finalize)
+stays real.  Binds `satan-run--spawn-running',
+`satan-memory-store--current-run-id' and a tmp `satan-hippocampus-dir'.
+Deletes ROOT afterwards, so a `.FAILED'-renamed DIR goes with it."
+  (declare (indent 2))
+  `(let* ((,root (make-temp-file "satan-spawn-" t))
+          (,dir (expand-file-name "run" ,root))
+          (satan-runs-dir ,root)
+          (satan-run--spawn-running nil)
+          (satan-memory-store--current-run-id nil)
+          (satan-hippocampus-dir (expand-file-name "hippocampus" ,root)))
+     (make-directory ,dir)
      (unwind-protect
-         (cl-letf (((symbol-function 'satan-broker--build-manifest)
-                    (lambda (&rest _) '(:manifest t)))
-                   ((symbol-function 'satan-audit-open)
-                    (lambda (&rest _) '(:audit t)))
-                   ((symbol-function 'satan-audit-attach-bundle)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'satan-audit-record)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'satan-observer-process)
+         (cl-letf (((symbol-function 'satan-observer-process)
                     (lambda (&rest _) nil))
                    ((symbol-function 'satan-run-enrich)
                     (lambda (prepare &rest _) prepare))
@@ -1104,6 +1103,9 @@ still runs for real.  Tests override individual stubs with an inner
                     (lambda (&rest _) nil))
                    ((symbol-function 'satan-sensor-wpm-probe-commit)
                     (lambda (&rest _) nil))
+                   ;; Writes the live state root's cursor file otherwise.
+                   ((symbol-function 'satan-ingest-cursor-advance)
+                    (lambda (&rest _) nil))
                    ((symbol-function 'my/scrub-op-refs-env)
                     (lambda (env) env))
                    ((symbol-function 'satan-broker--direnv-env)
@@ -1111,13 +1113,30 @@ still runs for real.  Tests override individual stubs with an inner
                    ((symbol-function 'satan-broker--exec-path-from-env)
                     (lambda (&rest _) exec-path))
                    ((symbol-function 'satan-broker--update-most-recent)
-                    (lambda (&rest _) nil))
-                   ((symbol-function 'satan-broker--finalize)
                     (lambda (&rest _) nil)))
            ,@body)
-       (delete-directory ,dir t)
-       (when (file-directory-p satan-hippocampus-dir)
-         (delete-directory satan-hippocampus-dir t)))))
+       (delete-directory ,root t))))
+
+(defmacro satan-broker-test--with-spawn-stubs (dir &rest body)
+  "Evaluate BODY with DIR bound to a tmp run dir and `--spawn' made hermetic.
+`satan-broker-test--with-spawn-collaborators' plus stubs for the
+record path (manifest, audit, finalize); the harness command still
+runs for real.  Tests override individual stubs with an inner
+`cl-letf'."
+  (declare (indent 1))
+  (let ((root (make-symbol "root")))
+    `(satan-broker-test--with-spawn-collaborators ,root ,dir
+       (cl-letf (((symbol-function 'satan-broker--build-manifest)
+                  (lambda (&rest _) '(:manifest t)))
+                 ((symbol-function 'satan-audit-open)
+                  (lambda (&rest _) '(:audit t)))
+                 ((symbol-function 'satan-audit-attach-bundle)
+                  (lambda (&rest _) nil))
+                 ((symbol-function 'satan-audit-record)
+                  (lambda (&rest _) nil))
+                 ((symbol-function 'satan-broker--finalize)
+                  (lambda (&rest _) nil)))
+         ,@body))))
 
 (ert-deftest satan-broker/dec8-spawn-running-persists-until-sentinel ()
   "AUD-008 F-001: `satan-run--spawn-running' stays t across the live
@@ -1207,6 +1226,192 @@ old regex missed."
                 ((symbol-function 'satan-broker--finalize) (lambda (&rest _) nil)))
         (funcall sentinel nil event))
       (should-not satan-run--spawn-running))))
+
+;; ── SL-017 I7: a spawn that cannot fail silently ───────────────────────────
+
+(defconst satan-broker-test--spawn-run-id "20260603T000000-test-a1b2c3"
+  "A minted-shape run-id for the spawn-failure tests.")
+
+(defun satan-broker-test--spawn-prepare (&rest extra)
+  "A prepare plist for `satan-broker-test--spawn-run-id', plus EXTRA."
+  (append (list :run_id satan-broker-test--spawn-run-id
+                :time_now "2026-06-03T00:00:00Z"
+                :start_time (current-time)
+                :percept '(:handles ("h1")))
+          extra))
+
+(defun satan-broker-test--run-json (dir name)
+  "Parse the JSON artefact NAME under run DIR into a plist."
+  (satan-audit--read-json (expand-file-name name dir)))
+
+(defun satan-broker-test--run-status (dir)
+  "Return the trimmed contents of DIR's `status' file."
+  (with-temp-buffer
+    (insert-file-contents (expand-file-name "status" dir))
+    (string-trim (buffer-string))))
+
+(ert-deftest satan-broker/no-child-run-survives-broken-manifest ()
+  "I7: a no-child run whose manifest cannot be built still ends with a
+status.  The mode names an unregistered tool, so the real
+`--build-manifest' signals; the writer records a stub manifest instead."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (let ((prepare (satan-broker-test--spawn-prepare))
+          (mode '(:name "test" :tools ("no_such_tool")))
+          (failed (concat dir ".FAILED")))
+      (satan-announce-with-recorder
+        (satan-broker--write-budget-denied-run mode prepare dir 10 5))
+      (should (equal "budget-exceeded" (satan-broker-test--run-status failed)))
+      (let ((manifest (satan-broker-test--run-json failed "manifest.json")))
+        (should (stringp (plist-get manifest :manifest_error)))
+        (should (equal satan-broker-test--spawn-run-id
+                       (plist-get manifest :run_id))))
+      (should (equal '(:handles ("h1"))
+                     (plist-get (satan-broker-test--run-json
+                                 failed "bundle.json")
+                                :percept)))
+      (should (eq t (satan-audit-verify-run failed))))))
+
+(defun satan-broker-test--spawn-failing (mode prepare dir)
+  "Run `satan-broker--spawn' for MODE under a tick accumulator and recorder.
+The accumulator starts stamped \"spawned\", as `satan-broker-run'
+leaves it.  Returns (:run-id ID :outcome STAMP :announced RECORDED)."
+  (let ((satan-trace--current (list :outcome "spawned")))
+    (satan-announce-with-recorder
+      (let ((run-id (satan-broker--spawn mode prepare dir)))
+        (list :run-id run-id
+              :outcome (plist-get satan-trace--current :outcome)
+              :announced satan-announce-recorded)))))
+
+(defun satan-broker-test--broker-event (dir event)
+  "Payload of the first `broker' EVENT record in DIR's transcript."
+  (plist-get (cl-find-if
+              (lambda (r)
+                (and (equal "broker" (plist-get r :dir))
+                     (equal event (plist-get r :event))))
+              (satan-jsonl-read-file
+               (expand-file-name "transcript.jsonl" dir) :null-object :null))
+             :payload))
+
+(defun satan-broker-test--should-spawn-fail (result dir)
+  "Assert RESULT (see `satan-broker-test--spawn-failing') is a recorded
+pre-child failure of the run in DIR.  Returns the `.FAILED' dir."
+  (let ((failed (concat dir ".FAILED"))
+        (run-id satan-broker-test--spawn-run-id))
+    (should (equal run-id (plist-get result :run-id)))
+    (should-not satan-run--spawn-running)
+    (should-not satan-memory-store--current-run-id)
+    (should-not (get-buffer (format " *satan-stderr-%s*" run-id)))
+    (should-not (get-process (format "satan-%s stderr" run-id)))
+    (should (equal "spawn_failed" (plist-get result :outcome)))
+    (should (equal "failed" (satan-broker-test--run-status failed)))
+    (should (equal "spawn_failed"
+                   (plist-get (satan-broker-test--run-json failed "final.json")
+                              :reason)))
+    (should (stringp (plist-get (satan-broker-test--broker-event
+                                 failed "spawn-failed")
+                                :error)))
+    (should (eq t (satan-audit-verify-run failed)))
+    (let ((announced (plist-get result :announced)))
+      (should (= 1 (length announced)))
+      (should (string-match-p "spawn_failed"
+                              (plist-get (car announced) :journal))))
+    failed))
+
+(ert-deftest satan-broker/spawn-error-before-child-finalizes-spawn-failed ()
+  "A pre-child error after the audit opened finalises the run as
+`spawn_failed' and returns the run-id: the context-fn throws before
+any bundle, so the percept is mirrored into `bundle.json'."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (let* ((mode (list :name "test"
+                       :context-fn (lambda (&rest _) (error "boom"))
+                       :harness '(:cmd "true")))
+           (failed (satan-broker-test--should-spawn-fail
+                    (satan-broker-test--spawn-failing
+                     mode (satan-broker-test--spawn-prepare) dir)
+                    dir)))
+      (should (equal '(:handles ("h1"))
+                     (plist-get (satan-broker-test--run-json
+                                 failed "bundle.json")
+                                :percept)))
+      (should (equal "boom" (plist-get (satan-broker-test--broker-event
+                                        failed "spawn-failed")
+                                       :error)))
+      ;; Finalised through the open audit (the run struct), not re-opened
+      ;; by the no-child writer: only `--finalize' records crash context.
+      (should (satan-broker-test--broker-event failed "crash-context")))))
+
+(ert-deftest satan-broker/manifest-error-finalizes-spawn-failed ()
+  "A manifest that cannot be built (before the audit opens) still ends
+the run with a status: the no-child writer records a stub manifest."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (let* ((mode '(:name "test" :tools ("no_such_tool")
+                   :harness (:cmd "true")))
+           (failed (satan-broker-test--should-spawn-fail
+                    (satan-broker-test--spawn-failing
+                     mode (satan-broker-test--spawn-prepare) dir)
+                    dir)))
+      (should (string-match-p
+               "no_such_tool"
+               (plist-get (satan-broker-test--run-json failed "final.json")
+                          :summary)))
+      (should (stringp (plist-get (satan-broker-test--run-json
+                                   failed "manifest.json")
+                                  :manifest_error)))
+      (should (equal '(:handles ("h1"))
+                     (plist-get (satan-broker-test--run-json
+                                 failed "bundle.json")
+                                :percept))))))
+
+(ert-deftest satan-broker/spawn-exec-failure-keeps-context-bundle ()
+  "`make-process' itself failing is a pre-child error too, and the
+percept is mirrored only when no bundle exists: the context-fn's
+bundle, already attached, survives."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (let* ((mode (list :name "test"
+                       :context-fn (lambda (&rest _)
+                                     '(:ctx t :percept (:handles ("ctx"))))
+                       :harness '(:cmd "/nonexistent/satan-harness")))
+           (failed (satan-broker-test--should-spawn-fail
+                    (satan-broker-test--spawn-failing
+                     mode (satan-broker-test--spawn-prepare) dir)
+                    dir))
+           (bundle (satan-broker-test--run-json failed "bundle.json")))
+      (should (eq t (plist-get bundle :ctx)))
+      (should (equal '(:handles ("ctx")) (plist-get bundle :percept))))))
+
+(ert-deftest satan-broker/error-after-child-not-finalized-twice ()
+  "An error after `make-process' leaves the run to the child's sentinel:
+the handler re-signals and finalises nothing, and the sentinel later
+finalises exactly once and kills the stderr buffer."
+  (satan-broker-test--with-spawn-stubs dir
+    (let* ((run-id "rid-post-child")
+           (proc-name (format "satan-%s" run-id))
+           (stderr-name (format " *satan-stderr-%s*" run-id))
+           (prepare (list :run_id run-id
+                          :time_now "2026-06-03T00:00:00Z"
+                          :start_time (current-time)))
+           (mode '(:name "test" :timeout-seconds 30
+                   :harness (:cmd "sleep" :args ("30"))))
+           (finalized 0))
+      (cl-letf (((symbol-function 'satan-broker--finalize)
+                 (lambda (&rest _) (cl-incf finalized))))
+        (unwind-protect
+            (progn
+              (cl-letf (((symbol-function 'run-with-timer)
+                         (lambda (&rest _) (error "timer wiring"))))
+                (should-error (satan-broker--spawn mode prepare dir)))
+              (should (= 0 finalized))
+              (should-not satan-run--spawn-running)
+              (should (process-live-p (get-process proc-name)))
+              (delete-process (get-process proc-name))
+              (accept-process-output nil 0.3)
+              (sleep-for 0.1)
+              (should (= 1 finalized))
+              (should-not (get-buffer stderr-name)))
+          (let ((proc (get-process proc-name)))
+            (when proc (delete-process proc)))
+          (let ((buf (get-buffer stderr-name)))
+            (when buf (kill-buffer buf))))))))
 
 ;; ---------------------------------------------------------------------
 ;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9.  Do not prune with the bough

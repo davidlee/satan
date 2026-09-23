@@ -370,6 +370,130 @@ In-tree, no worktree isolation.
     without `:time-now`, rather than using the wall clock; the broker's
     `condition-case` absorbs it. The run's tool-ctx always carries it.
 
+## PHASE-05 executed (2026-09-23) — GREEN
+
+Capsule worker (opus — PHASE-05 is the spawn-failure path: it must tell
+pre-child from post-child errors, never double-finalise, always clear the
+DEC-8 lock and never leak the stderr buffer; the subtle risk is lexical
+scoping of handler-visible bindings (sheet A1/A2) in the broker's most
+order-sensitive function). In-tree, no worktree isolation.
+
+- **`satan-broker.el`:**
+  - `satan-broker--manifest-or-stub (mode run-id)` (`:421`) — the built
+    manifest, or `(:run_id :mode (:name) :manifest_error MSG)` on `error`.
+    `--write-no-child-run` uses it (I7 hole closed); `--spawn` keeps the
+    strict `--build-manifest` (A6).
+  - `satan-broker--percept-bundle (prepare)` (`:434`) — the one definition
+    of the mirrored `(:percept …)` bundle, shared by the no-child writer and
+    the audit-open failure branch.
+  - `--spawn` (`:602`): `run-id`, `stderr-buf`, `run-ctx`, `proc` hoisted
+    to an outer `let` around the (single, unchanged-count) `condition-case`
+    and assigned with `setq` (A1): `(_run-ctx (setq run-ctx (make-satan-run
+    …)))` `:676`; `(satan-trace-stage "spawn.exec" (setq proc (make-process
+    …)))` `:801` (A2). The stderr-flush sentinel wrapper moved from after
+    the timeout timer to immediately after `setf process` (`:816`, R-A).
+    The flush is now guarded by `buffer-live-p` (see deviations). Stage
+    order unchanged (R-C): audit_open → observer → enrich → alerts →
+    probes → cursor → bundle → exec.
+  - Handler (`:848`), in order: clear `satan-run--spawn-running`; child →
+    re-signal, touch nothing else; no child → kill `stderr-buf` if live,
+    `satan-broker--record-spawn-failure`, return `run-id`.
+  - `satan-broker--record-spawn-failure (mode prepare dir run-ctx err)`
+    (`:857`): stamps `satan-trace-outcome "spawn_failed"`; audit open →
+    `spawn-failed (:error MSG)` record, percept bundle only if
+    `bundle-path` is absent, `failure-reason "spawn_failed"` + status
+    `'failed`, `--finalize`; no audit → `--write-no-child-run 'failed
+    "spawn_failed" :event 'spawn-failed :event-payload (:error MSG) :final
+    (:summary "spawn failed: MSG" :actions [] :reason "spawn_failed")
+    :rename-announce t`, then clear `satan-memory-store--current-run-id`.
+    No direct `--announce-failure` call (A5). Docstrings of `--spawn` and
+    `--write-no-child-run` and the DEC-8 handler comment updated.
+- **Tests (`satan-broker-test.el`):**
+  - T1 refactor (green, count unchanged at 32): new
+    `satan-broker-test--with-spawn-collaborators ROOT DIR` (tmp
+    `satan-runs-dir` ROOT, DIR = ROOT/run, binds the DEC-8 flag,
+    `satan-memory-store--current-run-id` and a tmp hippocampus dir under
+    ROOT; stubs the soft stages, env shaping, `--update-most-recent`; also
+    stubs `satan-ingest-cursor-advance` — see findings); cleanup deletes
+    ROOT, so `DIR.FAILED` goes too. `--with-spawn-stubs DIR` re-expressed
+    as collaborators + record-path stubs, signature unchanged; the dec8 and
+    PHASE-04 tests are untouched.
+  - Helpers: `--spawn-prepare`, `--run-json` (reuses
+    `satan-audit--read-json`, no new `json-parse-buffer` copy),
+    `--run-status`, `--broker-event`, `--spawn-failing` (runs `--spawn`
+    under a `"spawned"` tick accumulator and the announce recorder),
+    `--should-spawn-fail` (the shared terminal-shape assertions: run-id
+    returned, lock nil, current-run-id nil, no stderr buffer, no
+    `satan-<id> stderr` pipe process, outcome `spawn_failed`, status
+    `failed`, final `:reason spawn_failed`, `spawn-failed` event with
+    `:error`, `verify-run` t, exactly one recorded announcement whose
+    `:journal` names `spawn_failed`).
+  - New: `no-child-run-survives-broken-manifest` (T2),
+    `spawn-error-before-child-finalizes-spawn-failed` (T4; also pins the
+    finalize path via a `crash-context` record),
+    `manifest-error-finalizes-spawn-failed` (T5),
+    `spawn-exec-failure-keeps-context-bundle` (T8),
+    `error-after-child-not-finalized-twice` (T6; `sleep 30` child killed
+    in `unwind-protect`). No announce/notify/logger stubs (R8).
+- **TDD:** reds observed for the right reason — T2 `unknown tool in mode
+  test: no_such_tool` propagated; T4 `(error "boom")`, T5 the unknown-tool
+  error, T8 `(file-missing "Doing vfork" …)` all re-signalled; T6 failed on
+  the leaked stderr buffer (wrapper never installed once the timer threw).
+  **A1 mutation check:** re-binding `run-ctx` inside the inner `let*` →
+  T4 and T8 red (no `crash-context`: the no-child writer re-opened the
+  audit); an inner `(proc nil)` binding → T6 red (`should-error` — the
+  handler finalised a live run and returned).
+- **Gate:** `SATAN_DB_HOST=/run/postgresql/ just check` (serial) → `Ran
+  1073 tests, 1069 results as expected, 1 unexpected, 3 skipped` (baseline
+  1068/1064/1/3 + 5 new incl. T8; unexpected is the pre-existing
+  `satan-db/test-db-available-p-probes-test-host`; skips unchanged at 3).
+  `just lint`: all `{"ok":true}`.
+- **Byte-compile** (scratch copies of HEAD and the working tree, `-L satan
+  -L dev -L satan/test`, `satan-broker.el` + `satan-broker-test.el`):
+  warning sets identical (pre-existing `_probe-snapshots` only). No `.elc`
+  in the tree.
+- **EX/VT mapping:** EX-1 (I7) — T2, T4, T5, T8 each assert a `status`
+  file and `verify-run` t. EX-2 — T6 (finalize count 0 after the handler,
+  1 after the sentinel). EX-3 — T4, T5, T8 (lock nil, `get-buffer` nil, no
+  stderr pipe process). VT-1 — T4. VT-2 — T2, T5, T6.
+- **Rulings (orchestrator):** OQ-A yes (below); OQ-B yes (no-audit branch
+  clears `satan-memory-store--current-run-id`); OQ-C yes (no-audit branch
+  records `spawn-failed (:error MSG)`); OQ-D yes (T8 added).
+- **Deviations:**
+  - **R-A / OQ-A — reconcile item for design sec-4.** Design says "Always.
+    The handler kills the stderr buffer". Implemented: the handler kills it
+    only when there is no child; the stderr-flush sentinel wrapper moved to
+    right after `make-process`, so a post-child error leaves the sentinel
+    owning (flushing + killing) the buffer. Reason: `kill-buffer` on a
+    `:stderr` buffer deletes the `"<name> stderr"` pipe, the live child
+    gets EPIPE and the sentinel finalises a killed run. Intent ("the
+    sentinel owns it", no leak) holds; the design text needs the wording
+    changed at `/reconcile`.
+  - The wrapper's flush is guarded by `buffer-live-p` (was an unguarded
+    `with-current-buffer`). Not in the sheet. Without it a sentinel firing
+    after the buffer is gone raises "Selecting deleted buffer" — under ERT
+    in batch (`debug-on-error`) that aborts the whole suite (rc 255), which
+    is how the proc-shadowing mutant first showed up; now it is a clean red.
+  - `satan-broker--record-spawn-failure` is a named helper called from the
+    handler (the handler stays four lines). Still exactly one
+    `condition-case` in `--spawn`.
+  - `--spawn`'s body keeps its pre-existing (mis)indentation under the new
+    outer `let` — re-indenting 230 lines would bury the A1/A2 changes in
+    the review diff (R-E). Candidate cosmetic follow-up.
+- **STOP guards:** not tripped — no `satan-announce*`/`notifications-notify`/
+  `logger` stubs added; one `condition-case`; `--finalize` contract
+  unchanged.
+- **Findings (candidate backlog, out of scope):**
+  - Before this phase, every `--with-spawn-stubs` test (dec8, PHASE-04's)
+    ran the real `satan-ingest-cursor-advance`, i.e. wrote the live
+    state-root cursor file from the suite. The collaborators helper now
+    stubs it. Other suites may still reach it; worth a hermeticity sweep.
+  - `satan-broker-test--read-bundle` and four inline `json-parse-buffer`
+    copies in `satan-broker-test.el` could go through
+    `satan-broker-test--run-json`.
+  - R-B (child-branch lock clear lets an MCP session open while the child
+    runs) unchanged, as the design keeps it.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-09-23 · plan authored (8 phases), sheets materialised · slice status ready
