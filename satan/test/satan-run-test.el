@@ -421,5 +421,15 @@ stepped over without breaking the same-cause streak."
                            '("20260923T081500-motd-11111a")))))
       (delete-directory root t))))
 
+;; ── SL-018: run-id → minting time ───────────────────────────────────────────
+
+(ert-deftest satan-run/id-time-round-trips-mint-id ()
+  "VT-28: `satan-run-id-time' recovers the (whole-second) minting time."
+  (let* ((time (encode-time '(30 15 22 31 5 2026 nil -1 nil)))
+         (id (satan-run-mint-id "tick-pulse" time)))
+    (should (time-equal-p (satan-run-id-time id) time))
+    (should (time-equal-p (satan-run-id-time (concat id ".FAILED")) time))
+    (should-not (satan-run-id-time "not-a-run-id"))))
+
 (provide 'satan-run-test)
 ;;; satan-run-test.el ends here

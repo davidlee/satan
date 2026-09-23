@@ -39,12 +39,27 @@ the profile.  Currently used for `:provider' and `:model'."
                  do (setq merged (plist-put merged k v)))
         merged))))
 
+(defun satan-mode--check-credential-keys (spec)
+  "Signal unless SPEC's credential keys are valid (SL-018 design sec-4).
+`:credential-policy' is `prompt' or `defer'; `:credential-escalate-after'
+is a non-negative number of seconds.  Both may be absent."
+  (let ((policy (plist-get spec :credential-policy))
+        (after (plist-get spec :credential-escalate-after)))
+    (unless (memq policy '(nil prompt defer))
+      (error "SATAN mode %s: :credential-policy must be prompt or defer, not %S"
+             (plist-get spec :name) policy))
+    (unless (or (null after) (and (numberp after) (>= after 0)))
+      (error "SATAN mode %s: :credential-escalate-after must be seconds >= 0, not %S"
+             (plist-get spec :name) after))))
+
 (defun satan-mode-register (spec)
   "Register or replace mode SPEC keyed by `:name'.
 If SPEC has a `:profile' key, profile defaults are merged in at
-registration time (mode-level keys win)."
+registration time (mode-level keys win).  Signals on invalid
+credential keys (`satan-mode--check-credential-keys')."
   (let* ((expanded (satan-mode--apply-profile spec))
          (name (plist-get expanded :name)))
+    (satan-mode--check-credential-keys expanded)
     (setq satan-modes
           (cons (cons name expanded)
                 (cl-remove name satan-modes :key #'car :test #'equal)))))
@@ -107,6 +122,7 @@ Dotfiles must not be the source of truth for prompt content."
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
+       :credential-policy 'prompt    ; meant to be seen (SL-018)
        :budget-tokens 300000
        :output-handler 'satan-output/morning
        :auto-apply 'owned
@@ -132,6 +148,7 @@ Dotfiles must not be the source of truth for prompt content."
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'claude-haiku
+       :credential-policy 'prompt    ; meant to be seen (SL-018)
        :budget-tokens 100000
        :output-handler 'satan-output/motd
        :auto-apply 'owned

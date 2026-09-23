@@ -16,6 +16,9 @@
 (require 'satan-budget)               ; budget gating cross-cutter
 (require 'cl-macs)                       ; cl-letf used in tool-ctx tests
 (require 'satan-mode)                 ; manifest-tools-shape resolves "morning"
+(require 'satan)                      ; satan-run (SL-018 attended flag)
+(require 'satan-tick)
+(require 'satan-run-test)             ; satan-run-test--mkrun fixture
 ;; Tool modules must be loaded so each registers via `satan-tool-register'
 ;; before `satan-broker--build-manifest' looks them up.
 (require 'satan-tools-notify)
@@ -1727,6 +1730,110 @@ handle any more."
             ;; `satan-jsonl-read-file' returns JSON arrays as lists.
             (should (equal '("bough_node:abc" "app:emacs") (append handles nil)))))
       (delete-directory dir t))))
+
+;; ── SL-018 PHASE-04: effective credential policy (design sec-4, sec-8) ─────
+
+(defconst satan-broker-test--policy-now
+  (encode-time '(0 0 12 20 5 2026 nil -1 nil))
+  "Noon, 2026-05-20: the \"now\" of the policy tests.")
+
+(defun satan-broker-test--policy-id (hh mm)
+  "A tick-pulse run-id minted at HH:MM on the policy tests' day."
+  (format "20260520T%02d%02d00-tick-pulse-%06x" hh mm (+ (* hh 100) mm)))
+
+(cl-defmacro satan-broker-test--with-policy-runs ((&rest runs) &rest body)
+  "Run BODY with `satan-runs-dir' holding RUNS, each (HH MM STATUS REASON)."
+  (declare (indent 1))
+  `(let* ((root (make-temp-file "satan-policy-" t))
+          (satan-runs-dir root))
+     (unwind-protect
+         (progn
+           (dolist (r ',runs)
+             (satan-run-test--mkrun
+              root (satan-broker-test--policy-id (nth 0 r) (nth 1 r))
+              (nth 2 r) (nth 3 r) (equal (nth 2 r) "failed")))
+           ,@body)
+       (delete-directory root t))))
+
+(defun satan-broker-test--policy (&rest mode-keys)
+  "Effective policy for a tick-pulse mode with MODE-KEYS, at noon."
+  (satan-broker--credential-policy (append '(:name "tick-pulse") mode-keys)
+                                   satan-broker-test--policy-now))
+
+(ert-deftest satan-broker/credential-policy-static ()
+  "VT-4: prompt stays prompt; absent means defer; attended always prompts."
+  (satan-broker-test--with-policy-runs ()
+    (should (equal (satan-broker-test--policy :credential-policy 'prompt)
+                   '(:policy prompt :context "satan broker/tick-pulse")))
+    (should (equal (satan-broker-test--policy)
+                   '(:policy defer :context "satan broker/tick-pulse")))
+    (let ((satan-run-attended t))
+      (should (eq (plist-get (satan-broker-test--policy) :policy) 'prompt)))))
+
+(ert-deftest satan-broker/credential-policy-escalates-on-an-old-streak ()
+  "VT-4: a credential_deferred streak at least the threshold old escalates."
+  (satan-broker-test--with-policy-runs ((7 0 "failed" "credential_deferred")
+                                        (7 30 "failed" "session_blocked")
+                                        (8 0 "failed" "credential_deferred")
+                                        (8 30 "failed" "run_busy"))
+    (let ((p (satan-broker-test--policy)))   ; oldest 07:00, 5h ago ≥ 4h
+      (should (eq (plist-get p :policy) 'prompt))
+      (should (string-match-p "escalated: deferred 5h"
+                              (plist-get p :context))))
+    ;; A longer threshold on the mode itself: not yet due.
+    (should (eq (plist-get (satan-broker-test--policy
+                            :credential-escalate-after 21600)
+                           :policy)
+                'defer))))
+
+(ert-deftest satan-broker/credential-policy-young-or-broken-streak-defers ()
+  "VT-4: a young streak defers; a success ends the streak."
+  (satan-broker-test--with-policy-runs ((10 0 "failed" "credential_deferred"))
+    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer)))
+  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred")
+                                        (9 0 "done" nil)
+                                        (10 0 "failed" "credential_deferred"))
+    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer))))
+
+(ert-deftest satan-broker/credential-policy-bad-duration-signals ()
+  "A bad effective duration signals (PHASE-05's boundary records it)."
+  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred"))
+    (let ((satan-credential-escalate-after "4h"))
+      (should-error (satan-broker-test--policy)))))
+
+(ert-deftest satan-broker/done-runs-end-both-streaks ()
+  "VT-23: `final.json's reason alone never makes a run transparent or counted:
+a `done' run whose reason reads like a deferral ends both streaks."
+  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred")
+                                        (9 0 "done" "credential_deferred")
+                                        (10 0 "failed" "credential_deferred"))
+    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer)))
+  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred")
+                                        (9 0 "done" "session_blocked"))
+    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer)))
+  (satan-broker-test--with-policy-runs ((6 0 "failed" "unknown")
+                                        (9 0 "done" "run_busy")
+                                        (10 0 "failed" "unknown"))
+    (let ((newest (satan-run-outcome
+                   (satan-run-locate-dir (satan-broker-test--policy-id 10 0)
+                                         satan-runs-dir))))
+      (should (= 1 (length (satan-broker--failure-streak "tick-pulse"
+                                                         newest)))))))
+
+(ert-deftest satan-broker/only-a-human-at-the-keyboard-is-attended ()
+  "VT-17: `satan-run' binds `satan-run-attended' only when interactive;
+a non-interactive call and `satan-tick' leave it nil (fail closed)."
+  (let (seen)
+    (cl-letf (((symbol-function 'satan-broker-run)
+               (lambda (_name) (push satan-run-attended seen) "rid"))
+              ((symbol-function 'satan-tick-quiet-p) #'ignore)
+              ((symbol-function 'satan-tick-pick) (lambda () "tick-pulse")))
+      (satan-run "tick-pulse")
+      (satan-tick)
+      (cl-letf (((symbol-function 'called-interactively-p)
+                 (lambda (&rest _) t)))
+        (satan-run "tick-pulse")))
+    (should (equal (reverse seen) '(nil nil t)))))
 
 (provide 'satan-broker-test)
 ;;; satan-broker-test.el ends here

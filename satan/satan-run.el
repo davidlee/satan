@@ -61,6 +61,20 @@ Seeds the PRNG from system entropy on first call."
           mode-name
           (random (expt 16 6))))
 
+(defun satan-run-id-time (run-id)
+  "The local time `satan-run-mint-id' stamped into RUN-ID, or nil.
+Whole seconds; the zone is not recorded, so a DST change can skew it
+by an hour.  A `.FAILED' suffix is ignored."
+  (when (string-match
+         (rx bos (group (= 4 digit)) (group (= 2 digit)) (group (= 2 digit))
+             "T" (group (= 2 digit)) (group (= 2 digit)) (group (= 2 digit))
+             "-")
+         run-id)
+    (let ((n (lambda (i) (string-to-number (match-string i run-id)))))
+      (encode-time (list (funcall n 6) (funcall n 5) (funcall n 4)
+                         (funcall n 3) (funcall n 2) (funcall n 1)
+                         nil -1 nil)))))
+
 (defconst satan-run--iso-time-format "%Y-%m-%dT%T%:z"
   "ISO-8601 time format stamped onto run_ctx and tool-ctx.")
 

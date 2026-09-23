@@ -354,8 +354,69 @@ than counted or ending the walk (design sec-3)."
      mode-slug
      (lambda (o) (equal (list (plist-get o :status) (plist-get o :reason))
                         cause))
-     (lambda (o) (member (plist-get o :reason)
-                         satan-broker--streak-transparent-reasons)))))
+     (lambda (o) (satan-broker--failed-with-p
+                  o satan-broker--streak-transparent-reasons)))))
+
+(defun satan-broker--failed-with-p (outcome reasons)
+  "Non-nil when OUTCOME has status `failed' and a reason in REASONS.
+The status guard matters: `final.json's reason is a free string a
+model's own final may carry, so a reason alone proves nothing
+\(RV-013 N8)."
+  (and (eq (plist-get outcome :status) 'failed)
+       (member (plist-get outcome :reason) reasons)))
+
+;; ── Credential policy (SL-018 design sec-4, sec-8; DEC-022) ────────────────
+
+(defcustom satan-credential-escalate-after 14400
+  "Seconds a `defer' mode may go on deferring before its next run prompts.
+Measured from the oldest run of the mode's current `credential_deferred'
+streak.  A mode's `:credential-escalate-after' overrides it."
+  :type 'number :group 'satan)
+
+(defvar satan-run-attended nil
+  "Non-nil while a run was started by a human at the keyboard.
+Bound only by an interactive `satan-run'; every other entry (systemd
+shims, `satan-tick', timers, MCP) leaves it nil, so they are unattended
+by default (fail closed).  An attended run always prompts.")
+
+(defun satan-broker--credential-streak-age (mode-slug now)
+  "Seconds from MODE-SLUG's current credential_deferred streak to NOW.
+Nil when there is no streak.  `session_blocked' and `run_busy' runs are
+stepped over; any other outcome ends the streak."
+  (when-let* ((streak (satan-run-outcome-streak
+                       mode-slug
+                       (lambda (o) (satan-broker--failed-with-p
+                                    o '("credential_deferred")))
+                       (lambda (o) (satan-broker--failed-with-p
+                                    o '("session_blocked" "run_busy")))))
+              (oldest (plist-get (car (last streak)) :run-id)))
+    (float-time
+     (time-subtract now (or (satan-run-id-time oldest)
+                            (error "SATAN: unparseable run-id %s" oldest))))))
+
+(defun satan-broker--credential-policy (mode &optional now)
+  "Effective credential policy for MODE at NOW (default: the current time).
+Returns (:policy prompt|defer :context LABEL).  Attended runs and
+`:credential-policy prompt' modes prompt.  Otherwise the mode defers,
+unless its credential streak is at least its escalation threshold old:
+then it prompts and LABEL says so.  Signals on an invalid effective
+threshold (the caller's acquisition boundary records it)."
+  (let* ((name (plist-get mode :name))
+         (context (concat "satan broker/" name)))
+    (if (or satan-run-attended
+            (eq (plist-get mode :credential-policy) 'prompt))
+        (list :policy 'prompt :context context)
+      (let ((after (or (plist-get mode :credential-escalate-after)
+                       satan-credential-escalate-after)))
+        (unless (and (numberp after) (>= after 0))
+          (error "SATAN: invalid credential escalation threshold %S" after))
+        (let ((age (satan-broker--credential-streak-age
+                    name (or now (current-time)))))
+          (if (and age (>= age after))
+              (list :policy 'prompt
+                    :context (format "%s (escalated: deferred %s)" context
+                                     (format-seconds "%hh%02mm" age)))
+            (list :policy 'defer :context context)))))))
 
 (defun satan-broker--announce-due-p (outcome position)
   "Non-nil when a desktop pop is due for OUTCOME at streak POSITION.
