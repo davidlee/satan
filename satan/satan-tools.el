@@ -44,15 +44,16 @@ carries only mechanism (schema, capability, handler)."
 (defun satan-tool-lookup (name)
   (cdr (assoc name satan-tools)))
 
-(defun satan-tools-available (names)
-  "NAMES, less each registered tool whose `:available-p' returns nil.
-A tool with no `:available-p' is always available; an unknown name is
-kept, for the caller to reject.  The manifest lists only available
-tools, so a switched-off tool is never shown to the model (RV-017 F-4)."
+(defun satan-tools-available (names mode)
+  "NAMES, less each registered tool unavailable in the mode named MODE.
+A tool's `:available-p', when present, is called with MODE; a tool
+without one is always available, and an unknown name is kept for the
+caller to reject.  Every surface that shows tools to a model lists only
+available ones, so a tool that would refuse is never offered (RV-017 F-4)."
   (cl-remove-if (lambda (name)
                   (let ((pred (plist-get (satan-tool-lookup name)
                                          :available-p)))
-                    (and pred (not (funcall pred)))))
+                    (and pred (not (funcall pred mode)))))
                 names))
 
 (defun satan-tool-allowed-p (name mode-tools)

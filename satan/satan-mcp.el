@@ -64,11 +64,14 @@ The runtime dir is still 0700 (DEC-10)."
 ;; ── Interactive mode-spec (DEC-9) ───────────────────────────────────────────
 
 (defun satan-mcp--interactive-tools ()
-  "Return the union of all registered SATAN tool names.
-Excludes internal test stubs (names prefixed `test.')."
-  (cl-loop for (name . _spec) in satan-tools
-    unless (string-prefix-p "test." name)
-    collect name))
+  "Return the union of all registered SATAN tool names available in
+interactive mode (`satan-tools-available').  Excludes internal test
+stubs (names prefixed `test.')."
+  (satan-tools-available
+   (cl-loop for (name . _spec) in satan-tools
+     unless (string-prefix-p "test." name)
+     collect name)
+   "interactive"))
 
 (defun satan-mcp--interactive-capabilities ()
   "Return the union of all capabilities referenced by any registered tool.

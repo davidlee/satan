@@ -73,26 +73,26 @@ JSON `[]' decodes to nil, and a present form must not be empty."
 
 ;; ── step 4: the subject gate (design sec-1) ─────────────────────────────────
 
-(defun satan-tools-goad--minted-handles (asks now)
-  "The handles goad mints: `app:goad', and the `topic:' of each of ASKS
-\(`satan-goad-slice' entries) still outstanding at NOW, a Lisp time.
-Outstanding is canon's own predicate, so the gate refuses exactly the
-topics `goad.outstanding' emits (RV-017 F-5)."
-  (cons "app:goad"
-        (delq nil (mapcar (lambda (ask)
-                            (and (satan-memory-canon-goad-outstanding-p
-                                  ask now)
-                                 (satan-goad-subject-topic
-                                  (plist-get ask :subject))))
-                          asks))))
+(defun satan-tools-goad--goad-minted-p (subject sources)
+  "Non-nil when SUBJECT is a handle goad minted: `app:goad', or a handle
+SOURCES (the run's frozen `:handle_sources') attributes to canon's
+`goad.outstanding' rule.  The percept, not live goad state, decides —
+an ask answered while the run is in flight must not free its own topic
+to be asked about (RV-017 F-5, RV-007 F-20)."
+  (or (equal subject "app:goad")
+      (equal (symbol-name 'goad.outstanding)
+             (plist-get (cl-find subject sources
+                                 :key (lambda (s) (plist-get s :handle))
+                                 :test #'equal)
+                        :rule_id))))
 
-(defun satan-tools-goad--ungrounded (subject percept asks now)
-  "Why SUBJECT gives no grounds to ask, before motives are consulted, or nil.
-PERCEPT is the run's percept handles; ASKS the `:goad' slice, judged
-at NOW."
+(defun satan-tools-goad--ungrounded (subject ctx)
+  "Why SUBJECT gives no grounds to ask in CTX, before motives are
+consulted, or nil."
   (cond
-   ((not (member subject percept)) "subject is not in this run's percept")
-   ((member subject (satan-tools-goad--minted-handles asks now))
+   ((not (member subject (plist-get ctx :percept-handles)))
+    "subject is not in this run's percept")
+   ((satan-tools-goad--goad-minted-p subject (plist-get ctx :percept-sources))
     "subject is goad-minted: a goad handle cannot correlate")))
 
 (defun satan-tools-goad--winner (subject percept motives)
@@ -108,7 +108,7 @@ motive cued on goad's own handles cannot absorb the ask (RV-007 F-28)."
              :motive))
 
 (defvar satan-tools-goad--suppressed-run nil
-  "The id of the last run that enqueued `ask_suppressed'.
+  "The id of the last run whose `ask_suppressed' enqueue succeeded.
 Suppression is a condition of the run, not a count of the model's
 retries, so a run enqueues it at most once (RV-017 F-7).")
 
@@ -118,10 +118,10 @@ nil, or `(:enqueue \"failed: MSG\")'.  Never signals: the suppression
 is decided either way."
   (let ((run-id (plist-get ctx :id)))
     (unless (equal run-id satan-tools-goad--suppressed-run)
-      (setq satan-tools-goad--suppressed-run run-id)
       (pcase (satan-attribute-enqueue-ask
               run-id (plist-get ctx :time-now) "ask_suppressed")
-        (`(error . ,msg) (list :enqueue (format "failed: %s" msg)))))))
+        (`(error . ,msg) (list :enqueue (format "failed: %s" msg)))
+        (_ (setq satan-tools-goad--suppressed-run run-id) nil)))))
 
 (defun satan-tools-goad--suppress (ctx reason)
   "Suppress the ask in CTX for REASON: enqueue it, record nothing."
@@ -198,7 +198,7 @@ A failed record is `(error . MSG)', and nothing else happens."
 
 ARGS:  (:question STR :subject HANDLE [:form FORM]).
 CTX:   broker-supplied tool-ctx: `:id', `:mode-name', `:time-now',
-       `:audit', `:percept-handles'.
+       `:audit', `:percept-handles', `:percept-sources'.
 
 Returns:
   (error . REASON)                       refused — nothing happened;
@@ -221,10 +221,7 @@ Returns:
                          subject percept
                          (plist-get (satan-motive-read satan-motive-file)
                                     :motives)))
-                (reason (or (satan-tools-goad--ungrounded
-                             subject percept (satan-goad-slice)
-                             (satan-memory-canon-parse-instant
-                              (plist-get ctx :time-now)))
+                (reason (or (satan-tools-goad--ungrounded subject ctx)
                             (and (null winner)
                                  "no live motive's cue holds the subject"))))
            (if reason
@@ -236,7 +233,11 @@ Returns:
  (list :name "goad_ask"
        :risk 'low
        :capability 'goad-ask
-       :available-p (lambda () satan-goad-enabled)
+       ;; Offered only where it can ask: never in interactive MCP,
+       ;; and only while goad is enabled (RV-017 F-4).
+       :available-p (lambda (mode)
+                      (and satan-goad-enabled
+                           (not (equal mode "interactive"))))
        :args-schema '(question (:type string :required t)
                       subject  (:type string :required t)
                       form     (:type array :required nil :items object))

@@ -159,7 +159,8 @@ constructor call here would return a new run-id and an unfrozen time."
         (should (null called))
         (should (equal (cl-loop for (k _v) on tool-ctx by #'cddr collect k)
                        '(:id :mode-name :capabilities :run-dir :hippocampus-dir
-                         :run-started-at :time-now :audit :percept-handles)))
+                         :run-started-at :time-now :audit :percept-handles
+                         :percept-sources)))
         (should (equal (plist-get tool-ctx :time-now)
                        "2026-01-01T00:00:00+0000"))
         (should (equal (plist-get tool-ctx :run-started-at)

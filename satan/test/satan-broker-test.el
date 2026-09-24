@@ -1612,7 +1612,8 @@ struct the filter is handed."
            (prepare (list :run_id run-id
                           :time_now "2026-06-03T00:00:00Z"
                           :start_time (current-time)
-                          :percept '(:handles ("h1" "h2"))))
+                          :percept '(:handles ("h1" "h2")
+                                     :handle_sources ((:handle "h1" :rule_id "r")))))
            (mode '(:name "test" :capabilities (notify)
                    :harness (:cmd "true" :args nil)))
            observer-ctx alerts-ctx run-ctx)
@@ -1637,6 +1638,8 @@ struct the filter is handed."
       (should (equal "2026-06-03T00:00:00Z"
                      (plist-get observer-ctx :time-now)))
       (should (equal '("h1" "h2") (plist-get observer-ctx :percept-handles)))
+      (should (equal '((:handle "h1" :rule_id "r"))
+                     (plist-get observer-ctx :percept-sources)))
       (should (equal run-id (plist-get alerts-ctx :id)))
       (should (eq audit (plist-get alerts-ctx :audit)))
       (should (equal '(notify) (plist-get alerts-ctx :capabilities)))

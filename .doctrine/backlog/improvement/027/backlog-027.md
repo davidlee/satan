@@ -42,9 +42,10 @@ tick (~30 min, ≤10 calls) ──goad_ask──▶ queue ──▶ backend.pend
 
 Implement as a **refusal** (`error`, nothing recorded), not a suppression:
 asking while `app:goad` is in the percept is the model misreading its own
-percept, not an organism condition — no attrd reason needed. Reuse canon's
-outstanding-ask predicate (`satan-memory-canon--goad-outstanding-p`, shared
-with the tool since RV-017 F-5).
+percept, not an organism condition — no attrd reason needed. Decide from
+the run's frozen percept (`app:goad` sourced from `goad.outstanding` in
+`:percept-sources`), as the subject gate does since RV-017 F-5 — never from
+live goad state.
 
 **Later-deferred asks — open question, same permissive default.** A Later
 leaves the ask outstanding (SL-016 OQ-1). Under a cap, counting it blocks a

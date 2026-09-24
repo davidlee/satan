@@ -21,6 +21,7 @@
 (require 'satan-goad-fixture)
 (require 'satan-intervention-test)
 (require 'satan-broker)
+(require 'satan-mcp)
 (require 'satan-tools-vcs)
 
 ;; ── fixtures ────────────────────────────────────────────────────────────────
@@ -202,6 +203,13 @@ manifest lists it only while `satan-goad-enabled' is non-nil."
                            ("goad_ask" "vcs_log" "satan_final"))
                          (names))))))))
 
+(ert-deftest satan-tools-goad/mcp-never-offers-tool ()
+  "RV-017 F-4 — the interactive MCP surface never lists `goad_ask', even
+with goad enabled: the tool refuses every interactive call."
+  (let ((satan-goad-enabled t))
+    (should-not (member "goad_ask" (satan-mcp--interactive-tools)))
+    (should (member "vcs_log" (satan-mcp--interactive-tools)))))
+
 (ert-deftest satan-tools-goad/schema-requires-question-and-subject ()
   "The args schema requires `question' and `subject'; `form' is optional."
   (let ((spec (satan-tool-lookup "goad_ask")))
@@ -295,23 +303,31 @@ cues it: SATAN may only ask about what it already perceives."
      (satan-tools-goad-test--ask
       (satan-tools-goad-test--ctx nil :percept-handles '("app:emacs"))))))
 
+(defun satan-tools-goad-test--sources (&rest pairs)
+  "Frozen-percept `:handle_sources' rows from PAIRS of HANDLE RULE-ID."
+  (cl-loop for (h rule) on pairs by #'cddr
+           collect (list :handle h :rule_id rule :origin "observed")))
+
 (ert-deftest satan-tools-goad/goad-subject-refused ()
   "VT-13 — a goad-minted subject cannot correlate, even perceived and cued:
-`app:goad', and the `topic:' of a subject already queued.  Both are
+`app:goad', and a `topic:' the run's frozen percept sourced from
+`goad.outstanding'.  The gate reads the percept, never live goad state:
+here the queue is empty — as if the keeper answered while the run was in
+flight (RV-017 F-5) — and the topic is still refused.  Both are
 suppressions (orchestrator OQ-1): no record, one `ask_suppressed'."
-  (let* ((queued "artifact:thesis-outline")
-         (topic (satan-goad-subject-topic queued))
+  (let* ((topic (satan-goad-subject-topic "artifact:thesis-outline"))
          (percept (append (list topic) satan-tools-goad-test--percept)))
     (satan-tools-goad-test--with-goad
         (satan-tools-goad-test--motive "goad-watch" (concat "app:goad " topic))
-      (satan-goad-fixture-write-queue
-       (list (satan-goad-fixture-ask :subject queued)))
       (dolist (subject (list "app:goad" topic))
         (setq satan-tools-goad-test--enqueued nil)
         (satan-tools-goad-test--should-suppress
          (satan-tools-goad-test--ask
           (satan-tools-goad-test--ctx
            nil :percept-handles percept
+           :percept-sources (satan-tools-goad-test--sources
+                             "app:goad" "goad.outstanding"
+                             topic "goad.outstanding")
            :id (format "20260523T120000-tick-pulse-%s"
                        (if (equal subject "app:goad") "aaaaaa" "bbbbbb")))
           :subject subject))))))
@@ -334,10 +350,25 @@ model's retries: repeated suppressed asks in one run enqueue one
         :id "20260523T123000-tick-pulse-cccccc"))
       (should (= 2 (length satan-tools-goad-test--enqueued))))))
 
-(ert-deftest satan-tools-goad/settled-ask-topic-not-goad-minted ()
-  "RV-017 F-5 — a queue entry goad no longer mints a handle for (expired,
-or answered) leaves its `topic:' askable when the run perceives it from
-elsewhere: the gate refuses exactly what `goad.outstanding' emits."
+(ert-deftest satan-tools-goad/failed-suppression-enqueue-retried ()
+  "RV-017 F-7 — a failed `ask_suppressed' enqueue is reported and does not
+count: the run's next suppression tries again."
+  (satan-tools-goad-test--with-goad satan-tools-goad-test--thesis-motive
+    (let ((ctx (satan-tools-goad-test--ctx nil :percept-handles '("app:emacs")))
+          (attempts 0))
+      (cl-letf (((symbol-function 'satan-attribute-enqueue)
+                 (lambda (&rest _)
+                   (setq attempts (1+ attempts))
+                   (if (= attempts 1) '(error . "db down") '(ok . 1)))))
+        (should (plist-get (cdr (satan-tools-goad-test--ask ctx)) :enqueue))
+        (should-not (plist-get (cdr (satan-tools-goad-test--ask ctx)) :enqueue))
+        (satan-tools-goad-test--ask ctx)
+        (should (= 2 attempts))))))
+
+(ert-deftest satan-tools-goad/independently-perceived-topic-askable ()
+  "RV-017 F-5 — a `topic:' the frozen percept sourced from a rule other
+than `goad.outstanding' is askable, whatever the queue holds: the gate
+refuses exactly what goad minted into this run's percept."
   (let* ((queued "artifact:thesis-outline")
          (topic (satan-goad-subject-topic queued))
          (percept (cons topic satan-tools-goad-test--percept)))
@@ -346,13 +377,12 @@ elsewhere: the gate refuses exactly what `goad.outstanding' emits."
         (satan-tools-goad-test--with-goad
             (satan-tools-goad-test--motive "topic" topic)
           (satan-goad-fixture-write-queue
-           (list (satan-goad-fixture-ask
-                  :subject queued
-                  :emitted_at "2026-05-23T10:00:00+10:00"
-                  :expires_at "2026-05-23T11:00:00+10:00")))
+           (list (satan-goad-fixture-ask :subject queued)))
           (let ((result (satan-tools-goad-test--ask
                          (satan-tools-goad-test--ctx
-                          ctx :percept-handles percept)
+                          ctx :percept-handles percept
+                          :percept-sources (satan-tools-goad-test--sources
+                                            topic "notes.topic"))
                          :subject topic)))
             (should (eq t (plist-get (cdr result) :asked)))))))))
 

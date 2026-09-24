@@ -383,9 +383,9 @@ asks's own default.  Signals on failure — DB unreachable, or the
 write — for the caller to catch (the tool handler, T5); this function
 does not catch anything itself.
 
-Also fires at classification, not only at the ask handler (design sec-3):
-a matured ask's queue entry must not outlive its window just because no
-later ask happened to rewrite the file."
+Fires only from the ask handler.  A matured ask's entry lingers in the
+file until the next ask, harmlessly: it is past its `expires_at', which
+every queue reader filters (RV-017 F-6)."
   (let* ((now (or now (satan-goad--iso-instant (current-time))))
          (rows (satan-intervention-open-asks now db))
          (entries (mapcar #'satan-goad--queue-entry-from-row rows)))

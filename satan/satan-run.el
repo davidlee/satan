@@ -348,7 +348,8 @@ through the intervention write API: `satan-intervention-record' /
           :run-started-at time-now
           :time-now time-now
           :audit (satan-run-audit run-ctx)
-          :percept-handles (and percept (plist-get percept :handles)))))
+          :percept-handles (and percept (plist-get percept :handles))
+          :percept-sources (and percept (plist-get percept :handle_sources)))))
 
 (defun satan-run-manual-tool-ctx (run-id audit now)
   "Return the tool-ctx for a manual outcome mark against RUN-ID.

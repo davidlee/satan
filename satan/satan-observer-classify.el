@@ -281,11 +281,11 @@ strings (SL-016 R1)."
   "INTERVENTION's goad day record, or nil.
 Reads AFTER's `:goad' slice first; when the ask's queue entry has
 been retired — `satan-goad-queue-rewrite' projects only *open* asks,
-so a window that closes mid-spawn drops the entry before the
-observer classifies it — falls back to the day file of the
-intervention's own emit date, exactly as the answer trace does
-(design sec-2, RV-007 F-34).  The record is reachable whenever the
-ask was filed, independent of the disposable queue projection."
+so any ask made after this one's window closed drops its entry — falls
+back to the day file of the intervention's own emit date, exactly as
+the answer trace does (design sec-2, RV-007 F-34; RV-016 F-1).  The
+record is reachable whenever the ask was filed, independent of the
+disposable queue projection."
   (let ((entry (satan-observer--goad-entry after intervention)))
     (or (and entry (plist-get entry :record))
         (satan-goad-read-record

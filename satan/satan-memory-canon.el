@@ -496,7 +496,7 @@ contribute the same app, emit `app:<slug>' from the hint side."
       (list (satan-memory-canon--emit
              (concat "app:" focal) 'hint "/hints/focal_app" "focal_app")))))
 
-(defun satan-memory-canon-goad-outstanding-p (ask now)
+(defun satan-memory-canon--goad-outstanding-p (ask now)
   "Non-nil when the goad ASK is still open at the instant NOW.
 Outstanding means no `:value' in its record — an answer is goad's
 `{option, values}' object (DEC-025), never inspected here — and
@@ -518,7 +518,7 @@ may take these handles as its subject (SL-016 design sec-2)."
     (when now
       (dolist (ask (plist-get ev :goad))
         (setq idx (1+ idx))
-        (when (satan-memory-canon-goad-outstanding-p ask now)
+        (when (satan-memory-canon--goad-outstanding-p ask now)
           (setq any t)
           (let ((topic (satan-memory-canon-topic-handle
                         (plist-get ask :subject))))
