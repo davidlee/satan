@@ -742,7 +742,8 @@ pop a desktop alert).  The bundle is verify-clean."
 BUSY binds `satan-run--spawn-running', SESSION `satan-run--session-active';
 PERCEIVE-ERROR non-nil makes perceive signal.  POLICY, when given,
 overrides morning's `:credential-policy'.  ENV is prepended to
-`process-environment' (morning's key var is OPENROUTER_API_KEY).
+`process-environment' (the fixture pins morning to openrouter, so its
+key var is OPENROUTER_API_KEY).
 BACKEND, a plist of `satan-credential-fixture-backend' keys, installs
 the fake backend (default: none).  ATTENDED binds `satan-run-attended'.
 SETUP, a function of the runs root, runs first.  `--spawn' is stubbed
@@ -767,14 +768,18 @@ temp runs root is deleted afterwards, so DIR is for its name only."
               (satan-credential-function
                (and backend
                     (apply #'satan-credential-fixture-backend log backend)))
-              (morning (satan-mode-resolve "morning"))
-              (satan-modes (if policy
-                               (cons (cons "morning"
-                                           (plist-put (copy-sequence morning)
+              ;; Pin the provider: the gate is under test, not the
+              ;; profile morning ships with.
+              (morning (plist-put (copy-sequence
+                                   (satan-mode-resolve "morning"))
+                                  :provider 'openrouter))
+              (satan-modes (cons (cons "morning"
+                                       (if policy
+                                           (plist-put morning
                                                       :credential-policy
-                                                      policy))
-                                     satan-modes)
-                             satan-modes))
+                                                      policy)
+                                         morning))
+                                 satan-modes))
               (spawned nil) (cred nil))
          (unwind-protect
              (satan-announce-with-recorder
