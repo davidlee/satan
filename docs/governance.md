@@ -510,7 +510,7 @@ Capabilities: `morning` and `motd` (and `tick-*`) carry `memory-write` so
 the memory_mark + hippocampus cross-ref hook are admitted; `self-edit-*`
 lanes are read-only against the substrate.
 
-All three use OpenRouter with `anthropic/claude-haiku-4.5` by default.
+All three use OpenRouter with `deepseek/deepseek-flash` by default.
 Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 `:budget-tokens`.
 

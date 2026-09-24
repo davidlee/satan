@@ -10,10 +10,8 @@
   "Alist of (NAME . SPEC) mode registrations.")
 
 (defcustom satan-profiles
-  '((claude-haiku . (:provider openrouter
-                     :model "anthropic/claude-haiku-4.5"))
-    (deepseek-pro . (:provider deepseek
-                     :model "deepseek-v4-pro")))
+  '((deepseek-flash . (:provider deepseek
+                     :model "deepseek-flash")))
   "Alist of (NAME . PLIST) provider/model profiles.
 A mode-spec referring to a profile via `:profile NAME' inherits each
 PLIST key that the mode-spec does not set itself.  Mode-level keys
@@ -121,7 +119,7 @@ Dotfiles must not be the source of truth for prompt content."
                        inbox-write memory-write motive-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :profile 'claude-haiku
+       :profile 'deepseek-flash
        :credential-policy 'prompt    ; meant to be seen (SL-018)
        :budget-tokens 300000
        :output-handler 'satan-output/morning
@@ -147,7 +145,7 @@ Dotfiles must not be the source of truth for prompt content."
                        hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :profile 'claude-haiku
+       :profile 'deepseek-flash
        :credential-policy 'prompt    ; meant to be seen (SL-018)
        :budget-tokens 100000
        :output-handler 'satan-output/motd
@@ -171,7 +169,7 @@ Dotfiles must not be the source of truth for prompt content."
        :capabilities '(stage-proposal hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :profile 'claude-haiku
+       :profile 'deepseek-flash
        :budget-tokens 300000
        :output-handler 'satan-output/self-edit
        :auto-apply 'none
@@ -194,7 +192,7 @@ Dotfiles must not be the source of truth for prompt content."
        :capabilities '(stage-proposal hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :profile 'claude-haiku
+       :profile 'deepseek-flash
        :budget-tokens 300000
        :output-handler 'satan-output/self-edit
        :auto-apply 'none
@@ -216,7 +214,7 @@ Dotfiles must not be the source of truth for prompt content."
        :capabilities '(hippocampus-write memory-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
-       :profile 'claude-haiku
+       :profile 'deepseek-flash
        :budget-tokens 400000
        :output-handler 'satan-output/ruminate
        :auto-apply 'none

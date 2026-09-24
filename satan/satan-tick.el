@@ -91,7 +91,7 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
                                goad-ask)
               :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
               :jail-profile 'specDev
-              :profile 'deepseek-pro
+              :profile 'deepseek-flash
               :budget-tokens 100000
               :output-handler 'satan-output/tick
               :auto-apply 'owned
