@@ -6,11 +6,13 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-12, PHASE-05 and PHASE-06 committed (2026-09-24);
-ISS-026 (field labels) closed across both repos. The `goad_ask` tool is
-registered and allowlisted on tick-pulse; `satan-goad-enabled` stays nil.
-Remaining phases, in the plan's entrance chain: PHASE-07 → PHASE-09 →
-PHASE-08 (PHASE-08 is the end-to-end test plus the live rollout).
+**fresh-as-of:** every SL-016 phase's code is landed and green — PHASE-07,
+PHASE-09 and PHASE-08(A) committed 2026-09-24; gate 1286 ran / 0 unexpected /
+6 skipped (the corpus resolved via the `~/satan -> /workspace/corpus` symlink).
+Only PHASE-08 part **(B)**, the live rollout, remains — it needs the host,
+outside this jail (no `systemctl`, no `/run/user/1000/goad.sock`, and the live
+`satan_memory` DB is not on the jail's Postgres). `satan-goad-enabled` stays
+nil; attrd is undeployed; 0008 is test-DB only. Runbook below.
 
 **ISS-026 closed (2026-09-24).** Corpus `e896597` (`goad: label every form
 field`) gives every `form` field a `label` per goad SPEC-001 R-15
@@ -24,6 +26,61 @@ below is fully discharged.
 
 **superseded fresh-as-of (PHASE-06):** F1 field-label residual — resolved
 by the ISS-026 fix above. Kept for the F1-fix narrative under PHASE-06b.
+
+### PHASE-08 (part A) — end-to-end integration test (2026-09-24)
+
+One worker (deepseek-flash, in-tree), completed within budget.
+
+**Files changed (dev repo):**
+- `satan/test/satan-goad-integration-test.el` (new) — corpus `skip-unless`; a
+  temp `goad/` holding a **copy** of the corpus `backend.py` beside its own
+  `data/` (D1) so `DATA` resolves to the temp dir; `--exchange` runs one
+  process per request with `GOAD_SATAN_QUEUE` bound and stdin from a request
+  file; helpers `--with-loop`, `--emitted-id`, `--should-worked`,
+  `--observations`; an R1 guard asserting the corpus `goad/data/` is untouched.
+  Four tests: VT-43 (goldens re-derived from the real backend and
+  byte-compared), VT-1 (the ask is the rendered view), VT-42 (respond round
+  trip → observer `:worked` with `:goad_answer`), VT-61 (form values reach the
+  trace).
+
+**Decisions taken:** D1 as planned; the test reuses `satan-tools-goad-test`'s
+`--with-goad` fixture stack rather than cloning it.
+
+**Gate:** `SATAN_DB_HOST=127.0.0.1 just check` ran 1286, 0 unexpected, 6 skipped
+(the 4 integration tests counted). Committed `2ac3458`. `verify-vt` reports
+VT-1/42/43/61 UNATTRIBUTABLE (the known new-file attribution defect, exit 0);
+evidence is the gate plus the mandated keywords.
+
+### PHASE-08 (part B) — live rollout runbook (host, outside the jail)
+
+**Why it is not done here:** the jail has no `systemctl` (attrd redeploy), no
+`/run/user/1000/goad.sock` (the doorbell), and no live `satan_memory` database
+on its Postgres. Every step below runs on the host.
+
+1. **Redeploy attrd.** It carries the two reasons (`003b64e`) but is not
+   deployed. Build + restart via the nix config repo's `just home-switch`
+   (`~/flakes`; `nix/module.nix` owns `systemd.user.services.satan-attrd`).
+   Confirm `systemctl --user is-active satan-attrd`. No attrd DB migration is
+   needed — `003b64e` added reason variants and tuning rows only.
+2. **Apply migration 0008 to the live DB.** In the live Emacs:
+   `M-x satan-memory-migrate-apply` (or `(satan-memory-migrate-apply)`), then
+   `satan-memory-migrate-status` to confirm `0008_intervention_form`. This is
+   `satan_memory`, not the jail's test DBs. (EX-4.)
+3. **First live ask end to end (VH-1).** The tick timer is dormant (ISS-022),
+   so drive a tick-pulse run with `satan-goad-enabled` bound temporarily
+   (`setq`/eval; the persistent config is set only after this succeeds, EX-3).
+   The `goad_ask` pops the goad window; answer it; the next observer pass
+   records `:worked` with the question and value in the trace. Record the
+   intervention id in notes.md. (EX-2.)
+4. **One live ask left untouched (VH-2).** Drive a second ask; leave it; the
+   observer matures `:ignored :medium` `untouched`. Record the id. (EX-2.)
+5. **Persist `satan-goad-enabled`** in the user's config, now that VH-1 passed.
+6. Record all intervention ids + outcomes in notes.md, then flip PHASE-08
+   `completed` and route to `/audit`.
+
+Watch: the doorbell is a hint (slice R3) — a refused emit is harmless, the
+queue file carries the ask. attrd must be running before `satan-goad-enabled`,
+or its `ask_suppressed`/`ask_uncorrelated` rows are dropped (PHASE-05 EX-2).
 
 ### PHASE-09 — the ask's negative branch, labels, trace, queue retirement (2026-09-24)
 
