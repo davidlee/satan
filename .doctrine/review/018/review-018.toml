@@ -1,0 +1,128 @@
+id    = 18
+slug  = "sl-016-reconciliation-audit-goad-as-satans-elicitation-surface-phase-0112"
+title = "SL-016 reconciliation audit: goad as SATAN's elicitation surface (PHASE-01..12)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-016"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Expected the design review ledger RV-015 terminal; observed active, await=raiser, with 10 answered findings never verified"
+detail = "`doctrine review status RV-015` → active · await=raiser · findings 10. F-1..F-10 (DEC-024..028 answer-form revision) all `answered`, none verified. The fixes are in the tree and pass: VT-47 (form validator, F-1), PHASE-10..12 appended (F-2), design rows renumbered from 45 (F-3), VT-52 (pre-0008 projection, F-4), VT-51 (JSON row reads, F-5), VT-50 (empty XDG, F-9). Same shape as RV-014 F-2 on SL-018."
+disposition = "fix-now"
+response = "Verified RV-015 F-1..F-10 as raiser during this audit, after checking each fix against the tree: VT-47/50/51/52 pass, PHASE-10..12 exist, design rows are renumbered from 45, and DEC-025/026 cross-references are corrected. RV-015 is now done · await=none. This follows the RV-014 F-2 precedent."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "Expected design sec-3/sec-8 to describe the shipped queue; observed it still promises retirement of a queue entry at classification, which RV-017 F-6 deleted"
+detail = 'The user reversed PHASE-09 D4 during RV-017 (`5c035b8`): the classification-time queue rewrite is gone and the queue regenerates only at emit. Design sec-8 item 8 still reads "the queue projection regenerates totally from the open intervention rows, and retires an entry at classification". Design sec-3 ("The queue is a projection") names two rewrite triggers, but one now exists. `satan-observer.el` no longer rewrites the queue (40 lines removed in 5c035b8). `expires_at` (VT-16) keeps an expired entry off the screen.'
+disposition = "verified"
+response = 'Design drift, delegated to /reconcile (brief: per-slice direct edit). Design sec-8 item 8 drops "retires an entry at classification" and records VT-8 as withdrawn (RV-017 F-6, user reversal of PHASE-09 D4). Design sec-3 "The queue is a projection" names a single rewrite trigger, at emit, with `expires_at` as what keeps a matured entry off screen. The code is correct as shipped.'
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected verify-vt clean; observed PHASE-09 VT-8 FAIL for a criterion the user withdrew"
+detail = "`doctrine slice verify-vt 16`: `✗ FAIL VT-8 — keyword satan-observer/ask-classification-retires-queue-entry absent from satan/test/satan-observer-test.el`. The test was deleted with the behaviour (RV-017 F-6). The plan row has no waiver, so the VT gate stays red on a criterion that no longer describes intended behaviour. plan.toml already has an idiom for this (`waived = true`, `waived_reason`, used on 14 out-of-repo rows)."
+disposition = "fix-now"
+response = "Annotated VT-8 in plan.toml with the plan's existing waiver idiom: `waived = true` and a `waived_reason` citing RV-017 F-6 / 5c035b8. The id, expects, test_file and keywords are unchanged, so the criterion is annotated, not rewritten. `doctrine slice verify-vt 16` now exits 0 with VT-8 WAIVED."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected design to state the pre-0008 blast radius; observed it says only form asks fail, when every ask fails"
+detail = 'Design sec-7 ("The record format", ~l.864) says a question with a form fails to project before 0008. The sec-9 risk table (l.1280) says "before it, a question with a form takes the undelivered verdict". In fact `satan-intervention-open-asks` (satan-intervention.el:1010-1021) always selects `form_json` ("unlike the other readers it fails on a database that has not run it"). The emit-time queue rewrite therefore fails for EVERY ask, form or not, and every ask takes `undelivered`. Other kinds are unaffected, as the design says. No live impact: 0008 was applied at runbook step 2. Raised by the RV-017 reviewer and carried in notes.'
+disposition = "verified"
+response = "Design drift, delegated to /reconcile (per-slice direct edit). Design sec-7 (~l.864) and the sec-9 risk-table row for migration 0008 should say that before 0008 EVERY ask takes the undelivered verdict, because the emit-time queue rewrite reads `satan-intervention-open-asks`, which selects form_json. Other kinds still project unaffected. 0008 is applied live, so there is nothing to fix in code."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected sec-9's affected surface and the selector registry to name every file SL-016 edited; observed two new modules and ten touched files undeclared"
+detail = """
+`doctrine slice conformance 16`: 12 conformant, 0 undelivered, 69 undeclared. Filtered to files touched by SL-016 commits, the genuine gaps are:
+- **New modules:** `satan/satan-goad.el` (queue, record reader, form validator) and `satan/satan-tools-goad.el` (the goad_ask tool). Design sec-9 says only "the new tool module", and `satan-goad.el` appears nowhere in design.md.
+- **Touched seams:** `satan-broker.el` (PHASE-04, RV-017), `satan-run.el` and `satan-mcp.el` (RV-017 F-4 `:available-p`, `:percept-sources`), `satan-motive.el` (PHASE-06), `satan-jsonl.el` (PHASE-03, 06a), `satan-sensor-alerts.el` (PHASE-04 quiet-p window), `satan.el` (require), `satan-tools-notify.el` and `satan-tools.el` (scope-relevant only), `dev/satan-test.el` (PHASE-03), `docs/attributes/{design-contract,wiring-status}.md` (PHASE-05).
+- **Tests:** `satan/test/**` is scope-relevant only, so none of the goad tests or fixtures count as conformant.
+Every edit traces to a phase or a review fix. This is a recording gap, not scope creep."""
+disposition = "verified"
+response = "Recording gap, delegated to /reconcile. The selector registry is load-bearing: `doctrine slice selector add` design-target for satan/satan-goad.el, satan/satan-tools-goad.el, satan/satan-broker.el, satan/satan-run.el, satan/satan-mcp.el, satan/satan-motive.el, satan/satan-jsonl.el, satan/satan-sensor-alerts.el, satan/satan.el, satan/satan-tools-notify.el, satan/satan-tools.el, dev/satan-test.el, docs/attributes/design-contract.md, docs/attributes/wiring-status.md, and the test files SL-016 touched (satan/test/satan-*goad*.el, satan/test/goad-fixtures/**, plus the modified test files). Design sec-9's affected-surface table mirrors the registry and should name satan-goad.el and satan-tools-goad.el."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "Expected the delta registry to cover SL-016 commits only; observed phase boundaries that span interleaved foreign commits"
+detail = "PHASE-01's boundary is 438555b..6d9f4b9. It spans non-slice chores (f11fb72 skills update, 7976cff flake rename, ceb42a7 pi runner scripts), which puts `.envrc`, `flake.nix` and `skills-lock.json` in the undeclared cell. The PHASE-08 range contains 4ec6198, which restores the applied bytes of migrations 0003/0004/0006. That is a legitimate rollout fix (runbook step 2; memory mem.fact.satan.applied-migrations-are-byte-immutable), and the net diff returns those files to their checksummed bytes. The `.doctrine/**` rows are bookkeeping."
+disposition = "tolerated"
+response = "Phase boundaries are commit ranges, and SL-016 ran interleaved with SL-017/018 and chores on one branch. Rewriting runtime boundaries to exclude foreign commits costs more than it shows. The migration rows are a correct in-slice rollout fix, restored to their checksummed bytes. After reconcile adds the F-5 selectors, the expected residue is .envrc, flake.nix, skills-lock.json, the three restored migrations and the .doctrine/** bookkeeping."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "Expected the scope document to match the delivered slice; observed PERCEIVE, R1, A1, OQ-1..4 and verification item 5 still in their pre-design form"
+detail = """
+slice-016.md was left uncorrected on purpose ("per-slice artefacts are /reconcile's to write", notes Open). The drift:
+- Scope item 1 says SATAN reads per-item values for checklist items too. The design narrowed PERCEIVE to outstanding asks, and checklist history is IMP-025.
+- R1 and verification item 5 (the sensor watermark) are moot: there is no probe (design sec-8 item 10).
+- A1 (the thin-shell seat) is falsified by DEC-008 (POL-001 No branch, recorded tenant).
+- OQ-1..OQ-4 are resolved by DEC-004/010/011/012.
+- D1 (ISS-012) is superseded: SL-018 closed ISS-012, and asks flow only while a credential session is live."""
+disposition = "verified"
+response = """
+Delegated to /reconcile as a per-slice direct edit of slice-016.md:
+- Scope item 1: narrow PERCEIVE to outstanding asks and their answers, citing IMP-025 for checklist history.
+- R1 and verification item 5: mark moot (no probe, no watermark).
+- A1: mark falsified, citing DEC-008.
+- OQ-1..4: mark resolved, citing DEC-004/010/011/012.
+- D1: point to SL-018's credential gate."""
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Expected POL-001's seat clause to cover a non-editor human surface; observed the gap design sec-8 deferred to reconcile"
+detail = """Design sec-8 ("POL-001: the No branch, explicitly"): the seat rationale for thin shells is "the human's editing surface is where their output lands and where the keeper approves it". goad is a second human surface that is not the editor, and the clause does not contemplate one. The slice does not widen it ("governance by implementation"). It records the goad modules as tenants (DEC-008) and names a REV at close as the vehicle (sec-9 "Out of scope": "Widening POL-001's seat clause — a REV at close")."""
+disposition = "verified"
+response = "Governance, delegated to /reconcile as a REV against POL-001: widen the seat clause's rationale to name non-editor human surfaces (goad), or state explicitly that such surfaces are No-branch tenants. This is the keeper's call at reconcile. The slice itself stays within POL-001 as written (DEC-008)."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "Expected an answer to design sec-8's deferred question: does a second caller of the auto-verdict writer need an ADR-017 ledger note? Observed it still open"
+detail = """Design sec-8 ("No authority item, no ledger row"): the `undelivered` verdict goes through the writer notify_send already uses. PHASE-04 moved it into satan-intervention.el, and goad_ask is its second caller. "Whether a second caller of an existing auto-verdict writer wants a ledger note is a question for /reconcile at close." SL-017's REV-002 covers operational alarms only."""
+disposition = "verified"
+response = "Governance question, delegated to /reconcile. Audit recommendation: no REV. PHASE-04 moved an existing writer without changing it, and adding a second caller adds no write path, so ledger row 4's owner and invariant do not change. Reconcile records that decision in design sec-8, replacing the open question."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "Expected the RV-017 closing nits dispositioned; observed four carried to audit unresolved"
+detail = """
+From the notes, "RV-017 closed 2026-09-24":
+(a) `satan-tools-goad/independently-perceived-topic-askable` sources its topic from a fictional canon rule `notes.topic` (satan-tools-goad-test.el:385). The real non-goad topic rule is `hint.topic`.
+(b) `~/satan/prompts/tick/pulse.txt:18-20` describes goad_ask even while goad is disabled.
+(c) The interactive mode's `:tools` is fixed at registration (satan-mcp.el:93), while tools/list recomputes per call.
+(d) An observation trace's `predicates` serialises as a JSON object (`{"goad_answer":{}}`), while the outcome row's evidence_json holds an array. The trace metadata line dates from b2f0da11 (2026-07-12), so this predates the slice and affects every kind."""
+disposition = "fix-now"
+response = "(a) Fixed: the test now sources its topic from the real `hint.topic` rule. The suite gives 1293 tests, 0 unexpected, 6 skipped. (b) Tolerated: `satan-goad-enabled` is now persisted on (.emacs.d 9ed54c6), so the prompt text matches the manifest; with goad disabled a call is refused, which is transcript noise only. (c) Tolerated: no interactive `:available-p` varies at runtime, and MCP tools/list filters per call. (d) Follow-up ISS-027: pre-existing since 2026-07-12, affects all kinds, outside this slice."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

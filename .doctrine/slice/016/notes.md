@@ -6,6 +6,34 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
+**Audit RV-018 (2026-09-24, head `bfee32b`).** Ten findings, all terminal, no
+blocker. Evidence: `just check` gives 1293 tests, 0 unexpected, 6 skipped;
+`~/satan/goad just check` passes 77; `verify-vt 16` exits 0. Fixed during
+the audit:
+- RV-015 (the design-review ledger) was left active and is now verified and
+  done (F-1).
+- VT-8 carries a waiver annotation, with its id and text unchanged (F-3).
+- The test `independently-perceived-topic-askable` now uses the real
+  `hint.topic` rule (F-10a).
+- The pre-existing trace `predicates` object/array quirk is filed as ISS-027
+  (F-10d).
+
+Delegated to `/reconcile` (see RV-018 `## Reconciliation Brief`):
+- design sec-3/7/8/9 drift (F-2, F-4, F-9)
+- the selector registry, which omits `satan-goad.el` and
+  `satan-tools-goad.el` (F-5)
+- the scope document (F-7)
+- a REV on POL-001's seat clause (F-8).
+
+The stale `governance.md:15` claim stays with CHR-008.
+
+Harvested from the phase sheets (the only item not already captured): an
+`Enough` exchange can write `presented_at` into several emit-date day files.
+Each write is atomic, but the set is not, so a crash mid-exchange can leave
+some files updated and others not. This is accepted because goad runs one
+exchange at a time and SATAN only reads. Revisit if a second writer appears
+(PHASE-02 risk).
+
 **RV-016 adjudicated + RV-017 second pass (2026-09-24, Claude on host).**
 RV-016 was raised, fixed and verified by the same agent. Independently
 re-checked: F-1's fallback is correct (every verdict row still gates on

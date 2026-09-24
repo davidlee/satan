@@ -382,7 +382,7 @@ refuses exactly what goad minted into this run's percept."
                          (satan-tools-goad-test--ctx
                           ctx :percept-handles percept
                           :percept-sources (satan-tools-goad-test--sources
-                                            topic "notes.topic"))
+                                            topic "hint.topic"))
                          :subject topic)))
             (should (eq t (plist-get (cdr result) :asked)))))))))
 
