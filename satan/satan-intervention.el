@@ -4,7 +4,8 @@
 ;;
 ;; This module owns the projection of intervention audit-events into
 ;; the `satan_interventions' / `satan_intervention_outcomes' tables
-;; created by migration 0006_interventions.sql.  The audit log
+;; created by migration 0006_interventions.sql (an ask's `form_json'
+;; column: 0008_intervention_form.sql, SL-016).  The audit log
 ;; (transcript.jsonl per run) is the source of truth; the tables are
 ;; rebuildable.
 ;;
@@ -23,11 +24,14 @@
 ;;   (satan-intervention-record &key CTX KIND TARGET-SURFACE MESSAGE
 ;;                                      RELATED-MOTIVE-ID CUE-HANDLES
 ;;                                      EXPECTED-OUTCOME OUTCOME-WINDOW-MINUTES
-;;                                      SEVERITY)
+;;                                      SEVERITY FORM)
 ;;     Mint a stable `<run-id>.iv<NNN>' id and emit `intervention.created'.
-;;     Returns the payload plist.
+;;     FORM (an ask's answer form) rides the payload as `:form' only when
+;;     given.  Returns the payload plist.
 ;;   (satan-intervention-project PAYLOAD &key DB)
-;;     INSERT into `satan_interventions' (ON CONFLICT DO NOTHING).
+;;     INSERT into `satan_interventions' (ON CONFLICT DO NOTHING).  Names
+;;     `form_json' only for a payload carrying a form (DEC-024), so every
+;;     other payload projects whether or not 0008 has run.
 ;;   (satan-intervention-create &key CTX ... DB)
 ;;     record then project.  Returns the intervention-id string.
 ;;
@@ -52,6 +56,18 @@
 ;;   (satan-intervention-pending NOW &optional DB)
 ;;     Return list of intervention plists whose maturity window has elapsed
 ;;     and which have no outcome row.  NOW is an ISO8601 string.
+;;
+;;   (satan-intervention-recent NOW &key INCLUDE-STALE LIMIT DB)
+;;     The most recent intervention plists, newest first.
+;;
+;;   (satan-intervention-open-asks NOW &optional DB)
+;;     Asks with no outcome whose window is still open at NOW, oldest
+;;     first, each with its `:form'.  The only reader needing 0008.
+;;
+;; Every reader reads its rows as one JSON array (`json_agg' of the
+;; ordered row subquery, DEC-028) through one row-to-plist mapping, so no
+;; value can split a row; lookup, pending and recent never select
+;; `form_json', so they work before 0008 is applied.
 ;;
 ;; **Transaction discipline:** the record is canonical and always comes
 ;; first; each projection write is a separate psql round-trip.  A record
@@ -161,31 +177,50 @@ become vectors before serialization."
                                 :false-object :false)))
     (concat (satan-intervention--quote-text coded) "::jsonb")))
 
+(defun satan-intervention--timestamptz (text)
+  "SQL `timestamptz' literal for the ISO8601 string TEXT."
+  (concat (satan-intervention--quote-text text) "::timestamptz"))
+
+(defun satan-intervention--payload-form (payload)
+  "PAYLOAD's `:form', or nil when it carries none (absent, nil or null)."
+  (let ((form (plist-get payload :form)))
+    (unless (eq form :null) form)))
+
+(defun satan-intervention--created-values (payload)
+  "`(COLUMN . SQL-VALUE)' pairs for an intervention.created PAYLOAD.
+`form_json' is named only when PAYLOAD carries a form (DEC-024), so
+every other payload projects whether or not migration 0008 has run."
+  (let ((q #'satan-intervention--quote-text)
+        (form (satan-intervention--payload-form payload)))
+    (append
+     `(("id"                     . ,(funcall q (plist-get payload :intervention_id)))
+       ("run_id"                 . ,(funcall q (plist-get payload :run_id)))
+       ("ts"                     . ,(satan-intervention--timestamptz
+                                     (plist-get payload :ts)))
+       ("mode"                   . ,(funcall q (plist-get payload :mode)))
+       ("kind"                   . ,(funcall q (plist-get payload :kind)))
+       ("target_surface"         . ,(funcall q (plist-get payload :target_surface)))
+       ("message"                . ,(funcall q (plist-get payload :message)))
+       ("related_motive_id"      . ,(funcall q (plist-get payload :related_motive_id)))
+       ("cue_handles_json"       . ,(satan-intervention--quote-jsonb
+                                     (or (plist-get payload :cue_handles) (vector))))
+       ("percept_handles_json"   . ,(satan-intervention--quote-jsonb
+                                     (or (plist-get payload :percept_handles) (vector))))
+       ("expected_outcome"       . ,(funcall q (plist-get payload :expected_outcome)))
+       ("outcome_window_minutes" . ,(number-to-string
+                                     (plist-get payload :outcome_window_minutes)))
+       ("severity"               . ,(funcall q (plist-get payload :severity))))
+     (when form
+       `(("form_json" . ,(satan-intervention--quote-jsonb form)))))))
+
 (defun satan-intervention--insert-created-sql (payload)
   "Return SQL INSERT for an intervention.created PAYLOAD."
-  (concat
-   "INSERT INTO satan_interventions ("
-   "id, run_id, ts, mode, kind, target_surface, message, "
-   "related_motive_id, cue_handles_json, percept_handles_json, "
-   "expected_outcome, outcome_window_minutes, severity) VALUES ("
-   (mapconcat
-    #'identity
-    (list (satan-intervention--quote-text (plist-get payload :intervention_id))
-          (satan-intervention--quote-text (plist-get payload :run_id))
-          (concat (satan-intervention--quote-text (plist-get payload :ts))
-                  "::timestamptz")
-          (satan-intervention--quote-text (plist-get payload :mode))
-          (satan-intervention--quote-text (plist-get payload :kind))
-          (satan-intervention--quote-text (plist-get payload :target_surface))
-          (satan-intervention--quote-text (plist-get payload :message))
-          (satan-intervention--quote-text (plist-get payload :related_motive_id))
-          (satan-intervention--quote-jsonb (or (plist-get payload :cue_handles) (vector)))
-          (satan-intervention--quote-jsonb (or (plist-get payload :percept_handles) (vector)))
-          (satan-intervention--quote-text (plist-get payload :expected_outcome))
-          (number-to-string (plist-get payload :outcome_window_minutes))
-          (satan-intervention--quote-text (plist-get payload :severity)))
-    ", ")
-   ") ON CONFLICT (id) DO NOTHING;"))
+  (let ((pairs (satan-intervention--created-values payload)))
+    (concat "INSERT INTO satan_interventions ("
+            (mapconcat #'car pairs ", ")
+            ") VALUES ("
+            (mapconcat #'cdr pairs ", ")
+            ") ON CONFLICT (id) DO NOTHING;")))
 
 (defun satan-intervention--upsert-outcome-sql (payload)
   "Return SQL UPSERT for an outcome_classified / outcome_revised PAYLOAD."
@@ -201,13 +236,9 @@ become vectors before serialization."
           (satan-intervention--quote-text (plist-get payload :confidence))
           (satan-intervention--quote-jsonb (plist-get payload :evidence))
           (satan-intervention--quote-text (plist-get payload :maturity))
-          (concat (satan-intervention--quote-text
-                   (plist-get payload :next_revisit_at))
-                  "::timestamptz")
+          (satan-intervention--timestamptz (plist-get payload :next_revisit_at))
           (satan-intervention--quote-text (plist-get payload :source))
-          (concat (satan-intervention--quote-text
-                   (plist-get payload :classified_at))
-                  "::timestamptz")
+          (satan-intervention--timestamptz (plist-get payload :classified_at))
           (satan-intervention--quote-text (plist-get payload :revises))
           (satan-intervention--quote-text (plist-get payload :marked_by))
           (satan-intervention--quote-text (plist-get payload :notes)))
@@ -369,11 +400,14 @@ time at all."
 (cl-defun satan-intervention-record
     (&key ctx kind target-surface message
           related-motive-id cue-handles
-          expected-outcome outcome-window-minutes severity)
+          expected-outcome outcome-window-minutes severity form)
   "Record an intervention: validate, mint its id, append the audit line.
 CTX is the broker-supplied tool-ctx plist.  Required keyword args:
 KIND, TARGET-SURFACE, MESSAGE, EXPECTED-OUTCOME, OUTCOME-WINDOW-MINUTES,
-SEVERITY.  Optional: RELATED-MOTIVE-ID, CUE-HANDLES (list of strings).
+SEVERITY.  Optional: RELATED-MOTIVE-ID, CUE-HANDLES (list of strings),
+FORM (an ask's answer form, a list of option plists; SL-016).  FORM
+rides the payload as its last key `:form', only when given, so a
+formless payload is unchanged; its shape is the caller's to validate.
 
 Appends `intervention.created' to the run's transcript — the canonical
 record (REQ-003) — and touches no database.  Returns the payload plist,
@@ -384,19 +418,21 @@ propagates an append failure; in every such case nothing is recorded."
   (satan-intervention--ctx-required ctx)
   (let* ((run-id (plist-get ctx :id))
          (payload
-          (list :intervention_id        (satan-intervention--mint-id run-id)
-                :run_id                 run-id
-                :ts                     (plist-get ctx :time-now)
-                :mode                   (plist-get ctx :mode-name)
-                :kind                   kind
-                :target_surface         target-surface
-                :message                message
-                :related_motive_id      (or related-motive-id :null)
-                :cue_handles            (or cue-handles (vector))
-                :percept_handles        (or (plist-get ctx :percept-handles) (vector))
-                :expected_outcome       expected-outcome
-                :outcome_window_minutes outcome-window-minutes
-                :severity               severity))
+          (append
+           (list :intervention_id        (satan-intervention--mint-id run-id)
+                 :run_id                 run-id
+                 :ts                     (plist-get ctx :time-now)
+                 :mode                   (plist-get ctx :mode-name)
+                 :kind                   kind
+                 :target_surface         target-surface
+                 :message                message
+                 :related_motive_id      (or related-motive-id :null)
+                 :cue_handles            (or cue-handles (vector))
+                 :percept_handles        (or (plist-get ctx :percept-handles) (vector))
+                 :expected_outcome       expected-outcome
+                 :outcome_window_minutes outcome-window-minutes
+                 :severity               severity)
+           (when form (list :form form))))
          (verr (satan-audit-validate-intervention-event
                 "intervention.created" payload
                 (make-hash-table :test 'equal))))
@@ -768,27 +804,70 @@ MEMORY-MARK-FN is the function used to write the trace; defaults to
     event))
 
 ;; --- query helpers ---
+;;
+;; Every reader selects each column as its psql text form
+;; (`COALESCE(col::text, '')', exactly what `psql -A' printed before
+;; DEC-028) and reads the rows back as one JSON array, so a `|' or a
+;; newline inside a value can never split or drop a row.  The per-column
+;; conversions below therefore see the same strings they always did.
 
-(defconst satan-intervention--lookup-columns
+(defconst satan-intervention--columns
   '("id" "run_id" "ts" "mode" "kind" "target_surface" "message"
     "related_motive_id" "cue_handles_json" "expected_outcome"
-    "outcome_window_minutes" "severity"))
+    "outcome_window_minutes" "severity")
+  "`satan_interventions' columns every reader selects.")
 
 (defconst satan-intervention--outcome-columns
   '("classification" "confidence" "evidence_json" "maturity"
     "next_revisit_at" "source" "classified_at" "revises"
-    "marked_by" "notes"))
+    "marked_by" "notes")
+  "`satan_intervention_outcomes' columns `satan-intervention-lookup' selects.")
+
+(defconst satan-intervention--window-end-sql
+  "i.ts + (i.outcome_window_minutes * INTERVAL '1 minute')"
+  "SQL for the instant an intervention's outcome window closes.")
+
+(defconst satan-intervention--outcome-join-sql
+  "LEFT JOIN satan_intervention_outcomes o ON i.id = o.intervention_id "
+  "SQL joining each intervention `i' to its outcome row `o', if any.")
+
+(defun satan-intervention--select-list (alias columns)
+  "SQL select list naming each of COLUMNS of ALIAS by its text form.
+A NULL reads as the empty string, as `psql -A' printed it."
+  (mapconcat (lambda (c) (format "COALESCE(%s.%s::text, '') AS %s" alias c c))
+             columns ", "))
+
+(defun satan-intervention--json-decode (text)
+  "Decode the JSON TEXT: objects as plists, arrays as lists, and null
+and false as `:null' and `:false'."
+  (json-parse-string text
+                     :object-type 'plist
+                     :array-type 'list
+                     :null-object :null
+                     :false-object :false))
+
+(defun satan-intervention--json-rows (db label query)
+  "Run QUERY on DB; return its rows as a list of plists keyed by column.
+Aggregates QUERY's rows, in QUERY's order, into one JSON array
+\(`json_agg' over the subquery), so no cell value can split a row.
+Signals `user-error' prefixed LABEL on psql failure."
+  (pcase (satan-db-psql
+          db satan-memory-migrate-host satan-memory-migrate-psql-program
+          (list "-A" "-t" "-c"
+                (concat "SELECT json_agg(r) FROM (" query ") r")))
+    (`(ok . ,out)
+     (let ((json (string-trim out)))
+       ;; `json_agg' over no rows is NULL: an empty line.
+       (unless (string-empty-p json)
+         (satan-intervention--json-decode json))))
+    (`(error . ,msg) (user-error "%s: %s" label msg))))
 
 (defun satan-intervention--parse-jsonb (text)
   "Parse a JSONB cell TEXT into elisp; nil/empty → nil."
   (cond
    ((or (null text) (string-empty-p text)) nil)
    (t (condition-case _err
-          (json-parse-string text
-                             :object-type 'plist
-                             :array-type 'list
-                             :null-object :null
-                             :false-object :false)
+          (satan-intervention--json-decode text)
         (error nil)))))
 
 (defun satan-intervention--normalize-pg-timestamp (cell)
@@ -802,122 +881,107 @@ the offset width.  nil / empty pass through unchanged."
       (replace-match "T" t t cell)
     cell))
 
-(defun satan-intervention--row-to-intervention (cells)
-  "Convert a CELLS list (column-order matches `--lookup-columns') to plist."
-  (cl-destructuring-bind
-      (id run_id ts mode kind target_surface message
-       related_motive_id cue_handles_json expected_outcome
-       outcome_window_minutes severity)
-      cells
-    (list :intervention_id        id
-          :run_id                 run_id
-          :ts                     (satan-intervention--normalize-pg-timestamp ts)
-          :mode                   mode
-          :kind                   kind
-          :target_surface         target_surface
-          :message                message
-          :related_motive_id      (if (string-empty-p related_motive_id)
-                                      nil
-                                    related_motive_id)
-          :cue_handles            (satan-intervention--parse-jsonb
-                                   cue_handles_json)
-          :expected_outcome       expected_outcome
-          :outcome_window_minutes (string-to-number outcome_window_minutes)
-          :severity               severity)))
+(defun satan-intervention--blank-to-nil (text)
+  "TEXT, or nil when it is the empty string (a NULL column)."
+  (unless (string-empty-p text) text))
 
-(defun satan-intervention--row-to-outcome (cells)
-  "Convert a CELLS list (column-order matches `--outcome-columns') to plist."
-  (cl-destructuring-bind
-      (classification confidence evidence_json maturity
-       next_revisit_at source classified_at revises
-       marked_by notes)
-      cells
-    (list :classification    classification
-          :confidence        confidence
-          :evidence          (satan-intervention--parse-jsonb evidence_json)
-          :maturity          maturity
-          :next_revisit_at   (satan-intervention--normalize-pg-timestamp
-                              next_revisit_at)
-          :source            source
-          :classified_at     (satan-intervention--normalize-pg-timestamp
-                              classified_at)
-          :revises           (if (string-empty-p revises) nil revises)
-          :marked_by         (if (string-empty-p marked_by) nil marked_by)
-          :notes             (if (string-empty-p notes) nil notes))))
+(defun satan-intervention--row-to-intervention (row)
+  "Convert ROW, a plist keyed by `satan-intervention--columns', to plist.
+A non-empty `:form_json' in ROW adds `:form'."
+  (append
+   (list :intervention_id        (plist-get row :id)
+         :run_id                 (plist-get row :run_id)
+         :ts                     (satan-intervention--normalize-pg-timestamp
+                                  (plist-get row :ts))
+         :mode                   (plist-get row :mode)
+         :kind                   (plist-get row :kind)
+         :target_surface         (plist-get row :target_surface)
+         :message                (plist-get row :message)
+         :related_motive_id      (satan-intervention--blank-to-nil
+                                  (plist-get row :related_motive_id))
+         :cue_handles            (satan-intervention--parse-jsonb
+                                  (plist-get row :cue_handles_json))
+         :expected_outcome       (plist-get row :expected_outcome)
+         :outcome_window_minutes (string-to-number
+                                  (plist-get row :outcome_window_minutes))
+         :severity               (plist-get row :severity))
+   ;; Only open-asks selects form_json (it needs migration 0008); a row
+   ;; without a form gains no key, as a formless payload has none.
+   (when-let* ((form (satan-intervention--blank-to-nil
+                      (plist-get row :form_json))))
+     (list :form (satan-intervention--parse-jsonb form)))))
+
+(defun satan-intervention--row-to-outcome (row)
+  "Convert ROW, a plist keyed by `--outcome-columns', to an outcome plist."
+  (list :classification    (plist-get row :classification)
+        :confidence        (plist-get row :confidence)
+        :evidence          (satan-intervention--parse-jsonb
+                            (plist-get row :evidence_json))
+        :maturity          (plist-get row :maturity)
+        :next_revisit_at   (satan-intervention--normalize-pg-timestamp
+                            (plist-get row :next_revisit_at))
+        :source            (plist-get row :source)
+        :classified_at     (satan-intervention--normalize-pg-timestamp
+                            (plist-get row :classified_at))
+        :revises           (satan-intervention--blank-to-nil
+                            (plist-get row :revises))
+        :marked_by         (satan-intervention--blank-to-nil
+                            (plist-get row :marked_by))
+        :notes             (satan-intervention--blank-to-nil
+                            (plist-get row :notes))))
+
+(defun satan-intervention--read-interventions
+    (db label tail &optional columns)
+  "Intervention plists selected from `satan_interventions i' and TAIL.
+TAIL is the SQL after the select list's FROM: joins, WHERE, ORDER BY,
+LIMIT.  COLUMNS defaults to `satan-intervention--columns'.  LABEL
+prefixes a psql failure."
+  (mapcar #'satan-intervention--row-to-intervention
+          (satan-intervention--json-rows
+           db label
+           (concat "SELECT "
+                   (satan-intervention--select-list
+                    "i" (or columns satan-intervention--columns))
+                   " FROM satan_interventions i " tail))))
 
 (defun satan-intervention-lookup (intervention-id &optional db)
   "Return `(:intervention ROW :outcome ROW|nil)' for INTERVENTION-ID, or nil."
-  (let* ((db (or db satan-memory-migrate-database))
-         (sql (concat
-               "SELECT "
-               (mapconcat
-                (lambda (c) (concat "COALESCE(i." c "::text, '')"))
-                satan-intervention--lookup-columns ", ")
-               ", "
-               "(o.intervention_id IS NOT NULL)::text, "
-               (mapconcat
-                (lambda (c) (concat "COALESCE(o." c "::text, '')"))
-                satan-intervention--outcome-columns ", ")
-               " FROM satan_interventions i "
-               "LEFT JOIN satan_intervention_outcomes o "
-               "  ON i.id = o.intervention_id "
-               "WHERE i.id = "
-               (satan-intervention--quote-text intervention-id)))
-         (result (satan-db-psql
-                  db satan-memory-migrate-host satan-memory-migrate-psql-program
-                  (list "-A" "-t" "-F" "|" "-c" sql))))
-    (pcase result
-      (`(ok . ,out)
-       (let* ((line (string-trim out)))
-         (when (and (not (string-empty-p line)))
-           (let* ((cells (split-string line "|"))
-                  (n-iv (length satan-intervention--lookup-columns))
-                  (iv-cells (cl-subseq cells 0 n-iv))
-                  (has-outcome (equal "true" (nth n-iv cells)))
-                  (out-cells (and has-outcome
-                                  (cl-subseq cells (1+ n-iv)))))
-             (list :intervention (satan-intervention--row-to-intervention iv-cells)
-                   :outcome (and has-outcome
-                                 (satan-intervention--row-to-outcome out-cells)))))))
-      (`(error . ,msg) (user-error "satan-intervention-lookup: %s" msg)))))
+  (when-let* ((row (car (satan-intervention--json-rows
+                         (or db satan-memory-migrate-database)
+                         "satan-intervention-lookup"
+                         (concat
+                          "SELECT "
+                          (satan-intervention--select-list
+                           "i" satan-intervention--columns)
+                          ", (o.intervention_id IS NOT NULL) AS has_outcome, "
+                          (satan-intervention--select-list
+                           "o" satan-intervention--outcome-columns)
+                          " FROM satan_interventions i "
+                          satan-intervention--outcome-join-sql
+                          "WHERE i.id = "
+                          (satan-intervention--quote-text intervention-id))))))
+    (list :intervention (satan-intervention--row-to-intervention row)
+          :outcome (and (eq t (plist-get row :has_outcome))
+                        (satan-intervention--row-to-outcome row)))))
 
 (defun satan-intervention-pending (now &optional db)
   "Return intervention plists whose maturity window ≤ NOW and that lack outcomes.
 NOW is an ISO8601 string accepted by PostgreSQL's `timestamptz' parser.
-Excludes interventions whose `created_at + outcome_window_minutes' is
+Excludes interventions whose `ts + outcome_window_minutes' is
 later than NOW (still `:pending' — see outcome-semantics §3), whose
-`created_at + outcome_window_minutes + 24h' is earlier than NOW
-(already `:stale' — auto re-pass forbidden per §6.3, T1.5b PR 3),
+`ts + outcome_window_minutes + 24h' is earlier than NOW
+\(already `:stale' — auto re-pass forbidden per §6.3, T1.5b PR 3),
 and any intervention that already has an outcome row in the
 projection."
-  (let* ((db (or db satan-memory-migrate-database))
-         (now-lit (concat (satan-intervention--quote-text now)
-                          "::timestamptz"))
-         (sql (concat
-               "SELECT "
-               (mapconcat
-                (lambda (c) (concat "COALESCE(i." c "::text, '')"))
-                satan-intervention--lookup-columns ", ")
-               " FROM satan_interventions i "
-               "LEFT JOIN satan_intervention_outcomes o "
-               "  ON i.id = o.intervention_id "
-               "WHERE o.intervention_id IS NULL "
-               "  AND i.ts + (i.outcome_window_minutes * INTERVAL '1 minute') "
-               "      <= " now-lit " "
-               "  AND i.ts + (i.outcome_window_minutes * INTERVAL '1 minute') "
-               "      + INTERVAL '24 hours' >= " now-lit " "
-               "ORDER BY i.ts ASC"))
-         (result (satan-db-psql
-                  db satan-memory-migrate-host satan-memory-migrate-psql-program
-                  (list "-A" "-t" "-F" "|" "-c" sql))))
-    (pcase result
-      (`(ok . ,out)
-       (cl-loop for line in (split-string out "\n" t)
-                for cells = (split-string line "|")
-                when (= (length cells)
-                        (length satan-intervention--lookup-columns))
-                collect (satan-intervention--row-to-intervention cells)))
-      (`(error . ,msg) (user-error "satan-intervention-pending: %s" msg)))))
+  (let ((now-lit (satan-intervention--timestamptz now)))
+    (satan-intervention--read-interventions
+     (or db satan-memory-migrate-database) "satan-intervention-pending"
+     (concat satan-intervention--outcome-join-sql
+             "WHERE o.intervention_id IS NULL "
+             "  AND " satan-intervention--window-end-sql " <= " now-lit " "
+             "  AND " satan-intervention--window-end-sql
+             "      + INTERVAL '24 hours' >= " now-lit " "
+             "ORDER BY i.ts ASC"))))
 
 (cl-defun satan-intervention-recent
     (now &key include-stale (limit 50) (db satan-memory-migrate-database))
@@ -927,33 +991,34 @@ interventions whose `ts + outcome_window_minutes + 24 h' is earlier
 than NOW (auto-classifier-frozen per §6.3).  Each element is the
 plist shape produced by `satan-intervention-lookup' under
 `:intervention'."
-  (let* ((now-lit (concat (satan-intervention--quote-text now)
-                          "::timestamptz"))
-         (where (if include-stale
-                    ""
-                  (concat " WHERE i.ts + "
-                          "(i.outcome_window_minutes * INTERVAL '1 minute') "
-                          "+ INTERVAL '24 hours' >= " now-lit " ")))
-         (sql (concat
-               "SELECT "
-               (mapconcat
-                (lambda (c) (concat "COALESCE(i." c "::text, '')"))
-                satan-intervention--lookup-columns ", ")
-               " FROM satan_interventions i"
-               where
-               " ORDER BY i.ts DESC LIMIT "
-               (number-to-string limit)))
-         (result (satan-db-psql
-                  db satan-memory-migrate-host satan-memory-migrate-psql-program
-                  (list "-A" "-t" "-F" "|" "-c" sql))))
-    (pcase result
-      (`(ok . ,out)
-       (cl-loop for line in (split-string out "\n" t)
-                for cells = (split-string line "|")
-                when (= (length cells)
-                        (length satan-intervention--lookup-columns))
-                collect (satan-intervention--row-to-intervention cells)))
-      (`(error . ,msg) (user-error "satan-intervention-recent: %s" msg)))))
+  (satan-intervention--read-interventions
+   db "satan-intervention-recent"
+   (concat (unless include-stale
+             (concat "WHERE " satan-intervention--window-end-sql
+                     " + INTERVAL '24 hours' >= "
+                     (satan-intervention--timestamptz now) " "))
+           "ORDER BY i.ts DESC LIMIT " (number-to-string limit))))
+
+(defun satan-intervention-open-asks (now &optional db)
+  "Return the asks still open at NOW, oldest first, each with its form.
+An ask is open while it has no outcome row and its window has not
+closed: `ts + outcome_window_minutes' is strictly after NOW, the
+complement of `satan-intervention-pending's matured bound.  NOW is an
+ISO8601 string.  Each element is the `:intervention' plist of
+`satan-intervention-lookup', plus `:form' when the ask carried one.
+
+Requires migration 0008 (`form_json'); unlike the other readers it
+fails on a database that has not run it.  The goad queue (SL-016
+design sec-3) is its caller."
+  (satan-intervention--read-interventions
+   (or db satan-memory-migrate-database) "satan-intervention-open-asks"
+   (concat satan-intervention--outcome-join-sql
+           "WHERE i.kind = 'ask' "
+           "  AND o.intervention_id IS NULL "
+           "  AND " satan-intervention--window-end-sql " > "
+           (satan-intervention--timestamptz now) " "
+           "ORDER BY i.ts ASC")
+   (append satan-intervention--columns '("form_json"))))
 
 (provide 'satan-intervention)
 ;;; satan-intervention.el ends here

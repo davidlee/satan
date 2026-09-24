@@ -6,14 +6,14 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-11 implemented, 2026-09-24 (uncommitted; orchestrator
-commits). SATAN's goad readers now carry an ask's answer form on its queue
-entry, read the ask's answer as goad's `{option, values}` object without
-interpreting it, and truncate string values over 1 KiB in the `:goad`
-evidence slice (`satan-goad-truncate-value`, reused by PHASE-09's trace). No
-boolean ask fixture remains. PHASE-10 (corpus answer forms, goldens with a
-`form` ask) landed as dev `a6eca02`, corpus `ab00411`. Next: `/phase-plan` the
-next phase.
+**fresh-as-of:** PHASE-12 implemented, 2026-09-24 (uncommitted; orchestrator
+commits). Migration 0008 adds a nullable `form_json` to `satan_interventions`;
+`satan-intervention-record` carries an optional `:form`, the INSERT names
+`form_json` only for a payload with a form (DEC-024), every intervention reader
+reads rows as JSON through one mapping (DEC-028), and
+`satan-intervention-open-asks` returns the open asks with their forms. 0008 is
+applied only to the test DBs; the live DB gets it in PHASE-08. Next: commit,
+then `/phase-plan` PHASE-05.
 
 ### Design revision — answer forms (2026-09-24)
 
@@ -41,6 +41,115 @@ message says it was retired.
   That is harmless under `opt:` namespacing, but should be pinned by a test.
 
 None of these blocks the lock. They are verification or plan-time checks.
+
+### PHASE-12
+
+The intervention record gains the ask's form; the readers move to JSON rows;
+open asks become a query. Model: opus (the orchestrator's rationale — subtle
+correctness risk rather than open design: every reader rewritten from
+pipe-split psql output to JSON rows through one mapping, with byte-identical
+plists for observer, mark, atsatan and audit callers, plus a migration-gated
+test against a DB migrated only through 0007).
+
+**Files.**
+- `satan/memory/migrations/0008_intervention_form.sql` (new):
+  `ALTER TABLE satan_interventions ADD COLUMN form_json JSONB;` nullable, no
+  default, forward-only.
+- `satan/satan-intervention.el`:
+  - `record` takes `:form`, appended last to the payload and only when given
+    (A6), so formless payloads and every other kind's transcript are unchanged.
+    `create` is unchanged (A7).
+  - The INSERT is built from one `(column . value)` list,
+    `--created-values`; `form_json` is added only when the payload carries a
+    form (`--payload-form`: non-nil, not `:null`).
+  - Readers: `--select-list` (alias, columns → `COALESCE(a.c::text, '') AS c`),
+    `--json-rows` (`SELECT json_agg(r) FROM (<query>) r` via `satan-db-psql -A
+    -t -c`; empty → `'()`; `user-error "<label>: …"`), `--read-interventions`
+    (select from `satan_interventions i` + tail, mapped).
+    `--row-to-intervention` / `--row-to-outcome` take a row plist keyed by
+    column. The per-column conversions are unchanged; `--blank-to-nil` replaces
+    three copies of `(if (string-empty-p x) nil x)`.
+  - `satan-intervention-open-asks (now &optional db)`: `kind = 'ask'`, no
+    outcome row, `ts + window > now` (strict, the complement of pending's `<=`,
+    A8), `ORDER BY i.ts ASC`, and it selects `form_json`.
+  - Shared SQL fragments: `--window-end-sql`, `--outcome-join-sql`,
+    `--timestamptz` (also used by the outcome UPSERT), and `--json-decode`
+    (shared with `--parse-jsonb`). `--lookup-columns` is renamed
+    `--columns`; the positional code is gone.
+- Tests: `satan-intervention-test.el` (5 new DB tests plus a canon unit test;
+  `--reset-and-migrate` takes `&optional through`; `--with-db` takes a leading
+  `:through N`; `--with-ctx` takes `(ctx root)` to bind the runs root; new
+  `--scalar`, which `--count` now uses; the `--ask` builder),
+  `satan-audit-intervention-test.el` (VT-59), `satan-memory-migrate-test.el`
+  (1..8), and `satan-goad-fixture.el` (`satan-goad-fixture-json-canon`).
+
+**A1: only open-asks selects `form_json`.** Lookup, pending and recent never
+name the column, so they keep working on a DB that has not run 0008. The live
+DB is in that state until PHASE-08, and the observer (pending), mark (recent,
+lookup) and atsatan (lookup) all run against it. VT-52 pins this by calling
+lookup on a DB migrated only through 0007. The mapping adds `:form` only when a
+row has a non-empty `form_json`, so the plists of the other readers gain no
+key.
+
+**A2: text form preserved.** Each column is still selected as
+`COALESCE(i.<col>::text, '')`, and the JSON value is that same string. `:ts`
+therefore keeps psql's `2026-05-23 02:00:00+00` form before normalisation,
+rather than `row_to_json`'s native ISO timestamp. Parity was checked beyond the
+suites with a scratch test: HEAD's readers were loaded under a renamed prefix
+and compared `equal` with the new ones on one DB. It covered lookup (missing,
+no outcome, and an outcome whose evidence has nested `:false`/`:null`/numbers,
+plus `marked_by` and `notes`), pending at three NOWs, and recent with and
+without stale rows and a LIMIT. All were identical. One intended difference:
+old lookup `string-trim`med the whole line, which stripped trailing whitespace
+from the last column (`notes`, or `severity` with no outcome). The JSON read
+keeps the value exactly.
+
+**JSONB key order: use the canon helper for PHASE-06 VT-48.** JSONB stores
+object keys reordered (shorter first, then bytewise), so a form read back is
+JSON-equal but not `equal` to the one written. VT-56 and VT-58 compare
+`satan-goad-fixture-json-canon` forms (object keys sorted recursively, arrays
+untouched, with an array starting `:null`/`:false` not mistaken for an
+object). PHASE-06's VT-48 (the form reaches queue.json unchanged) should reuse
+it.
+
+**R5 confirmed (input to PHASE-06).** `satan-intervention--quote-jsonb` renders
+an empty list as `{}`: `(:id "x" :fields nil)` serialises to
+`{"id":"x","fields":{}}`. A form with `fields: []` would therefore round-trip
+as `fields: {}`. The golden form has no empty arrays. DEC-026's validator
+(PHASE-06) owns the form's shape and should reject or normalise an empty
+`fields`. Not fixed here.
+
+**Red first, and the mutation checks.**
+- `applies-real-migrations` went red on `(1..8)` before 0008 existed.
+- `pipe-and-newline-survive` went red before the reader rewrite: lookup
+  returned `"a "` for `"a | b\nc"`. Its open-asks leg went red on
+  `void-function`.
+- `record-carries-form` went red on the unknown `:form` keyword.
+- VT-52's formless half passed before implementation, as the sheet predicted;
+  its form half went red (no error, because the form was silently dropped).
+  Mutation check: with the INSERT made to always name `form_json`, VT-52 failed
+  on the formless notify (`column "form_json" … does not exist`). It was then
+  hand-edited back to the conditional.
+- VT-58 was mutation-checked twice, each time by editing the file and restoring
+  it from a scratch copy, never with git: `ORDER BY i.ts DESC` fails it (the
+  order pin, R3, since (b) is projected before (a)), and `>=` for `>` fails it
+  (the boundary ask whose window closes exactly at NOW).
+- VT-59 (`created-with-form-ok`) is a pin, not a red test. The validator checks
+  named keys only, so an extra `:form` already passed, and the validator is
+  unchanged. `doctrine slice verify-vt 16` reports VT-59 as UNATTRIBUTABLE until
+  the audit test file's change is committed. VT-52/56/57/58 pass.
+
+**Counts.** T0 baseline `just check`: 1200 / 1194 / 0 / 6. T6: 1207 / 1201 / 0
+/ 6, the same six skips. There are 7 new tests: VT-52, VT-56, VT-57, VT-58,
+VT-59, `record-carries-form` and `json-canon-sorts-keys-keeps-arrays`. Lint
+clean. Scratch byte-compile of `satan-intervention.el`: no warnings, the same
+as HEAD compiled the same way. The test file has one warning, which predates
+this phase: `percept-snapshot-nil-ctx-yields-empty` has `unwind-protect`
+without unwind forms, so it leaks its temp root. No `.elc` is left in the tree.
+
+**EX-1.** `rg -n -- '"-F"' satan/satan-intervention.el` finds 0 hits. The
+positive control `rg -n -- '"-A"'` finds 1 hit (`--json-rows`). There is no
+`split-string` or `cl-subseq` left in the module.
 
 ### PHASE-04
 

@@ -109,6 +109,20 @@
       (satan-audit-iv-test--created :kind kind)
       (make-hash-table :test 'equal)))))
 
+(ert-deftest satan-audit-iv/created-with-form-ok ()
+  "VT-59 — an ask's `:form' (SL-016) is admitted: the validator checks
+named keys only, so the payload's extra key needs no validator change."
+  (should-not
+   (satan-audit-validate-intervention-event
+    "intervention.created"
+    (satan-audit-iv-test--created
+     :kind "ask"
+     :form '((:id "rate" :label "Rate it"
+              :fields ((:id "energy" :kind "number" :min 0 :max 10)
+                       (:id "note" :kind "text")))
+             (:id "skip" :label "Not now")))
+    (make-hash-table :test 'equal))))
+
 (ert-deftest satan-audit-iv/classified-worked-auto-ok ()
   (should-not
    (satan-audit-validate-intervention-event

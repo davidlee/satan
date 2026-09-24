@@ -86,11 +86,11 @@
   (satan-memory-migrate-test--reset-db)
   (let ((satan-memory-migrate-database satan-memory-migrate-test--db))
     (let ((applied (satan-memory-migrate-apply)))
-      (should (equal '(1 2 3 4 5 6 7) applied)))
+      (should (equal '(1 2 3 4 5 6 7 8) applied)))
     (let ((status (satan-memory-migrate-status)))
       (should (cl-every (lambda (e) (eq 'applied (plist-get e :status)))
                         status))
-      (should (= 7 (length status))))))
+      (should (= 8 (length status))))))
 
 (ert-deftest satan-memory-migrate/re-apply-is-noop ()
   (skip-unless (satan-memory-migrate-test--db-available-p))

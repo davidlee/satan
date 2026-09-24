@@ -111,6 +111,28 @@ exists until BODY writes it.  The dir is removed afterwards."
   "The keys of PLIST, in order."
   (cl-loop for (k _) on plist by #'cddr collect k))
 
+(defun satan-goad-fixture--json-object-p (value)
+  "Non-nil when VALUE is a decoded JSON object: a plist, not an array.
+An array may start with `:null' or `:false'; an object's first key
+never names those."
+  (and (consp value) (keywordp (car value))
+       (not (memq (car value) '(:null :false)))))
+
+(defun satan-goad-fixture-json-canon (value)
+  "VALUE, a decoded JSON value, with every object's keys sorted.
+Recursive; arrays keep their order.  JSONB stores object keys
+reordered (shorter first, then bytewise), so a form read back from
+Postgres is JSON-equal but not `equal' to the one written: compare
+the canonical forms."
+  (cond
+   ((satan-goad-fixture--json-object-p value)
+    (cl-loop for (k . v) in (sort (cl-loop for (k v) on value by #'cddr
+                                           collect (cons k v))
+                                  (lambda (a b) (string< (car a) (car b))))
+             append (list k (satan-goad-fixture-json-canon v))))
+   ((consp value) (mapcar #'satan-goad-fixture-json-canon value))
+   (t value)))
+
 ;; ── scratch dirs ────────────────────────────────────────────────────────────
 
 (defun satan-goad-fixture-write (path content)

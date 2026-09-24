@@ -16,6 +16,7 @@
 (require 'satan-jsonl)
 (require 'satan-memory-migrate)
 (require 'satan-intervention)
+(require 'satan-goad-fixture)          ; golden form + JSON canon
 
 (defconst satan-intervention-test--db "satan_memory_test")
 
@@ -28,8 +29,22 @@
     (`(ok . ,_) t)
     (_ nil)))
 
-(defun satan-intervention-test--reset-and-migrate ()
-  "Drop everything in the test DB and re-run migrations through 0006."
+(defun satan-intervention-test--migrations-through (through)
+  "A fresh temp dir holding copies of the migrations numbered <= THROUGH.
+Copies keep their bytes, so the runner checksums them as it would the
+originals."
+  (let ((dir (file-name-as-directory (make-temp-file "satan-migrations-" t))))
+    (dolist (m (satan-memory-migrate--list-files))
+      (when (<= (plist-get m :version) through)
+        (copy-file (plist-get m :path)
+                   (expand-file-name (plist-get m :filename) dir))))
+    dir))
+
+(defun satan-intervention-test--reset-and-migrate (&optional through)
+  "Drop everything in the test DB and re-run the migrations.
+THROUGH nil applies them all; a number applies only those numbered
+<= THROUGH, through the real runner, for a database a later migration
+has not reached."
   (let ((satan-memory-migrate-database satan-intervention-test--db))
     (satan-db-psql
      satan-intervention-test--db satan-memory-migrate-host satan-memory-migrate-psql-program
@@ -46,15 +61,24 @@
             "memory_mark_trace(jsonb), memory_show_trace(text), "
             "memory_resonate(text[], smallint, double precision, integer, text[]), "
             "handle_weight_for(text, smallint) CASCADE;")))
-    (satan-memory-migrate-apply)))
+    (if (null through)
+        (satan-memory-migrate-apply)
+      (let ((satan-memory-migrate-directory
+             (satan-intervention-test--migrations-through through)))
+        (unwind-protect (satan-memory-migrate-apply)
+          (delete-directory satan-memory-migrate-directory t))))))
 
 (defmacro satan-intervention-test--with-db (&rest body)
+  "Run BODY against a freshly migrated test DB; skip when unreachable.
+A leading `:through N' migrates only through migration N."
   (declare (indent 0))
-  `(progn
-     (skip-unless (satan-intervention-test--reachable-p))
-     (satan-intervention-test--reset-and-migrate)
-     (let ((satan-memory-migrate-database satan-intervention-test--db))
-       ,@body)))
+  (let ((through (when (eq (car body) :through)
+                   (prog1 (cadr body) (setq body (cddr body))))))
+    `(progn
+       (skip-unless (satan-intervention-test--reachable-p))
+       (satan-intervention-test--reset-and-migrate ,through)
+       (let ((satan-memory-migrate-database satan-intervention-test--db))
+         ,@body))))
 
 ;; ---------- fixture builders ----------
 
@@ -131,14 +155,17 @@ The bucket is parsed from run-id's leading YYYYMMDD."
        (split-string (string-trim out) "\n" t))
       (`(error . ,msg) (user-error "%s" msg)))))
 
+(defun satan-intervention-test--scalar (sql)
+  "The single value SQL selects from the test DB, as trimmed text."
+  (pcase (satan-db-psql
+          satan-intervention-test--db satan-memory-migrate-host satan-memory-migrate-psql-program
+          (list "-A" "-t" "-c" sql))
+    (`(ok . ,out) (string-trim out))
+    (`(error . ,msg) (user-error "%s" msg))))
+
 (defun satan-intervention-test--count (table)
-  (let* ((sql (concat "SELECT COUNT(*) FROM " table))
-         (result (satan-db-psql
-                  satan-intervention-test--db satan-memory-migrate-host satan-memory-migrate-psql-program
-                  (list "-A" "-t" "-c" sql))))
-    (pcase result
-      (`(ok . ,out) (string-to-number (string-trim out)))
-      (`(error . ,msg) (user-error "%s" msg)))))
+  (string-to-number
+   (satan-intervention-test--scalar (concat "SELECT COUNT(*) FROM " table))))
 
 ;; ---------- transcript discovery (no DB) -------------------------------
 
@@ -522,9 +549,11 @@ The bucket is parsed from run-id's leading YYYYMMDD."
 
 (defmacro satan-intervention-test--with-ctx (ctx &rest body)
   "Bind CTX to a fresh morning tool-ctx over a tmp audit; evaluate BODY.
-Resets the id counters; deletes the tmp run root afterwards."
+CTX is a symbol, or `(CTX ROOT)' to bind the runs root too.  Resets
+the id counters; deletes the tmp runs root afterwards."
   (declare (indent 1))
-  (let ((root (make-symbol "root"))
+  (let ((root (if (consp ctx) (cadr ctx) (make-symbol "root")))
+        (ctx (if (consp ctx) (car ctx) ctx))
         (run-id "20260523T120000-morning-aaaaaa"))
     `(let* ((,root (make-temp-file "satan-iv-run-" t))
             (,ctx (satan-intervention-test--build-ctx
@@ -1010,12 +1039,15 @@ symbol whose value is a list).  Stub returns `(ok . \"trace_test\")'."
   "A psql-shaped row yields a `:ts' that parses to the right instant.
 Regression: the unparseable space-form made every intervention read
 as `:stale', so no outcome row was ever written."
-  (let* ((cells (list "20260529T092232-tick-pulse-094281.iv001"
-                      "20260529T092232-tick-pulse-094281"
-                      "2026-05-28 23:22:32+00" ; ts, psql space-form
-                      "tick-pulse" "inbox" "editor" "msg"
-                      "" "{}" "expected" "30" "medium"))
-         (iv (satan-intervention--row-to-intervention cells)))
+  (let* ((row (list :id "20260529T092232-tick-pulse-094281.iv001"
+                   :run_id "20260529T092232-tick-pulse-094281"
+                   :ts "2026-05-28 23:22:32+00" ; psql space-form
+                   :mode "tick-pulse" :kind "inbox"
+                   :target_surface "editor" :message "msg"
+                   :related_motive_id "" :cue_handles_json "{}"
+                   :expected_outcome "expected"
+                   :outcome_window_minutes "30" :severity "medium"))
+         (iv (satan-intervention--row-to-intervention row)))
     (should (equal (date-to-time (plist-get iv :ts))
                    (date-to-time "2026-05-28T23:22:32+00")))
     (should (= 30 (plist-get iv :outcome_window_minutes)))))
@@ -1146,6 +1178,159 @@ percept_handles_json from ctx :percept-handles."
                      (list "-A" "-t" "-c" sql))))
        (should (eq (car result) 'ok))
        (should (equal "[]" (string-trim (cdr result))))))))
+
+;; ---------- SL-016 PHASE-12 — JSON row reads, the form, open asks -------
+;;
+;; Every reader goes `json_agg(r)' over its ordered row subquery (the
+;; `row_to_json' shape of each row, DEC-028), so no cell value can split
+;; a row.
+
+(defconst satan-intervention-test--ask-args
+  '(:kind "ask" :target-surface "goad" :message "a | b\nc"
+    :expected-outcome "an answer" :outcome-window-minutes 30
+    :severity "low")
+  "Keyword args for an ask whose message holds psql's separators.")
+
+(ert-deftest satan-intervention/pipe-and-newline-survive ()
+  "VT-57 — a message carrying `|' and a newline reads back intact
+through every reader."
+  (satan-intervention-test--with-db
+   (satan-intervention-test--with-ctx ctx
+     (let* ((iv-id (apply #'satan-intervention-create :ctx ctx
+                          satan-intervention-test--ask-args))
+            (message (plist-get satan-intervention-test--ask-args :message))
+            (messages (lambda (rows)
+                        (mapcar (lambda (r) (plist-get r :message)) rows))))
+       (should (equal message
+                      (plist-get (plist-get (satan-intervention-lookup iv-id)
+                                            :intervention)
+                                 :message)))
+       (should (equal (list message)
+                      (funcall messages (satan-intervention-pending
+                                         "2026-05-23T12:45:00+1000"))))
+       (should (equal (list message)
+                      (funcall messages (satan-intervention-recent
+                                         "2026-05-23T12:45:00+1000"))))
+       (should (equal (list message)
+                      (funcall messages (satan-intervention-open-asks
+                                         "2026-05-23T12:15:00+1000"))))))))
+
+(defconst satan-intervention-test--form
+  '((:id "rate" :label "Rate it"
+     :fields ((:id "energy" :kind "number" :min 0 :max 10)))
+    (:id "skip" :label "Not now"))
+  "A small ask form: one option with a field, one without.")
+
+(ert-deftest satan-intervention/record-carries-form ()
+  "`record' puts `:form' on the created payload only when given one."
+  (satan-intervention-test--with-ctx ctx
+    (apply #'satan-intervention-record :ctx ctx
+           :form satan-intervention-test--form
+           satan-intervention-test--ask-args)
+    (apply #'satan-intervention-record :ctx ctx
+           satan-intervention-test--ask-args)
+    (let ((created (satan-intervention-test--events-named
+                    ctx "intervention.created")))
+      (should (equal satan-intervention-test--form
+                     (plist-get (car created) :form)))
+      (should-not (plist-member (cadr created) :form)))))
+
+(ert-deftest satan-intervention/projects-without-0008 ()
+  "VT-52 — on a database migrated only through 0007, every payload
+without a form projects and reads back (DEC-024); only a form, which
+needs 0008's column, fails, and fails loudly."
+  (satan-intervention-test--with-db :through 7
+    (satan-intervention-test--with-ctx ctx
+      (let ((ids (list (apply #'satan-intervention-create :ctx ctx
+                              satan-intervention-test--notify-args)
+                       (apply #'satan-intervention-create :ctx ctx
+                              satan-intervention-test--ask-args))))
+        (should (equal '("notify" "ask")
+                       (mapcar (lambda (id)
+                                 (plist-get (plist-get
+                                             (satan-intervention-lookup id)
+                                             :intervention)
+                                            :kind))
+                               ids))))
+      (should-error (satan-intervention-project
+                     (apply #'satan-intervention-record :ctx ctx
+                            :form satan-intervention-test--form
+                            satan-intervention-test--ask-args))
+                    :type 'user-error))))
+
+;; open asks (VT-58, VT-56): NOW is 12:30+1000; `--ask' projects an ask
+;; recorded at TS with a WINDOW-minute outcome window.
+
+(defun satan-intervention-test--ask (ctx ts window &rest args)
+  "Record and project an ask at TS with WINDOW minutes; return its id.
+ARGS are further `satan-intervention-record' keywords (`:form', `:kind')."
+  (let ((payload (apply #'satan-intervention-record
+                        :ctx (plist-put (copy-sequence ctx) :time-now ts)
+                        :outcome-window-minutes window
+                        (append args satan-intervention-test--ask-args))))
+    (satan-intervention-project payload)
+    (plist-get payload :intervention_id)))
+
+(ert-deftest satan-intervention/open-asks-only-open ()
+  "VT-58 — exactly the asks still inside their window with no outcome,
+oldest first; `:form' present iff the ask carried one."
+  (satan-intervention-test--with-db
+    (satan-intervention-test--with-ctx ctx
+      (let* ((ask (lambda (ts window &rest args)
+                    (apply #'satan-intervention-test--ask
+                           ctx (concat "2026-05-23T" ts "+1000") window args)))
+             ;; (b) projected before (a), so only ORDER BY can put (a) first.
+             (b (funcall ask "12:05:00" 60))
+             (a (funcall ask "12:00:00" 60 :form satan-intervention-test--form)))
+        (funcall ask "11:00:00" 30)                    ; (c) matured
+        (funcall ask "12:00:00" 30)                    ; (c) closes at NOW
+        (funcall ask "12:10:00" 60 :kind "notify")     ; (e) not an ask
+        (should-not (satan-intervention-mark-undelivered ; (d) has an outcome
+                     ctx
+                     (apply #'satan-intervention-record :ctx ctx
+                            :outcome-window-minutes 60
+                            satan-intervention-test--ask-args)
+                     (satan-intervention-test--boom-error)))
+        (let ((open (satan-intervention-open-asks "2026-05-23T12:30:00+1000")))
+          (should (equal (list a b)
+                         (mapcar (lambda (iv) (plist-get iv :intervention_id))
+                                 open)))
+          (should (equal (satan-goad-fixture-json-canon
+                          satan-intervention-test--form)
+                         (satan-goad-fixture-json-canon
+                          (plist-get (car open) :form))))
+          (should-not (plist-member (cadr open) :form)))))))
+
+(ert-deftest satan-intervention/form-survives-rebuild ()
+  "VT-56 — the golden form reads back JSON-equal through open-asks,
+before and after a rebuild replays it from the transcript."
+  (satan-intervention-test--with-db
+    (satan-intervention-test--with-ctx (ctx root)
+      (let* ((form (plist-get (satan-goad-fixture-golden-entry 'form) :form))
+             (id (satan-intervention-test--ask ctx "2026-05-23T12:00:00+1000"
+                                               60 :form form))
+             (read-form (lambda ()
+                          (satan-goad-fixture-json-canon
+                           (plist-get (car (satan-intervention-open-asks
+                                            "2026-05-23T12:30:00+1000"))
+                                      :form)))))
+        (should (equal (satan-goad-fixture-json-canon form)
+                       (funcall read-form)))
+        (should-not (plist-get (satan-intervention-rebuild nil root)
+                               :validation-error))
+        (should (equal "t" (satan-intervention-test--scalar
+                            (concat "SELECT form_json IS NOT NULL "
+                                    "FROM satan_interventions WHERE id = "
+                                    (satan-intervention--quote-text id)))))
+        (should (equal (satan-goad-fixture-json-canon form)
+                       (funcall read-form)))))))
+
+(ert-deftest satan-intervention/json-canon-sorts-keys-keeps-arrays ()
+  "The fixture's JSON canon sorts object keys and never array elements."
+  (should (equal '(:a 1 :b ((:x 2 :y 3) (:x 4)))
+                 (satan-goad-fixture-json-canon
+                  '(:b ((:y 3 :x 2) (:x 4)) :a 1))))
+  (should (equal '(:null 1 "z") (satan-goad-fixture-json-canon '(:null 1 "z")))))
 
 (provide 'satan-intervention-test)
 ;;; satan-intervention-test.el ends here
