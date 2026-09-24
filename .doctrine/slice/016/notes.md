@@ -41,7 +41,44 @@ corpus tree is dirty; commit the file directly.
 
 **Host state (2026-09-24 15:00):** runbook step 1 done by the user (`home
 switch`): attrd restarted 15:00:50 and its binary carries
-`ask_suppressed`; `goad.service` active, socket fresh. Remaining: steps 2–6.
+`ask_suppressed`; `goad.service` active, socket fresh.
+
+**fresh-as-of 2026-09-24 ~15:40, head `c6d0c63` — PHASE-08(B) mid-rollout.**
+- RV-017 round 2 (`c6d0c63`): verification found F-4's MCP sibling and an
+  F-5 regression. The gate now reads the run's frozen `:percept-sources`
+  (added to the tool ctx) and refuses `app:goad`, or a handle whose source is
+  `goad.outstanding`; `:available-p` takes the mode name, and MCP interactive
+  never offers `goad_ask`. F-1/2/3/6/7/8/9 verified; F-4, F-5 answered again,
+  awaiting raiser verification. Gate 1293 ran / 0 unexpected / 6 skipped.
+- Reviewer notes carried to `/reconcile`: design sec-6 + the risk table say
+  only form asks fail before 0008 — in fact every ask fails (the queue rewrite
+  selects `form_json`) and the rebuild rolls back entirely; design sec-3's "two
+  rewrite triggers" is now one (F-6); VT-8 is withdrawn. F-9's
+  `satan-tools-goad--error-of` vs `satan-intervention-try-project`: left as
+  is, the return contracts differ (first-error chaining vs a
+  `:projection` note).
+- **Runbook step 2 blocked, then done:** live `satan_memory` read 0003/0004/0006
+  as `tampered` (SL-012's comment-only rename sweep). The applied bytes were
+  restored (`4ec6198`; memory
+  `mem.fact.satan.applied-migrations-are-byte-immutable`), then 0008 was
+  applied live; all 8 now read `applied`.
+- Live Emacs restarted by the user with current code; `satan-goad-enabled` is
+  `setq t` **for the session only** (not persisted — runbook step 5).
+  The tick timer was restarted by the user (it had been dead since
+  2026-09-21, ISS-022).
+- Corpus: `e411aee` adds the ask rung to `prompts/tick/pulse.txt` (user
+  agreed); `77936ee` corrects `tools/goad_ask.md`.
+- First attended tick-pulse run `20260924T153004-tick-pulse-325028`: done,
+  `goad_ask` offered, the model did not ask. **Structural blocker to VH-1:**
+  no live motive's cue overlaps the typical percept (cues
+  `domain_kind:docs`, `surface_transition:terminal->browser`,
+  `artifact:none`, `domain_kind:learning` vs percept `project:satan`,
+  `surface:terminal`, `content_domain:*`), so any ask would be suppressed.
+  The user chose "add a motive"; the wording was proposed
+  (`self-work-check`, cue `project:satan surface:terminal`, cooldown 3600)
+  but is **not yet agreed**.
+- Unattended runs after an Emacs restart defer with `credential_deferred`
+  (DEC-022); drive runs attended (`satan-run-attended` t).
 
 **fresh-as-of:** every SL-016 phase's code is landed and green — PHASE-07,
 PHASE-09 and PHASE-08(A) committed 2026-09-24; gate 1286 ran / 0 unexpected /

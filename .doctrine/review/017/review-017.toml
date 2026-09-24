@@ -14,7 +14,7 @@ ref   = "SL-016"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "major"
 title = """goad_ask.md promises the keeper's answer "arrives as percept"; nothing renders it to the model"""
 detail = """Observed: `goad.outstanding` (satan-memory-canon.el:510-532) emits `app:goad` + `topic:` handles only while an ask is unanswered and unexpired; the percept block renders handles only (satan-percept.el:128-134); the answer value lands only in the observation trace metadata (`satan-observer--persist-positive`), which resonance does not render. So answered, dismissed and expired asks look identical to a later run (the handles vanish), and "Later" looks like still-waiting. The corpus tool description (~/satan/tools/goad_ask.md) says "each of those is perceived in a later run" and "the keeper's answer arrive[s] as percept in later runs". The model-facing contract overclaims. Design sec-2 narrowed perception to outstanding asks and names an optional `goad_read` tool; IMP-025 tracks the checklist-history half. Scenario: SATAN asks "how's the reading going?", the keeper answers, the next run cannot see the answer and may re-ask or act on a guess. Fix options: correct the description, and/or add `goad_read` so the answer is usable."""
@@ -23,7 +23,7 @@ response = "User chose to correct the description (2026-09-24). Corpus 77936ee: 
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "No bound on open asks; asks render before the checklist, so a chatty run starves it"
 detail = "Observed: `satan-tool/goad-ask` (satan-tools-goad.el:188-221) checks neither the number of open asks nor whether the same subject already has one outstanding; the minted-handle gate blocks only the `topic:` form of a queued subject, never the subject handle itself. tick-pulse allows 10 tool calls/run at ~30-min cadence, and every ask rings the doorbell. backend.py `pending()` puts asks first (:300-307; deliberate, design sec-3 backend change 1 / RV-007 F-18) and `run()` renders only `still[0]` (:416-420). Scenario: two asks per tick with 60-min windows keep the queue permanently non-empty, so the keeper's daily checklist never renders unless they clear every ask; asks queued behind the visible one mature `undelivered` (truthful, but each spent a doorbell). The design expected throttling from attribute semantics, which covers only suppressed asks. Needs a policy: e.g. at most one open ask, and/or none on a subject that already has one open."
@@ -32,7 +32,7 @@ response = "User: leave unbounded, judge in live use (2026-09-24); adding a boun
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Live DB lacks 0008; only the runbook's step order prevents enabling goad first"
 detail = "`satan_memory` has no `form_json` column. `satan-intervention-open-asks` always selects `form_json` (satan-intervention.el:~1051), so with goad enabled before 0008 every ask's queue rewrite fails and every ask (form or not) is marked undelivered; any recorded form ask also makes `satan-rebuild-interventions` roll back entirely (single-transaction script, :313-317). The PHASE-08(B) runbook orders migrate (step 2) before enable (step 5), which suffices if followed. Options: tolerate (runbook), or a guard."
@@ -46,7 +46,7 @@ severity = "minor"
 title = "Kill switch leaves goad_ask advertised; disabling does not withdraw queued asks"
 detail = "`goad_ask` and the `goad-ask` capability are in `satan-tick-register`'s defaults (satan-tick.el:89-91), so every tick-pulse manifest advertises the tool while `satan-goad-enabled` is nil: the model learns a tool that always refuses, and each attempt spends one of its 10 calls. Turning goad off also leaves queued asks rendering until they expire (<=60 min). Fix options: omit the tool from the manifest when disabled; optionally empty the queue on disable."
 disposition = "fix-now"
-response = "5c035b8: tool specs may declare :available-p; satan-broker--build-manifest lists only satan-tools-available tools; goad_ask is available only while satan-goad-enabled. Test satan-tools-goad/manifest-omits-tool-while-disabled. Queued asks are not withdrawn on disable (<=60 min tail) - accepted."
+response = """Round 2 (c6d0c63), after verification found the MCP sibling: :available-p now takes the mode name; satan-mcp--interactive-tools filters through satan-tools-available with "interactive", so the interactive mode allowlist, MCP manifest and tools/list omit goad_ask; goad's predicate is (and satan-goad-enabled (not interactive)). Tests satan-tools-goad/mcp-never-offers-tool and manifest-omits-tool-while-disabled. Dispatch stays unfiltered by design; the handler still refuses (defence in depth)."""
 
 [[finding]]
 id = "F-5"
@@ -55,11 +55,11 @@ severity = "minor"
 title = "Tool re-derives goad's minted handles in parallel with canon, over the whole queue"
 detail = "`satan-tools-goad--minted-handles` (satan-tools-goad.el:76-82) rebuilds what `goad.outstanding` emits, but over every queue entry, while canon emits only for outstanding (unanswered, unexpired) asks. The queue file keeps answered and expired entries until the next rewrite. Scenario: an answered-but-unexpired ask about S leaves `topic:s` in the gate list; a later run perceives `topic:s` from a non-goad source and a legitimate ask on it is refused as goad-minted. Any change to the canon rule also drifts silently from the gate. Fix: one function computing goad's handles from asks + now, owned by canon (canon must not require goad), used by both."
 disposition = "fix-now"
-response = "5c035b8: the gate builds its minted topics from satan-goad-slice filtered by canon's satan-memory-canon-goad-outstanding-p (made public), at the run's time-now. app:goad stays unconditionally refused (focus perception can emit it too). Test satan-tools-goad/settled-ask-topic-not-goad-minted (red before, green after)."
+response = "Round 2 (c6d0c63), after verification found an in-flight-answer regression (the gate re-read live day files while the percept is frozen) and a remaining parallel derivation: the run tool ctx now carries :percept-sources (the percept's handle_sources) and satan-tools-goad--goad-minted-p refuses app:goad unconditionally, or a handle whose frozen source rule is goad.outstanding. No slice read, no now; canon's predicate is private again. Semantics: a topic canon sourced from another rule (independent evidence won the source) is askable. Tests: goad-subject-refused (empty queue = answered in flight, still refused), independently-perceived-topic-askable, broker spawn ctx carries :percept-sources. The nil-now concern is moot (no time read)."
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Classification-time queue rewrite has no observable effect"
 detail = "`satan-intervention-open-asks` requires window end > now; pending requires window end <= now, so the two sets are disjoint by design. An ask's `expires_at` is its window end (`satan-goad--queue-entry-from-row`), and backend.py (:315) and canon (:505-508) already filter expired entries. So the rewrite `satan-observer-process` fires after classifying an ask (satan-observer.el:501-519, PHASE-09 D4) removes only entries every consumer already ignores, apart from the tool gate in the sibling finding, whose fix removes that dependency too. It costs a DB query, a file write and a failure mode per classifying tick. `ask-classification-retires-queue-entry` stubs the rewrite and asserts only that it was called. Candidate for deletion; reopens design sec-3 / PHASE-09 D4."
@@ -68,7 +68,7 @@ response = "User chose deletion (2026-09-24), reversing PHASE-09 D4. 5c035b8 rem
 
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "ask_suppressed is enqueued per call, so attribute pressure measures model retries"
 detail = "Every suppressed call enqueues `ask_suppressed` (satan-tools-goad.el:104-121) with no per-run dedupe. A run that retries a mistyped subject 10 times pushes 10 deltas into curiosity and metamorphosis. The design framed suppression as a persistent condition of the organism (sec-6), and PHASE-05 sized the row TINY for per-tick firing, not per-call. Fix: at most one `ask_suppressed` per run."
@@ -77,7 +77,7 @@ response = "5c035b8: satan-tools-goad--suppressed-run remembers the last run tha
 
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Question text is uncapped and may be empty"
 detail = 'Form labels are capped at 200 chars, but `question`, which goad renders as the view title, is never validated: "" or a multi-KB string is recorded, queued and rendered.'
@@ -86,7 +86,7 @@ response = "5c035b8: satan-goad-question-invalid (non-blank, <= satan-goad-quest
 
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Small duplications and a test gap"
 detail = "(a) `satan-tools-goad--enqueue-suppression` (:104) and `satan-observer--enqueue-ask-uncorrelated` (satan-observer.el:355) both wrap `satan-attribute-enqueue (satan-attribute-build-ask-payload ...)` in a condition-case; one helper would serve both. (b) The `rings-goad-emit` test asserts `--source satan` but not `--kind ask`. (c) An ask's `ts` and the quiet-hours check use the run's frozen start time, so a run starting at 21:59 can ask at ~22:01 (bounded by the 120 s run timeout); tolerable."

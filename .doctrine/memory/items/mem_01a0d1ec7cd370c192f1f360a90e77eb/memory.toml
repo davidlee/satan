@@ -1,0 +1,46 @@
+memory_uid = "mem_01a0d1ec7cd370c192f1f360a90e77eb"
+memory_key = "mem.fact.satan.applied-migrations-are-byte-immutable"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Applied SATAN migrations are byte-immutable — comments included"
+summary = "satan-memory-migrate checksums whole files; editing any byte of an applied migration makes it read tampered and blocks every later apply"
+created = "2026-09-24"
+updated = "2026-09-24"
+
+[scope]
+paths = []
+globs = ["satan/memory/migrations/*.sql"]
+commands = []
+tags = ["satan", "migrations"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "14969f7c8ac5a022bcd21a92dff37d089b1f72f3"
+ref_name = "refs/heads/main"
+checkout_state_id = "af0578c4b9020886d75b69774f1ca6c8d1b6c5068640bb0d043f3f959ad1240f"
+base_commit = "c6d0c6318d322c3719fca5a05f742baff9a002de"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "4ec6198"
+
