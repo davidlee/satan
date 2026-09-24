@@ -767,3 +767,15 @@ files converted in place). `goad/goad.service` (deleted) and `motd.txt`
   ids are slots rather than reading positions. Sections cannot be pruned
   (`lifecycle` is inert on a `sec-` subject), so padded ids would have left ten
   orphans.
+
+### PHASE-05 attrd delta rows — agreed with the user (2026-09-24)
+
+Both reasons join attrd's **sensor** family (binary, no confidence weighting;
+the outcome family is 1:1 with observer verdicts). Columns in `ATTR_ORDER`
+(curiosity, friction, shame, doubt, hunger, suspicion, brooding, metamorphosis):
+
+- `ask_suppressed`   = [TINY, 0, 0, 0,    0, 0, 0, TINY] — wanted to know; motives don't cover what it perceives
+- `ask_uncorrelated` = [0,    0, 0, TINY, 0, 0, 0, TINY] — its motives changed under its own question
+
+TINY because suppression can fire every tick while the mismatch persists.
+Provisional: the user expects to iterate on these.
