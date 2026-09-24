@@ -24,6 +24,7 @@
 (require 'satan-observer-classify)
 (require 'satan-motive)
 (require 'satan-motive-test)
+(require 'satan-goad-fixture)
 
 ;; ---------------------------------------------------------------------
 ;; DB fixture (mirrors satan-intervention-test--with-db)
@@ -194,6 +195,24 @@ non-user-facing branch (`:neutral') override KIND."
         :outcome_window_minutes 30
         :kind kind
         :target_surface target-surface))
+
+(defun satan-observer-test--ask-intervention (&rest overrides)
+  "Classifier-shaped `\"ask\"' intervention plist (SL-016 PHASE-07).
+Defaults to the golden `answered' ask: emitted 09:30 +10:00, 60-minute
+outcome window, credited to `docs-after-error', cued on
+`artifact:thesis-outline'."
+  (let ((base (list :intervention_id "20260923T093000-tick-pulse-a3f01c.iv001"
+                    :run_id "20260923T093000-tick-pulse-a3f01c"
+                    :ts "2026-09-23T09:30:00+10:00"
+                    :intervention_emitted_at "2026-09-23T09:30:00+10:00"
+                    :outcome_window_minutes 60
+                    :kind "ask"
+                    :target_surface "goad"
+                    :related_motive_id "docs-after-error"
+                    :cue_handles (list "artifact:thesis-outline"))))
+    (while overrides
+      (setq base (plist-put base (pop overrides) (pop overrides))))
+    base))
 
 (defun satan-observer-test--stub-after-state (after-plist)
   "Return a function that mimics `--after-state' by returning AFTER-PLIST."
@@ -538,6 +557,243 @@ even when `:repo' path doesn't match."
                             :recent_files (list "foo.el")))))
     (should-not (satan-observer--predicate-fs-recent-delta
                  baseline after motive nil))))
+
+;; ---------------------------------------------------------------------
+;; SL-016 PHASE-07 — the ask's answer predicate + correlation route
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-observer/ask-answer-predicate-fires-default-answer ()
+  "VT-44 — fires for this intervention's in-window default Yes/No answer."
+  (satan-goad-fixture-with-goldens
+    (let* ((iv (satan-observer-test--ask-intervention))
+           (after (list :goad (satan-goad-slice))))
+      (should (satan-observer--predicate-goad-answer
+               nil after nil iv)))))
+
+(ert-deftest satan-observer/ask-answer-predicate-fires-form-answer ()
+  "VT-44 — fires for a form answer (the golden `rate' ask) exactly as it
+fires for a default Yes/No answer."
+  (satan-goad-fixture-with-goldens
+    (let* ((iv (satan-observer-test--ask-intervention
+                :intervention_id (satan-goad-fixture-id 'form)
+                :ts "2026-09-23T13:00:00+10:00"
+                :intervention_emitted_at "2026-09-23T13:00:00+10:00"))
+           (after (list :goad (satan-goad-slice))))
+      (should (satan-observer--predicate-goad-answer
+               nil after nil iv)))))
+
+(ert-deftest satan-observer/ask-answer-predicate-ignores-other-asks ()
+  "VT-44 — another intervention's answer in the same day file must not
+fire; the predicate keys on `:intervention_id'."
+  (satan-goad-fixture-with-goldens
+    (let* ((iv (satan-observer-test--ask-intervention
+                :intervention_id (satan-goad-fixture-id 'untouched)
+                :ts "2026-09-23T11:10:00+10:00"
+                :intervention_emitted_at "2026-09-23T11:10:00+10:00"))
+           (after (list :goad (satan-goad-slice))))
+      (should-not (satan-observer--predicate-goad-answer
+                   nil after nil iv)))))
+
+(ert-deftest satan-observer/ask-answer-predicate-outside-window ()
+  "VT-44 — an answer after emit + `:outcome_window_minutes' does not fire."
+  (satan-goad-fixture-with-goldens
+    (let* ((iv (satan-observer-test--ask-intervention
+                :outcome_window_minutes 1))  ; golden answer lands at +2m
+           (after (list :goad (satan-goad-slice))))
+      (should-not (satan-observer--predicate-goad-answer
+                   nil after nil iv)))))
+
+(ert-deftest satan-observer/ask-answer-predicate-no-goad-slice ()
+  "VT-44 — an absent `:goad' slice is no signal, never a fire."
+  (should-not (satan-observer--predicate-goad-answer
+               nil nil nil (satan-observer-test--ask-intervention))))
+
+(ert-deftest satan-observer/ask-ignores-ambient-predicates ()
+  "VT-14 — an ambient predicate (a git commit in window) would fire for
+a non-ask kind; for an ask the answer predicate is the only positive
+predicate, so a never-answered ask is never `:worked'."
+  (satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260923T093000-tick-pulse-a3f01c" root))
+            (motive (satan-observer-test--motive))
+            (iv (satan-observer-test--ask-intervention
+                 :run_id "20260923T093000-tick-pulse-a3f01c"
+                 :run_dir dir)))
+       (satan-observer-test--write-bundle
+        dir (list :percept
+                  (list :evidence_window
+                        (list :git_state (list :head_short "h" :remote "r")
+                              :fs_state (list :cwd satan-observer-test--cwd
+                                              :recent_files nil)
+                              :focus_segments nil))))
+       (satan-observer-test--with-stubbed-after-state
+           (list :git_commits
+                 (list (list :repo satan-observer-test--cwd
+                             :slug "satan-obs-proj"
+                             :sha "bbbbbbb"
+                             :end_ts "2026-09-23T09:45:00+10:00"))
+                 :fs_state (list :cwd satan-observer-test--cwd
+                                 :recent_files nil)
+                 :focus_segments nil)
+         (let ((out (satan-observer-classify iv motive)))
+           (should-not (eq :worked (plist-get out :classification)))
+           (should (null (plist-get out :predicates)))))))))
+
+(ert-deftest satan-observer/ask-across-midnight-worked ()
+  "VT-21 — an ask emitted 23:15 and answered 00:05 classifies `:worked'
+from the emit date's file; the answer predicate applies the ask's own
+60-minute window, not the observer's 30-minute horizon."
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--in-tmp
+     (lambda (root)
+       (let* ((dir (expand-file-name "20260923T231500-tick-pulse-e90f27" root))
+              (motive (satan-observer-test--motive))
+              (iv (satan-observer-test--ask-intervention
+                   :intervention_id (satan-goad-fixture-id 'midnight)
+                   :run_id "20260923T231500-tick-pulse-e90f27"
+                   :ts "2026-09-23T23:15:00+10:00"
+                   :intervention_emitted_at "2026-09-23T23:15:00+10:00"
+                   :run_dir dir)))
+         (satan-observer-test--write-bundle
+          dir (list :percept
+                    (list :evidence_window
+                          (list :git_state (list :head_short "h" :remote "r")
+                                :fs_state (list :cwd "/x" :recent_files nil)
+                                :focus_segments nil))))
+         (satan-observer-test--with-stubbed-after-state
+             (list :goad (satan-goad-slice))
+           (let ((out (satan-observer-classify iv motive)))
+             (should (eq :worked (plist-get out :classification)))
+             (should (equal '(:goad_answer)
+                            (plist-get out :predicates))))))))))
+
+(ert-deftest satan-observer/ask-exempt-from-crosses-midnight ()
+  "Kind `\"ask\"' is exempt from the observer's `:crosses_midnight' guard
+(RV-007 F-29): an ask emitted 23:50 whose 30-min observer window spans
+midnight still classifies from its emit date's record."
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--in-tmp
+     (lambda (root)
+       (let* ((dir (expand-file-name "20260923T235000-tick-pulse-ffffff" root))
+              (motive (satan-observer-test--motive))
+              (iv (satan-observer-test--ask-intervention
+                   :intervention_id (satan-goad-fixture-id 'midnight)
+                   :run_id "20260923T235000-tick-pulse-ffffff"
+                   :ts "2026-09-23T23:50:00+10:00"
+                   :intervention_emitted_at "2026-09-23T23:50:00+10:00"
+                   :run_dir dir)))
+         (satan-observer-test--write-bundle
+          dir (list :percept
+                    (list :evidence_window
+                          (list :git_state (list :head_short "h" :remote "r")
+                                :fs_state (list :cwd "/x" :recent_files nil)
+                                :focus_segments nil))))
+         (satan-observer-test--with-stubbed-after-state
+             (list :goad (satan-goad-slice))
+           (let ((out (satan-observer-classify iv motive)))
+             (should-not (eq :crosses_midnight (plist-get out :reason)))
+             (should (eq :worked (plist-get out :classification))))))))))
+
+(ert-deftest satan-observer/ask-credits-recorded-motive ()
+  "VT-19 — maturity credits the ask's recorded motive, never re-ranking:
+the goad-cued motive overlaps the post-queue percept handles while the
+recorded motive does not, yet the ask must still credit the recorded one."
+  (satan-observer-test--in-tmp
+   (lambda (root)
+     (let* ((dir (expand-file-name "20260923T093000-tick-pulse-a3f01c" root))
+            (goad-motive (list :id "goad"
+                               :cue (list "app:goad" "topic:thesis-outline")
+                               :project_cwd "/x"))
+            (recorded (list :id "docs-after-error"
+                            :cue (list "artifact:thesis-outline")
+                            :project_cwd "/x"))
+            (iv (satan-observer-test--ask-intervention
+                 :run_id "20260923T093000-tick-pulse-a3f01c"
+                 :run_dir dir
+                 :related_motive_id "docs-after-error"
+                 :cue_handles (list "artifact:thesis-outline"))))
+       (satan-observer-test--write-bundle-with-handles
+        dir (list "app:goad" "topic:thesis-outline"))
+       (satan-observer-test--with-stubbed-after-state
+           (list :focus_segments nil)
+         (let ((out (satan-observer-classify-for-motives
+                     iv (list goad-motive recorded))))
+           (should (equal "docs-after-error" (plist-get out :motive_id)))
+           (should-not (eq :no_correlation (plist-get out :reason)))))))))
+
+(ert-deftest satan-observer/ask-motive-gone-no-correlation ()
+  "VT-20 — an ask whose recorded motive is missing, removed, made
+dormant, or no longer cues the subject matures `:no_correlation'."
+  (let ((live (list :id "docs-after-error"
+                    :cue (list "artifact:thesis-outline"))))
+    (let ((out (satan-observer-classify-for-motives
+                (satan-observer-test--ask-intervention
+                 :related_motive_id nil)
+                (list live))))
+      (should (eq :no_correlation (plist-get out :reason)))
+      (should (null (plist-get out :motive_id))))
+    (let ((out (satan-observer-classify-for-motives
+                (satan-observer-test--ask-intervention)
+                (list (list :id "other"
+                            :cue (list "artifact:thesis-outline"))))))
+      (should (eq :no_correlation (plist-get out :reason))))
+    (let ((out (satan-observer-classify-for-motives
+                (satan-observer-test--ask-intervention)
+                (list (list :id "docs-after-error"
+                            :dormant t
+                            :cue (list "artifact:thesis-outline"))))))
+      (should (eq :no_correlation (plist-get out :reason))))
+    (let ((out (satan-observer-classify-for-motives
+                (satan-observer-test--ask-intervention)
+                (list (list :id "docs-after-error"
+                            :cue (list "artifact:something-else"))))))
+      (should (eq :no_correlation (plist-get out :reason))))))
+
+(ert-deftest satan-observer/ask-uncorrelated-enqueues-attribute ()
+  "VT-7 — a matured `:no_correlation' ask enqueues the `ask_uncorrelated'
+attribute after its verdict is persisted (D1)."
+  (satan-observer-test--with-db
+   (satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((satan-runs-dir root)
+             (old-id "20260923T093000-tick-pulse-a3f01c")
+             (audit-old (satan-observer-test--open-audit root old-id))
+             (ctx-old (satan-observer-test--build-ctx
+                       audit-old old-id "2026-09-23T09:30:00+10:00"))
+             (_iv-id (satan-observer-test--mint
+                      ctx-old :kind "ask" :target "goad" :window 60
+                      :related-motive-id "docs-after-error"
+                      :cue-handles (list "artifact:thesis-outline"))))
+        (satan-observer-test--write-bundle-with-handles
+         (satan-observer-test--make-run-dir root old-id)
+         (list "artifact:thesis-outline"))
+        (satan-motive-test--with-tmp-file
+         mpath ""
+         (let* ((captured nil)
+                (enqueue-fn (lambda (payload &optional _db)
+                              (setq captured payload)
+                              (cons 'ok 1)))
+                (curr-id "20260923T113000-morning-cccccc"))
+           (cl-letf (((symbol-function 'satan-attribute-enqueue) enqueue-fn))
+             (let ((out (satan-observer-process
+                         (satan-observer-test--process-ctx
+                          root curr-id "2026-09-23T11:30:00+10:00")
+                         (list :motive-path mpath :runs-dir root))))
+               (should (= 1 (plist-get out :processed)))
+               (let ((v (car (plist-get out :verdicts))))
+                 (should (eq :no_correlation (plist-get v :reason)))
+                 (should (eq :unknown (plist-get v :classification))))
+               (should captured)
+               (should (equal "ask_uncorrelated"
+                              (plist-get captured :reason)))
+               (should (equal "goad_ask"
+                              (plist-get captured :sensor_type)))
+               (should (equal 0 (plist-get captured :metric_value)))
+               (should (equal "correlating_motives"
+                              (plist-get captured :metric_unit)))
+               (should (equal curr-id (plist-get captured :run_id)))
+               (should (equal "2026-09-23T11:30:00+10:00"
+                              (plist-get captured :ts))))))))))))
 
 ;; ---------------------------------------------------------------------
 ;; Phase 5.4c — single-motive classifier glue

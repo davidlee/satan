@@ -34,6 +34,7 @@
 
 (require 'cl-lib)
 (require 'subr-x)
+(require 'satan-attribute)
 (require 'satan-intervention)
 (require 'satan-memory-grammar)
 (require 'satan-memory-store)
@@ -325,6 +326,23 @@ Returns plist:
                 :key (lambda (m) (plist-get m :id))
                 :test #'equal)))
 
+(defun satan-observer--enqueue-ask-uncorrelated (iv verdict now run-id)
+  "Enqueue `ask_uncorrelated' when IV matured `:no_correlation'.
+IV must be kind `\"ask\"' and VERDICT's `:reason' `:no_correlation'
+(D1).  RUN-ID is the current observer run's id; NOW its frozen
+`:time-now'.  Returns `satan-attribute-enqueue''s result
+`(ok . ID)' / `(error . MSG)', or nil when not applicable.  Never
+signals — a failure is reported to the summary, not raised."
+  (when (and (equal (plist-get iv :kind) "ask")
+             (eq :no_correlation (plist-get verdict :reason)))
+    (condition-case err
+        (satan-attribute-enqueue
+         (satan-attribute-build-ask-payload
+          :run-id run-id
+          :ts now
+          :reason "ask_uncorrelated"))
+      (error (cons 'error (error-message-string err))))))
+
 (defun satan-observer-process (tool-ctx &optional opts)
   "Classify + persist every pending intervention.
 TOOL-CTX is the current run's tool-ctx (`satan-run-tool-ctx'): its
@@ -370,10 +388,12 @@ Returns a summary plist for audit visibility:
    :verdicts  LIST-OF (:intervention_id :run_id :motive_id
                        :classification :confidence :predicates
                        :reason :maturity :classify_event
+                       :ask_uncorrelated_enqueue
                        :skipped? :error?))"
   (satan-intervention--ctx-required tool-ctx)
   (let* ((opts (or opts '()))
          (now (plist-get tool-ctx :time-now))
+         (run-id (plist-get tool-ctx :id))
          (motive-path (or (plist-get opts :motive-path)
                           satan-motive-file))
          (runs-dir (plist-get opts :runs-dir))
@@ -411,18 +431,22 @@ Returns a summary plist for audit visibility:
               (let* ((motive (satan-observer--lookup-motive
                               (plist-get verdict :motive_id) motives))
                      (out (satan-observer-persist-verdict
-                           iv motive verdict now persist-opts)))
+                           iv motive verdict now persist-opts))
+                     (attr (satan-observer--enqueue-ask-uncorrelated
+                            iv verdict now run-id)))
                 (when (eq :worked (plist-get verdict :classification))
                   (setq positive (1+ positive)))
-                (push (list :intervention_id (plist-get iv :intervention_id)
-                            :run_id (plist-get iv :run_id)
-                            :motive_id (plist-get verdict :motive_id)
-                            :classification (plist-get verdict :classification)
-                            :confidence (plist-get verdict :confidence)
-                            :predicates (plist-get verdict :predicates)
-                            :reason (plist-get verdict :reason)
-                            :maturity (plist-get verdict :maturity)
-                            :classify_event (plist-get out :classify_event))
+                (push (append
+                       (list :intervention_id (plist-get iv :intervention_id)
+                             :run_id (plist-get iv :run_id)
+                             :motive_id (plist-get verdict :motive_id)
+                             :classification (plist-get verdict :classification)
+                             :confidence (plist-get verdict :confidence)
+                             :predicates (plist-get verdict :predicates)
+                             :reason (plist-get verdict :reason)
+                             :maturity (plist-get verdict :maturity)
+                             :classify_event (plist-get out :classify_event))
+                       (and attr (list :ask_uncorrelated_enqueue attr)))
                       verdicts)))))
         (error
          (push (list :intervention_id (plist-get iv :intervention_id)

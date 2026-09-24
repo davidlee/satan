@@ -235,6 +235,68 @@ follow-up."
                  after-abs)))))
 
 ;; ---------------------------------------------------------------------
+;; Goad answer predicate (SL-016 PHASE-07) — §S5 the ask's direct answer
+;;
+;; The first predicate that reads a fact the elicitation surface wrote
+;; rather than ambient telemetry: AFTER's `:goad' slice (`satan-goad-
+;; slice') carries each queued ask with its day record.  It fires when
+;; this intervention's record carries a `:value' whose `:at' sits inside
+;; the ask's own outcome window — emit + `:outcome_window_minutes' (60),
+;; never the observer's 30-min evidence horizon (§S5, RV-007 F-10).
+;; ---------------------------------------------------------------------
+
+(defun satan-observer--goad-entry (after intervention)
+  "Return AFTER's `:goad' entry for INTERVENTION's id, or nil.
+The `:goad' slice is a list of queue-entry plists (`satan-goad-slice'),
+each with `:record' when its emit date's day file has one."
+  (let ((iid (plist-get intervention :intervention_id)))
+    (and iid
+         (cl-find iid (plist-get after :goad)
+                  :key (lambda (e) (plist-get e :intervention_id))
+                  :test #'equal))))
+
+(defun satan-observer--ask-answer-window (intervention)
+  "Return (START . END) instants for INTERVENTION's ask answer window.
+START is `:intervention_emitted_at'; END is START +
+`:outcome_window_minutes' (60 for an ask).  Each is a Lisp time value;
+nil when the emit timestamp is missing or unparseable."
+  (let* ((start-str (plist-get intervention :intervention_emitted_at))
+         (mins (or (plist-get intervention :outcome_window_minutes) 0))
+         (start (and (stringp start-str)
+                     (condition-case nil
+                         (date-to-time start-str)
+                       (error nil)))))
+    (and start
+         (cons start (time-add start (seconds-to-time (* 60 mins)))))))
+
+(defun satan-observer--instant-in-window-p (ts window)
+  "Non-nil when TS (an ISO instant) falls within WINDOW `(START . END)'.
+Inclusive on both bounds.  Nil when TS or WINDOW is absent, or TS is
+unparseable.  Instants compare through `date-to-time', never their
+strings (SL-016 R1)."
+  (let ((at-time (and (stringp ts)
+                       (condition-case nil (date-to-time ts) (error nil)))))
+    (and at-time window
+         (not (time-less-p at-time (car window)))
+         (not (time-less-p (cdr window) at-time)))))
+
+(defun satan-observer--predicate-goad-answer
+    (_baseline after _motive intervention)
+  "SL-016 — fires when the keeper answered INTERVENTION's ask in window.
+Reads AFTER's `:goad' slice: the entry for this intervention must carry
+a `:record' with a `:value' present and an `:at' within the ask's own
+outcome window.  It never reads what the value says (DEC-025): any
+answer to the form, whatever its option or fields, is an answer."
+  (let* ((entry (satan-observer--goad-entry after intervention))
+         (record (and entry (plist-get entry :record)))
+         (at (and record (plist-get record :at))))
+    (and entry
+         record
+         (plist-member record :value)
+         (satan-observer--instant-in-window-p
+          at (satan-observer--ask-answer-window intervention)))))
+
+;; ---------------------------------------------------------------------
 ;; Negative classification (T1.5b PR 2) — :ignored / :neutral
 ;; ---------------------------------------------------------------------
 
@@ -398,11 +460,31 @@ Per outcome-semantics §3 + §6.2:
     (:git_commit_observed
      . satan-observer--predicate-git-commit-observed)
     (:fs_recent_delta
-     . satan-observer--predicate-fs-recent-delta))
+     . satan-observer--predicate-fs-recent-delta)
+    (:goad_answer
+     . satan-observer--predicate-goad-answer))
   "Ordered alist mapping predicate keyword → symbol.
-`satan-observer-classify' runs them in order; first fire wins.
+`satan-observer-classify' runs the subset selected by
+`satan-observer--predicates-for-kind'; first fire wins.
 Order matters only for the `:predicate' slot recorded on the
-verdict — the verdict itself is `\"positive\"' regardless.")
+verdict — the verdict itself is `\"positive\"' regardless.
+
+`:goad_answer' is the ask answer predicate (SL-016): the only
+positive predicate for kind `\"ask\"' and never offered to any
+other kind.")
+
+(defun satan-observer--predicates-for-kind (kind)
+  "The positive predicate alist applicable to intervention KIND.
+For `\"ask\"' the answer predicate is the only positive predicate —
+an ask's expected outcome is an answer, and nothing ambient is
+evidence of one (RV-007 F-21).  Every other kind keeps the ambient
+three (`:editor_edit_in_window', `:git_commit_observed',
+`:fs_recent_delta')."
+  (if (equal kind "ask")
+      (cl-remove-if-not (lambda (cell) (eq (car cell) :goad_answer))
+                        satan-observer--predicates)
+    (cl-remove-if (lambda (cell) (eq (car cell) :goad_answer))
+                  satan-observer--predicates)))
 
 (defun satan-observer-classify--unknown (reason)
   "Build an `:unknown' / `:low' verdict carrying REASON.
@@ -428,9 +510,12 @@ guard: nil→:mature (test convenience), :pending→early :unknown,
 
 Guard order (:mature / NOW-nil):
   1. A14 dormant motive → :unknown :motive_dormant
-  2. Window crosses midnight → :crosses_midnight
+  2. Window crosses midnight → :crosses_midnight (kind \"ask\" exempt —
+     an ask reads one record keyed by its emit date, not the
+     panopticon segment file; RV-007 F-29)
   3. No baseline → :no_baseline
-  4. P1–P4; ≥1 fires → :worked
+  4. The positive predicates for the intervention's kind; ≥1 fires →
+     :worked (kind \"ask\": only the goad answer predicate)
   5. None → classify-negative → :ignored/:neutral/:unknown
 
 Single-motive only; multi-motive correlation lands in 5.7.
@@ -454,7 +539,8 @@ Full semantics: docs/satan/observer-classify.md"
          (cond
           ((plist-get motive :dormant)
            (satan-observer-classify--unknown :motive_dormant))
-          ((satan-observer--window-crosses-midnight-p intervention)
+          ((and (not (equal (plist-get intervention :kind) "ask"))
+                (satan-observer--window-crosses-midnight-p intervention))
            (satan-observer-classify--unknown :crosses_midnight))
           (t
            (let ((baseline (satan-observer--baseline-read
@@ -470,7 +556,8 @@ Full semantics: docs/satan/observer-classify.md"
                               (lambda (p)
                                 (and (funcall (cdr p) baseline after motive intervention)
                                      (car p)))
-                              satan-observer--predicates))))
+                              (satan-observer--predicates-for-kind
+                               (plist-get intervention :kind))))))
                  (if firers
                      (list :classification :worked
                            :confidence (if (> (length firers) 1) :high :medium)
@@ -500,11 +587,52 @@ runs)."
 PHASE-06) so the goad ask tool ranks by the same rule without
 requiring the observer.")
 
+(defun satan-observer--ask-motive (intervention motives)
+  "The live motive INTERVENTION's ask credits at maturity, or nil.
+Requires the motive's `:id' to equal the ask's `:related_motive_id',
+the motive to be non-dormant, and the ask's subject (its single
+`:cue_handles' entry — SL-016 A5) to still sit in the motive's
+`:cue'.  Unlike every other kind the ask does not re-rank by percept
+overlap: emit decided the winner once, maturity reads that decision
+back (RV-007 F-28)."
+  (let* ((rid (plist-get intervention :related_motive_id))
+         (subject (car (plist-get intervention :cue_handles))))
+    (and rid subject
+         (cl-find-if (lambda (m)
+                       (and (equal rid (plist-get m :id))
+                            (not (plist-get m :dormant))
+                            (member subject (plist-get m :cue))))
+                     motives))))
+
+(defun satan-observer--classify-ask (intervention motives now)
+  "Classify an `\"ask\"' INTERVENTION against its recorded motive, or none.
+Found → `satan-observer-classify' with that motive.  Not found →
+`:unknown :no_correlation' (the ask's `:related_motive_id' is missing,
+the motive was removed or made dormant, or it no longer cues the
+subject).  The caller enqueues `ask_uncorrelated' on the latter (D1)."
+  (let ((motive (satan-observer--ask-motive intervention motives)))
+    (satan-observer--assert-auto-classification
+     (if motive
+         (let ((verdict (satan-observer-classify
+                         intervention motive now)))
+           (plist-put verdict :motive_id (plist-get motive :id)))
+       (list :motive_id nil
+             :classification :unknown
+             :confidence :low
+             :predicates nil
+             :reason :no_correlation
+             :maturity :mature)))))
+
 (defun satan-observer-classify-for-motives (intervention motives &optional now)
   "Pick the strongest-correlated motive in MOTIVES, then classify.
-Reads INTERVENTION's `:run_dir'/bundle.json for percept handles;
-intersects each motive's `:cue' against them; highest count wins,
-file-order breaks ties.
+For every kind but `\"ask\"' this reads INTERVENTION's
+`:run_dir'/bundle.json for percept handles; intersects each motive's
+`:cue' against them; highest count wins, file-order breaks ties.
+
+Kind `\"ask\"' takes the narrower route of design sec-10: it credits
+the live motive whose `:id' equals the recorded `:related_motive_id'
+and still cues the subject (`:cue_handles') — `satan-observer--ask-
+motive' — and never re-ranks by percept overlap.
 
 Returns `satan-observer-classify''s verdict shape (§2)
 augmented with `:motive_id'.
@@ -540,22 +668,24 @@ maturity guard before any motive ranking or bundle read:
               :reason :pending
               :maturity :pending)))
       (_
-       (let* ((handles (satan-observer--intervention-percept-handles
-                        intervention))
-              (ranked (satan-observer--rank-motives-by-overlap
-                       motives handles)))
-         (satan-observer--assert-auto-classification
-          (if (null ranked)
-              (list :motive_id nil
-                    :classification :unknown
-                    :confidence :low
-                    :predicates nil
-                    :reason :no_correlation
-                    :maturity :mature)
-            (let* ((winner (plist-get (car ranked) :motive))
-                   (verdict (satan-observer-classify
-                             intervention winner now)))
-              (plist-put verdict :motive_id (plist-get winner :id))))))))))
+       (if (equal (plist-get intervention :kind) "ask")
+           (satan-observer--classify-ask intervention motives now)
+         (let* ((handles (satan-observer--intervention-percept-handles
+                          intervention))
+                (ranked (satan-observer--rank-motives-by-overlap
+                         motives handles)))
+           (satan-observer--assert-auto-classification
+            (if (null ranked)
+                (list :motive_id nil
+                      :classification :unknown
+                      :confidence :low
+                      :predicates nil
+                      :reason :no_correlation
+                      :maturity :mature)
+              (let* ((winner (plist-get (car ranked) :motive))
+                     (verdict (satan-observer-classify
+                               intervention winner now)))
+                (plist-put verdict :motive_id (plist-get winner :id)))))))))))
 
 (provide 'satan-observer-classify)
 ;;; satan-observer-classify.el ends here
