@@ -42,6 +42,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'satan-custom)
+(require 'satan-jsonl)             ; the shared atomic-write helper
 
 ;; ---------------------------------------------------------------------
 ;; Paths (mind-side files; defcustoms live with the substrate module so
@@ -582,13 +583,8 @@ useful — mutation is in BUF."
 
 (defun satan-motive--write-atomic (path text)
   "Atomically replace PATH's contents with TEXT.
-Writes to PATH.tmp + rename; ensures parent dir exists; uses utf-8."
-  (let ((dir (file-name-directory path)))
-    (unless (file-directory-p dir) (make-directory dir t)))
-  (let ((tmp (concat path ".tmp"))
-        (coding-system-for-write 'utf-8))
-    (with-temp-file tmp (insert text))
-    (rename-file tmp path t)))
+Delegates to the shared helper, `satan-jsonl-write-file-atomic'."
+  (satan-jsonl-write-file-atomic path text))
 
 (defun satan-motive-touch-footer (id worked-count last-at &optional path)
   "Rewrite PATH so motive ID's footer carries WORKED-COUNT + LAST-AT.

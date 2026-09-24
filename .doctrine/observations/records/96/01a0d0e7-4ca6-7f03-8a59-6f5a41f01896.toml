@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d0e7-4ca6-7f03-8a59-6f5a41f01896"
+recorded_at = "2026-09-24T00:53:34.502310413Z"
+kind = "friction"
+summary = """phase-plan skill tells planners to run 'doctrine memory retrieve "<topic>"' but the CLI requires --query"""
+detail = "Reported by SL-016 PHASE-05 capsule-phase-planner: the bare-topic form documented in the skill is rejected by the CLI."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

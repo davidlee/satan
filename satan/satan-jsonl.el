@@ -131,6 +131,20 @@ audit transcript reader passes `:null' to match the writer's
           (forward-line 1))
         (nreverse acc)))))
 
+(defun satan-jsonl-write-file-atomic (path text)
+  "Atomically replace PATH's contents with TEXT.
+Writes PATH.tmp then renames over PATH, so a reader never sees a
+partial write; creates PATH's parent directory when it does not
+exist.  Always UTF-8.  The shared atomic-write helper — callers write
+JSON or any other text through it rather than cloning tmp+rename
+\(`satan-motive--write-atomic' delegates here)."
+  (let ((dir (file-name-directory path)))
+    (unless (file-directory-p dir) (make-directory dir t)))
+  (let ((tmp (concat path ".tmp"))
+        (coding-system-for-write 'utf-8))
+    (with-temp-file tmp (insert text))
+    (rename-file tmp path t)))
+
 (defun satan-jsonl-read-object-file (path)
   "Parse the single JSON document at PATH, returning it decoded.
 Lenient: nil when PATH is missing, unreadable or malformed — never a

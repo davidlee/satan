@@ -185,5 +185,31 @@ CONTENT nil means the file does not exist."
   (should-not (satan-jsonl-test--read-object "{\"a\": "))
   (should-not (satan-jsonl-test--read-object "")))
 
+;; ---------------------------------------------------------------------
+;; write-file-atomic (T2, SL-016 — the shared home for the atomic
+;; tmp+rename write `satan-motive--write-atomic' used to duplicate)
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-jsonl/write-file-atomic-round-trips-and-makes-its-dir ()
+  (let* ((dir (make-temp-file "satan-jsonl-atomic-" t))
+         (path (expand-file-name "nested/queue.json" dir)))
+    (unwind-protect
+        (progn
+          (should-not (file-directory-p (file-name-directory path)))
+          (satan-jsonl-write-file-atomic path "{\"asks\": []}")
+          (should (equal "{\"asks\": []}"
+                         (with-temp-buffer
+                           (insert-file-contents path)
+                           (buffer-string))))
+          ;; A second write replaces the file whole and leaves no
+          ;; `.tmp' litter behind.
+          (satan-jsonl-write-file-atomic path "{\"asks\": [1]}")
+          (should (equal "{\"asks\": [1]}"
+                         (with-temp-buffer
+                           (insert-file-contents path)
+                           (buffer-string))))
+          (should-not (file-exists-p (concat path ".tmp"))))
+      (delete-directory dir t))))
+
 (provide 'satan-jsonl-test)
 ;;; satan-jsonl-test.el ends here

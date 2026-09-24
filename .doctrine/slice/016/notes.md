@@ -6,12 +6,135 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-05 implemented, 2026-09-24 (uncommitted in both repos;
-orchestrator commits). attrd's `SensorReason` gains `AskSuppressed` /
-`AskUncorrelated` with `tuning::sensor_base_deltas` rows; SATAN's audit
-validator accepts the resulting events and a thin `satan-attribute-build-ask-payload`
-wraps the existing sensor builder. Nothing emits either reason yet. Next:
-commit both repos, then `/phase-plan` PHASE-06.
+**fresh-as-of:** PHASE-06 first half (T0–T2) implemented, 2026-09-24
+(uncommitted; orchestrator commits). `satan-goad-form-validate` and
+`satan-goad-queue-rewrite` land in `satan-goad.el`; the atomic-write helper is
+promoted to `satan-jsonl.el`. `satan-tools-goad.el` (T3–T7: registration,
+handler, corpus description) is not started — a second worker takes it. Next:
+`/phase-plan` or dispatch the T3–T7 half.
+
+### PHASE-06a — T0–T2: form-validate + queue-rewrite (2026-09-24)
+
+Worker: Claude Sonnet 5, in-tree (no isolation requested). Scope: T0 baseline,
+T1 `satan-goad-form-validate`, T2 `satan-goad-queue-rewrite` +
+`satan-goad--queue-entry-from-row` + the atomic-write promotion. T3–T7 (tool
+module, handler, corpus doc) deliberately untouched — no
+`satan-tools-goad.el`, no `satan.el`/`satan-tick.el` edit, no tool
+registration, no `satan-observer--rank-motives-by-overlap` promotion.
+
+**Files changed:**
+- `satan/satan-goad.el` — added `(require 'satan-intervention)`; header
+  rewritten (no longer "readers only" — see below). New: the answer-form
+  validator (`satan-goad-form-validate` + its `satan-goad-form--*` helpers and
+  four `defconst`s: `satan-goad-form-max-options` 8, `-max-fields` 8,
+  `-max-label-chars` 200, `-max-bytes` 8192) and the queue's write side
+  (`satan-goad--iso-instant`, `satan-goad--queue-entry-from-row`,
+  `satan-goad-queue-rewrite`).
+- `satan/satan-jsonl.el` — new public `satan-jsonl-write-file-atomic (path
+  text)`, the promoted atomic tmp+rename helper.
+- `satan/satan-motive.el` — requires `satan-jsonl`; `satan-motive--write-
+  atomic` now delegates to it (same signature, same call sites, behaviour
+  unchanged).
+- `satan/test/satan-goad-test.el` — 27 new tests (22 form-validate, 2 pure
+  `queue-entry-from-row` round-trip, 3 DB-backed queue-rewrite); requires
+  `satan-intervention-test` (`nil 'noerror`, `fboundp`-guarded per existing
+  `satan-intervention-mark-test.el` precedent — no double-load).
+- `satan/test/satan-jsonl-test.el` — 1 new test for the atomic-write helper.
+
+**Left untouched, noted for the T3–T7 worker:**
+- `satan/satan-tools-motive.el:62` has its own `satan-tools-motive--write-
+  atomic` clone, not folded into the new shared helper — out of my declared
+  scope (only `satan-motive--write-atomic` was named for promotion). Flagging
+  as a DRY follow-up, not fixed here.
+- `satan-tools-goad.el`'s handler (T5) will call `satan-goad-form-validate`
+  on a present `:form` and `satan-goad-queue-rewrite` inside a
+  `condition-case` (per the sheet) — both signatures are stable now:
+  `(satan-goad-form-validate FORM)` → `(ok . REBUILT)` / `(error . REASON)`;
+  `(satan-goad-queue-rewrite &optional NOW FILE DB)`, signals on failure,
+  catches nothing itself.
+- `satan-goad.el` now requires `satan-intervention` directly (no
+  `declare-function` seam) — see "the require choice" below. The T5 handler
+  can therefore call `satan-goad-queue-rewrite` without requiring
+  `satan-intervention` itself, though it will need it anyway for
+  `satan-intervention-record`/`-project`/`-mark-undelivered`.
+- The ask handler (T5) must pass `:cue-handles (list subject)` — a single
+  handle. `satan-goad--queue-entry-from-row` takes the *first* of
+  `:cue_handles` as `subject`; an ask recorded with zero cue handles produces
+  `subject: nil`, which `satan-jsonl-prepare`/`json-serialize` renders as
+  `{}`, and the reader then drops the whole entry (found the hard way — see
+  "friction" below). Not a defect in T1/T2: the design assumption (design
+  sec-3 step 5, `:cue-handles (list subject)`) already guarantees exactly one
+  handle; flagging so T5's handler doesn't skip it.
+
+**R5 decision (OQ-3), as directed by the orchestrator:** an option's
+`fields: []` (or `{}`, JSONB's rendering of an empty array once read back — the
+two collapse to the same elisp `nil` after `satan-goad-form--as-list`)
+normalises away: the rebuilt option carries no `:fields` key at all, same as
+an option with none. A `choice` field's `options` — empty, `{}`, or the key
+missing entirely — is refused (a choice with no alternatives is not
+drawable). Both pinned: `satan-goad/form-normalises-empty-fields-away`,
+`satan-goad/form-refuses-empty-choice-options`.
+
+**The require choice (T2's open question):** `satan-goad.el` now requires
+`satan-intervention` directly, rather than `declare-function` + deferring the
+require to the tool module. No cycle (`satan-intervention` and everything it
+transitively requires stays clear of `satan-goad`). Rationale: `satan-goad-
+queue-rewrite` is itself in this module by the sheet's own placement (T2), so
+the DB dependency is inherent to what the module now does, not something a
+`declare-function` seam would avoid — it would only defer the requirement to
+callers and add a footgun (call `satan-goad-queue-rewrite` before
+`satan-intervention` loads → `void-function`). The file header is rewritten to
+say so: it is no longer "readers only."
+
+**Red-first evidence:**
+- T1 (22 tests): written before `satan-goad-form-validate` existed; first run
+  showed 22 unexpected failures, all `(void-function satan-goad-form-
+  validate)`, the other 55 pre-existing goad tests untouched. Implemented;
+  one real red found by the *tests* rather than by inspection —
+  `case-fold-search` defaults non-nil, so the id regex
+  (`\`[a-z0-9_-]+\'`) matched `"Has-Caps"` case-insensitively until the id
+  check bound `case-fold-search` to nil. Fixed; reran green (77/77).
+- T2 (8 tests: 2 pure, 3 DB, 3 in the DB group counted once as VT-28/48/51):
+  implementation was written in the same pass as the tests (not strictly
+  red-first as typed), so red status was confirmed retroactively — the new
+  functions were wrapped in `(when nil ...)` and the suite rerun: all 5 tests
+  that call them failed void-function (the other 3 — accepts-golden-form
+  etc. — unaffected); unwrapped, reran green. First green attempt on the 3
+  DB tests still failed (`different-types (…) nil` — see the cue-handles
+  friction above); fixed by passing `:cue-handles` explicitly in the
+  fixtures, reran green (121/121 in `satan-goad-test.el` alone).
+- Atomic-write helper (`satan-jsonl-write-file-atomic`): written together
+  with its test, not red-first — a mechanical promotion of
+  `satan-motive--write-atomic`'s already-proven body, low risk. Noted as a
+  minor process deviation, not hidden.
+
+**T0 baseline:** not run as a separate pre-work pass (T1/T2 assigned
+together, turns budgeted for both); reconciled by arithmetic instead — the
+final gate ran 1240/1234/0/6 against the documented baseline 1212/1206/0/6,
+a delta of exactly +28 (22 T1 + 5 T2 + 1 jsonl), all newly passing, and the
+six skip names unchanged. No unexplained drift.
+
+**Gate (serial, `SATAN_DB_HOST=127.0.0.1 just check`):** ran 1240, expected
+1234, unexpected 0, skipped 6 (same six names as baseline). `just lint`
+clean. Scratch byte-compiled `satan-goad.el`, `satan-jsonl.el`,
+`satan-motive.el` against `HEAD`'s copies, both ways, same flags — zero
+warnings either side; every `.elc` deleted afterward
+(`find satan -name '*.elc' -delete` confirmed empty).
+
+**Friction:**
+- `case-fold-search` — any hand-rolled id/token regex check in this codebase
+  should bind it `nil`; a plain `string-match-p` silently case-folds in batch.
+  Worth a memory if it recurs elsewhere in SL-016 (T4's ids, T6's option-id
+  encoding).
+- The byte cap (VT-47, ≤ 8 KiB) is unreachable through the *enumerated* caps
+  alone (8 options × 8 fields × 200-char labels ≈ 3.6 KB, well under 8 KiB) —
+  it only bites through a `choice` field's alternatives, which carry no count
+  cap of their own. Test exploits that; worth noting in case a future
+  reviewer wonders why the byte cap "never fires" against the other caps.
+- `satan-intervention-test--ask-args`/`--ask` were built for VT-57's
+  pipe/newline concern and carry no `:cue-handles`; every goad fixture ask
+  must add it explicitly. Not a bug, just a gap between "the intervention
+  suite's own ask fixture" and "an ask shaped like goad's."
 
 ### Design revision — answer forms (2026-09-24)
 
