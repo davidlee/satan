@@ -204,3 +204,27 @@ seat and closes [[RFC-016]]'s D3 keystone.
 - Reporting over `data/` once there is enough of it.
 - The `:staged` action hole (`satan-broker.el:239`) — approval-side, unrelated
   to this slice but adjacent to any future goad approval story.
+
+## Reconciled against delivery (2026-09-24, RV-018 F-7)
+
+The text above is the scope as set on 2026-09-21. Where delivery departed from
+it:
+
+- **Scope item 1, PERCEIVE.** Narrowed by design to SATAN's outstanding asks
+  and their answers ([[DEC-004]]). SATAN does not perceive checklist answers
+  or past goad days; that is [[IMP-025]].
+- **R1 and verification item 5 (sensor watermark).** Moot. There is no
+  sensor probe, so there is no watermark (design sec-8 item 10).
+- **A1 (thin-shell seat).** Falsified. The goad modules are POL-001
+  No-branch tenants ([[DEC-008]]), and POL-001 now says so (REV at reconcile).
+- **OQ-1 to OQ-4.** Resolved:
+  - OQ-1: the evidence window, not a capsule-every-tick or tool pull
+    ([[DEC-004]]).
+  - OQ-2: one queue file, rewritten atomically ([[DEC-010]]).
+  - OQ-3: the answer lands in three roles ([[DEC-011]]).
+  - OQ-4: observer verdicts on both legs, with no manual-mark path
+    ([[DEC-012]]).
+- **D1 (ISS-012).** Superseded. SL-018 closed ISS-012, and unattended asks
+  flow only while a credential session is live (SL-018 DEC-022).
+- **Verification intent.** Items 1–4 held. Item 1 was observed live (VH-1).
+  Item 3 is covered by VT-3; its live check (VH-2) was waived by the keeper.

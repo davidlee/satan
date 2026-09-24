@@ -49,8 +49,8 @@ note = "The design's own targets: the canon rule and evidence inclusion (DEC-004
 
 [[selector]]
 selector = "satan/satan-tools.el"
-intent = "scope-relevant"
-note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
 
 [[selector]]
 selector = "satan/satan-custom.el"
@@ -64,8 +64,8 @@ note = "Tool registration and the capability token, the satan-goad-enabled kill 
 
 [[selector]]
 selector = "satan/test/**"
-intent = "scope-relevant"
-note = "Tool registration and the capability token, the satan-goad-enabled kill switch, and the test tree — which lives at satan/test/, not a top-level test/."
+intent = "design-target"
+note = "The SL-016 test surface: goad tests, fixtures, and the modified suites (RV-018 F-5)."
 
 [[selector]]
 selector = "satan/satan-observer.el"
@@ -96,6 +96,71 @@ note = "State-home readers moved onto the shared empty-XDG helper (DEC-027, RV-0
 selector = "satan/satan-tools-content.el"
 intent = "design-target"
 note = "State-home readers moved onto the shared empty-XDG helper (DEC-027, RV-015 F-9)."
+
+[[selector]]
+selector = "satan/satan-goad.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-tools-goad.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-broker.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-run.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-mcp.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-motive.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-jsonl.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-sensor-alerts.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "satan/satan-tools-notify.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "dev/satan-test.el"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "docs/attributes/design-contract.md"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
+
+[[selector]]
+selector = "docs/attributes/wiring-status.md"
+intent = "design-target"
+note = "Delivered surface declared at reconcile (RV-018 F-5)."
 
 [[relation]]
 label = "governed_by"

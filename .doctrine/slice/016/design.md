@@ -431,14 +431,15 @@ Regenerating it from rows rather than transcripts is correct, not a shortcut: a
 row-less ask is one the observer cannot score, and by the invariant above it
 should not be asked.
 
-One file, rewritten whole and atomically ([[DEC-010]]) — and rewritten at **two**
-triggers, not one. The first design specified only the ask handler, but the
-observer retires rows independently at classification
-(`satan-observer-persist-verdict`, `satan/satan-observer.el:413`), so a matured
-ask kept its queue entry until some later ask happened to rewrite the file, and
-the backend kept re-presenting it ([[RV-007]] F-11). The rewrite therefore also
-fires at classification. That is what makes the regenerability property
-[[DEC-005]] leans on actually hold.
+One file, rewritten whole and atomically ([[DEC-010]]), at **one** trigger:
+the ask handler, at emit. [[RV-007]] F-11 added a second rewrite at
+classification so that a matured ask would leave the file promptly
+(`satan-observer-persist-verdict`). Once every entry carried `expires_at`
+(below), that rewrite was redundant: a matured ask is past its expiry, and every
+reader filters on it. [[RV-017]] F-6 removed it (`5c035b8`), and VT-8 is
+withdrawn. A matured entry stays in the file, invisible, until the next emit
+rewrites it. Regenerability ([[DEC-005]]) holds either way: the file is always
+derivable from the open rows.
 
 **The open rows need their own query** ([[DEC-028]]).
 `satan-intervention-pending` returns *matured* rows, whose window has closed.
@@ -452,7 +453,7 @@ be queued or classified.
 **Each entry carries `emitted_at` and `expires_at`** (emit plus window), and the
 ask's `form` when it has one, selected from the row's `form_json` ([[DEC-024]]).
 `backend.py` never renders an expired entry ([[RV-007]] F-24), and it files the
-ask's events under `emitted_at`'s date (F-29). Both rewrite triggers run inside
+ask's events under `emitted_at`'s date (F-29). The rewrite runs inside
 SATAN runs, and runs can stop: under SL-018's `defer` policy no child spawns and
 the observer (inside `satan-broker--spawn`) never runs. Without expiry the queue
 would keep presenting questions whose window closed hours ago. With it the queue
@@ -862,8 +863,10 @@ column on an existing row is not a new layer.
 Migrations run only when invoked, and every intervention kind shares one INSERT.
 So the INSERT names `form_json` only when the payload carries a form, and every
 other kind projects the same whether or not `0008` has run. **Applying `0008` is
-a landing step, done before `satan-goad-enabled` is turned on.** Before that, a
-question with a form fails to project and takes the undelivered verdict (sec-3). The alternative, a form file
+a landing step, done before `satan-goad-enabled` is turned on.** Before that, every ask takes the
+undelivered verdict: the queue rewrite reads the open-asks query, which selects
+`form_json` (sec-3), and a question with a form also fails to project. Every
+other kind is unaffected ([[RV-018]] F-4). The alternative, a form file
 beside the queue, would be one, and a second source of truth the rebuild could
 not replay.
 
@@ -993,10 +996,10 @@ Two triggers would flip that, and the design avoids both by construction:
    `undelivered`, at emit (§4) — goes through the auto-verdict writer
    `notify_send` already uses (`satan-intervention-classify-record` then
    `satan-intervention-project-with-verdict`). The slice moves that writer to a
-   shared home and calls it from a second tool; it adds no path. *(No REV
-   accepted that writer as such: SL-017's REV-002 covers operational alarms.
-   Whether a second caller of an existing auto-verdict writer wants a ledger note
-   is a question for `/reconcile` at close.)*
+   shared home and calls it from a second tool; it adds no path. *(No REV accepted that writer as such: SL-017's REV-002 covers operational
+alarms. Settled at reconcile ([[RV-018]] F-9): no ledger note. The writer
+moved unchanged and a second caller adds no write path, so ledger row 4's
+owner and invariant stand.)*
 
 **Elicit-only exempts the new tools from the *authority* question, not the
 *protocol* one** (ADR-017 §2). The ask and the doorbell are enactments and
@@ -1123,7 +1126,7 @@ setting correct is the emit-date filing (§4), not the default.
 | 5 | a refused or failed `goad-emit` loses nothing: the question is still in the queue at goad's next evaluation, and if that falls outside the window the ask matures `undelivered`, not `:ignored` | VT |
 | 6 | an ask with no correlating motive is suppressed, and the suppression is perceptible as an attribute | VT |
 | 7 | a matured `:no_correlation` is likewise perceptible | VT |
-| 8 | the queue projection regenerates totally from the open intervention rows, and retires an entry at classification | VT |
+| 8 | the queue projection regenerates totally from the open intervention rows ~~, and retires an entry at classification~~ | VT — the retirement half was withdrawn with VT-8 ([[RV-017]] F-6); expiry (item 16) keeps a matured entry off screen |
 | 9 | `goad_ask` refuses in interactive MCP mode | VT |
 | ~~10~~ | ~~sensor watermark advance, seeded with a source-format watermark~~ | **moot** — no probe, no watermark |
 | 11 | an ask whose projection or queue rewrite fails carries the `undelivered` verdict, never enters `satan-intervention-pending`, and survives `satan-rebuild-interventions` with its verdict | VT |
@@ -1222,9 +1225,11 @@ Neither is this slice's to fix; both are this slice's to not be fooled by.
 
 | file | why |
 |---|---|
+| `satan-goad.el` (new) | the goad day-record reader, the open-asks queue writer, the answer-form validator (§3, §4) |
+| `satan-tools-goad.el` (new) | the `goad_ask` tool: the correlation gate, record → project → queue rewrite, the doorbell (§2, §4, §5) |
 | `satan-memory-evidence.el` | goad record + queue join the evidence window (§3) |
 | `satan-memory-canon.el` | the canon rule, triggered by the queue file (§3) |
-| `satan-observer.el` | queue rewrite at classification; the answer trace in `--persist-positive`; the ask's evidence labels in `--verdict-classify-args` (§4, §6) |
+| `satan-observer.el` | the answer trace in `--persist-positive`; the ask's evidence labels in `--verdict-classify-args` (§4, §6) |
 | `satan-observer-classify.el` | the answer predicate; kind-scoped predicate selection; the `"ask"` branch of `classify-negative`; kind `"ask"` credits its emit-time motive in `classify-for-motives` and is exempt from the `crosses_midnight` guard — no other kind's verdicts change (§2, §6) |
 | `satan-tick.el` | the `goad-ask` capability; `satan-tick-quiet-p` gains a window argument (§8) |
 | `satan-intervention.el` | the `undelivered` auto-verdict writer, moved from `satan-tools-notify.el` (§4); `:form` on record, project and rebuild ([[DEC-024]]); rows read as JSON, and the open-asks query ([[DEC-028]]) |
@@ -1240,6 +1245,11 @@ Scope-relevant: `satan-tools.el` (registration and the capability token — note
 moved writer), `satan-custom.el` (`satan-goad-enabled`,
 `satan-goad-quiet-hours`), `satan-mode.el`, `satan-percept.el`,
 `satan-context.el`, `satan/test/**`.
+
+**Also touched in delivery** ([[RV-018]] F-5): `satan-broker.el` (shared
+seams), `satan-run.el` and `satan-mcp.el` (`:available-p`, `:percept-sources`),
+`satan-motive.el`, `satan-jsonl.el`, `satan-sensor-alerts.el` (quiet-p window),
+`satan.el`, `dev/satan-test.el`, `docs/attributes/{design-contract,wiring-status}.md`.
 
 **Left the surface** since the first design: `satan-sensor-*.el` (no probe leg),
 and `satan-sensor-alerts.el` (suppression is an attribute, not an alert).
@@ -1277,7 +1287,7 @@ credential session. Interactive MCP refuses the tool (§2).
 | **`satan-attrd` rejects unknown outcome reasons** ([[ISS-011]]) | cross-repo dependency for the suppression attribute | name it at plan time |
 | **`backend.py` has no tests** (R2) | fixtures are phase-one work | §4 |
 | **Evidence truncation cap unenforced** ([[ISS-001]]) | pre-existing | keep the contribution compact |
-| **Migration `0008` must be applied before goad asks are enabled** ([[DEC-024]]) | migrations run only when invoked | a landing step; before it, a question with a form takes the undelivered verdict, and every other kind is unaffected |
+| **Migration `0008` must be applied before goad asks are enabled** ([[DEC-024]]) | migrations run only when invoked | a landing step; before it, every ask takes the undelivered verdict (the queue rewrite selects `form_json`, [[RV-018]] F-4), and every other kind is unaffected |
 | **A hand-edited queue can carry a form the host rejects** — `backend.py` checks shape only ([[DEC-026]]) | the queue's one writer validates at emit; a second validator in Python would drift | goad shows nothing until that ask expires, at most 60 minutes; documented |
 
 ## Out of scope, deliberately

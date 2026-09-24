@@ -165,3 +165,50 @@ The findings are about recorded truth, not code defects:
   resolved.
 - The handover (`.doctrine/slice/016/handover.md`) is stale (it predates the
   PHASE-08 flip). Retire it at close.
+
+## Reconciliation Outcome
+
+Keeper agreement: "agreed, A" (2026-09-24).
+
+### Direct edits applied
+- **design.md sec-3, "The queue is a projection"** (RV-018 F-2).
+  - One rewrite trigger, at emit. The paragraph records that RV-007 F-11
+    added the classification-time rewrite and RV-017 F-6 removed it.
+    `expires_at` makes that removal safe, and VT-8 is withdrawn.
+  - "Both rewrite triggers run" becomes "The rewrite runs".
+- **design.md sec-7 and the sec-9 risk row for migration 0008** (F-4).
+  Before 0008, every ask takes the undelivered verdict.
+- **design.md sec-8, item 8** (F-2). The retirement half is struck and noted
+  as withdrawn.
+- **design.md sec-8, "No authority item"** (F-9). The open question is
+  replaced by the decision: no ledger note.
+- **design.md sec-9, affected surface** (F-5).
+  - Added `satan-goad.el` and `satan-tools-goad.el`.
+  - Added an "also touched in delivery" line.
+  - Dropped the classification rewrite from the `satan-observer.el` row.
+- **Selector registry** (F-5). Added design-target selectors for both goad
+  modules and the ten touched seam and doc files, re-intented
+  `satan-tools.el`, and re-intented `satan/test/**` to design-target.
+  `slice conformance 16`: 46 conformant, 0 undelivered. Undeclared, apart
+  from `.doctrine/**` bookkeeping:
+  - `.envrc`, `flake.nix`, `skills-lock.json`
+  - the three restored migrations
+  - `docs/governance.md` and `satan/satan-mode.el`
+  All of these are foreign commits inside the interleaved phase ranges,
+  which F-6 tolerates. The last two were not in F-6's list but belong to
+  the same class.
+- **slice-016.md** (F-7). Appended "Reconciled against delivery": the PERCEIVE
+  narrowing and IMP-025; R1 and item 5 moot; A1 falsified; OQ-1..4 resolved;
+  D1 superseded.
+
+### REVs completed
+- **REV-003 (`reconcile-sl-016`): done.** POL-001 `## Scope` gains the
+  non-editor-surface paragraph: goad's shells are No-branch tenants. There is
+  also a dated 2026-09-24 amendment (F-8). The modify row was landed by hand.
+  The rationale is in revision-003.md.
+
+### Withdrawn / tolerated
+- F-6: tolerated (phase boundaries include interleaved foreign commits).
+- F-10(b) and (c): tolerated, rationale in the finding.
+
+Reconcile pass complete — handoff to /close.

@@ -65,6 +65,12 @@ because the human's editing surface is where their output lands and where the
 keeper approves it, not because they need an Emacs image to compute. That makes
 several of them cheap to move later; none of them urgent.
 
+A human surface outside the editor does not earn the seat. goad (SL-016)
+presents to the keeper in its own window, so its SATAN-side shells —
+`satan-goad.el` and `satan-tools-goad.el` — answer **No** however thin they
+are: recorded tenants, not residents (DEC-008), travelling with the
+observer/memory extraction (IMP-009, IMP-007). Absent a trigger, they stay.
+
 ### Extraction candidates (deferred → backlog)
 
 Ordered by ADR-018 D4. The destination is the single daemon repository of
@@ -156,6 +162,11 @@ is unchanged; its pre-computed answers were not survivable.
 
 The motivating costs (§Statement), the triggers (§Verification) and the
 carve-early principle are untouched.
+
+**2026-09-24 — a human surface that is not the editor (REV-003, SL-016).** The
+thin-shell rationale covers output that lands at the keeper's editor. It is now
+explicit that a shell for a second human surface (goad) answers No and is a
+recorded tenant. No seat list changes, and no extraction is triggered.
 
 ## References
 
