@@ -195,6 +195,14 @@ on its Postgres. Every step below runs on the host.
 6. Record all intervention ids + outcomes in notes.md, then flip PHASE-08
    `completed` and route to `/audit`.
 
+**Gate before the flip (2026-09-24):** the user's model switch `1755649`
+broke 8 broker credential tests (fixture assumed morning = openrouter; fixed
+`bc69f83` by pinning the provider in `--gate-run`), and the user's checklist
+edit broke VT-43 goldens-match-backend. The user did not want private corpus
+content in public goldens: `goldens.py` now uses a stand-in checklist (corpus
+`390df05`, goldens `69bc33d`); moving the drift check into the corpus is
+IMP-028. `just check` 1293 / 0 unexpected / 6 skipped.
+
 **RV-017 closed 2026-09-24.** F-4/F-5 verified by an independent subagent
 reviewer against `c6d0c63` (every model-facing tool surface filters
 `goad_ask`; the gate reads frozen `:percept-sources`, fails closed with no
