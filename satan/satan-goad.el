@@ -327,6 +327,19 @@ recorded."
                  satan-goad-form-max-bytes)))
       (cons 'ok rebuilt))))
 
+(defconst satan-goad-question-max-chars 280
+  "The most characters an ask's question may hold: goad renders it as the
+view's title (RV-017 F-8).")
+
+(defun satan-goad-question-invalid (question)
+  "Why QUESTION cannot be asked, or nil: it must be a non-blank string of
+at most `satan-goad-question-max-chars' characters."
+  (cond
+   ((not (and (stringp question) (string-match-p "[^[:space:]]" question)))
+    "question must be a non-blank string")
+   ((> (length question) satan-goad-question-max-chars)
+    (format "question exceeds %d characters" satan-goad-question-max-chars))))
+
 ;; ── the queue's write side (design sec-3 "The queue is a projection") ──────
 ;;
 ;; The queue file is a disposable projection of the open `"ask"' rows —

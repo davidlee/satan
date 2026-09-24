@@ -361,13 +361,7 @@ IV must be kind `\"ask\"' and VERDICT's `:reason' `:no_correlation'
 signals — a failure is reported to the summary, not raised."
   (when (and (equal (plist-get iv :kind) "ask")
              (eq :no_correlation (plist-get verdict :reason)))
-    (condition-case err
-        (satan-attribute-enqueue
-         (satan-attribute-build-ask-payload
-          :run-id run-id
-          :ts now
-          :reason "ask_uncorrelated"))
-      (error (cons 'error (error-message-string err))))))
+    (satan-attribute-enqueue-ask run-id now "ask_uncorrelated")))
 
 (defun satan-observer-process (tool-ctx &optional opts)
   "Classify + persist every pending intervention.
@@ -440,8 +434,7 @@ Returns a summary plist for audit visibility:
                         (setq kept (append kept (list k (plist-get opts k))))))
                     kept)))
          (verdicts nil)
-         (positive 0)
-         (ask-classified nil))
+         (positive 0))
     (dolist (iv pending)
       (condition-case err
           (let ((verdict (satan-observer-classify-for-motives
@@ -463,10 +456,6 @@ Returns a summary plist for audit visibility:
                             iv verdict now run-id)))
                 (when (eq :worked (plist-get verdict :classification))
                   (setq positive (1+ positive)))
-                ;; SL-016 PHASE-09 — a persisted ask verdict retires the
-                ;; ask's queue entry after the loop (D4).
-                (when (equal (plist-get iv :kind) "ask")
-                  (setq ask-classified t))
                 (push (append
                        (list :intervention_id (plist-get iv :intervention_id)
                              :run_id (plist-get iv :run_id)
@@ -498,25 +487,12 @@ Returns a summary plist for audit visibility:
       (error
        (message "satan-observer: pattern rebuild failed: %s"
                 (error-message-string err))))
-    ;; Queue retirement — fires once, after the pending loop, when at
-    ;; least one ask was classified, so a matured ask's queue entry does
-    ;; not outlive its window (SL-016 PHASE-09, design sec-3, D4).
-    ;; Guarded like the pattern rebuild: a rewrite fault is reported in
-    ;; the summary and never aborts the tick.
-    (let ((queue-rewrite
-           (when ask-classified
-             (condition-case err
-                 (progn
-                   (satan-goad-queue-rewrite now nil db)
-                   'ok)
-               (error
-                (message "satan-observer: queue rewrite failed: %s"
-                         (error-message-string err))
-                (cons 'error (error-message-string err)))))))
-      (list :processed (length pending)
-            :positive positive
-            :verdicts (nreverse verdicts)
-            :queue_rewrite queue-rewrite))))
+    ;; No queue retirement here (RV-017 F-6): a matured ask is past its
+    ;; `expires_at', which every queue reader already filters, and the
+    ;; next ask's rewrite drops it from the file.
+    (list :processed (length pending)
+          :positive positive
+          :verdicts (nreverse verdicts))))
 
 (provide 'satan-observer)
 ;;; satan-observer.el ends here

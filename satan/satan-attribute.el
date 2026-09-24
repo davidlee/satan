@@ -182,6 +182,18 @@ Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
 
 (defalias 'satan-attribute-enqueue-outcome #'satan-attribute-enqueue)
 
+(defun satan-attribute-enqueue-ask (run-id ts reason)
+  "Enqueue RUN-ID's `goad_ask' sensor payload for REASON at TS.
+Never signals — an ask's verdict is decided whether or not its
+attribute lands.  Returns `satan-attribute-enqueue''s (ok . ID) or
+\(error . MSG), a signalled failure included.  The one enqueue both
+ask reasons share (the tool's `ask_suppressed', the observer's
+`ask_uncorrelated')."
+  (condition-case err
+      (satan-attribute-enqueue
+       (satan-attribute-build-ask-payload :run-id run-id :ts ts :reason reason))
+    (error (cons 'error (error-message-string err)))))
+
 ;; ---------------------------------------------------------------------
 ;; Daemon-side decay-disable: satan_attribute_settings write surface
 ;; ---------------------------------------------------------------------

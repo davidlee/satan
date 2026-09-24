@@ -511,7 +511,7 @@ Joins mechanical metadata (tools, capabilities, jail) with the
 notes-owned model-facing schemas (`:tools' carries full JSON Schemas
 including descriptions read from `satan-tools-descriptions-dir').
 The harness consumes `:tools' verbatim."
-  (let* ((tool-names (plist-get mode :tools))
+  (let* ((tool-names (satan-tools-available (plist-get mode :tools)))
          (specs (mapcar (lambda (n)
                           (or (satan-tool-lookup n)
                               (error "SATAN: unknown tool in mode %s: %s"

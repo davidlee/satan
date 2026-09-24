@@ -75,6 +75,7 @@ roots are literal `~` strings, so `expand-file-name` before `call-process`.
 
 ## Tooling & Development Workflow
 
+- You might be working inside a bubblewrap jail, in which case your pwd at `/workspace/satan` maps to `~/dev/satan` outside the jail.
 - Enter the Nix devshell (`nix develop` / direnv): provides Emacs, Python,
   psql, supabase, doctrine.
 - Test DB: the local Supabase Postgres (127.0.0.1:54322). The justfile exports

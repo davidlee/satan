@@ -1111,47 +1111,10 @@ dismissed ask persists classification=ignored with evidence.reason =
                (should (equal "ignored" (plist-get oc :classification)))
                (should (equal "dismissed" (plist-get ev :reason))))))))))))
 
-(ert-deftest satan-observer/ask-classification-retires-queue-entry ()
-  "VT-8 — classifying an ask fires `satan-goad-queue-rewrite' once after
-the pending loop, with the frozen now; the summary records `:queue_rewrite'."
-  (satan-observer-test--with-db
-   (satan-observer-test--in-tmp
-    (lambda (root)
-      (let* ((satan-runs-dir root)
-             (old-id "20260923T093000-tick-pulse-a3f01c")
-             (audit-old (satan-observer-test--open-audit root old-id))
-             (ctx-old (satan-observer-test--build-ctx
-                       audit-old old-id "2026-09-23T09:30:00+10:00"))
-             (_ (satan-observer-test--mint
-                 ctx-old :kind "ask" :target "goad" :window 60
-                 :related-motive-id "docs-after-error"
-                 :cue-handles (list "domain_kind:docs"))))
-        (satan-observer-test--write-bundle-with-handles
-         (satan-observer-test--make-run-dir root old-id)
-         (list "domain_kind:docs"))
-        (satan-motive-test--with-tmp-file
-         mpath satan-motive-test--well-formed
-         (let* ((curr-id "20260923T113000-morning-cccccc")
-                (now "2026-09-23T11:30:00+10:00")
-                (rewrites nil)
-                (rewrite-fn (lambda (&rest args) (push args rewrites) t)))
-           (cl-letf (((symbol-function 'satan-goad-queue-rewrite)
-                      rewrite-fn))
-             (satan-observer-test--with-stubbed-after-state
-                 (list :goad nil :focus_segments nil)
-               (let ((out (satan-observer-process
-                           (satan-observer-test--process-ctx root curr-id now)
-                           (list :motive-path mpath :runs-dir root))))
-                 (should (= 1 (plist-get out :processed)))
-                 (should (eq 'ok (plist-get out :queue_rewrite)))
-                 (should (= 1 (length rewrites)))
-                 (should (equal now (nth 0 (car rewrites))))
-                 (should (null (nth 1 (car rewrites))))
-                 (should (null (nth 2 (car rewrites))))))))))))))
-
-(ert-deftest satan-observer/ask-queue-rewrite-fault-guarded ()
-  "D4 — a queue-rewrite fault is caught and reported in the summary; the
-tick still classifies and persists the ask."
+(ert-deftest satan-observer/process-matures-an-ask ()
+  "`satan-observer-process' classifies and persists a matured ask end to
+end; with no record reachable it matures `:unknown :high' (undelivered).
+No queue write follows (RV-017 F-6)."
   (satan-observer-test--with-db
    (satan-observer-test--in-tmp
     (lambda (root)
@@ -1172,18 +1135,13 @@ tick still classifies and persists the ask."
          (let* ((curr-id "20260923T113000-morning-cccccc")
                 (now "2026-09-23T11:30:00+10:00"))
            (cl-letf (((symbol-function 'satan-goad-queue-rewrite)
-                      (lambda (&rest _) (error "synthetic rewrite fault"))))
+                      (lambda (&rest _) (ert-fail "queue rewritten"))))
              (satan-observer-test--with-stubbed-after-state
                  (list :goad nil :focus_segments nil)
                (let ((out (satan-observer-process
                            (satan-observer-test--process-ctx root curr-id now)
                            (list :motive-path mpath :runs-dir root))))
                  (should (= 1 (plist-get out :processed)))
-                 (let ((rw (plist-get out :queue_rewrite)))
-                   (should (consp rw))
-                   (should (eq 'error (car rw)))
-                   (should (string-match-p "synthetic rewrite fault"
-                                           (cdr rw))))
                  (let* ((row (satan-intervention-lookup iv-id))
                         (oc (plist-get row :outcome)))
                    (should oc)

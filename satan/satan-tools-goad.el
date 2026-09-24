@@ -73,20 +73,26 @@ JSON `[]' decodes to nil, and a present form must not be empty."
 
 ;; ── step 4: the subject gate (design sec-1) ─────────────────────────────────
 
-(defun satan-tools-goad--minted-handles (queue)
-  "The handles goad's own canon rule mints for QUEUE's outstanding asks."
+(defun satan-tools-goad--minted-handles (asks now)
+  "The handles goad mints: `app:goad', and the `topic:' of each of ASKS
+\(`satan-goad-slice' entries) still outstanding at NOW, a Lisp time.
+Outstanding is canon's own predicate, so the gate refuses exactly the
+topics `goad.outstanding' emits (RV-017 F-5)."
   (cons "app:goad"
-        (delq nil (mapcar (lambda (entry)
-                            (satan-goad-subject-topic
-                             (plist-get entry :subject)))
-                          queue))))
+        (delq nil (mapcar (lambda (ask)
+                            (and (satan-memory-canon-goad-outstanding-p
+                                  ask now)
+                                 (satan-goad-subject-topic
+                                  (plist-get ask :subject))))
+                          asks))))
 
-(defun satan-tools-goad--ungrounded (subject percept queue)
+(defun satan-tools-goad--ungrounded (subject percept asks now)
   "Why SUBJECT gives no grounds to ask, before motives are consulted, or nil.
-PERCEPT is the run's percept handles; QUEUE the outstanding asks."
+PERCEPT is the run's percept handles; ASKS the `:goad' slice, judged
+at NOW."
   (cond
    ((not (member subject percept)) "subject is not in this run's percept")
-   ((member subject (satan-tools-goad--minted-handles queue))
+   ((member subject (satan-tools-goad--minted-handles asks now))
     "subject is goad-minted: a goad handle cannot correlate")))
 
 (defun satan-tools-goad--winner (subject percept motives)
@@ -101,19 +107,21 @@ motive cued on goad's own handles cannot absorb the ask (RV-007 F-28)."
                    percept))
              :motive))
 
+(defvar satan-tools-goad--suppressed-run nil
+  "The id of the last run that enqueued `ask_suppressed'.
+Suppression is a condition of the run, not a count of the model's
+retries, so a run enqueues it at most once (RV-017 F-7).")
+
 (defun satan-tools-goad--enqueue-suppression (ctx)
-  "Enqueue this run's `ask_suppressed' attribute payload.
+  "Enqueue this run's `ask_suppressed' attribute payload, once per run.
 nil, or `(:enqueue \"failed: MSG\")'.  Never signals: the suppression
 is decided either way."
-  (let ((result (condition-case err
-                    (satan-attribute-enqueue
-                     (satan-attribute-build-ask-payload
-                      :run-id (plist-get ctx :id)
-                      :ts (plist-get ctx :time-now)
-                      :reason "ask_suppressed"))
-                  (error (cons 'error (error-message-string err))))))
-    (when (eq (car-safe result) 'error)
-      (list :enqueue (format "failed: %s" (cdr result))))))
+  (let ((run-id (plist-get ctx :id)))
+    (unless (equal run-id satan-tools-goad--suppressed-run)
+      (setq satan-tools-goad--suppressed-run run-id)
+      (pcase (satan-attribute-enqueue-ask
+              run-id (plist-get ctx :time-now) "ask_suppressed")
+        (`(error . ,msg) (list :enqueue (format "failed: %s" msg)))))))
 
 (defun satan-tools-goad--suppress (ctx reason)
   "Suppress the ask in CTX for REASON: enqueue it, record nothing."
@@ -199,7 +207,9 @@ Returns:
   (ok :asked t :intervention_id IV)      asked, queued and rung;
   (ok :asked t :intervention_id IV :delivered :false :error ERR
       [:verdict ...] [:projection ...])  recorded but never queued."
-  (let ((refusal (satan-tools-goad--refusal ctx)))
+  (let ((refusal (or (satan-tools-goad--refusal ctx)
+                     (satan-goad-question-invalid
+                      (plist-get args :question)))))
     (if refusal
         (cons 'error refusal)
       (pcase (satan-tools-goad--form args)
@@ -212,7 +222,9 @@ Returns:
                          (plist-get (satan-motive-read satan-motive-file)
                                     :motives)))
                 (reason (or (satan-tools-goad--ungrounded
-                             subject percept (satan-goad-read-queue))
+                             subject percept (satan-goad-slice)
+                             (satan-memory-canon-parse-instant
+                              (plist-get ctx :time-now)))
                             (and (null winner)
                                  "no live motive's cue holds the subject"))))
            (if reason
@@ -224,6 +236,7 @@ Returns:
  (list :name "goad_ask"
        :risk 'low
        :capability 'goad-ask
+       :available-p (lambda () satan-goad-enabled)
        :args-schema '(question (:type string :required t)
                       subject  (:type string :required t)
                       form     (:type array :required nil :items object))

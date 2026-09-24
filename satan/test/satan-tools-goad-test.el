@@ -20,6 +20,8 @@
 (require 'satan-memory-canon)
 (require 'satan-goad-fixture)
 (require 'satan-intervention-test)
+(require 'satan-broker)
+(require 'satan-tools-vcs)
 
 ;; ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -84,7 +86,8 @@ doorbell and the attribute enqueue stubbed."
                                       "2026-05-23T12:00:00+1000" 1))
              (satan-motive-file (expand-file-name "motives.org" ,dir))
              (satan-tools-goad-test--rings nil)
-             (satan-tools-goad-test--enqueued nil))
+             (satan-tools-goad-test--enqueued nil)
+             (satan-tools-goad--suppressed-run nil))
          (satan-goad-fixture-write satan-motive-file ,motives)
          (cl-letf (((symbol-function 'satan-trace-call)
                     (satan-tools-goad-test--doorbell-stub
@@ -177,6 +180,28 @@ tick-pulse allowlists both the tool and the capability."
     (should (member "goad_ask" (plist-get mode :tools)))
     (should (memq 'goad-ask (plist-get mode :capabilities)))))
 
+(ert-deftest satan-tools-goad/manifest-omits-tool-while-disabled ()
+  "RV-017 F-4 — the kill switch hides `goad_ask' from the model: a run's
+manifest lists it only while `satan-goad-enabled' is non-nil."
+  (satan-goad-fixture-with-tmp dir
+    (let ((satan-tools-descriptions-dir dir)
+          (mode (list :name "t" :tools '("goad_ask" "vcs_log"))))
+      (dolist (name '("goad_ask" "vcs_log" "satan_final"))
+        (satan-goad-fixture-write (expand-file-name (concat name ".md") dir)
+                                  "A tool."))
+      (cl-flet ((names ()
+                  (let ((m (satan-broker--build-manifest mode "r")))
+                    (list (plist-get m :tools_allowed)
+                          (mapcar (lambda (tool)
+                                    (plist-get (plist-get tool :function) :name))
+                                  (plist-get m :tools))))))
+        (let ((satan-goad-enabled nil))
+          (should (equal '(("vcs_log") ("vcs_log" "satan_final")) (names))))
+        (let ((satan-goad-enabled t))
+          (should (equal '(("goad_ask" "vcs_log")
+                           ("goad_ask" "vcs_log" "satan_final"))
+                         (names))))))))
+
 (ert-deftest satan-tools-goad/schema-requires-question-and-subject ()
   "The args schema requires `question' and `subject'; `form' is optional."
   (let ((spec (satan-tool-lookup "goad_ask")))
@@ -230,6 +255,16 @@ refused: nothing recorded, enqueued, queued or rung."
                      (cdr (satan-goad-form-validate
                            '((:id "Bad Id" :label "x")))))))))
 
+(ert-deftest satan-tools-goad/invalid-question-refused ()
+  "RV-017 F-8 — goad renders the question as its view title: a blank or
+over-long question is refused outright, nothing recorded."
+  (satan-tools-goad-test--with-goad satan-tools-goad-test--thesis-motive
+    (dolist (question (list "" "   " (make-string
+                                    (1+ satan-goad-question-max-chars) ?x)))
+      (satan-tools-goad-test--should-refuse
+       (satan-tools-goad-test--ask (satan-tools-goad-test--ctx)
+                                   :question question)))))
+
 ;; ── T5: the subject gate (VT-6, VT-13) ──────────────────────────────────────
 
 (ert-deftest satan-tools-goad/suppressed-enqueues-attribute ()
@@ -275,8 +310,51 @@ suppressions (orchestrator OQ-1): no record, one `ask_suppressed'."
         (setq satan-tools-goad-test--enqueued nil)
         (satan-tools-goad-test--should-suppress
          (satan-tools-goad-test--ask
-          (satan-tools-goad-test--ctx nil :percept-handles percept)
+          (satan-tools-goad-test--ctx
+           nil :percept-handles percept
+           :id (format "20260523T120000-tick-pulse-%s"
+                       (if (equal subject "app:goad") "aaaaaa" "bbbbbb")))
           :subject subject))))))
+
+(ert-deftest satan-tools-goad/suppression-enqueued-once-per-run ()
+  "RV-017 F-7 — suppression is a condition of the run, not a count of the
+model's retries: repeated suppressed asks in one run enqueue one
+`ask_suppressed'; a later run enqueues again."
+  (satan-tools-goad-test--with-goad satan-tools-goad-test--thesis-motive
+    (let ((unperceived (satan-tools-goad-test--ctx
+                        nil :percept-handles '("app:emacs"))))
+      (dotimes (_ 3)
+        (should (eq :false (plist-get (cdr (satan-tools-goad-test--ask
+                                             unperceived))
+                                      :asked))))
+      (should (= 1 (length satan-tools-goad-test--enqueued)))
+      (satan-tools-goad-test--ask
+       (satan-tools-goad-test--ctx
+        nil :percept-handles '("app:emacs")
+        :id "20260523T123000-tick-pulse-cccccc"))
+      (should (= 2 (length satan-tools-goad-test--enqueued))))))
+
+(ert-deftest satan-tools-goad/settled-ask-topic-not-goad-minted ()
+  "RV-017 F-5 — a queue entry goad no longer mints a handle for (expired,
+or answered) leaves its `topic:' askable when the run perceives it from
+elsewhere: the gate refuses exactly what `goad.outstanding' emits."
+  (let* ((queued "artifact:thesis-outline")
+         (topic (satan-goad-subject-topic queued))
+         (percept (cons topic satan-tools-goad-test--percept)))
+    (satan-intervention-test--with-db
+      (satan-intervention-test--with-ctx ctx
+        (satan-tools-goad-test--with-goad
+            (satan-tools-goad-test--motive "topic" topic)
+          (satan-goad-fixture-write-queue
+           (list (satan-goad-fixture-ask
+                  :subject queued
+                  :emitted_at "2026-05-23T10:00:00+10:00"
+                  :expires_at "2026-05-23T11:00:00+10:00")))
+          (let ((result (satan-tools-goad-test--ask
+                         (satan-tools-goad-test--ctx
+                          ctx :percept-handles percept)
+                         :subject topic)))
+            (should (eq t (plist-get (cdr result) :asked)))))))))
 
 (ert-deftest satan-tools-goad/first-ask-correlates ()
   "VT-13 — with an empty queue, a motive whose cue holds a perceived
@@ -389,7 +467,7 @@ recorded, projected and queued: the queue is the durable carrier."
                             (satan-goad-read-queue))))))))))
 
 (ert-deftest satan-tools-goad/rings-goad-emit ()
-  "VT-41 — the doorbell is `goad-emit --source satan', bounded by
+  "VT-41 — the doorbell is `goad-emit --source satan --kind ask', bounded by
 `satan-goad-emit-timeout' through the ledgered `satan-trace-call'; its
 outcome — any exit, a timeout, or a signal — never changes the tool
 result."
@@ -410,6 +488,7 @@ result."
                            (car satan-tools-goad-test--rings)))
                 (should (equal "goad-emit-test" program))
                 (should (equal "satan" (cadr (member "--source" args))))
+                (should (equal "ask" (cadr (member "--kind" args))))
                 (should (= 7 (plist-get keys :timeout-secs)))))))))
     (should (eq 'ok (car (car results))))
     (should (= 1 (length (delete-dups results))))))

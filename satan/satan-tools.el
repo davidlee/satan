@@ -44,6 +44,17 @@ carries only mechanism (schema, capability, handler)."
 (defun satan-tool-lookup (name)
   (cdr (assoc name satan-tools)))
 
+(defun satan-tools-available (names)
+  "NAMES, less each registered tool whose `:available-p' returns nil.
+A tool with no `:available-p' is always available; an unknown name is
+kept, for the caller to reject.  The manifest lists only available
+tools, so a switched-off tool is never shown to the model (RV-017 F-4)."
+  (cl-remove-if (lambda (name)
+                  (let ((pred (plist-get (satan-tool-lookup name)
+                                         :available-p)))
+                    (and pred (not (funcall pred)))))
+                names))
+
 (defun satan-tool-allowed-p (name mode-tools)
   "Return non-nil if NAME is present in MODE-TOOLS (mode's :tools allowlist)."
   (and mode-tools (member name mode-tools) t))
