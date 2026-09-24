@@ -41,7 +41,7 @@ response = "The PHASE-08(B) runbook orders migration 0008 (step 2) before persis
 
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Kill switch leaves goad_ask advertised; disabling does not withdraw queued asks"
 detail = "`goad_ask` and the `goad-ask` capability are in `satan-tick-register`'s defaults (satan-tick.el:89-91), so every tick-pulse manifest advertises the tool while `satan-goad-enabled` is nil: the model learns a tool that always refuses, and each attempt spends one of its 10 calls. Turning goad off also leaves queued asks rendering until they expire (<=60 min). Fix options: omit the tool from the manifest when disabled; optionally empty the queue on disable."
@@ -50,7 +50,7 @@ response = """Round 2 (c6d0c63), after verification found the MCP sibling: :avai
 
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Tool re-derives goad's minted handles in parallel with canon, over the whole queue"
 detail = "`satan-tools-goad--minted-handles` (satan-tools-goad.el:76-82) rebuilds what `goad.outstanding` emits, but over every queue entry, while canon emits only for outstanding (unanswered, unexpired) asks. The queue file keeps answered and expired entries until the next rewrite. Scenario: an answered-but-unexpired ask about S leaves `topic:s` in the gate list; a later run perceives `topic:s` from a non-goad source and a legitimate ask on it is refused as goad-minted. Any change to the canon rule also drifts silently from the gate. Fix: one function computing goad's handles from asks + now, owned by canon (canon must not require goad), used by both."

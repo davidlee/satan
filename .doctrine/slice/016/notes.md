@@ -190,8 +190,28 @@ on its Postgres. Every step below runs on the host.
      against the real backend. Note: SATAN perceives our commit subjects,
      so rollout commits can steer its judgement.
 5. **Persist `satan-goad-enabled`** in the user's config, now that VH-1 passed.
+   - 2026-09-24: done by the user — `(satan-goad-enabled t)` under `:custom`
+     in `~/.emacs.d/apps/dl-satan.el` (`.emacs.d` commit `9ed54c6`).
 6. Record all intervention ids + outcomes in notes.md, then flip PHASE-08
    `completed` and route to `/audit`.
+
+**RV-017 closed 2026-09-24.** F-4/F-5 verified by an independent subagent
+reviewer against `c6d0c63` (every model-facing tool surface filters
+`goad_ask`; the gate reads frozen `:percept-sources`, fails closed with no
+percept; 15/15 non-DB goad tests). New nits for `/audit`, not fixed:
+- `~/satan/prompts/tick/pulse.txt:18-20` describes `goad_ask` even while
+  goad is disabled; a call is refused — transcript noise only.
+- The interactive mode's `:tools` is fixed at registration
+  (`satan-mcp.el:93`) while `tools/list` recomputes per call; harmless while
+  no `:available-p` varies at runtime for interactive.
+- `independently-perceived-topic-askable` uses a fictional rule id
+  (`notes.topic`); the real competitor is `hint.topic` — a real-canon test
+  would pin the observed-over-hint precedence.
+- (from VH-1) trace `predicates` serialises as an object, outcome
+  `evidence_json` as an array.
+- `doctrine slice verify-vt 16` reports PHASE-08 VT-1/42/43/61
+  UNATTRIBUTABLE (keywords present; test file not attributed to the slice's
+  deltas) — check the phase's recorded delta range at audit.
 
 Watch: the doorbell is a hint (slice R3) — a refused emit is harmless, the
 queue file carries the ask. attrd must be running before `satan-goad-enabled`,
