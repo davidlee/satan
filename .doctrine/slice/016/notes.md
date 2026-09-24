@@ -6,18 +6,24 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-06 implemented in full (T0–T7), 2026-09-24, plus the F1
-field-label fix (T0–T2 committed `6514439`; T3–T7 and the F1 fix
-uncommitted — orchestrator commits the corpus `tools/goad_ask.md` first, then
-the dev repo). The `goad_ask` tool is registered and allowlisted on
-tick-pulse; `satan-goad-enabled` stays nil.
-**Blocker before enabling goad (PHASE-08):** F1 (field labels) is fixed in
-the validator, tests and `tools/goad_ask.md`; the RESIDUAL is now narrower —
-only the corpus goad goldens (`~/satan/goad/goldens.py`, `test_backend.py`,
-`README.md`) and SATAN's copied goldens
-(`satan/test/goad-fixtures/`) still lack field labels — see the F1-fix note
-under PHASE-06b. Next: orchestrator review/commit, then flip PHASE-06
-completed.
+**fresh-as-of:** PHASE-12, PHASE-05 and PHASE-06 committed (2026-09-24);
+ISS-026 (field labels) closed across both repos. The `goad_ask` tool is
+registered and allowlisted on tick-pulse; `satan-goad-enabled` stays nil.
+Remaining phases, in the plan's entrance chain: PHASE-07 → PHASE-09 →
+PHASE-08 (PHASE-08 is the end-to-end test plus the live rollout).
+
+**ISS-026 closed (2026-09-24).** Corpus `e896597` (`goad: label every form
+field`) gives every `form` field a `label` per goad SPEC-001 R-15
+(`goldens.py`, `test_backend.py`, `README.md`); `~/satan/goad just check`
+green (77 tests). SATAN's copied goldens regenerated (`d14deca`) from that
+commit; `just check` 1260 ran / 0 unexpected / 14 skipped. The 8
+corpus-dependent tests skip because `satan-corpus-root` resolved to a
+non-existent `~/satan` in this shell (`/workspace/corpus` is the corpus
+here) — bind or point the root to exercise them; the PHASE-06 F1 residual
+below is fully discharged.
+
+**superseded fresh-as-of (PHASE-06):** F1 field-label residual — resolved
+by the ISS-026 fix above. Kept for the F1-fix narrative under PHASE-06b.
 
 ### PHASE-06 — PROMPT + DOORBELL: the goad_ask tool (2026-09-24)
 
