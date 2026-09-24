@@ -25,6 +25,42 @@ below is fully discharged.
 **superseded fresh-as-of (PHASE-06):** F1 field-label residual — resolved
 by the ISS-026 fix above. Kept for the F1-fix narrative under PHASE-06b.
 
+### PHASE-07 — the ask's correlation route and answer predicate (2026-09-24)
+
+One worker (deepseek-v4-pro, in-tree). Orchestrator rationale: real correctness
+risk (correlation route, kind-scoped predicate selection, instant arithmetic
+under the slice's timestamp trap).
+
+**Files changed (dev repo):**
+- `satan/satan-observer-classify.el` — new `satan-observer--goad-entry`,
+  `--ask-answer-window`, `--instant-in-window-p`, `--predicate-goad-answer`;
+  `--predicates` gains `:goad_answer`; new `--predicates-for-kind` (kind
+  "ask" → the answer predicate only); `classify` exempts "ask" from the
+  `:crosses_midnight` guard and selects predicates by kind; new
+  `--ask-motive` / `--classify-ask`; `classify-for-motives` routes "ask"
+  through them instead of percept-overlap ranking.
+- `satan/satan-observer.el` — `(require 'satan-attribute)`;
+  `satan-observer--enqueue-ask-uncorrelated` (D1: enqueue after persist
+  when kind "ask" and `:reason :no_correlation`); the summary verdict row
+  gains `:ask_uncorrelated_enqueue`.
+- `satan/test/satan-observer-test.el` — 11 tests (VT-44 ×5, VT-14, VT-21,
+  VT-19, VT-20, VT-7) + helper `satan-observer-test--ask-intervention`.
+
+**Decisions taken:** D1 implemented as planned — the enqueue lives in
+`satan-observer-process`, not in the pure classifier.
+
+**Gate:** `SATAN_DB_HOST=127.0.0.1 just check` ran 1271, 0 unexpected, 14
+skipped (the same 14: 6 baseline + 8 corpus-dependent). `verify-vt`
+PHASE-07: VT-7/14/19/20/21/44 PASS. Committed `014bb58`; boundary recorded
+with `record-delta --commit 014bb58 --force` (two foreign commits —
+`ceb42a7` pi runner scripts, `7c82588` orientation pointer — sat inside the
+auto-recorded span and were excluded).
+
+**Friction:** the worker hit the 30-minute subagent timeout *after*
+producing a complete, green delta — it never handed back. The delta was
+recovered from the working tree and independently verified. A phase of this
+size wants either a longer worker budget or a mid-run checkpoint.
+
 ### PHASE-06 — PROMPT + DOORBELL: the goad_ask tool (2026-09-24)
 
 Two workers, in-tree. 06a (T0–T2, committed `6514439`) below 06b.

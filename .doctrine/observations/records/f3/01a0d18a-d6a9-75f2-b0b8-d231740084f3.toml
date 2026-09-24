@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d18a-d6a9-75f2-b0b8-d231740084f3"
+recorded_at = "2026-09-24T03:52:12.202016891Z"
+kind = "friction"
+summary = "SL-016 PHASE-07 worker hit the 30-minute subagent timeout after a complete green delta"
+detail = "The deepseek-v4-pro worker finished satan-observer-classify.el, satan-observer.el and satan-observer-test.el (1271 tests, 0 unexpected) but never handed back before the 1800000ms cap. The delta was recovered from the working tree and verified. Phases this size want a longer budget or a mid-run checkpoint."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
