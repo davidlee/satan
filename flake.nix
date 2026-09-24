@@ -6,8 +6,8 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
     devshell.url = "github:numtide/devshell";
 
-    pub = {
-      url = "github:davidlee/nix-config?dir=flakes/pub";
+    agents = {
+      url = "github:davidlee/nix-config?dir=flakes/agents";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Wrapped Emacs (the manual package list). Own pins, no follows, so
@@ -44,7 +44,7 @@
 
         jailLib =
           if isLinux
-          then inputs.pub.lib.${system}.mkJailedAgents {}
+          then inputs.agents.lib.${system}.mkJailedAgents {}
           else {};
         doctrine-pkg = doctrine.packages.${system}.default;
         wrappedEmacs = inputs.emacs.packages.${system}.default;
