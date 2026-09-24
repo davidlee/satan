@@ -14,6 +14,20 @@ outside this jail (no `systemctl`, no `/run/user/1000/goad.sock`, and the live
 `satan_memory` DB is not on the jail's Postgres). `satan-goad-enabled` stays
 nil; attrd is undeployed; 0008 is test-DB only. Runbook below.
 
+**RV-016 code review (2026-09-24).** Full-process review of the 11/12-phase
+delta before PHASE-08(B); 2 findings, both terminal. F-1 (major, fix-now):
+the observer's answer predicate and negative branch read an ask's day record
+only from the queue-derived `:goad` slice, so an ask whose window closed
+mid-spawn could be retired by the same spawn's ask-handler rewrite before it
+was scored and mature `:unknown :high undelivered` — a false delivery failure
+inverting the slice's key signal. Fixed `f8c81e2`: `satan-observer--ask-record`
+falls back to `satan-goad-read-record` on the intervention's own emit date (the
+read `--persist-positive` already used); regression test
+`satan-observer/ask-record-without-queue-entry`. F-2 (nit, tolerated): the two
+ask-reason closed sets. Gate after the fix: 1287 ran / 0 unexpected / 6 skipped.
+Standing observations live in the review's synthesis (goad module coupling,
+duplicate instant parsers, late size cap).
+
 **ISS-026 closed (2026-09-24).** Corpus `e896597` (`goad: label every form
 field`) gives every `form` field a `label` per goad SPEC-001 R-15
 (`goldens.py`, `test_backend.py`, `README.md`); `~/satan/goad just check`

@@ -1,0 +1,53 @@
+id    = 16
+slug  = "sl-016-implementation-review-goad-elicitation-surface-1112-phases"
+title = "SL-016 implementation review — goad elicitation surface (11/12 phases)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "code-review"
+responder = "responder"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-016"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Observer reads an ask's answer record only through the queue slice; a mid-spawn window close lets the queue rewrite retire the ask before it is scored, so a presented/answered ask silently matures `:unknown :high undelivered`"
+detail = """
+Expected (design sec-2, RV-007 F-34/F-1): the observer's answer predicate and negative branch judge an ask from its goad day record, and a delivery *failure* must never be recorded where delivery happened. Design sec-2 says plainly ``the observer takes it [the emit date] from the intervention'', and `satan-observer--persist-positive' (`satan/satan-observer.el:145-152`) already reads the record that way — via `satan-goad-read-record iid (plist-get intervention :intervention_emitted_at)'.
+
+Observed: both the answer predicate (`satan-observer--predicate-goad-answer', `satan-observer-classify.el:280-295`) and the negative branch (`satan-observer--ask-record', `:352-355`) obtain the record only by looking the intervention id up in AFTER's `:goad' slice. That slice is built by `satan-goad-slice' (`satan-goad.el:463-490`) from the **queue file**, i.e. from `satan-goad-queue-rewrite', which projects only the *open* asks (`satan-intervention-open-asks': `window_end_sql > now', `satan-intervention.el:1000-1010`). When the queue has no entry, `--goad-entry' returns nil, `record' is nil, and `--classify-ask-negative' takes its first row: `satan-observer--ask-unknown :undelivered :high'.
+
+Reachable on the happy path, no error required: the observer runs first in every spawn (`satan-broker.el:893-898`), but the window can close *during* that spawn, before the ask handler rewrites the queue. Concretely: an ask A is emitted at T with its 60-minute window closing at T+60; a spawn starts at T+59 (observer sees A as not-yet-matured and does not classify it); the agent then runs for several minutes and emits ask B at T+64, whose handler rewrites `queue.json' from the open rows at T+64 — A's window has closed, so A is dropped while still unclassified. The next spawn's observer finds A in `satan-intervention-pending' but no entry in `:goad', and marks it `undelivered' — even if the keeper was presented and answered it. A transient failure of `satan-observer-pending' (caught in `satan-observer-process', `pending' → nil) followed by an ask-handler rewrite in the same spawn gives the same outcome.
+
+Impact: the one signal the slice exists to produce (RFC-016 D3: disengagement becomes perceptible) is silently inverted — engagement/answers/ignores are all reported as a delivery failure. The design's F-1 lesson is symmetric: the queue must hold exactly the asks the observer will score (`satan-intervention.el` header, design sec-3), so classification must not depend on a projection that is *defined* to exclude matured asks. It also contradicts the file's own header claim that the read side is dependency-light only in the write direction, not in data availability.
+
+Fix (small, mechanical; no design change — the slice read stays first, as the design mandates): give `satan-observer--ask-record' the fallback the trace already uses — `(or (and entry (plist-get entry :record)) (satan-goad-read-record iid (plist-get intervention :intervention_emitted_at)))' — and base `--predicate-goad-answer' on `--ask-record' rather than requiring `entry'. Add a regression test that classifies the goldens with `(list :goad nil)' and asserts `untouched' → `:ignored :untouched' and `answered' → the predicate fires."""
+disposition = "fix-now"
+response = "Fixed in `f8c81e2`. `satan-observer--ask-record` now reads AFTER's `:goad` slice first (as the design mandates) and falls back to `satan-goad-read-record' on the intervention's own `:intervention_emitted_at` when no entry is present — the same read `--persist-positive' already used for the trace. `--predicate-goad-answer' is based on `--ask-record' rather than requiring an entry, so an absent queue entry no longer suppresses a real answer. Regression test `satan-observer/ask-record-without-queue-entry' classifies the goldens with `(list :goad nil)': `untouched' → `:ignored :medium untouched' and `answered' → `:worked' (predicate fires). `SATAN_DB_HOST=127.0.0.1 just check`: 1287 ran, 0 unexpected, 6 skipped. `bin/elisp-locate-paren-error` ok; byte-compile adds no warnings."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "nit"
+title = "Ask reason vocabulary is declared twice, unlinked: `satan-attribute-ask-reasons` vs `satan-audit-attribute-sensor-reasons`"
+detail = """
+Expected: one authority per closed vocabulary. The project's own standards make DRY non-negotiable, and the design names a single reason vocabulary (design-contract §6S.1 / PL-006).
+
+Observed: the two new reasons are declared twice —
+- `satan-attribute-ask-reasons' (`satan/satan-attribute.el:127-131`), the builder's guard, and
+- `satan-audit-attribute-sensor-reasons' (`satan/satan-audit.el:448-451`), the audit validator's closed set.
+
+Nothing links them. Adding a third ask reason to one and not the other yields either a builder that constructs a payload the validator refuses, or a validator that admits a reason no builder emits — both silently, since neither set is derived from the other. Both are exercised (`satan/test/satan-attribute-test.el`, `satan/test/satan-audit-attribute-test.el`), but a test on one set cannot catch drift in the other.
+
+This is arm's-length rather than a parallel implementation — the builder guard exists precisely because attrd silently drops unknown reasons (ISS-011), and a shared constant would couple `satan-attribute' to `satan-audit' — so tolerating it is defensible. A cheap hardening would be a comment on each naming its twin, or a test asserting `(cl-subsetp satan-attribute-ask-reasons satan-audit-attribute-sensor-reasons)'. Low priority; recorded so the coupling is visible."""
+disposition = "tolerated"
+response = "Tolerated with rationale. The two sets serve different boundaries and are both pinned by their own suites (`satan-attribute-test`, `satan-audit-attribute-test`): `satan-audit-attribute-sensor-reasons` is the audit validator's closed vocabulary, `satan-attribute-ask-reasons` is the builder's typo guard added because attrd silently drops unknown reasons (ISS-011). Deriving either from the other, or hoisting a shared constant, would couple `satan-attribute` to `satan-audit` (or the reverse) for three strings; both files are within the slice's selector set, so drift is visible in any review of the slice. If a third ask reason is ever added, the drift is caught by the audit validator refusing the builder's payload — loudly, at the emit, not silently. No action."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
