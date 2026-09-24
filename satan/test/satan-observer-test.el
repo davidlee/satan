@@ -608,6 +608,23 @@ fire; the predicate keys on `:intervention_id'."
   (should-not (satan-observer--predicate-goad-answer
                nil nil nil (satan-observer-test--ask-intervention))))
 
+(ert-deftest satan-observer/ask-window-refuses-ambiguous-instants ()
+  "SL-016 R1 — the ask window reads instants strictly.  A psql
+space-separated emit stamp (which `date-to-time' reads as midnight) or
+a naive answer stamp (read in Emacs's zone) is no instant, never a
+silently shifted one."
+  (should-not (satan-observer--ask-answer-window
+               (satan-observer-test--ask-intervention
+                :intervention_emitted_at "2026-09-23 09:30:00+10")))
+  (let ((window (satan-observer--ask-answer-window
+                 (satan-observer-test--ask-intervention
+                  :intervention_emitted_at "2026-09-23T09:30:00+10:00"))))
+    (should window)
+    (should (satan-observer--instant-in-window-p
+             "2026-09-23T09:40:00.5+10:00" window))
+    (should-not (satan-observer--instant-in-window-p
+                 "2026-09-23T09:40:00" window))))
+
 (ert-deftest satan-observer/ask-ignores-ambient-predicates ()
   "VT-14 — an ambient predicate (a git commit in window) would fire for
 a non-ask kind; for an ask the answer predicate is the only positive

@@ -260,22 +260,19 @@ each with `:record' when its emit date's day file has one."
 START is `:intervention_emitted_at'; END is START +
 `:outcome_window_minutes' (60 for an ask).  Each is a Lisp time value;
 nil when the emit timestamp is missing or unparseable."
-  (let* ((start-str (plist-get intervention :intervention_emitted_at))
-         (mins (or (plist-get intervention :outcome_window_minutes) 0))
-         (start (and (stringp start-str)
-                     (condition-case nil
-                         (date-to-time start-str)
-                       (error nil)))))
+  (let ((start (satan-memory-canon-parse-instant
+                (plist-get intervention :intervention_emitted_at)))
+        (mins (or (plist-get intervention :outcome_window_minutes) 0)))
     (and start
          (cons start (time-add start (seconds-to-time (* 60 mins)))))))
 
 (defun satan-observer--instant-in-window-p (ts window)
   "Non-nil when TS (an ISO instant) falls within WINDOW `(START . END)'.
 Inclusive on both bounds.  Nil when TS or WINDOW is absent, or TS is
-unparseable.  Instants compare through `date-to-time', never their
+not an offset-bearing instant.  Instants parse strictly through
+`satan-memory-canon-parse-instant' and compare as times, never their
 strings (SL-016 R1)."
-  (let ((at-time (and (stringp ts)
-                       (condition-case nil (date-to-time ts) (error nil)))))
+  (let ((at-time (satan-memory-canon-parse-instant ts)))
     (and at-time window
          (not (time-less-p at-time (car window)))
          (not (time-less-p (cdr window) at-time)))))
@@ -376,8 +373,7 @@ Inclusive on both bounds, through `satan-observer--instant-in-window-p'."
   "Non-nil when RECORD's `:presented_at' sits in WINDOW's last
 `satan-observer-short-exposure-seconds' seconds."
   (let* ((ts (plist-get record :presented_at))
-         (at (and (stringp ts)
-                  (condition-case nil (date-to-time ts) (error nil)))))
+         (at (satan-memory-canon-parse-instant ts)))
     (and at window
          (satan-observer--instant-in-window-p ts window)
          (let ((short-start (time-subtract
@@ -417,8 +413,8 @@ gate as not checked rather than fabricating an acknowledgement scan."
 
 (defun satan-observer--classify-ask-negative (intervention after)
   "Classify a no-fire `\"ask\"' scan from its goad day record.
-Reads the record out of AFTER's `:goad' slice exactly as the answer
-predicate does, then judges it as it stood at window end.  First match
+Reads the record through `satan-observer--ask-record' exactly as the
+answer predicate does, then judges it as it stood at window end.  First match
 wins (design sec-5):
 
   no `:presented_at' in window                 → `:unknown :high'
