@@ -160,6 +160,14 @@ on its Postgres. Every step below runs on the host.
    The `goad_ask` pops the goad window; answer it; the next observer pass
    records `:worked` with the question and value in the trace. Record the
    intervention id in notes.md. (EX-2.)
+   - 2026-09-24: motive `self-work-check` (cue `project:satan
+     surface:terminal`) added, corpus `1250de9`. Attended run
+     `20260924T171205-tick-pulse-1fc3c3` timed out (120 s; slow
+     `deepseek-v4-pro` turns — the user then switched tick-pulse to a
+     flash model). Retry `20260924T171554-tick-pulse-b52b8e` asked:
+     `goad_ask` subject `project:satan`, intervention
+     `20260924T171554-tick-pulse-b52b8e.iv001`, shown in goad; user
+     answered. Maturation (≥60 min) pending — outcome: _TBD_.
 4. **One live ask left untouched (VH-2).** Drive a second ask; leave it; the
    observer matures `:ignored :medium` `untouched`. Record the id. (EX-2.)
 5. **Persist `satan-goad-enabled`** in the user's config, now that VH-1 passed.
