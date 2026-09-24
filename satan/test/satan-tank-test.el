@@ -304,5 +304,29 @@
     (should (string-match-p "memory_resonate +error +limit=5" out))
     (should (string-match-p "Tick at 09:21" out))))
 
+;; ---------------------------------------------------------------------
+;; Timer tick
+;; ---------------------------------------------------------------------
+
+(defun satan-tank-test--tick-refreshes-p (visible)
+  "Run one timer tick with the tank buffer VISIBLE or buried.
+Return non-nil when the tick called `satan-tank-refresh'."
+  (let ((buf (get-buffer-create satan-tank--buffer-name))
+        (refreshed nil))
+    (unwind-protect
+        (save-window-excursion
+          (when visible (switch-to-buffer buf))
+          (cl-letf (((symbol-function 'satan-tank-refresh)
+                     (lambda () (setq refreshed t))))
+            (satan-tank--timer-tick))
+          refreshed)
+      (kill-buffer buf))))
+
+(ert-deftest satan-tank/tick-refreshes-visible-buffer ()
+  (should (satan-tank-test--tick-refreshes-p t)))
+
+(ert-deftest satan-tank/tick-skips-hidden-buffer ()
+  (should-not (satan-tank-test--tick-refreshes-p nil)))
+
 (provide 'satan-tank-test)
 ;;; satan-tank-test.el ends here

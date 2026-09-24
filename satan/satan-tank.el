@@ -590,10 +590,12 @@ Returns one of: `final', `timeout', `error', `in-progress'."
                           #'satan-tank--timer-tick))))
 
 (defun satan-tank--timer-tick ()
+  "Refresh the tank when shown; cancel the timer once it is killed.
+A buried tank is skipped: gathering runs on the main thread and
+stalls input, so it is only worth paying for when someone looks."
   (let ((buf (get-buffer satan-tank--buffer-name)))
-    (if (and buf (buffer-live-p buf))
-        (satan-tank-refresh)
-      (satan-tank--cancel-timer))))
+    (cond ((not (buffer-live-p buf)) (satan-tank--cancel-timer))
+          ((get-buffer-window buf t) (satan-tank-refresh)))))
 
 ;;;###autoload
 (defun satan-tank ()
