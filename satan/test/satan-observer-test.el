@@ -796,6 +796,362 @@ attribute after its verdict is persisted (D1)."
                               (plist-get captured :ts))))))))))))
 
 ;; ---------------------------------------------------------------------
+;; SL-016 PHASE-09 — the ask's negative branch, labels, trace, retirement
+;; ---------------------------------------------------------------------
+
+(defconst satan-observer-test--ask-emits
+  '((expired       . "2026-09-23T08:00:00+10:00")
+    (answered      . "2026-09-23T09:30:00+10:00")
+    (later         . "2026-09-23T09:30:00+10:00")
+    (enough-seen   . "2026-09-23T09:30:00+10:00")
+    (enough-unseen . "2026-09-23T09:30:00+10:00")
+    (untouched     . "2026-09-23T11:10:00+10:00")
+    (form          . "2026-09-23T13:00:00+10:00")
+    (midnight      . "2026-09-23T23:15:00+10:00"))
+  "Golden ask emit instant by outcome (fixture README's scenario table).")
+
+(defun satan-observer-test--ask-iv (outcome root &rest overrides)
+  "A classifier-shaped `\"ask\"' intervention for the golden OUTCOME.
+ROOT is the temp runs root; the ask's `:run_dir' is materialised under
+it so `satan-observer--baseline-read' can find `bundle.json'.
+OVERRIDES (a plist) replace fields on the built intervention."
+  (let* ((iid (satan-goad-fixture-id outcome))
+         (emit (or (alist-get outcome satan-observer-test--ask-emits)
+                   (error "no golden emit for %S" outcome)))
+         (run-id (if (string-match "\\.iv[0-9]+\\'" iid)
+                     (substring iid 0 (match-beginning 0))
+                   iid)))
+    (apply #'satan-observer-test--ask-intervention
+           (append (list :intervention_id iid
+                         :run_id run-id
+                         :ts emit
+                         :intervention_emitted_at emit
+                         :run_dir (expand-file-name run-id root))
+                   overrides))))
+
+(defmacro satan-observer-test--classify-ask (outcome after iv &rest body)
+  "Run BODY with IV the golden OUTCOME ask, its bundle written, and
+`satan-observer--after-state' stubbed to AFTER.  Call inside a goad-
+fixture binding (`satan-goad-fixture-with-goldens' or a golden copy)."
+  (declare (indent 3))
+  `(satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((,iv (satan-observer-test--ask-iv ,outcome root)))
+        (satan-observer-test--write-bundle
+         (plist-get ,iv :run_dir)
+         (list :percept
+               (list :evidence_window
+                     (list :git_state (list :head_short "h" :remote "r")
+                           :fs_state (list :cwd "/x" :recent_files nil)
+                           :focus_segments nil))))
+        (satan-observer-test--with-stubbed-after-state ,after
+          ,@body)))))
+
+(ert-deftest satan-observer/ask-untouched-ignored ()
+  "VT-3 — a presented, untouched ask matures `:ignored :medium` untouched,
+whatever the focus probe reports: the ask branch runs before the ack
+gate, so the gate's state never reaches an ask."
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--classify-ask
+        'untouched (list :goad (satan-goad-slice)
+                         :sensor_status (list :focus "ok")) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :ignored (plist-get out :classification)))
+        (should (eq :medium (plist-get out :confidence)))
+        (should (eq :untouched (plist-get out :reason)))))
+    (satan-observer-test--classify-ask
+        'untouched (list :goad (satan-goad-slice)
+                         :sensor_status (list :focus "stale-30m")) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :ignored (plist-get out :classification)))
+        (should (eq :medium (plist-get out :confidence)))
+        (should (eq :untouched (plist-get out :reason)))))))
+
+(ert-deftest satan-observer/ask-dismissed-ignored ()
+  "VT-3 — a presented ask dismissed by bulk Enough is `:ignored :medium`
+dismissed (saw it and refused the slot)."
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--classify-ask
+        'enough-seen (list :goad (satan-goad-slice)) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :ignored (plist-get out :classification)))
+        (should (eq :medium (plist-get out :confidence)))
+        (should (eq :dismissed (plist-get out :reason)))))))
+
+(ert-deftest satan-observer/ask-later-deferred ()
+  "VT-4 — an explicit Later matures `:unknown :low` deferred (engaged,
+postponed)."
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--classify-ask
+        'later (list :goad (satan-goad-slice)) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :unknown (plist-get out :classification)))
+        (should (eq :low (plist-get out :confidence)))
+        (should (eq :deferred (plist-get out :reason)))))))
+
+(ert-deftest satan-observer/ask-never-presented-undelivered ()
+  "VT-12 — a never-presented ask matures `:unknown :high` undelivered:
+both a record absent entirely (expired, never rendered) and one deferred
+by bulk Enough without a `presented_at` (enough-unseen, A4 row order)."
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--classify-ask
+        'expired (list :goad (satan-goad-slice)) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :unknown (plist-get out :classification)))
+        (should (eq :high (plist-get out :confidence)))
+        (should (eq :undelivered (plist-get out :reason)))))
+    (satan-observer-test--classify-ask
+        'enough-unseen (list :goad (satan-goad-slice)) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :unknown (plist-get out :classification)))
+        (should (eq :high (plist-get out :confidence)))
+        (should (eq :undelivered (plist-get out :reason)))))))
+
+(ert-deftest satan-observer/ask-late-answer-no-predicate ()
+  "VT-15 — an answer after emit+60 does not fire the predicate; the ask
+classifies by its presentation instead."
+  (satan-goad-fixture-with-golden-copy dir
+    (satan-goad-fixture-replace
+     (expand-file-name (format "data/%s.json" satan-goad-fixture-day) dir)
+     "\"20260923T111000-tick-pulse-c41d5e.iv001\": {\"presented_at\": \"2026-09-23T11:15:40.071392+10:00\"}"
+     "\"20260923T111000-tick-pulse-c41d5e.iv001\": {\"presented_at\": \"2026-09-23T11:15:40.071392+10:00\", \"value\": {\"option\": \"yes\", \"values\": {}}, \"at\": \"2026-09-23T12:20:00+10:00\"}")
+    (satan-observer-test--classify-ask
+        'untouched (list :goad (satan-goad-slice)) iv
+      (let* ((after (list :goad (satan-goad-slice)))
+             (out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should-not (satan-observer--predicate-goad-answer
+                     nil after nil iv))
+        (should (eq :ignored (plist-get out :classification)))
+        (should (eq :untouched (plist-get out :reason)))))))
+
+(ert-deftest satan-observer/ask-short-exposure ()
+  "VT-15 — a `presented_at' in the last 10 minutes of the window matures
+`:unknown :low` short_exposure (too little time to call it ignored)."
+  (satan-goad-fixture-with-golden-copy dir
+    (satan-goad-fixture-replace
+     (expand-file-name (format "data/%s.json" satan-goad-fixture-day) dir)
+     "\"2026-09-23T11:15:40.071392+10:00\""
+     "\"2026-09-23T12:05:00+10:00\"")
+    (satan-observer-test--classify-ask
+        'untouched (list :goad (satan-goad-slice)) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :unknown (plist-get out :classification)))
+        (should (eq :low (plist-get out :confidence)))
+        (should (eq :short_exposure (plist-get out :reason)))))))
+
+(ert-deftest satan-observer/ask-late-answer-untouched ()
+  "VT-23 — an answer after the window classifies `:ignored` untouched with
+no answer trace, whether the observer runs before or after the answer."
+  ;; Before the answer: the record holds `presented_at' only.
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--classify-ask
+        'untouched (list :goad (satan-goad-slice)) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :ignored (plist-get out :classification)))
+        (should (eq :untouched (plist-get out :reason)))
+        (should (null (plist-get out :predicates))))))
+  ;; After the answer: the record now carries the late answer; the verdict
+  ;; is unchanged, still `:ignored' with no positive predicate (so the
+  ;; answer trace writer `--persist-positive' never runs — see
+  ;; `satan-observer/persist-ignored-classifies-ignored').
+  (satan-goad-fixture-with-golden-copy dir
+    (satan-goad-fixture-replace
+     (expand-file-name (format "data/%s.json" satan-goad-fixture-day) dir)
+     "\"20260923T111000-tick-pulse-c41d5e.iv001\": {\"presented_at\": \"2026-09-23T11:15:40.071392+10:00\"}"
+     "\"20260923T111000-tick-pulse-c41d5e.iv001\": {\"presented_at\": \"2026-09-23T11:15:40.071392+10:00\", \"value\": {\"option\": \"yes\", \"values\": {}}, \"at\": \"2026-09-23T12:20:00+10:00\"}")
+    (satan-observer-test--classify-ask
+        'untouched (list :goad (satan-goad-slice)) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :ignored (plist-get out :classification)))
+        (should (eq :untouched (plist-get out :reason)))
+        (should (null (plist-get out :predicates)))))))
+
+(ert-deftest satan-observer/ask-answer-trace ()
+  "VT-17 — an answered ask's trace metadata carries the question and the
+{option, values} object; a string value over 1 KiB is truncated."
+  ;; Golden form ask: question + value object carried verbatim.
+  (satan-goad-fixture-with-goldens
+    (satan-observer-test--in-tmp
+     (lambda (root)
+       (satan-motive-test--with-tmp-file
+        mpath satan-motive-test--well-formed
+        (satan-observer-test--capture-mark captured
+          (let* ((iv (satan-observer-test--ask-iv
+                      'form root :message "How's the afternoon block going?"))
+                 (motive (satan-observer-test--full-motive))
+                 (verdict (satan-observer-test--positive-verdict
+                           :goad_answer))
+                 (_ (satan-observer--persist-positive
+                     iv motive verdict "2026-09-23T14:00:00+10:00"
+                     (list :motive-path mpath
+                           :touch-footer-fn (lambda (&rest _) t)
+                           :memory-mark-fn mark-fn))))
+            (let ((md (plist-get (car captured) :metadata-json)))
+              (should (equal "How's the afternoon block going?"
+                             (plist-get md :question)))
+              (should (equal
+                       '(:option "rate"
+                         :values (:energy 6
+                                  :blocker "unclear"
+                                  :note "steady after lunch"
+                                  :walked t
+                                  :back_at "2026-09-23T13:20:00+10:00"))
+                       (plist-get md :value))))))))))
+  ;; A string value over 1 KiB is truncated with a marker in the trace.
+  (satan-goad-fixture-with-golden-copy dir
+    (satan-goad-fixture-replace
+     (expand-file-name (format "data/%s.json" satan-goad-fixture-day) dir)
+     "steady after lunch"
+     (make-string 2000 ?x))
+    (satan-observer-test--in-tmp
+     (lambda (root)
+       (satan-motive-test--with-tmp-file
+        mpath satan-motive-test--well-formed
+        (satan-observer-test--capture-mark captured
+          (let* ((iv (satan-observer-test--ask-iv
+                      'form root :message "How's the afternoon block going?"))
+                 (motive (satan-observer-test--full-motive))
+                 (verdict (satan-observer-test--positive-verdict
+                           :goad_answer))
+                 (_ (satan-observer--persist-positive
+                     iv motive verdict "2026-09-23T14:00:00+10:00"
+                     (list :motive-path mpath
+                           :touch-footer-fn (lambda (&rest _) t)
+                           :memory-mark-fn mark-fn))))
+            (let* ((md (plist-get (car captured) :metadata-json))
+                   (note (plist-get (plist-get (plist-get md :value) :values)
+                                    :note)))
+              (should (stringp note))
+              (should (string-match-p "truncated from 2000 bytes" note))
+              (should (<= (string-bytes (encode-coding-string note 'utf-8 t))
+                          satan-goad-truncate-bytes))))))))))
+
+(ert-deftest satan-observer/ask-evidence-label-persisted ()
+  "VT-18 — an ask's evidence label reaches the persisted outcome row: a
+dismissed ask persists classification=ignored with evidence.reason =
+\"dismissed\" (D2's `:ignored' mapping extension)."
+  (satan-observer-test--with-db
+   (satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((satan-runs-dir root)
+             (run-id "20260923T093000-tick-pulse-a3f01c")
+             (audit (satan-observer-test--open-audit root run-id))
+             (ctx (satan-observer-test--build-ctx
+                   audit run-id "2026-09-23T09:30:00+10:00"))
+             (iv-id (satan-observer-test--mint
+                     ctx :kind "ask" :target "goad" :window 60
+                     :related-motive-id "docs-after-error"
+                     :cue-handles (list "artifact:thesis-outline"))))
+        (satan-observer-test--write-bundle-with-handles
+         (satan-observer-test--make-run-dir root run-id)
+         (list "artifact:thesis-outline"))
+        (satan-motive-test--with-tmp-file
+         mpath satan-motive-test--well-formed
+         (satan-observer-test--capture-mark _captured
+           (let* ((iv (car (satan-observer-pending
+                            "2026-09-23T11:00:00+10:00" root)))
+                  (motive (satan-observer-test--full-motive))
+                  (verdict (list :classification :ignored
+                                 :confidence :medium
+                                 :predicates nil
+                                 :reason :dismissed
+                                 :evidence (list :target-surface "goad"
+                                                 :no-positive-predicates t
+                                                 :acknowledgement-checked :false
+                                                 :ack-events-found 0)))
+                  (out (satan-observer-persist-verdict
+                        iv motive verdict "2026-09-23T11:00:00+10:00"
+                        (list :ctx ctx
+                              :motive-path mpath
+                              :memory-mark-fn mark-fn))))
+             (should (equal "intervention.outcome_classified"
+                            (plist-get out :classify_event)))
+             (let* ((row (satan-intervention-lookup iv-id))
+                    (oc (plist-get row :outcome))
+                    (ev (plist-get oc :evidence)))
+               (should (equal "ignored" (plist-get oc :classification)))
+               (should (equal "dismissed" (plist-get ev :reason))))))))))))
+
+(ert-deftest satan-observer/ask-classification-retires-queue-entry ()
+  "VT-8 — classifying an ask fires `satan-goad-queue-rewrite' once after
+the pending loop, with the frozen now; the summary records `:queue_rewrite'."
+  (satan-observer-test--with-db
+   (satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((satan-runs-dir root)
+             (old-id "20260923T093000-tick-pulse-a3f01c")
+             (audit-old (satan-observer-test--open-audit root old-id))
+             (ctx-old (satan-observer-test--build-ctx
+                       audit-old old-id "2026-09-23T09:30:00+10:00"))
+             (_ (satan-observer-test--mint
+                 ctx-old :kind "ask" :target "goad" :window 60
+                 :related-motive-id "docs-after-error"
+                 :cue-handles (list "domain_kind:docs"))))
+        (satan-observer-test--write-bundle-with-handles
+         (satan-observer-test--make-run-dir root old-id)
+         (list "domain_kind:docs"))
+        (satan-motive-test--with-tmp-file
+         mpath satan-motive-test--well-formed
+         (let* ((curr-id "20260923T113000-morning-cccccc")
+                (now "2026-09-23T11:30:00+10:00")
+                (rewrites nil)
+                (rewrite-fn (lambda (&rest args) (push args rewrites) t)))
+           (cl-letf (((symbol-function 'satan-goad-queue-rewrite)
+                      rewrite-fn))
+             (satan-observer-test--with-stubbed-after-state
+                 (list :goad nil :focus_segments nil)
+               (let ((out (satan-observer-process
+                           (satan-observer-test--process-ctx root curr-id now)
+                           (list :motive-path mpath :runs-dir root))))
+                 (should (= 1 (plist-get out :processed)))
+                 (should (eq 'ok (plist-get out :queue_rewrite)))
+                 (should (= 1 (length rewrites)))
+                 (should (equal now (nth 0 (car rewrites))))
+                 (should (null (nth 1 (car rewrites))))
+                 (should (null (nth 2 (car rewrites))))))))))))))
+
+(ert-deftest satan-observer/ask-queue-rewrite-fault-guarded ()
+  "D4 — a queue-rewrite fault is caught and reported in the summary; the
+tick still classifies and persists the ask."
+  (satan-observer-test--with-db
+   (satan-observer-test--in-tmp
+    (lambda (root)
+      (let* ((satan-runs-dir root)
+             (old-id "20260923T093000-tick-pulse-a3f01c")
+             (audit-old (satan-observer-test--open-audit root old-id))
+             (ctx-old (satan-observer-test--build-ctx
+                       audit-old old-id "2026-09-23T09:30:00+10:00"))
+             (iv-id (satan-observer-test--mint
+                     ctx-old :kind "ask" :target "goad" :window 60
+                     :related-motive-id "docs-after-error"
+                     :cue-handles (list "domain_kind:docs"))))
+        (satan-observer-test--write-bundle-with-handles
+         (satan-observer-test--make-run-dir root old-id)
+         (list "domain_kind:docs"))
+        (satan-motive-test--with-tmp-file
+         mpath satan-motive-test--well-formed
+         (let* ((curr-id "20260923T113000-morning-cccccc")
+                (now "2026-09-23T11:30:00+10:00"))
+           (cl-letf (((symbol-function 'satan-goad-queue-rewrite)
+                      (lambda (&rest _) (error "synthetic rewrite fault"))))
+             (satan-observer-test--with-stubbed-after-state
+                 (list :goad nil :focus_segments nil)
+               (let ((out (satan-observer-process
+                           (satan-observer-test--process-ctx root curr-id now)
+                           (list :motive-path mpath :runs-dir root))))
+                 (should (= 1 (plist-get out :processed)))
+                 (let ((rw (plist-get out :queue_rewrite)))
+                   (should (consp rw))
+                   (should (eq 'error (car rw)))
+                   (should (string-match-p "synthetic rewrite fault"
+                                           (cdr rw))))
+                 (let* ((row (satan-intervention-lookup iv-id))
+                        (oc (plist-get row :outcome)))
+                   (should oc)
+                   (should (equal "unknown" (plist-get oc :classification)))
+                   (should (equal "high" (plist-get oc :confidence))))))))))))))
+
+;; ---------------------------------------------------------------------
 ;; Phase 5.4c — single-motive classifier glue
 ;; ---------------------------------------------------------------------
 

@@ -337,6 +337,110 @@ follow-up."
          (and (stringp start) (string< emitted start))))
      (plist-get after :focus_segments))))
 
+;; ---------------------------------------------------------------------
+;; Ask negative branch (SL-016 PHASE-09) — design sec-5
+;;
+;; Kind `"ask"' never consults focus telemetry: its silence is judged
+;; from the same goad day record the answer predicate reads, as the
+;; record stood at window end (any stamp after emit + outcome_window
+;; minutes reads as absent; RV-007 F-35).  First match wins.
+;; ---------------------------------------------------------------------
+
+(defconst satan-observer-short-exposure-seconds (* 10 60)
+  "The tail of an ask's outcome window that reads as `:short_exposure'.
+A `:presented_at' this close to window end leaves too little time to
+call the ask ignored (design sec-5, SL-016 PHASE-09).")
+
+(defun satan-observer--ask-record (after intervention)
+  "INTERVENTION's goad day record from AFTER's `:goad' slice, or nil."
+  (let ((entry (satan-observer--goad-entry after intervention)))
+    (and entry (plist-get entry :record))))
+
+(defun satan-observer--ask-presented-in-window-p (record window)
+  "Non-nil when RECORD's `:presented_at' falls inside WINDOW.
+Inclusive on both bounds, through `satan-observer--instant-in-window-p'."
+  (satan-observer--instant-in-window-p
+   (plist-get record :presented_at) window))
+
+(defun satan-observer--ask-presented-short-exposure-p (record window)
+  "Non-nil when RECORD's `:presented_at' sits in WINDOW's last
+`satan-observer-short-exposure-seconds' seconds."
+  (let* ((ts (plist-get record :presented_at))
+         (at (and (stringp ts)
+                  (condition-case nil (date-to-time ts) (error nil)))))
+    (and at window
+         (satan-observer--instant-in-window-p ts window)
+         (let ((short-start (time-subtract
+                             (cdr window)
+                             (seconds-to-time
+                              satan-observer-short-exposure-seconds))))
+           (not (time-less-p at short-start))))))
+
+(defun satan-observer--ask-deferred-p (record window provenance)
+  "Non-nil when RECORD defers in WINDOW with PROVENANCE.
+PROVENANCE is the `:deferred_by' string (`\"later\"' or
+`\"enough\"'); the `:deferred_at' stamp must lie inside WINDOW — a
+deferral after window end reads as absent (RV-007 F-35)."
+  (and (equal provenance (plist-get record :deferred_by))
+       (satan-observer--instant-in-window-p
+        (plist-get record :deferred_at) window)))
+
+(defun satan-observer--ask-unknown (reason confidence)
+  "An `:unknown' ask verdict with REASON and CONFIDENCE."
+  (list :classification :unknown
+        :confidence confidence
+        :predicates nil
+        :reason reason))
+
+(defun satan-observer--ask-ignored (reason surface)
+  "An `:ignored' ask verdict with REASON, for SURFACE.
+The ask branch runs before the ack gate, so its evidence records the
+gate as not checked rather than fabricating an acknowledgement scan."
+  (list :classification :ignored
+        :confidence :medium
+        :predicates nil
+        :reason reason
+        :evidence (list :target-surface surface
+                        :no-positive-predicates t
+                        :acknowledgement-checked :false
+                        :ack-events-found 0)))
+
+(defun satan-observer--classify-ask-negative (intervention after)
+  "Classify a no-fire `\"ask\"' scan from its goad day record.
+Reads the record out of AFTER's `:goad' slice exactly as the answer
+predicate does, then judges it as it stood at window end.  First match
+wins (design sec-5):
+
+  no `:presented_at' in window                 → `:unknown :high'
+    `:undelivered'
+  `:presented_at' in the last 10 minutes        → `:unknown :low'
+    `:short_exposure'
+  `:deferred_at' in window, `:deferred_by' later → `:unknown :low'
+    `:deferred'
+  presented in window, `:deferred_by' enough    → `:ignored :medium'
+    `:dismissed'
+  presented in window, nothing else             → `:ignored :medium'
+    `:untouched'
+
+The label is the verdict's `:reason' (D2).  Every verdict is an auto
+kind, so `satan-observer--assert-auto-classification' stays satisfied."
+  (let* ((record (satan-observer--ask-record after intervention))
+         (window (satan-observer--ask-answer-window intervention))
+         (surface (plist-get intervention :target_surface))
+         (presented (satan-observer--ask-presented-in-window-p
+                     record window)))
+    (cond
+     ((not presented)
+      (satan-observer--ask-unknown :undelivered :high))
+     ((satan-observer--ask-presented-short-exposure-p record window)
+      (satan-observer--ask-unknown :short_exposure :low))
+     ((satan-observer--ask-deferred-p record window "later")
+      (satan-observer--ask-unknown :deferred :low))
+     ((satan-observer--ask-deferred-p record window "enough")
+      (satan-observer--ask-ignored :dismissed surface))
+     (t
+      (satan-observer--ask-ignored :untouched surface)))))
+
 (defun satan-observer-classify-negative (intervention after)
   "Decide `:ignored' / `:neutral' / `:unknown' for a no-fire scan.
 Called from `satan-observer-classify' when all P1–P4 returned
@@ -370,6 +474,11 @@ the classify API boundary
                            (member kind
                                    satan-observer-user-facing-kinds))))
     (cond
+     ((equal kind "ask")
+      ;; SL-016 PHASE-09 — the ask's silence is read from its goad day
+      ;; record, dispatched before the ack gate so the gate's state never
+      ;; reaches an ask.
+      (satan-observer--classify-ask-negative intervention after))
      (user-facing
       (let* ((checked (satan-observer--ack-checked-p after))
              (found (if checked

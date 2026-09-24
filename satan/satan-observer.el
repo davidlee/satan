@@ -35,6 +35,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'satan-attribute)
+(require 'satan-goad)
 (require 'satan-intervention)
 (require 'satan-memory-grammar)
 (require 'satan-memory-store)
@@ -133,12 +134,24 @@ N)'."
          (iv-id (plist-get intervention :intervention_id))
          (firers (plist-get verdict :predicates))
          (metadata
-          (list :intervention_id iv-id
-                :run_id (plist-get intervention :run_id)
-                :motive_id (plist-get motive :id)
-                :predicates firers
-                :classification (plist-get verdict :classification)
-                :confidence (plist-get verdict :confidence)))
+          (append
+           (list :intervention_id iv-id
+                 :run_id (plist-get intervention :run_id)
+                 :motive_id (plist-get motive :id)
+                 :predicates firers
+                 :classification (plist-get verdict :classification)
+                 :confidence (plist-get verdict :confidence))
+           ;; SL-016 PHASE-09 — an answered ask's trace carries the
+           ;; question and the submitted value, read from the same day
+           ;; record the answer predicate read (D3).  Long string values
+           ;; are truncated so the trace reaches psql as one argument.
+           (when (equal (plist-get intervention :kind) "ask")
+             (let ((record (satan-goad-read-record
+                            (plist-get intervention :intervention_id)
+                            (plist-get intervention :intervention_emitted_at))))
+               (list :question (plist-get intervention :message)
+                     :value (satan-goad-truncate-value
+                             (plist-get record :value)))))))
          (payload (format "worked: %s → motive %s via %s"
                           iv-id
                           (plist-get motive :id)
@@ -199,7 +212,8 @@ calls this helper for a nil/stale verdict).
         :no_positive_predicates t
         :acknowledgement_checked t-or-:false
         :ack_events_found N)' (kebab→snake from the verdict's
-      `:evidence' plist).
+      `:evidence' plist).  An ask's `:ignored' verdict also carries
+      `:reason' (its evidence label, D2).
 
   `:classification :neutral'
     → classification \"neutral\", confidence \"low\", evidence
@@ -208,11 +222,15 @@ calls this helper for a nil/stale verdict).
         :no_positive_predicates t)'.
 
   `:classification :unknown'
-    → classification \"unknown\", confidence \"low\", evidence
+    → classification \"unknown\", confidence per verdict's
+      `:confidence' (`:low' for the maturity, baseline, motive and
+      midnight guards, `:high' for an undelivered ask), evidence
       `(:source_events () :reason STR-or-:null)'.  Reached from the
       maturity (`:pending'), baseline, motive, and midnight guards
       AND from `classify-negative' when a user-facing intervention
-      has `ack_events_found > 0' (per outcome-semantics §1).
+      has `ack_events_found > 0' (per outcome-semantics §1), and
+      from the ask negative branch (`undelivered' / `short_exposure'
+      / `deferred').
 
 Keywords cross the audit boundary as their lower-case names
 without the leading colon (per `outcome-semantics.md' §1).
@@ -243,14 +261,22 @@ INTERVENTION is the classifier-shaped plist (after
                            (plist-get verdict :predicates))
                    :motive_id (or (plist-get verdict :motive_id) :null)))
             (:ignored
-             (list :source_events '()
-                   :target_surface (or (plist-get ev :target-surface) :null)
-                   :no_positive_predicates t
-                   :acknowledgement_checked
-                   (if (eq :false (plist-get ev :acknowledgement-checked))
-                       :false
-                     t)
-                   :ack_events_found (or (plist-get ev :ack-events-found) 0)))
+             (append
+              (list :source_events '()
+                    :target_surface (or (plist-get ev :target-surface) :null)
+                    :no_positive_predicates t
+                    :acknowledgement_checked
+                    (if (eq :false (plist-get ev :acknowledgement-checked))
+                        :false
+                      t)
+                    :ack_events_found (or (plist-get ev :ack-events-found) 0))
+              ;; SL-016 PHASE-09 — the ask's evidence label travels as the
+              ;; verdict's `:reason' (D2); the ack-gate `:ignored' carries
+              ;; no `:reason' and keeps its shape unchanged.
+              (let ((reason (plist-get verdict :reason)))
+                (and reason
+                     (list :reason
+                           (satan-observer--keyword-to-string reason))))))
             (:neutral
              (list :source_events '()
                    :target_surface (or (plist-get ev :target-surface) :null)
@@ -414,7 +440,8 @@ Returns a summary plist for audit visibility:
                         (setq kept (append kept (list k (plist-get opts k))))))
                     kept)))
          (verdicts nil)
-         (positive 0))
+         (positive 0)
+         (ask-classified nil))
     (dolist (iv pending)
       (condition-case err
           (let ((verdict (satan-observer-classify-for-motives
@@ -436,6 +463,10 @@ Returns a summary plist for audit visibility:
                             iv verdict now run-id)))
                 (when (eq :worked (plist-get verdict :classification))
                   (setq positive (1+ positive)))
+                ;; SL-016 PHASE-09 — a persisted ask verdict retires the
+                ;; ask's queue entry after the loop (D4).
+                (when (equal (plist-get iv :kind) "ask")
+                  (setq ask-classified t))
                 (push (append
                        (list :intervention_id (plist-get iv :intervention_id)
                              :run_id (plist-get iv :run_id)
@@ -467,9 +498,25 @@ Returns a summary plist for audit visibility:
       (error
        (message "satan-observer: pattern rebuild failed: %s"
                 (error-message-string err))))
-    (list :processed (length pending)
-          :positive positive
-          :verdicts (nreverse verdicts))))
+    ;; Queue retirement — fires once, after the pending loop, when at
+    ;; least one ask was classified, so a matured ask's queue entry does
+    ;; not outlive its window (SL-016 PHASE-09, design sec-3, D4).
+    ;; Guarded like the pattern rebuild: a rewrite fault is reported in
+    ;; the summary and never aborts the tick.
+    (let ((queue-rewrite
+           (when ask-classified
+             (condition-case err
+                 (progn
+                   (satan-goad-queue-rewrite now nil db)
+                   'ok)
+               (error
+                (message "satan-observer: queue rewrite failed: %s"
+                         (error-message-string err))
+                (cons 'error (error-message-string err)))))))
+      (list :processed (length pending)
+            :positive positive
+            :verdicts (nreverse verdicts)
+            :queue_rewrite queue-rewrite))))
 
 (provide 'satan-observer)
 ;;; satan-observer.el ends here
