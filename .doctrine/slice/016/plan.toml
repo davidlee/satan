@@ -544,7 +544,7 @@ verification = [
   { id = "VT-43", expects = "golden fixtures equal what the real backend.py produces for the same script", test_file = "satan/test/satan-goad-integration-test.el", keywords = ["satan-goad-integration/goldens-match-backend"] },
   { id = "VT-61", expects = "form round trip through the real backend: a form ask renders its options, a scripted respond with field values is stored as {option, values}, and the observer's trace carries it", test_file = "satan/test/satan-goad-integration-test.el", keywords = ["satan-goad-integration/form-round-trip"] },
   { id = "VH-1", expects = "live: a tick-pulse (or driven) goad_ask pops the goad window; the keeper answers; the next observer pass records :worked with the question and value in the trace" },
-  { id = "VH-2", expects = "live: an ask presented and left untouched matures :ignored :medium untouched" },
+  { id = "VH-2", expects = "live: an ask presented and left untouched matures :ignored :medium untouched", waived = true, waived_reason = "waived by the user 2026-09-24 (reply '3'): the model declined to ask live; covered by VT-3 satan-observer/ask-untouched-ignored over goldens that VT-43 checks against the real backend" },
 ]
 specs        = []
 requirements = []

@@ -180,6 +180,15 @@ on its Postgres. Every step below runs on the host.
      array (`["goad_answer"]`).
 4. **One live ask left untouched (VH-2).** Drive a second ask; leave it; the
    observer matures `:ignored :medium` `untouched`. Record the id. (EX-2.)
+   - 2026-09-24: **waived by the user** (reply "3"). Attended run
+     `20260924T204008-tick-pulse-3a5489` declined to ask: it read the
+     `aaf84ba` commit subject, judged the VH-1 credit harness-derived, and
+     held `self-work-check` quiet until ~21:30 (trace
+     `20260924T204008-mbl66v`, an inbox note, a rumination line in
+     `motives.org`). Evidence in lieu: VT-3
+     `satan-observer/ask-untouched-ignored` over goldens that VT-43 checks
+     against the real backend. Note: SATAN perceives our commit subjects,
+     so rollout commits can steer its judgement.
 5. **Persist `satan-goad-enabled`** in the user's config, now that VH-1 passed.
 6. Record all intervention ids + outcomes in notes.md, then flip PHASE-08
    `completed` and route to `/audit`.
