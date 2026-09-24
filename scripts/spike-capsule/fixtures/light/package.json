@@ -1,0 +1,17 @@
+{
+  "name": "ledger",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Small money ledger. Light fixture for the SL-241 capsule spike rig.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "node --test src/*.test.ts",
+    "lint": "tsc --project tsconfig.json --noEmit",
+    "format": "node tools/format.mjs --check src tools"
+  }
+}

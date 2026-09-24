@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# pi-research — shell-invocable repo researcher for claude code agents.
+# The smarter, judgement-led tier: uses the project's researcher agent profile
+# (.pi/agents/researcher.md → deepseek-v4-pro). For plain structural recon, use
+# the cheaper pi-scout.
+#
+# This researches the REPOSITORY, not the web — it is the tier for governance
+# applicability and tradeoffs (see .doctrine/governance.md "Research agents").
+# The profile carries no web tools; that is deliberate, not an omission.
+#
+# Usage:
+#   ./scripts/pi-research "Does ADR-006 govern the confined-worker spawn path?"
+#   ./scripts/pi-research --think off "which policy covers host-project layout?"
+#   echo "Where should a new dispatch rule live?" | ./scripts/pi-research
+#
+# Env: PI_BACKSTOP (hard timeout, default 900s).
+#
+# A shim: everything but the profile and the default thinking level lives in
+# pi-agent, so a fix lands once rather than once per role.
+set -euo pipefail
+export PI_AGENT_AS=pi-research
+export PI_THINK_DEFAULT="${PI_THINK_DEFAULT:-low}"
+exec "$(cd "$(dirname "$0")" && pwd)/pi-agent" researcher "$@"

@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+# rig — entry point for the SL-241 capsule spike rig (RFC-025 programme).
+#
+#   rig <c1a|smoke|c2|c3|guards|c1b|selftest> [rows…] [--stub|--agent]
+#
+# Disposable scaffolding. The deliverable is evidence, not product.
+#
+# Two invariants this file exists to hold:
+#
+#   I6  every sub-command's FIRST action is `guard_not_real_repo` against the
+#       resolved capsule root, before any provisioning. A guard that runs late
+#       is not a guard (design § 5.5).
+#
+#   DEC-109  `--stub` is the default and `--agent` is explicit opt-in. Only
+#       P-C1 needs an LLM; everything in P-C2 and P-C3 is scripted by DQ-2
+#       mandate, so reaching an agent must be a thing you asked for.
+set -euo pipefail
+
+RIG_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=lib/common.sh
+. "${RIG_DIR}/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+usage: rig <probe> [rows…] [--stub|--agent]
+
+probes
+  c1a       P-C1a — deterministic cost baseline (stub worker)
+  smoke     A2 — network reachability, then authenticated `claude -p`
+  c2        P-C2 — the confinement matrix
+  c3        P-C3 — the hostile matrix, M-A and M-B side by side
+  guards    the five guard probes — each guard observed refusing (a…e)
+  c1b       P-C1b — real agent executing a real red→green phase
+  selftest  the rig's own red/green
+
+worker mode
+  --stub    scripted worker (default)
+  --agent   real agent — explicit opt-in (DEC-109)
+
+environment
+  SPIKE_CAPSULE_ROOT  capsule / fixture root (default: ~/capsules)
+EOF
+}
+
+# ── dispatch ─────────────────────────────────────────────────────────────────
+
+# Hand off to a control script, or name the phase that provides it. Probes are
+# built across PHASE-02/03; degrading with the owning phase named beats
+# dispatching into a void.
+rig_dispatch() {
+  local script=$1 owner=$2 root=$3
+  shift 3
+  local path="${RIG_DIR}/control/${script}"
+  if [ -x "${path}" ]; then
+    SPIKE_CAPSULE_ROOT="${root}" SPIKE_WORKER_MODE="${RIG_WORKER_MODE}" \
+      exec "${path}" "$@"
+  fi
+  rig_warn "control/${script} does not exist yet — ${owner} provides it."
+  rig_warn "capsule root would have been: ${root} (worker: ${RIG_WORKER_MODE})"
+  return "${RIG_EXIT_USAGE}"
+}
+
+# PHASE-01 degradation of `selftest`. The happy-path self-test on the light
+# fixture is PHASE-03's (control/selftest.sh, VT-4). What exists now is the I6
+# guard probe — VA-1's re-runnable observation, kept because a safety check
+# never seen to refuse is not known to work (design § 9).
+#
+# Probed in BOTH directions on purpose: a guard that refuses everything scores
+# green against refusal cases alone, and is just as broken as one that refuses
+# nothing (mem.pattern.harness.grep-negative-needs-positive-control).
+rig_guard_probe() {
+  local repo failures=0 case_
+  repo=$(rig_repo_root) || rig_die "guard probe: cannot resolve this repository's root"
+
+  # MUST REFUSE. The last two are unresolved forms of the first: they are here
+  # because a guard that compares before it resolves passes the plain case and
+  # fails these.
+  for case_ in \
+    "${repo}" \
+    "${repo}/scripts/spike-capsule/fixtures" \
+    "${repo}/." \
+    "${repo}/../${repo##*/}"; do
+    if (guard_not_real_repo "${case_}") >/dev/null 2>&1; then
+      printf 'guard probe: FAIL — proceeded on %s (must refuse)\n' "${case_}" >&2
+      failures=$((failures + 1))
+    else
+      printf 'guard probe: ok — refused %s\n' "${case_}"
+    fi
+  done
+
+  # MUST PROCEED. `${repo}-sibling` is the prefix trap: a containment test
+  # written as a bare string prefix matches it and locks the rig out of a
+  # directory that is not in the repository at all.
+  for case_ in \
+    "$(rig_capsule_root)" \
+    "${repo}-sibling" \
+    "${TMPDIR:-/tmp}/spike-capsule-probe"; do
+    if (guard_not_real_repo "${case_}") >/dev/null 2>&1; then
+      printf 'guard probe: ok — proceeded on %s\n' "${case_}"
+    else
+      printf 'guard probe: FAIL — refused %s (must proceed)\n' "${case_}" >&2
+      failures=$((failures + 1))
+    fi
+  done
+
+  if [ "${failures}" -ne 0 ]; then
+    rig_warn "guard probe: ${failures} case(s) failed — I6 is NOT holding"
+    return 1
+  fi
+  printf 'guard probe: I6 holds (%s)\n' "${repo}"
+}
+
+# ── argument parsing ─────────────────────────────────────────────────────────
+
+RIG_WORKER_MODE=stub
+probe=""
+rows=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --stub) RIG_WORKER_MODE=stub ;;
+    --agent) RIG_WORKER_MODE=agent ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -*) rig_die "unknown flag: $1" ;;
+    *)
+      if [ -z "${probe}" ]; then probe=$1; else rows+=("$1"); fi
+      ;;
+  esac
+  shift
+done
+
+[ -n "${probe}" ] || {
+  usage >&2
+  exit "${RIG_EXIT_USAGE}"
+}
+
+# Every arm opens with `rig_enter` as a STATEMENT — never inside a substitution.
+RIG_ROOT=""
+case "${probe}" in
+  c1a) rig_enter && rig_dispatch probe-c1a.sh PHASE-04 "${RIG_ROOT}" "${rows[@]+"${rows[@]}"}" ;;
+  smoke) rig_enter && rig_dispatch probe-smoke.sh PHASE-02 "${RIG_ROOT}" "${rows[@]+"${rows[@]}"}" ;;
+  c2) rig_enter && rig_dispatch probe-c2.sh PHASE-04 "${RIG_ROOT}" "${rows[@]+"${rows[@]}"}" ;;
+  c3) rig_enter && rig_dispatch probe-c3.sh PHASE-05 "${RIG_ROOT}" "${rows[@]+"${rows[@]}"}" ;;
+  # `rows` carries the guard selectors here (a…e). One positional list, and the
+  # dispatcher does not care what the probe calls them.
+  guards) rig_enter && rig_dispatch probe-guards.sh PHASE-05 "${RIG_ROOT}" "${rows[@]+"${rows[@]}"}" ;;
+  c1b) rig_enter && rig_dispatch probe-c1b.sh PHASE-06 "${RIG_ROOT}" "${rows[@]+"${rows[@]}"}" ;;
+  selftest)
+    rig_enter
+    if [ -x "${RIG_DIR}/control/selftest.sh" ]; then
+      rig_dispatch selftest.sh PHASE-03 "${RIG_ROOT}"
+    else
+      rig_warn "control/selftest.sh does not exist yet — PHASE-03 provides it."
+      rig_warn "running the I6 guard probe (PHASE-01, VA-1) instead."
+      rig_guard_probe
+    fi
+    ;;
+  *) rig_die "unknown probe: ${probe}" ;;
+esac

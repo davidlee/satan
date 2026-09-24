@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# pi-agent — shell-invocable pi agent runner for claude code agents.
+#
+# One runner behind every non-dispatch `--print` role. It loads a profile from
+# .pi/agents/<profile>.md (model, tools, system prompt), then runs a single
+# one-shot turn and returns the result on stdout.
+#
+# Callers are the named shims — `pi-scout`, `pi-research` — which exist because
+# CLAUDE.md and .doctrine/governance.md name them as the entry points. They set
+# the profile and the default thinking level and nothing else; everything that
+# can go wrong lives here, once. Four near-identical copies of this logic are
+# what let CHR-051's fixes sit applied-in-one-place for days.
+#
+# This is the `--print` arm. It has NO fifo, poll, or reap: `pi --print`
+# self-exits once its turn ends *provided stdin is closed*, which is the whole
+# termination story (see the ISS-266 note below). The `--mode rpc` arm —
+# pi-spawn.sh, spawn-confined.sh, pi-respawn-nofork.sh, pi-review.sh — is a
+# different lifecycle; do not port that machinery here.
+#
+# Usage:
+#   pi-agent <profile> [--think off|minimal|low|medium|high|xhigh|max] <query>
+#   echo <query> | pi-agent <profile> [--think ...]
+#
+# Env:
+#   PI_BACKSTOP        hard timeout in seconds (default: 900)
+#   PI_THINK_DEFAULT   thinking level when --think is absent (default: off)
+#   PI_AGENT_AS        name to report in usage/error text (default: pi-agent)
+
+set -euo pipefail
+
+AS="${PI_AGENT_AS:-pi-agent}"
+
+profile="${1:-}"
+if [[ -z "$profile" || "$profile" == --* ]]; then
+  echo "ERROR: $AS requires a profile name as its first argument" >&2
+  exit 2
+fi
+shift
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+AGENT_FILE="$PROJECT_ROOT/.pi/agents/$profile.md"
+
+if [[ ! -f "$AGENT_FILE" ]]; then
+  echo "ERROR: agent file not found: $AGENT_FILE" >&2
+  exit 1
+fi
+
+# --- extract fields from agent frontmatter ---
+model=$(sed -n '/^model: /{s/^model: //;s/ *$//;p;q}' "$AGENT_FILE")
+tools=$(sed -n '/^tools: /{s/^tools: //;s/ *$//;p;q}' "$AGENT_FILE")
+
+# --- extract system prompt body (after second ---) ---
+sysprompt=$(awk 'BEGIN{c=0} /^---$/{c++; next} c>=2' "$AGENT_FILE")
+
+if [[ -z "$model" || -z "$tools" || -z "$sysprompt" ]]; then
+  echo "ERROR: $AGENT_FILE is missing model, tools, or a system prompt body" >&2
+  exit 1
+fi
+
+# --- parse --think flag ---
+thinking="${PI_THINK_DEFAULT:-off}"
+if [[ "${1:-}" == "--think" ]]; then
+  if [[ -z "${2:-}" ]]; then
+    echo "ERROR: --think requires a level" >&2
+    exit 2
+  fi
+  thinking="$2"
+  shift 2
+fi
+
+# --- collect query ---
+if [[ $# -gt 0 ]]; then
+  query="$*"
+elif [[ ! -t 0 ]]; then
+  query=$(cat)
+else
+  usage=1
+fi
+
+# An empty query is a usage error, not a turn. `$AS < /dev/null` takes the stdin
+# branch (fd 0 is not a tty), reads nothing, and would otherwise spend a real API
+# call on an empty prompt and exit 0 with no output — indistinguishable from a
+# model that answered with silence. That invocation is not hypothetical: it was
+# the documented workaround while ISS-266 was open.
+if [[ -n "${usage:-}" || -z "${query//[[:space:]]/}" ]]; then
+  echo "Usage: $AS [--think off|minimal|low|medium|high|xhigh|max] <query>" >&2
+  echo "       echo <query> | $AS [--think ...]" >&2
+  exit 1
+fi
+
+# pi writes session and settings state at runtime. Left to its default it writes
+# under $HOME/.pi, which is read-only (or absent) for any confined caller — an
+# EROFS there kills the run before it inspects a single file (IMP-322). Point the
+# session at a disposable dir we own and clean up after ourselves. This is why
+# the runner cannot `exec`: an exec'd pi would leave the trap unrun.
+SESSION_DIR=$(mktemp -d)
+trap 'rm -rf "$SESSION_DIR"' EXIT
+
+# stdin MUST be closed. With the query passed as an argument the `[[ ! -t 0 ]]`
+# branch above never fires, so nothing consumes fd 0 and it passes straight into
+# pi — which does not self-exit while stdin is held open. Termination then
+# depends on whatever the caller happened to do with fd 0: observed six threads
+# launched identically, four complete, two zero-byte with no exit status and no
+# error (ISS-266). `timeout` is the backstop for the residual — a wedged run
+# fails loudly and non-zero rather than hanging forever.
+status=0
+timeout "${PI_BACKSTOP:-900}" pi --print \
+  --model "$model" \
+  --system-prompt "$sysprompt" \
+  --tools "$tools" \
+  --thinking "$thinking" \
+  --session-dir "$SESSION_DIR" \
+  --no-skills \
+  --no-context-files \
+  "$query" </dev/null || status=$?
+
+if [[ $status -eq 124 ]]; then
+  echo "ERROR: $AS hit the ${PI_BACKSTOP:-900}s backstop — no result" >&2
+fi
+exit "$status"

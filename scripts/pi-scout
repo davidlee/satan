@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# pi-scout — shell-invocable codebase scout for claude code agents.
+# The quick, cheap tier: uses the project's scout agent profile
+# (.pi/agents/scout.md → deepseek-v4-flash). For a thread needing judgement,
+# use pi-research.
+#
+# Usage:
+#   ./scripts/pi-scout "Where is authentication logic implemented?"
+#   ./scripts/pi-scout --think low "trace all callers of X"
+#   echo "Find the error handling middleware" | ./scripts/pi-scout
+#
+# Env: PI_BACKSTOP (hard timeout, default 900s).
+#
+# A shim: everything but the profile and the default thinking level lives in
+# pi-agent, so a fix lands once rather than once per role.
+set -euo pipefail
+export PI_AGENT_AS=pi-scout
+export PI_THINK_DEFAULT="${PI_THINK_DEFAULT:-off}"
+exec "$(cd "$(dirname "$0")" && pwd)/pi-agent" scout "$@"

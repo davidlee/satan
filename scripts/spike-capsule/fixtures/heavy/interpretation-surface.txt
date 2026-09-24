@@ -1,0 +1,22 @@
+# Interpretation-surface declaration — HEAVY fixture (a clone of this repo).
+#
+# Default-deny; the dual of `.worktreeinclude` (DEC-099). Authored verbatim from
+# design.md § 5.2, which states this fixture's declaration as a literal.
+#
+#   exec:       drives the DQ-4 audit — these tokens must be ABSENT from
+#               `control/**`. The control plane never runs the project's
+#               toolchain.
+#   interpret:  drives the P-C3 hostile instantiations — where a class-2/3
+#               payload is planted for this fixture. It names a SURFACE, not an
+#               inventory: `build.rs` is listed because H11 plants one, not
+#               because the repo carries one today.
+#   verify:     the one place project execution is wanted, and it runs inside
+#               the verify capsule.
+#
+# PROVENANCE (F-5): this file lives OUTSIDE the clone, as a sibling of it. That
+# placement is what makes the substitution attack non-live in the base fixture;
+# PHASE-05 manufactures the exposure with an in-repo copy.
+
+exec:      cargo nix direnv just rustc
+interpret: build.rs flake.nix .envrc rust-toolchain.toml **/build.rs
+verify:    just web-build && cargo test
