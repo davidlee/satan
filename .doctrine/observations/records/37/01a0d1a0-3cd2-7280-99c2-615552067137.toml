@@ -1,0 +1,8 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d1a0-3cd2-7280-99c2-615552067137"
+recorded_at = "2026-09-24T04:15:34.610660745Z"
+kind = "supersession"
+old_uid = "01a0d1a0-1c22-77e0-915d-f314594a8a46"
+replacement_uid = "01a0d1a0-3cd0-76d2-a654-c78cc3f865be"
+reason = "typo in summary (Sl-L-016)"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d1a0-3cd0-76d2-a654-c78cc3f865be"
+recorded_at = "2026-09-24T04:15:34.6083594Z"
+kind = "friction"
+summary = "SL-016 PHASE-09 worker: byte-compiling to disk shadows edited .el with a stale .elc"
+detail = "The worker byte-compiled during its red/green cycle; Emacs then loaded the .elc instead of the freshly edited .el, so a fixed test still looked broken until the .elc files were removed. just check never byte-compiles. Do not compile to disk mid-cycle; the paren checker plus a test run suffice."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

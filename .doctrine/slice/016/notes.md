@@ -25,6 +25,37 @@ below is fully discharged.
 **superseded fresh-as-of (PHASE-06):** F1 field-label residual — resolved
 by the ISS-026 fix above. Kept for the F1-fix narrative under PHASE-06b.
 
+### PHASE-09 — the ask's negative branch, labels, trace, queue retirement (2026-09-24)
+
+One worker (deepseek-v4-pro, in-tree), completed within budget.
+
+**Files changed (dev repo):**
+- `satan/satan-observer-classify.el` — `satan-observer-short-exposure-seconds`;
+  `--ask-record`, `--ask-presented-in-window-p`,
+  `--ask-presented-short-exposure-p`, `--ask-deferred-p`, `--ask-unknown`,
+  `--ask-ignored`, `--classify-ask-negative` (first-match-wins table);
+  `classify-negative` dispatches kind "ask" before the ack gate.
+- `satan/satan-observer.el` — `(require 'satan-goad)`; `--persist-positive`
+  metadata gains `:question` + truncated `:value` for an ask (D3);
+  `--verdict-classify-args` `:ignored` persists `:reason` when present (D2);
+  `process` fires a guarded `satan-goad-queue-rewrite` once when an ask was
+  classified, reported as `:queue_rewrite` (D4).
+- `satan/test/satan-observer-test.el` — 11 tests (VT-3/4/8/12/15/17/18/23) +
+  `--ask-emits` / `--ask-iv` / `--classify-ask` fixtures.
+
+**Decisions taken:** D2–D4 implemented as planned. D2 uses the verdict's
+`:reason` as the label; no audit-validator change (it has no evidence-key
+allowlist).
+
+**Gate:** `SATAN_DB_HOST=127.0.0.1 just check` ran 1282, 0 unexpected, 14
+skipped. `verify-vt` PHASE-09: VT-3/4/8/12/15/17/18/23 PASS. Committed
+`335e9b7`.
+
+**Friction:** `batch-byte-compile` to disk during a red/green cycle leaves
+`.elc` that Emacs then prefers over the edited `.el`, making a fixed test look
+broken. The project's `just check` never byte-compiles; do not byte-compile to
+disk mid-cycle.
+
 ### PHASE-07 — the ask's correlation route and answer predicate (2026-09-24)
 
 One worker (deepseek-v4-pro, in-tree). Orchestrator rationale: real correctness
