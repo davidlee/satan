@@ -11,6 +11,7 @@
 ;;   (satan-motive-read   PATH)         -> PLIST  (silent on missing)
 ;;   (satan-motive-render-block FRAMING PARSED) -> LIST-OF-LINES
 ;;   (satan-motive-validate-for-write TEXT)     -> PLIST or nil
+;;   (satan-motive-rank-by-overlap MOTIVES HANDLES) -> RANKED
 ;;
 ;; Footer schema (per §S3):
 ;;   :cue:                   REQUIRED for active motives.  Space-separated
@@ -313,6 +314,40 @@ never hardcodes the header (governance §Mind/mechanism).")
   "Return PARSED's motives filtered to non-dormant entries."
   (cl-remove-if (lambda (m) (plist-get m :dormant))
                 (plist-get parsed :motives)))
+
+(defun satan-motive-rank-by-overlap (motives percept-handles)
+  "Rank MOTIVES by `|:cue ∩ PERCEPT-HANDLES|', descending.
+Ties resolved by ascending position in MOTIVES (file order — §S5
+deterministic tiebreaker so re-running the observer over the same
+state yields the same correlation).  Dormant motives are skipped
+(A14 — they have no usable cue).  Motives with zero overlap are
+dropped — `satan-observer-classify-for-motives' treats that as
+`:reason :no_correlation' rather than a positive on a phantom
+motive.  The one ranking rule: the observer's correlator and the goad
+ask tool's subject gate (SL-016 design sec-1) both use it.
+
+Returns list of `(:motive PLIST :order INT :overlap INT)' plists."
+  (let* ((scored
+          (cl-loop for m in motives
+                   for idx upfrom 0
+                   unless (plist-get m :dormant)
+                   collect
+                   (list :motive m
+                         :order idx
+                         :overlap
+                         (cl-count-if
+                          (lambda (h) (member h (plist-get m :cue)))
+                          percept-handles))))
+         (matches (cl-remove-if (lambda (r) (zerop (plist-get r :overlap)))
+                                scored)))
+    (sort matches
+          (lambda (a b)
+            (let ((oa (plist-get a :overlap))
+                  (ob (plist-get b :overlap)))
+              (cond
+               ((> oa ob) t)
+               ((< oa ob) nil)
+               (t (< (plist-get a :order) (plist-get b :order)))))))))
 
 (defun satan-motive--cooling-down-remaining (motive now-t)
   "Return remaining cooldown seconds (positive number) when MOTIVE's

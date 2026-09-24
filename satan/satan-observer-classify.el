@@ -21,6 +21,7 @@
 (require 'satan-memory-evidence)
 (require 'satan-memory-grammar)
 (require 'satan-jsonl)
+(require 'satan-motive)
 
 ;; ---------------------------------------------------------------------
 ;; Configuration
@@ -493,38 +494,11 @@ runs)."
          (percept (and bundle (plist-get bundle :percept))))
     (and percept (plist-get percept :handles))))
 
-(defun satan-observer--rank-motives-by-overlap (motives percept-handles)
-  "Rank MOTIVES by `|:cue ∩ PERCEPT-HANDLES|', descending.
-Ties resolved by ascending position in MOTIVES (file order — §S5
-deterministic tiebreaker so re-running the observer over the same
-state yields the same correlation).  Dormant motives are skipped
-(A14 — they have no usable cue).  Motives with zero overlap are
-dropped — `satan-observer-classify-for-motives' treats that as
-`:reason :no_correlation' rather than a positive on a phantom
-motive.
-
-Returns list of `(:motive PLIST :order INT :overlap INT)' plists."
-  (let* ((scored
-          (cl-loop for m in motives
-                   for idx upfrom 0
-                   unless (plist-get m :dormant)
-                   collect
-                   (list :motive m
-                         :order idx
-                         :overlap
-                         (cl-count-if
-                          (lambda (h) (member h (plist-get m :cue)))
-                          percept-handles))))
-         (matches (cl-remove-if (lambda (r) (zerop (plist-get r :overlap)))
-                                scored)))
-    (sort matches
-          (lambda (a b)
-            (let ((oa (plist-get a :overlap))
-                  (ob (plist-get b :overlap)))
-              (cond
-               ((> oa ob) t)
-               ((< oa ob) nil)
-               (t (< (plist-get a :order) (plist-get b :order)))))))))
+(defalias 'satan-observer--rank-motives-by-overlap
+  #'satan-motive-rank-by-overlap
+  "The observer's correlator ranking — promoted to `satan-motive' (SL-016
+PHASE-06) so the goad ask tool ranks by the same rule without
+requiring the observer.")
 
 (defun satan-observer-classify-for-motives (intervention motives &optional now)
   "Pick the strongest-correlated motive in MOTIVES, then classify.

@@ -1217,7 +1217,7 @@ through every reader."
 
 (defconst satan-intervention-test--form
   '((:id "rate" :label "Rate it"
-     :fields ((:id "energy" :kind "number" :min 0 :max 10)))
+     :fields ((:id "energy" :kind "number" :label "Energy" :min 0 :max 10)))
     (:id "skip" :label "Not now"))
   "A small ask form: one option with a field, one without.")
 

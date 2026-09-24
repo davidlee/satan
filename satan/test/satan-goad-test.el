@@ -426,21 +426,22 @@ reads as answered from 2026-09-23.json, though no 2026-09-24.json exists."
 ;; shape-relevant kind) is copied and mutated per rule.
 
 (defconst satan-goad-form-test--number-field
-  '(:id "energy" :kind "number" :min 0 :max 10))
+  '(:id "energy" :kind "number" :label "Energy" :min 0 :max 10))
 
 (defconst satan-goad-form-test--choice-field
-  '(:id "blocker" :kind "choice"
+  '(:id "blocker" :kind "choice" :label "Blocker"
     :options ((:id "none" :label "None") (:id "unclear" :label "Unclear"))))
 
 (defconst satan-goad-form-test--form
   `((:id "rate" :label "Rate it"
      :fields (,satan-goad-form-test--number-field
               ,satan-goad-form-test--choice-field
-              (:id "note" :kind "text")
-              (:id "walked" :kind "boolean")
-              (:id "back_at" :kind "datetime")))
+              (:id "note" :kind "text" :label "Note")
+              (:id "walked" :kind "boolean" :label "Walked")
+              (:id "back_at" :kind "datetime" :label "Back at")))
     (:id "skip" :label "Not now"))
-  "A well-formed form drawing every kind; mirrors the golden `form' ask.")
+  "A well-formed form drawing every kind; mirrors the golden `form' ask
+\(the golden itself predates F1 — RESIDUAL, PHASE-06 notes).")
 
 (defun satan-goad-form-test--ok-rebuilt (form)
   "FORM validated `ok'; the rebuilt value, or a test failure otherwise."
@@ -470,9 +471,20 @@ reads as answered from 2026-09-23.json, though no 2026-09-24.json exists."
   (should (satan-goad-form-test--refused (list "not an option")))
   (should (satan-goad-form-test--refused (list 7))))
 
-(ert-deftest satan-goad/form-refuses-unknown-option-key ()
+(ert-deftest satan-goad/form-refuses-unknown-key ()
+  "VT-47 — closed keys at every level: an option, a field, a choice
+alternative (SATAN emits no hints)."
   (should (satan-goad-form-test--refused
-           (list (list :id "a" :label "A" :hint "nope")))))
+           (list (list :id "a" :label "A" :hint "nope"))))
+  (should (satan-goad-form-test--refused
+           (list (list :id "a" :label "A"
+                      :fields (list (list :id "f" :kind "text" :label "F"
+                                         :hint "x"))))))
+  (should (satan-goad-form-test--refused
+           (list (list :id "a" :label "A"
+                      :fields (list (list :id "f" :kind "choice" :label "F"
+                                         :options (list (list :id "x" :label "X"
+                                                              :hint "h")))))))))
 
 (ert-deftest satan-goad/form-refuses-option-missing-id-or-label ()
   (should (satan-goad-form-test--refused (list (list :label "A"))))
@@ -487,63 +499,83 @@ reads as answered from 2026-09-23.json, though no 2026-09-24.json exists."
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A") (list :id "a" :label "B")))))
 
-(ert-deftest satan-goad/form-refuses-unknown-field-key ()
-  (should (satan-goad-form-test--refused
-           (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "text" :hint "x")))))))
-
 (ert-deftest satan-goad/form-refuses-key-on-wrong-kind ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "text" :min 0))))))
+                      :fields (list (list :id "f" :kind "text" :label "F"
+                                         :min 0))))))
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "number"
+                      :fields (list (list :id "f" :kind "number" :label "F"
                                           :options (list (list :id "x"
                                                                :label "X")))))))))
 
 (ert-deftest satan-goad/form-refuses-unknown-kind ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "date")))))))
+                      :fields (list (list :id "f" :kind "date" :label "F")))))))
 
 (ert-deftest satan-goad/form-refuses-bad-field-id ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "Bad Id" :kind "text")))))))
+                      :fields (list (list :id "Bad Id" :kind "text" :label "F")))))))
+
+(ert-deftest satan-goad/form-refuses-field-missing-label ()
+  "F1 — SPEC-001 R-15 requires every field to carry `label', not only
+`id'/`kind' (goad-semantics `WireField', no serde default on `label')."
+  (should (satan-goad-form-test--refused
+           (list (list :id "a" :label "A"
+                      :fields (list (list :id "f" :kind "text")))))))
+
+(ert-deftest satan-goad/form-refuses-bad-field-label ()
+  (should (satan-goad-form-test--refused
+           (list (list :id "a" :label "A"
+                      :fields (list (list :id "f" :kind "text" :label 7))))))
+  (should (satan-goad-form-test--refused
+           (list (list :id "a" :label "A"
+                      :fields (list (list :id "f" :kind "text"
+                                         :label (make-string 201 ?x))))))))
+
+(ert-deftest satan-goad/form-field-label-survives-rebuild ()
+  (let ((rebuilt (satan-goad-form-test--ok-rebuilt
+                  (list (list :id "a" :label "A"
+                             :fields (list (list :id "f" :kind "text"
+                                                :label "Note")))))))
+    (should (equal "Note"
+                   (plist-get (car (plist-get (car rebuilt) :fields)) :label)))))
 
 (ert-deftest satan-goad/form-refuses-duplicate-field-ids-within-an-option ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "text")
-                                    (list :id "f" :kind "boolean")))))))
+                      :fields (list (list :id "f" :kind "text" :label "F")
+                                    (list :id "f" :kind "boolean" :label "F")))))))
 
 (ert-deftest satan-goad/form-allows-the-same-field-id-across-options ()
   (should (satan-goad-form-test--ok-rebuilt
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "text")))
+                      :fields (list (list :id "f" :kind "text" :label "F")))
                 (list :id "b" :label "B"
-                      :fields (list (list :id "f" :kind "text")))))))
+                      :fields (list (list :id "f" :kind "text" :label "F")))))))
 
 (ert-deftest satan-goad/form-refuses-duplicate-alternative-ids ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "choice"
+                      :fields (list (list :id "f" :kind "choice" :label "F"
                                          :options (list (list :id "x" :label "X")
                                                        (list :id "x" :label "Y")))))))))
 
 (ert-deftest satan-goad/form-refuses-malformed-alternative ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "choice"
+                      :fields (list (list :id "f" :kind "choice" :label "F"
                                          :options (list (list :id "x"))))))))
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "choice"
+                      :fields (list (list :id "f" :kind "choice" :label "F"
                                          :options (list (list :label "X"))))))))
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "choice"
+                      :fields (list (list :id "f" :kind "choice" :label "F"
                                          :options (list (list :id "x" :label "X"
                                                               :note "n")))))))))
 
@@ -554,7 +586,7 @@ empty list, or the key omitted alike."
     (should (satan-goad-form-test--refused
              (list (list :id "a" :label "A"
                         :fields (list (append
-                                       (list :id "f" :kind "choice")
+                                       (list :id "f" :kind "choice" :label "F")
                                        (unless (eq options :absent)
                                          (list :options options))))))))))
 
@@ -575,21 +607,24 @@ key at all — the no-fields case, not `fields: []'."
 (ert-deftest satan-goad/form-refuses-non-number-min-max ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "number" :min "x")))))))
+                      :fields (list (list :id "f" :kind "number" :label "F"
+                                         :min "x")))))))
 
 (ert-deftest satan-goad/form-refuses-min-greater-than-max ()
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "number"
+                      :fields (list (list :id "f" :kind "number" :label "F"
                                          :min 10 :max 0)))))))
 
 (ert-deftest satan-goad/form-allows-a-lone-min-or-max ()
   (should (satan-goad-form-test--ok-rebuilt
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "number" :min 0))))))
+                      :fields (list (list :id "f" :kind "number" :label "F"
+                                         :min 0))))))
   (should (satan-goad-form-test--ok-rebuilt
            (list (list :id "a" :label "A"
-                      :fields (list (list :id "f" :kind "number" :max 10)))))))
+                      :fields (list (list :id "f" :kind "number" :label "F"
+                                         :max 10)))))))
 
 (ert-deftest satan-goad/form-size-caps ()
   "At most 8 options, 8 fields per option, 200-char labels, 8 KiB rebuilt."
@@ -603,12 +638,12 @@ key at all — the no-fields case, not `fields: []'."
            (list (list :id "a" :label "A"
                       :fields (cl-loop for i from 0 below 9
                                        collect (list :id (format "f%d" i)
-                                                    :kind "boolean"))))))
+                                                    :kind "boolean" :label "L"))))))
   (should (satan-goad-form-test--ok-rebuilt
            (list (list :id "a" :label "A"
                       :fields (cl-loop for i from 0 below 8
                                        collect (list :id (format "f%d" i)
-                                                    :kind "boolean"))))))
+                                                    :kind "boolean" :label "L"))))))
   (should (satan-goad-form-test--refused
            (list (list :id "a" :label (make-string 201 ?x)))))
   (should (satan-goad-form-test--ok-rebuilt
@@ -621,11 +656,11 @@ key at all — the no-fields case, not `fields: []'."
                                             :label (make-string 200 ?y)))))
     (should (satan-goad-form-test--refused
              (list (list :id "a" :label "A"
-                        :fields (list (list :id "f" :kind "choice"
+                        :fields (list (list :id "f" :kind "choice" :label "F"
                                            :options (alts 40)))))))
     (should (satan-goad-form-test--ok-rebuilt
              (list (list :id "a" :label "A"
-                        :fields (list (list :id "f" :kind "choice"
+                        :fields (list (list :id "f" :kind "choice" :label "F"
                                            :options (alts 4)))))))))
 
 (ert-deftest satan-goad/form-rebuild-is-canonical-regardless-of-input-shape ()
@@ -633,12 +668,12 @@ key at all — the no-fields case, not `fields: []'."
 rebuilt form: two forms differing only in those respects rebuild
 identically."
   (let ((scrambled
-         (vector (list :fields (vector (list :kind "text" :id "note"))
+         (vector (list :fields (vector (list :label "Note" :kind "text" :id "note"))
                       :label "Rate it" :id "rate")
                 (list :label "Not now" :id "skip")))
         (canonical
          (list (list :id "rate" :label "Rate it"
-                    :fields (list (list :id "note" :kind "text")))
+                    :fields (list (list :id "note" :kind "text" :label "Note")))
               (list :id "skip" :label "Not now"))))
     (should (equal (satan-goad-form-test--ok-rebuilt canonical)
                    (satan-goad-form-test--ok-rebuilt scrambled)))))
@@ -743,6 +778,19 @@ rows as JSON, never splits `psql' output on `|' and newlines)."
        (satan-goad-queue-rewrite "2026-05-23T12:30:00+1000")
        (should (equal (plist-get satan-intervention-test--ask-args :message)
                       (plist-get (car (satan-goad-read-queue)) :question)))))))
+
+(ert-deftest satan-goad/queue-rewrite-no-asks-writes-an-array ()
+  "With no open asks the queue document is `{\"asks\":[]}' — an array,
+per goad's README schema — never `{\"asks\":{}}' (`satan-jsonl-prepare'
+renders a bare nil as an object)."
+  (satan-goad-fixture-with-tmp _dir
+    (cl-letf (((symbol-function 'satan-intervention-open-asks)
+               (lambda (&rest _) nil)))
+      (satan-goad-queue-rewrite "2026-05-23T12:30:00+1000"))
+    (should (equal "{\"asks\":[]}"
+                   (with-temp-buffer
+                     (insert-file-contents satan-goad-queue-file)
+                     (buffer-string))))))
 
 (provide 'satan-goad-test)
 ;;; satan-goad-test.el ends here

@@ -118,8 +118,9 @@ named keys only, so the payload's extra key needs no validator change."
     (satan-audit-iv-test--created
      :kind "ask"
      :form '((:id "rate" :label "Rate it"
-              :fields ((:id "energy" :kind "number" :min 0 :max 10)
-                       (:id "note" :kind "text")))
+              :fields ((:id "energy" :kind "number" :label "Energy"
+                        :min 0 :max 10)
+                       (:id "note" :kind "text" :label "Note")))
              (:id "skip" :label "Not now")))
     (make-hash-table :test 'equal))))
 

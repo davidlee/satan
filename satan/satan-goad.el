@@ -142,7 +142,7 @@ own.")
 (defconst satan-goad-form--kind-extra-keys
   '(("number" :min :max)
     ("choice" :options))
-  "Extra keys a field's kind allows beyond `:id' and `:kind' (R-50).
+  "Extra keys a field's kind allows beyond `:id', `:kind' and `:label' (R-50).
 `text', `boolean' and `datetime' allow none.")
 
 (defun satan-goad-form--fail (reason)
@@ -234,20 +234,25 @@ fails when both are present and `min > max'."
               (and (plist-member field :max) (list :max max))))))
 
 (defun satan-goad-form--field (field context)
-  "FIELD (an option's field) rebuilt; kind-scoped keys enforced (R-50)."
+  "FIELD (an option's field) rebuilt; kind-scoped keys enforced (R-50).
+`label' is required alongside `id'/`kind' (F1 — goad SPEC-001 R-15's
+`WireField' has no serde default on `label'; a form the host would
+refuse before this was caught blanked goad)."
   (unless (satan-jsonl--plist-p field)
     (satan-goad-form--fail (format "%s must be an object" context)))
-  (unless (and (plist-member field :id) (plist-member field :kind))
-    (satan-goad-form--fail (format "%s: needs id and kind" context)))
+  (unless (and (plist-member field :id) (plist-member field :kind)
+               (plist-member field :label))
+    (satan-goad-form--fail (format "%s: needs id, kind and label" context)))
   (let ((kind (plist-get field :kind)))
     (unless (member kind satan-goad-form--kinds)
       (satan-goad-form--fail (format "%s: unknown kind %S" context kind)))
     (satan-goad-form--closed-keys
-     field (append '(:id :kind)
+     field (append '(:id :kind :label)
                     (cdr (assoc kind satan-goad-form--kind-extra-keys)))
      context)
     (append
-     (list :id (satan-goad-form--id (plist-get field :id) context) :kind kind)
+     (list :id (satan-goad-form--id (plist-get field :id) context) :kind kind
+           :label (satan-goad-form--label (plist-get field :label) context))
      (pcase kind
        ("number" (satan-goad-form--number-extra field context))
        ("choice" (list :options (satan-goad-form--alternatives
@@ -373,7 +378,9 @@ later ask happened to rewrite the file."
          (entries (mapcar #'satan-goad--queue-entry-from-row rows)))
     (satan-jsonl-write-file-atomic
      (or file satan-goad-queue-file)
-     (json-serialize (satan-jsonl-prepare (list :asks entries))
+     ;; A vector, so no open asks is `[]': `satan-jsonl-prepare' renders
+    ;; a bare nil as `{}', and the README schema says `asks' is an array.
+    (json-serialize (satan-jsonl-prepare (list :asks (vconcat entries)))
                      :null-object :null :false-object :false))))
 
 ;; ── records ─────────────────────────────────────────────────────────────────

@@ -86,8 +86,9 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
                         "memory_mark" "memory_resonate"
                         "memory_show_trace"
                         "motive_read" "motive_replace"
-                        "vcs_log")
-              :capabilities '(notify inbox-write memory-write motive-write)
+                        "vcs_log" "goad_ask")
+              :capabilities '(notify inbox-write memory-write motive-write
+                               goad-ask)
               :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
               :jail-profile 'specDev
               :profile 'deepseek-pro

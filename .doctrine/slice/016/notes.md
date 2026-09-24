@@ -6,14 +6,178 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-06 first half (T0–T2) implemented, 2026-09-24
-(uncommitted; orchestrator commits). `satan-goad-form-validate` and
-`satan-goad-queue-rewrite` land in `satan-goad.el`; the atomic-write helper is
-promoted to `satan-jsonl.el`. `satan-tools-goad.el` (T3–T7: registration,
-handler, corpus description) is not started — a second worker takes it. Next:
-`/phase-plan` or dispatch the T3–T7 half.
+**fresh-as-of:** PHASE-06 implemented in full (T0–T7), 2026-09-24, plus the F1
+field-label fix (T0–T2 committed `6514439`; T3–T7 and the F1 fix
+uncommitted — orchestrator commits the corpus `tools/goad_ask.md` first, then
+the dev repo). The `goad_ask` tool is registered and allowlisted on
+tick-pulse; `satan-goad-enabled` stays nil.
+**Blocker before enabling goad (PHASE-08):** F1 (field labels) is fixed in
+the validator, tests and `tools/goad_ask.md`; the RESIDUAL is now narrower —
+only the corpus goad goldens (`~/satan/goad/goldens.py`, `test_backend.py`,
+`README.md`) and SATAN's copied goldens
+(`satan/test/goad-fixtures/`) still lack field labels — see the F1-fix note
+under PHASE-06b. Next: orchestrator review/commit, then flip PHASE-06
+completed.
 
-### PHASE-06a — T0–T2: form-validate + queue-rewrite (2026-09-24)
+### PHASE-06 — PROMPT + DOORBELL: the goad_ask tool (2026-09-24)
+
+Two workers, in-tree. 06a (T0–T2, committed `6514439`) below 06b.
+
+#### PHASE-06b — T3–T7: registration, handler, corpus description
+
+Worker: Claude Opus 5.5, in-tree. Orchestrator's rationale for opus: the
+refusal legs must have zero side effects, the goad-minted exclusion, the
+undelivered failure arms (DB-backed VT-11), the rank-fn promotion under the
+observer's 127 tests, and the MCP union making registration depend on the
+corpus description.
+
+**Files changed (dev repo):**
+- `satan/satan-tools-goad.el` (new) — `satan-tool/goad-ask` as a pipeline of
+  small functions: `--refusal` (MCP → kill switch → quiet window at ctx
+  `:time-now`), `--form` (validates a *present* form, even an empty one),
+  `--ungrounded` (percept miss / goad-minted), `--winner` (only motives cueing
+  the subject compete; `satan-motive-rank-by-overlap`), `--suppress`
+  (enqueue `ask_suppressed`, never signals), `--record`, `--deliver`
+  (`--publish` = project then rewrite, first error wins; failure →
+  `satan-intervention-mark-undelivered`, no ring), `--ring`. Registration:
+  `:risk 'low` (as notify: visible to the keeper, not a read),
+  `:capability 'goad-ask`, `form` declared `(:type array :items object)` —
+  `:items` added over the sheet's shape so the manifest carries a complete
+  array schema (every other array arg in the codebase has `:items`).
+- `satan/satan-motive.el` — `satan-motive-rank-by-overlap` (public), moved
+  verbatim from the observer; header lists it.
+- `satan/satan-observer-classify.el` — requires `satan-motive`;
+  `satan-observer--rank-motives-by-overlap` is now a `defalias` to it, so the
+  observer's call sites and its 127 tests are unchanged (all green).
+- `satan/satan-tick.el` — tick defaults gain `"goad_ask"` / `goad-ask`
+  (tick-pulse; tick-agent overrides both and is unaffected).
+- `satan/satan.el` — `(require 'satan-tools-goad)` beside notify.
+- `satan/satan-goad.el` — orchestrator's extra task: the queue writes
+  `{"asks":[]}` with no open asks (entries passed as a vector;
+  `satan-jsonl-prepare` renders a bare nil as `{}`).
+- `satan/test/satan-tools-goad-test.el` (new, 17 tests) and
+  `satan/test/satan-goad-test.el` (+1 empty-array test; the two
+  `form-refuses-unknown-{option,field}-key` tests merged into
+  `satan-goad/form-refuses-unknown-key`, now also covering an alternative —
+  VT-47's mandated keyword was absent, so `verify-vt` reported VT-47 FAIL).
+
+**Corpus (`~/satan`):** `tools/goad_ask.md` (new) only — when to ask (the
+three gate conditions) and when it is refused, params, the form shape, the
+five kinds and their keys, closed keys, the id rule, the caps, the
+untouched-field default warning with both remedies, a worked example (checked
+to validate `ok`), the result shapes.
+
+**Decisions taken:**
+- OQ-1 (orchestrator): every no-winner case — percept miss, goad-minted
+  (`app:goad`, or `satan-goad-subject-topic` of a queued subject), no live
+  non-dormant cueing motive — is a suppression. VT-13's
+  `goad-subject-refused` asserts suppression.
+- OQ-2: suppression → `(ok :asked :false :reason R [:enqueue "failed: …"])`;
+  refusal → `(error . R)`; asked → `(ok :asked t :intervention_id IV)`;
+  publish failure → adds `:delivered :false :error ERR` plus
+  mark-undelivered's notes.
+- goad-emit argv: `--source satan --kind ask`. `--kind` is required by
+  `crates/goad-emit/src/args.rs` (the sheet's `--source satan` alone would
+  exit 2 every time); `--data` is optional and omitted.
+- Not `satan-intervention-try-project`: it returns a note string, but
+  `mark-undelivered` needs the error object, so `--publish` uses a local
+  `--error-of` (condition-case → the error). Small; if a third caller wants
+  "the error, not a note", promote it beside `try-project`.
+- `satan-tools-goad.el` requires `satan-tick` for `satan-tick-quiet-p`. No
+  cycle, but it pulls the broker into the tool module's load. Design
+  improvement (not done): `satan-tick-quiet-p` is a pure time predicate and
+  belongs in a leaf module.
+
+**Red-first evidence:** the suite was written before the module existed —
+first run failed to load (`satan-tools-goad` missing). Once the module landed,
+the DB tests went red for a real reason: the test doorbell stub replaced
+`satan-trace-call` wholesale, and psql runs through `satan-trace-call` too, so
+projection silently "succeeded" without a row. Fixed in the helper
+(`--doorbell-stub` stubs only `satan-goad-emit-program`). Registration test
+red until `satan-tick.el` changed. Empty-array queue test red first
+(`{"asks":{}}`). `no-ask-when-record-fails` was written as a characterisation
+test before the `--record`/`--deliver` split (green before and after).
+`corpus-description-present` skips without the corpus, so it has no red.
+Mutation checks (edit + restore from a scratch copy): dropping the minted
+check, the subject filter in `--winner`, the MCP leg, the quiet leg, the
+percept check, or ringing on a failed publish — each killed by exactly the
+expected test(s).
+
+**Gate (serial, `SATAN_DB_HOST=127.0.0.1 just check`):** ran 1257, expected
+1251, unexpected 0, skipped 6 — the six baseline names. Delta over 06a's 1240:
++17 tool tests, +1 empty-array test, −1 from merging the two unknown-key tests.
+No `Test redefined`. `verify-vt 16`, PHASE-06: VT-28/48/51 PASS; VT-5/6/9/11/
+13/29/38/41/60 UNATTRIBUTABLE until committed (new file); VT-47 FAIL before
+the rename (mandated keyword absent), fixed by it. `just lint` clean;
+scratch byte-compile of the six touched modules vs HEAD: zero warnings either
+side; `.elc` deleted.
+
+**Finding F1 — fields need a label (blocker before PHASE-08 enables goad).**
+goad SPEC-001 R-15: "Each field MUST carry an id, a kind and a label"; the
+host's `WireField` (`crates/goad-semantics/src/protocol/wire.rs:258`) has
+`label: String` with no serde default. SATAN's validator (T1) closes a field
+to `{id, kind}` + kind keys and refuses `label`; the golden `form` fixture
+(`test/goad-fixtures/queue.json`, from the corpus backend's goldens) has
+label-less fields; `backend.py` forwards fields verbatim. So any SATAN form
+with fields would be rejected by the host — and a rejected message blanks
+goad, checklist included (design sec-3 "The answer form"). The design cites
+R-15 ("fields in goad SPEC-001's own shape"); the sheet's "field `{id,
+kind}`" is where it went wrong. Not fixed here (it reopens T1's committed
+rule set and the corpus goldens): fix = require a string `label` (≤ 200
+chars) on every field in `satan-goad-form-validate`, update the goldens (both
+repos) and `tools/goad_ask.md` (which today teaches the validator's shape).
+
+**F1 fixed** (narrow correction, 2026-09-24). Worker: Claude Sonnet 5,
+in-tree. Rationale (orchestrator): a fully-specified rule change in one pure
+validator plus its tests and one doc; the design already mandates the shape
+(R-15), no design judgement remained.
+
+- `satan/satan-goad.el` `satan-goad-form--field`: now requires `:label`
+  alongside `:id`/`:kind` (`plist-member` presence check), adds `:label` to
+  the field's closed-key set, validates it with the existing
+  `satan-goad-form--label` (string, ≤ 200 chars — same rule an option's
+  label already uses), and rebuilds in order `:id :kind :label` then the
+  kind-scoped extras. `satan-goad-form--kind-extra-keys`'s docstring updated
+  to name `:label` among the field's always-allowed keys.
+- Tests (red first): `satan/test/satan-goad-test.el` gained
+  `satan-goad/form-refuses-field-missing-label`,
+  `satan-goad/form-refuses-bad-field-label` (non-string, >200 chars),
+  `satan-goad/form-field-label-survives-rebuild` — all three red against the
+  pre-fix validator (`form-refuses-field-missing-label`: got `ok` instead of
+  refused; `form-field-label-survives-rebuild`: `unknown key :label`), green
+  after. Every other field literal across `satan-goad-test.el`,
+  `satan-tools-goad-test.el` (`form-recorded-rebuilt`), `satan-intervention-
+  test.el` (`satan-intervention-test--form`) and `satan-audit-intervention-
+  test.el` (`created-with-form-ok`) gained a `:label`, so the tests keep
+  exercising what their names/docstrings say (e.g. `form-refuses-unknown-
+  kind`'s field now fails on the unknown kind, not first on the missing
+  label). `satan-goad-test.el` VT-28/48/51 fixtures (`satan-goad-fixture-
+  golden-entry 'form`) were left untouched — those tests store `:form`
+  verbatim via `satan-intervention-record`/`-project`, never through
+  `satan-goad-form-validate`, so they do not exercise the new rule (confirmed
+  by grep: the validator is called only from `satan-tools-goad.el` and the
+  two `*-test.el` files already listed).
+- `~/satan/tools/goad_ask.md`: field shape line now `{ "id", "kind", "label",
+  ... }`; a sentence naming `label` as required (same rules as an option's);
+  "No other keys" sentence now also names a missing `label`; the worked
+  example's three fields (`energy`, `blocker`, `note`) each gained a label.
+  Re-validated the worked example through `satan-goad-form-validate` after
+  editing — `ok`.
+- **RESIDUAL — not fixed here, corpus scope, blocks PHASE-08 goad-enable:**
+  the golden fixtures still have label-less fields —
+  `satan/test/goad-fixtures/queue.json` and `data/2026-09-23.json` (SATAN
+  repo, read-only goldens copied from the corpus backend's own goldens; left
+  alone per this task's hard limits since no test routes them through the
+  validator), and on the corpus side `~/satan/goad/goldens.py`,
+  `test_backend.py` and `README.md`. All of these must gain field labels
+  before goad is turned on (`satan-goad-enabled`), or the host will reject
+  any form built from them.
+- **Gate:** `SATAN_DB_HOST=127.0.0.1 just check` — ran 1260, expected 1254,
+  unexpected 0, skipped 6 (the six baseline names). Delta over PHASE-06b's
+  1257/1251/0/6: +3 (the new VT-47-area tests). `doctrine slice verify-vt 16`
+  PHASE-06: VT-47/28/48/51 all PASS.
+
+#### PHASE-06a — T0–T2: form-validate + queue-rewrite (2026-09-24)
 
 Worker: Claude Sonnet 5, in-tree (no isolation requested). Scope: T0 baseline,
 T1 `satan-goad-form-validate`, T2 `satan-goad-queue-rewrite` +

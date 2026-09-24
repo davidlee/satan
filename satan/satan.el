@@ -32,6 +32,7 @@
 (require 'satan-tools)
 (require 'satan-tools-org)
 (require 'satan-tools-notify)
+(require 'satan-tools-goad)
 (require 'satan-tools-hippocampus)
 (require 'satan-tools-inbox)
 (require 'satan-tools-agenda)
