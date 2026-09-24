@@ -867,6 +867,28 @@ gate, so the gate's state never reaches an ask."
         (should (eq :medium (plist-get out :confidence)))
         (should (eq :untouched (plist-get out :reason)))))))
 
+(ert-deftest satan-observer/ask-record-without-queue-entry ()
+  "The ask record is reachable when its queue entry has been retired.
+`satan-goad-queue-rewrite' projects only *open* asks, so a window that
+closes mid-spawn drops the entry before the observer classifies the
+ask; the observer must still read the day file of the ask's own emit
+date (design sec-2, RV-007 F-34) rather than mature it `undelivered'."
+  (satan-goad-fixture-with-goldens
+    ;; AFTER carries no `:goad' entry at all — the queue was rewritten
+    ;; since the ask was emitted, so the slice cannot supply the record.
+    (satan-observer-test--classify-ask
+        'untouched (list :goad nil) iv
+      (let ((out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (eq :ignored (plist-get out :classification)))
+        (should (eq :medium (plist-get out :confidence)))
+        (should (eq :untouched (plist-get out :reason)))))
+    (satan-observer-test--classify-ask
+        'answered (list :goad nil) iv
+      (let* ((after (list :goad nil))
+             (out (satan-observer-classify iv (satan-observer-test--motive))))
+        (should (satan-observer--predicate-goad-answer nil after nil iv))
+        (should (eq :worked (plist-get out :classification)))))))
+
 (ert-deftest satan-observer/ask-dismissed-ignored ()
   "VT-3 — a presented ask dismissed by bulk Enough is `:ignored :medium`
 dismissed (saw it and refused the slot)."

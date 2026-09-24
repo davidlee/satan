@@ -280,18 +280,33 @@ strings (SL-016 R1)."
          (not (time-less-p at-time (car window)))
          (not (time-less-p (cdr window) at-time)))))
 
+(defun satan-observer--ask-record (after intervention)
+  "INTERVENTION's goad day record, or nil.
+Reads AFTER's `:goad' slice first; when the ask's queue entry has
+been retired — `satan-goad-queue-rewrite' projects only *open* asks,
+so a window that closes mid-spawn drops the entry before the
+observer classifies it — falls back to the day file of the
+intervention's own emit date, exactly as the answer trace does
+(design sec-2, RV-007 F-34).  The record is reachable whenever the
+ask was filed, independent of the disposable queue projection."
+  (let ((entry (satan-observer--goad-entry after intervention)))
+    (or (and entry (plist-get entry :record))
+        (satan-goad-read-record
+         (plist-get intervention :intervention_id)
+         (plist-get intervention :intervention_emitted_at)))))
+
 (defun satan-observer--predicate-goad-answer
     (_baseline after _motive intervention)
   "SL-016 — fires when the keeper answered INTERVENTION's ask in window.
-Reads AFTER's `:goad' slice: the entry for this intervention must carry
-a `:record' with a `:value' present and an `:at' within the ask's own
-outcome window.  It never reads what the value says (DEC-025): any
-answer to the form, whatever its option or fields, is an answer."
-  (let* ((entry (satan-observer--goad-entry after intervention))
-         (record (and entry (plist-get entry :record)))
+Reads INTERVENTION's goad day record (`--ask-record') — from AFTER's
+`:goad' slice, or direct from its emit date's day file when the queue
+entry was retired — which must carry a `:value' present and an `:at'
+within the ask's own outcome window.  It never reads what the value
+says (DEC-025): any answer to the form, whatever its option or
+fields, is an answer."
+  (let* ((record (satan-observer--ask-record after intervention))
          (at (and record (plist-get record :at))))
-    (and entry
-         record
+    (and record
          (plist-member record :value)
          (satan-observer--instant-in-window-p
           at (satan-observer--ask-answer-window intervention)))))
@@ -350,11 +365,6 @@ follow-up."
   "The tail of an ask's outcome window that reads as `:short_exposure'.
 A `:presented_at' this close to window end leaves too little time to
 call the ask ignored (design sec-5, SL-016 PHASE-09).")
-
-(defun satan-observer--ask-record (after intervention)
-  "INTERVENTION's goad day record from AFTER's `:goad' slice, or nil."
-  (let ((entry (satan-observer--goad-entry after intervention)))
-    (and entry (plist-get entry :record))))
 
 (defun satan-observer--ask-presented-in-window-p (record window)
   "Non-nil when RECORD's `:presented_at' falls inside WINDOW.
