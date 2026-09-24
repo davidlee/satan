@@ -1,0 +1,42 @@
+memory_uid = "mem_01a0d395ef917350997baa3d821f706a"
+memory_key = "mem.fact.satan.perceives-dev-commit-subjects"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "SATAN perceives this repo's commit subjects: live-rollout commits steer its judgement"
+summary = "SATAN reads git commit subjects in its percept; a commit describing a live test can change what the model decides to do in that test."
+created = "2026-09-24"
+updated = "2026-09-24"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "testing", "rollout", "perception"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "1a3217a7f886fcb49625afa7bec3cd5f685c3d3e"
+ref_name = "refs/heads/main"
+checkout_state_id = "f8ae206c7a59c4d1105dc995e146600048b9f3c75cde068a6cd5b2ea3ba6d7dd"
+base_commit = "762ae8770e5bcdb5f24ea85d8d630ba7492589af"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
