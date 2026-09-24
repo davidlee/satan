@@ -85,6 +85,16 @@
 ;; JSON serialisation round-trip
 ;; ---------------------------------------------------------------------
 
+(defun satan-attribute-test--roundtrip-json (payload)
+  "Serialise PAYLOAD the wire way (`satan-jsonl-prepare' + `json-serialize'),
+then parse it back into a plist — attrd's-eye view of what the broker sent.
+Shared by every payload-builder round-trip test in this file."
+  (json-parse-string (json-serialize (satan-jsonl-prepare payload))
+                      :object-type 'plist
+                      :array-type 'list
+                      :null-object nil
+                      :false-object :false))
+
 (ert-deftest satan-attribute/payload-round-trips-through-json ()
   (let* ((p (satan-attribute-build-outcome-payload
              :run-id "r1" :ts "2026-05-24T12:00:00Z"
@@ -95,12 +105,7 @@
              :related-motive-id "m42"
              :cue-handles '("focus:sway:firefox")
              :is-revision t :revises "prior"))
-         (json (json-serialize (satan-jsonl-prepare p)))
-         (parsed (json-parse-string json
-                                    :object-type 'plist
-                                    :array-type 'list
-                                    :null-object nil
-                                    :false-object :false)))
+         (parsed (satan-attribute-test--roundtrip-json p)))
     (should (equal "1.0" (plist-get parsed :schema_version)))
     (should (equal "r1.iv001" (plist-get parsed :intervention_id)))
     (should (equal "harmful" (plist-get parsed :classification)))
@@ -108,6 +113,46 @@
     (should (equal "prior" (plist-get parsed :revises)))
     (should (equal "m42" (plist-get (plist-get parsed :evidence)
                                     :related_motive_id)))))
+
+;; ---------------------------------------------------------------------
+;; build-ask-payload — thin wrapper over build-sensor-payload (VT-37)
+;; ---------------------------------------------------------------------
+
+(defun satan-attribute-test--attrd-sensor-contract-errors (parsed)
+  "Return the list of ways PARSED violates attrd's sensor payload contract
+\(mirrors `parse_sensor_payload', satan-attrd `src/run_loop.rs:298').
+Empty list means PARSED would be accepted."
+  (let (errs)
+    (dolist (key '(:run_id :ts :reason :sensor_type :metric_unit))
+      (unless (stringp (plist-get parsed key))
+        (push (format "%s must be a string" key) errs)))
+    (unless (numberp (plist-get parsed :metric_value))
+      (push "metric_value must be a number" errs))
+    (unless (memq (plist-get parsed :enabled) '(t :false))
+      (push "enabled must be a boolean (t or :false)" errs))
+    (nreverse errs)))
+
+(ert-deftest satan-attribute/build-ask-payload-meets-attrd-sensor-contract ()
+  (dolist (reason '("ask_suppressed" "ask_uncorrelated"))
+    (let* ((p (satan-attribute-build-ask-payload
+               :run-id "r1" :ts "2026-09-24T12:00:00Z" :reason reason))
+           (parsed (satan-attribute-test--roundtrip-json p)))
+      (should (equal '() (satan-attribute-test--attrd-sensor-contract-errors parsed)))
+      (should (equal "sensor" (plist-get parsed :source)))
+      (should (equal reason (plist-get parsed :reason)))
+      (should (eq :false (plist-get parsed :is_revision))))))
+
+(ert-deftest satan-attribute/build-ask-payload-fixes-sensor-fields ()
+  (let ((p (satan-attribute-build-ask-payload
+            :run-id "r1" :ts "2026-09-24T12:00:00Z" :reason "ask_suppressed")))
+    (should (equal "goad_ask" (plist-get p :sensor_type)))
+    (should (equal 0 (plist-get p :metric_value)))
+    (should (equal "correlating_motives" (plist-get p :metric_unit)))))
+
+(ert-deftest satan-attribute/build-ask-payload-rejects-unknown-reason ()
+  (should-error
+   (satan-attribute-build-ask-payload
+    :run-id "r1" :ts "2026-09-24T12:00:00Z" :reason "clairvoyance")))
 
 ;; ---------------------------------------------------------------------
 ;; --prep-value normalisation

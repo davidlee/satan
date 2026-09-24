@@ -31,7 +31,7 @@ metadata:
 | `hippocampus` | implemented   | T-attr-1e-hc | 6 reasons (incl. `trace_marked`), binary (no confidence weighting) |
 | `percept`     | reserved      | T-attr-1e | novel/weak/contradictory percept signals |
 | `resonance`   | reserved      | T-attr-1e | memory_resonate hit signals |
-| `sensor`      | implemented   | T-attr-1e-sensor | segment_backlog, typing_active, typing_idle |
+| `sensor`      | implemented   | T-attr-1e-sensor | segment_backlog, typing_active, typing_idle, ask_suppressed, ask_uncorrelated (SL-016 PHASE-05; nothing emits the last two yet) |
 | `tool_error`  | reserved      | T-attr-1e | tool execution failure signals |
 | `manual`      | reserved      | post T-attr-1 | interactive command / notes directive |
 
@@ -47,6 +47,8 @@ Outcome deltas: all zero across all 5 classifications.
 
 Sensor deltas:
 - `segment_backlog` → +0.05 (uninspected panopticon segments raise curiosity)
+- `ask_suppressed` → +0.025 (SL-016 PHASE-05; nothing emits it yet — the goad
+  tool wanted to ask but no motive correlates; provisional magnitude)
 
 Hippocampus deltas:
 - `trace_marked` → −0.025 (trace persistence *partially* satisfies curiosity; amended 2026-05-29 from −0.05 to break daily cancellation against sensor `segment_backlog` — see design-contract §6H footnote 6)
@@ -116,6 +118,12 @@ Outcome deltas:
 - `harmful` → +0.30
 
 Hippocampus deltas: all zero (inward-facing tools don't affect certainty).
+
+Sensor deltas:
+- `ask_uncorrelated` → +0.025 (SL-016 PHASE-05; nothing emits it yet — a goad
+  ask matured `:no_correlation`, SATAN's own motives moved under its own
+  question; provisional magnitude). This is the one sensor reason that
+  touches Doubt — see design-contract §6S.2 note 4's exception.
 
 Doubt responds to every non-neutral outcome. Currently the most responsive
 attribute — it captures "how much should SATAN trust its own interventions."
@@ -215,6 +223,14 @@ Outcome deltas:
 
 Hippocampus deltas: all zero.
 
+Sensor deltas:
+- `ask_suppressed` → +0.025 (SL-016 PHASE-05; nothing emits it yet)
+- `ask_uncorrelated` → +0.025 (SL-016 PHASE-05; nothing emits it yet)
+
+Both new sensor reasons are the same pairing — see design-contract §6S.2 note
+4's exception — since a suppressed or uncorrelated ask is evidence about
+SATAN's own motive state.
+
 Metamorphosis is self-edit pressure. It rises only on outcomes that reveal
 SATAN was wrong in ways that demand structural change. No decay (§8). Falls
 only via future mechanisms (successful self-edit reducing the failure mode).
@@ -224,15 +240,15 @@ only via future mechanisms (successful self-edit reducing the failure mode).
 ## Summary matrix
 
 ```
-                    outcome    hippocampus   percept   resonance   sensor   tool_error
-Curiosity           —          active        reserved  reserved    active   reserved
-Hunger              (−only)    —             reserved  —           active   —
-Suspicion           (−only)    (+0.025)      reserved  reserved    —        —
-Doubt               active     —             reserved  —           reserved —
-Friction            (−only)    —             reserved  reserved    —        —
-Shame               active     active        —         —           —        —
-Brooding            active     active        —         —           —        —
-Metamorphosis       active     —             —         —           —        —
+                    outcome    hippocampus   percept   resonance   sensor    tool_error
+Curiosity           —          active        reserved  reserved    active    reserved
+Hunger              (−only)    —             reserved  —           active    —
+Suspicion           (−only)    (+0.025)      reserved  reserved    —         —
+Doubt               active     —             reserved  —           (+0.025)  —
+Friction            (−only)    —             reserved  reserved    —         —
+Shame               active     active        —         —           —         —
+Brooding            active     active        —         —           —         —
+Metamorphosis       active     —             —         —           (+0.025)  —
 ```
 
 Legend: `active` = has nonzero deltas in both directions or meaningful
@@ -301,3 +317,4 @@ and architectural readiness:
 | 2026-05-25 | Initial wiring status — mapped all 8 attributes against implemented sources, documented structural locks and activation roadmap. | Attribute audit session. |
 | 2026-05-25 | Curiosity and Hunger wired to active. Sensor source implemented (segment_backlog, typing_active, typing_idle). Curiosity also wired to hippocampus trace_marked. Roadmap updated — sensor done, percept + resonance remain for Suspicion. | T-attr-1e-sensor. |
 | 2026-05-29 | `trace_marked` Curiosity delta reduced from −0.05 to −0.025 — production observation showed perfect daily cancellation against sensor `segment_backlog` (+0.05). See design-contract §6H footnote 6. Per-segment backlog scaling deferred to `T-attr-1e-percept` companion work. | Post-T-attr-1e snapshot review. |
+| 2026-09-24 | Sensor source gains `ask_suppressed` (curiosity +0.025, metamorphosis +0.025) and `ask_uncorrelated` (doubt +0.025, metamorphosis +0.025) — the goad-ask surface's suppression/no-correlation signals. Sensor row, Curiosity/Doubt/Metamorphosis sections, and the summary matrix updated. Both are provisional (the user expects to iterate) and unemitted — no producer exists yet; attrd must be redeployed (PHASE-08) before `satan-goad-enabled`. | SL-016 PHASE-05. |

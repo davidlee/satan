@@ -6,14 +6,12 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
-**fresh-as-of:** PHASE-12 implemented, 2026-09-24 (uncommitted; orchestrator
-commits). Migration 0008 adds a nullable `form_json` to `satan_interventions`;
-`satan-intervention-record` carries an optional `:form`, the INSERT names
-`form_json` only for a payload with a form (DEC-024), every intervention reader
-reads rows as JSON through one mapping (DEC-028), and
-`satan-intervention-open-asks` returns the open asks with their forms. 0008 is
-applied only to the test DBs; the live DB gets it in PHASE-08. Next: commit,
-then `/phase-plan` PHASE-05.
+**fresh-as-of:** PHASE-05 implemented, 2026-09-24 (uncommitted in both repos;
+orchestrator commits). attrd's `SensorReason` gains `AskSuppressed` /
+`AskUncorrelated` with `tuning::sensor_base_deltas` rows; SATAN's audit
+validator accepts the resulting events and a thin `satan-attribute-build-ask-payload`
+wraps the existing sensor builder. Nothing emits either reason yet. Next:
+commit both repos, then `/phase-plan` PHASE-06.
 
 ### Design revision — answer forms (2026-09-24)
 
@@ -41,6 +39,92 @@ message says it was retired.
   That is harmless under `opt:` namespacing, but should be pinned by a test.
 
 None of these blocks the lock. They are verification or plan-time checks.
+
+### PHASE-05
+
+Cross-repo: attrd gains the two sensor reasons and their delta rows; SATAN
+gets a payload builder and widens its audit validator to accept the events.
+Model: sonnet (the orchestrator's rationale — mechanical once the family and
+delta rows were settled: two enum variants and two literal rows in attrd,
+widening one reason list, a thin wrapper over the existing sensor-payload
+builder, and doc table rows).
+
+**attrd (`~/dev/satan-attrd`, uncommitted, orchestrator commits):**
+- `src/types.rs`: `SensorReason` gains `AskSuppressed`/`AskUncorrelated`
+  (`as_str`/`FromStr`, snake_case); `sensor_reason_round_trip` extended.
+- `src/tuning.rs`: `sensor_base_deltas` gains the two rows (`TINY` const),
+  aligned under the column comment.
+- `src/dispatcher.rs` (tests only): `sensor_base_deltas_match_contract`
+  extended with the two literal rows;
+  `dispatch_sensor_ask_suppressed_affects_curiosity_and_metamorphosis` and
+  `dispatch_sensor_ask_uncorrelated_affects_doubt_and_metamorphosis` added,
+  modelled on the existing `affects_only_*` tests.
+- **Gate:** `direnv exec . just check` — clippy `-D warnings` clean, `fmt
+  --check` clean, **113 tests passed, 0 failed** (71 lib + 42 integration:
+  decay 12, dispatcher 8, harness 4, run_loop 5, store 13). VT-36 evidence.
+- **Proposed commit:** `feat(sensor): ask_suppressed and ask_uncorrelated
+  reasons (SATAN SL-016)`. Paths: `src/types.rs`, `src/tuning.rs`,
+  `src/dispatcher.rs`.
+
+**SATAN (`~/dev/satan`, uncommitted, orchestrator commits):**
+- `satan/satan-audit.el`: `satan-audit-attribute-sensor-reasons` widened with
+  `"ask_suppressed"`/`"ask_uncorrelated"` (line ~448). The sensor evidence
+  validator (`satan-audit--validate-attribute-sensor-evidence`) needed no
+  change — it only checks shape (`sensor_type` string, `metric_value` number,
+  `metric_unit` string), not a closed vocabulary.
+- `satan/satan-attribute.el`: `satan-attribute-build-ask-payload (&key run-id
+  ts reason)`, a thin wrapper over `satan-attribute-build-sensor-payload`.
+  Fixed sensor fields (**orchestrator-confirmed, no answer received — used as
+  proposed**): `:sensor-type "goad_ask"`, `:metric-value 0`, `:metric-unit
+  "correlating_motives"`. Guarded by `defconst satan-attribute-ask-reasons
+  '("ask_suppressed" "ask_uncorrelated")`; an unknown reason signals `error`
+  (ISS-011 — attrd would otherwise silently drop the row on a typo). The
+  `satan-attribute-enqueue` docstring's builder list updated to mention it.
+- `satan/test/satan-audit-attribute-test.el`: `satan-audit-attr-test--sensor-delta`
+  fixture (models `--hippocampus-delta`); `accepts-each-sensor-reason` (all
+  five reasons) and `rejects-unknown-sensor-reason`. Refactor: the three
+  fixture builders' `while overrides` loops folded into one shared
+  `satan-audit-attr-test--with-overrides` helper — no third copy.
+- `satan/test/satan-attribute-test.el`: `satan-attribute-test--roundtrip-json`
+  (shared serialise-then-parse step, also adopted by the pre-existing outcome
+  round-trip test); `satan-attribute-test--attrd-sensor-contract-errors`
+  (mirrors attrd's `parse_sensor_payload`, `src/run_loop.rs:298`, cited in its
+  docstring); three tests — contract-met for both reasons, fixed-field
+  values, unknown-reason error (VT-37 evidence).
+- `docs/attributes/design-contract.md` §6S: both reasons added to §6S.1/§6S.2
+  tables; §6S.5 evidence enumerations gain `sensor_type="goad_ask"` /
+  `metric_unit="correlating_motives"`; design note 4 amended with the
+  doubt/metamorphosis exception (an ask is SATAN's own question, not external
+  state); the §6S.2 preamble amended — the two ask reasons are per-event, not
+  per-state-change, and provisional; change-history row added (SL-016
+  PHASE-05).
+- `docs/attributes/wiring-status.md`: sensor source row, Curiosity/Doubt/
+  Metamorphosis sections, summary matrix, and change history all updated —
+  all marked "nothing emits it yet".
+
+**EX-2 deployment note:** attrd must be redeployed (PHASE-08) before
+`satan-goad-enabled` is turned on. Until then, attrd rejects both reasons and
+drops the row (ISS-011).
+
+**Counts:** SATAN `SATAN_DB_HOST=127.0.0.1 just check`, serial (attrd's gate
+run first, separately): **1212 ran / 1206 expected / 0 unexpected / 6
+skipped** — same six skip names as the PHASE-12 baseline (1207/1201/0/6); +5
+new tests (2 in `satan-audit-attribute-test.el`, 3 in
+`satan-attribute-test.el`), 0 unexpected. Lint clean (paren-balance only,
+per `mem.fact.satan.green-is-not-green`); a scratch byte-compile of
+`satan-attribute.el`/`satan-audit.el` (plus their test files) against a
+same-way HEAD compile found one pre-existing warning in both
+(`satan-audit.el:268`, unescaped quote in a docstring, untouched by this
+phase) and no new ones; no `.elc` left in the tree.
+
+**Deviations:** none from the sheet's tasks A–E. The orchestrator's answer to
+C2's "confirmation point" (fixed sensor fields) was not received during this
+run; the sheet's fallback ("use these values and record them in notes.md")
+was taken, per the phase sheet header stating all three open items are
+settled by the orchestrator.
+
+**Findings:** none beyond what the sheet already flagged (the listener
+rejection risk in task B, now closed by the widened enum).
 
 ### PHASE-12
 

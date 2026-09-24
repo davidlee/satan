@@ -25,29 +25,34 @@
 (defconst satan-audit-attr-test--event-id
   "20260523T120000-morning-deadbe.attr007")
 
+(defun satan-audit-attr-test--with-overrides (base overrides)
+  "Apply plist OVERRIDES onto BASE, returning the merged plist.
+Shared by every `attribute.delta_applied' fixture builder below."
+  (while overrides
+    (setq base (plist-put base (pop overrides) (pop overrides))))
+  base)
+
 (defun satan-audit-attr-test--delta-applied (&rest overrides)
   "Build a baseline `attribute.delta_applied' payload, applying plist OVERRIDES.
 
 Defaults model the canonical `outcome=contradicted, confidence=medium'
 case from contract §5 example: shame ramps from 0.10 to 0.25 (delta
 0.15), no caps, not disabled."
-  (let ((base
-         (list :id           satan-audit-attr-test--event-id
-               :scope        "global"
-               :name         "shame"
-               :old          0.10
-               :new          0.25
-               :delta        0.15
-               :source       "outcome"
-               :reason       "contradicted"
-               :evidence     (list :intervention_id satan-audit-attr-test--iv-id
-                                   :classification  "contradicted"
-                                   :confidence      "medium")
-               :caps_applied '()
-               :disabled     :false)))
-    (while overrides
-      (setq base (plist-put base (pop overrides) (pop overrides))))
-    base))
+  (satan-audit-attr-test--with-overrides
+   (list :id           satan-audit-attr-test--event-id
+         :scope        "global"
+         :name         "shame"
+         :old          0.10
+         :new          0.25
+         :delta        0.15
+         :source       "outcome"
+         :reason       "contradicted"
+         :evidence     (list :intervention_id satan-audit-attr-test--iv-id
+                             :classification  "contradicted"
+                             :confidence      "medium")
+         :caps_applied '()
+         :disabled     :false)
+   overrides))
 
 ;; ---------- Happy paths ----------
 
@@ -285,22 +290,20 @@ case from contract §5 example: shame ramps from 0.10 to 0.25 (delta
 (defun satan-audit-attr-test--hippocampus-delta (&rest overrides)
   "Build a baseline `attribute.delta_applied' payload for source=hippocampus.
 Defaults model `reason=written' reducing brooding by 0.025."
-  (let ((base
-         (list :id           satan-audit-attr-test--event-id
-               :scope        "global"
-               :name         "brooding"
-               :old          0.50
-               :new          0.475
-               :delta        -0.025
-               :source       "hippocampus"
-               :reason       "written"
-               :evidence     (list :tool_name "hippocampus_write"
-                                   :filename "20260524T100000--test__satan_hippocampus.org")
-               :caps_applied '()
-               :disabled     :false)))
-    (while overrides
-      (setq base (plist-put base (pop overrides) (pop overrides))))
-    base))
+  (satan-audit-attr-test--with-overrides
+   (list :id           satan-audit-attr-test--event-id
+         :scope        "global"
+         :name         "brooding"
+         :old          0.50
+         :new          0.475
+         :delta        -0.025
+         :source       "hippocampus"
+         :reason       "written"
+         :evidence     (list :tool_name "hippocampus_write"
+                             :filename "20260524T100000--test__satan_hippocampus.org")
+         :caps_applied '()
+         :disabled     :false)
+   overrides))
 
 (ert-deftest satan-audit-attribute/accepts-hippocampus-written ()
   (should-not
@@ -342,6 +345,42 @@ Defaults model `reason=written' reducing brooding by 0.025."
   (let ((err (satan-audit-validate-attribute-event
               "attribute.delta_applied"
               (satan-audit-attr-test--hippocampus-delta :reason "worked"))))
+    (should (stringp err))
+    (should (string-match-p "not valid for source=" err))))
+
+;; ---------- Sensor source (§6S) ----------
+
+(defun satan-audit-attr-test--sensor-delta (&rest overrides)
+  "Build a baseline `attribute.delta_applied' payload for source=sensor.
+Defaults model `reason=segment_backlog' raising curiosity by 0.05."
+  (satan-audit-attr-test--with-overrides
+   (list :id           satan-audit-attr-test--event-id
+         :scope        "global"
+         :name         "curiosity"
+         :old          0.20
+         :new          0.25
+         :delta        0.05
+         :source       "sensor"
+         :reason       "segment_backlog"
+         :evidence     (list :sensor_type "panopticon_backlog"
+                             :metric_value 7
+                             :metric_unit "unprocessed_segments")
+         :caps_applied '()
+         :disabled     :false)
+   overrides))
+
+(ert-deftest satan-audit-attribute/accepts-each-sensor-reason ()
+  (dolist (reason '("segment_backlog" "typing_active" "typing_idle"
+                     "ask_suppressed" "ask_uncorrelated"))
+    (should-not
+     (satan-audit-validate-attribute-event
+      "attribute.delta_applied"
+      (satan-audit-attr-test--sensor-delta :reason reason)))))
+
+(ert-deftest satan-audit-attribute/rejects-unknown-sensor-reason ()
+  (let ((err (satan-audit-validate-attribute-event
+              "attribute.delta_applied"
+              (satan-audit-attr-test--sensor-delta :reason "clairvoyance"))))
     (should (stringp err))
     (should (string-match-p "not valid for source=" err))))
 

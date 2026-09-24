@@ -446,7 +446,8 @@ validator.  Widens with each T-attr-1e PR.")
   "Closed set of reasons for source=hippocampus (design-contract §6H.1).")
 
 (defconst satan-audit-attribute-sensor-reasons
-  '("segment_backlog" "typing_active" "typing_idle")
+  '("segment_backlog" "typing_active" "typing_idle"
+    "ask_suppressed" "ask_uncorrelated")
   "Closed set of reasons for source=sensor (design-contract §6S.1).")
 
 (defconst satan-audit-attribute-caps

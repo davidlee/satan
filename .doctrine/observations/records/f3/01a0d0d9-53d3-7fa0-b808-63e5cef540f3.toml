@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d0d9-53d3-7fa0-b808-63e5cef540f3"
+recorded_at = "2026-09-24T00:38:18.835363844Z"
+kind = "friction"
+summary = "verify-vt reports VT-59 UNATTRIBUTABLE after its test file was committed in a SL-016-scoped commit"
+detail = "SL-016 PHASE-12: VT-59 (satan/test/satan-audit-intervention-test.el, keywords [':form']) was modified in 909760b feat(SL-016)... yet 'doctrine slice verify-vt 16' says the file is 'not modified by this slice'. VT-52/56/57/58 in the same commit attribute as PASS. Attribution heuristic appears to miss this file."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

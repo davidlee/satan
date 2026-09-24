@@ -406,28 +406,32 @@ Source `sensor`. Sensor readings carry metabolic signal about the external world
 
 ### 6S.1 Reason enum
 
-| Reason            | Trigger                                              |
-|---                |---                                                   |
-| `segment_backlog` | Panopticon focus segments exist that SATAN hasn't inspected |
-| `typing_active`   | WPM log shows active typing (>50% active in window)  |
-| `typing_idle`     | WPM log shows idle (<5% active in window)            |
+| Reason              | Trigger                                              |
+|---                  |---                                                   |
+| `segment_backlog`   | Panopticon focus segments exist that SATAN hasn't inspected |
+| `typing_active`     | WPM log shows active typing (>50% active in window)  |
+| `typing_idle`       | WPM log shows idle (<5% active in window)            |
+| `ask_suppressed`    | The `goad_ask` tool declined to ask: no motive correlates with the candidate subject |
+| `ask_uncorrelated`  | A goad ask matured `:no_correlation` — SATAN's motives moved on before it was answered |
 
 ### 6S.2 Delta table
 
-Magnitudes: tiny = 0.025, small = 0.05. Sensor signals are state-transition-based (one signal per state change, not per tick) to avoid delta flooding.
+Magnitudes: tiny = 0.025, small = 0.05. Sensor signals are state-transition-based (one signal per state change, not per tick) to avoid delta flooding — except `ask_suppressed`/`ask_uncorrelated`, which are per-event: the former can fire on every suppressed tool call while the mismatch persists, the latter once per matured ask. Both are held to `tiny` for exactly this reason (SL-016 PHASE-05); rate-limiting, if needed, is a producer-side concern, not the daemon's.
 
-| Reason            | Δ curiosity | Δ friction | Δ shame | Δ doubt | Δ hunger | Δ suspicion | Δ brooding | Δ metamorphosis |
-|---                |---:         |---:        |---:     |---:     |---:      |---:         |---:        |---:             |
-| `segment_backlog` | +0.05       | 0          | 0       | 0       | 0        | 0           | 0          | 0               |
-| `typing_active`   | 0           | 0          | 0       | 0       | +0.05    | 0           | 0          | 0               |
-| `typing_idle`     | 0           | 0          | 0       | 0       | +0.025   | 0           | 0          | 0               |
+| Reason              | Δ curiosity | Δ friction | Δ shame | Δ doubt | Δ hunger | Δ suspicion | Δ brooding | Δ metamorphosis |
+|---                  |---:         |---:        |---:     |---:     |---:      |---:         |---:        |---:             |
+| `segment_backlog`   | +0.05       | 0          | 0       | 0       | 0        | 0           | 0          | 0               |
+| `typing_active`     | 0           | 0          | 0       | 0       | +0.05    | 0           | 0          | 0               |
+| `typing_idle`       | 0           | 0          | 0       | 0       | +0.025   | 0           | 0          | 0               |
+| `ask_suppressed`    | +0.025      | 0          | 0       | 0       | 0        | 0           | 0          | +0.025          |
+| `ask_uncorrelated`  | 0           | 0          | 0       | +0.025  | 0        | 0           | 0          | +0.025          |
 
 Design notes:
 
 1. **Curiosity rises on segment_backlog** — uninspected panopticon data is the gap between observable and observed. The organism has unprocessed external signal.
 2. **Hunger rises on typing_active** — the user is working but SATAN hasn't produced artifact or contact. Demand for progress accumulates. Falls via `worked` outcome (§6: hunger −0.05).
 3. **Hunger rises on typing_idle** (weaker) — extended idle is a weaker signal for demand. The user might be reading, thinking, or away. Half the active magnitude.
-4. **No shame/doubt/friction/suspicion/brooding/metamorphosis.** Sensor readings are about external state, not about SATAN's own correctness or intervention history.
+4. **No shame/doubt/friction/suspicion/brooding/metamorphosis for the panopticon/WPM readings** — those readings are about external state, not about SATAN's own correctness or intervention history. **Exception: `ask_suppressed`/`ask_uncorrelated` do touch doubt and metamorphosis.** Unlike a focus segment or a typing rate, an ask is SATAN's own question; a suppressed or uncorrelated one is evidence about SATAN's own motive state, not the world's. `ask_suppressed` raises curiosity (wanted to know something its motives don't cover) and metamorphosis (a gap between what it perceives and what drives it); `ask_uncorrelated` raises doubt (its motives moved under its own question) and metamorphosis, the same pairing.
 
 ### 6S.3 No confidence weighting
 
@@ -442,9 +446,9 @@ Sensor signals are one-shot. `is_revision` is always `false`.
 For `source=sensor`, the `evidence` object carries:
 
 ```text
-evidence.sensor_type    ; string — "panopticon_backlog" | "wpm_activity"
-evidence.metric_value   ; number — the measured value (segment count, active seconds, etc.)
-evidence.metric_unit    ; string — "unprocessed_segments" | "active_seconds" | "idle_seconds"
+evidence.sensor_type    ; string — "panopticon_backlog" | "wpm_activity" | "goad_ask"
+evidence.metric_value   ; number — the measured value (segment count, active seconds, etc.); 0 for goad_ask
+evidence.metric_unit    ; string — "unprocessed_segments" | "active_seconds" | "idle_seconds" | "correlating_motives"
 ```
 
 No `intervention_id`, `confidence`, or `classification` fields. The validator rejects `source=sensor` events carrying outcome-shaped evidence.
@@ -728,6 +732,7 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 | 2026-05-29 | T-attr-2d Q7 resolved → **option A** (`satan_attribute_settings` persistent table). §15 Q7 flipped resolved (strikethrough + decision text); §17.5 "Open: decay path" rewritten as normative "Decay path" paragraph specifying: migration `0012_attribute_settings.sql` shape (`name TEXT PK, value JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`); broker write-on-toggle via `add-variable-watcher` on `satan-attribute-updates-enabled` plus first-load seeding from the defcustom default; daemon `DecayScheduler::tick` SELECTs the row at tick start and threads the bool into `MaintenanceInput.enabled`, which `dispatch_maintenance` stamps onto `EventInsert.disabled`. The §17.5 apply rule maps unchanged for `disabled=false` (write + UPSERT + audit + bump `last_decay_at`) and `disabled=true` (write + audit, **skip** UPSERT, **skip** bump so the next-enabled tick still fires). Rejected: (B) `pg_notify` + LISTEN cache (over-engineering for a bool that flips ≤ once/day); (C) skip-disable-in-v1 (capsule "disabled" would lie while values drifted downward). T-attr-2d code-bearing PRs ship the migration + helpers + scheduler integration + broker hook in eight trunk commits across `~/dev/satan-attrd` (daemon) and `~/.emacs.d` (broker) per the per-task plan in this session's task list. | T-attr-2d pre-flight resolution (this commit; contract amend only — code lands in subsequent commits). |
 | 2026-05-29 | T-attr-2e — decay integration test matrix (daemon `~/dev/satan-attrd` `29d6902` guard + `c54c242` tests). Five `tests/decay.rs` tests land the deferred matrix: catch-up (5-day gap → one −0.01, `days_since_last` preserved), disable-switch (event+audit, no UPSERT, no bump, re-enable re-fires), restart (state lives in `last_decay_at`; same-day restart no-ops, next day re-fires), replay-determinism (rebuild clears `last_decay_at` → re-arm; deterministic). **New §17.8 finding:** the probe `tick_restart_while_disabled_same_day_collision` confirmed a real `(run_id, seq)` collision when a daemon restarts mid-day while disabled (counter resets, disabled cold targets re-emit). Mapped to a loud `Error::DecaySeqCollision` (abort, projection-safe); structural counter-resume fix deferred to **T-attr-2f**. §17.8 "Disable interaction" gains a "Restart-while-disabled seq collision" paragraph. 105 daemon tests green. | T-attr-2e daemon PR (this broker commit records the doc updates + §17.8 finding). |
 | 2026-05-29 | T-attr-2f — structural fix for the 2e restart-while-disabled `(run_id, seq)` collision (daemon `~/dev/satan-attrd` `b4ceee1`). On each UTC-day rotation (incl. the first tick of a fresh process) `DecayScheduler::acquire_day_counter` resumes its per-day `Counter` from `MAX(seq)+1` for that day's `run_id` via new `store::max_seq_for_run` + `Counter::resuming_from`. Resume runs lazily on the first due tick rather than in `new()` (equivalent for the guarantee; keeps `new()` sync/IO-free; covers day-rolls uniformly). The loud `Error::DecaySeqCollision` guard is retained as defence-in-depth. §17.8 "Restart-while-disabled seq collision" flipped known-gap → resolved. The 2e probe flips to `tick_restart_while_disabled_same_day_resumes_cleanly` (2 ticks → 2N distinct rows); + 2 `Counter::resuming_from` unit tests. 107 daemon tests green (69 unit + 38 integration); lint + fmt clean. | T-attr-2f daemon PR (this broker commit records the doc updates). |
+| 2026-09-24 | SL-016 PHASE-05 — two sensor reasons added for the goad-ask surface: `ask_suppressed` (the `goad_ask` tool declined to ask: no correlating motive) and `ask_uncorrelated` (an ask matured `:no_correlation`). §6S.1 reason table and §6S.2 delta table gain both rows (curiosity/metamorphosis +tiny for `ask_suppressed`; doubt/metamorphosis +tiny for `ask_uncorrelated`, both provisional — the user expects to iterate); §6S.2 design note 4 amended with the doubt/metamorphosis exception these two reasons carry, and the preamble amended to flag them as per-event rather than per-state-change; §6S.5 evidence enumerations gain `sensor_type="goad_ask"` and `metric_unit="correlating_motives"`. Daemon-side: `SensorReason::AskSuppressed`/`AskUncorrelated` + `tuning::sensor_base_deltas` rows in `~/dev/satan-attrd` (VT-36). Broker-side: `satan-attribute-build-ask-payload` (thin wrapper over `satan-attribute-build-sensor-payload`) in `satan-attribute.el`, and `satan-audit-attribute-sensor-reasons` widened in `satan-audit.el` so the transcript-write validator accepts the resulting `attribute.delta_applied` events (VT-37). Nothing emits either reason yet; attrd must be redeployed (PHASE-08) before `satan-goad-enabled` is turned on — until then attrd rejects both reasons and drops the row. | SL-016 PHASE-05. |
 
 ---
 

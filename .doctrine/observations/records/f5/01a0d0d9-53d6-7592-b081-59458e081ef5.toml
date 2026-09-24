@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d0d9-53d6-7592-b081-59458e081ef5"
+recorded_at = "2026-09-24T00:38:18.838028648Z"
+kind = "friction"
+summary = "capsule-phase-planner hit its 40-turn cap after writing a complete sheet, without handing back"
+detail = "SL-016 PHASE-12 planner wrote a complete 29k sheet (all sections through Findings) but spent turns up to the 40-turn limit and never called SubagentHandback; orchestrator had to read the sheet directly to recover the summary."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

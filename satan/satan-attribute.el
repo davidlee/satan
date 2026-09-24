@@ -124,6 +124,29 @@ No confidence, intervention-id, or revision fields.  The current
         :is_revision    :false
         :enabled        (if satan-attribute-updates-enabled t :false)))
 
+(defconst satan-attribute-ask-reasons
+  '("ask_suppressed" "ask_uncorrelated")
+  "Closed set of sensor reasons `satan-attribute-build-ask-payload' accepts
+\(design-contract §6S.1).  Guards against a typo attrd would otherwise
+silently drop (ISS-011).")
+
+(cl-defun satan-attribute-build-ask-payload (&key run-id ts reason)
+  "Construct the broker → daemon `goad_ask' sensor payload for REASON.
+
+REASON must be one of `satan-attribute-ask-reasons' — `ask_suppressed'
+\(the tool declined to ask: no correlating motive) or `ask_uncorrelated'
+\(an ask matured `:no_correlation').  Both mean the same thing, at emit
+or at maturity: zero motives correlate with the ask.  A thin wrapper
+over `satan-attribute-build-sensor-payload' that fixes the ask-specific
+sensor fields in one place, so PHASE-06's tool and the observer do not
+each repeat them."
+  (unless (member reason satan-attribute-ask-reasons)
+    (error "satan-attribute-build-ask-payload: unknown ask reason %S (allowed: %S)"
+           reason satan-attribute-ask-reasons))
+  (satan-attribute-build-sensor-payload
+   :run-id run-id :ts ts :reason reason
+   :sensor-type "goad_ask" :metric-value 0 :metric-unit "correlating_motives"))
+
 ;; ---------------------------------------------------------------------
 ;; enqueue
 ;; ---------------------------------------------------------------------
@@ -132,8 +155,9 @@ No confidence, intervention-id, or revision fields.  The current
   "Insert PAYLOAD into satan_outcome_inbox + NOTIFY satan_outcome_inbox.
 
 PAYLOAD is a plist built via `satan-attribute-build-outcome-payload',
-`satan-attribute-build-hippocampus-payload', or
-`satan-attribute-build-sensor-payload'; serialised to JSONB.
+`satan-attribute-build-hippocampus-payload',
+`satan-attribute-build-sensor-payload', or `satan-attribute-build-ask-payload'
+\(a sensor-family wrapper); serialised to JSONB.
 Returns (ok . ID) carrying the inserted row id, or (error . MSG)."
   (let* ((database (or db satan-attribute-database))
          (json (json-serialize (satan-jsonl-prepare payload)))
