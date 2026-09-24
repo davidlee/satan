@@ -6,6 +6,43 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 
+**RV-016 adjudicated + RV-017 second pass (2026-09-24, Claude on host).**
+RV-016 was raised, fixed and verified by the same agent. Independently
+re-checked: F-1's fallback is correct (every verdict row still gates on
+in-window stamps, so reading the day file at maturity cannot leak a late
+answer; the only other `:goad` reader, canon's `goad.outstanding`, is meant
+to see open asks only). F-2 tolerated — agreed. Its unraised nits: the
+instant-parser one fixed `a57e7a5` (the observer's ask helpers now use
+`satan-memory-canon-parse-instant`; `date-to-time` reads a psql
+space-separated stamp as midnight); the late 8 KiB check is harmless
+(counts and label lengths are capped before the rebuild); module coupling →
+**IMP-026**.
+
+**RV-017** — an independent Claude review for live-use hazards; 9 findings, all
+answered, awaiting raiser verification. Fixed in dev `5c035b8` and corpus
+`77936ee`:
+- F-1 `goad_ask.md` claimed the answer reaches later runs; now truthful
+  (user chose doc correction; `goad_read` stays with IMP-025).
+- F-2 no bound on open asks → **IMP-027**, deliberately deferred by the user
+  to live use (includes the Later-deferral question).
+- F-4 tools may declare `:available-p`; the manifest omits `goad_ask` while
+  `satan-goad-enabled` is nil.
+- F-5 the subject gate uses canon's `satan-memory-canon-goad-outstanding-p`
+  over `satan-goad-slice` — no parallel derivation.
+- F-6 **the classification-time queue rewrite is deleted** (user reversed
+  PHASE-09 D4). **VT-8 is withdrawn** — `/reconcile` must record it.
+- F-7 `ask_suppressed` at most once per run. F-8 question non-blank, ≤280
+  chars. F-9 one `satan-attribute-enqueue-ask`.
+- F-3 (0008 ordering) tolerated — the runbook enforces it.
+
+Gate after: `just check` 1291 ran / 0 unexpected / 6 skipped. Corpus
+`just commit` does `git add .` — do not use it while the user's
+corpus tree is dirty; commit the file directly.
+
+**Host state (2026-09-24 15:00):** runbook step 1 done by the user (`home
+switch`): attrd restarted 15:00:50 and its binary carries
+`ask_suppressed`; `goad.service` active, socket fresh. Remaining: steps 2–6.
+
 **fresh-as-of:** every SL-016 phase's code is landed and green — PHASE-07,
 PHASE-09 and PHASE-08(A) committed 2026-09-24; gate 1286 ran / 0 unexpected /
 6 skipped (the corpus resolved via the `~/satan -> /workspace/corpus` symlink).
