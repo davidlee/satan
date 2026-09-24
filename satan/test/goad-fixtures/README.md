@@ -19,10 +19,10 @@ path `main()` wraps) with fixed instants, then copies `queue.json` and
 
 | | |
 |---|---|
-| corpus commit | `ab00411` |
+| corpus commit | `e896597` |
 | `goad/backend.py` sha256 | `3359a7582d30cc1b1027084203c37f4a63648c66d5ef3b2f03b616a946998c7c` |
-| `goad/goldens.py` sha256 | `3ef31fa40653beac26be734faa4acaa4a8e87f7af00da55ab0313111bc02bf1e` |
-| `queue.json` sha256 | `3207449ae17689f9464213a1e4fe5ec8176c5001a2f52776bd5580bf768e7a46` |
+| `goad/goldens.py` sha256 | `2fe0f542fc01bd7100f0e6589b3e9e1284d14341089500d0c811b5eff6e1839c` |
+| `queue.json` sha256 | `83be191d4e6021a8a60ca743390080891908c142b46ec67a32bf323b5f4450ef` |
 | `data/2026-09-23.json` sha256 | `627277ddd4564abf49b48cabc669d60fa82053fa1d105861c360732ec2a7aee3` |
 
 Same `backend.py` and `goldens.py` bytes give the same output bytes.
