@@ -167,7 +167,17 @@ on its Postgres. Every step below runs on the host.
      flash model). Retry `20260924T171554-tick-pulse-b52b8e` asked:
      `goad_ask` subject `project:satan`, intervention
      `20260924T171554-tick-pulse-b52b8e.iv001`, shown in goad; user
-     answered. Maturation (≥60 min) pending — outcome: _TBD_.
+     answered. **VH-1 passed.** The 18:22 attended run
+     (`20260924T182209-tick-pulse-2f8de7`) failed before the observer pass
+     (`credential_unavailable`: 1Password prompt dismissed — the observer
+     runs after credential resolution). Run
+     `20260924T192832-tick-pulse-314fa5` matured it: outcome `worked` /
+     `medium` / `mature`, predicate `goad_answer`; trace
+     `20260924T174554-cobp4g` metadata carries `question` and
+     `value {"option":"flowing"}`; motive `:worked_count:` 0→1.
+     Quirk: the trace's `predicates` serialises as an object
+     (`{"goad_answer":{}}`) while the outcome row's `evidence_json` has an
+     array (`["goad_answer"]`).
 4. **One live ask left untouched (VH-2).** Drive a second ask; leave it; the
    observer matures `:ignored :medium` `untouched`. Record the id. (EX-2.)
 5. **Persist `satan-goad-enabled`** in the user's config, now that VH-1 passed.
