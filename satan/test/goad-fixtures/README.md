@@ -53,5 +53,7 @@ microseconds, as `datetime.now()` gives them.
 | form | `20260923T130000-tick-pulse-d82c4f.iv001` | 13:00 → 14:00 | evaluate 13:01 (presented; `untouched` already expired at 12:10); `opt:rate:ask:` 13:02 with one value of each field kind | `presented_at`, `value: {option: "rate", values: {energy, blocker, note, walked, back_at}}`, `at` |
 | midnight | `20260923T231500-tick-pulse-e90f27.iv001` | 23:15 → 00:15 (24th) | evaluate 23:16; `opt:yes:ask:` 00:05 on the 24th; evaluate 00:10 (not re-rendered) | `presented_at`, `value: {option: "yes", values: {}}`, `at` (on the 24th) |
 
-The Enough at 09:34 also deferred all fourteen checklist items in the same
-file's `items`, with `deferred_by: "enough"`. That is real output; keep it.
+The Enough at 09:34 also deferred both checklist items in the same file's
+`items`, with `deferred_by: "enough"`. That is real output; keep it. The
+checklist is `goldens.py`'s stand-in (`water_plants`, `read`), never the
+keeper's: these files are public.
