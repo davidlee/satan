@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d115-8919-7000-bc82-e3b33d456571"
+recorded_at = "2026-09-24T01:44:04.63318534Z"
+kind = "friction"
+summary = "planner sheet mis-stated a cross-repo contract (form field shape {id,kind}; goad SPEC-001 R-15 requires label)"
+detail = "SL-016 PHASE-06: the phase sheet and 06a validator refused field labels; the goad host's WireField requires label. Caught by the 06b worker reading wire.rs; fixed in 382e7aa. Corpus goldens from PHASE-10 carry the same defect (residual). Plan-mandated VT test names also drifted in 06a until verify-vt caught them."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

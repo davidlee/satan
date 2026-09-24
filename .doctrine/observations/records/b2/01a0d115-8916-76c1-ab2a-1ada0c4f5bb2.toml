@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d115-8916-76c1-ab2a-1ada0c4f5bb2"
+recorded_at = "2026-09-24T01:44:04.630443984Z"
+kind = "friction"
+summary = "stubbing satan-trace-call in tests silently fakes psql success"
+detail = "SL-016 PHASE-06b worker: psql runs through satan-trace-call, so a goad-emit doorbell stub that replaced satan-trace-call wholesale made DB projection 'succeed' with no row. Stub only the goad-emit program path. Candidate memory."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a0d115-8913-7da1-9f80-11e0d850b1ac"
+recorded_at = "2026-09-24T01:44:04.627435295Z"
+kind = "friction"
+summary = "verify-vt UNATTRIBUTABLE persists for committed test files (new file satan-tools-goad-test.el, 9 VT rows)"
+detail = "SL-016 PHASE-06: after 382e7aa (feat(SL-016)) added satan/test/satan-tools-goad-test.el, verify-vt still says the file is 'not modified by this slice' for VT-5/6/9/11/13/29/38/41/60. Same as VT-59 in PHASE-12 (909760b). Attribution does not see these commits; VT evidence relies on just check counts instead."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
