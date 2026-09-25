@@ -229,7 +229,7 @@ own registered name and now routes through `satan-tool/notes-recent'."
         (should (equal (plist-get p :ext) "org"))
         (should (equal (plist-get p :bytes) (string-bytes body)))
         (should (equal (plist-get p :total-bytes) (string-bytes body)))
-        (should (equal (plist-get p :truncated) nil))
+        (should (equal (plist-get p :truncated) :false))
         (should (stringp (plist-get p :mtime)))
         ;; `:_sort' is an Emacs time object: notes_recent's sorting key, never
         ;; part of the result.  The wire layer can only render it as a
@@ -370,7 +370,7 @@ case-insensitive, and paths come back relative to the root."
           (should (equal (plist-get p :scope) "notes_grep"))
           (should (equal (plist-get p :query) "hit"))
           (should (equal (plist-get p :count) 2))
-          (should (equal (plist-get p :truncated) nil))
+          (should (equal (plist-get p :truncated) :false))
           (should (equal (mapcar (lambda (m) (plist-get m :path)) matches)
                          '("journal/a.org" "protocol.org")))
           (should (equal (plist-get (car matches) :line) 3))
@@ -401,7 +401,7 @@ case-insensitive, and paths come back relative to the root."
                (p (cdr res)))
           (should (eq (car res) 'ok))
           (should (equal (plist-get p :count) 15))
-          (should (equal (plist-get p :truncated) nil)))))))
+          (should (equal (plist-get p :truncated) :false)))))))
 
 (ert-deftest satan-notes/grep-no-matches-is-ok ()
   "rg exits 1 on no matches — an empty result, not a failure."

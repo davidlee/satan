@@ -256,10 +256,16 @@ to the caller, which refuses it as a non-file."
          (t (list :path abs))))))))
 
 (defun satan-tools-notes--read-capped (abs max)
-  "Return (:body STR :bytes N :total-bytes M :truncated BOOL) for ABS.
+  "Return (:body STR :bytes N :total-bytes M :truncated FLAG) for ABS.
 Reads at most MAX bytes, decoded as utf-8.  Emacs aligns the read to a
 character boundary, so a capped body never ends mid-character; :total-bytes
-comes from one `file-attributes' call."
+comes from one `file-attributes' call.
+
+FLAG is `t' when the body was cut and `:false' when it was not — the wire
+layer's false marker (`satan-jsonl-send' sets `:false-object :false'), as
+`satan-tools-content.el' emits for `:truncated_results'.  A bare nil would
+reach the model as `{}' rather than `false', which is the wrong shape for the
+flag whose whole job is to say the body is complete."
   (let* ((size (file-attribute-size (file-attributes abs)))
          (truncated (> size max))
          (body (with-temp-buffer
@@ -269,7 +275,7 @@ comes from one `file-attributes' call."
     (list :body body
           :bytes (string-bytes body)
           :total-bytes size
-          :truncated truncated)))
+          :truncated (if truncated t :false))))
 
 ;; ---------- notes_recent ----------
 
@@ -374,7 +380,7 @@ the caller can follow up.  Returns (ok PLIST) | (error STRING)."
               (cons 'ok (list :scope "notes_grep"
                               :root satan-tools-notes-root
                               :query query :limit limit
-                              :count 0 :truncated nil :matches '())))
+                              :count 0 :truncated :false :matches '())))
              ((not (= exit 0))
               (cons 'error (satan-tools-notes--result-error "rg failed" run)))
              (t
@@ -390,7 +396,8 @@ the caller can follow up.  Returns (ok PLIST) | (error STRING)."
                                 :root satan-tools-notes-root
                                 :query query :limit limit
                                 :count (length shown)
-                                :truncated (> (length all) (length hard))
+                                :truncated (if (> (length all) (length hard))
+                                               t :false)
                                 :matches shown)))))))))))))
 
 ;; ---------- registration ----------
