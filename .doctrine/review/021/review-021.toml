@@ -1,0 +1,161 @@
+id    = 21
+slug  = "design-review-of-sl-021"
+title = "design review of SL-021"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-021"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Live-case cost claim is wrong: whole-file insert costs ~11 ms, not <1 ms"
+detail = "sec-2 'The walk' says live case under 1 ms, citing the 64 KB tail benchmark. The design inserts the whole file (DEC-039). Measured: insert of desktop-2026-09-20.jsonl (3.85 MB) + parse last line = 10.9 ms avg over 10 runs (emacs --batch, 2026-09-26). Still cheap; the number must be the true one."
+disposition = "fixed"
+response = "sec-2 now states 11 ms live (whole-file insert + last line) and 251 ms worst past case."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Timestamp comparison resolution unstated: date-to-time drops milliseconds"
+detail = """Verified: (date-to-time "2026-09-26T01:44:29.056+10:00") and the same instant in Z both give 1790351069.0 - fractional seconds are dropped. So 'ts <= TIME' is decided at whole-second resolution; an event in the same second as TIME counts as at-or-before. Harmless (and it makes activity_read's %T now include same-second events) but sec-2 must state it so a test author does not assert millisecond ordering."""
+disposition = "fixed"
+response = "sec-2 states whole-second resolution: same-second events count as at-or-before; tests must not assert sub-second ordering."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Empty-snapshot window changes the tank rendering"
+detail = """sec-2: a snapshot with no window fields reads ok with a window of only what it carries (e.g. (:workspace "emacs" :output "DP-3" :since ...)). satan-tank.el:168-173 renders a non-nil current_window as 'current: ? · ws=emacs · ' instead of '(no panopticon)'. Not wrong (no window is focused, workspace known) but an unstated consumer behaviour change; sec-3 claims consumers do not move."""
+disposition = "tolerated"
+response = "Behaviour is accurate (panopticon up, nothing focused); sec-3 now names the tank rendering change instead of claiming consumers are untouched."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "DST previous-day test has no stated time-zone control"
+detail = "sec-5 lists 'previous-day arithmetic is correct across a 23-hour DST day' but the reader uses the process local zone. The design should say how a test pins the zone (e.g. bind TZ via set-time-zone-rule around the call, restoring it), or the helper takes the zone as an optional argument."
+disposition = "fixed"
+response = "Previous day is now pure calendar arithmetic on the date string (zone-free, DST-immune); local date of TIME uses a satan-desktop--zone seam after satan-goad--zone; sec-5 tests updated."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Design parses timestamps with date-to-time; the codebase's strict instant parser is satan-memory-canon-parse-instant"
+detail = "sec-2 specifies date-to-time for both TIME and each line's ts. satan-memory-canon.el:128-141 is the canonical strict parser (iso8601-parse; nil for naive or malformed stamps) whose docstring warns date-to-time silently misreads psql-style and naive stamps; satan-goad-local-date (satan-goad.el:58) builds the local date on it with a zone test seam (satan-goad--zone). The reader should reuse the parser (a naive ts then counts as unparseable and is skipped) and follow the zone-seam precedent. Verified both parsers resolve to whole seconds."
+disposition = "fixed"
+response = "sec-2 now parses TIME and ts with satan-memory-canon-parse-instant (module requires satan-memory-canon); unparseable ts skipped, unparseable TIME signals."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "Full-state-per-event contract is not published by panopticon; its schema.md documents partial events"
+detail = "Expected: design sec-1 'The boundary' cites panopticon/docs/schema.md 'Desktop events' as the owner's schema (REQ-013) and calls full focused state on every state event 'panopticon's per-producer contract' (DEC-036). Observed: schema.md says window_title 'Carries old_title and title' and workspace_focus 'Carries old_workspace, workspace, and output' - the sway partial shape (sway/session.py:138,191). Full state per event is only an implementation property of diff_state (compositor/diff.py:26-36, compact(new.to_dict())); live niri/umbriel window_title lines carry the full DesktopState keys and no old_title (jq over raw/desktop-2026-09-20.jsonl and -26.jsonl). schema.md also claims compositor_reconnected is followed 'immediately' by a snapshot; live raw/desktop-2026-09-25.jsonl:338-339 shows reconnected then disconnected. So the contract the reader depends on is unwritten, and the owner's published document contradicts it. Nothing in panopticon stops a refactor of diff_state from breaking SATAN silently. Penance: (a) the design states the contract as an assumption until panopticon's schema.md publishes it, not as an existing contract; (b) add a cross-repo follow-up to amend schema.md (full state per state event for niri/umbriel; reconnected is not a connection proof) next to the existing DEC-035/DEC-036 follow-ups in SL-021 Follow-Ups; (c) consider recording it as an assumption record."
+disposition = "fixed"
+response = "Verified: schema.md:47-50 documents the sway partial shape; full state comes only from diff_state (diff.py:26-36, compact(new.to_dict())); schema.md:55-56 'snapshot immediately after reconnected' is contradicted by raw/desktop-2026-09-25.jsonl:338-339. sec-1 'The boundary' now states full state per event as an assumption, not a published contract, and names the pin test as SATAN's only guard. A cross-repo follow-up (publish the full-state rule, fix the reconnect claim) was added to SL-021 Follow-Ups and Risks. DEC-036's wording ('is panopticon's contract') is raised with the user together with F-7's decision amendments; its choice is unchanged."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "Design diverges from accepted DEC-035, DEC-038, DEC-039 without saying so; DEC-040 note is stale"
+detail = """Expected: a design shaped by accepted decisions (tier 2) either agrees with them or names each amendment. Observed: (1) DEC-039 consequences: 'one new small reader in satan-memory-evidence.el'; design sec-2 places it in a new module satan/satan-desktop.el. (2) DEC-038 choice: D = (format-time-string "%F" (date-to-time end)); design uses satan-memory-canon-parse-instant and a satan-desktop--zone seam (after RV-021 F-5). (3) DEC-035 choice: disconnected 'when the last lifecycle event at or before t (after the last state event) is compositor_disconnected'; design sec-2 skips compositor_reconnected, so disconnected -> reconnected with no following state event reads disconnected, where DEC-035 read literally gives ok. That sequence is live: raw/desktop-2026-09-25.jsonl:337-339 (reconnected at 12:39:28.343, disconnected .344, next snapshot 12:50:06). It happens because run_watcher writes compositor_reconnected once client.session() enters (runner.py:111-115) and UmbrielClient._open yields before any socket connect (umbriel/session.py _open), so reconnected does not prove a connection. The design's behaviour is the better one, but two binding sources now disagree. (4) sec-4 says DEC-040's wording (':path names the raw file consulted') 'is amended to match'; DEC-040's choice already reads ':path is dropped', so the sentence is stale. Penance: list every DEC divergence in the design and have the DEC texts amended through the knowledge verbs with the user's assent (or record the supersession); drop the stale DEC-040 sentence."""
+disposition = "fixed"
+response = "Verified all four points (DEC-039 placement, DEC-038 date-to-time, DEC-035 literal reconnect rule vs live desktop-2026-09-25.jsonl:337-339, and the stale DEC-040 sentence). The user ruled on 2026-09-26 to amend all three decisions to match the design. DEC-039's consequences now name satan-desktop.el; DEC-038's choice uses satan-memory-canon-local-date/day-shift; DEC-035's choice passes over compositor_reconnected, which reconciles it with DEC-039. Each amendment is marked as such in the decision text. The stale DEC-040 sentence was removed from sec-4, and the interim divergences table was removed from sec-2 now that the decisions agree with the design."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Windowless state events are routine, not a snapshot corner case"
+detail = "Expected: the design states and tests the behaviour for every shape the live producers emit. Observed: sec-2 'Deciding events', sec-3's tank nuance and sec-5's test list mention only 'a snapshot with no window fields'. Live data: niri emits window_focus carrying only workspace/output 149-220 times a day (raw/desktop-2026-09-19..21.jsonl; e.g. 2026-09-19T12:25:43.172 window_focus {workspace:'doctrine ',output:'DP-3'}); umbriel emits fully empty window_focus and workspace_focus (no state keys) about 7 times a day (raw/desktop-2026-09-25.jsonl:336, just before the EOF disconnect at :337). diff_state emits window_focus when focus leaves to no window (diff.py:33-34, compact drops the None keys). Under the design each yields status ok with a window of workspace/output + :since, or :since alone. The code path is the same, but: F-3's tolerance assumed a rare snapshot case; the tank shows 'current: ? · ws=? ·' routinely; activity_read returns ok with {since} only, which the corpus description must explain ('ok, nothing focused'). Penance: phrase the rule for any state event with no window keys; add tests for a window_focus with only workspace/output and for a fully empty window_focus; the activity_read.md edit says what a window without app_id means."
+disposition = "fixed"
+response = "Verified: live niri windowless window_focus/workspace_focus 149/180/219 per day (09-19..21); umbriel keyless window_focus 7/7/13 (09-23..25) plus one empty snapshot at desktop-2026-09-25.jsonl:340. sec-2 has a new 'No focused window' rule covering every state event type; sec-3's tank note calls it the everyday case; sec-4 says the activity_read.md edit explains that an ok window without app_id means nothing is focused; sec-5 tests a workspace/output-only window_focus, a keyless window_focus and an empty snapshot, and the pin test includes a windowless window_focus."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Replay premises unstated: file order equals ts order, and producer and reader share a zone"
+detail = "Expected: the invariants in sec-2 name the premises they rest on. Observed: the backward walk decides on the first line in FILE order with ts <= TIME, and the invariant 'appending events after TIME never changes it' holds only if every appended line has ts > TIME. Both rest on panopticon stamping ts from the wall clock at encode time and appending immediately (schema.py make_event/utc_now_iso; store.py:54-60). A backward wall-clock step (NTP) breaks both, and DEC-039 itself rejects binary search as 'fragile to small ts disorder', yet the chosen walk is also order-dependent. Separately, panopticon rotates by event.ts[:10], the producer's local offset date (store.py:56), while the reader picks D in Emacs's zone (satan-desktop--zone nil); correct only if both processes run with the same TZ. Penance: state both premises in sec-2 'Invariants' (monotonic append order; shared local zone with panopticon) and what happens when they fail, or make the rule order-free (the max ts <= TIME among lines scanned). Not a code change unless the design chooses the order-free rule."
+disposition = "fixed"
+response = "sec-2 Invariants now states both premises: append order equals ts order (store.py:54-60), and panopticon and Emacs share a local zone (store.py:56). It also says what happens when each fails: a backward clock step of delta breaks replayability only within the delta overlap, and a zone mismatch picks the wrong day file near midnight. The order-free rule was rejected because it scans the whole file on every live tick, and DEC-039 already accepts order dependence. sec-5 lists both premises as untested."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "DRY: second zone seam and a new previous-day helper duplicate satan-goad-local-date and --next-day"
+detail = "Expected: reuse existing helpers (CLAUDE.md: DRY, no parallel implementation). Observed: sec-2 introduces satan-desktop--zone and a local-date computation, 'after satan-goad--zone's precedent'. The precedent is already a function: satan-goad-local-date (satan-goad.el:48-68) = parse-instant + format-time-string %F in a zone seam. sec-2 also adds previous-day arithmetic (calendar-absolute-from-gregorian minus one), mirroring satan-memory-evidence--next-day (satan-memory-evidence.el:273-285, the same calendar arithmetic plus one). Research names --next-day as the reuse model ('Reuse: --git-feed-paths + --next-day ... the model for a yesterday+today read'), and DEC-038 says 'DST-safe calendar arithmetic as in --next-day'. satan-desktop cannot require satan-goad (it pulls satan-intervention), so the fix is to move the helpers, not to copy them. Penance: lift local-date (with its zone seam) and a day shift (DAY N) into one pure home that satan-desktop, satan-goad and satan-memory-evidence all require (canon already holds parse-instant); --next-day becomes (day-shift D 1). Or record why the duplication is accepted."
+disposition = "fixed"
+response = "Verified: satan-goad-local-date (satan-goad.el:58-68) and satan-memory-evidence--next-day (:273-285); goad requires satan-intervention (goad.el:41). sec-2 lifts satan-memory-canon-local-date and satan-memory-canon-day-shift into canon next to parse-instant; goad-local-date and --next-day delegate, and the reader uses both. Only the per-module zone seam variable remains, and the logic exists once. Code impact, the slice summary and the selectors (canon, goad, canon-test) are updated."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "Fixture migration list incomplete; closure grep misses the residue it is meant to catch"
+detail = '''Expected: sec-5 enumerates every current/desktop.json writer and the closure grep proves they are gone. Observed: (1) the four named writers omit satan-percept-test--seed-fixture (satan/test/satan-percept-test.el:318-328), which writes current/desktop.json inline for acceptance A3. (2) Test writers spell the path (expand-file-name "desktop.json" current-dir) (satan-percept-test.el:45,327; satan-resonance-test.el:325; satan-memory-evidence-test.el:187,239,499,517,553,572), so the closure check rg -n 'current/desktop|current-window-stale' satan/ does not match them. (3) Nor does it match the retired cause panopticon_current_stale (satan-sensor-alerts.el:104; satan-sensor-alerts-test.el:190,257,314,354,405,445-462) or satan-memory-evidence--current-window-status. (4) sec-3 edits protocol/fixtures.json so 'the corpus of examples names only live causes', but satan-audit-test.el:53,75,113 and satan-broker-test.el:1196,1235 keep panopticon_current_stale as sample data and are not in the code-impact table; the fixtures.json entry's message 'stale (28m)' would also need to change. Penance: add seed-fixture to the migration list; the closure grep covers desktop\.json|panopticon_current_stale|current-window-stale|current-window-status across satan/ including test/; either update the audit/broker samples or drop the fixtures.json rationale and edit neither.'''
+disposition = "fixed"
+response = '''Verified: seed-fixture writes desktop.json at satan-percept-test.el:327; the old grep misses the tests' spelling and the retired cause (11 files hit the widened pattern today). sec-5 lists all five writers with lines; the closure grep is now desktop\.json|current/desktop|panopticon_current_stale|current-window-stale|current-window-status over satan/, with a positive control. sec-3 replaces the retired cause in fixtures.json (message too) and in the audit-test/broker-test samples. The sensor-alerts prune tests switch their live control and assert causes as a set, so no test names the retired cause.'''
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "UTF-8 decoding of the day file unspecified and untested"
+detail = "Expected: the reader's contract fixes how bytes are decoded, as every SATAN file reader does. Observed: sec-2 'The walk' says the file is inserted into a temp buffer and gives no coding system. Existing readers bind coding-system-for-read 'utf-8 explicitly (satan-jsonl.el:117,158; satan-tools-activity.el:55). Live titles are non-ASCII ('✳ Claude Code' in raw/desktop-2026-09-23.jsonl, 'π - doctrine' in raw/desktop-2026-09-25.jsonl) and are copied verbatim into :current_window and activity_read. Under emacs --batch with a non-UTF-8 locale the default decoding garbles them, and no listed test would notice. Penance: state UTF-8 decoding in the contract; one sec-5 case (or the real-umbriel-lines pin test) carries a non-ASCII title and asserts it round-trips."
+disposition = "fixed"
+response = "Verified: other readers bind coding-system-for-read 'utf-8 (satan-jsonl.el:117,158); panopticon encodes UTF-8 (store.py:60); non-ASCII titles appear in live files. sec-2 'Backward walk' specifies UTF-8 decoding; the sec-5 fixture writes UTF-8, and a new case asserts that a title containing ✳ and π round-trips."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "Retired stale cooldown entry is pruned on read, not kept inert"
+detail = "Expected: sec-3's statements about notified.json match the code. Observed: sec-3 says 'The retired panopticon_current_stale cooldown entry stays in existing notified.json files, inert.' satan-sensor-alerts--read-state runs satan-sensor-alerts--prune-state (satan-sensor-alerts.el:169-191), which drops every :causes key outside --known-causes (:162). Once the cause row goes, the next read drops the entry. Harmless, but the design states the wrong behaviour and a test author may assert it. Penance: reword to 'pruned on the next read by --prune-state'; optionally add one test that a state carrying the retired key comes back without it."
+disposition = "fixed"
+response = "Verified: --read-state runs --prune-state, which drops keys outside --known-causes (satan-sensor-alerts.el:162-191). sec-3 now says the retired entry is dropped on the next read, with no change to the prune. sec-5 re-bases the existing prune test (VT-2, :431-456) on a live control of panopticon_current_disconnected, keeping bough_unreachable as the retired residue."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "nit"
+title = "missing/malformed alert texts are inaccurate and the malformed hint is not runnable"
+detail = "Expected: remediation hints can be run as written and messages describe the status. Observed (sec-3 table): the malformed hint 'tail -1 <satan-tools-activity-dir>/raw/desktop-$(date +%F).jsonl' contains a placeholder that is not a shell path, and $(date +%F) names today's file, while sec-2 can decide malformed from the previous day's file or, for the observer, a past day. The missing message 'no desktop events in the last two days' raw logs' is also false when the files hold events but none decides at or before T (only compositor_reconnected, or every event after T). Penance: message 'no desktop state at or before T in the day or previous day's log'; hint names the directory form ('raw/desktop-YYYY-MM-DD.jsonl under satan-tools-activity-dir') rather than a pseudo-command."
+disposition = "fixed"
+response = "sec-3 table: the missing message now reads 'no desktop state in the day's or previous day's raw desktop log', which covers the all-after-T and only-lifecycle cases. The malformed hint names the file pattern raw/desktop-YYYY-MM-DD.jsonl under satan-tools-activity-dir instead of a pseudo-command, and the text explains why a $(date +%F) command would name the wrong file."
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "nit"
+title = "Procedure in the design; cross-repo landing order of the tool description unstated"
+detail = "Expected: the design states what is true after the change; procedure belongs in the plan and reconcile. Observed: sec-4 'The corpus edit is committed in its own repo (just commit there)'; sec-5 'Documents reconcile will touch' and the closure commands are procedure. The design does not state the one thing that is design: the landing order between the package change (activity_read output gains :status, drops :path) and ~/satan-corpus/tools/activity_read.md, two repos deployed separately (SPEC-002 REQ-015). Between the two landings the model reads a description of a shape the tool does not return. Penance: move the procedure to plan/reconcile notes; state the order (for example, the description names both shapes, or it lands after the code) in one sentence."
+disposition = "fixed"
+response = "Procedure removed from the design: the 'just commit' line (sec-4) and 'Documents reconcile will touch' (sec-5) moved to slice notes. sec-4 now states the landing order: the corpus description lands after the package, because the gap is additive (status/since added; path was never promised by activity_read.md, verified)."
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "minor"
+title = "DEC-036 still contradicts the amended design: 'is panopticon's contract' and snapshot-only no-window rule"
+detail = "Expected: after the F-6/F-8 fixes the binding decision agrees with the design, as DEC-035/038/039 now do (F-7). Observed: DEC-036's choice still reads 'Emitting full focused state per state event is panopticon's contract per producer', and its rationale 'The live producers (umbriel, niri) already satisfy the contract'. The design (sec-1 'The boundary') now calls it 'an assumption, not yet a published contract', and panopticon's schema.md documents the partial shape (F-6). DEC-036 also says 'A snapshot with no window fields means no focused window', while design sec-2 'No focused window' applies that rule to every state event type (F-8; live niri window_focus with only workspace/output 149-220 a day). F-6's response defers the DEC-036 wording to the user; unlike DEC-035/038/039 no amendment is recorded. Penance: with the user's assent, amend DEC-036 to (a) name full state per event as SATAN's requirement on panopticon, unpublished upstream until the schema.md follow-up lands, and (b) state the no-focused-window rule for any state event without window keys. Or record the user's ruling that the DEC stands as written."
+disposition = "fixed"
+response = "The user ruled 'amend DEC-036' (2026-09-26). The choice now says full state per state event 'is required of panopticon per producer', holding today only through diff_state and not yet published in schema.md (SL-021 follow-up). The no-focused-window rule now covers any state event carrying no window fields, not just an empty snapshot. The rationale now says the live producers satisfy it today via diff_state. The amendment is marked as such in the choice. DEC-036's context and consequences did not claim a published contract and are unchanged. It now agrees with design sec-1 'The boundary' and sec-2 'No focused window'."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

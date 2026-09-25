@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 35
+slug = "current-window-liveness-from-lifecycle"
+title = "Replayed current_window keeps the last state; liveness comes from lifecycle events, not age"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-021 inq-2. An idle desktop emits no desktop events; panopticon emits compositor_disconnected on IPC error/EOF and snapshot on start but nothing on SIGTERM. Today's 5-min mtime ceiling drops current_window and alerts 'daemon may be dead' whenever the user idles."
+choice = "current_window at t = state of the last state-bearing event at or before t; always kept (never dropped for age); carries a :since timestamp (ts of that event). Status: disconnected when the latest state event or compositor_disconnected at or before t is compositor_disconnected; compositor_reconnected is passed over, since panopticon writes it before any connection exists and it proves none. missing/malformed as today; otherwise ok. No age-based stale. (Amended 2026-09-26 per RV-021 F-7, user: reconciles with DEC-039, which already passes over compositor_reconnected.)"
+alternatives = ["A: age ceiling only - rejected: idle past N reads as dead (today's defect)", "B: panopticon heartbeat event - rejected for now: cross-repo change and deploy ordering (REQ-015) for a narrow blind spot"]
+rationale = "Replay answers what was focused at t exactly; age was a liveness proxy that is wrong for the commonest case (idle). :since exposes age honestly to consumers and the model. Residual blind spot (silent SIGTERM with no restart; hung IPC) is narrow: exceptions emit disconnect and Restart=always emits snapshot."
+consequences = ["satan-memory-evidence-current-window-stale-seconds retires", "panopticon_current_stale cause retires and panopticon_current_disconnected is added (SL-021 inq-3)", "perceptual-design.md S6 freshness contract for current is rewritten at reconcile", "follow-up: panopticon emits compositor_disconnected reason shutdown on cancel (closes the SIGTERM hole)"]
+decided_by = "user (SL-021 design)"
+decided_on = "2026-09-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-021"

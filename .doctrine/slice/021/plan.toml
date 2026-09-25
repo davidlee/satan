@@ -1,0 +1,137 @@
+# Implementation plan for SL-021 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-021"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase, in execution order — the authored array order
+# IS the order; never sort by id. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored — edits append, they never renumber. Criterion ids
+# are local to their phase: EN entry, EX exit, VT test / VA agent / VH human.
+[[phase]]
+id        = "PHASE-01"
+name      = "Shared date helpers in canon"
+objective = "Lift the local-date and day-shift operations into satan-memory-canon (design sec-2, 'Shared date helpers'); satan-goad-local-date and satan-memory-evidence--next-day delegate. Behaviour-preserving refactor that the reader in PHASE-02 builds on."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (revision 47); just check green on main." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-memory-canon-local-date (TS &optional ZONE) and satan-memory-canon-day-shift (DAY N) exist in satan-memory-canon.el; canon requires calendar." },
+  { id = "EX-2", text = "satan-goad-local-date keeps its name and satan-goad--zone seam and delegates to canon; satan-memory-evidence--next-day is (satan-memory-canon-day-shift DAY 1)." },
+  { id = "EX-3", text = "just check green (lint zero warnings, all suites pass)." },
+]
+verification = [
+  { id = "VT-1", expects = "day-shift crosses month end, year end and 29 February in both directions; pure calendar, no zone", test_file = "satan/test/satan-memory-canon-test.el", keywords = ["satan-memory-canon-day-shift", "2024-02-29"], waived = false },
+  { id = "VT-2", expects = "local-date: zone cases carried over from goad VT-24 (UTC vs +10:00 across midnight; naive stamp -> nil)", test_file = "satan/test/satan-memory-canon-test.el", keywords = ["satan-memory-canon-local-date"], waived = false },
+  { id = "VT-3", expects = "goad VT-24 local-date cases still pass through the delegation", test_file = "satan/test/satan-goad-test.el", keywords = ["satan-goad-local-date"], waived = false },
+  { id = "VT-4", expects = "--next-day cases still pass through the delegation", test_file = "satan/test/satan-memory-evidence-test.el", keywords = ["satan-memory-evidence--next-day"], waived = false },
+  { id = "VA-1", text = "No duplicated date logic: the bodies of satan-goad-local-date and satan-memory-evidence--next-day contain no format-time-string / calendar-absolute-from-gregorian of their own." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "The satan-desktop reader"
+objective = "Add satan/satan-desktop.el with satan-desktop-at (design sec-2) and the shared test fixture module satan-desktop-fixture.el (sec-5). No callers yet."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete (canon helpers available)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-desktop-at ROOT TIME returns (STATUS . WINDOW) per sec-2: backward walk, UTF-8 decode, lenient per line, instants compared, day of TIME then the previous day, reconnect passed over, windowless state events decide ok." },
+  { id = "EX-2", text = "Module requires only subr-x and satan-memory-canon; ROOT is an argument; satan-desktop--zone is the only defvar." },
+  { id = "EX-3", text = "satan/test/satan-desktop-fixture.el provides satan-desktop-fixture-event and satan-desktop-fixture-write (UTF-8)." },
+  { id = "EX-4", text = "just check green." },
+  { id = "EX-5", text = "Pin-test lines keep the live key/event shape but carry sanitised values (titles, window ids, pids, workspace names): the repo is public and tests must not embed production data." },
+]
+verification = [
+  { id = "VT-1", expects = "state of last event <= T; :since is its ts; idle hours-old event stays ok; envelope/event-specific keys not copied; appended-after-T events do not change the answer", test_file = "satan/test/satan-desktop-test.el", keywords = ["satan-desktop-at", ":since", "old_title"], waived = false },
+  { id = "VT-2", expects = "trailing compositor_disconnected -> disconnected; reconnected after a disconnect stays disconnected; a following snapshot decides ok; sway pass-through skipped", test_file = "satan/test/satan-desktop-test.el", keywords = ["compositor_disconnected", "compositor_reconnected", "window_new"], waived = false },
+  { id = "VT-3", expects = "no focused window: workspace/output-only window_focus, keyless window_focus and empty snapshot read ok with only what they carry", test_file = "satan/test/satan-desktop-test.el", keywords = ["workspace_focus", "snapshot"], waived = false },
+  { id = "VT-4", expects = "previous-day fallback; nothing in either day -> missing and no third day read; torn last line skipped; non-empty unparseable file -> malformed", test_file = "satan/test/satan-desktop-test.el", keywords = ["\"missing\"", "\"malformed\""], waived = false },
+  { id = "VT-5", expects = "Z-offset T compared by instant against +10:00 lines; day file chosen by local date of T under satan-desktop--zone", test_file = "satan/test/satan-desktop-test.el", keywords = ["satan-desktop--zone", "Z\""], waived = false },
+  { id = "VT-6", expects = "non-ASCII title round-trips byte-for-byte", test_file = "satan/test/satan-desktop-test.el", keywords = ["π"], waived = false },
+  { id = "VT-7", expects = "pin test: real umbriel- and niri-shaped lines copied from a live raw file decide as specified", test_file = "satan/test/satan-desktop-test.el", keywords = ["umbriel", "niri"], waived = false },
+  { id = "VT-8", expects = "fixture module builds raw-shaped events and writes day files", test_file = "satan/test/satan-desktop-fixture.el", keywords = ["satan-desktop-fixture-event", "satan-desktop-fixture-write", "utf-8"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Evidence assembler and sensor alerts cut over"
+objective = "The :current_window probe calls satan-desktop-at at the window END; the mtime probe and stale ceiling go; sensor-alert causes move to the DEC-037 vocabulary; every test writer of current/desktop.json in these suites moves to the fixture module; retired-cause sample data is replaced (design sec-3, sec-5)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-memory-evidence.el: probe is (satan-desktop-at root end) under satan-trace-stage evidence.current_window, still run under :cue_only; satan-memory-evidence-current-window-stale-seconds, --current-window-status and --mtime removed; header note updated; requires satan-desktop." },
+  { id = "EX-2", text = "satan-sensor-alerts.el: :current_window rows are disconnected/missing/malformed with sec-3 messages and hints; stale row removed; --match-kind accepts disconnected." },
+  { id = "EX-3", text = "protocol/fixtures.json, satan-audit-test.el and satan-broker-test.el name panopticon_current_disconnected, not the retired cause." },
+  { id = "EX-4", text = "percept, resonance and evidence suites write raw day files via the fixture module; no mtime manipulation remains for current_window." },
+  { id = "EX-5", text = "just check green." },
+  { id = "EX-6", text = "Before the old probe is removed: ~/.emacs.d/lisp/dl-sleipnir-doctor.el's current probe calls (car (satan-desktop-at root end)) and its docstrings drop the stale/current-window-file wording (cross-repo; design omission, user ruling 2026-09-26, corrected at reconcile). Only that file is touched in ~/.emacs.d; the user's other uncommitted edits are left alone." },
+]
+verification = [
+  { id = "VT-1", expects = "a past [start, end] gets the window focused at end, not a later one; :cue_only keeps :current_window; :sensor_status :current_window reports disconnected / missing / malformed", test_file = "satan/test/satan-memory-evidence-test.el", keywords = ["satan-desktop-fixture-write", "\"disconnected\"", ":cue_only"], waived = false },
+  { id = "VT-2", expects = "disconnected derives panopticon_current_disconnected; current_window statuses derive only the three live causes (asserted as a set); prune test uses the new live control", test_file = "satan/test/satan-sensor-alerts-test.el", keywords = ["panopticon_current_disconnected", "bough_unreachable"], waived = false },
+  { id = "VT-3", expects = "percept fixtures (write-sway and seed-fixture, acceptance A3) use raw day files; assertions unchanged", test_file = "satan/test/satan-percept-test.el", keywords = ["satan-desktop-fixture"], waived = false },
+  { id = "VT-4", expects = "resonance fixture uses raw day files; assertions unchanged", test_file = "satan/test/satan-resonance-test.el", keywords = ["satan-desktop-fixture"], waived = false },
+  { id = "VT-5", expects = "audit sample cause is a live cause", test_file = "satan/test/satan-audit-test.el", keywords = ["panopticon_current_disconnected"], waived = false },
+  { id = "VT-6", expects = "broker sample cause is a live cause", test_file = "satan/test/satan-broker-test.el", keywords = ["panopticon_current_disconnected"], waived = false },
+  { id = "VA-1", text = "rg -n 'current-window-stale|current-window-status|satan-memory-evidence--mtime|panopticon_current_stale' satan/ ~/.emacs.d/lisp returns nothing." },
+  { id = "VA-2", text = "In a live Emacs with the new package loaded, the sleipnir doctor's SATAN sensors check runs without error and reports current=ok|disconnected|missing|malformed." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "activity_read current scope cut over"
+objective = "The current scope calls satan-desktop-at at the wall-clock now and returns :scope, :status, :window; :path dropped; header comment corrected (design sec-4). Closes the package-side change."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-tools-activity.el current scope per sec-4; handler stays ok whatever the status; no read of current/." },
+  { id = "EX-2", text = "Closure grep from design sec-5 returns nothing across satan/ (tests and protocol included)." },
+  { id = "EX-3", text = "just check green." },
+]
+verification = [
+  { id = "VT-1", expects = "current returns :status and the replayed :window (with :since); disconnected after a disconnect; missing with no files; no :path", test_file = "satan/test/satan-tools-activity-test.el", keywords = ["satan-desktop-fixture-write", ":status", "\"disconnected\""], waived = false },
+  { id = "VA-1", text = "rg -n 'desktop\\.json|current/desktop|panopticon_current_stale|current-window-stale|current-window-status' satan/ returns nothing." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Model-facing tool description (corpus repo)"
+objective = "Update ~/satan-corpus/tools/activity_read.md's current entry to the replayed window with status and since, after the package change is deployed (design sec-4, 'Landing order')."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 committed and the package deployed to the running Emacs." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The current entry describes status (ok/disconnected/missing/malformed), since, and that an ok window without app_id means nothing is focused; no path key promised." },
+  { id = "EX-2", text = "Committed in ~/satan-corpus with just commit." },
+]
+verification = [
+  { id = "VH-1", text = "User confirms the package was deployed before the corpus edit landed." },
+  { id = "VA-1", text = "activity_read.md current entry matches the sec-4 output contract table." },
+]
+specs        = []
+requirements = []

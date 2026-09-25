@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 40
+slug = "activity-read-current-shares-replay"
+title = "activity_read current scope shares the current_window replay reader"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-021 inq-7. activity_read scope current returns current/desktop.json verbatim; panopticon never rewrites that file on disconnect so it reports a stale window after the compositor goes away."
+choice = "The current scope calls the SL-021 replay reader at the wall-clock now and returns :window plus :status (the window carries :since). :path is dropped: the reader may answer from yesterday's file, so a single path would sometimes be wrong. SATAN no longer reads current/."
+alternatives = ["B: leave the tool as a live read of current/desktop.json - rejected: two readers of the same state with different semantics"]
+rationale = "DRY: one reader, one meaning; fixes the post-disconnect lie; scope cost is satan-tools-activity.el and its test."
+consequences = ["satan-tools-activity.el and satan-tools-activity-test.el join SL-021 scope", "tool output gains :status and :since"]
+decided_by = "user (SL-021 design)"
+decided_on = "2026-09-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-021"

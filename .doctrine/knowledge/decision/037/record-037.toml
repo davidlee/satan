@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 37
+slug = "current-window-status-vocabulary"
+title = "current_window status vocabulary: ok, disconnected, missing, malformed"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-021 inq-3. DEC-035 removes age-based staleness for current_window. Sensor-alert causes are keyed by name for cooldown (notified.json) and IMP-001's audit cross-check."
+choice = "sensor_status :current_window is one of ok / disconnected / missing / malformed. Causes: keep panopticon_current_missing and panopticon_current_malformed; add panopticon_current_disconnected; retire panopticon_current_stale. On disconnected the :current_window slice is nil. Remediation hints: systemctl --user status panopticon-sway (still the unit name); malformed points at raw/desktop-<date>.jsonl under the behaviour root with no host literal (REQ-018)."
+alternatives = ["B: raise the existing stale cause on disconnect - rejected: the name would mislead", "C: keep the last window flagged disconnected - rejected: shows a window that may no longer exist"]
+rationale = "Status names what the series proves. Dropping the slice on disconnect matches every other non-ok status. The orphaned stale cooldown entry is harmless."
+consequences = ["satan-sensor-alerts causes table edits", "missing = no state event in the lookback files (SL-021 inq-5)", "malformed trigger depends on reader leniency (SL-021 inq-6)"]
+decided_by = "user (SL-021 design)"
+decided_on = "2026-09-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-021"

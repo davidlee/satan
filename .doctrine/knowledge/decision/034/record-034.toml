@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 34
+slug = "current-window-reads-raw-desktop"
+title = "SATAN replays current_window from panopticon raw desktop events"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "current_window is the last class-B evidence key (ADR-001 Amendment 2). Replay needs a durable time-addressable desktop series. panopticon docs/schema.md 'Desktop events' already publishes the raw event schema to consumers."
+choice = "SATAN reads raw/desktop-<date>.jsonl under the behaviour root and takes the state carried by the last transition at or before the window end."
+alternatives = ["B: panopticon segmentizer emits segments/current-* - rejected for up-to-10-min lag (segmentize timer *:0/10) which recreates the class-B defect plus a cross-repo deploy", "C: panopticon watcher writes a compact real-time current log - rejected as a duplicate of raw minus titles plus a cross-repo deploy"]
+rationale = "Only option with zero lag and no producer change. The raw schema is a published consumer contract. Satisfies ADR-018 D3 / REQ-007 (append-only file data plane) and REQ-013 (panopticon owns the schema). Departs from IMP-013's stated preference for segments which is not governance."
+consequences = ["SATAN must read raw cheaply (SL-021 inq-6)", "partial-state producers such as sway need a policy (SL-021 inq-4)", "IMP-013 body updated at reconcile: 'SATAN reads segments' is not an invariant"]
+decided_by = "user (SL-021 design)"
+decided_on = "2026-09-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-021"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 39
+slug = "current-window-backward-walk"
+title = "current_window replay walks the raw day file backward, lenient per line"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-021 inq-6. The reader runs on every evidence assemble incl. the cue_only resonance path. Measured (emacs --batch, desktop-2026-09-20.jsonl 3.85MB/15947 lines): full json parse 69ms; full parse + per-line instant compare 251ms; 64KB tail + one parse 0.2ms. panopticon appends (O_APPEND) concurrently so a torn last line is normal."
+choice = "Insert the day file into a temp buffer and walk lines from the end; unparseable lines are skipped; ts compared as parsed instants (never strings); the first event with ts at or before t decides: state event -> window + :since, compositor_disconnected -> disconnected, compositor_reconnected and non-state events are passed over; undecided -> previous day file (DEC-038). malformed = a non-empty file in which no line parses."
+alternatives = ["A: reuse satan-jsonl-read-file forward - rejected: 70-250ms per call and strict parsing flaps malformed on a torn last line", "C: byte-offset binary search - rejected: subtle and fragile to small ts disorder"]
+rationale = "Cost proportional to events after t (about zero for live ticks, bounded for observer windows); single path for live and past; tolerant of the concurrent writer. A tail-chunk optimisation is unnecessary at measured costs."
+consequences = ["one new small reader in its own module satan-desktop.el (amended 2026-09-26 per RV-021 F-7 by user: evidence and activity_read both call it and a reader in the evidence module is unreachable from the tool without a require cycle)", "no reuse of satan-jsonl-read-file for this path"]
+decided_by = "user (SL-021 design)"
+decided_on = "2026-09-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-021"

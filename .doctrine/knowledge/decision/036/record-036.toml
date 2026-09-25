@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 36
+slug = "no-desktop-fold-in-satan"
+title = "SATAN never folds partial desktop events; full focused state is panopticon's contract"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-021 inq-4. niri and umbriel emit full focused state on every state event (panopticon compositor/diff.py diff_state; umbriel/session.py folds window+workspace streams with a coherence hold). sway's adapter emits partial-state events; mango may be added later."
+choice = "SATAN reads the state keys of the last state-bearing event (snapshot / window_focus / workspace_focus / window_title) verbatim, never merging fields across events. Other desktop events (lifecycle; sway passthrough window_new/move/close/urgent/fullscreen_mode and workspace_urgent) are not state. A state event carrying no window fields (window_id, app_id, pid, title) means no focused window. Emitting full focused state per state event is required of panopticon per producer; today it holds only as an implementation property of diff_state (niri, umbriel), not yet published in panopticon's schema.md (SL-021 follow-up). A producer that breaks it yields a partial window, fixed upstream. (Amended 2026-09-26 per RV-021 F-6/F-16, user.)"
+alternatives = ["Fold partial events in elisp (reimplement derive.py _next_focus) - rejected by user as janky coupling"]
+rationale = "User direction: SATAN/elisp must not rebuild state from partial events. Keeps producer knowledge in panopticon (REQ-013 schema owner). The live producers (umbriel, niri) satisfy it today via diff_state."
+consequences = ["sway (not in use) may yield partial current_window until its adapter adopts diff_state - panopticon follow-up", "a new producer such as mango must use diff_state or equivalent"]
+decided_by = "user (SL-021 design)"
+decided_on = "2026-09-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-021"

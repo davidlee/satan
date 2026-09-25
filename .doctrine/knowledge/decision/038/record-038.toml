@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 38
+slug = "current-window-day-lookback"
+title = "current_window replay reads the day of t then the previous day, by parsed local date"
+record_kind = "decision"
+status = "accepted"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-021 inq-5. panopticon rotates raw/desktop-<date>.jsonl by each event's own local date with no carry-over snapshot at midnight. ISS-021: the assembler keys day files by (substring END 0 10) which is wrong for UTC strings."
+choice = "The reader searches raw/desktop-<D>.jsonl where D is the local date of the parsed t (satan-memory-canon-local-date: strict ISO 8601 parse via satan-memory-canon-parse-instant, then %F in the local zone) and on no state event at or before t falls back to D-1 (pure calendar arithmetic, satan-memory-canon-day-shift). No further lookback: nothing in either file yields missing. Only the new reader adopts parsed local dates; existing segment/git readers are unchanged and ISS-021 stays open for them. (Amended 2026-09-26 per RV-021 F-7, user: strict parser replaces date-to-time, which silently misreads naive and psql-style stamps; identical on well-formed input.)"
+alternatives = ["B: look back up to N days (retention 7) - rejected: would report a days-old window as current", "C: day of t only - rejected: false missing just after midnight"]
+rationale = "One day covers overnight idle; bounded cost; more than a day of silence honestly reads as missing."
+consequences = ["reader cost bounded to two files", "ISS-021 remains open for segment and git readers"]
+decided_by = "user (SL-021 design)"
+decided_on = "2026-09-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-021"
