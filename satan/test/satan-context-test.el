@@ -741,5 +741,75 @@ prepare, and the attribute snapshot is pinned.  Both builds must produce
         (should (stringp (plist-get one :prompt)))
         (should (string= (plist-get one :prompt) (plist-get two :prompt)))))))
 
+(ert-deftest satan-context/interactive-addendum-supersedes-harness-protocol ()
+  "The scaffold is shared with harness-spawned batch runs, so it mandates
+JSONL-only output and a terminal `satan_final' call.  The interactive
+addendum is appended after it and is the interactive system prompt's
+only chance to supersede that protocol; if it does not, the prompt
+ships two contradictory instructions (IT-012)."
+  (skip-unless (satan-context-test--corpus-p
+                satan-system-scaffold-file
+                (expand-file-name "interactive.txt" satan-prompts-dir)))
+  (let ((scaffold (satan-context--read-required satan-system-scaffold-file))
+        (interactive (satan-context--read-required
+                      (expand-file-name "interactive.txt" satan-prompts-dir))))
+    ;; Premise — the shared scaffold still mandates the harness protocol.
+    (should (string-match-p "satan_final" scaffold))
+    (should (string-match-p "JSONL" scaffold))
+    ;; The addendum names the superseded protocol and its precedence.
+    (should (string-match-p "satan_final" interactive))
+    (should (string-match-p "superseded" interactive))))
+
+(ert-deftest satan-context/render-prompt-includes-hippocampus-block ()
+  "IT-003: the capsule carries the hippocampus's recent titles, so the
+memory the agent writes is read back by the next capsule; an empty
+directory suppresses the block entirely."
+  (let* ((tmp (make-temp-file "satan-ctx-hippo-" t))
+         (satan-hippocampus-dir (expand-file-name "hippocampus" tmp))
+         (satan-system-framing-file (expand-file-name "framing.txt" tmp))
+         (entry (expand-file-name
+                 "20260601T000000--alpha__satan_hippocampus.org"
+                 satan-hippocampus-dir)))
+    (unwind-protect
+        (progn
+          (make-directory satan-hippocampus-dir t)
+          (with-temp-file satan-system-framing-file
+            (insert "now=# Now\n"
+                    "today=# Today (raw)\n"
+                    "sources=# Source files\n"
+                    "hippocampus_block_header=# Hippocampus\n"))
+          (with-temp-file entry (insert "body"))
+          (let ((out (satan-context--render-prompt "" (list :now nil))))
+            (should (string-match-p "^# Hippocampus$" out))
+            (should (string-match-p "\\[2026-06-01\\] alpha" out)))
+          (delete-file entry)
+          (let ((out (satan-context--render-prompt "" (list :now nil))))
+            (should-not (string-match-p "# Hippocampus" out))))
+      (delete-directory tmp t))))
+
+(ert-deftest satan-context/tick-prompt-carries-hippocampus-block ()
+  "IT-003 end-to-end: the string a real mode's context-fn hands the harness
+carries the `# Hippocampus' block — not merely the private renderer.  Uses
+the live corpus scaffold/framing/tick prompt with a temp hippocampus dir."
+  (skip-unless (satan-context-test--corpus-p
+                satan-system-scaffold-file satan-system-framing-file
+                (expand-file-name "tick/pulse.txt" satan-prompts-dir)))
+  (let* ((tmp (make-temp-file "satan-ctx-hippo-e2e-" t))
+         (satan-hippocampus-dir (expand-file-name "hippocampus" tmp))
+         (satan-runs-dir (expand-file-name "runs" tmp))
+         (spec (list :name "tick-pulse"
+                     :prompt-file (expand-file-name "tick/pulse.txt" satan-prompts-dir)))
+         (entry (expand-file-name
+                 "20260601T000000--e2e-alpha__satan_hippocampus.org"
+                 satan-hippocampus-dir)))
+    (unwind-protect
+        (progn
+          (make-directory satan-hippocampus-dir t)
+          (with-temp-file entry (insert "body"))
+          (let ((prompt (plist-get (satan-context-tick spec) :prompt)))
+            (should (string-match-p "^# Hippocampus$" prompt))
+            (should (string-match-p "\\[2026-06-01\\] e2e alpha" prompt))))
+      (delete-directory tmp t))))
+
 (provide 'satan-context-test)
 ;;; satan-context-test.el ends here

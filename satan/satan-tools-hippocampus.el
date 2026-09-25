@@ -13,6 +13,7 @@
 (require 'subr-x)
 (require 'satan-custom)
 (require 'satan-run)
+(require 'satan-hippocampus)
 (require 'satan-tools)
 (require 'satan-memory-grammar)
 (require 'satan-memory-canon)
@@ -114,32 +115,11 @@ Soft-fail: log on error, do not affect tool return value."
 
 ;; ---------- hippocampus_list ----------
 
-(defun satan-tools-hippocampus--parse-title (filename)
-  "Extract title from denote-style FILENAME, or return FILENAME."
-  (if (string-match "^[0-9T]+--\\([^_]+\\)" filename)
-      (replace-regexp-in-string "-" " " (match-string 1 filename))
-    filename))
-
-(defun satan-tools-hippocampus--entry (path)
-  "Build an entry plist for PATH (absolute)."
-  (let* ((filename (file-name-nondirectory path))
-         (mtime (file-attribute-modification-time (file-attributes path))))
-    (list :filename filename
-          :title (satan-tools-hippocampus--parse-title filename)
-          :mtime (format-time-string "%Y-%m-%dT%H:%M:%S%z" mtime))))
-
 (defun satan-tool/hippocampus-list (_args _ctx)
   "List all hippocampus entries.  Returns (ok :entries [...])."
-  (if (not (file-directory-p satan-hippocampus-dir))
-      (cons 'ok (list :entries nil :count 0))
-    (let* ((files (directory-files satan-hippocampus-dir t "\\.org\\'"))
-           (entries (mapcar #'satan-tools-hippocampus--entry files))
-           (sorted (sort entries
-                         (lambda (a b)
-                           (string> (plist-get a :mtime)
-                                    (plist-get b :mtime))))))
-      (cons 'ok (list :entries sorted
-                       :count (length sorted))))))
+  (let ((entries (satan-hippocampus-entries)))
+    (cons 'ok (list :entries entries
+                    :count (length entries)))))
 
 ;; ---------- hippocampus_read ----------
 

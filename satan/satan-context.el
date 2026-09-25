@@ -12,6 +12,7 @@
 (require 'satan-percept)
 (require 'satan-resonance)
 (require 'satan-motive)
+(require 'satan-hippocampus)
 (require 'satan-sensor-alerts)
 (require 'satan-sensor-curiosity)
 (require 'satan-sensor-content)
@@ -399,7 +400,7 @@ BUNDLE is the context plist providing `:now', `:today_text', `:sources',
 `:attributes'.
 Missing framing.txt signals — there is no canonical fallback.  Block
 order: `# Now' → attributes → percept → attention → resonance → motive →
-sensors → mode-specific (today / sources / recent runs).  Each block self-suppresses
+hippocampus → sensors → mode-specific (today / sources / recent runs).  Each block self-suppresses
 when its source is empty/absent (A4, A6, A8, A15)."
   (let* ((framing (satan-context--framing))
          (parts (list (string-trim-right assembled)))
@@ -419,6 +420,8 @@ when its source is empty/absent (A4, A6, A8, A15)."
                          framing
                          (plist-get bundle :motive)
                          (plist-get bundle :time_now))
+                        (satan-hippocampus-render-block
+                         framing (satan-hippocampus-entries))
                         (satan-sensor-render-block
                          framing (plist-get bundle :sensor_status))
                         (satan-context--render-today
