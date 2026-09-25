@@ -108,7 +108,13 @@ reported as a bad path: every path would otherwise look like an escape."
         ;; "~/notes" base-directory would reach fd as a nonexistent path.
         ;; Expand here.
         "--base-directory"
-        (expand-file-name satan-tools-notes-root)))
+        (expand-file-name satan-tools-notes-root)
+        ;; Without this, `--base-directory' makes fd print `./'-prefixed
+        ;; paths; `--resolve' refuses a leading-dot component, so
+        ;; `notes_recent' would hand `notes_read' paths it cannot open.
+        ;; Absolute output + `--relativize' is the one shape both probes
+        ;; agree on.
+        "--absolute-path"))
 
 (defun satan-tools-notes--grep-argv (query root)
   "Build the rg argv searching ROOT for QUERY.
@@ -181,6 +187,15 @@ If BASENAME doesn't carry a denote `--TITLE' segment, :title is nil."
           :ext (plist-get meta :ext)
           :_sort mtime)))
 
+(defun satan-tools-notes--public (entry)
+  "Return ENTRY without the internal `:_sort' key.
+`:_sort' is an Emacs time object: it exists so `notes_recent' can order
+entries, and it cannot cross the wire meaningfully — the JSON layer renders
+it as a bare integer array.  No tool result carries it."
+  (let ((copy (copy-sequence entry)))
+    (cl-remf copy :_sort)
+    copy))
+
 (defun satan-tools-notes--split-stdout (stdout)
   "Split fd NUL-delimited STDOUT into a list of non-empty paths."
   (cl-remove-if #'string-empty-p
@@ -193,9 +208,10 @@ If BASENAME doesn't carry a denote `--TITLE' segment, :title is nil."
 
 (defun satan-tools-notes--relativize (path root)
   "Return PATH relative to ROOT (a directory name) when it sits under it.
-rg echoes the path it was handed, so this is a prefix strip, not a
-filesystem call."
-  (if (string-prefix-p root path)
+Both probes echo the path form they were handed — rg echoes the argument, fd
+the base directory it was given — so this is a prefix strip, not a filesystem
+call.  A nil ROOT (an unreachable corpus) leaves PATH untouched."
+  (if (and root (string-prefix-p root path))
       (substring path (length root))
     path))
 
@@ -279,7 +295,11 @@ Returns (ok PLIST) | (error STRING)."
             (cons 'error (satan-tools-notes--result-error "fd failed" run))
           (let* ((paths (satan-tools-notes--split-stdout
                          (plist-get run :stdout)))
-                 (entries (mapcar #'satan-tools-notes--file-plist paths))
+                 (root (satan-tools-notes--root))
+                 (entries (mapcar (lambda (p)
+                                    (satan-tools-notes--file-plist
+                                     (satan-tools-notes--relativize p root)))
+                                  paths))
                  (sorted (sort entries
                                (lambda (a b)
                                  (time-less-p (plist-get b :_sort)
@@ -287,11 +307,7 @@ Returns (ok PLIST) | (error STRING)."
                  (capped (if (> (length sorted) limit)
                              (cl-subseq sorted 0 limit)
                            sorted))
-                 (clean (mapcar (lambda (e)
-                                  (let ((copy (copy-sequence e)))
-                                    (cl-remf copy :_sort)
-                                    copy))
-                                capped)))
+                 (clean (mapcar #'satan-tools-notes--public capped)))
             (cons 'ok
                   (list :scope "notes_recent"
                         :root satan-tools-notes-root
@@ -320,7 +336,8 @@ empty success: silence would be indistinguishable from an empty note."
           (cons 'ok
                 (append (list :scope "notes_read"
                               :root satan-tools-notes-root)
-                        (satan-tools-notes--file-plist rel)
+                        (satan-tools-notes--public
+                         (satan-tools-notes--file-plist rel))
                         (satan-tools-notes--read-capped
                          abs satan-tools-notes-read-max-bytes)))))))))
 

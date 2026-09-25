@@ -62,7 +62,9 @@ not depend on the host having those binaries."
 (ert-deftest satan-notes/builds-correct-fd-argv ()
   "fd is invoked with --changed-after Nh, -t f, --print0, --base-directory.
 No --exclude: the corpus left `~/notes' in SL-015, so there is no SATAN
-subtree to hide; everything under the notes root is the user's."
+subtree to hide; everything under the notes root is the user's.
+--absolute-path is required because `--base-directory' makes fd print
+`./'-prefixed paths, which the read door refuses as hidden components."
   (satan-tools-notes-test--with-notes-root
     (satan-tools-notes-test--with-exec-stub "" 0
       (satan-tool/notes-recent '(:since-hours 24 :limit 10) nil)
@@ -75,6 +77,7 @@ subtree to hide; everything under the notes root is the user's."
         (should (member "-t" args))
         (should (member "f" args))
         (should (member "--print0" args))
+        (should (member "--absolute-path" args))
         (should (member "--base-directory" args))
         (should (member satan-tools-notes-root args))
         (should-not (member "--exclude" args))))))
@@ -220,7 +223,29 @@ own registered name and now routes through `satan-tool/notes-recent'."
         (should (equal (plist-get p :bytes) (string-bytes body)))
         (should (equal (plist-get p :total-bytes) (string-bytes body)))
         (should (equal (plist-get p :truncated) nil))
-        (should (stringp (plist-get p :mtime)))))))
+        (should (stringp (plist-get p :mtime)))
+        ;; `:_sort' is an Emacs time object: notes_recent's sorting key, never
+        ;; part of the result.  The wire layer can only render it as a
+        ;; meaningless array, so it must not survive the handler.
+        (should-not (plist-member p :_sort))))))
+
+(ert-deftest satan-notes/recent-paths-round-trip-through-read ()
+  "Every :path notes_recent returns is one notes_read accepts.
+The unit stubs used to emit bare names, which is not what fd prints: with
+`--base-directory' fd emits `./'-prefixed paths, and `--resolve' refuses a
+leading-dot component — so the round trip failed live while the suite stayed
+green.  The stub here emits what fd emits (absolute, via --absolute-path)."
+  (satan-tools-notes-test--with-notes-root
+    (let ((rel "journal/2026-09-25--protocol.org"))
+      (satan-tools-notes-test--touch satan-tools-notes-root rel)
+      (satan-tools-notes-test--with-exec-stub
+          (concat (expand-file-name rel satan-tools-notes-root) "\0") 0
+        (let* ((recent (satan-tool/notes-recent '(:since-hours 24) nil))
+               (path (plist-get (car (plist-get (cdr recent) :files)) :path))
+               (read (satan-tool/notes-read (list :path path) nil)))
+          (should (equal path rel))
+          (should (eq (car read) 'ok))
+          (should (equal (plist-get (cdr read) :path) rel)))))))
 
 (ert-deftest satan-notes/read-titles-only-date-prefixed-names ()
   "A plain name yields :title nil — the reused parser's actual behaviour."
