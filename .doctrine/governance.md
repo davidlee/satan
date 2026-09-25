@@ -15,5 +15,7 @@
 - ADR-017's migration gate has both artefacts: the protocol spec SPEC-001 (draft; requirements all `pending`) and the authority ledger `.doctrine/adr/017/authority-ledger.md` (since 2026-07-24, every item owned by `emacs-client`).
 - Whole-system map: SPEC-002 (context spec: containers, transports, composition invariants). Host-specific facts (paths, units, jails, pins): `~/flakes/SATAN.md`.
 
+for small pieces of work, an agreed design sketch + working directly off backlog is ok, with user acceptance.
+
 ## Behaviours
 
