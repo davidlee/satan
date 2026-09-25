@@ -59,5 +59,27 @@
   (should (= 200 (satan-tools-vcs--clamp-limit 9999)))
   (should (= 5 (satan-tools-vcs--clamp-limit 5))))
 
+;; --- the routed git choke point ------------------------------------
+
+(ert-deftest satan-tools-vcs/git-output-sets-optional-locks-env ()
+  "Read-only git observes GIT_OPTIONAL_LOCKS=0.  `git' is stubbed on
+`exec-path' with a script that echoes the env var."
+  (let ((tmp (make-temp-file "satan-vcs-stub-" t)))
+    (unwind-protect
+        (let ((stub (expand-file-name "git" tmp)))
+          (with-temp-file stub
+            (insert "#!/bin/sh\nprintf '%s' \"$GIT_OPTIONAL_LOCKS\"\n"))
+          (set-file-modes stub #o755)
+          (let ((exec-path (cons tmp exec-path)))
+            (should (equal (satan-tools-vcs--git-output "status") "0"))))
+      (delete-directory tmp t))))
+
+(ert-deftest satan-tools-vcs/git-output-timeout-returns-nil ()
+  "A routed git call that breaches its deadline → nil."
+  (cl-letf (((symbol-function 'satan-trace-call)
+             (lambda (&rest _)
+               (list :exit 124 :stdout "" :timed-out t))))
+    (should (null (satan-tools-vcs--git-output "status")))))
+
 (provide 'satan-tools-vcs-test)
 ;;; satan-tools-vcs-test.el ends here

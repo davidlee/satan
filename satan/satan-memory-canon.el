@@ -85,19 +85,6 @@
     ("developer.mozilla.org" . "docs"))
   "Domain → domain_kind classification.  First match by literal equality.")
 
-(defconst satan-memory-canon--extension-to-file-kind
-  '(("org" . "org")
-    ("el"  . "source") ("rs" . "source") ("py" . "source") ("ts" . "source")
-    ("tsx" . "source") ("js" . "source") ("jsx" . "source") ("go" . "source")
-    ("c"   . "source") ("cpp" . "source") ("h" . "source") ("hpp" . "source")
-    ("rb"  . "source") ("clj" . "source") ("sh" . "source") ("bash" . "source")
-    ("sql" . "source") ("nix" . "source") ("lua" . "source")
-    ("md"  . "doc")   ("rst" . "doc") ("txt" . "doc") ("adoc" . "doc")
-    ("json" . "data") ("yaml" . "data") ("yml" . "data") ("toml" . "data")
-    ("csv"  . "data") ("xml" . "data")
-    ("conf" . "config") ("cfg" . "config") ("ini" . "config") ("env" . "config"))
-  "File extension → file_kind mapping (closed-world).")
-
 ;; ---------------------------------------------------------------------
 ;; Rule registry
 ;; ---------------------------------------------------------------------
@@ -168,15 +155,6 @@ goad code (`satan-goad-subject-topic') computes the same token."
 (defun satan-memory-canon--domain-kind (domain)
   "Return the closed-world domain_kind for DOMAIN, or nil if unmapped."
   (cdr (assoc domain satan-memory-canon--domain-to-kind)))
-
-(defun satan-memory-canon--file-extension (path)
-  "Return the (lowercase) extension of PATH, or nil."
-  (when (and (stringp path) (string-match "\\.\\([^./]+\\)\\'" path))
-    (downcase (match-string 1 path))))
-
-(defun satan-memory-canon--file-kind (path)
-  (cdr (assoc (satan-memory-canon--file-extension path)
-              satan-memory-canon--extension-to-file-kind)))
 
 (defun satan-memory-canon--emit (handle origin pointer &optional hint-field confidence)
   "Build an emission plist."
@@ -384,33 +362,10 @@ window and are NOT written to the memory store (DEC-2)."
                    "/content_recent"))
                 domains)))))
 
-(satan-memory-canon-defrule cwd.project (ev _hints _ctx)
-  "Derive a project slug from `git_state.remote' (last path segment) or
-`fs_state.cwd' (last directory).  Open-world; slugified."
-  (let* ((git (plist-get ev :git_state))
-         (fs  (plist-get ev :fs_state))
-         (remote (and git (plist-get git :remote)))
-         (cwd    (and fs  (plist-get fs  :cwd)))
-         (slug (cond
-                (remote
-                 (let* ((tail (car (last (split-string remote "/")))))
-                   (and tail
-                        (satan-memory-canon--slugify
-                         (replace-regexp-in-string "\\.git\\'" "" tail)))))
-                (cwd
-                 (satan-memory-canon--slugify
-                  (car (last (split-string (directory-file-name cwd) "/"))))))))
-    (when slug
-      (list (satan-memory-canon--emit
-             (concat "project:" slug)
-             (if remote 'observed 'derived)
-             (if remote "/git_state/remote" "/fs_state/cwd"))))))
-
 (satan-memory-canon-defrule vcs.recent_commit (ev _hints _ctx)
   "Emit `project:<slug>' for each repo with a commit in `:git_commits'.
-The git-activity feed (sourced by the global post-commit hook) is
-pwd-independent, so emissions are `observed'; `--merge' dedupes against
-`cwd.project', keeping the higher-priority origin.  Slug derives from a
+The git-activity feed (panopticon's poller + the post-commit hook) is
+pwd-independent, so emissions are `observed'.  Slug derives from a
 row's `:slug', else its `:remote' tail (`.git' stripped), else its
 `:repo' basename.  Open-world `project' namespace — no grammar bump.
 Deduped within the rule so a busy repo yields one handle.
@@ -445,20 +400,6 @@ a scorable absence rather than an inferred mood (IT-002/IT-010)."
                   (list (satan-memory-canon--emit
                          "artifact:commit" 'observed "/git_commits")))
         result))))
-
-(satan-memory-canon-defrule cwd.file_kind (ev _hints _ctx)
-  "Map the first recently-edited file's extension to a closed-world
-file_kind.  Falls back to the cwd's apparent extension (rare)."
-  (let* ((fs (plist-get ev :fs_state))
-         (files (and fs (plist-get fs :recent_files)))
-         (first (car files))
-         (kind  (or (satan-memory-canon--file-kind first)
-                    (satan-memory-canon--file-kind
-                     (and fs (plist-get fs :cwd))))))
-    (when (and kind (satan-memory-grammar-valid-value-p 'file_kind kind))
-      (list (satan-memory-canon--emit
-             (concat "file_kind:" kind) 'observed
-             (if first "/fs_state/recent_files/0" "/fs_state/cwd"))))))
 
 (satan-memory-canon-defrule ctx.mode (_ev _hints ctx)
   "Emit `mode:<mode_name>' if the mode name is a closed-world value."

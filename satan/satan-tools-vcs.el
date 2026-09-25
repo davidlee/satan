@@ -7,17 +7,16 @@
 ;; that repo's authoritative full history on demand.
 ;;
 ;; `repo' is an absolute path OR a bare slug resolved against
-;; `satan-tools-vcs-search-roots'.  Unlike the CWD-anchored
-;; `:git_state' in the evidence window, this never reads
-;; `default-directory' — it runs `git -C REPO …' so the answer does not
-;; depend on where Emacs happens to point.
+;; `satan-tools-vcs-search-roots'.  It never reads `default-directory'
+;; — it runs `git -C REPO …' so the answer does not depend on where
+;; Emacs happens to point.
 ;;
 ;; Risk = `read'; no capability required.
 
 (require 'cl-lib)
 (require 'subr-x)
 (require 'satan-tools)
-(require 'satan-memory-evidence)   ; reuse `--git-output'
+(require 'satan-trace)
 
 (defcustom satan-tools-vcs-search-roots
   (list (expand-file-name "~/dev/")
@@ -31,6 +30,12 @@ User-tunable: this is the user's repo-search list, not package
 self-location.  `~/.emacs.d/' stays valid post-extraction and is
 intentionally retained."
   :type '(repeat directory) :group 'satan)
+
+(defcustom satan-tools-vcs-git-timeout-seconds 3
+  "Per-call wall-clock deadline (seconds) for git subprocesses.
+Applied via `satan-trace-call' in `satan-tools-vcs--git-output' so a
+hung repo cannot stall the tool."
+  :type 'integer :group 'satan)
 
 (defcustom satan-tools-vcs-default-limit 20
   "Default `:limit' for `vcs_log'."
@@ -62,6 +67,22 @@ bare slug resolved against `satan-tools-vcs-search-roots'."
                  for cand = (expand-file-name repo root)
                  when (file-directory-p cand) return cand)))))
 
+(defun satan-tools-vcs--git-output (&rest args)
+  "Run `git ARGS' and return trimmed stdout, or nil on non-zero exit.
+Routed through `satan-trace-call' so the call is ledgered and bounded
+by `satan-tools-vcs-git-timeout-seconds'.  GIT_OPTIONAL_LOCKS=0 is
+passed via `:env' so read-only git never writes index/ref locks.  A
+deadline breach is a non-zero exit, hence nil."
+  (let* ((result (satan-trace-call
+                  (or (executable-find "git") "git") args
+                  :cwd default-directory
+                  :env '("GIT_OPTIONAL_LOCKS=0")
+                  :timeout-secs satan-tools-vcs-git-timeout-seconds
+                  :label "vcs.git"))
+         (exit (plist-get result :exit)))
+    (and (integerp exit) (zerop exit)
+         (string-trim (plist-get result :stdout)))))
+
 (defun satan-tools-vcs--git-repo-p (dir)
   "Return non-nil if DIR is inside a git work tree."
   (let ((process-environment (cons "GIT_OPTIONAL_LOCKS=0" process-environment)))
@@ -73,7 +94,7 @@ Each plist: (:sha :at :author :subject).  Runs `git -C DIR log' so it is
 independent of `default-directory'."
   (let* ((sep satan-tools-vcs--field-sep)
          (fmt (concat "%h" sep "%cI" sep "%an" sep "%s"))
-         (out (satan-memory-evidence--git-output
+         (out (satan-tools-vcs--git-output
                "-C" dir "log" "-n" (number-to-string limit)
                (concat "--pretty=format:" fmt))))
     (when (and out (not (string-empty-p out)))

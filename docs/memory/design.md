@@ -28,6 +28,15 @@ metadata:
 > Sections marked **[removed SL-002]** describe machinery that no longer
 > exists. The standing gate is
 > `satan/test/satan-bough-removal-gate-test.el`.
+>
+> **Partially superseded 2026-09-25 by IMP-034.** The evidence window no
+> longer reads the broker's cwd — Emacs's incidental `default-directory`,
+> not the user's project. `git_state` / `fs_state`, the `cwd.project` and
+> `cwd.file_kind` rules and the `:cwd` assembler opt are gone; `project:*`
+> comes only from `vcs.recent_commit` (the commit feed). As with bough, the
+> `file_kind` grammar namespace is kept for stored handles. Marked
+> **[removed IMP-034]** below; the gate is
+> `satan-memory-evidence/assemble-reads-no-cwd`.
 
 Status: design draft, pre-implementation.
 Prerequisites:
@@ -268,8 +277,8 @@ the broker (§4):
 current_window      panopticon current/sway.json
 focus_segments[]    panopticon segments/focus-<day>.jsonl tail
 browser_segments[]  panopticon segments/browser-<day>.jsonl tail
-git_state           HEAD short ref, dirty/clean, last 5 commits (cwd-derived)
-fs_state            cwd, recently-edited files (cheap heuristic)
+git_state           [removed IMP-034] HEAD short ref, dirty/clean, last 5 commits (cwd-derived)
+fs_state            [removed IMP-034] cwd, recently-edited files (cheap heuristic)
 window_start_at
 window_end_at
 ```
@@ -350,8 +359,8 @@ Initial rules (illustrative, not exhaustive):
 | `panopticon.event_transition`    | `event_transition:<event>-><surface>` (inert in v1)          |
 | `panopticon.domain_transition`   | `domain_transition:<from>-><to>` from browser_segments      |
 | `panopticon.docs_visit`          | `domain_kind:docs` if any browser segment matches allowlist |
-| `cwd.project`                    | `project:<slug>` from cwd / git remote                      |
-| `cwd.file_kind`                  | `file_kind:<value>`                                         |
+| `cwd.project`                    | **[removed IMP-034]** `project:<slug>` from cwd / git remote |
+| `cwd.file_kind`                  | **[removed IMP-034]** `file_kind:<value>`                    |
 | `ctx.mode`                       | `mode:<mode_name>`                                          |
 | `time.day_week`                  | `day:<YYYY-MM-DD>`, `week:<iso-week>`                       |
 | `hint.topic`                     | `topic:<slug>` (one per array entry) post-alias             |
@@ -456,7 +465,7 @@ Truncated first when budget is exceeded:
 ```text
 long browser session bodies / titles (older middle dropped before first/last)
 full git log text beyond short refs
-fs_state file lists beyond limit
+fs_state file lists beyond limit      [removed IMP-034]
 ```
 
 ## 5. Tool surface

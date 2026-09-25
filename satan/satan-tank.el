@@ -6,7 +6,7 @@
 ;;
 ;;   1. EVIDENCE WINDOW   `satan-memory-evidence-assemble' output
 ;;                        (current panopticon window, focus / browser
-;;                        segment counts, git + cwd)
+;;                        segment counts, git)
 ;;   2. ATTRIBUTES        live attribute bars from `satan_attributes'
 ;;   3. RECENT TRACES     `satan-memory-store-recent' last N rows
 ;;   4. LAST RUN          summary of the newest run under
@@ -160,7 +160,6 @@ outside an active SATAN run.  Default is 30 minutes."
             (focus (plist-get state :focus_segments))
             (browser (plist-get state :browser_segments))
             (gc (plist-get state :git_commits))
-            (fs (plist-get state :fs_state))
             (truncated (plist-get state :truncated_at))
             (app (and cw (or (plist-get cw :app_id) (plist-get cw :app))))
             (title (and cw (plist-get cw :title)))
@@ -178,7 +177,6 @@ outside an active SATAN run.  Default is 30 minutes."
                 (length gc)
                 (or (plist-get state :git_window_start_at) "?")
                 (if gc (format " · newest %s" (plist-get (car (last gc)) :sha)) ""))
-        (format "cwd:           %s\n" (or (and fs (plist-get fs :cwd)) "?"))
         (if truncated
             (format "truncated_at:  %s\n"
                     (mapconcat (lambda (s) (format "%s" s)) truncated " "))

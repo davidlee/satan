@@ -120,8 +120,9 @@ consume.
 
 > **Signal model unchanged here.** DE-010 lands the structural cut
 > only. Perception still reads present-tense live state
-> (`current_window`, `git_state`, `fs_state`) — it is **not yet
-> replayable** from a watermark; that promotion is [[IMPR-013]].
+> (`current_window`) — it is **not yet replayable** from a watermark;
+> that promotion is IMP-013. (`git_state` / `fs_state` were dropped
+> rather than promoted: IMP-034, 2026-09-25.)
 
 Sequence (perceive/consume, as built):
 
@@ -183,8 +184,8 @@ The gate excludes:
 
 ```text
 ctx-derived handles            mode:*, day:*, week:*
-cwd/git-derived project        project:*       (from git remote or cwd)
-extension-derived file_kind    file_kind:*     (from cwd or recentf)
+cwd/git-derived project        project:*       [removed IMP-034; project:* now comes from the commit feed and admits]
+extension-derived file_kind    file_kind:*     [removed IMP-034]
 ```
 
 The gate admits anything in:
@@ -364,9 +365,9 @@ evidence — the observer reads history, not live state.
 
 **Intervention-time baseline + after-state diff.** The current evidence
 substrate exposes most signals as *state*, not as *deltas*: focus
-segments are derived later, `git_state` is HEAD + dirty flag (dirty
-deferred; commit history moved to the 24h git-activity feed),
-fs evidence is `recentf-list`. The P2 predicate (`:git_commit_observed`)
+segments are derived later; commit history is the 24h git-activity
+feed. (`git_state` and the `recentf-list` fs evidence were removed by
+IMP-034.) The P2 predicate (`:git_commit_observed`)
 scans the `:git_commits` feed rows directly (window-anchored, no
 baseline comparison needed). Other predicates compare two snapshots: one at
 `intervention_emitted_at` (the baseline, read from the
@@ -409,8 +410,9 @@ positive = within the observer's per-intervention 30-min window
                 project handle's cwd
              2. git HEAD short ref differs between baseline and after
                 in the motive's project cwd
-             3. an mtime delta exists on a file under the motive's
-                project cwd, not present in baseline.recent_files
+             3. [removed IMP-034] an mtime delta exists on a file under
+                the motive's project cwd, not present in
+                baseline.recent_files
 ```
 
 Edits on paths unrelated to the motive's project cwd do **not** count
@@ -816,9 +818,9 @@ A4. The capsule contains a percept block, sensor block, and motive
     (no "no matches" line, no empty header). Fixtures cover each
     failing condition.
 A5. Gate exclusion is comprehensive. Cues containing **only** any
-    subset of `mode:*`, `day:*`, `week:*`, `project:*` (when
-    derived from cwd/git via `cwd.project`), or `file_kind:*` (when
-    derived via `cwd.file_kind`) do **not** trigger resonance.
+    subset of `mode:*`, `day:*`, `week:*` do **not** trigger
+    resonance. (`cwd.project` / `cwd.file_kind` were also excluded
+    until IMP-034 removed them.)
     The gate passes only when at least one handle is sensor-observed
     via panopticon (`app`, `surface`, `surface_transition`, `domain_kind`,
     `domain_transition`), `artifact:*`, or a

@@ -70,7 +70,7 @@ mirrored from PREPARE and the canon's emitted handles."
            (mode '(:name "motd"))
            (percept (satan-percept-build
                      prepare mode
-                     (list :behaviour_dir beh :cwd tmp))))
+                     (list :behaviour_dir beh))))
       (should (equal (plist-get percept :run_id) (plist-get prepare :run_id)))
       (should (equal (plist-get percept :time_now)
                      (plist-get prepare :time_now)))
@@ -98,7 +98,7 @@ is deterministic across runs (A3)."
                      "rid" "2026-05-19T10:00:00+10:00"))
            (percept (satan-percept-build
                      prepare '(:name "motd")
-                     (list :behaviour_dir beh :cwd tmp)))
+                     (list :behaviour_dir beh)))
            (handles (plist-get percept :handles)))
       (should (equal handles (sort (copy-sequence handles) #'string<))))))
 
@@ -111,7 +111,7 @@ not absent-because-padded."
                      "rid" "2026-05-19T10:00:00+10:00"))
            (percept (satan-percept-build
                      prepare '(:name "motd")
-                     (list :behaviour_dir beh :cwd "/nonexistent/dir/")))
+                     (list :behaviour_dir beh)))
            (handles (plist-get percept :handles)))
       (should (member "mode:motd" handles))
       (should (member "day:2026-05-19" handles))
@@ -136,7 +136,7 @@ the same run_id + time_now as the source plist."
                      "2026-05-19T10:00:00+10:00"))
            (percept (satan-percept-build
                      prepare '(:name "motd")
-                     (list :behaviour_dir beh :cwd rd)))
+                     (list :behaviour_dir beh)))
            (path (satan-percept-persist rd percept))
            (got (with-temp-buffer
                   (insert-file-contents path)
@@ -167,7 +167,7 @@ re-emitted JSON is comparable byte-for-byte."
     (let* ((prepare (satan-percept-test--prepare
                      "20260519T100000-motd-ffeeaa"
                      "2026-05-19T10:00:00+10:00"))
-           (opts (list :behaviour_dir beh :cwd rd))
+           (opts (list :behaviour_dir beh))
            (one (satan-percept-build prepare '(:name "motd") opts))
            (two (satan-percept-build prepare '(:name "motd") opts))
            (path-one (expand-file-name "one.json" rd))
@@ -345,7 +345,7 @@ random ordering."
     (let* ((prepare (satan-percept-test--prepare
                      "20260519T100000-motd-deadbe"
                      "2026-05-19T10:00:00+10:00"))
-           (opts (list :behaviour_dir beh :cwd rd))
+           (opts (list :behaviour_dir beh))
            (path-a (expand-file-name "a/percept.json" rd))
            (path-b (expand-file-name "b/percept.json" rd)))
       (make-directory (file-name-directory path-a) t)
@@ -414,7 +414,7 @@ ships."
                        "2026-05-19T10:00:00+10:00"))
              (percept (satan-percept-build
                        prepare mode
-                       (list :behaviour_dir beh :cwd rd)))
+                       (list :behaviour_dir beh)))
              (prepare-with-percept
               (plist-put (plist-put prepare :evidence
                                     (plist-get percept :evidence_window))

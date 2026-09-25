@@ -47,8 +47,7 @@
 PREPARE is the broker--prepare run_ctx plist (Phase 0.1) — carries the
 frozen `:run_id' and `:time_now'.  MODE is the resolved mode-spec.
 OPTS forwards extra knobs to the evidence assembler (e.g.
-`:behaviour_dir', `:cwd') so tests can pin the
-sensor surface.
+`:behaviour_dir') so tests can pin the sensor surface.
 
 Returned plist:
   :run_id          string  — from PREPARE.

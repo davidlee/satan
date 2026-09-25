@@ -88,7 +88,6 @@
             ((:repo "/tmp/r" :slug "r" :sha "4bd198f6"
               :end_ts "2026-05-20T08:15:00+10:00"))
             :git_window_start_at "2026-05-19T08:30:00+10:00"
-            :fs_state (:cwd "/home/david/.emacs.d")
             :truncated_at ("focus_segments_middle")))
          (out (satan-tank--render-evidence state)))
     (should (string-match-p "firefox" out))
@@ -98,8 +97,8 @@
     (should (string-match-p "browser:       2 segments" out))
     (should (string-match-p "git:           1 commit(s)" out))
     (should (string-match-p "newest 4bd198f6" out))
-    (should (string-match-p "/home/david/.emacs.d" out))
-    (should (string-match-p "truncated_at:  focus_segments_middle" out))))
+    (should (string-match-p "truncated_at:  focus_segments_middle" out))
+    (should-not (string-match-p "cwd:" out))))
 
 ;; ---------------------------------------------------------------------
 ;; Attribute section

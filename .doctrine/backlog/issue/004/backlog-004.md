@@ -28,3 +28,11 @@ independent and small.
 
 - DE-008, AUD-005 (F-004).
 
+
+## Update 2026-09-25 — items 1–2 obsolete (IMP-034)
+
+[[IMP-034]] removed `git_state` and `cwd.project` from the evidence window
+outright (the broker cwd is not the user's project and there is no
+active-project signal to retarget to). Items 1–2 have nothing left to
+retarget. Only item 3 (relax the observer's `:crosses_midnight` guard)
+remains live.

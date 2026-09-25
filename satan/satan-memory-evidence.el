@@ -1,6 +1,6 @@
 ;;; satan-memory-evidence.el --- evidence-window assembler (impure) -*- lexical-binding: t; -*-
 
-;; Step 6 of memory.design.md.  Impure: reads files, runs `git'.
+;; Step 6 of memory.design.md.  Impure: reads files.
 ;; Produces the evidence_window plist consumed by
 ;; `satan-memory-canon-canonicalize' (step 5) and stored verbatim (after
 ;; truncation) in `traces.metadata_json' (step 7).
@@ -13,15 +13,14 @@
 ;;
 ;; OPTS keys (all optional):
 ;;   :run_started_at         ISO8601 string limiting how far back the window reaches
-;;   :cwd                    absolute path; defaults to `default-directory'
 ;;   :behaviour_dir          panopticon root; defaults to `satan-tools-activity-dir'
 ;;   :seg_limit              focus/browser cap (default 10)
 ;;   :budget_target_bytes    soft byte budget (default 16384)
 ;;   :budget_hard_cap_bytes  last-resort byte target (default 65536)
 ;;   :cue_only               t to skip heavy "what happened in the
 ;;                           window" probes (focus/browser segments).
-;;                           Keeps the "what is now" probes
-;;                           (current_window, git_state, fs_state).
+;;                           Keeps the "what is now" probe
+;;                           (current_window).
 ;;                           Used by `memory_resonate' cue derivation.
 ;;                           Also skips the goad slice.
 ;;
@@ -59,13 +58,6 @@ Capped further by `:run_started_at' (see §4.1)."
 Decoupled from `satan-memory-evidence-window-minutes' (the focus/
 browser attention window) because commits are bursty: a 10-min window
 almost never catches one.  Default 24h."
-  :type 'integer :group 'satan)
-
-(defcustom satan-memory-evidence-git-timeout-seconds 3
-  "Per-call wall-clock deadline (seconds) for git subprocesses.
-Applied via `satan-trace-call' at the `--git-output' / `--git-state'
-chokepoints so a hung repo cannot stall evidence assembly.  A breach
-returns nil (git-output) or marks `:timed_out t' (git-state)."
   :type 'integer :group 'satan)
 
 (defcustom satan-memory-evidence-temp-roots
@@ -110,10 +102,6 @@ behavioural final reducer is tracked as ISS-001."
 
 (defcustom satan-memory-evidence-content-limit 10
   "Maximum content captures retained in the evidence window (newest)."
-  :type 'integer :group 'satan)
-
-(defcustom satan-memory-evidence-recent-files-limit 8
-  "Cap on `:fs_state.recent_files' entries."
   :type 'integer :group 'satan)
 
 ;; ---------------------------------------------------------------------
@@ -357,95 +345,6 @@ A segment overlaps if its :end_ts >= START and its :start_ts <= END."
      segments)))
 
 ;; ---------------------------------------------------------------------
-;; Git + fs (§4.2)
-;; ---------------------------------------------------------------------
-
-(defvar satan-memory-evidence--git-timed-out nil
-  "Set non-nil when a routed git sub-call breaches its deadline.
-Dynamically let-bound by `--git-state' around its probe set so a
-timeout does not silently read as a clean repo (see `:timed_out').")
-
-(defun satan-memory-evidence--git-output (&rest args)
-  "Run `git ARGS' and return trimmed stdout, or nil on non-zero exit.
-Routed through `satan-trace-call' so the call is ledgered and
-bounded by `satan-memory-evidence-git-timeout-seconds'.  The
-GIT_OPTIONAL_LOCKS=0 env is passed to the child via `:env' so
-read-only git never writes index/ref locks.  A deadline breach both
-returns nil (non-zero exit) and records the breach in
-`satan-memory-evidence--git-timed-out'."
-  (let* ((result (satan-trace-call
-                  (or (executable-find "git") "git") args
-                  :cwd default-directory
-                  :env '("GIT_OPTIONAL_LOCKS=0")
-                  :timeout-secs satan-memory-evidence-git-timeout-seconds
-                  :label "evidence.git"))
-         (exit (plist-get result :exit)))
-    (when (plist-get result :timed-out)
-      (setq satan-memory-evidence--git-timed-out t))
-    (and (integerp exit) (zerop exit)
-         (string-trim (plist-get result :stdout)))))
-
-(defun satan-memory-evidence--git-state (cwd)
-  "Return git state plist for CWD, or nil if CWD is not in a repo.
-When any routed sub-call breaches its deadline the plist carries an
-extra `:timed_out t' so a partial (potentially wrong \"clean\") read
-is never mistaken for a genuine one."
-  (when (and cwd (file-directory-p cwd))
-    (let* ((default-directory (file-name-as-directory cwd))
-           (satan-memory-evidence--git-timed-out nil)
-           (probe (satan-trace-call
-                   (or (executable-find "git") "git")
-                   '("rev-parse" "--git-dir")
-                   :cwd default-directory
-                   :env '("GIT_OPTIONAL_LOCKS=0")
-                   :timeout-secs satan-memory-evidence-git-timeout-seconds
-                   :label "evidence.git"))
-           (probe-exit (plist-get probe :exit)))
-      (when (and (integerp probe-exit) (zerop probe-exit)
-                 (not (plist-get probe :timed-out)))
-        (let ((state
-               (list :head_short
-                     (satan-memory-evidence--git-output
-                      "rev-parse" "--short" "HEAD")
-                     :remote
-                     (satan-memory-evidence--git-output
-                      "config" "--get" "remote.origin.url")
-                     :dirty
-                     (not (string-empty-p
-                           (or (satan-memory-evidence--git-output
-                                "status" "--porcelain")
-                               "")))
-                     :commits
-                     (split-string
-                      (or (satan-memory-evidence--git-output
-                           "log" "-n" "5" "--oneline")
-                          "")
-                      "\n" t))))
-          (if satan-memory-evidence--git-timed-out
-              (append state (list :timed_out t))
-            state))))))
-
-(defun satan-memory-evidence--recent-files (cwd limit)
-  "Return up to LIMIT entries of `recentf-list' whose absolute path is
-under CWD, relativized.  Empty list if recentf unavailable."
-  (when (and cwd (boundp 'recentf-list) recentf-list)
-    (let* ((prefix (expand-file-name (file-name-as-directory cwd)))
-           out)
-      (cl-loop for f in recentf-list
-               while (< (length out) limit)
-               for full = (expand-file-name f)
-               when (string-prefix-p prefix full)
-               do (push (file-relative-name full cwd) out))
-      (nreverse out))))
-
-(defun satan-memory-evidence--fs-state (cwd)
-  (list :cwd (and cwd (abbreviate-file-name cwd))
-        :recent_files
-        (or (satan-memory-evidence--recent-files
-             cwd satan-memory-evidence-recent-files-limit)
-            '())))
-
-;; ---------------------------------------------------------------------
 ;; Truncation (§4.3)
 ;; ---------------------------------------------------------------------
 
@@ -546,10 +445,6 @@ observer passes the window end and reads only `:sensor_status'
          (today (substring end 0 10))
          (root (or (plist-get opts :behaviour_dir)
                    satan-tools-activity-dir))
-         (cwd (let ((c (or (plist-get opts :cwd) default-directory)))
-                ;; A throwaway cwd is not evidence: without this, `cwd.project'
-                ;; emits `project:tmp*' for a run whose cwd is a fixture repo.
-                (unless (satan-memory-evidence--temp-path-p c) c)))
          (seg-limit (or (plist-get opts :seg_limit)
                         satan-memory-evidence-seg-limit))
          (content-limit (or (plist-get opts :content_limit)
@@ -610,12 +505,6 @@ observer passes the window end and reads only `:sensor_status'
                 :browser_segments (cdr browser-probe)
                 :git_commits (cdr git-probe)
                 :content_recent (cdr content-probe)
-                :git_state (and cwd
-                             (satan-trace-stage "evidence.git_state"
-                               (satan-memory-evidence--git-state cwd)))
-                :fs_state (and cwd
-                            (satan-trace-stage "evidence.fs_state"
-                              (satan-memory-evidence--fs-state cwd)))
                 :window_start_at start
                 :window_end_at end
                 :git_window_start_at git-start

@@ -145,17 +145,13 @@ truncated evidence."
    (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
                      :mode_name "motd"))
           (out (satan-memory-evidence-assemble
-                ctx (list :behaviour_dir (file-name-as-directory tmp)
-                          :cwd tmp))))
+                ctx (list :behaviour_dir (file-name-as-directory tmp)))))
      (should (equal (plist-get out :window_end_at)
                     "2026-05-19T10:00:00+10:00"))
      (should (stringp (plist-get out :window_start_at)))
      (should (null (plist-get out :current_window)))
      (should (equal (plist-get out :focus_segments) '()))
-     (should (equal (plist-get out :browser_segments) '()))
-     (should (null (plist-get out :git_state)))
-     (should (equal (plist-get (plist-get out :fs_state) :recent_files)
-                    '())))))
+     (should (equal (plist-get out :browser_segments) '())))))
 
 (ert-deftest satan-memory-evidence/assemble-with-bounds-honours-explicit-window ()
   "Phase 5.1 — `satan-memory-evidence-assemble-with-bounds' lets
@@ -171,14 +167,12 @@ called without an explicit start/end."
           (end "2026-05-19T09:15:00+10:00")
           (out (satan-memory-evidence-assemble-with-bounds
                 start end ctx
-                (list :behaviour_dir (file-name-as-directory tmp)
-                      :cwd tmp))))
+                (list :behaviour_dir (file-name-as-directory tmp)))))
      (should (equal (plist-get out :window_start_at) start))
      (should (equal (plist-get out :window_end_at) end))
      ;; The wrapper still works identically for the default case.
      (let ((wrapper-out (satan-memory-evidence-assemble
-                         ctx (list :behaviour_dir (file-name-as-directory tmp)
-                                   :cwd tmp))))
+                         ctx (list :behaviour_dir (file-name-as-directory tmp)))))
        (should (equal (plist-get wrapper-out :window_end_at)
                       "2026-05-19T10:00:00+10:00"))))))
 
@@ -198,7 +192,6 @@ sources would otherwise populate them.  Keeps current_window."
                        :mode_name "motd"))
             (out (satan-memory-evidence-assemble
                   ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp
                             :cue_only t))))
        (should (equal (plist-get (plist-get out :current_window) :app_id)
                       "firefox"))
@@ -225,8 +218,7 @@ stays valid through `--truncate' + canon (no signal)."
                 "2026-05-19T08:45:00+10:00"
                 "2026-05-19T09:15:00+10:00"
                 ctx
-                (list :behaviour_dir (file-name-as-directory tmp)
-                      :cwd tmp))))
+                (list :behaviour_dir (file-name-as-directory tmp)))))
      (should (null (plist-get out :content_recent)))
      (should (equal (plist-get (plist-get out :sensor_status) :content)
                     "budget_skipped"))
@@ -250,8 +242,7 @@ stays valid through `--truncate' + canon (no signal)."
        (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n")
        (insert "{\"app_id\":\"emacs\",\"start_ts\":\"2026-05-19T08:00:00+10:00\",\"end_ts\":\"2026-05-19T08:30:00+10:00\",\"duration_s\":1800}\n"))
      (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp))))
+                  ctx (list :behaviour_dir (file-name-as-directory tmp)))))
        (should (equal (plist-get (plist-get out :current_window) :app_id)
                       "firefox"))
        ;; Only the in-window segment survives the filter.
@@ -259,73 +250,6 @@ stays valid through `--truncate' + canon (no signal)."
        (should (equal (plist-get (car (plist-get out :focus_segments))
                                  :app_id)
                       "firefox"))))))
-
-(ert-deftest satan-memory-evidence/assemble-git-state-on-repo ()
-  ;; Initialize a tmp git repo so we don't depend on the host's layout
-  ;; (the ambient ~/.emacs.d here is a bare-config worktree without a
-  ;; nested .git/ directory).
-  (skip-unless (executable-find "git"))
-  (satan-memory-evidence-test--in-tmp tmp
-   (let ((default-directory (file-name-as-directory tmp)))
-     (should (zerop (call-process "git" nil nil nil "init" "-q"
-                                  "-b" "main")))
-     (should (zerop (call-process "git" nil nil nil "config"
-                                  "user.email" "t@example")))
-     (should (zerop (call-process "git" nil nil nil "config"
-                                  "user.name" "t")))
-     (with-temp-file (expand-file-name "x" tmp) (insert "y"))
-     (should (zerop (call-process "git" nil nil nil "add" "x")))
-     (should (zerop (call-process "git" nil nil nil "commit" "-qm" "init")))
-     (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
-                       :mode_name "motd"))
-            (out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir "/nonexistent/"
-                            :cwd tmp))))
-       (let ((git (plist-get out :git_state)))
-         (should git)
-         (should (stringp (plist-get git :head_short)))
-         (should (= 1 (length (plist-get git :commits)))))))))
-
-(ert-deftest satan-memory-evidence/git-output-sets-optional-locks-env ()
-  ;; Prove read-only git subprocesses observe GIT_OPTIONAL_LOCKS=0.
-  ;; Stub `git' on `exec-path' with a shell script that echoes the env
-  ;; var, so the assertion is deterministic (no real repo, no race).
-  (satan-memory-evidence-test--in-tmp tmp
-   (let ((stub (expand-file-name "git" tmp)))
-     (with-temp-file stub
-       (insert "#!/bin/sh\n")
-       (insert "printf '%s' \"$GIT_OPTIONAL_LOCKS\"\n"))
-     (set-file-modes stub #o755)
-     (let ((exec-path (cons tmp exec-path)))
-       (should (equal (satan-memory-evidence--git-output "status")
-                      "0"))))))
-
-;; ---------------------------------------------------------------------
-;; VT-2 — routed choke deadlines: git-output/git-state timeout marker.
-;; `satan-trace-call' is stubbed so the timed-out branch is forced
-;; without a real hang.
-;; ---------------------------------------------------------------------
-
-(ert-deftest satan-memory-evidence/git-output-timeout-returns-nil ()
-  "A routed git call that breaches its deadline → nil (non-zero exit)."
-  (cl-letf (((symbol-function 'satan-trace-call)
-             (lambda (&rest _)
-               (list :exit 124 :stdout "" :timed-out t))))
-    (should (null (satan-memory-evidence--git-output "status")))))
-
-(ert-deftest satan-memory-evidence/git-state-marks-timed_out ()
-  "When a routed sub-call times out, `--git-state' adds `:timed_out t' so
-a partial read is never mistaken for a clean repo.  The `--git-dir'
-probe succeeds; the follow-up probes time out."
-  (satan-memory-evidence-test--in-tmp tmp
-   (cl-letf (((symbol-function 'satan-trace-call)
-              (lambda (_program args &rest _)
-                (if (member "--git-dir" args)
-                    (list :exit 0 :stdout ".git" :timed-out nil)
-                  (list :exit 124 :stdout "" :timed-out t)))))
-     (let ((state (satan-memory-evidence--git-state tmp)))
-       (should state)
-       (should (eq (plist-get state :timed_out) t))))))
 
 ;; ---------------------------------------------------------------------
 ;; Git-activity feed (bursty — NEVER stale)
@@ -486,8 +410,7 @@ Focus/browser segments remain on the 10-min window."
      (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
                        :mode_name "motd"))
             (out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp)))
+                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (ss (plist-get out :sensor_status)))
        ;; Git: the commit is inside the 24h git window.
        (should (equal "ok" (plist-get ss :git)))
@@ -507,8 +430,7 @@ eaerlier than :window_start_at when git-window > window-minutes."
    (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
                      :mode_name "motd"))
           (out (satan-memory-evidence-assemble
-                ctx (list :behaviour_dir (file-name-as-directory tmp)
-                          :cwd tmp)))
+                ctx (list :behaviour_dir (file-name-as-directory tmp))))
           (git-start (plist-get out :git_window_start_at))
           (win-start (plist-get out :window_start_at)))
      (should (stringp git-start))
@@ -526,8 +448,7 @@ eaerlier than :window_start_at when git-window > window-minutes."
      (with-temp-file (expand-file-name "git-2026-05-19.jsonl" segments-dir)
        (insert "{\"repo\":\"/r/satan\",\"slug\":\"satan\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:55:00+10:00\"}\n"))
      (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp)))
+                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (ss (plist-get out :sensor_status)))
        (should (equal "ok" (plist-get ss :git)))
        (should (= 1 (length (plist-get out :git_commits))))
@@ -544,8 +465,7 @@ eaerlier than :window_start_at when git-window > window-minutes."
    (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
                      :mode_name "motd"))
           (out (satan-memory-evidence-assemble
-                ctx (list :behaviour_dir (file-name-as-directory tmp)
-                          :cwd tmp)))
+                ctx (list :behaviour_dir (file-name-as-directory tmp))))
           (ss (plist-get out :sensor_status)))
      (should (equal "missing" (plist-get ss :current_window)))
      (should (equal "missing" (plist-get ss :focus)))
@@ -558,7 +478,7 @@ no longer consumed (passing them changes nothing)."
   (satan-memory-evidence-test--in-tmp tmp
    (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
                      :mode_name "motd"))
-          (base (list :behaviour_dir (file-name-as-directory tmp) :cwd tmp))
+          (base (list :behaviour_dir (file-name-as-directory tmp)))
           (out (satan-memory-evidence-assemble ctx base))
           (with-dead-opts (satan-memory-evidence-assemble
                            ctx (append base (list :bough_limit 3
@@ -586,8 +506,7 @@ dropped from the evidence (set nil) AND the status is tagged
                                (seconds-to-time (* 60 28)))))
        (set-file-times desktop-path old))
      (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp)))
+                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (ss (plist-get out :sensor_status)))
        (should (null (plist-get out :current_window)))
        (should (equal (plist-get ss :current_window) "stale-28m"))))))
@@ -602,8 +521,7 @@ dropped from the evidence (set nil) AND the status is tagged
      (with-temp-file desktop-path
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp)))
+                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (ss (plist-get out :sensor_status)))
        (should (equal (plist-get (plist-get out :current_window) :app_id)
                       "firefox"))
@@ -620,8 +538,7 @@ reports \"stale-Nm\" and the slice drops to '()."
      (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
        (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T08:55:00+10:00\",\"end_ts\":\"2026-05-19T08:58:00+10:00\",\"duration_s\":180}\n"))
      (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp)))
+                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (ss (plist-get out :sensor_status)))
        (should (equal '() (plist-get out :focus_segments)))
        (should (equal "stale-62m" (plist-get ss :focus)))))))
@@ -636,8 +553,7 @@ reports \"stale-Nm\" and the slice drops to '()."
      (with-temp-file (expand-file-name "desktop.json" current-dir)
        (insert "{not-json"))
      (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp)
-                            :cwd tmp)))
+                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (ss (plist-get out :sensor_status)))
        (should (null (plist-get out :current_window)))
        (should (equal "malformed" (plist-get ss :current_window)))))))
@@ -656,8 +572,7 @@ reports \"stale-Nm\" and the slice drops to '()."
      (with-temp-file (expand-file-name "desktop.json" current-dir)
        (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
      (let* ((ev (satan-memory-evidence-assemble
-                 ctx (list :behaviour_dir (file-name-as-directory tmp)
-                           :cwd tmp)))
+                 ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (canon (satan-memory-canon-canonicalize ev nil ctx))
             (handles (plist-get canon :handles)))
        (should (member "app:firefox" handles))
@@ -715,7 +630,7 @@ string, so a `string>'-based selector returns the wrong (older) entry."
     (satan-memory-evidence-assemble-with-bounds
      (car w) (cdr w)
      (list :time_now (cdr w) :mode_name "motd")
-     (append opts (list :behaviour_dir (file-name-as-directory tmp) :cwd tmp)))))
+     (append opts (list :behaviour_dir (file-name-as-directory tmp))))))
 
 (ert-deftest satan-memory-evidence/goad-slice-ignores-the-window-bounds ()
   "Every queued ask is contributed with its record, read from its own emit
@@ -846,16 +761,27 @@ fixture commits cannot crowd a real commit out of `:git_commits'."
          (should (= 1 (length (cdr probe))))
          (should (equal "satan" (plist-get (car (cdr probe)) :slug))))))))
 
-(ert-deftest satan-memory-evidence/assemble-suppresses-temp-cwd ()
-  "IT-004: a throwaway run cwd yields no `:git_state'/`:fs_state', so
-`cwd.project' cannot emit a `project:tmp*' handle."
+(ert-deftest satan-memory-evidence/assemble-reads-no-cwd ()
+  "IMP-034 — the window carries no cwd-derived surface.  The broker's cwd
+is Emacs's incidental `default-directory', not the user's project, so
+the window has no `:git_state' / `:fs_state' key, runs no subprocess
+\(`satan-trace-call' is a failing spy), and a `:cwd' opt — even a real
+repo — changes nothing."
+  (skip-unless (executable-find "git"))
   (satan-memory-evidence-test--in-tmp tmp
-   (let ((ctx (list :time_now "2026-05-19T10:00:00+10:00" :mode_name "motd")))
-     (let* ((satan-memory-evidence-temp-roots '("/tmp"))
-            (out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir "/nonexistent/" :cwd tmp))))
-       (should (null (plist-get out :git_state)))
-       (should (null (plist-get out :fs_state)))))))
+   (let ((default-directory (file-name-as-directory tmp)))
+     (should (zerop (call-process "git" nil nil nil "init" "-q")))
+     (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                       :mode_name "motd"))
+            (base (list :behaviour_dir (file-name-as-directory tmp)))
+            (out (satan-memory-evidence-test--forbidding
+                  '(satan-trace-call)
+                  (lambda ()
+                    (satan-memory-evidence-assemble
+                     ctx (append base (list :cwd tmp)))))))
+       (should-not (plist-member out :git_state))
+       (should-not (plist-member out :fs_state))
+       (should (equal out (satan-memory-evidence-assemble ctx base)))))))
 
 (provide 'satan-memory-evidence-test)
 ;;; satan-memory-evidence-test.el ends here

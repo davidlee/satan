@@ -75,8 +75,6 @@
     "surface_transition:terminal->browser",
     "surface_transition:browser->editor",
     "domain_kind:docs",
-    "project:satan",
-    "file_kind:source",
     "mode:morning",
     "day:2026-05-19",
     "week:2026-W21",

@@ -13,8 +13,7 @@
 ;; the cue handles and per-handle `:rule_id' provenance the gate reads.
 ;;
 ;; The §S2 gate excludes cues that contain ONLY ctx-derived handles
-;; (`mode:*' from `ctx.mode'; `day:*' / `week:*' from `time.day_week';
-;; `project:*' from `cwd.project'; `file_kind:*' from `cwd.file_kind').
+;; (`mode:*' from `ctx.mode'; `day:*' / `week:*' from `time.day_week').
 ;; At least one handle from a non-excluded rule must be present — those
 ;; are the sensor-observed signals (panopticon, hints, artifact).
 ;; Without that bar resonance retrieves generic moments and drowns the
@@ -24,7 +23,7 @@
 ;;       (ii) memory reachable, (iii) ≥1 match returned.  The status
 ;;       slot on the result plist carries the failing condition so
 ;;       audit consumers can tell `gate-skip' apart from `psql-down'.
-;; A5 — gate exclusion list is closed (the four rule_ids below); a
+;; A5 — gate exclusion list is closed (the rule_ids below); a
 ;;       fixture asserts every combination of only-excluded handles
 ;;       fails to admit.
 
@@ -33,11 +32,11 @@
 (require 'satan-memory-store)
 
 (defconst satan-resonance--excluded-rule-ids
-  '("ctx.mode" "time.day_week" "cwd.project" "cwd.file_kind")
+  '("ctx.mode" "time.day_week")
   "Canon rule ids whose handles do NOT count toward §S2 admission.
 A cue with handles from these rules only is too generic to retrieve
-useful recurrence — every prior moment matches `day:*' / `mode:*' /
-`project:emacs.d' when the user always works in this repo (§S2).
+useful recurrence — every prior moment matches `day:*' / `mode:*'
+\(§S2).
 Sensor-observed rules (panopticon.*, hint.*) are everything
 else and admit the cue automatically.")
 

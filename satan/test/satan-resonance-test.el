@@ -3,7 +3,7 @@
 ;; Phase 2 of perceptual-design.md.  Covers:
 ;;
 ;;   A4   resonance block IFF gate passes + memory reachable + ≥1 match
-;;   A5   gate exclusion comprehensive (mode/day/week/project/file_kind)
+;;   A5   gate exclusion comprehensive (mode/day/week)
 ;;
 ;; The store is stubbed via the derive helper's `:store-resonate' opt
 ;; so tests never touch PG.  Phase 2.4 fixtures cover gate-skip,
@@ -58,54 +58,22 @@ gate-skipped — no store call, status `gate-skip'."
     (should (null (plist-get result :matches)))
     (should (= called 0))))
 
-(ert-deftest satan-resonance/gate-skip-project-cwd-only ()
-  "Cue with only cwd-derived `project:*' is gate-skipped (§S2)."
+(ert-deftest satan-resonance/gate-admits-project-from-commit-feed ()
+  "IMP-034 — `project:*' now comes only from `vcs.recent_commit' (the
+pwd-independent commit feed), so it is sensor-observed and admits the
+cue.  The cwd-derived `cwd.project' it used to be excluded as is gone."
   (let* ((percept (satan-resonance-test--percept
-                   '("project:emacs.d")
-                   (list (satan-resonance-test--src
-                          "cwd.project" "project:emacs.d"))))
+                   '("mode:motd" "project:satan")
+                   (list (satan-resonance-test--src "ctx.mode" "mode:motd")
+                         (satan-resonance-test--src
+                          "vcs.recent_commit" "project:satan"))))
          (result (satan-resonance-derive
                   percept
                   (list :store-resonate
                         (satan-resonance-test--ok-stub
                          '((:trace_id "t1" :score 5.0
-                            :matched_handles ("project:emacs.d"))))))))
-    (should (eq (plist-get result :status) 'gate-skip))
-    (should (null (plist-get result :matches)))))
-
-(ert-deftest satan-resonance/gate-skip-file-kind-only ()
-  "Cue with only `file_kind:*' (cwd-derived) is gate-skipped."
-  (let* ((percept (satan-resonance-test--percept
-                   '("file_kind:elisp")
-                   (list (satan-resonance-test--src
-                          "cwd.file_kind" "file_kind:elisp"))))
-         (result (satan-resonance-derive
-                  percept
-                  (list :store-resonate
-                        (satan-resonance-test--ok-stub nil)))))
-    (should (eq (plist-get result :status) 'gate-skip))))
-
-(ert-deftest satan-resonance/gate-skip-all-excluded-combined ()
-  "A5 — full exclude list combined still skips.  Cues that mix every
-excluded rule but nothing sensor-observed must NOT admit."
-  (let* ((percept (satan-resonance-test--percept
-                   '("day:2026-05-19" "file_kind:elisp" "mode:motd"
-                     "project:emacs.d" "week:2026-W21")
-                   (list (satan-resonance-test--src
-                          "time.day_week" "day:2026-05-19")
-                         (satan-resonance-test--src
-                          "cwd.file_kind" "file_kind:elisp")
-                         (satan-resonance-test--src
-                          "ctx.mode" "mode:motd")
-                         (satan-resonance-test--src
-                          "cwd.project" "project:emacs.d")
-                         (satan-resonance-test--src
-                          "time.day_week" "week:2026-W21"))))
-         (result (satan-resonance-derive
-                  percept
-                  (list :store-resonate
-                        (satan-resonance-test--ok-stub nil)))))
-    (should (eq (plist-get result :status) 'gate-skip))))
+                            :matched_handles ("project:satan"))))))))
+    (should (eq (plist-get result :status) 'ok))))
 
 (ert-deftest satan-resonance/gate-skip-empty-cue ()
   "Empty handle list is gate-skipped without calling the store."
@@ -374,7 +342,7 @@ test trips before §S2 silently weakens."
                      "2026-05-19T10:00:00+10:00"))
            (percept (satan-percept-build
                      prepare '(:name "motd")
-                     (list :behaviour_dir beh :cwd "/nonexistent/dir/")))
+                     (list :behaviour_dir beh)))
            (called 0)
            (stub (lambda (&rest _) (cl-incf called) (cons 'ok nil)))
            (result (satan-resonance-derive
@@ -399,7 +367,7 @@ noise floor."
                      "2026-05-19T10:00:00+10:00"))
            (percept (satan-percept-build
                      prepare '(:name "motd")
-                     (list :behaviour_dir beh :cwd "/nonexistent/dir/")))
+                     (list :behaviour_dir beh)))
            (passed nil)
            (stub (lambda (&rest args)
                    (setq passed args)

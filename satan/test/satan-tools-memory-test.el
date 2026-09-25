@@ -41,8 +41,6 @@
     :bough_recent nil
     :bough_active nil
     :bough_day nil
-    :git_state nil
-    :fs_state nil
     :window_start_at "2026-05-19T09:50:00+10:00"
     :window_end_at   "2026-05-19T10:00:00+10:00"))
 

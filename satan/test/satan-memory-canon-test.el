@@ -36,12 +36,6 @@
                  (satan-memory-canon--app-surface "com.mitchellh.ghostty")))
   (should (equal "desktop" (satan-memory-canon--app-surface "Gimp"))))
 
-(ert-deftest satan-memory-canon/file-kind ()
-  (should (equal "source" (satan-memory-canon--file-kind "/x/y.rs")))
-  (should (equal "org"    (satan-memory-canon--file-kind "/x/y.org")))
-  (should (equal "data"   (satan-memory-canon--file-kind "/x/y.json")))
-  (should (null (satan-memory-canon--file-kind "/no/extension"))))
-
 (ert-deftest satan-memory-canon/domain-kind ()
   (should (equal "repo_hosting"
                  (satan-memory-canon--domain-kind "github.com")))
@@ -146,23 +140,6 @@
                 nil nil)))
     (should (equal "domain_kind:docs" (plist-get (car emits) :handle)))))
 
-(ert-deftest satan-memory-canon/rule-cwd-project-from-remote ()
-  (let* ((emits (satan-memory-canon-test--rule
-                 'cwd.project
-                 (list :git_state
-                       (list :remote "git@github.com:david/satan.git"))
-                 nil nil)))
-    (should (equal "project:satan" (plist-get (car emits) :handle)))
-    (should (eq 'observed (plist-get (car emits) :origin)))))
-
-(ert-deftest satan-memory-canon/rule-cwd-project-from-cwd ()
-  (let* ((emits (satan-memory-canon-test--rule
-                 'cwd.project
-                 (list :fs_state (list :cwd "/home/david/dev/myproj"))
-                 nil nil)))
-    (should (equal "project:myproj" (plist-get (car emits) :handle)))
-    (should (eq 'derived (plist-get (car emits) :origin)))))
-
 (ert-deftest satan-memory-canon/rule-vcs-recent-commit ()
   "Each repo in :git_commits emits project:<slug>, deduped, origin observed;
 one `artifact:commit' is emitted for the window.  Slug resolves from
@@ -198,14 +175,6 @@ resolvable project slug — the commit is the fact, the slug is a bonus."
 (ert-deftest satan-memory-canon/rule-vcs-recent-commit-empty ()
   (should (null (satan-memory-canon-test--rule
                  'vcs.recent_commit (list :git_commits nil) nil nil))))
-
-(ert-deftest satan-memory-canon/rule-cwd-file-kind ()
-  (let ((emits (satan-memory-canon-test--rule
-                'cwd.file_kind
-                (list :fs_state
-                      (list :recent_files '("/x/y.rs" "/x/y.org")))
-                nil nil)))
-    (should (equal "file_kind:source" (plist-get (car emits) :handle)))))
 
 (ert-deftest satan-memory-canon/rule-ctx-mode ()
   (let ((emits (satan-memory-canon-test--rule
@@ -329,6 +298,8 @@ resolvable project slug — the commit is the fact, the slug is a bonus."
     (should (null (plist-get res :rejected)))))
 
 (ert-deftest satan-memory-canon/fixture-rich-window ()
+  "The fixture's evidence still carries `git_state' / `fs_state' (as
+stored traces do); canon derives nothing from them (IMP-034)."
   (let* ((pair (satan-memory-canon-test--run-fixture "rich_window"))
          (fx (car pair))
          (res (cdr pair)))

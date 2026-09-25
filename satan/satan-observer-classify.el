@@ -84,27 +84,23 @@ window.  v0 punts on multi-day windows: the classifier yields
         (end (satan-observer--window-end-iso intervention)))
     (not (equal (substring start 0 10) (substring end 0 10)))))
 
-(defun satan-observer--after-state (intervention motive)
-  "Assemble the after-state `evidence_window' for INTERVENTION + MOTIVE.
+(defun satan-observer--after-state (intervention)
+  "Assemble the after-state `evidence_window' for INTERVENTION.
 Calls `satan-memory-evidence-assemble-with-bounds' with
 START = `:intervention_emitted_at',
-END   = `--window-end-iso' (+30 min),
-CWD   = MOTIVE's `:project_cwd' (default-directory when nil — git
-        + fs probes still run, predicates 1+3 simply won't find
-        path matches).
+END   = `--window-end-iso' (+30 min).
 
 Caller is responsible for guarding midnight crossings; this helper
 makes the call unconditionally."
   (let* ((start (plist-get intervention :intervention_emitted_at))
          (end (satan-observer--window-end-iso intervention))
-         (cwd (or (plist-get motive :project_cwd) default-directory))
          (ctx (list :time_now end
                     :mode_name "observer"
                     :run_id (plist-get intervention :run_id)
                     :current_grammar_version
                     satan-memory-grammar-current-version)))
     (satan-memory-evidence-assemble-with-bounds
-     start end ctx (list :cwd cwd))))
+     start end ctx)))
 
 ;; ---------------------------------------------------------------------
 ;; Positive predicates (Phase 5.4b) — §S5 P1–P4
@@ -112,8 +108,9 @@ makes the call unconditionally."
 ;; Each takes (baseline after motive intervention) and returns non-nil
 ;; on fire, nil on skip / no-signal.  All pure: no I/O, no state
 ;; writes.  The classifier (5.4c) runs them in order; first fire
-;; wins.  Predicates 1 + 3 are scoped to MOTIVE's `:project_cwd'
-;; (silent skip when absent); 2 + 4 fire regardless.
+;; wins.  P1 and P2 are scoped to MOTIVE's `:project_cwd' (silent
+;; skip when absent); the goad answer predicate fires regardless.
+;; (P3, a recentf delta under the broker cwd, was removed by IMP-034.)
 ;; ---------------------------------------------------------------------
 
 (defun satan-observer--title-to-path (title)
@@ -188,7 +185,7 @@ window: strictly after `:intervention_emitted_at' and not after the
 (defun satan-observer--predicate-git-commit-observed
     (_baseline after motive intervention)
   "§S5 P2 — fires when AFTER perceives a commit in MOTIVE's repo during
-the attribution window.  Scoped (like P1/P3) to MOTIVE's `:project_cwd';
+the attribution window.  Scoped (like P1) to MOTIVE's `:project_cwd';
 no project_cwd → no fire.  A row matches when its `:repo' is MOTIVE's
 project root (path-normalised) or its `:slug' matches a `project:' cue
 token, AND its `:end_ts' lies in (`:intervention_emitted_at',
@@ -201,38 +198,6 @@ anchor, so stale/pre-deploy baselines cannot misfire."
                          (satan-observer--git-row-in-window
                           row intervention)))
                   (plist-get after :git_commits)))))
-
-(defun satan-observer--abs-recent (fs-state)
-  "Return absolute paths for FS-STATE's `:recent_files'.
-`:recent_files' entries are stored relative to FS-STATE's `:cwd'
-(which may be abbreviated, e.g. `~/.emacs.d'); both legs need
-expanding before comparison."
-  (let ((cwd (plist-get fs-state :cwd)))
-    (when cwd
-      (let ((abs-cwd (expand-file-name cwd)))
-        (mapcar (lambda (rel) (expand-file-name rel abs-cwd))
-                (plist-get fs-state :recent_files))))))
-
-(defun satan-observer--predicate-fs-recent-delta
-    (baseline after motive _intervention)
-  "§S5 P3 — fires when AFTER's `:recent_files' contains a path under
-MOTIVE's `:project_cwd' that is absent from BASELINE's
-`:recent_files'.  Silently nil when `:project_cwd' absent.
-Per watch-out: `recentf-list' tracks visits, not edits — a file
-opened (not modified) in the window will still satisfy this
-predicate.  v0 accepts the looseness; a stricter mtime-delta is a
-follow-up."
-  (let ((cwd (plist-get motive :project_cwd)))
-    (when cwd
-      (let* ((after-abs (satan-observer--abs-recent
-                         (plist-get after :fs_state)))
-             (baseline-abs (satan-observer--abs-recent
-                            (plist-get baseline :fs_state)))
-             (prefix (file-name-as-directory (expand-file-name cwd))))
-        (cl-some (lambda (path)
-                   (and (string-prefix-p prefix path)
-                        (not (member path baseline-abs))))
-                 after-abs)))))
 
 ;; ---------------------------------------------------------------------
 ;; Goad answer predicate (SL-016 PHASE-07) — §S5 the ask's direct answer
@@ -574,8 +539,6 @@ Per outcome-semantics §3 + §6.2:
      . satan-observer--predicate-editor-edit-in-window)
     (:git_commit_observed
      . satan-observer--predicate-git-commit-observed)
-    (:fs_recent_delta
-     . satan-observer--predicate-fs-recent-delta)
     (:goad_answer
      . satan-observer--predicate-goad-answer))
   "Ordered alist mapping predicate keyword → symbol.
@@ -593,8 +556,7 @@ other kind.")
 For `\"ask\"' the answer predicate is the only positive predicate —
 an ask's expected outcome is an answer, and nothing ambient is
 evidence of one (RV-007 F-21).  Every other kind keeps the ambient
-three (`:editor_edit_in_window', `:git_commit_observed',
-`:fs_recent_delta')."
+two (`:editor_edit_in_window', `:git_commit_observed')."
   (if (equal kind "ask")
       (cl-remove-if-not (lambda (cell) (eq (car cell) :goad_answer))
                         satan-observer--predicates)
@@ -664,7 +626,7 @@ Full semantics: docs/satan/observer-classify.md"
               ((null baseline)
                (satan-observer-classify--unknown :no_baseline))
               (t
-               (let* ((after (satan-observer--after-state intervention motive))
+               (let* ((after (satan-observer--after-state intervention))
                       (firers
                        (delq nil
                              (mapcar
