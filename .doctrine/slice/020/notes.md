@@ -30,9 +30,9 @@ was the wrong way round.
 
 ## Harvest
 
-fresh-as-of: 2026-09-25 · PHASE-01 completed · mechanism head 124c268 ·
-mind head 1d122dc (corpus: tools/{notes_read,notes_grep}.md new;
-notes_recent.md, org_read_context.md corrected).
+fresh-as-of: 2026-09-25 · PHASE-02 implementation complete, awaiting VH-1 ·
+mechanism head 21a50d8 · mind head 5d67b78 (corpus: prompts/ruminate.txt;
+PHASE-01's four tool descriptions under 1d122dc).
 
 ### Produced
 
@@ -53,6 +53,46 @@ notes_recent.md, org_read_context.md corrected).
 - **RV-019** — the design review, concluded: 17 findings, all `fix-now`, all
   verified. Five `major`, all of one species: a design claim the code or the
   toolchain contradicts.
+
+### Produced (PHASE-02)
+
+- **Reachability** (`21a50d8`): `morning`, `motd`, `ruminate` allowlist `notes_read`
+  and `notes_grep`; `tick-*` deliberately untouched. `satan-mode-check-tool-references`
+  passes at load, so the allowlists cannot outrun the registry.
+- **Tier ladder** (`satan/harness/runloop.py` + `test_gptel_harness.py`):
+  `notes_grep` → `TIER_1_DROP`, `notes_read` → `TIER_2_DROP`. The red run is the
+  demonstration: before the sets changed, both tools were present at their tier.
+- **Broker fixtures** (`satan/test/satan-broker-test.el`): both description alists
+  and the manifest-shape assertions. Red without them — `satan-broker/manifest-tools-shape`
+  and `run-emits-one-tick-row-outcome-spawned` both failed on the missing lookups.
+- **Doc mirrors**: `docs/governance.md` `## Tools` (both rows) + the
+  `satan-tools-notes.el` `## File map` row (now all three names);
+  `docs/resilience-design.md` §2.2 (both drop lists) + §3 (both inventory rows).
+- **Prompt** (`5d67b78`, corpus): `prompts/ruminate.txt` gather step 1 names the
+  find-then-read pair.
+- **IT-011's diff went 15 → 13**: `comm -23` of registered names against the
+  `## Tools` rows drops exactly the two new names and loses none.
+
+### Learned (PHASE-02)
+
+- **A single broker test run in isolation reports `credential_unavailable`.**
+  `satan-broker/run-emits-one-tick-row-outcome-spawned` passes in the full suite
+  and fails when run alone — an earlier test installs the credential stub the run
+  depends on. Not caused by this phase; a test-isolation smell worth its own item.
+- **The stale-`.elc` trap is already mitigated at the runner**: `dev/satan-test.el:39`
+  sets `load-prefer-newer t` before any `require` (this is what `144247a` fixed),
+  so an edited source wins over an older `.elc`. Deleting touched `.elc` is belt
+  and braces, not the mechanism.
+- **The broker test's manifest gate is reached from two tests**, not one: the
+  `morning` manifest is built both by `manifest-tools-shape` and by
+  `run-emits-one-tick-row-outcome-spawned` (through the shared description alist).
+  A fixture added to one alist only would leave one of the two red.
+- **Two entries in the doc mirrors are stale beyond this slice's scope** and were
+  left alone: the `satan-tools-atsatan.el` File map row still says `~/notes/`
+  "excluding `satan/`" (false since SL-015 — same falsified sentence PHASE-01
+  corrected in `notes_recent.md`), and `docs/resilience-design.md` §3 still lists
+  `bough_read` and `notes_at_satan_intervention_done`. Drift for a board item, not
+  a phase.
 
 ### Learned (things a future agent would otherwise rediscover)
 
@@ -89,17 +129,22 @@ notes_recent.md, org_read_context.md corrected).
 
 ### Open / hand-forward
 
-- **PHASE-02** is not started: mode allowlists (`morning`, `motd`, `ruminate`),
-  the harness tier ladder (`runloop.py` + its test), four doc mirrors
-  (`docs/governance.md` `## Tools` + `## File map`; `docs/resilience-design.md`
-  §2.2 + §3 inventory), the broker test's description fixtures, and
-  `prompts/ruminate.txt`. Note the fixtures: the `morning` manifest build is
-  gated by them, so they must carry the new names or the suite goes red.
-- **VH-1 (user acceptance)** is PHASE-02's only human criterion: that the tools
-  are reachable in the three modes and usable end to end.
+- **VH-1 (user acceptance)** is PHASE-02's only human criterion, still open: that
+  the tools are reachable in the three modes and usable end to end in a `ruminate`
+  or `morning` manifest.
+- **Suite green here is a partial green**: the test databases are unreachable in
+  this dev shell, so the gate is `SATAN_TEST_ALLOW_NO_DB=1 just check` →
+  **PASS 1151/1329 (178 skipped)**, lint clean, harness 54 OK. Zero unexpected.
+- **The user's uncommitted `satan-mode.el` budget bumps** (`300000` →
+  `340000`/`400000`) remain in the worktree, unstaged — PHASE-02's allowlist hunks
+  were staged selectively (`git apply --cached` of a filtered diff) so they did
+  not ride the commit.
 - The corpus's shadowed-bind issue has its own proposal and hippocampus entries
   (20260925T164831, 20260925T164847) — not this slice's business, but it is why
   the description-coverage check could not be run here.
+- The corpus commit (`5d67b78`) staged `prompts/ruminate.txt` alone; the corpus
+  tree's unrelated in-flight changes (`AGENTS.md`, `flake.nix`,
+  `iteration/state.md`) are untouched and still uncommitted.
 
 ## Design surface triage (exploring, 2026-09-25)
 
