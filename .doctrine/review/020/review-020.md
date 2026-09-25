@@ -76,7 +76,12 @@ sentence — all falsified before this slice began and left deliberately.
 than the code's.** Two phases, eight of eight design-target selectors delivered,
 zero undelivered, zero undeclared *code* paths, and the full check reproduces
 green at audit (`SATAN_TEST_ALLOW_NO_DB=1 just check` → PASS 1152/1330, 178
-skipped, lint clean, harness 54 OK; `doctrine check gate` → 40/40 `{"ok":true}`).
+skipped, lint clean, harness 54 OK). `doctrine check gate` behaves here as it
+does for every slice in this dev shell: its individual checks report
+`{"ok":true}` and the recipe then fails at `_require-test-dbs` — no Postgres on
+127.0.0.1:54322 (phase sheet C4; CHR-002's subject) — while with
+`SATAN_TEST_ALLOW_NO_DB=1` the whole gate passes. Recorded rather than
+dispositioned: environmental and pre-existing, not a SL-020 divergence.
 Governance holds: both tools are `risk = read` with no capability, no row was
 added to the ADR-017 §3 authority ledger (the file has no commit since SL-017),
 the notes root has no write path, and CON-001 is satisfied by the harness ladder

@@ -383,7 +383,10 @@ only the harvest residue.
   corrections — mind repo, so committed there.
 - **Verification reproduced at audit.** `SATAN_TEST_ALLOW_NO_DB=1 just check` →
   PASS 1152/1330 (178 skipped), lint clean, harness 54 OK; notes tests 28/28;
-  `doctrine check gate` → 40/40 `ok`; `doctrine slice conformance SL-020` →
+  `doctrine check gate` reports `{"ok":true}` on its individual checks but exits
+  nonzero at `_require-test-dbs` (no Postgres on 127.0.0.1:54322 in this dev
+  shell — C4; passes whole with `SATAN_TEST_ALLOW_NO_DB=1`);
+  `doctrine slice conformance SL-020` →
   undeclared 11, undelivered 0, conformant 8; IT-011's two-way diff 13 names
   before and after with neither new tool in it; the ADR-017 §3 ledger untouched
   since SL-017.
