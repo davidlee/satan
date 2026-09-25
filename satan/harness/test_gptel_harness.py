@@ -432,6 +432,7 @@ class TierDegradationTests(unittest.TestCase):
         tools = [_stub_tool_schema("docs_search"),
                  _stub_tool_schema("docs_read"),
                  _stub_tool_schema("activity_read"),
+                 _stub_tool_schema("notes_grep"),
                  _stub_tool_schema("hippocampus_write"),
                  _stub_tool_schema("satan_final")]
         filtered = runloop.filter_tools_for_tier(tools, 1)
@@ -439,12 +440,14 @@ class TierDegradationTests(unittest.TestCase):
         self.assertNotIn("docs_search", names)
         self.assertNotIn("docs_read", names)
         self.assertNotIn("activity_read", names)
+        self.assertNotIn("notes_grep", names)
         self.assertIn("hippocampus_write", names)
         self.assertIn("satan_final", names)
 
     def test_filter_tools_tier2_drops_reads(self):
         tools = [_stub_tool_schema("org_read_context"),
                  _stub_tool_schema("memory_resonate"),
+                 _stub_tool_schema("notes_read"),
                  _stub_tool_schema("hippocampus_write"),
                  _stub_tool_schema("notify_send"),
                  _stub_tool_schema("satan_final")]
@@ -452,6 +455,7 @@ class TierDegradationTests(unittest.TestCase):
         names = [t["function"]["name"] for t in filtered]
         self.assertNotIn("org_read_context", names)
         self.assertNotIn("memory_resonate", names)
+        self.assertNotIn("notes_read", names)
         self.assertIn("hippocampus_write", names)
         self.assertIn("notify_send", names)
         self.assertIn("satan_final", names)

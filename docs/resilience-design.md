@@ -159,7 +159,8 @@ restriction and is expected to wind down gracefully.
 **Tier 1 — conserve.** Triggered by: token usage crosses 70% of budget.
 
 - Drop high-context survey tools: `docs_search`, `docs_read`,
-  `docs_list`, `activity_read`, `notes_recent`, `hippocampus_grep`.
+  `docs_list`, `activity_read`, `notes_recent`, `notes_grep`,
+  `hippocampus_grep`.
 - Keep: all read/write tools for notes, memory, bough. All action
   tools (notify, inbox, motive, patch).
 - System message: "Context budget pressure. Survey tools withdrawn.
@@ -168,7 +169,7 @@ restriction and is expected to wind down gracefully.
 **Tier 2 — wind-down.** Triggered by: token usage crosses 85% of budget.
 
 - Drop external reads: `org_read_context`, `bough_read`,
-  `agenda_read`, `hippocampus_list`, `hippocampus_read`,
+  `agenda_read`, `notes_read`, `hippocampus_list`, `hippocampus_read`,
   `notes_at_satan_scan`, `memory_resonate`, `memory_show_trace`,
   `patch_job_create`, `patch_job_status`, `proposal_stage`.
 - Keep: memory writes (`memory_mark`, `hippocampus_write`,
@@ -277,12 +278,14 @@ transition.
 | `docs_list` | yes | - | - | - |
 | `activity_read` | yes | - | - | - |
 | `notes_recent` | yes | - | - | - |
+| `notes_grep` | yes | - | - | - |
 | `hippocampus_grep` | yes | - | - | - |
 | `org_read_context` | yes | yes | - | - |
 | `bough_read` | yes | yes | - | - |
 | `agenda_read` | yes | yes | - | - |
 | `hippocampus_list` | yes | yes | - | - |
 | `hippocampus_read` | yes | yes | - | - |
+| `notes_read` | yes | yes | - | - |
 | `notes_at_satan_scan` | yes | yes | - | - |
 | `memory_resonate` | yes | yes | - | - |
 | `memory_show_trace` | yes | yes | - | - |

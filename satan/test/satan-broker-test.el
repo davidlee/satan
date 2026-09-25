@@ -424,6 +424,8 @@ clock) suppress the desktop pop but not the journal line."
     ("activity_read"          . "Read activity.")
     ("notes_recent"           . "List recent notes.")
     ("notes_at_satan_scan"    . "Scan @satan directives.")
+    ("notes_read"             . "Read one note.")
+    ("notes_grep"             . "Search notes.")
     ("sway_border_set"        . "Retint sway borders.")
     ("sway_border_reset"      . "Restore sway borders.")
     ("memory_mark"            . "Mark.")
@@ -471,6 +473,8 @@ populated from ALIST `((NAME . CONTENT) …)'."
      ("activity_read"          . "Read the user's recent activity.")
      ("notes_recent"           . "List recently changed notes files.")
      ("notes_at_satan_scan"    . "Scan @satan directives.")
+     ("notes_read"             . "Read one note file.")
+     ("notes_grep"             . "Search the notes corpus.")
      ("sway_border_set"        . "Retint sway window borders.")
      ("sway_border_reset"      . "Restore sway borders.")
      ("memory_mark"            . "Mark a memory trace.")
@@ -498,6 +502,8 @@ populated from ALIST `((NAME . CONTENT) …)'."
        (should (member "agenda_read" names))
        (should (member "activity_read" names))
        (should (member "notes_recent" names))
+       (should (member "notes_read" names))
+       (should (member "notes_grep" names))
        (should (member "satan_final" names))
        ;; Descriptions came from notes files, not elisp.
        (let ((notify (cl-find "notify_send" tools
