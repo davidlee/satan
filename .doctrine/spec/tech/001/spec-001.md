@@ -24,9 +24,8 @@ Posture is **forward-intent** — the invariants exist today implicitly in broke
 code (`satan-mode.el`, `satan-tools.el`, `satan-audit.el`, the JSONL protocol);
 this spec states them as a contract before they are re-homed. Its requirements
 are `pending`; observed coverage is reconciled at each migration's audit, never
-inferred here. The spec is **anchor-free** for now — the corpus has no PRD to
-descend from and no container spec to parent to; it is reparented when the
-whole-system context spec is authored (ADR-018 D1).
+inferred here. Its parent is the whole-system context spec SPEC-002
+(reparented 2026-09-25); it has no PRD to descend from.
 
 ## Responsibilities
 

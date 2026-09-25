@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 18
+slug = "components-locate-each-others-state-through-named-roots-never-host-literals"
+title = "Components locate each other's state through named roots, never host literals"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "A component locates another component's state or sockets only through named, configurable roots, never through host literals (usernames, uids, absolute home paths)."
+tags = ["system"]
+acceptance_criteria = ["No SATAN repo hard-codes `/home/<user>`, `/run/user/<uid>`, or a host name outside its deployment configuration."]

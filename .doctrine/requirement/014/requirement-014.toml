@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 14
+slug = "the-repo-composition-graph-is-acyclic"
+title = "The repo composition graph is acyclic"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "No repo in the SATAN system depends, directly or transitively through flake inputs, on a repo that depends on it; shared libraries sit below every consumer."
+tags = ["system"]
+acceptance_criteria = ["The flake input graph of the host composition and of each SATAN repo contains no cycle.", "Each shared library is resolved at one pinned revision per deployment."]

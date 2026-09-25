@@ -15,13 +15,11 @@ responsibilities = [
 ]
 category = "protocol"
 c4_level = "container"
+parent = "SPEC-002"
 
-# Anchor-free by necessity: this is the first spec in the corpus. No product
-# spec (PRD) exists to descend_from, and no container spec exists to parent to.
-# When the whole-system context spec (ADR-018 D1's daemon core + client + protocol)
-# is authored, this spec is reparented under it. Left empty, not omitted.
+# Parented to the whole-system context spec SPEC-002 (2026-09-25). No product
+# spec (PRD) exists to descend_from yet.
 # descends_from = <none yet>
-# parent = <none yet>
 
 # Code anchors where the protocol lives implicitly today (elisp broker), to be
 # retired or re-homed as authority items migrate (ADR-018 D4).

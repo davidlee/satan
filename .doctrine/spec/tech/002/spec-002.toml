@@ -1,0 +1,50 @@
+schema = "doctrine.spec.tech"
+version = 1
+
+id = 2
+slug = "satan-system"
+title = "SATAN system"
+status = "draft"
+kind = "tech"
+tags = ["context", "architecture", "composition", "deployment", "trust-boundary"]
+responsibilities = [
+  "Name the containers SATAN is composed of — broker, harness, attribute daemon, patch runner, perception, goad, confinement, the text roots and the shared database — and how they couple.",
+  "Name the transports between containers and classify each as control plane or data plane.",
+  "Hold the system-wide composition and deployment invariants: single schema owner per store, acyclic repo composition, one revision per repo per deployment, declared jail profiles, root ownership, host facts out of code.",
+  "Record the current topology and the ADR-017/018 end-state side by side, without restating any container's mechanism.",
+]
+category = "system"
+c4_level = "context"
+
+# Anchor-free by design: the whole-system context synthesis. No PRD to descend
+# from; no parent. Governs no single code surface, so no [[source]].
+# Host-specific facts (paths, uid, host, pins, units) live in the deployment
+# note ~/flakes/SATAN.md, not here.
+
+# category — OPEN domain vocabulary (a taxonomy that drifts by design). Add as:
+#   category = "cli"
+# c4_level — closed C4 set: context | container | component | code. Add as:
+#   c4_level = "container"
+# descends_from — the product capability (PRD-NNN) this spec realises; tech-only,
+#   single-valued, validated against the product specs. Add as:
+#   descends_from = "PRD-001"
+# parent — single decomposition parent (SPEC-NNN or PRD-NNN); subtype-aware, single-valued, the
+#   tree must stay acyclic. Add as:
+#   parent = "SPEC-002"
+# [[source]] — code anchors this spec governs (tech-only, repeatable). Add as:
+#   [[source]]
+#   language = "rust"
+#   identifier = "doctrine/cli"
+#   module = "doctrine::cli"   # optional
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"
+
+[[relation]]
+label = "governed_by"
+target = "POL-001"

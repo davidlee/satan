@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Who composes whom</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --paper: #f5f5f5; --ink: #2d3142; --muted: #4f5d75; --rule: rgba(45,49,66,0.12); }
+body { font-family: 'Geist', system-ui, sans-serif; background: var(--paper); color: var(--ink); padding: 3rem 2rem; }
+.frame { max-width: 1120px; margin: 0 auto; }
+.eyebrow { font-family: 'Geist Mono', monospace; font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+h1 { font-family: 'Instrument Serif', serif; font-size: 2rem; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+.sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.5rem; max-width: 70ch; }
+.scroll { overflow-x: auto; }
+svg { width: 100%; min-width: 900px; display: block; }
+.notes { margin-top: 1.5rem; display: grid; grid-template-columns: 1.2fr 1fr; gap: 1rem; }
+.card { background: #fff; border: 1px solid var(--rule); border-radius: 6px; padding: 1.25rem; font-size: 0.85rem; line-height: 1.5; }
+.card h3 { font-size: 0.9rem; margin-bottom: 0.5rem; }
+.card ul { padding-left: 1.1rem; }
+code { font-family: 'Geist Mono', monospace; font-size: 0.78rem; }
+footer { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid var(--rule); font-family: 'Geist Mono', monospace;
+  font-size: 0.66rem; color: var(--muted); }
+@media (max-width: 720px) { .notes { grid-template-columns: 1fr; } body { padding: 2rem 1rem; } }
+</style>
+</head>
+<body>
+<div class="frame">
+<p class="eyebrow">SATAN · composition · how the repos are wired</p>
+<h1>Who composes whom</h1>
+<p class="sub">~/flakes is the de facto composition root. It pins the harness from GitHub while systemd runs scripts and Emacs loads elisp from the live working tree.</p>
+<div class="scroll">
+<svg viewBox="0 0 1024 452" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="satan-composition-title satan-composition-desc">
+<title id="satan-composition-title">Who composes whom</title>
+<desc id="satan-composition-desc">Dependency graph showing ~/flakes consuming satan, attrd, panopticon, satan-patcher, goad and oubliette as flake inputs, all converging on the shared jail library, with a cycle from satan back to the nix-config repo.</desc>
+<defs>
+<marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+<marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#f5f5f5"/>
+<!-- zones -->
+<!-- arrows -->
+<path d="M 312,120 V 184" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 512,120 V 184" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 696,120 V 184" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 880,120 V 184" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 264,120 V 152 Q 264,160 256,160 H 200 Q 192,160 192,168 V 184" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 128,120 V 184" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 376,184 V 120" fill="none" stroke="#eb6c36" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-accent)"/>
+<path d="M 512,240 V 304" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 328,240 V 264 Q 328,272 336,272 H 464 Q 472,272 472,280 V 304" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 696,240 V 264 Q 696,272 688,272 H 560 Q 552,272 552,280 V 304" fill="none" stroke="#4f5d75" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<path d="M 960,92 H 976 Q 984,92 984,100 V 324 Q 984,332 976,332 H 592" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<path d="M 144,240 V 272 Q 144,280 152,280 H 280 Q 288,280 288,272 V 244" fill="none" stroke="#4f5d75" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<!-- labels -->
+<rect x="198.5" y="140" width="59" height="12" rx="2" fill="#f5f5f5"/>
+<text x="228.0" y="149" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EXECSTART</text>
+<rect x="58.5" y="146" width="59" height="12" rx="2" fill="#f5f5f5"/>
+<text x="88.0" y="155" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LOAD-PATH</text>
+<rect x="384.0" y="146" width="37" height="12" rx="2" fill="#f5f5f5"/>
+<text x="402.5" y="155" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CYCLE</text>
+<rect x="600.0" y="248" width="48" height="12" rx="2" fill="#f5f5f5"/>
+<text x="624.0" y="257" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">OWN PIN</text>
+<rect x="769.5" y="312" width="37" height="12" rx="2" fill="#f5f5f5"/>
+<text x="788.0" y="321" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PATH:</text>
+<rect x="197.5" y="288" width="37" height="12" rx="2" fill="#f5f5f5"/>
+<text x="216.0" y="297" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DRIFT</text>
+<!-- nodes -->
+<rect x="64" y="64" width="160" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="64" y="64" width="160" height="56" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+<rect x="72" y="70" width="37" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="90.5" y="79" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CONFIG</text>
+<text x="144.0" y="98.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">~/.emacs.d</text>
+<text x="144.0" y="113.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">require dl-satan</text>
+<rect x="186" y="70" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="201.0" y="79" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">0 in</text>
+
+<rect x="248" y="64" width="712" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="248" y="64" width="712" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<rect x="256" y="70" width="27" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+<text x="269.5" y="79" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">HOST</text>
+<text x="604.0" y="98.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">host flake  (~/flakes = the nix-config repo)</text>
+<text x="604.0" y="113.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">NixOS + home-manager: systemd units, packages, postgres, jail library</text>
+<rect x="922" y="70" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="937.0" y="79" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">1 in</text>
+
+<rect x="64" y="184" width="160" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="64" y="184" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<rect x="72" y="190" width="27" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+<text x="85.5" y="199" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">TREE</text>
+<text x="144.0" y="218.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">~/dev/satan</text>
+<text x="144.0" y="233.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">elisp + bin/ (live)</text>
+<rect x="186" y="190" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="201.0" y="199" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">2 in</text>
+
+<rect x="248" y="184" width="160" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="248" y="184" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<rect x="256" y="190" width="22" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+<text x="267.0" y="199" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PIN</text>
+<text x="328.0" y="218.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">satan @ github</text>
+<text x="328.0" y="233.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">harness binary</text>
+<rect x="370" y="190" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="385.0" y="199" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">1 in</text>
+
+<rect x="432" y="184" width="160" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="432" y="184" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<rect x="440" y="190" width="27" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+<text x="453.5" y="199" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PATH</text>
+<text x="512.0" y="218.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">3 path: inputs</text>
+<text x="512.0" y="233.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">attrd · panopticon · patcher</text>
+<rect x="554" y="190" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="569.0" y="199" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">1 in</text>
+
+<rect x="616" y="184" width="160" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="616" y="184" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<rect x="624" y="190" width="22" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+<text x="635.0" y="199" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GIT</text>
+<text x="696.0" y="218.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">goad</text>
+<text x="696.0" y="233.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">git+file · no follows</text>
+<rect x="738" y="190" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="753.0" y="199" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">1 in</text>
+
+<rect x="800" y="184" width="160" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="800" y="184" width="160" height="56" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+<rect x="808" y="190" width="22" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="819.0" y="199" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PIN</text>
+<text x="880.0" y="218.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">oubliette</text>
+<text x="880.0" y="233.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">microvm host module</text>
+<rect x="922" y="190" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="937.0" y="199" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">1 in</text>
+
+<rect x="432" y="304" width="160" height="56" rx="6" fill="#f5f5f5"/>
+<rect x="432" y="304" width="160" height="56" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+<rect x="440" y="310" width="22" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+<text x="451.0" y="319" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LIB</text>
+<text x="512.0" y="338.0" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">jail library</text>
+<text x="512.0" y="353.0" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">~/flakes/agents · bwrap</text>
+<rect x="554" y="310" width="30" height="12" rx="2" fill="#f5f5f5" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
+<text x="569.0" y="319" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">4 in</text>
+
+<!-- legend -->
+<line x1="40" y1="392" x2="1024" y2="392" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+<text x="40" y="408" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEGEND</text>
+<rect x="40" y="420" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+<text x="60" y="428" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Flake / tree</text>
+<rect x="148" y="420" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+<text x="168" y="428" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Config or external pin</text>
+<rect x="306" y="420" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+<text x="326" y="428" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Shared library</text>
+<line x1="424" y1="426" x2="452" y2="426" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="460" y="428" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Input / loads</text>
+<line x1="553" y1="426" x2="581" y2="426" stroke="#4f5d75" stroke-width="1.0" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+<text x="589" y="428" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Separate copy · drift</text>
+<line x1="722" y1="426" x2="750" y2="426" stroke="#eb6c36" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow-accent)"/>
+<text x="758" y="428" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Cycle</text>
+</svg>
+</div>
+<div class="notes">
+<div class="card"><h3>Reading it</h3><ul><li><b>CYCLE</b>: satan's <code>agents</code> input is <code>github:davidlee/nix-config?dir=flakes/agents</code>, the repo ~/flakes lives in, while ~/flakes takes satan as an input. ~/flakes breaks the loop at eval time with <code>follows</code>; standalone builds of satan take a different library rev.</li><li><b>DRIFT</b>: one running system mixes two revisions of satan: the pinned harness and the live elisp and bin scripts.</li><li><b>OWN PIN</b>: goad has no <code>follows</code>, so it builds against its own copy of the jail library (the deprecated <code>flakes/pub</code> alias).</li></ul></div>
+<div class="card"><h3>Not shown</h3><ul><li>Every repo's own dev jails (<code>jailed-pi</code> etc.) and their divergent mounts: see ~/flakes/SATAN.md.</li><li>~/satan (corpus) and ~/notes flakes: they define interactive jails only.</li><li>Postgres is configured by ~/flakes, but <code>satan_memory</code> is created and migrated by hand.</li></ul></div>
+</div>
+<footer>SPEC-002 · SATAN system · generated by diagrams.py · host facts: ~/flakes/SATAN.md</footer>
+</div>
+</body>
+</html>

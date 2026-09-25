@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 17
+slug = "satan-never-writes-the-users-notes-root-its-state-root-is-discardable"
+title = "SATAN never writes the user's notes root; its state root is discardable"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "SATAN never writes the user's notes root; everything it authors goes to its corpus root; deleting its state root loses history but never correctness."
+tags = ["system"]
+acceptance_criteria = ["No SATAN write path resolves under `satan-notes-root`.", "Every path defcustom is a join off one of the three roots."]

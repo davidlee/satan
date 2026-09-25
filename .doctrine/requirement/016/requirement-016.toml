@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 16
+slug = "every-jail-holding-model-output-has-a-declared-test-asserted-profile-with-no-protocol-bypass"
+title = "Every jail holding model output has a declared, test-asserted profile with no protocol bypass"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "Every jail that receives model output runs under a profile declared once per consumer class, whose mount and environment lists are asserted by test, and which exposes no channel that reaches an authority item without passing the trust-boundary protocol."
+tags = ["system"]
+acceptance_criteria = ["No such profile binds the editor's eval socket.", "No such profile binds the user's home, the SATAN source tree, or the notes root read-write.", "Secrets never appear on a process argv.", "Budget ceilings the broker sets are visible inside the jail."]

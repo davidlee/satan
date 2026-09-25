@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 15
+slug = "a-deployment-runs-one-revision-of-each-repo"
+title = "A deployment runs one revision of each repo"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "All components shipped from one repo run the same revision within a deployment, or refuse to interoperate on a protocol-version mismatch detected at spawn or connect."
+tags = ["system"]
+acceptance_criteria = ["The harness reports a protocol version in `ready`; the broker refuses a mismatch.", "The deployment names one source (pin or path) per repo."]

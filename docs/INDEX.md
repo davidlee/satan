@@ -13,6 +13,7 @@ metadata:
 
 ## Governance & architecture
 - [governance](governance.md) — proposal-first, source of truth, scope of agency, file map, modes, tools, ops
+- **SPEC-002** (`doctrine spec show SPEC-002`) — whole-system context: containers, transports, composition invariants; diagrams in `.doctrine/spec/tech/002/`; host facts in `~/flakes/SATAN.md`
 - [architecture](architecture.md) — invocation / broker / adapter / model / tool / output / state
 - [protocol](protocol.md) — JSONL wire protocol (message types, fixtures)
 - [perceptual-design](perceptual-design.md) — v0 percept capsule, auto-resonance, motive file, outcome observer, sensor alerts, cooldown floor (Phases 0–6 shipped 2026-05-22→23; see doc §1.5)

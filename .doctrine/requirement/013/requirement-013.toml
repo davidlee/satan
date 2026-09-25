@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 13
+slug = "each-durable-store-has-exactly-one-schema-owner"
+title = "Each durable store has exactly one schema owner"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "Every durable SATAN store (each Postgres database, each file root) has exactly one component that owns its schema and migrations, with one migration ledger and one numbering sequence."
+tags = ["system"]
+acceptance_criteria = ["No two migration directories target the same database.", "The database is declared, not hand-created."]

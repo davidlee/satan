@@ -1,0 +1,38 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 16
+slug = "satan-revision-skew"
+title = "Production runs two revisions of satan: pinned harness, live-tree elisp"
+kind = "risk"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = ["deployment", "satan", "system"]
+
+[facet]                         # risk only — every field typed; seeded empty
+likelihood = ""                 # low | medium | high | critical
+impact     = ""                 # low | medium | high | critical
+origin     = ""
+controls   = []
+
+# outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows (SL-048 "the cut") — author them with
+# `doctrine link RSK-NNN <label> <target>`; `doctrine inspect RSK-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "violates this system invariant"
+target = "REQ-015"
+
+[[relation]]
+label = "related"
+target = "CHR-001"
