@@ -122,7 +122,7 @@ Dotfiles must not be the source of truth for prompt content."
        :jail-profile 'specDev
        :profile 'deepseek-flash
        :credential-policy 'prompt    ; meant to be seen (SL-018)
-       :budget-tokens 300000
+       :budget-tokens 340000
        :output-handler 'satan-output/morning
        :auto-apply 'owned
        :timeout-seconds 1800
@@ -172,7 +172,7 @@ Dotfiles must not be the source of truth for prompt content."
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'deepseek-flash
-       :budget-tokens 300000
+       :budget-tokens 400000
        :output-handler 'satan-output/self-edit
        :auto-apply 'none
        :timeout-seconds 1800
@@ -195,7 +195,7 @@ Dotfiles must not be the source of truth for prompt content."
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
        :profile 'deepseek-flash
-       :budget-tokens 300000
+       :budget-tokens 400000
        :output-handler 'satan-output/self-edit
        :auto-apply 'none
        :timeout-seconds 1800
