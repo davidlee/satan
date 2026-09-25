@@ -1,0 +1,32 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 1
+slug = "every-tool-classified-in-harness-tier-ladder"
+title = "Every registered tool is classified in the harness token-tier ladder"
+record_kind = "constraint"
+status = "active"
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+statement     = ""
+source        = ""             # canon | adr | external | technical | legal | compatibility | operator
+applies_to    = []
+waiver_reason = ""
+waived_by     = ""
+waived_on     = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written, ADR-004 §5)
+
+[[relation]]
+label = "shapes"
+target = "SL-020"

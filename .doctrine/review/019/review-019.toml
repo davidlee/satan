@@ -1,0 +1,188 @@
+id    = 19
+slug  = "design-review-of-sl-020"
+title = "design review of SL-020"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+concluded = true
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-020"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "An absent or misconfigured notes root is reported as a path escape"
+detail = """
+Both handlers resolve against `(expand-file-name satan-tools-notes-root)`. If that directory does not exist (root renamed, mount missing, a broken config), `file-in-directory-p` returns nil for every path and the caller is told `path escapes notes root: foo.org` — a diagnosis that is wrong and whose remedy is wrong (the model will try other paths, all of which fail identically, and never learn that the corpus is unreachable).
+
+Neither §2's refusal table nor §3's failure table covers this state. The design's own principle — refusal messages exist to give the model a correct remedy ('the strings above are the model-facing correction signal, which is why they name the path') — is violated by the one failure where the remedy is not the path.
+
+Fix: the resolver checks the root once and reports its own refusal category (`notes root not found: <root>`), before any path-shape reasoning; the root check also applies to notes_grep, whose current design would surface it as `rg failed: exit 2` with the root unnamed."""
+disposition = "fix-now"
+response = "Accepted, fixed in the design. §2's refusal table gains a first row — `notes root not found: ~/notes` — and the prose now says the root check precedes all path-shape reasoning, with the reason (an absent root makes every path report as an escape, so the model would vary the path forever instead of learning the corpus is unreachable). §4's resolver shows the `(file-directory-p root)` check first and a `--root` helper shared by both tools; §3's failure table gains the same row, so `notes_grep` names an unreachable corpus rather than reporting `rg failed: exit 2`; §6 gains a test row covering both tools."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "--max-columns truncates match text with no flag, contradicting the design's own honesty rule"
+detail = """
+§3's invocation carries `--max-columns 200`, and §3 does not say what that does. rg truncates a match line longer than that and appends an ellipsis — the returned `:text` is then *not* the line's content, and the caller is not told. The design elsewhere insists on honest caps (body cap flags `:truncated`; match cap flags `:truncated`), so a silent per-line truncation is an inconsistency in the design's own contract, not just a parameter.
+
+That matters more than it looks for this tool: notes are prose, so a long line is normal (a paragraph with no hard wrap). A model that greps for a phrase, receives a `:text` cut at 200 characters, and reasons from it may conclude the phrase is absent from the line.
+
+Fix: either keep the cap and name it in the result contract (a per-match `:text-truncated` flag, or documented ellipsis semantics in the description), or drop `--max-columns` and rely on the total-match cap plus `:truncated`. The design must choose and say which."""
+disposition = "fix-now"
+response = "Accepted, fixed by documenting rather than removing. Decided to KEEP `--max-columns 200`: without it a single pathological line (a paragraph pasted unwrapped, a minified file that happens to carry one of the three extensions) returns a match of unbounded size against a budgeted context, which is the exact cost class the tier ladder exists to bound. The dishonesty was the silence, not the flag. §3 now carries a fourth invocation note explaining the bound and its reason, the result contract gains a paragraph stating that `:text` may end in rg's ellipsis marker, and the tool description must say so (a contract line in the mind file, added to §5's description obligations). §6 records that this cannot be unit-tested, because the suite stubs `call-process` and rg's ellipsis behaviour never runs."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "The resolver's containment/shape split is shown in code but never stated as an invariant"
+detail = """
+§4 states the containment property as a claim about `file-in-directory-p` comparing truenames, and §2's note says the extension is read off the requested name "so a symlink cannot smuggle an unexpected format past it". Both are true of the *shown* code, but the design never states the invariant, so an implementer following the prose could reasonably (a) resolve first and then take the extension off the resolved path (reopening the smuggle path), or (b) drop the `..` component check on the grounds that containment already covers it (weakening the failure from a clear refusal to a truename test that also fires on legitimately-symlinked corpora).
+
+Fix: state it as an invariant in §4 — "containment is decided on the resolved path, shape on the requested path, and the two checks are intentionally independent; neither subsumes the other" — with the reason for each: containment is the security boundary, the component check is the legible refusal, the shape check is the width rule."""
+disposition = "fix-now"
+response = "Accepted, fixed. §4's resolver preamble now states two invariants explicitly, with the reason each is kept: (1) containment is decided on the resolved path and shape on the requested path, the two independent and neither subsuming the other — containment is the security boundary over truenames, the shape filters are the width rule over the requested name, and reading the extension off the resolved path would reopen the symlink smuggle; (2) the `..` component check is kept even though containment covers it, because the refusal should be legible rather than emerging as a truename test that a corpus with legitimate internal symlinks would also fail. The section now reads as a rule with code under it, not code with a comment."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "Section 2 and section 4 present the refusal set as two lists with no stated correspondence"
+detail = """
+§2's refusal table lists eight rows; §4's resolver returns five of them and the handler adds the rest. Nothing in the design says the two lists are the same set, so a reader checking the implementation against §2 will find rows §4 appears not to produce and conclude the code is incomplete — or, worse, treat §4 as the specification and silently drop `not found`/`not a file`.
+
+The same shape appears twice more: §4's handler sample appends `(satan-tools-notes--read-capped abs)` to a plist without stating that the helper returns `(:body :chars :truncated)`, and §6's test table names `--with-fd-stub → --with-exec-stub` without saying the recorded accessor is renamed too (`--fd-calls → --exec-calls`).
+
+Fix: put one sentence in §2 declaring the table authoritative and §4 its decomposition, state `--read-capped`'s return shape next to the sample, and name both renames in §6."""
+disposition = "fix-now"
+response = """Accepted, fixed. §2 now opens its refusal list with "**This table is authoritative**; §4's resolver is its decomposition into code, and the two are the same set — the resolver returns some rows, the handler adds the rest, and nothing is produced that is not listed here." §4 states `--read-capped`'s return shape (`(:body STR :chars N :truncated BOOL)`) in the prose beside its sample, so the append in the handler reads as a consequence rather than a coincidence. §6's code-impact row now names both test-helper renames (`--with-fd-stub` → `--with-exec-stub`, and its recorder `--fd-calls` → `--exec-calls`)."""
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "--read-capped is called with one argument and the cap defcustom is never used"
+detail = "EXPECTED: §2 promises the body is capped at `satan-tools-notes-read-max-chars` (default 20000); §6 lists the defcustom among the module's additions. OBSERVED: §4's handler calls `(satan-tools-notes--read-capped abs)` - one argument - while the helper it introduces is `(defun satan-tools-notes--read-capped (abs max) ...)`, and `satan-tools-notes-read-max-chars` appears nowhere in the handler or helper. As printed the call is an arity error and no path runs from the defcustom to the cap. WHY IT MATTERS: R1 (arbitrary note bodies into a budgeted context) is mitigated only by this cap; the design's central safety mechanism cannot be implemented as written, and the `read-truncates-at-cap` test cannot pass. PENANCE: pass the cap at the call site and delete the unused `meta` binding. TO SETTLE: the corrected code block."
+disposition = "fix-now"
+response = "Accepted. §4's handler now passes the cap at the call site — `(satan-tools-notes--read-capped abs satan-tools-notes-read-max-bytes)` — and the helper takes it as a parameter rather than reading a global, so a test can bind it. The unused `meta` binding is gone. The cap's unit is fixed as BYTES and the field names follow the unit (`:bytes`/`:total-bytes`), which also answers F-17's second half: bounding at the read syscall needs no decode, whereas a character total would require decoding the whole file — the cost the cap exists to avoid. §2 and §4 rewritten; §6 gains `read-truncates-at-cap` asserting `:bytes` at the cap and `:total-bytes` the real size."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "Containment does not refuse the root itself, and `.` produces the wrong refusal"
+detail = "EXPECTED: §2's authoritative table lists 'resolves outside the root (symlink escape, the root itself)'; §4 invariant 1 asserts file-in-directory-p 'covers `..`, symlinks and the root itself in one test over the real target'; DEC-029 says the same. OBSERVED, executed against the resolver exactly as §4 prints it: file-in-directory-p treats a directory as inside itself - `(file-in-directory-p (file-truename ROOT) (file-truename ROOT))` => t; a symlink inside the root pointing at `.` is ACCEPTED by containment and only the handler's file-regular-p downgrades it to `not a file`; `.` returns `hidden path not readable: .`, not the table's `path escapes notes root`. WHY IT MATTERS: the stated security invariant is wrong about its own mechanism, so an implementer may conclude the handler's non-file check is redundant, and the table mis-signals `.` as hidden material. PENANCE: correct §2's row and §4 invariant 1 - containment covers `..` and symlink escape, the root itself is caught by resolution/non-file, `.` by the hidden filter - and say why each check is load-bearing."
+disposition = "fix-now"
+response = "Accepted — the charge is right and the design was wrong about its own mechanism. `file-in-directory-p` treats a directory as inside itself, so the root is NOT caught by containment; it is caught by the read step as `not a file`. §2's table row now reads 'a directory, or the root itself | not a file', the escape rows say 'a symlink escaping it', and `hidden path not readable` now documents that `.` and `./foo` land there because their first split component is `.`. §4 invariant 2 was rewritten to state plainly that containment does not cover the root, and to give the reason each remaining check is load-bearing rather than collapsing them into containment. §6 gains `read-refuses-the-root-and-a-directory` asserting the real messages."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "--max-columns does not append an ellipsis: rg replaces the whole line with [Omitted long matching line]"
+detail = "EXPECTED: §3 says the per-line truncation leaves a short `:text` that 'ends with rg's own ellipsis marker', and §6 calls it 'rg's own ellipsis behaviour'. OBSERVED, rg 15.2.0 with the exact flags §3 prints: `rg --no-heading --line-number --ignore-case --fixed-strings --max-columns 200 -- artifactless <dir>` => `<path>:1:[Omitted long matching line]`. Nothing of the matching phrase survives; same at --max-columns 20. WHY IT MATTERS: the contract's honesty claim is false in the other direction - the caller cannot see the phrase at all, and the placeholder is what a naive `path:line:text` parser returns as the match; the tool description the design commits to writing would be wrong. PENANCE: state the real behaviour in §3 and in the description (over the limit, `:text` is rg's omission marker and the phrase is unavailable), or add --max-columns-preview. TO SETTLE: rg against a long-line fixture with the final argv."
+disposition = "fix-now"
+response = "Accepted, and verified independently: rg 15.2.0 with the exact flags returns `[Omitted long matching line]` as the whole `:text` — the phrase is unavailable, so the design's 'ends with rg's own ellipsis marker' was false. Fixed by taking up the reviewer's own alternative rather than documenting a loss: the argv now carries `--max-columns 200 --max-columns-preview`, verified to return the line truncated at the limit followed by rg's visible `[... omitted end of long line]` marker, so the phrase survives and the truncation is visible. §3 states the real behaviour and both flags; the description obligation in §5 requires it in the mind file; §6 records that it cannot be unit-tested because the suite stubs call-process."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "--max-count 10 drops matches per file with no flag, against the design's own honesty rule"
+detail = "EXPECTED: §3 declares the honesty rule ('a short answer that says it is short') and enumerates the argv's justifications - 'Three of those choices are load-bearing; a fourth is a cost bound'. OBSERVED: the argv carries `--max-count 10` per file; the prose accounts only for --max-columns, --fixed-strings, the globs and --ignore-case; `:truncated` is documented to fire only on the 50-match total cap. A file with more than ten hits contributes ten and no flag. WHY IT MATTERS: a model searching for a phrase occurring fifteen times in one note receives ten with `:truncated nil` and concludes it has them all - exactly the wrong-but-readable answer DEC-030 and SL-015 forbid; and 10 is an unjustified magic number. PENANCE: drop the flag and rely on the already-flagged total cap, or surface the per-file cap in the contract and in `:truncated`. TO SETTLE: a stub returning >10 matches for one file."
+disposition = "fix-now"
+response = "Accepted. `--max-count 10` is dropped from the argv. It could not be flagged honestly without inventing a per-file truncation signal, and the total cap of 50 already bounds cost and already sets `:truncated` — so the per-file cap bought nothing but a silent false negative, and '10' was an unjustified magic number. §3 now states explicitly that there is no per-file cap and why, and that one file may contribute all 50 matches with the flag saying so. §6 gains `grep-does-not-cap-matches-per-file` (a stub returning 15 hits for one file returns 15)."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "major"
+title = "The security boundary has no test: no case exercises a symlink escape"
+detail = "EXPECTED: §6's VT list claims to pin the confinement; DEC-029 and §4 name symlink escape as the property the containment test exists for. OBSERVED: the §6 table offers `read-refuses-paths-escaping-the-root | absolute, .., ., empty, non-string` plus a non-note/hidden case. Neither creates a symlink; `.` is listed under escapes though it is caught as hidden (see the root charge). The only thing file-in-directory-p adds over the string checks is truename resolution of symlinks, and nothing exercises it. WHY IT MATTERS: the suite would pass against a resolver with the containment check deleted entirely, provided file-regular-p remained - the one security-relevant decision in the slice is unverified. PENANCE: add an in-root symlink fixture pointing outside the root and assert `path escapes notes root`; drop `.` from the escape row or assert its real message."
+disposition = "fix-now"
+response = "Accepted — this was the most serious gap, since the suite would have passed against a resolver with containment deleted. §6 gains `read-refuses-a-symlink-escaping-the-root`: a fixture symlink inside the root pointing outside it must return `path escapes notes root`, with a note that this is the only case exercising truename containment. The escape row also drops `.` (now asserted under the hidden/directory rows per F-6), so the escape test asserts only genuine escapes."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "major"
+title = "The coupling web misses three enumerations: resilience §3 inventory, governance File map, and the ruminate prompt"
+detail = "EXPECTED: §5 says 'Registering a tool is never a local act ... drawn out explicitly'; CON-001 requires every registered tool be classified and the prose mirror updated. OBSERVED: the design names only `docs/governance.md ## Tools` and `docs/resilience-design.md §2.2`, and misses (a) `docs/resilience-design.md:266` `## 3. Tool tier classification`, whose per-tool table at 272-305 lists notes_recent/org_read_context row by row - a tier registry, the very thing CON-001 calls a registry; (b) `docs/governance.md:384`, a second module->tools enumeration in the File map; (c) `~/satan-corpus/prompts/ruminate.txt:10` - a *prompt* enumerating the notes tools, in precisely the mode §5 is adding the tools to and the mode §1's motivating example runs in. WHY IT MATTERS: the section sells itself as the complete touch-set; omitting these means the change lands half-wired and the 'drawn out explicitly' claim cannot be relied on by the plan. PENANCE: add all three to §5's diagram, doc mirrors and impact table - or state, with reason, why each is deliberately out of scope."
+disposition = "fix-now"
+response = "Accepted, and all three sites are now in scope rather than excluded — the reviewer's reasoning is right, and the ruminate prompt especially: §1's motivating example IS a ruminate run, so adding the tools to that mode's allowlist without the mode knowing what to do with them leaves the capability unusable. §5's diagram, doc-mirror table and the mind-half table now carry all four doc surfaces (governance ## Tools, governance ## File map, resilience §2.2 drop lists, resilience §3 per-tool inventory) and the fifth mind file `prompts/ruminate.txt` (gather phase names the find-then-read pair). §6's impact table and VA drift check updated; the scope document is reconciled at the reviewing edge."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "§2's table and §4's resolver disagree on the message set, and the correspondence prose miscounts"
+detail = "EXPECTED: §2 - 'This table is authoritative ... the resolver returns some rows, the handler adds the rest, and the two are the same set.' OBSERVED: the table's row promises `path must be a string` / `path must be non-empty`; §4's resolver returns the single literal `path must be a non-empty string` for both. The correspondence paragraph says 'The first five are two refusals ... The remaining three are separated', but the table has nine rows: five before the split and four after (hidden, extension, no-such-file, directory), whose messages are not three. WHY IT MATTERS: the table is declared authoritative over the code, so an implementer cannot tell whether to emit one message or two; the prose whose job is legibility misdescribes the thing. PENANCE: make the resolver emit the two messages the table promises (or collapse the row), and correct the count."
+disposition = "fix-now"
+response = "Accepted. §4's resolver now emits two messages (`path must be a string` / `path must be non-empty`), matching the table it is declared to decompose. The correspondence paragraph is corrected to count its own rows: nine rows, the first six one refusal with one remedy, the remaining four separated by remedy (hidden, extension, absent, not-a-file)."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "§2's example plist contradicts the parser the design says it reuses"
+detail = """EXPECTED: §2's example shows `:path "journal/protocol.org"` with `:title "protocol"`, annotated 'denote slug -> spaces; nil if non-denote'. OBSERVED, parses-basename executed: `protocol.org => (:title nil :tags nil :ext "org")`; only a date-prefixed name yields a title (`20260520T120000--week-protocol__design.org => :title "week protocol"`). §4 says these fields come from --parse-basename unchanged. WHY IT MATTERS: the implementer cannot reconcile the example with the code, and a test written from the example fails. PENANCE: use a real denote name in the example, or state that a non-date slug yields `:title nil`."""
+disposition = "fix-now"
+response = "Accepted. §2's example now shows a real date-prefixed denote name (`20260925T170411--protocol__design.org` → title `protocol`, tags `design`), and states that a plain `protocol.org` yields `nil` for both — the parser's actual behaviour, quoted from an execution of `--parse-basename`. §6 gains `read-titles-only-date-prefixed-names` so the example cannot drift from the code again."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "minor"
+title = "The extension set has two sources, contradicting the design's own cannot-drift claim"
+detail = """EXPECTED: DEC-033 makes notes_read's extension allowlist 'the single source of that width'; §3 says the globs are pinned explicitly 'so the two tools cannot drift apart'. OBSERVED: §4 defines `satan-tools-notes--openable-extensions '("org" "md" "txt")` while §3's argv hardcodes `--glob *.org --glob *.md --glob *.txt` - two literal lists with no derivation. WHY IT MATTERS: the slice's stated purpose is that every grep hit be openable; adding an extension to the defconst silently desynchronises the search set from the door, which is the drift this design claims to have foreclosed. PENANCE: build the globs from the defconst."""
+disposition = "fix-now"
+response = "Accepted. The globs are now built from `satan-tools-notes--openable-extensions` rather than restated, so the door and the search set cannot diverge by editing one list — which is the whole point of DEC-033. §3 shows the argv with the derivation marked, §6's grep test asserts the globs come from the defconst, and §4 keeps the defconst as the single source."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "minor"
+title = "'exactly the openable set' is overstated: rg's ignore rules make the search set a strict subset"
+detail = "EXPECTED: §3 - 'DEC-033 fixes the search set to exactly the openable set'; DEC-033 - 'notes_grep's search set is exactly notes_read's openable set'. OBSERVED: rg keeps its ignore rules with explicit --glob - a gitignored `ignored.org` is not returned, yet notes_read will open it. The design discloses only the opposite cost (a match in a non-note file will not surface), not that an openable but ignored note is unsearchable. WHY IT MATTERS: the pair's contract is stated as an equivalence when it is a one-way guarantee (every hit is openable); a model grepping for a phrase in an ignored note is told nothing, and the recall-loss disclosure is incomplete. PENANCE: state the guarantee as 'every hit is openable' and name the ignore-filtered subset as accepted recall loss, or add --no-ignore deliberately."
+disposition = "fix-now"
+response = "Accepted. §3 now states the guarantee in the direction it actually holds — every hit is openable — and names both recall losses: a match outside the three extensions never surfaces, and an openable note that ~/notes gitignores is invisible to grep (rg keeps its ignore rules with explicit globs). Kept rather than widened with --no-ignore, because it is the same filter notes_recent already applies through fd and consistency across the two tools matters more than the marginal recall; disclosed rather than implicit. DEC-033's own wording is amended in place with a dated correction section, since the record is where a durable claim is owned."
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "minor"
+title = "Drifted citations and a wrong count in §4, and an asserted unification of the fd/rg policy"
+detail = """OBSERVED against HEAD (3dada95): `--fixed-strings` is cited at `satan-tools-atsatan.el:78,160` but lives at :148 (78 is the rg-program defvar, 160 is inside --run-rg); '175 lines today' - `wc -l satan/satan-tools-notes.el` => 178; 'the eight test call sites' - `grep -c "satan-tool/notes-read" satan/test/satan-tools-notes-test.el` => 11 (lines 58, 89, 107, 108, 109, 126, 129, 132, 145, 166, 174 - eight is the test *count*, not the call-site count); and §3's 'the same policy governs notes_recent's existing fd call, so the module has one rule rather than two' is asserted but not made - fd exits 0 on no matches, so the rg-specific exit-1 rule does not apply to it and no impact-table row changes fd. WHY IT MATTERS: the design's authority is partly its citations; a wrong one sends the implementer to the wrong line, and the call-site count is what the rename's blast radius was argued from. PENANCE: correct the three citations/counts; either make the fd/rg unification or reword to 'both error on failure'."""
+disposition = "fix-now"
+response = "Accepted on all four. Citations corrected against HEAD 3dada95: `--fixed-strings` in satan-tools-atsatan.el is at :148 (not :78,160); '178 lines today' (not 175); 'eleven call sites' (not eight) with the line numbers listed. The fd/rg unification claim is reworded rather than made: the module's POLICY is one (an unavailable or failing probe is an error), but the two probes are not one rule — fd exits 0 on no matches, so rg's exit-1-as-empty clause applies to rg alone — and notes_recent's existing non-zero check is correct and unchanged, so no impact-table row is added for it. §3 and §4 reworded."
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "minor"
+title = ":total-chars is dropped, narrowing an accepted decision"
+detail = "EXPECTED: QUE-002 (accepted for this slice) - 'notes_read returns at most ... characters of the body plus :chars, :total-chars and :truncated'; inq-3 says the same. OBSERVED: §2's contract and §4's helper return `(:body STR :chars N :truncated BOOL)`; `:total-chars` appears nowhere. §2's prose implies a bounded read ('reads at most max+1 bytes ... the flag is derived from the observed length'), which cannot report a total. WHY IT MATTERS: the deferred pagination question presumes the caller can see how much it is not seeing; without it the flag can only say 'more exists', and an accepted decision was narrowed silently. PENANCE: add the total to the contract and helper, or record the narrowing as superseding."
+disposition = "fix-now"
+response = "Accepted that the total was missing; disposed by fixing the unit rather than by adding `:total-chars`. The result now carries `:bytes`, `:total-bytes` and `:truncated`, so the caller can see how much it is not seeing, which is what QUE-002's deferred pagination question needs. The narrowing from QUE-002's illustrative `:chars`/`:total-chars` wording is stated in §2 with its reason (a character total requires decoding the whole file — the cost the cap avoids) rather than left silent, and QUE-002 itself is untouched, since it is a question record whose content (whether to paginate) is unchanged."
+
+[[finding]]
+id = "F-17"
+status = "verified"
+severity = "minor"
+title = "rg-not-found has no mechanism in the shown code, and the cap conflates bytes with characters"
+detail = """EXPECTED: §3's failure table promises `(error "rg not found on PATH")`; §2 speaks in characters ('capped at ... characters', `:chars`); §4's helper 'reads at most max+1 bytes'. OBSERVED: the shown `--run` is 'the existing body, parameterised' - `(apply #'call-process PROGRAM ...)` with no executable-find and no condition-case. A missing rg makes call-process signal file-missing, which the broker's dispatch condition-case (satan-tools.el:191-199) converts to error-message-string - never the promised literal. The unit test named `grep-errors-when-rg-is-absent` therefore has no shape. WHY IT MATTERS: a promised model-facing refusal string is never produced, so DEC-030's 'one rule' is accidental; and the cap's unit shifts between bytes (read) and characters (flag), which a multibyte boundary turns into a split character. PENANCE: add the not-found probe (or document that dispatch supplies the error, naming the actual message); fix the cap's unit and state it."""
+disposition = "fix-now"
+response = "Accepted on both halves. (a) The promised refusal now has a mechanism: `satan-tools-notes--resolve-program` runs `executable-find` before any spawn and signals `<name> not found on PATH` in the module's own words — the same pattern `satan-tools-content--resolve-rg` uses, and for the same reason, since `call-process` would otherwise raise `file-missing` and the broker's dispatch condition-case would substitute a generic message. Both probes resolve this way, so `grep-errors-when-rg-is-absent` now has a shape (§6). (b) The bytes/characters conflation is resolved in favour of bytes, with the fields named for their unit and the reason stated (see F-5/F-16)."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

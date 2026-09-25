@@ -1,0 +1,5 @@
+The harness bounds context spend at high token use by progressively withdrawing tools: `TIER_1_DROP` (survey tools) at 70% of budget, `TIER_2_DROP` (focused reads) at 85%, tier 3 keeping only `satan_final` (`satan/harness/runloop.py:35-56`, documented at `docs/resilience-design.md:150-175`).
+
+The sets are cumulative drop lists, and a tool that appears in neither is **available at every tier**. So the ladder is a second tool registry with the same silent-failure property as a missing description: nothing errors, the guarantee just quietly weakens. For a tool whose purpose is to pull note bodies into context, that is the wrong default.
+
+Constraint: a new tool is not finished until it is classified. This slice places `notes_grep` in tier 1 (a survey tool, beside `hippocampus_grep`) and `notes_read` in tier 2 (a focused read, beside `org_read_context` and `hippocampus_read`), and updates the prose mirror at `docs/resilience-design.md` §2.2 in the same change.

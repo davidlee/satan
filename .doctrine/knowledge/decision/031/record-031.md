@@ -1,0 +1,5 @@
+`satan-mcp--interactive-tools` is the union of *every* registered tool filtered only by each tool's own `:available-p` (`satan/satan-mcp.el:66-74`), and the server fail-fasts at startup if any of them lacks a corpus description file (`:114-130`). Registration is therefore sufficient to expose a tool to the keeper's own interactive session.
+
+Decision: accept the exposure, and do not add an `:available-p` predicate. Both tools are read-only over the user's own notes corpus, which is the corpus the interactive session is already the most legitimate reader of; a gate would need a per-tool predicate and buys no safety.
+
+The consequence to keep in view: the corpus description files are load-bearing for MCP startup, not only for the three scheduled modes, so a registration and its description file ship together or the interactive server does not start.

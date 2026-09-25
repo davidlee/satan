@@ -1,0 +1,5 @@
+This slice ships truncate-and-flag: `notes_read` returns at most `satan-tools-notes-read-max-chars` characters of the body plus `:chars`, `:total-chars` and `:truncated`, so a caller can see that it is holding a partial file and can refuse to treat it as the whole.
+
+That is a guard, not a solution. The user's steer on 2026-09-25 was explicit: "worth considering pagination or at least a limit for massive notes, probably not needed in this slice but seems should eventually have a guard."
+
+Open question for a later pass: when a single note legitimately exceeds the cap, is the answer offset pagination (the shape `content_read`'s `get` scope already uses), a windowing argument, or something else? Decide when a real note is encountered that the flat cap renders useless — no evidence of one yet, and the material this tool exists for (project pages, slips, journal-era notes) is small.

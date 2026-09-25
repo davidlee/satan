@@ -1,0 +1,99 @@
+# Implementation plan for SL-020 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-020"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# Two phases, split by *capability* and *connection*, not by layer. The seam is
+# where the tree is independently green: after PHASE-01 the two tools exist,
+# are registered, carry their corpus descriptions, and cannot break broker or
+# MCP startup; they are simply not yet reachable from the three scheduled modes.
+# PHASE-02 makes them reachable and keeps every registry and prose mirror in
+# step. See plan.md for why this boundary and not another.
+
+[[phase]]
+id        = "PHASE-01"
+name      = "The two tools and their descriptions"
+objective = """
+Land `notes_read` and `notes_grep` in `satan-tools-notes.el` with the corpus
+descriptions that make registering them safe, and nothing else. At the end of
+this phase the tools resolve in the registry, the notes root is confined and
+extension/visibility-filtered exactly as the design specifies, the probe-failure
+policy is loud, the `notes_recent` handler is renamed out of the way, and the
+four corpus files a registration obliges (`notes_read.md`, `notes_grep.md`,
+`org_read_context.md`, `notes_recent.md`) are on disk — because a registration
+without its description breaks the manifest build *and* MCP startup, which the
+union-based `interactive` surface makes unavoidable.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "SL-020's design is locked (run dr-01a0d771, revision 36) and design.md is materialised at revision 31." },
+ { id = "EN-2", text = "The design's premises still hold against the tree: satan-tools-notes.el is 178 lines with the `notes_recent` handler at :129 registered at :175; satan-tools.el signals on a missing description (:221); satan-mcp.el unions every registered tool (:66) and fail-fasts on a missing description (:114)." },
+  { id = "EN-3", text = "The test suite runs green on the untouched tree (`just check`), so any red afterwards is attributable to this phase." },
+]
+exit_criteria = [
+ { id = "EX-1", text = "`notes_read` and `notes_grep` are registered in satan-tools-notes.el with `:risk 'read`, no capability, and the arg schemas the design specifies; `notes_recent` is still registered, now via `satan-tool/notes-recent`." },
+ { id = "EX-2", text = "`satan-tools-notes--resolve` refuses everything the design's authoritative table lists — a non-string, an empty path, an absolute path, a `..` component, a hidden component, an extension outside org/md/txt, a symlink whose truename escapes the root — and passes through only a readable regular file inside the root; the root itself and a directory are reported as `not a file`." },
+  { id = "EX-3", text = "Truncation is byte-based and flagged: `:bytes`, `:total-bytes`, `:truncated`, with `satan-tools-notes-read-max-bytes` passed at the call site rather than read as a global." },
+ { id = "EX-4", text = "`notes_grep` builds its argv from the extension defconst (globs derived, never restated), carries `--fixed-strings`, `--ignore-case` and `--max-columns 200 --max-columns-preview`, carries **no** per-file match cap, and relativises paths against the expanded root." },
+ { id = "EX-5", text = "The failure policy is loud: rg exit 1 is a clean empty result; rg exit >= 2, an absent `rg`/`fd` binary, and an absent notes root are errors carrying the design's messages, never empty results." },
+ { id = "EX-6", text = "Four corpus files are on disk: `tools/notes_read.md` and `tools/notes_grep.md` (new, describing the contract, the refusals, the byte flags, the omission marker, and the accepted recall losses), `tools/org_read_context.md` (naming the reads equivalent to `notes_read`), `tools/notes_recent.md` (its two now-false sentences corrected)." },
+  { id = "EX-7", text = "No behaviour of any other tool changes, and no mode's allowlist has moved yet." },
+]
+verification = [
+ { id = "VT-1", expects = "the registry exposes both tools and keeps notes_recent on its renamed handler", test_file = "satan/test/satan-tools-notes-test.el", keywords = ["registry-exposes-read-and-grep", "notes_read", "notes_grep", "satan-tool/notes-recent"], waived = false },
+ { id = "VT-2", expects = "body + metadata round-trip, and :title only for a date-prefixed denote name", test_file = "satan/test/satan-tools-notes-test.el", keywords = ["read-returns-body-and-metadata", "read-titles-only-date-prefixed-names", ":bytes", ":total-bytes"], waived = false },
+ { id = "VT-3", expects = "the confinement refuses escapes, non-note extensions, hidden components, the root and directories, and does not follow a symlink out of the root", test_file = "satan/test/satan-tools-notes-test.el", keywords = ["read-refuses-paths-escaping-the-root", "read-refuses-a-symlink-escaping-the-root", "read-refuses-the-root-and-a-directory", "read-refuses-non-note-and-hidden-paths"], waived = false },
+ { id = "VT-4", expects = "the byte cap truncates with :bytes at the cap and :total-bytes the real size", test_file = "satan/test/satan-tools-notes-test.el", keywords = ["read-truncates-at-cap", "satan-tools-notes-read-max-bytes", ":truncated"], waived = false },
+ { id = "VT-5", expects = "grep argv is derived from the extension defconst, has no per-file cap, and grep's exit codes are classified (1 empty-ok, >=2 error, absent binary error)", test_file = "satan/test/satan-tools-notes-test.el", keywords = ["grep-parses-matches-into-relative-paths", "grep-does-not-cap-matches-per-file", "grep-errors-when-rg-is-absent", "satan-tools-notes--openable-extensions"], waived = false },
+ { id = "VT-6", expects = "an absent notes root is named as such by both tools rather than reported as a path escape or an rg failure", test_file = "satan/test/satan-tools-notes-test.el", keywords = ["read-errors-when-notes-root-is-absent", "grep-errors-when-notes-root-is-absent", "notes root not found"], waived = false },
+ { id = "VA-1", expects = "the four corpus description files exist and a manifest build for a mode allowing the new tools would resolve them (checked by eye against satan-tools-descriptions-dir)", waived = false },
+]
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Wiring: modes, tier ladder, doc mirrors, prompt"
+objective = """
+Connect the landed pair to the system: allowlist them where reading a note is the
+point (`morning`, `motd`, `ruminate`), classify them in the harness's token-tier
+ladder, and bring every registry enumerator and prose mirror in step — the four
+doc surfaces plus the `ruminate` gather phase. After this phase the tools are
+reachable from the scheduled modes, the token-exhaustion ladder bounds them, and
+no inventory of SATAN's tools is stale.
+"""
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 is completed: both tools are registered, their four corpus descriptions are on disk, and `just check` is green." },
+ { id = "EN-2", text = "The coupling inventory still matches the tree: satan-mode.el carries the morning/motd/ruminate `:tools` lists, runloop.py carries TIER_1_DROP (:36) and TIER_2_DROP (:41), docs/governance.md has `## Tools` (:517) and the `satan-tools-notes.el` `## File map` row (:384), docs/resilience-design.md has §2.2 (:150) and §3 (:266), and prompts/ruminate.txt names notes_recent at :10." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`morning`, `motd` and `ruminate` allowlist both tools, and `satan-mode-check-tool-references` passes at load." },
+  { id = "EX-2", text = "`notes_grep` is in `TIER_1_DROP` and `notes_read` in `TIER_2_DROP`, so neither survives past its tier; the harness test asserts both placements." },
+  { id = "EX-3", text = "The `morning` manifest builds with both names, which requires the broker test's description fixtures to carry them." },
+ { id = "EX-4", text = "All four doc mirrors are current: governance `## Tools` gains both rows and its `## File map` module row names all three notes tools; resilience §2.2 and its §3 per-tool inventory gain both tools." },
+  { id = "EX-5", text = "`prompts/ruminate.txt`'s gather phase names the find-then-read pair alongside `notes_recent`." },
+  { id = "EX-6", text = "IT-011's two-way diff (`registered tools − ## Tools rows`) does not name either new tool, and no previously-diffed name is lost." },
+  { id = "EX-7", text = "`just check` is green; no mode's budget, profile, credential policy or tool timeout has changed." },
+]
+verification = [
+ { id = "VT-1", expects = "the tier ladder drops notes_grep at tier 1 and notes_read at tier 2", test_file = "satan/harness/test_gptel_harness.py", keywords = ["notes_grep", "notes_read", "TIER_1_DROP", "TIER_2_DROP"], waived = false },
+ { id = "VT-2", expects = "the morning manifest builds with both new names from corpus descriptions", test_file = "satan/test/satan-broker-test.el", keywords = ["notes_read", "notes_grep", "manifest-tools-shape"], waived = false },
+  { id = "VT-3", expects = "every allowlisted tool resolves in the registry", test_file = "satan/test/satan-mode-test.el", keywords = ["check-tool-references"], waived = false },
+  { id = "VA-1", expects = "the four doc mirrors and the ruminate prompt match the registries (read them against the registered set)", waived = false },
+  { id = "VH-1", expects = "the user accepts that the two tools are reachable in the three modes and usable end to end in a ruminate or morning manifest", waived = false },
+]
+
+specs        = []
+requirements = []
