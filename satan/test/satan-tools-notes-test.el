@@ -29,7 +29,14 @@ EXIT-CODE and writes STDOUT to the capture buffer.  Serves both the `fd' and
 `rg' paths; records each (PROGRAM ARGS) into
 `satan-tools-notes-test--exec-calls'.  `executable-find' answers present for
 everything except `satan-tools-notes-test--absent-programs', so the suite does
-not depend on the host having those binaries."
+not depend on the host having those binaries.
+
+STDOUT is a claim about a real binary, and a false one is invisible here: the
+first version of this suite emitted bare file names, while fd with
+`--base-directory' emits `./'-prefixed (or, with `--absolute-path', absolute)
+paths — so the `notes_recent' -> `notes_read' contract was broken live and
+green here.  Before adding a fixture, run the real probe and paste its bytes;
+see [[mem.pattern.satan.stub-must-mirror-real-binary-output]]."
   (declare (indent 2))
   `(let ((satan-tools-notes-test--exec-calls nil))
      (cl-letf (((symbol-function 'executable-find)

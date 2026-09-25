@@ -30,9 +30,9 @@ was the wrong way round.
 
 ## Harvest
 
-fresh-as-of: 2026-09-25 · PHASE-02 implementation complete, awaiting VH-1 ·
-mechanism head 2d0d64f (live-verification fix) · mind head 5d67b78 (corpus:
-prompts/ruminate.txt; PHASE-01's four tool descriptions under 1d122dc).
+fresh-as-of: 2026-09-25 · PHASE-02 complete, VH-1 verified live · mind head
+5d67b78 (corpus: prompts/ruminate.txt; PHASE-01's four tool descriptions under
+1d122dc).
 
 ### Produced
 
@@ -116,6 +116,29 @@ the real code path (a stub-free emacs run over a temp root) before fixing:
 - **`satan-jsonl-prepare` coerces a stray Emacs time list into a JSON integer
   array** rather than failing, so a leaked internal degrades to wire noise instead
   of an outage — it does not surface as an error anywhere.
+- **A stale `GIT_SSH_COMMAND` breaks *every* ssh git operation in this shell.**
+  The devshell exports `/nix/store/…-git-ssh-disabled` from a previous closure;
+  the path is absent, so git dies at `exec`. Overriding it reaches the transport
+  but the jail holds no credentials. Both halves matter: the first makes it look
+  like a doctrine-version problem, the second rules out the workaround.
+
+### VH-1 — verified live by the verifier agent (2026-09-25)
+
+Round-tripped both discovery doors with real calls against the host's `~/notes`:
+
+- `notes_recent(72h)` → `journal/20260925T000000--2026-09-25-friday__journal.org`,
+  no `./` prefix; fed back verbatim → `notes_read` `ok`, 1860 bytes.
+- A `notes_grep` hit → `journal/20260815T000000--2026-08-15-saturday__journal.org`
+  → `ok`, 11322 bytes.
+- `notes_read`'s plist is exactly what `tools/notes_read.md` promises —
+  `scope/root/path/mtime/title/tags/ext/body/bytes/total-bytes/truncated`, no
+  `:_sort`.
+
+Bounded rather than merely green: the read door **still refuses** dot-prefixed
+input (`./journal/…` → `hidden path not readable`). The emitter stopped lying;
+the door was not widened. That distinction is the fix's whole point — worth
+stating in the audit, because a future agent could "fix" a recurrence by
+loosening the resolver.
 
 - **A single broker test run in isolation reports `credential_unavailable`.**
   `satan-broker/run-emits-one-tick-row-outcome-spawned` passes in the full suite
@@ -171,24 +194,37 @@ the real code path (a stub-free emacs run over a temp root) before fixing:
 
 ### Open / hand-forward
 
-- **VH-1 (user acceptance)** is PHASE-02's only human criterion. The user
-  verified the tools live against `~/notes` and the two defects it surfaced are
-  fixed (`2d0d64f`); formal acceptance is still theirs to give.
-- **A wire-encoding defect found while fixing F-2 and NOT fixed here** — nil
-  values in a tool result serialise as `{}`, not `false`: `(satan-jsonl-prepare
-  '(:truncated nil))` → `{"truncated":{}}`. System-wide (every tool result with a
-  nil field: `notes_recent`'s `:title`, `notes_read`'s `:truncated`/`:tags`), and
-  it belongs in the shared layer — emitting `:false` per tool would break every
-  `(null (plist-get p :truncated))` caller, because `:false` is truthy in elisp.
-  The codebase already has the marker (`satan-broker--on-tool-call` uses
-  `:ok :false`); same family as ISS-027 and IMP-015. **Capture is blocked here**:
-  `doctrine backlog new issue …` fails because its reservation fetch execs
-  `/nix/store/cllg0wr5svsxqvrykv4m1gsrb78lyw78-git-ssh-disabled`, which does not
-  exist in this shell. Nothing was written — create the item where doctrine can
-  reach its git helper.
+- **VH-1 is satisfied** — verified live by the verifier agent after the fix
+  (round trips on both doors, the plist exactly as described, the door still
+  bounded).
+- **Residual, not a defect of the fix**: `notes_recent` lists unopenable files
+  (`justfile`, `flake.lock`) beside notes, so following the top hit blindly can
+  yield `not a note file` from `notes_read`. `:ext` is the only tell. By design
+  today — `notes_recent` surveys what moved and only the read door is
+  extension-filtered (DEC-032) — but the two doors disagree about what a "note"
+  is, and `tools/notes_recent.md` does not warn. Options: an `:openable` flag on
+  each entry, or a sentence in the description. A design question, not a phase
+  fix.
+- **Three findings this shell cannot capture as backlog items** (id allocation is
+  a remote reservation, and this devshell's `GIT_SSH_COMMAND` points at an absent
+  store path):
+  1. **`memory_mark`'s `links` argument is unusable** — the client-side schema
+     demands strings, the broker rejects them with `links entries must be
+     objects`. No trace could be linked to its predecessor; the verifier put the
+     prior trace id in the payload prose instead.
+  2. **Nil tool-result values serialise as `{}`, not `false`** (F-3 above):
+     `(satan-jsonl-prepare '(:truncated nil))` → `{"truncated":{}}`. Shared wire
+     layer, system-wide; emitting `:false` per tool would break every
+     `(null (plist-get p :truncated))` caller, since `:false` is truthy in elisp.
+     Same family as ISS-027 / IMP-015.
+  3. **`notes_recent` lists unopenable files** (the residual above).
+- **The verifier's daemon restart loaded the user's uncommitted
+  `satan/satan-mode.el` budget raises** (morning 340000, self-edit-* 400000)
+  alongside this work. They are live in the running daemon and still uncommitted
+  in the worktree — the commit boundary and the runtime boundary have diverged.
 - **Suite green here is a partial green**: the test databases are unreachable in
   this dev shell, so the gate is `SATAN_TEST_ALLOW_NO_DB=1 just check` →
-  **PASS 1151/1329 (178 skipped)**, lint clean, harness 54 OK. Zero unexpected.
+  **PASS 1152/1330 (178 skipped)**, lint clean, harness 54 OK. Zero unexpected.
 - **The user's uncommitted `satan-mode.el` budget bumps** (`300000` →
   `340000`/`400000`) remain in the worktree, unstaged — PHASE-02's allowlist hunks
   were staged selectively (`git apply --cached` of a filtered diff) so they did
