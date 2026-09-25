@@ -3,7 +3,7 @@
 ;; Step 8 of memory.design.md.  Cover the three `memory_*` tools
 ;; (mark, resonate, show_trace):
 ;;   - schema validation (delegated to satan-tools.el)
-;;   - handler-side validation of array/object args (no :type 'array yet)
+;;   - handler-side validation of array/object args
 ;;   - canon → evidence → store wiring (cl-letf stubs)
 ;;   - DB end-to-end round-trip against satan_memory_test
 ;;
@@ -238,14 +238,70 @@ FN-SYM to call it.  After BODY, VAR holds the captured arg list."
       (should (eq (plist-get res :ok) :false))
       (should (string-match-p "topic" (plist-get res :error))))))
 
-(ert-deftest satan-tools-memory/mark-bad-link-rejected ()
+;; ---------------------------------------------------------------------
+;; ISS-032 — mark links: the advertised schema and the dispatcher agree
+;; ---------------------------------------------------------------------
+
+(defun satan-tools-memory-test--advertised-links-items ()
+  "The JSON Schema `items' a client sees for `memory_mark' `links'."
+  (let ((params (satan-tool--args-schema-to-jsonschema
+                 (plist-get (satan-tool-lookup "memory_mark") :args-schema))))
+    (plist-get (plist-get (plist-get params :properties) :links) :items)))
+
+(ert-deftest satan-tools-memory/mark-links-schema-advertises-objects ()
+  (let* ((items (satan-tools-memory-test--advertised-links-items))
+         (props (plist-get items :properties)))
+    (should (equal (plist-get items :type) "object"))
+    (should (equal (plist-get items :required)
+                   ["relation" "target_trace_id"]))
+    (should (plist-get (plist-get props :relation) :enum))))
+
+(ert-deftest satan-tools-memory/mark-link-built-from-schema-reaches-store ()
+  "A link built from the advertised schema passes dispatch unchanged —
+the two surfaces ISS-032 found contradicting each other."
+  (let* ((items (satan-tools-memory-test--advertised-links-items))
+         (relation (aref (plist-get (plist-get (plist-get items :properties)
+                                               :relation)
+                                    :enum)
+                         0))
+         (link (list :relation relation
+                     :target_trace_id "20260519T090000-prior1")))
+    (satan-tools-memory-test--stub-evidence
+      (satan-tools-memory-test--capture
+          captured satan-memory-store-mark
+        (let ((res (satan-tools-memory-test--dispatch
+                    "memory_mark" (list :payload "p" :links (list link)))))
+          (should (eq (plist-get res :ok) t))
+          (should (equal (plist-get captured :links) (list link))))))))
+
+(ert-deftest satan-tools-memory/mark-string-link-rejected ()
+  (satan-tools-memory-test--stub-evidence
+    (let ((res (satan-tools-memory-test--dispatch
+                "memory_mark"
+                '(:payload "x" :links ("20260519T090000-prior1")))))
+      (should (eq (plist-get res :ok) :false))
+      (should (string-match-p "links\\[0\\] must be object"
+                              (plist-get res :error))))))
+
+(ert-deftest satan-tools-memory/mark-link-missing-target-rejected ()
+  (satan-tools-memory-test--stub-evidence
+    (let ((res (satan-tools-memory-test--dispatch
+                "memory_mark"
+                '(:payload "x" :links ((:relation "supports"))))))
+      (should (eq (plist-get res :ok) :false))
+      (should (string-match-p "target_trace_id" (plist-get res :error))))))
+
+(ert-deftest satan-tools-memory/mark-unknown-link-relation-rejected ()
+  "The relation enum mirrors the `trace_links' CHECK, so an unknown
+relation fails at dispatch, not as a psql error."
   (satan-tools-memory-test--stub-evidence
     (let ((res (satan-tools-memory-test--dispatch
                 "memory_mark"
                 '(:payload "x"
-                  :links ((:relation "relates_to"))))))
+                  :links ((:relation "relates_to"
+                           :target_trace_id "20260519T090000-prior1"))))))
       (should (eq (plist-get res :ok) :false))
-      (should (string-match-p "link" (plist-get res :error))))))
+      (should (string-match-p "relation" (plist-get res :error))))))
 
 (ert-deftest satan-tools-memory/resonate-non-string-kinds-rejected ()
   (let ((res (satan-tools-memory-test--dispatch

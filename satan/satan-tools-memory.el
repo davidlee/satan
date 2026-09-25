@@ -12,9 +12,8 @@
 ;; `satan-mode.el' via each mode-spec's `:tools'.
 ;;
 ;; Sweep items still open (`satan/HANDOVER.md'):
-;;   - schema lacks `:type 'array' for some hint subfields (topic, links,
-;;     kinds, cue.handles are declared without type and validated in the
-;;     handler).
+;;   - array args are typed in the schema, yet topic, kinds and cue.handles
+;;     are still re-validated in the handler.
 
 (require 'cl-lib)
 (require 'subr-x)
@@ -33,6 +32,10 @@
 
 (defconst satan-tools-memory--kind-values
   '("observation" "intervention" "prediction" "outcome"))
+
+(defconst satan-tools-memory--link-relation-values
+  '("derived_from" "supports" "contradicts" "supersedes")
+  "Mirrors the `trace_links.relation' CHECK in migration 0001.")
 
 ;; ---------------------------------------------------------------------
 ;; Helpers
@@ -79,24 +82,6 @@ assembler applies the 10-minute default."
           (throw 'err (format "%s entries must be strings" label)))))
     nil))
 
-(defun satan-tools-memory--validate-links (links)
-  "Return nil if LINKS is nil or a list of `{relation, target_trace_id}',
-else an error string."
-  (catch 'err
-    (when links
-      (unless (listp links)
-        (throw 'err "links must be array"))
-      (dolist (l links)
-        (unless (satan-tool--plist-like-p l)
-          (throw 'err "links entries must be objects"))
-        (let ((rel (plist-get l :relation))
-              (tgt (plist-get l :target_trace_id)))
-          (unless (and (stringp rel) (not (string-empty-p rel)))
-            (throw 'err "links entry missing relation"))
-          (unless (and (stringp tgt) (not (string-empty-p tgt)))
-            (throw 'err "links entry missing target_trace_id")))))
-    nil))
-
 (defun satan-tools-memory--validate-hints (hints)
   "Return nil if HINTS is nil or a plist with a well-shaped `:topic',
 else an error string.  Closed-world scalar fields are schema-enforced
@@ -121,8 +106,7 @@ cannot express yet."
          (err (cond
                ((not (stringp payload)) "payload must be string")
                ((string-empty-p payload) "payload must be non-empty")
-               (t (or (satan-tools-memory--validate-hints raw-hints)
-                      (satan-tools-memory--validate-links links))))))
+               (t (satan-tools-memory--validate-hints raw-hints)))))
     (if err
         (cons 'error err)
       (satan-tools-memory--mark-impl
@@ -266,6 +250,13 @@ skipped — cue derivation only needs the current-moment context."
               'valence     (list :type 'string
                                  :enum satan-tools-memory--valence-values)
               'outcome_for (list :type 'string)))
+       (link-shape
+        (list :type 'object
+              :shape (list 'relation
+                           (list :type 'string :required t
+                                 :enum satan-tools-memory--link-relation-values)
+                           'target_trace_id
+                           (list :type 'string :required t))))
        (cue-shape
         (list 'handles (list :type 'array :items 'string)
               'hints   (list :type 'object :shape hints-shape))))
@@ -279,7 +270,7 @@ skipped — cue derivation only needs the current-moment context."
                'hints   (list :type 'object :shape hints-shape)
                'valence (list :type 'string
                               :enum satan-tools-memory--valence-values)
-               'links   (list :type 'array :items 'string))
+               'links   (list :type 'array :items link-shape))
          :handler 'satan-tool/memory-mark))
 
   (satan-tool-register

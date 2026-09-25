@@ -42,3 +42,28 @@ and is rejected.
 
 Same species as the other schema/handler drift in that file (`topic`, `kinds`,
 `cue.handles`), which the header comment already tracks.
+
+## Resolution (2026-09-25)
+
+Fixed as specified, with one extension: the schema is now the single authority
+for `links`.
+
+- `links` items are declared as objects with required `relation` and
+  `target_trace_id`; `relation` is an `:enum` over
+  `satan-tools-memory--link-relation-values`, which mirrors the
+  `trace_links.relation` CHECK in migration 0001 (`derived_from`, `supports`,
+  `contradicts`, `supersedes`). An unknown relation now fails at dispatch
+  rather than as a psql CHECK violation.
+- `satan-tools-memory--validate-links` deleted — the typed schema covers every
+  check it made. Note the pre-fix schema (`:items 'string`) made the
+  *dispatcher* reject every well-formed link object before the handler ran,
+  so no value could ever succeed.
+- Second drift found and fixed: `~/satan-corpus/tools/memory_mark.md` listed
+  `relates_to` / `confirms`, which the DB CHECK rejects. Now lists the four
+  real relations.
+- File header sweep note corrected (links dropped from it).
+- Tests (`satan/test/satan-tools-memory-test.el`, ISS-032 section): schema
+  advertises object items with required fields + enum; a link built from the
+  advertised JSON Schema dispatches and reaches the store unchanged (the
+  drift guard); string entry, missing target, unknown relation each rejected.
+  The superseded handler-validator test `mark-bad-link-rejected` was removed.
