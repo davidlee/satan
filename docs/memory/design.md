@@ -462,7 +462,7 @@ fs_state file lists beyond limit
 ## 5. Tool surface
 
 Four new tools, all broker-owned, all schema-validated against
-`~/notes/satan/tools/<tool>.md` model-facing descriptions.
+`~/satan-corpus/tools/<tool>.md` model-facing descriptions.
 
 ### 5.1 `memory_mark`
 
@@ -1060,7 +1060,7 @@ producers are anticipated.
   memory/migrations/0002_grammar_v1.sql initial grammar_versions row + aliases + weights
   test/satan-memory-test.el         unit + canon-fixture golden tests + purity grep-lint
   test/canon-fixtures/                 JSON fixtures
-~/notes/satan/tools/
+~/satan-corpus/tools/
   memory_mark.md
   memory_resonate.md
   memory_show_trace.md

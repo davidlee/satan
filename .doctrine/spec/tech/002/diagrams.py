@@ -206,7 +206,7 @@ def context(out):
   d.node(816, 64, 160, 64, "backend", "RUST", "satan-attrd", "attributes · decay")
   d.node(816, 400, 160, 64, "optional", "GO", "satan-patcher", "patch_jobs · dormant")
   d.node(240, 400, 144, 64, "backend", "PY", "panopticon", "~/.local/state/behaviour")
-  d.node(408, 400, 144, 64, "store", "FS", "Text roots", "notes · ~/satan · state")
+  d.node(408, 400, 144, 64, "store", "FS", "Text roots", "notes · ~/satan-corpus · state")
   d.node(576, 400, 144, 64, "backend", "RUST", "goad", "ask shell · goad.sock")
   d.legend_items(528, [("focal", "Focal: current authority"), ("backend", "Process"), ("store", "Store"),
                        ("optional", "Dormant"), ("boundary", "Trust boundary"),
@@ -224,7 +224,7 @@ def context(out):
           "<b>Postgres</b> doubles as an RPC bus: <code>satan_outcome_inbox</code>, <code>satan_audit_inbox</code>, "
           "<code>patch_jobs</code> + <code>pg_notify</code>. The broker LISTENs via <code>satan-attrd notify-stream</code>.",
           "Files: panopticon writes <code>behaviour/</code>; goad reads <code>state/goad/queue.json</code> and "
-          "writes <code>~/satan/goad/data/</code>; the model-facing corpus is <code>~/satan</code>."]),
+          "writes <code>~/satan-corpus/goad/data/</code>; the model-facing corpus is <code>~/satan-corpus</code>."]),
         card("Known gaps (SPEC-002 NF-003, NF-004)", [
           "Jails that serve MCP also bind the Emacs server socket: arbitrary elisp, bypassing the protocol.",
           "The harness inherits the Emacs cwd (<code>~</code>), and the jail binds <code>$PWD</code> read-write (probable; verify).",
@@ -287,7 +287,7 @@ def composition(out):
           "(the deprecated <code>flakes/pub</code> alias)."]),
         card("Not shown", [
           "Every repo's own dev jails (<code>jailed-pi</code> etc.) and their divergent mounts: see ~/flakes/SATAN.md.",
-          "~/satan (corpus) and ~/notes flakes: they define interactive jails only.",
+          "~/satan-corpus (corpus) and ~/notes flakes: they define interactive jails only.",
           "Postgres is configured by ~/flakes, but <code>satan_memory</code> is created and migrated by hand."])])
 
 
@@ -315,7 +315,7 @@ def end_state(out):
   d.node(816, 400, 160, 64, "store", "DB", "Postgres", "state store, not a bus")
   d.node(816, 224, 160, 80, "optional", "PROPOSED", "patch runner", "→ oubliette capsule")
   d.node(240, 400, 144, 64, "backend", "PY", "panopticon", "append-only logs")
-  d.node(408, 400, 144, 64, "store", "FS", "Text roots", "notes · ~/satan · state")
+  d.node(408, 400, 144, 64, "store", "FS", "Text roots", "notes · ~/satan-corpus · state")
   d.node(576, 400, 144, 64, "backend", "RUST", "goad", "ask shell")
   d.legend_items(528, [("focal", "Owner of policy + registry"), ("backend", "Process"), ("input", "Client"),
                        ("store", "Store"), ("optional", "Proposed, undecided"), ("boundary", "Trust boundary"),

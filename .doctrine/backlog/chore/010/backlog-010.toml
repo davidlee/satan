@@ -1,15 +1,15 @@
 schema = "doctrine.backlog"
 version = 1
 
-id = 6
-slug = "retarget-notessatan-paths-in-docs-prose-to-satan-and-the-state-root-sl-015-follow-up"
-title = "Retarget ~/notes/satan paths in docs/ prose to ~/satan and the state root (SL-015 follow-up)"
+id = 10
+slug = "rename-the-corpus-root-to-satan-corpus-and-retarget-every-reference"
+title = "Rename the corpus root to ~/satan-corpus and retarget every reference"
 kind = "chore"
-status = "closed"
-resolution = "duplicate"
-created = "2026-09-14"
+status = "started"
+resolution = ""
+created = "2026-09-25"
 updated = "2026-09-25"
-tags = ["docs", "paths", "satan"]
+tags = ["corpus", "docs", "flakes", "jail", "paths", "satan"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
 # — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
@@ -20,3 +20,12 @@ tags = ["docs", "paths", "satan"]
 needs    = []                   # item→item hard prerequisite
 after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "SL-015"
+
+[[relation]]
+label = "related"
+target = "CHR-003"

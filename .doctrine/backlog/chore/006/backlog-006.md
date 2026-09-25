@@ -41,3 +41,13 @@ path, as the docstrings now do.
 Some hits are historical (review snapshots, handovers, archived plans) —
 decide per file whether it is living documentation or a dated record; dated
 records may stay as written.
+
+---
+
+**Closed as `duplicate` 2026-09-25.** The remaining sweep is now **CHR-010**
+(rename the corpus root to `~/satan-corpus` and retarget every reference). This
+item's instructions are stale as written: its target — `~/satan` — is the path
+the rename removes, so `docs/` prose must go to `~/satan-corpus`, and every
+`~/notes/satan` line retargeted here would be immediately re-touched there. The
+file set is unchanged; execute the sweep under CHR-010. See its "Remaining"
+section for the measured line counts.

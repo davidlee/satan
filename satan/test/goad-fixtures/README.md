@@ -1,6 +1,6 @@
 # goad fixtures
 
-Golden output of goad's `backend.py` (corpus repo `~/satan`, `goad/`) for a
+Golden output of goad's `backend.py` (corpus repo `~/satan-corpus`, `goad/`) for a
 fixed script of SATAN asks. SATAN's tests read these files so that they test
 against the producer's own bytes, never a hand-built value (SL-016 design
 sec-8; the ISS-014 lesson).
@@ -8,7 +8,7 @@ sec-8; the ISS-014 lesson).
 **Never hand-edit these files. Regenerate them:**
 
 ```
-cd ~/satan/goad && just goldens /home/david/dev/satan/satan/test/goad-fixtures
+cd ~/satan-corpus/goad && just goldens /home/david/dev/satan/satan/test/goad-fixtures
 ```
 
 `just goldens` runs `goad/goldens.py`, which drives `backend.run` (the code

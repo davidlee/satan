@@ -613,7 +613,7 @@ Examples:
 
 ```text
 ~/.emacs.d/satan/
-~/notes/satan/
+~/satan-corpus/
 ~/notes/20260519T003129--satan__agent_emacs_project.org
 ```
 
@@ -781,7 +781,7 @@ Default allowed paths:
 ```text
 ~/.emacs.d/satan/
 ~/.emacs.d/test/
-~/notes/satan/tools/
+~/satan-corpus/tools/
 ```
 
 Checks:
@@ -806,7 +806,7 @@ organism framing changes
 Default allowed paths:
 
 ```text
-~/notes/satan/
+~/satan-corpus/
 ~/.emacs.d/satan/prompts/
 ```
 

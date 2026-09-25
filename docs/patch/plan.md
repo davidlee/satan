@@ -25,7 +25,7 @@ Companion to [brief.md](brief.md). Brief = what + why; this = how + sequence.
 | Scope | Phases 1–3 (substrate + harness + SATAN mode integration); phase 4 deferred | user (2026-05-20) |
 | Concurrency | Single global active job (no parallel runners in v1) | brief §19 |
 | Cleanup | No auto-deletion of worktrees/branches; explicit tool only | brief §15 |
-| Prompt | Patch-agent system prompt lives at `~/notes/satan/patch-agent/prompt.md` | mirrors `~/notes/satan/tools/<name>.md` split |
+| Prompt | Patch-agent system prompt lives at `~/satan-corpus/patch-agent/prompt.md` | mirrors `~/satan-corpus/tools/<name>.md` split |
 | Allowed-paths failure | v1 = fail before commit (brief §15.2) | brief |
 
 ## 1. File plan
@@ -50,8 +50,8 @@ Adjacent edits:
 satan-tools-atsatan.el      classify patch-shaped @satan directives; queue + mark queued
 satan-tick.el               wire patch tools into tick allowlist (status/result read-only)
 satan.el                    require satan-patch
-~/notes/satan/tools/patch_job_*.md   one description file per tool
-~/notes/satan/patch-agent/prompt.md  harness system prompt
+~/satan-corpus/tools/patch_job_*.md   one description file per tool
+~/satan-corpus/patch-agent/prompt.md  harness system prompt
 ```
 
 Tests:
@@ -259,7 +259,7 @@ Stdout file: `~/.local/state/satan/patch-agent/logs/<job_id>.jsonl`.
 
 Combines:
 
-- canonical system prompt (`~/notes/satan/patch-agent/prompt.md`) — describes role, allowlist enforcement, commit-on-success contract, must-not-push, must-emit-summary
+- canonical system prompt (`~/satan-corpus/patch-agent/prompt.md`) — describes role, allowlist enforcement, commit-on-success contract, must-not-push, must-emit-summary
 - per-job directive
 - per-job context bundle (note excerpt / memory matches / proposal id / mode_run_id)
 - explicit allowlist string ("you may only edit files matching ...")
@@ -354,17 +354,17 @@ The tick prompt gets an explicit instruction: "if the directive is patch-shaped 
 
 ### 4.3 self-edit-mech / self-edit-mind
 
-Update their prompt files (`~/notes/satan/prompts/self-edit-{mech,mind}.md` or wherever they currently live — confirmed at impl time) to route through `patch_job_create` for edit-shaped work.
+Update their prompt files (`~/satan-corpus/prompts/self-edit-{mech,mind}.md` or wherever they currently live — confirmed at impl time) to route through `patch_job_create` for edit-shaped work.
 
 Defaults (brief §10.2/10.3):
 
 ```
 self-edit-mech:
-  allowed_paths:  ["~/.emacs.d/satan/", "~/.emacs.d/test/", "~/notes/satan/tools/"]
+  allowed_paths:  ["~/.emacs.d/satan/", "~/.emacs.d/test/", "~/satan-corpus/tools/"]
   checks:        ert + emacs --batch byte-compile
 
 self-edit-mind:
-  allowed_paths:  ["~/notes/satan/", "~/.emacs.d/satan/prompts/"]
+  allowed_paths:  ["~/satan-corpus/", "~/.emacs.d/satan/prompts/"]
   checks:        prompt lint + tool-name consistency
 ```
 

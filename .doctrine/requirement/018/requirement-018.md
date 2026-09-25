@@ -10,6 +10,6 @@
 
 <!-- Why it must hold — the force behind it, not the implementation. -->
 
-Host facts live in the deployment (see ~/flakes/SATAN.md), not in code or architecture. Known violations: the panopticon reader in `satan-tools-activity.el` hard-codes `~/.local/state/behaviour`, and jails hard-code `/run/user/1000` and `$HOME/satan/hippocampus`.
+Host facts live in the deployment (see ~/flakes/SATAN.md), not in code or architecture. Known violations: the panopticon reader in `satan-tools-activity.el` hard-codes `~/.local/state/behaviour`, and jails hard-code `/run/user/1000` and `$HOME/satan-corpus/hippocampus`.
 
 Tracked gaps: IMP-031.

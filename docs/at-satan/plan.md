@@ -251,7 +251,7 @@ window. Length: ~25 lines including formatting. Goes in the
 The behavioural frame for autonomous action — the highest-leverage artifact
 in this whole effort. Goes in the doc as a fenced code block at the
 bottom of the `Mode: tick-agent` section, also written verbatim into
-`~/notes/satan/prompts/tick/agent.txt`. Includes:
+`~/satan-corpus/prompts/tick/agent.txt`. Includes:
 
 - "Scan first, act second" rule
 - "Claim each immediately after acting" rule
@@ -298,11 +298,11 @@ balloons the doc without proportional value. Decision:
 
 | File | Treatment |
 |---|---|
-| `~/notes/satan/prompts/tick/agent.txt` | **Verbatim.** Behavioural prompt — every word matters. |
+| `~/satan-corpus/prompts/tick/agent.txt` | **Verbatim.** Behavioural prompt — every word matters. |
 | `satan/satan-tools-atsatan.el` claim function (`satan-tool/notes-at-satan-done`) | **Verbatim.** Optimistic re-read, idempotent claim, run-id embedding — subtle. |
 | `satan/test/satan-tools-atsatan-test.el` round-trip test (`notes-at-satan/scan-then-done-then-rescan`) | **Verbatim.** One test that exercises scan → done → re-scan; demonstrates the contract. |
 | `satan-tools-atsatan.el` scan function | **Described** (call-process form, JSON parse, filter, build match plists). Future agent fills in. |
-| `~/notes/satan/tools/notes_at_satan_scan.md`, `_done.md` | **Described** (3-paragraph spec, audience: the LLM). |
+| `~/satan-corpus/tools/notes_at_satan_scan.md`, `_done.md` | **Described** (3-paragraph spec, audience: the LLM). |
 | Remaining ert tests | **Described** (one paragraph per test case). |
 
 ### Files to create
@@ -310,9 +310,9 @@ balloons the doc without proportional value. Decision:
 1. `satan/satan-tools-atsatan.el` — handlers + registrations
 2. `satan/test/satan-tools-atsatan-test.el` — ert (5 tests; round-trip
    verbatim, others described)
-3. `~/notes/satan/tools/notes_at_satan_scan.md` — model-facing description
-4. `~/notes/satan/tools/notes_at_satan_done.md` — model-facing description
-5. `~/notes/satan/prompts/tick/agent.txt` — tick-agent prompt (verbatim)
+3. `~/satan-corpus/tools/notes_at_satan_scan.md` — model-facing description
+4. `~/satan-corpus/tools/notes_at_satan_done.md` — model-facing description
+5. `~/satan-corpus/prompts/tick/agent.txt` — tick-agent prompt (verbatim)
 
 ### Files to modify
 
@@ -350,7 +350,7 @@ emacs -batch \
 # Smoke-test one tick-agent run end-to-end in the live emacs:
 emacsclient --eval '(satan-run "tick-agent")'
 # Then inspect the audit bundle:
-ls ~/notes/satan/runs/most-recent/
+ls ~/.local/state/satan/runs/most-recent/
 ```
 
 ## What this plan does NOT change in design.md

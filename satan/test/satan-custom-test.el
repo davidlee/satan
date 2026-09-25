@@ -52,9 +52,10 @@
                    "/tmp/corpus/system/framing.txt"))))
 
 (ert-deftest satan-custom-corpus-path-expands-tilde-root ()
-  (let ((satan-corpus-root "~/satan"))
+  (let ((satan-corpus-root "~/satan-corpus"))
     (should (equal (satan-corpus-path "prompts")
-                   (expand-file-name "prompts" (expand-file-name "~/satan"))))))
+                   (expand-file-name "prompts"
+                                     (expand-file-name "~/satan-corpus"))))))
 
 (ert-deftest satan-custom-state-path-joins-below-root ()
   (let ((satan-state-root "/tmp/state"))
@@ -135,7 +136,7 @@ default that derives from another variable or from the environment."
   (should (equal satan-goad-quiet-hours '(22 . 9))))
 
 (ert-deftest satan-custom-goad-queue-file-matches-backend-queue-path ()
-  ;; Literal pinned against `~/satan/goad/test_backend.py:266-269':
+  ;; Literal pinned against `~/satan-corpus/goad/test_backend.py:266-269':
   ;; XDG_STATE_HOME="" and HOME=/home/k gives
   ;; /home/k/.local/state/satan/goad/queue.json.  `satan-state-root' must be
   ;; rebound to its own re-evaluated default first — `satan-goad-queue-file's
@@ -150,12 +151,12 @@ default that derives from another variable or from the environment."
 
 (ert-deftest satan-custom-corpus-root-is-standalone ()
   ;; The corpus is its own repo, not a subtree of the notes (SL-015 D2/P4): the
-  ;; default is the literal ~/satan and does not follow `satan-notes-root'.  A
-  ;; derivation would put a moved corpus back under the notes the moment the
-  ;; notes root is rebound.
+  ;; default is the literal ~/satan-corpus (CHR-010) and does not follow
+  ;; `satan-notes-root'.  A derivation would put a moved corpus back under the
+  ;; notes the moment the notes root is rebound.
   (let ((satan-notes-root "/tmp/notes"))
     (should (equal (satan-custom-test--default-of 'satan-corpus-root)
-                   "~/satan"))))
+                   "~/satan-corpus"))))
 
 ;; ── SL-015 VT-2: every dependent default follows its root ───────────────────
 ;;

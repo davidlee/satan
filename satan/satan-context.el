@@ -598,7 +598,7 @@ without context).  When BUDGET is nil, packs everything."
   "Bundle for a self-edit mode: prompt + every source file under each
 root in MODE-SPEC's `:source-roots' list, each as
 \(:path ABBREVIATED :content STR).  Paths are abbreviated with `~/'
-so the model sees `~/satan/...' / `~/dev/satan/satan/...' rather
+so the model sees `~/satan-corpus/...' / `~/dev/satan/satan/...' rather
 than long relative dotwalks.
 
 RUN-CTX is the prepare-phase run_ctx plist (Phase 0.1); see

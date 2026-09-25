@@ -26,9 +26,9 @@ A run is a harness-mediated conversation between the broker (Emacs) and
 a model, bounded by a mode spec. The model receives:
 
 1. A **system prompt** assembled from:
-   - `~/notes/satan/system/scaffold.txt` (shared behavioural framing)
-   - `~/notes/satan/prompts/<MODE>.txt` (mode-specific instruction)
-   - Section headers from `~/notes/satan/system/framing.txt`
+   - `~/satan-corpus/system/scaffold.txt` (shared behavioural framing)
+   - `~/satan-corpus/prompts/<MODE>.txt` (mode-specific instruction)
+   - Section headers from `~/satan-corpus/system/framing.txt`
    - Rendered `# Now` block (date/time/tz)
    - For `morning`: `# Today (raw)` block (today's note content)
    - For `tick-*`: `# Recent SATAN runs` block (last N runs)
@@ -37,7 +37,7 @@ a model, bounded by a mode spec. The model receives:
 
 2. A **tool manifest** with JSON Schema for every allowed tool.
    Each tool's model-facing description is loaded from
-   `~/notes/satan/tools/<tool-name>.md` (mind side).
+   `~/satan-corpus/tools/<tool-name>.md` (mind side).
 
 3. **Tool-call results** inserted mid-conversation as the model invokes
    tools. These return live data from the environment — they are the
@@ -57,7 +57,7 @@ turn.
 
 ### 2.1 System scaffold
 
-**Source:** `~/notes/satan/system/scaffold.txt`
+**Source:** `~/satan-corpus/system/scaffold.txt`
 **Injected by:** `satan-context--assemble-prompt`
 **Content:** Core behavioural framing — write boundaries, interruption
 policy, memory model, tool discipline, protocol rules. Load-bearing
@@ -66,7 +66,7 @@ for every mode.
 
 ### 2.2 Mode prompt
 
-**Source:** `~/notes/satan/prompts/<mode>.txt`
+**Source:** `~/satan-corpus/prompts/<mode>.txt`
 **Injected by:** `satan-context--assemble-prompt`
 **Content:** Mode-specific instruction — what to do, in what order,
 with which tools.
@@ -74,7 +74,7 @@ with which tools.
 
 ### 2.3 Section headers (framing)
 
-**Source:** `~/notes/satan/system/framing.txt`
+**Source:** `~/satan-corpus/system/framing.txt`
 **Injected by:** `satan-context--render-prompt`
 **Content:** Key=value pairs like `now=# Now`, `today=# Today (raw)`,
 `sources=# Source files`. These label the context blocks the broker
@@ -101,7 +101,7 @@ own writing from the current day.
 ### 2.6 Source files block (self-edit modes)
 
 **Source:** All tracked files under `~/.emacs.d/satan/` (mech) or
-`~/notes/satan/{prompts,system,tools}/` (mind), capped at 600K chars.
+`~/satan-corpus/{prompts,system,tools}/` (mind), capped at 600K chars.
 **Injected by:** `satan-context-self-edit`
 **Content:** Full file contents packed alphabetically until budget
 exhausted. Overflow listed in `:dropped-files`.
@@ -110,7 +110,7 @@ exhausted. Overflow listed in `:dropped-files`.
 
 ### 2.7 Recent SATAN runs block (tick modes)
 
-**Source:** `~/notes/satan/runs/<YYYY-MM-DD>/<run-id>/final.json` +
+**Source:** `~/.local/state/satan/runs/<YYYY-MM-DD>/<run-id>/final.json` +
 `transcript.jsonl`
 **Injected by:** `satan-context--recent-runs`
 **Content:** The N most recent runs (default 5), newest-first. Each:
@@ -127,7 +127,7 @@ No user-facing kill switch beyond setting the key nil.
 
 These are retrieved live when the model invokes a read-only tool. Each
 is described by handler and by model-facing description
-(`~/notes/satan/tools/<tool>.md`).
+(`~/satan-corpus/tools/<tool>.md`).
 
 ### 3.1 `org_read_context`
 
@@ -203,7 +203,7 @@ broker-side).
 
 ### 3.9 `motive_read`
 
-**Source:** `~/notes/satan/motives.org` parsed via `satan-motive-parse`.
+**Source:** `~/satan-corpus/motives.org` parsed via `satan-motive-parse`.
 **What comes through:** Whole motive file — active motives with prose,
 `:cue:` handles, `:cooldown_s:`, `:worked_count:`, `:last_intervention_at:`,
 optional `:project_cwd:`, plus background ruminations (≤10 lines).
@@ -229,7 +229,7 @@ context and the user's environment.
 | **Risk** | low |
 | **Capability** | `hippocampus-write` |
 | **Auto-apply** | yes (SATAN-owned dir) |
-| **Target** | `~/notes/satan/hippocampus/<id>--<slug>__satan_hippocampus.org` |
+| **Target** | `~/satan-corpus/hippocampus/<id>--<slug>__satan_hippocampus.org` |
 | **Effect** | Curated prose org file, denote-named |
 | **Side effect** | When the mode also holds `memory-write`, emits an `auto_rule` observation trace cross-referencing the file path. |
 
@@ -261,7 +261,7 @@ actual handles or evidence.
 | **Risk** | low |
 | **Capability** | `inbox-write` |
 | **Auto-apply** | yes |
-| **Target** | `~/notes/satan/inbox.org` |
+| **Target** | `~/satan-corpus/inbox.org` |
 | **Effect** | Appends an org headline tagged `:unread:satan:` |
 
 Data written here is re-read by `org_read_context` (inbox scope) and
@@ -301,7 +301,7 @@ context.
 | **Risk** | low |
 | **Capability** | `stage-proposal` |
 | **Auto-apply** | no (stages for review) |
-| **Target** | `~/notes/satan/proposals/<id>--<slug>__satan_proposal.org` |
+| **Target** | `~/satan-corpus/proposals/<id>--<slug>__satan_proposal.org` |
 | **Effect** | Writes a denote-named proposal file |
 
 These never feed into the model's context automatically. The user must
@@ -368,7 +368,7 @@ perform inline.
 | **Risk** | low |
 | **Capability** | `motive-write` |
 | **Auto-apply** | yes |
-| **Target** | `~/notes/satan/motives.org` (+ `motives.archive.org` on demote) |
+| **Target** | `~/satan-corpus/motives.org` (+ `motives.archive.org` on demote) |
 | **Effect** | Atomic full-file replace; broker validates ≤3 active motives, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:` |
 | **Side effect** | Next tick's motive block in the capsule reflects the new state |
 
@@ -391,7 +391,7 @@ predicate, and on a positive verdict triggers three writes via
 
 | Write | Surface | Effect |
 |---|---|---|
-| Motive footer touch | `~/notes/satan/motives.org` via `satan-motive-touch-footer` | `:worked_count:` increment + `:last_intervention_at:` ISO bump; prose, ruminations, other footer fields preserved verbatim; atomic tmp + rename |
+| Motive footer touch | `~/satan-corpus/motives.org` via `satan-motive-touch-footer` | `:worked_count:` increment + `:last_intervention_at:` ISO bump; prose, ruminations, other footer fields preserved verbatim; atomic tmp + rename |
 | Memory trace | `satan_memory.traces` (kind `observation`, origin `auto_rule`) via `satan-memory-store-mark` | Records run_id, applied_index, motive_id, predicate metadata; future `memory_resonate` calls can surface it |
 | Dedup mark | observer state file (`~/.local/state/satan/observer.json`) | Per-intervention-id mark prevents double-count across ticks; written last so partial failures retry |
 
@@ -472,10 +472,10 @@ behavioural final reducer is tracked as ISS-001. The evidence is stored in
 ## 6. Typing speed analytics (unconsumed)
 
 Added 2026-05-21. Not yet consumed by any SATAN mode, tool, or prompt.
-Discovered in the notes tree at:
+Discovered in the notes tree; it lives in the state root now:
 
 ```
-~/notes/satan/log/wpm/
+~/.local/state/satan/log/wpm/
   2026-05-21.tsv
   2026-05-22.tsv
 ```
@@ -528,7 +528,7 @@ tools but currently sit as raw files:
 | Behaviour browser segments | `~/.local/state/behaviour/segments/browser-<date>.jsonl` | panopticon | Via `activity_read` |
 | Behaviour histograms | `~/.local/state/behaviour/histograms/daily-<date>.json` | panopticon | Via `activity_read` |
 | Current sway window | `~/.local/state/behaviour/current/sway.json` | panopticon | Via `activity_read` |
-| **Typing speed** | `~/notes/satan/log/wpm/<date>.tsv` | Unknown | **None** |
+| **Typing speed** | `~/.local/state/satan/log/wpm/<date>.tsv` | Unknown | **None** |
 | Memory substrate | PostgreSQL `satan_memory` | SATAN itself | Via `psql` subprocess |
 
 ---
@@ -574,7 +574,7 @@ but no tool currently follows that link to re-read the org file.
 ### 8.4 Inbox re-read
 
 ```
-inbox_append → ~/notes/satan/inbox.org grows →
+inbox_append → ~/satan-corpus/inbox.org grows →
   next run's org_read_context(scope=inbox) includes it →
     or notes_recent surfaces it by mtime
 ```
@@ -637,7 +637,7 @@ These write to durable state that is never re-read by any tool:
 
 | Surface | Written by | Re-read by |
 |---------|-----------|------------|
-| `~/notes/satan/proposals/` | `proposal_stage` | Nothing (user reads manually) |
+| `~/satan-corpus/proposals/` | `proposal_stage` | Nothing (user reads manually) |
 | `motd.txt` | `satan_final` summary in motd mode | Nothing (intended for user display) |
 | D-Bus notifications | `notify_send` | Nothing (ephemeral) |
 

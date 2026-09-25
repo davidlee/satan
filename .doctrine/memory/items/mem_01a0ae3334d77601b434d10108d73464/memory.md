@@ -11,7 +11,7 @@ base...HEAD` inside the worktree — always repo-relative. Trailing `/`
 is a prefix match; without one it is an exact match. Nothing expands
 `~`.
 
-So a home-anchored entry like `"~/satan/tools/"` **matches nothing**.
+So a home-anchored entry like `"~/satan-corpus/tools/"` **matches nothing**.
 It does not widen access and it does not fail loudly — it is dead text
 that tells the model it may edit somewhere it cannot. Mixing
 repo-relative and home entries in one list is the tell.
@@ -21,7 +21,7 @@ repo-relative and home entries in one list is the tell.
 `repo` is validated with `file-directory-p` (which does expand `~`)
 but is then handed to `git -C <repo>` through `call-process`, which
 does not. Pass it absolute. Corollary: mechanism (`~/dev/satan`) and
-corpus (`~/satan`) are separate repos and need separate jobs — see
+corpus (`~/satan-corpus`) are separate repos and need separate jobs — see
 [[mem.concept.satan.three-roots]].
 
 ## checks are instructions, not a runner step

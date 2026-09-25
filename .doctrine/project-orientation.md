@@ -24,7 +24,7 @@ daemon: the priority is safe, inspectable, evolvable agency, not maximum agency.
   editor is an extraction candidate (POL-001 earns-the-seat test), targeting
   Rust daemons per ADR-018. Every extraction gets a disable switch.
 - **Three roots, never mixed:** notes (`~/notes`, the user's, read-only),
-  corpus (`~/satan`, SATAN-authored), state (`~/.local/state/satan`,
+  corpus (`~/satan-corpus`, SATAN-authored), state (`~/.local/state/satan`,
   discardable). All paths are `satan-{notes,corpus,state}-path` joins.
 - **No fallbacks for framing text:** a wrong-but-readable path is worse than
   an error.
@@ -61,7 +61,7 @@ roots are literal `~` strings, so `expand-file-name` before `call-process`.
 - `dev/satan-test.el` — batch test runner
 - `docs/` — design docs; start at `docs/INDEX.md`, then `governance.md`, `architecture.md`
 - `.doctrine/` — governance: slices, ADRs, policies, specs, backlog, memory
-- `~/satan` (separate repo) — model-facing corpus; corpus-dependent tests `skip-unless` it exists
+- `~/satan-corpus` (separate repo) — model-facing corpus; corpus-dependent tests `skip-unless` it exists
 - `~/flakes` (separate repo) — Nix system config: systemd timers (`modules/home/linux/satan.nix`),
   and this repo as a flake input pinned to GitHub, not the local checkout
 

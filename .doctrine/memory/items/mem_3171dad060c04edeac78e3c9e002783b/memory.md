@@ -41,7 +41,7 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
   `dl-notes-paths` / `dl-denote-journal` couplings. `satan-custom.el` owns
   `(defgroup satan …)`.
 - **Three roots (SL-015, 2026-09-14):** `satan-notes-root` (`~/notes`, the
-  user's, read-only to SATAN), `satan-corpus-root` (`~/satan`, SATAN's
+  user's, read-only to SATAN), `satan-corpus-root` (`~/satan-corpus`, SATAN's
   model-facing corpus, its own repo), `satan-state-root`
   (`~/.local/state/satan`, runtime). Every path defcustom is a
   `satan-{notes,corpus,state}-path` join — see
@@ -69,9 +69,9 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
 - **psql is the only DB interface**. ~10 files talk to postgres via `satan-db-*`; all via `call-process` to `psql`. No elisp PG libraries.
 - **Tools are registered at load time** via `satan-tool-register`. Mode→tool allowlists are on mode specs.
 - **The broker's spawn sequence** (in `satan-broker--spawn`) runs percept build → resonance → motive read → sensor alerts → curiosity/WPM probes → bundle assembly → process spawn. Order matters; it's a flat ~185-line `let*`.
-- **Code lives in `~/dev/satan/satan/`; model-facing content lives in `~/satan/`** (`satan-corpus-root`: prompts, scaffolding, framing, tool descriptions, hippocampus, motives), a separate repo since SL-015 — no longer under `~/notes`, and no symlink there. The corpus stays out of the package by design (D4/POL) — corpus-integration tests `skip-unless` it is present ([[mem.pattern.satan.corpus-integration-skip-unless]]). The runtime jail that binds it is deployed from the GitHub flake input ([[mem.fact.satan.runtime-jail-deploys-from-github-input]]).
+- **Code lives in `~/dev/satan/satan/`; model-facing content lives in `~/satan-corpus/`** (`satan-corpus-root`: prompts, scaffolding, framing, tool descriptions, hippocampus, motives), a separate repo since SL-015 — no longer under `~/notes`, and no symlink there. The corpus stays out of the package by design (D4/POL) — corpus-integration tests `skip-unless` it is present ([[mem.pattern.satan.corpus-integration-skip-unless]]). The runtime jail that binds it is deployed from the GitHub flake input ([[mem.fact.satan.runtime-jail-deploys-from-github-input]]).
 - **Package paths use `~` — expand before `call-process`.** `satan-notes-root`
-  and `satan-corpus-root` default to the literals `"~/notes"` / `"~/satan"`
+  and `satan-corpus-root` default to the literals `"~/notes"` / `"~/satan-corpus"`
   (the `-path` joins expand; the bare roots do not); a subprocess base-dir/arg must be
   `expand-file-name`'d first (`call-process` does not expand `~`). Two such
   regressions shipped and were fixed after the SL-012 extraction.

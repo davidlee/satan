@@ -19,7 +19,7 @@ Companion: `CHANGELOG.md` (dated, narrative log of what landed).
 ## One-sentence summary
 
 SATAN is a local, Emacs-mediated, org-backed, harness-agnostic agent
-runtime whose model-facing mind lives in `~/satan`, whose
+runtime whose model-facing mind lives in `~/satan-corpus`, whose
 authority is constrained by a broker-enforced tool membrane, and whose
 evolution should remain text-first, auditable, proposal-driven, and
 deliberately narrow.
@@ -71,7 +71,7 @@ protocol and its ledger of owners (ADR-017).
 | 2B — `notify_send` tool | ✅ | landed 2026-05-19 |
 | 2C — `hippocampus_write` tool | ✅ | landed 2026-05-19, raw `find-file` review; renamed from `memory.add_candidate` |
 | 2D — `self-edit` mode | ✅ | landed 2026-05-19, SATAN-only scope |
-| 2E — mind/mechanism split | ✅ | landed 2026-05-19, prompts + tool descs in `~/satan/` |
+| 2E — mind/mechanism split | ✅ | landed 2026-05-19, prompts + tool descs in `~/satan-corpus/` |
 | Wired into Sleipnir (`satan.nix`) | ✅ | timers `satan-morning` 09:00, `satan-motd` 07:00, `satan-tick` `OnUnitActiveSec=30min` |
 | 3A — protocol reification | ✅ | landed 2026-05-19; `protocol.md` + fixtures + validators on both sides |
 | Memory substrate v1 (12 steps) | ✅ | landed 2026-05-19→20; see [[satan-memory-handover]]. DR-116 follow-up landed 2026-05-21; bough integration removed by SL-002 2026-07-22 |
@@ -84,8 +84,8 @@ protocol and its ledger of owners (ADR-017).
 
 `M-x satan-run RET morning` writes a SATAN-owned block into today's
 daily note and a full audit bundle under `~/.local/state/satan/runs/<YYYY-MM-DD>/<run-id>/`.
-`motd` writes `~/satan/motd.txt`. `self-edit` stages proposals
-under `~/satan/proposals/` — nothing auto-applies.
+`motd` writes `~/satan-corpus/motd.txt`. `self-edit` stages proposals
+under `~/satan-corpus/proposals/` — nothing auto-applies.
 
 Tests: all ert green; ~640 satan ert-deftests across `satan/test/` plus
 the python harness unittests + 1/1 integration ert. CHANGELOG records
@@ -101,8 +101,8 @@ M-x satan-run RET motd
 M-x satan-run RET self-edit          # SATAN audits its own source
 
 # Review staged artifacts.
-M-x satan-hippocampus                 # dired ~/satan/hippocampus
-find ~/satan/proposals             # denote-named proposals
+M-x satan-hippocampus                 # dired ~/satan-corpus/hippocampus
+find ~/satan-corpus/proposals             # denote-named proposals
 
 # Audit a finished run.
 emacsclient --eval '(satan-audit-verify-run "/home/david/.local/state/satan/runs/<YYYY-MM-DD>/<RUN-ID>/")'
@@ -119,25 +119,25 @@ Trust-and-data flow, broker/harness/model/tool/output/state layers:
 ## Ownership: mind vs mechanism
 
 **Invariant.** All model-facing behavioural text lives under
-`~/satan`. Package code may define mechanisms, validators, handlers,
+`~/satan-corpus`. Package code may define mechanisms, validators, handlers,
 and capability checks, but must not be the canonical source for
 prompts, tool descriptions, behavioural instructions, examples, or
 model-facing policy.
 
 ```text
 Package code contains mechanism.
-~/satan contains mind.
+~/satan-corpus contains mind.
 ```
 
 | Concern | Owner |
 |---|---|
-| ROM/system prompt, mode prompts | `~/satan/prompts/<mode>.txt` |
-| shared system scaffold | `~/satan/system/scaffold.txt` |
-| bundle-section headers (`# Now`, `# Today (raw)`, `# Source files`, `# Recent SATAN runs`) | `~/satan/system/framing.txt` |
-| per-tool description (model-facing) | `~/satan/tools/<tool-name>.md` |
-| `satan_final` description (synthetic terminal tool) | `~/satan/tools/satan_final.md` |
-| examples / few-shot snippets, style instructions, hippocampus policy | `~/satan/` |
-| hippocampus entries, staged proposals | `~/satan/{hippocampus,proposals}/` |
+| ROM/system prompt, mode prompts | `~/satan-corpus/prompts/<mode>.txt` |
+| shared system scaffold | `~/satan-corpus/system/scaffold.txt` |
+| bundle-section headers (`# Now`, `# Today (raw)`, `# Source files`, `# Recent SATAN runs`) | `~/satan-corpus/system/framing.txt` |
+| per-tool description (model-facing) | `~/satan-corpus/tools/<tool-name>.md` |
+| `satan_final` description (synthetic terminal tool) | `~/satan-corpus/tools/satan_final.md` |
+| examples / few-shot snippets, style instructions, hippocampus policy | `~/satan-corpus/` |
+| hippocampus entries, staged proposals | `~/satan-corpus/{hippocampus,proposals}/` |
 | tool name / risk / schema / capability / handler | elisp tool-spec (`satan-tools-*.el`) |
 | mode allowlist / harness / jail / timeouts / budgets | elisp mode-spec (`satan-mode.el`) |
 | JSONL protocol, validation, dispatch, audit, jailing | elisp (`satan-*.el`) |
@@ -150,7 +150,7 @@ descriptions of its own. Missing corpus-side files signal at run-start
 rather than degrading silently.
 
 Rule of thumb: if changing the text could change what the model
-chooses to do, it belongs in `~/satan`.
+chooses to do, it belongs in `~/satan-corpus`.
 
 ## Source of truth
 
@@ -162,7 +162,7 @@ chooses to do, it belongs in `~/satan`.
   explicitly promoted. Operationally useful, not canonical. (`bough` filled
   this role until SL-002 removed the integration, 2026-07-22; the *principle*
   outlives it and governs whatever fills the slot next.)
-- **SATAN-owned state**: the corpus (`~/satan`, versioned) holds
+- **SATAN-owned state**: the corpus (`~/satan-corpus`, versioned) holds
   hippocampus, proposals, inbox, motd, prompt material; the state root
   (`~/.local/state/satan`, discardable) holds run bundles and cursors.
 
@@ -263,7 +263,7 @@ model is never the authority on whether an action is safe.
 ## Hippocampus governance
 
 SATAN's memory is called the hippocampus and lives at
-`~/satan/hippocampus/` as one denote-named org file per entry.
+`~/satan-corpus/hippocampus/` as one denote-named org file per entry.
 SATAN curates the hippocampus freely — writes auto-apply, no candidate
 / confirmed ceremony. The user reviews when they want to via
 `satan-hippocampus`; ad-hoc deletes / edits are expected.
@@ -392,7 +392,7 @@ justification):
 | `satan-patch-runner.el` | Background runner: claims queued jobs, spawns adapter in jail, persists transcript + result; `satan-patch-runner-enabled` defcustom can hand queue off to standalone Go daemon at `~/dev/satan-patcher/`. |
 | `satan-patch-listener.el` | `pg_notify` LISTEN bridge waking the runner without polling. |
 | `satan-patch-classify.el` | `@satan` directive → patch-shape classifier (used by `tick-agent` + `self-edit-*` to route patch-shaped work via `patch_job_create`). |
-| `satan-patch-inbox.el` | Inbox handoff: writes `~/satan/inbox.org` entry on patch completion. |
+| `satan-patch-inbox.el` | Inbox handoff: writes `~/satan-corpus/inbox.org` entry on patch completion. |
 | `satan-patch-prompt.el` | Patch-agent system prompt assembler (per-job). |
 | `satan-tools-patch.el` | LLM-facing tools: `patch_job_create`, `patch_job_status`, `patch_job_result`, `patch_job_cancel`, `patch_job_cleanup`. See `docs/patch/{brief,plan,handover}.md`. |
 | `memory/migrations/0001_init.sql` | Substrate schema (§6.2). |
@@ -449,7 +449,7 @@ justification):
 ### Notes tree (canonical model-facing surface)
 
 ```
-~/satan/
+~/satan-corpus/
   prompts/                           # mode prompts
     morning.txt
     motd.txt
@@ -523,7 +523,7 @@ Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 | `proposal_stage` | low | capability `stage-proposal` | Write a denote proposal file. |
 | `notify_send` | low | capability `notify` | D-Bus desktop notification. |
 | `hippocampus_write` | low | capability `hippocampus-write` | Append a denote hippocampus entry (SATAN-owned, auto-applied). |
-| `inbox_append` | low | capability `inbox-write` | Append a headline to `~/satan/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
+| `inbox_append` | low | capability `inbox-write` | Append a headline to `~/satan-corpus/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
 | `agenda_read` | read | — | Fetch the work calendar via `gcalcli`. Calendar id read from `$WORK_EMAIL`; wrapped in `timeout(1)` so a stalled gcalcli can't freeze the broker. |
 | `activity_read` | read | — | Read panopticon's behaviour state from `~/.local/state/behaviour/`. `scope="today"` returns the daily histogram; `scope="recent_focus"` / `recent_browser` return the last N focus / browser segments; `scope="current"` returns the live focused-window snapshot (`app_id`, `workspace`, `output`, `title`, `pid`). PII redaction is handled by the producer (firefox URLs stripped to origin, incognito dropped). The `current` scope intentionally passes `title` through — see open thread "current-scope title leak". |
 | `memory_mark` | low | capability `memory-write` | Persist an `observation` trace into `satan_memory`. The broker canonicalizes evidence deterministically; the LLM supplies typed hints (no raw handles).  Stamped `trace_origin = llm_mark`. |
@@ -532,7 +532,7 @@ Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 | `docs_list` | read | — | List every chunk under `docs/` + `docs/emacs/` as `{name, description, path, type, topic, status}` — no bodies. |
 | `docs_search` | read | — | Filter doc chunks by frontmatter (`topic`/`type`/`status`) and/or a literal case-insensitive `query` substring against the body. Returns the skinny entry shape; pair with `docs_read`. |
 | `docs_read` | read | — | Full body of one chunk by `name` slug. |
-| `motive_read` | read | — | Whole `~/satan/motives.org` parsed: active motives + prose + `:cue:` + footer fields; ruminations. Capsule already includes motive block, so motive_read mostly serves explicit lookups + observer correlation context. |
+| `motive_read` | read | — | Whole `~/satan-corpus/motives.org` parsed: active motives + prose + `:cue:` + footer fields; ruminations. Capsule already includes motive block, so motive_read mostly serves explicit lookups + observer correlation context. |
 | `motive_replace` | low | capability `motive-write` | Atomic full-file motive replace; broker validates ≤3 active, ≤10 ruminations, every active motive's `:cue:` matches the canon handle regex AND includes ≥1 sensor-observed handle, rejects `:ceiling:`. Broker preserves `:worked_count:` + `:last_intervention_at:`. |
 | `notes_at_satan_scan` | read | — | `rg --json --fixed-strings @satan` over `~/notes/`. Returns each unclaimed directive with headline + ±N lines + stable session id. Only path to user-authored directives. |
 | `notes_at_satan_done` | low | capability `write-notes` | Claim a directive by replacing `@satan` with `@satan-was-here` + a quoted run-id + optional comment block. Persistent and grep-able; excluded from future scans. |
@@ -589,7 +589,7 @@ Every context-fn includes a `:now` plist via `satan-context-now`:
 `iso_date`, `weekday`, `iso_week`, `time`, `tz_offset`, `tz_name`.
 The broker renders this as a fixed `# Now` section between the
 assembled prompt and any `today_text` / source-file sections (see
-`satan-context--render-prompt` and `~/satan/system/framing.txt`),
+`satan-context--render-prompt` and `~/satan-corpus/system/framing.txt`),
 so the model always sees the same date/time/tz framing regardless of
 mode. Single source of truth — never set `:date`/`:time` separately.
 
@@ -658,15 +658,15 @@ defaults (50000-token budget, 20 tool calls, 180-second timeout,
 | Mode | Source roots | Stamped `:MODE:` |
 |---|---|---|
 | `self-edit-mech` | `satan-self-edit-mech-roots` (default `satan--root`, i.e. `~/dev/satan/satan/`) | `self-edit-mech` |
-| `self-edit-mind` | `satan-self-edit-mind-roots` (default `~/satan/{prompts,system,tools}/`) | `self-edit-mind` |
+| `self-edit-mind` | `satan-self-edit-mind-roots` (default `~/satan-corpus/{prompts,system,tools}/`) | `self-edit-mind` |
 
-Both lanes write proposals to `~/satan/proposals/`; the
+Both lanes write proposals to `~/satan-corpus/proposals/`; the
 `:MODE:` property in each denote file distinguishes them. Mode specs
 reference defcustoms via `:source-roots-var` so the user can recustomize
 roots without redefining modes. The shared context-fn
 `satan-context-self-edit` reads either `:source-roots` (direct) or
 `:source-roots-var` (indirect) from the mode spec; sources are
-abbreviated paths (`~/satan/...`, `~/dev/satan/...`).
+abbreviated paths (`~/satan-corpus/...`, `~/dev/satan/...`).
 
 ### Tick mode family
 
@@ -689,7 +689,7 @@ Each tick mode is registered via `satan-tick-register SHORT-NAME
 `(notify inbox-write)` capabilities, 3000-token / 4-call / 30-second
 budget, `satan-context-tick` + `satan-output/tick`,
 `anthropic/claude-haiku-4.5`). Prompts live at
-`~/satan/prompts/tick/<short-name>.txt`. Add a tick by writing a
+`~/satan-corpus/prompts/tick/<short-name>.txt`. Add a tick by writing a
 prompt file and calling `(satan-tick-register "name")` from the
 config.
 
@@ -793,7 +793,7 @@ Numbered for cross-referencing in commits / changelog.
 6. **Self-describing manifest** — ✅ done 2026-05-19 (phase 2E).
    Broker writes full JSON Schema for each allowed tool into
    `manifest.json["tools"]`; harness reads verbatim. Descriptions are
-   loaded from `~/satan/tools/<name>.md` (mind/mechanism split).
+   loaded from `~/satan-corpus/tools/<name>.md` (mind/mechanism split).
 7. **Self-edit scope expansion** — currently
    `satan-self-edit-mech-roots = (satan--root)`, the package `satan/`
    dir. Broader (the whole repo) is on the table when SATAN's edit suggestions prove
@@ -803,7 +803,7 @@ Numbered for cross-referencing in commits / changelog.
    all be useful.
 9. **Bundle-section framing in `build_system_prompt`** — ✅ done
    2026-05-19 (phase 3D). Section headers (`# Now`, `# Today (raw)`,
-   `# Source files`) live in `~/satan/system/framing.txt`; the
+   `# Source files`) live in `~/satan-corpus/system/framing.txt`; the
    broker renders the full system prompt and writes it into
    `bundle["prompt"]`; the harness is a passthrough
    (`return bundle["prompt"]`). No canonical model-facing prose lives

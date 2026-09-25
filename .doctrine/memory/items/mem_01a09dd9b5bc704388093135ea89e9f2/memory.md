@@ -30,4 +30,4 @@ on the critical path: quiesce timers + patcher across the window.
 Lock was at `4ecc741` (2026-07-22) — seven weeks behind the working tree.
 Cutover pushed `4ecc741..8a49d16`, bumped the lock (`~` `1aea39ad`),
 switched after the Emacs restart; tick `20260914T125539-tick-pulse-c3dce4`
-ran clean with the `$HOME/satan/hippocampus` bind.
+ran clean with the `$HOME/satan-corpus/hippocampus` bind.

@@ -16,7 +16,7 @@ Canonical spec for the membrane between broker (trusted) and harness
 fragments. Either side ignores blank lines.
 
 This document is **mechanism**. It belongs in dotfiles, not in
-`~/notes/satan/`. The broker enforces it; the harness must produce
+`~/satan-corpus/`. The broker enforces it; the harness must produce
 conforming output; tests on both sides load
 `protocol/fixtures.json` and assert validator behaviour matches the
 fixture's `kind`.

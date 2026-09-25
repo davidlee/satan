@@ -91,11 +91,14 @@
           (set-env "PGPASSWORD" "postgres")
         ];
 
-        # SATAN's corpus (~/satan) for dev agents.  It used to be reachable through
-        # the /workspace/notes dep; workspaceDeps mounts by basename and
+        # SATAN's corpus (~/satan-corpus) for dev agents.  It used to be reachable
+        # through the /workspace/notes dep; workspaceDeps mounts by basename and
         # /workspace/satan is this project, so it gets its own name (SL-015 D-2).
+        # Since CHR-010 that name is simply the basename: mind and mechanism no
+        # longer collide, so the target is an explicit path rather than a
+        # workaround.
         corpusJailOptions = with jailLib.combinators; [
-          (unsafe-add-raw-args ''--bind "$HOME/satan" "/workspace/corpus"'')
+          (rw-bind "/home/david/satan-corpus" "/workspace/satan-corpus")
         ];
 
         jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions ++ corpusJailOptions;
@@ -140,7 +143,7 @@
           (unsafe-add-raw-args ''--bind "$HOME/dev/satan" "/workspace/satan"'') ## Migration !!
 
           (unsafe-add-raw-args ''--ro-bind "$HOME/notes" "/satan/notes"'')
-          (unsafe-add-raw-args ''--bind "$HOME/satan/hippocampus" "/satan/hippocampus"'')
+          (unsafe-add-raw-args ''--bind "$HOME/satan-corpus/hippocampus" "/satan/hippocampus"'')
           (unsafe-add-raw-args ''--bind "$SATAN_RUN_DIR" "/satan/run"'')
           (try-fwd-env "SATAN_RUN_ID")
           (set-env "SATAN_NOTES_RO" "/satan/notes")
@@ -312,15 +315,9 @@
               command = "doctrine $@";
             }
             {
-              name = "sdr";
-              help = "spec-driver";
-              command = "spec-driver $@";
-            }
-
-            {
               name = "jpi";
-              help = "op run -- jailed-pi $@";
-              command = "op run -- jailed-pi $@";
+              help = "jailed-pi $@";
+              command = "jailed-pi $@";
             }
             {
               name = "jcl";

@@ -4,9 +4,9 @@ schema_version = 1
 memory_type = "concept"
 status = "active"
 title = "SATAN's three roots: notes, corpus, state"
-summary = "SATAN resolves every path from three roots with distinct owners: satan-notes-root (~/notes, the user's, read-only to SATAN), satan-corpus-root (~/satan, SATAN-authored, own repo), satan-state-root (~/.local/state/satan, runtime, discardable)"
+summary = "SATAN resolves every path from three roots with distinct owners: satan-notes-root (~/notes, the user's, read-only to SATAN), satan-corpus-root (~/satan-corpus, SATAN-authored, own repo), satan-state-root (~/.local/state/satan, runtime, discardable)"
 created = "2026-09-14"
-updated = "2026-09-14"
+updated = "2026-09-25"
 
 [scope]
 paths = ["satan/satan-custom.el"]

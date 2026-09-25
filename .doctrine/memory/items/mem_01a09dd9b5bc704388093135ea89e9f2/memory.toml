@@ -6,7 +6,7 @@ status = "active"
 title = "SATAN runtime jail deploys from the GitHub flake input, not the working tree"
 summary = "SATAN's runtime bwrap jail is built from the github:davidlee/satan flake input in ~/flakes, not from ~/dev/satan — a flake.nix bind change needs push + nix flake update satan + home-switch; a raw --bind to a missing path kills every run"
 created = "2026-09-14"
-updated = "2026-09-14"
+updated = "2026-09-25"
 
 [scope]
 paths = ["flake.nix"]

@@ -6,7 +6,7 @@ status = "active"
 title = "patch_job_create: allowed_paths is repo-relative; checks are the agent's, not the runner's"
 summary = "patch_job_create: allowed_paths is repo-relative (a ~/ entry matches nothing) and checks are run by the agent, not the runner"
 created = "2026-09-17"
-updated = "2026-09-17"
+updated = "2026-09-25"
 
 [scope]
 paths = ["satan/satan-patch-worktree.el", "satan/satan-tools-patch.el", "satan/satan-patch-prompt.el"]

@@ -83,7 +83,7 @@ they differ only in which root they read."
 
 ;; ── SATAN's own corpus (SL-015 D1) ──────────────────────────────────────────
 
-(defcustom satan-corpus-root "~/satan"
+(defcustom satan-corpus-root "~/satan-corpus"
   "Root directory of SATAN's own model-facing corpus.
 Prompts, system scaffold and framing, tool descriptions, motives,
 hippocampus, proposals — content SATAN reads *and writes*, versioned in

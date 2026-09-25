@@ -1,7 +1,7 @@
-# Corpus-integration tests skip-unless the ~/satan corpus is present
+# Corpus-integration tests skip-unless the ~/satan-corpus corpus is present
 
 Tests reading SATAN's host-only model-facing corpus (`satan-corpus-root`,
-default `~/satan`) must skip-unless the file is present — it is not shipped in
+default `~/satan-corpus`) must skip-unless the file is present — it is not shipped in
 the package (SL-012 D4/POL). Mirrors the DB skip-unless idiom.
 
 ```elisp

@@ -18,7 +18,7 @@ metadata:
 SATAN needs a way to discover `@satan` directives placed in the user's
 notes, act on them, and mark them as done so they do not reappear in
 subsequent scans. `@satan` is a lightweight convention — a line in any
-`.org` or `.md` file under `~/notes/` (outside `~/notes/satan/`) that
+`.org` or `.md` file under `~/notes/` (outside `~/satan-corpus/`) that
 instructs SATAN to perform some action on the surrounding context.
 
 This document is **design + implementation spec**. The design half
@@ -520,7 +520,7 @@ Note the short-name / full-name convention: `satan-tick-register`
 prepends `tick-` and resolves the prompt file to
 `<prompts>/tick/<short>.txt`. So short-name `"agent"` produces mode
 `tick-agent` and reads the prompt from
-`~/notes/satan/prompts/tick/agent.txt`.
+`~/satan-corpus/prompts/tick/agent.txt`.
 
 ### `write-notes` capability
 
@@ -557,7 +557,7 @@ morning summary; write-back stays in `tick-agent`.
 
 ## Model-facing tool descriptions
 
-### `~/notes/satan/tools/notes_at_satan_scan.md`
+### `~/satan-corpus/tools/notes_at_satan_scan.md`
 
 ```markdown
 Search every document under the user's notes corpus for lines
@@ -583,7 +583,7 @@ needs a tool you do not have access to in this mode, write a
 hippocampus entry noting the gap and leave the directive unclaimed.
 ```
 
-### `~/notes/satan/tools/notes_at_satan_done.md`
+### `~/satan-corpus/tools/notes_at_satan_done.md`
 
 ```markdown
 Mark a `@satan` directive as completed. Takes the `id` from a
@@ -617,7 +617,7 @@ not an error.
 
 ## Tick-agent prompt (verbatim)
 
-Goes at `~/notes/satan/prompts/tick/agent.txt`. This is the behavioural
+Goes at `~/satan-corpus/prompts/tick/agent.txt`. This is the behavioural
 frame for the entire mode — the highest-leverage artifact in this
 effort.
 
@@ -725,7 +725,7 @@ task that fires as a subsequent SATAN run.
                 context  (:type string :required nil))
 ```
 
-The handler writes a record under `~/notes/satan/pending/` (one file
+The handler writes a record under `~/satan-corpus/pending/` (one file
 per enqueued task). A companion systemd timer or a `satan-tick`
 adapter checks for pending items and spawns them. Pending directory
 gitignored and cleaned after dispatch. Enqueued runs carry
@@ -849,7 +849,7 @@ every design question; the work below is mechanical.
 These artifacts are quoted verbatim above and must be reproduced
 exactly:
 
-- The tick-agent prompt (`~/notes/satan/prompts/tick/agent.txt`).
+- The tick-agent prompt (`~/satan-corpus/prompts/tick/agent.txt`).
 - `satan-tool/notes-at-satan-done` and its helpers
   (`--marker`, `--rewrite-line`, `--id-index`, `--remember`).
 - The model-facing `.md` descriptions for both tools.
@@ -864,9 +864,9 @@ straight from the spec above.
 |---|---|
 | `satan/satan-tools-atsatan.el` | All elisp shown in this document, in declaration order: header → defcustoms/defconsts → helpers (`--clamp`, `--hash`, `--rg-argv`, `--run-rg`, `--parse-matches`, `--enrich`, `--id-index`, `--remember`) → scan handler → done helpers (`--marker`, `--rewrite-line`) and the done handler → two `satan-tool-register` forms → one `satan-tick-register` form → `(provide 'satan-tools-atsatan)`. |
 | `satan/test/satan-tools-atsatan-test.el` | Ert suite (5 tests, see below). |
-| `~/notes/satan/tools/notes_at_satan_scan.md` | Verbatim from above. |
-| `~/notes/satan/tools/notes_at_satan_done.md` | Verbatim from above. |
-| `~/notes/satan/prompts/tick/agent.txt` | Verbatim from above. |
+| `~/satan-corpus/tools/notes_at_satan_scan.md` | Verbatim from above. |
+| `~/satan-corpus/tools/notes_at_satan_done.md` | Verbatim from above. |
+| `~/satan-corpus/prompts/tick/agent.txt` | Verbatim from above. |
 
 ## Files to modify
 
@@ -955,7 +955,7 @@ One verbatim round-trip test plus four described.
 # 1. Stage the new elisp under flake-tracked dotfiles.
 git -C ~/.emacs.d add satan/satan-tools-atsatan.el
 git -C ~/.emacs.d add satan/test/satan-tools-atsatan-test.el
-# Notes-side files (~/notes/satan/{tools,prompts}/...) live in a
+# Notes-side files (~/satan-corpus/{tools,prompts}/...) live in a
 # separate repo and do not feed the Nix flake build.
 
 # 2. Rebuild the home-manager environment so the new file is parsed
@@ -974,7 +974,7 @@ emacs -batch \
 emacsclient --eval '(satan-run "tick-agent")'
 
 # 5. Inspect the audit bundle.
-ls ~/notes/satan/runs/most-recent/
+ls ~/.local/state/satan/runs/most-recent/
 ```
 
 ## Done criteria
