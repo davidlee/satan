@@ -31,8 +31,8 @@ was the wrong way round.
 ## Harvest
 
 fresh-as-of: 2026-09-25 · PHASE-02 implementation complete, awaiting VH-1 ·
-mechanism head 21a50d8 · mind head 5d67b78 (corpus: prompts/ruminate.txt;
-PHASE-01's four tool descriptions under 1d122dc).
+mechanism head 2d0d64f (live-verification fix) · mind head 5d67b78 (corpus:
+prompts/ruminate.txt; PHASE-01's four tool descriptions under 1d122dc).
 
 ### Produced
 
@@ -73,7 +73,49 @@ PHASE-01's four tool descriptions under 1d122dc).
 - **IT-011's diff went 15 → 13**: `comm -23` of registered names against the
   `## Tools` rows drops exactly the two new names and loses none.
 
+### Produced (PHASE-02, after live verification) — `2d0d64f`
+
+The user exercised both tools live against the host's `~/notes` (242 org, 12
+md/txt) and found two defects the suite could not see. Both were reproduced in
+the real code path (a stub-free emacs run over a temp root) before fixing:
+
+- **`notes_recent` returned `./'-prefixed paths, which `notes_read` refuses.**
+  fd with `--base-directory` prints `./journal/…`; `satan-tools-notes--file-plist`
+  passed it through verbatim and `--resolve` refuses a leading-dot component as
+  `hidden path not readable`. Live reproduction: `:path ->
+  "./journal/2026-09-25--protocol.org"`, `notes_read -> (error . "hidden path not
+  readable: …")`. Fixed with `--absolute-path` in the fd argv plus the existing
+  `--relativize` helper (its docstring now names both probes, since rg and fd are
+  its two callers). Re-verified live: 5 recent `~/notes` paths round-trip
+  (`journal/…` → `ok`); `justfile` and `flake.lock` are still listed by
+  `notes_recent` and still refused by `notes_read` as non-note files — correct,
+  `notes_recent` lists what moved, only the read door is extension-filtered.
+- **`notes_read` leaked the internal `:_sort` time object.** `--file-plist`
+  builds `:_sort` for `notes_recent`'s ordering; `notes_read` returned it too.
+  Live: keys `(… :ext :_sort :body …)`, and `json-serialize` of the raw plist
+  errors `Wrong type argument: symbolp, 27318`. The strip is now
+  `satan-tools-notes--public`, shared by both handlers (it had been inline in
+  `notes_recent` only).
+- **Regression test** (`satan-notes/recent-paths-round-trip-through-read`):
+  `notes_recent`'s first `:path`, fed back to `notes_read`, returns `ok` — with
+  a stub emitting what fd actually emits.
+
 ### Learned (PHASE-02)
+
+- **A stub is a claim about a foreign program; this suite's claim was false.**
+  Every pre-existing notes test emitted bare file names from the `call-process`
+  stub. Real fd with `--base-directory` emits `./…` (or absolute with
+  `--absolute-path`) — so the whole `notes_recent → notes_read` contract was
+  untested while the suite stayed green. Live verification caught it; reading the
+  code would not have. Generalisation: when a stub stands in for an external
+  binary, pin at least one test to the binary's *real* output shape.
+- **A shared result builder leaks its private keys into every consumer.**
+  `--file-plist` is right for `notes_recent` (it sorts on `:_sort`) and wrong for
+  `notes_read`, which does not. One builder, two contracts: strip at the boundary
+  (`--public`) rather than teach each caller.
+- **`satan-jsonl-prepare` coerces a stray Emacs time list into a JSON integer
+  array** rather than failing, so a leaked internal degrades to wire noise instead
+  of an outage — it does not surface as an error anywhere.
 
 - **A single broker test run in isolation reports `credential_unavailable`.**
   `satan-broker/run-emits-one-tick-row-outcome-spawned` passes in the full suite
@@ -129,9 +171,21 @@ PHASE-01's four tool descriptions under 1d122dc).
 
 ### Open / hand-forward
 
-- **VH-1 (user acceptance)** is PHASE-02's only human criterion, still open: that
-  the tools are reachable in the three modes and usable end to end in a `ruminate`
-  or `morning` manifest.
+- **VH-1 (user acceptance)** is PHASE-02's only human criterion. The user
+  verified the tools live against `~/notes` and the two defects it surfaced are
+  fixed (`2d0d64f`); formal acceptance is still theirs to give.
+- **A wire-encoding defect found while fixing F-2 and NOT fixed here** — nil
+  values in a tool result serialise as `{}`, not `false`: `(satan-jsonl-prepare
+  '(:truncated nil))` → `{"truncated":{}}`. System-wide (every tool result with a
+  nil field: `notes_recent`'s `:title`, `notes_read`'s `:truncated`/`:tags`), and
+  it belongs in the shared layer — emitting `:false` per tool would break every
+  `(null (plist-get p :truncated))` caller, because `:false` is truthy in elisp.
+  The codebase already has the marker (`satan-broker--on-tool-call` uses
+  `:ok :false`); same family as ISS-027 and IMP-015. **Capture is blocked here**:
+  `doctrine backlog new issue …` fails because its reservation fetch execs
+  `/nix/store/cllg0wr5svsxqvrykv4m1gsrb78lyw78-git-ssh-disabled`, which does not
+  exist in this shell. Nothing was written — create the item where doctrine can
+  reach its git helper.
 - **Suite green here is a partial green**: the test databases are unreachable in
   this dev shell, so the gate is `SATAN_TEST_ALLOW_NO_DB=1 just check` →
   **PASS 1151/1329 (178 skipped)**, lint clean, harness 54 OK. Zero unexpected.
