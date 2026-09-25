@@ -1,0 +1,51 @@
+memory_uid = "mem_01a0d7f29bb277e383e0edf0d63c05c3"
+memory_key = "mem.pattern.doctrine.check-boundary-row-not-phase-status"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "pattern"
+status = "active"
+title = "A doctrine slice boundary row with --start == --end records a no-op delta that conformance reads as covered"
+summary = "Verify the recorded boundary range itself — a completed phase can carry an empty range that makes slice conformance accidentally green"
+created = "2026-09-25"
+updated = "2026-09-25"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine"]
+tags = ["doctrine", "slice", "conformance", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "4198a3bb04b77ba9e5f2b38c87db5bd0c538df54"
+ref_name = "refs/heads/main"
+checkout_state_id = "e7f2a4011d9ade82361d5f6b3086f78693003b70f4c5355bdebe95299aff694a"
+base_commit = "5dca87cc0852e1e09e8ca3441770df062b293fee"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-020"
+
+[[relation]]
+label = "related"
+target = "mem.pattern.doctrine.declare-design-targets-at-lock"
+

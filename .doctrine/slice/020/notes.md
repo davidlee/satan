@@ -30,9 +30,9 @@ was the wrong way round.
 
 ## Harvest
 
-fresh-as-of: 2026-09-25 · PHASE-02 complete, VH-1 verified live · mind head
-5d67b78 (corpus: prompts/ruminate.txt; PHASE-01's four tool descriptions under
-1d122dc).
+fresh-as-of: 2026-09-25 · audit complete (RV-020), handed to /reconcile ·
+mechanism head 5dca87c (audit fix-now) · mind head 5d67b78 (corpus:
+prompts/ruminate.txt; PHASE-01's four tool descriptions under 1d122dc).
 
 ### Produced
 
@@ -358,3 +358,56 @@ names a marker string; (2) whether the five corpus files say the same thing as t
 design's §5 table once written (no mechanism checks that — R5); (3) whether the
 bytes-vs-characters decision survives contact with a real multibyte note, which
 QUE-002's pagination question will force.
+
+## Audit pass RV-020 (audit, 2026-09-25)
+
+Conformance-mode reconciliation audit of the whole slice, self-conducted. Nine
+findings, all terminal; the charges, dispositions, `## Synthesis` and
+`## Reconciliation Brief` live on the ledger (`.doctrine/review/020/`) — this is
+only the harvest residue.
+
+- **Two defects fixed at audit (F-1, F-7).** F-1: PHASE-01's boundary row was a
+  no-op range (`217ecee..217ecee`), so the conformance pass was *accidentally*
+  true — the 8/8 conformant set rested entirely on PHASE-02's overlap re-touching
+  PHASE-01's selectors. Re-recorded as `217ecee..ac6de17`, tiling with PHASE-02.
+  F-7: `:truncated` crossed the wire as `{}` rather than `false`; now `t`/`:false`
+  (commit `5dca87c`), following `content_read`'s `:truncated_results` precedent.
+  The keeper chose the local fix over deferral to ISS-033.
+- **Three prose claims the artefacts contradict**, delegated to `/reconcile`:
+  `design.md` §3's `--max-columns-preview` claim (rg prints the line's first 200
+  columns, so a match beyond them is absent from `:text` — the marker, not the
+  phrase, is the guarantee); §4/§6's silence about the fd output contract
+  `2d0d64f` introduced (`--absolute-path` + `--relativize`); §6's "five mechanism
+  paths" against eight recorded selectors. Two mind-corpus descriptions
+  (`tools/notes_read.md`, `tools/notes_grep.md`) carry the same F-7/F-2
+  corrections — mind repo, so committed there.
+- **Verification reproduced at audit.** `SATAN_TEST_ALLOW_NO_DB=1 just check` →
+  PASS 1152/1330 (178 skipped), lint clean, harness 54 OK; notes tests 28/28;
+  `doctrine check gate` → 40/40 `ok`; `doctrine slice conformance SL-020` →
+  undeclared 11, undelivered 0, conformant 8; IT-011's two-way diff 13 names
+  before and after with neither new tool in it; the ADR-017 §3 ledger untouched
+  since SL-017.
+- **The 11 undeclared paths are all lifecycle products** (three memory records
+  plus their path pairings, `notes.md`, `slice-020.toml`) — not code, and design
+  §6 scopes selectors to the code surface. Dispositioned `aligned` so the next
+  conformance run does not re-derive them.
+- **The audit's own fix (`5dca87c`) lies outside every recorded boundary** by
+  construction (the phases end at `c9af6e0`). Expected for an audit fix; recorded
+  so a later reader does not read it as a registry gap.
+- **VH-1 survives the F-7 fix.** The live verification preceded it, and the fix
+  changes `:truncated`'s representation, not the key set or the semantics the
+  verifier exercised; post-fix behaviour is covered by the suite rather than a
+  second live pass.
+- **Three durable memories recorded** from this pass:
+  `mem.fact.satan.tool-result-nil-renders-as-empty-object`,
+  `mem.fact.tooling.rg-max-columns-truncates-from-the-line-start`,
+  `mem.pattern.doctrine.check-boundary-row-not-phase-status`.
+- **Deliberately not fixed, with owners:** an empty `:matches` still renders as
+  `{}` (a list, not a flag; not fixable without changing the elisp-side type) →
+  ISS-033, with ISS-027 and IMP-015 in the family; the stale `bough_read` /
+  `notes_at_satan_intervention_done` rows and the `satan-tools-atsatan.el`
+  "excluding `satan/`" sentence remain pre-slice drift, untouched.
+- **The tree is not clean at audit:** the keeper's uncommitted `:budget-tokens`
+  bumps still ride beside the slice's commits — the close-out commit must be
+  path-scoped, and an untracked placeholder ISS-031 (an aborted `backlog new`)
+  must stay out of it.

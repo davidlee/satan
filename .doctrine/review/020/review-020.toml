@@ -1,0 +1,97 @@
+id    = 20
+slug  = "sl-020-reconciliation-audit-notes-read-and-notes-grep-phase-0102"
+title = "SL-020 reconciliation audit: notes_read and notes_grep (PHASE-01..02)"
+# no status — a review's status is DERIVED from its findings (ADR-007 D-C8), so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+
+[target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
+ref   = "SL-020"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "PHASE-01 records an empty boundary range, so the phase source delta is absent from the conformance registry"
+detail = "Expected the boundary registry to cover the PHASE-01 source delta (commit 124c268, which landed satan-tools-notes.el and satan-tools-notes-test.el). Observed: .doctrine/state/slice/020/boundaries.toml carries a PHASE-01 row with code_start_oid = code_end_oid = 217ecee — a no-op range (`git diff --name-only 217ecee..217ecee` is empty). Consequence: `doctrine slice conformance` reads only the PHASE-02 range ac6de17..c9af6e0, and its 8 conformant selectors are matched only incidentally, because the user-directed defect fix 2d0d64f (and c9af6e0) re-touched the two PHASE-01 selectors. Without that overlap, conformance would have reported satan-tools-notes.el and satan-tools-notes-test.el as undelivered. Evidence: boundaries.toml; `git diff --name-only 217ecee..124c268` = exactly the two module paths; `git diff --name-only ac6de17..c9af6e0` = the 18 paths conformance actually attributes. Remediation: `doctrine slice record-delta 20 PHASE-01 --start 217ecee --end ac6de17`, which tiles exactly with the PHASE-02 start."
+disposition = "fix-now"
+response = "Registry corrected: `doctrine slice record-delta 20 PHASE-01 --start 217ecee --end ac6de17`. boundaries.toml now carries 217ecee..ac6de17 for PHASE-01, tiling exactly with the PHASE-02 start, so the registry covers 124c268 (the tools and their tests) instead of a no-op range. `doctrine slice conformance SL-020` re-run after the correction: verdict unchanged (undeclared 11, undelivered 0, conformant 8) but now grounded in both phases rather than satisfied incidentally by the PHASE-02 overlap. No code or design change was needed."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "a notes_grep match lying beyond column 200 is absent from :text, contradicting design §3 and the tool description"
+detail = "Expected (design §3; tools/notes_grep.md): with `--max-columns 200 --max-columns-preview` the returned :text is the line truncated at the limit, ending with `[... omitted end of long line]`, so a reader sees both the phrase and the fact that the line continues. Observed: rg prints only the first max-columns columns of the line; a match beyond column 200 is not in the preview at all. rg --help is explicit: a preview of the line (corresponding to the limit size) is shown instead, where the part of the line exceeding the limit is not shown. Live evidence against the host rg: a line of 400 x, then NEEDLE, then 400 y, searched with exactly the slice argv, returns 200 columns of x plus `[... omitted end of long line]` — the query appears nowhere in :text. With the same query at column ~92 the phrase is present. The suite cannot see this (call-process is stubbed) and design §6 lists the marker semantics as untestable-by-design, so prose is the only carrier of the contract. Severity minor rather than major: path and line still identify the hit and notes_read can open it, but the result may not contain the query while the description asserts it always does."
+disposition = "verified"
+response = "Observation confirmed against the host rg (a 400-x/NEEDLE/400-y line searched with exactly the slice argv returns 200 columns of x plus the omission marker, with the query nowhere in the output) and against rg --help (the preview shows the line corresponding to the limit size; the part exceeding it is not shown). The mechanism is right — the marker is the tell, and path+line stay actionable — so the defect is in the prose, twice. Delegated to /reconcile: brief items for design §3 (which claims the reader sees both the phrase and the continuation) and for the mind description tools/notes_grep.md (which claims the phrase is visible at the start)."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "the post-design defect fix changed the notes_recent output shape; design §4/§6 never records it and PHASE-01 EX-7 does not cover it"
+detail = "Expected: design §4 shows the fd argv builder and the handler rename only; the §6 code-impact row for satan-tools-notes.el lists no change to the fd output contract; PHASE-01 EX-7 asserts that no behaviour of any other tool changes. Observed: commit 2d0d64f (PHASE-02, user-directed after live verification) added `--absolute-path` to the fd argv and routed fd output through `--relativize`, so the notes_recent :path form changed from `./journal/x.org` to `journal/x.org` — a real behaviour change to a pre-existing tool, correcting the round-trip break that made notes_recent emit paths notes_read refuses as hidden components. The change is correct, user-directed, and live-verified (both doors round-trip, `:_sort` stripped, dot-prefixed input still refused). The gap is evidential rather than functional: design §4 predicate decomposition and §6 code impact do not carry the fd output contract, and no criterion in either phase plan covers a PHASE-02 edit to PHASE-01 selectors. Conformance is unaffected (selectors are slice-level, 8/8 conformant) but the design is now an incomplete record of the shipped contract."
+disposition = "verified"
+response = "Correctness confirmed by reading 2d0d64f and by the slice live verification recorded in notes.md (both doors round-trip, :_sort stripped, dot-prefixed input still refused) and re-confirmed at audit by the full suite. The design is the incomplete artefact, so this goes to /reconcile: a brief item recording the fd output contract (--absolute-path plus --relativize, root-relative :path) in design §4 and the §6 code-impact row. Plan criteria are off-surface (EN-/EX-/VT- ids are immutable-append and plan.toml is not a reconcile surface), so no plan edit is proposed; the resulting phase-boundary overlap — a PHASE-02 edit to PHASE-01 selectors, with PHASE-01 EX-7 asserting no other tool behaviour changes — is carried in the Synthesis as a standing tradeoff."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "design §6 understates the design-target selector set: five mechanism paths claimed, eight selectors recorded"
+detail = "Expected: design §6 states that the design-target selectors are the five mechanism paths. Observed: .doctrine/slice/020/slice-020.toml carries eight design-target selectors — satan/satan-tools-notes.el, satan/test/satan-tools-notes-test.el, satan/satan-mode.el, satan/test/satan-broker-test.el, satan/harness/runloop.py, satan/harness/test_gptel_harness.py, docs/governance.md, docs/resilience-design.md — six mechanism paths plus two doc mirrors. All eight also appear as code-impact rows in the same section, so the sentence contradicts its own table. The registry is right; the count is stale prose."
+disposition = "verified"
+response = "Registry read: eight design-target selectors in slice-020.toml, against a §6 sentence claiming five mechanism paths and a code-impact table in the same section listing all eight paths. The registry is authoritative and needs no change; the sentence is stale. Delegated to /reconcile as a per-slice prose edit."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "the 11 undeclared conformance paths are harvest records and slice bookkeeping, not scope creep"
+detail = "Expected: undeclared means a path edited outside every design-target selector, and each needs a disposition. Observed 11: three memory records (.doctrine/memory/items/mem.fact.doctrine.backlog-new-blocked-by-missing-git-ssh-disabled, .doctrine/memory/items/mem.fact.satan.broker-test-credential-stub-order-dependence, .doctrine/memory/items/mem.pattern.satan.stub-must-mirror-real-binary-output) together with their three mem_<hex>/memory.{md,toml} path pairings, plus .doctrine/slice/020/notes.md and .doctrine/slice/020/slice-020.toml. All are lifecycle products, not code surface: the memory records are the harvest leg durable output (confirmed active via `doctrine memory search`, recorded against this slice through their shape links), and the two slice files are the notes scratchpad and the selector registry itself. Design §6 scopes selectors to the code surface and excludes the mind repo, so neither class belongs in that registry. No undeclared path is unaccounted for, and no path in the set is code."
+disposition = "aligned"
+response = "No change. Conformance calls these leads, not faults, and the class resolves cleanly: the three memory records are this slice harvest output (active, and linked to the slice), and notes.md plus slice-020.toml are the slice own scratchpad and selector registry. None is code surface, and design §6 scopes selectors to the code surface while explicitly excluding the mind repo. Dispositioned as aligned so the next conformance run does not re-derive the same class."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "notes_grep :truncated reports only the 50-match hard cap, so a limit-shortened result reads as complete"
+detail = "Expected (design §3): limit clamps to [1,200] and defaults to 30; :truncated is defined as the 50-match total cap biting. Observed: the handler computes :truncated as (> (length all) (length hard)) with hard the first 50 and shown the first min(limit, 50), so 40 matches with the default limit of 30 return :count 30 and :truncated nil. Judged against the design rather than intuition: the design defines :truncated as the hard-cap flag, and limit is a caller-supplied knob in the same shape as notes_recent :limit, which likewise reports :count with no truncation flag. The design §3 argument against `--max-count 10` does not reach this case — that cap was internal and explicitly unflagged, whereas the caller sets limit and sees it echoed in the result. Recorded so a later reader does not re-derive the distinction."
+disposition = "aligned"
+response = "No change. The design defines :truncated as the 50-match hard cap biting, and limit as a caller-supplied knob echoed back in the result; notes_recent behaves identically with :limit and :count, so the two tools in this module agree. The design §3 argument against --max-count 10 does not reach this case, because that cap was internal and unflagged while this one is set by the caller and visible in the response. Recorded rather than fixed: the distinction is the load-bearing part."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "the new truncation flags reach the model as {} when false, not false; the codebase wire convention is :false"
+detail = 'Expected: a falsy :truncated should read as JSON false, per the codebase wire convention — satan-jsonl-send passes :false-object :false, and satan-tools-content.el:265,338 emits :truncated_results :false for exactly this semantic, as do goad_ask (:asked, :delivered) and notify_send (:delivered). Observed: notes_read and notes_grep carry nil, and json-serialize with :null-object :null renders elisp nil as {}. Reproduced on the real serialiser path: (json-serialize (satan-jsonl-prepare (list :type "tool_result" :id "1" :ok t :result (list :scope "notes_read" :truncated nil :bytes 5))) :null-object :null :false-object :false) => {"truncated":{}}. The common case — a whole body, a complete match list — is therefore the ambiguous one: an empty object where JSON false belongs, which a model may read either way. The same rendering turns :matches () on a no-match result into {} rather than []. This is the slice model-facing honesty flag, built precisely to make partiality explicit; design §2/§3 example plists write :truncated nil and never consider the wire layer. System-level owner and precedent: ISS-033 (tool results carrying nil serialise as {} on the wire, not false), with ISS-027 and IMP-015 in the same family. Root cause sits outside the slice surface, while the local mitigation is precedented and cheap (two fields plus three ert assertions) — the disposition question is which route the keeper wants.'
+disposition = "fix-now"
+response = 'Fixed in 5dca87c, on the keeper decision (fix locally now). notes_read and notes_grep emit :truncated t / :false, and the wire now renders {"truncated":false} for the complete case — verified on the real serialiser path with the broker own json-serialize arguments, not read off the docs. Three ert assertions moved from nil to :false; satan-tools-notes 28/28 green; SATAN_TEST_ALLOW_NO_DB=1 just check PASS 1152/1330 (178 skipped), lint clean, harness 54 OK. Because the design §2/§3 example plists write :truncated nil, and the two mind descriptions frame the flag in elisp terms, both go to /reconcile as brief items. Empty :matches still renders as {} — a list rather than a flag, not fixable locally without changing the elisp-side type — and is left with ISS-033 together with the system-wide question.'
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "the audit surface is not clean: uncommitted user changes share the tree the slice commits landed in"
+detail = "Expected: the audited surface is the committed slice. Observed: the working tree carries uncommitted user hunks in satan/satan-mode.el (the :budget-tokens bumps 300000 -> 340000 at :125 and -> 400000 at :175/:198), plus modified flake.nix and .doctrine/doctrine.toml, plus untracked .doctrine/backlog/issue/031*. None belongs to this slice: PHASE-02 staged the satan-mode.el allowlist hunks selectively to keep them out of its commit, and the slice notes record the divergence between the commit boundary and the runtime boundary. The suite is unaffected — `SATAN_TEST_ALLOW_NO_DB=1 just check` reproduced at audit as PASS 1152/1330 (178 skipped), lint clean, harness 54 OK. Recorded so a close-out commit is path-scoped, and because the running daemon already loads the uncommitted budget values."
+disposition = "tolerated"
+response = "Accepted, and not this slice surface. The satan-mode.el budget bumps are the keeper uncommitted work (PHASE-02 staged its own allowlist hunks selectively precisely to keep them out), and flake.nix, .doctrine/doctrine.toml and the untracked backlog directory are unrelated in-flight changes. Rationale for tolerating rather than fixing: touching someone else in-flight work at audit would mix unrelated change into the slice history. Consequence carried to /close: the close-out commit must be path-scoped, and the running daemon already loads the uncommitted budget values, so the runtime and commit boundaries differ until the keeper commits."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "an aborted backlog new left a stranded placeholder item ISS-031 (tool results) in the working tree"
+detail = 'Expected: the three verification findings of this slice are ISS-032..034, each with a real title and a body. Observed: an untracked ISS-031 (title "tool results", empty body, no relations) created 2026-09-25 19:19, a minute before ISS-032..034, from an aborted creation attempt that also produced mem.fact.doctrine.backlog-new-blocked-by-missing-git-ssh-disabled. It duplicates ISS-033 (tool results carrying nil serialise as {} on the wire, not false) and is reported by `doctrine backlog list` as an open issue. It is uncommitted, so it never enters slice history; there is no `doctrine backlog delete` verb, and superseding it would be a governance write. Recorded so close can keep a path-scoped commit clear of it.'
+disposition = "tolerated"
+response = "Accepted with rationale: the item is uncommitted, so it never enters slice history; there is no `doctrine backlog delete` verb; and superseding it would be a governance write that belongs to a later act, not to an audit. Tolerating it costs nothing as long as the close-out commit stays path-scoped. The gotcha — an aborted `doctrine backlog new` leaves a placeholder item that cannot be removed — is harvested into the slice notes."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
+# Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).

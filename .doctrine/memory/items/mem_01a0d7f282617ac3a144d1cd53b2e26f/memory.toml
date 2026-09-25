@@ -1,0 +1,51 @@
+memory_uid = "mem_01a0d7f282617ac3a144d1cd53b2e26f"
+memory_key = "mem.fact.satan.tool-result-nil-renders-as-empty-object"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "An elisp nil in a SATAN tool result crosses the wire as {}; the false marker is :false"
+summary = "json-serialize on the broker wire renders a plist value of nil as an empty JSON object, so a falsy boolean in a result must be :false"
+created = "2026-09-25"
+updated = "2026-09-25"
+
+[scope]
+paths = ["satan/satan-jsonl.el"]
+globs = ["satan/satan-tools-*.el"]
+commands = []
+tags = ["wire", "gotcha", "satan", "tooling"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "4198a3bb04b77ba9e5f2b38c87db5bd0c538df54"
+ref_name = "refs/heads/main"
+checkout_state_id = "e2d0b20c0e39f09bd910e54743497200d36c382623c31cacd31be92b27938c58"
+base_commit = "5dca87cc0852e1e09e8ca3441770df062b293fee"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-020"
+
+[[relation]]
+label = "related"
+target = "ISS-033"
+
