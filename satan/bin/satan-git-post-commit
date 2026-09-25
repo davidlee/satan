@@ -8,6 +8,11 @@
 #
 # Best-effort: every failure path exits 0 so a commit is NEVER blocked.
 #
+# Throwaway repos under the temp root are skipped: this hook is global, so
+# every test fixture that `git init`s a temp repo would otherwise write rows
+# into the feed (96% of rows on 2026-09-25 — IT-004).  Fixture repos are not
+# activity; agent commits land in real repos and are still captured.
+#
 # Install (one-time, manual --- ~/.gitconfig is not Nix-managed):
 #   mkdir -p ~/.config/git/hooks
 #   ln -sf ~/dev/satan/satan/bin/satan-git-post-commit ~/.config/git/hooks/post-commit
@@ -24,6 +29,18 @@ segdir="$behaviour/segments"
 # Only act inside a work tree.
 toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -n "$toplevel" ] || exit 0
+
+# Skip temp repos.  Guard the repo TOPLEVEL, not the cwd, so a real repo
+# committed from inside a jail/scratch dir still counts.  $TMPDIR is checked
+# only when set (an empty pattern would match every absolute path).
+case "$toplevel" in
+  /tmp/*|/var/tmp/*) exit 0 ;;
+esac
+if [ -n "${TMPDIR:-}" ]; then
+  case "$toplevel" in
+    "${TMPDIR%/}"/*) exit 0 ;;
+  esac
+fi
 
 mkdir -p "$segdir" 2>/dev/null || exit 0
 

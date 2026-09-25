@@ -11,7 +11,11 @@
 (require 'satan-goad-fixture)
 
 (defun satan-memory-evidence-test--with-tmp (body)
-  (let ((tmp (make-temp-file "satan-ev-test-" t)))
+  ;; Fixtures live under /tmp by construction and stand in for real paths,
+  ;; so the temp-path guard is disabled for them.  The guard is tested
+  ;; directly by the temp-repo / temp-cwd tests.
+  (let ((tmp (make-temp-file "satan-ev-test-" t))
+        (satan-memory-evidence-temp-roots nil))
     (unwind-protect (funcall body tmp)
       (delete-directory tmp t))))
 
@@ -790,6 +794,68 @@ the 09:30 asks' window, yields `app:goad' and the outstanding subjects."
                                  :handles)))
         (should (member "app:goad" handles))
         (should (member (satan-goad-subject-topic "surface:notes") handles))))))
+
+(ert-deftest satan-memory-evidence/git-feed-reaches-artifact-commit ()
+  "IT-010 end-to-end at the evidence boundary: a commit row in the git feed
+survives `--git-commits-status' into `:git_commits' and makes the canon emit
+`artifact:commit' — so the producer is proven against the shape the live
+assembler actually produces, not only a hand-written plist."
+  (satan-memory-evidence-test--in-tmp tmp
+   (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
+     (with-temp-file path
+       (insert "{\"repo\":\"/home/david/dev/satan\",\"slug\":\"satan\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:55:00+10:00\"}\n"))
+     (let* ((commits (cdr (satan-memory-evidence--git-commits-status
+                           (list path) "2026-05-19T09:50:00+10:00"
+                           "2026-05-19T10:00:00+10:00" 10)))
+            (handles (plist-get (satan-memory-canon-canonicalize
+                                 (list :git_commits commits) nil nil)
+                                :handles)))
+       (should (member "project:satan" handles))
+       (should (member "artifact:commit" handles))))))
+
+(ert-deftest satan-memory-evidence/git-commits-drop-temp-repos ()
+  "IT-004 reader filter: fixture repos under the temp root never reach
+`:git_commits', so `vcs.recent_commit' cannot mint `project:tmp*'."
+  (satan-memory-evidence-test--in-tmp tmp
+   (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
+     (with-temp-file path
+       (insert "{\"repo\":\"/tmp/fixture-a\",\"slug\":\"fixture-a\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:55:00+10:00\"}\n")
+       (insert "{\"repo\":\"/home/david/dev/satan\",\"slug\":\"satan\",\"start_ts\":\"2026-05-19T09:56:00+10:00\",\"end_ts\":\"2026-05-19T09:56:00+10:00\"}\n"))
+     (let ((satan-memory-evidence-temp-roots '("/tmp")))
+       (let ((probe (satan-memory-evidence--git-commits-status
+                     (list path) "2026-05-19T09:50:00+10:00"
+                     "2026-05-19T10:00:00+10:00" 10)))
+         (should (equal "ok" (car probe)))
+         (should (= 1 (length (cdr probe))))
+         (should (equal "satan" (plist-get (car (cdr probe)) :slug))))))))
+
+(ert-deftest satan-memory-evidence/git-commits-temp-filter-before-limit ()
+  "The temp filter runs BEFORE the tail slice, so a window full of NEWER
+fixture commits cannot crowd a real commit out of `:git_commits'."
+  (satan-memory-evidence-test--in-tmp tmp
+   (let ((path (expand-file-name "git-2026-05-19.jsonl" tmp)))
+     (with-temp-file path
+       (dotimes (i 3)
+         (insert (format "{\"repo\":\"/tmp/fixture-%d\",\"slug\":\"fixture-%d\",\"start_ts\":\"2026-05-19T09:5%d:00+10:00\",\"end_ts\":\"2026-05-19T09:5%d:00+10:00\"}\n"
+                         i i (+ 7 i) (+ 7 i))))
+       (insert "{\"repo\":\"/home/david/dev/satan\",\"slug\":\"satan\",\"start_ts\":\"2026-05-19T09:55:30+10:00\",\"end_ts\":\"2026-05-19T09:55:30+10:00\"}\n"))
+     (let ((satan-memory-evidence-temp-roots '("/tmp")))
+       (let ((probe (satan-memory-evidence--git-commits-status
+                     (list path) "2026-05-19T09:50:00+10:00"
+                     "2026-05-19T10:00:00+10:00" 1)))
+         (should (= 1 (length (cdr probe))))
+         (should (equal "satan" (plist-get (car (cdr probe)) :slug))))))))
+
+(ert-deftest satan-memory-evidence/assemble-suppresses-temp-cwd ()
+  "IT-004: a throwaway run cwd yields no `:git_state'/`:fs_state', so
+`cwd.project' cannot emit a `project:tmp*' handle."
+  (satan-memory-evidence-test--in-tmp tmp
+   (let ((ctx (list :time_now "2026-05-19T10:00:00+10:00" :mode_name "motd")))
+     (let* ((satan-memory-evidence-temp-roots '("/tmp"))
+            (out (satan-memory-evidence-assemble
+                  ctx (list :behaviour_dir "/nonexistent/" :cwd tmp))))
+       (should (null (plist-get out :git_state)))
+       (should (null (plist-get out :fs_state)))))))
 
 (provide 'satan-memory-evidence-test)
 ;;; satan-memory-evidence-test.el ends here

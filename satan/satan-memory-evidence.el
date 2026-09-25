@@ -68,6 +68,31 @@ chokepoints so a hung repo cannot stall evidence assembly.  A breach
 returns nil (git-output) or marks `:timed_out t' (git-state)."
   :type 'integer :group 'satan)
 
+(defcustom satan-memory-evidence-temp-roots
+  (append '("/tmp" "/var/tmp")
+          (let ((tmp (getenv "TMPDIR")))
+            (and (stringp tmp) (not (string-empty-p tmp)) (list tmp))))
+  "Path prefixes whose contents are throwaway, not activity.
+Test suites `git init' repos under these roots, and the global
+post-commit hook captures every such commit, so the git feed is
+dominated by fixture rows (96% on 2026-09-25 — IT-004).  The evidence
+layer drops temp-repo rows before they can become `project:'/
+`artifact:commit' handles, which also neutralises the rows already on
+disk without rewriting the feed.  TMPDIR is folded in at load."
+  :type '(repeat directory) :group 'satan)
+
+(defun satan-memory-evidence--temp-path-p (path)
+  "Non-nil when PATH lies under a throwaway root.
+See `satan-memory-evidence-temp-roots'.  Compares trailing-slash
+prefixes so `/tmpfoo' does not match `/tmp'."
+  (when (stringp path)
+    (let ((full (expand-file-name path)))
+      (cl-some (lambda (root)
+                 (string-prefix-p
+                  (file-name-as-directory (expand-file-name root))
+                  full))
+               satan-memory-evidence-temp-roots))))
+
 (defcustom satan-memory-evidence-seg-limit 10
   "Maximum focus/browser segments retained per source (newest)."
   :type 'integer :group 'satan)
@@ -241,6 +266,13 @@ skipped without blanking good rows from sibling files."
       (cons (if any-error "malformed" "missing") '()))
      (t (let* ((filt (satan-memory-evidence--filter-segments
                       all start end))
+               ;; Drop throwaway repos (test fixtures) BEFORE the tail
+               ;; slice, so fixtures cannot crowd real commits out.
+               (filt (cl-remove-if
+                      (lambda (row)
+                        (satan-memory-evidence--temp-path-p
+                         (plist-get row :repo)))
+                      filt))
                (sorted (and filt
                              (sort (copy-sequence filt)
                                    (lambda (a b)
@@ -514,7 +546,10 @@ observer passes the window end and reads only `:sensor_status'
          (today (substring end 0 10))
          (root (or (plist-get opts :behaviour_dir)
                    satan-tools-activity-dir))
-         (cwd (or (plist-get opts :cwd) default-directory))
+         (cwd (let ((c (or (plist-get opts :cwd) default-directory)))
+                ;; A throwaway cwd is not evidence: without this, `cwd.project'
+                ;; emits `project:tmp*' for a run whose cwd is a fixture repo.
+                (unless (satan-memory-evidence--temp-path-p c) c)))
          (seg-limit (or (plist-get opts :seg_limit)
                         satan-memory-evidence-seg-limit))
          (content-limit (or (plist-get opts :content_limit)
@@ -575,10 +610,12 @@ observer passes the window end and reads only `:sensor_status'
                 :browser_segments (cdr browser-probe)
                 :git_commits (cdr git-probe)
                 :content_recent (cdr content-probe)
-                :git_state (satan-trace-stage "evidence.git_state"
-                             (satan-memory-evidence--git-state cwd))
-                :fs_state (satan-trace-stage "evidence.fs_state"
-                            (satan-memory-evidence--fs-state cwd))
+                :git_state (and cwd
+                             (satan-trace-stage "evidence.git_state"
+                               (satan-memory-evidence--git-state cwd)))
+                :fs_state (and cwd
+                            (satan-trace-stage "evidence.fs_state"
+                              (satan-memory-evidence--fs-state cwd)))
                 :window_start_at start
                 :window_end_at end
                 :git_window_start_at git-start
