@@ -1,0 +1,43 @@
+memory_uid = "mem_01a0d7a4d94a75a2bedb44edcc8ba63f"
+memory_key = "mem.fact.doctrine.backlog-new-blocked-by-missing-git-ssh-disabled"
+schema_version = 1
+lifespan = "episodic"
+memory_type = "fact"
+status = "active"
+title = "`doctrine backlog new` is blocked in this shell: its reservation fetch execs a missing git-ssh-disabled store path"
+summary = "Capturing a backlog item fails before writing anything because the reservation machinery fetches a ref through a nix store path that does not exist here — use a shell where doctrine reaches its git helper."
+created = "2026-09-25"
+updated = "2026-09-25"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine backlog new"]
+tags = ["doctrine", "tooling", "gotcha", "nix"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "a5c770a6740ee1a1cad4bbb66a1a75aeca924fb0"
+ref_name = "refs/heads/main"
+checkout_state_id = "9d506520dc25dc260e8ef521d16df501fd75da6738ef567c9a294c0a985397d8"
+base_commit = "84d9cc5b16a11eaca1cc5f5f62491789a79af210"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

@@ -1,0 +1,47 @@
+memory_uid = "mem_01a0d7a4d96273c2b92a479a8ec9efd9"
+memory_key = "mem.fact.satan.broker-test-credential-stub-order-dependence"
+schema_version = 1
+lifespan = "episodic"
+memory_type = "fact"
+status = "active"
+title = "An isolated broker test run reports credential_unavailable: order dependence on an earlier test's stub"
+summary = "satan-broker/run-emits-one-tick-row-outcome-spawned is green in the full suite and red when run alone — an earlier test installs the credential stub it depends on."
+created = "2026-09-25"
+updated = "2026-09-25"
+
+[scope]
+paths = ["satan/test/satan-broker-test.el"]
+globs = []
+commands = []
+tags = ["satan", "testing", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "a5c770a6740ee1a1cad4bbb66a1a75aeca924fb0"
+ref_name = "refs/heads/main"
+checkout_state_id = "eb92dc5ec6a632e7d19d3b603160cc8cde5a2e58a9287e63f830f4c0ea96ce9d"
+base_commit = "84d9cc5b16a11eaca1cc5f5f62491789a79af210"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[relation]]
+label = "related"
+target = "mem.pattern.satan.stub-must-mirror-real-binary-output"
+

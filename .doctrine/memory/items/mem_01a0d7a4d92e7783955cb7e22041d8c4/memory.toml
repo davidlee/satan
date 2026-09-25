@@ -1,0 +1,47 @@
+memory_uid = "mem_01a0d7a4d92e7783955cb7e22041d8c4"
+memory_key = "mem.pattern.satan.stub-must-mirror-real-binary-output"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "pattern"
+status = "active"
+title = "A call-process stub is a claim about a foreign binary: pin at least one test to its real output"
+summary = "When a suite stubs an external binary's stdout, hand-written fixture output can be a shape the binary never emits — leaving the contract untested while the suite stays green."
+created = "2026-09-25"
+updated = "2026-09-25"
+
+[scope]
+paths = ["satan/satan-tools-notes.el", "satan/test/satan-tools-notes-test.el"]
+globs = []
+commands = ["just test"]
+tags = ["satan", "testing", "gotcha", "subprocess"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "a5c770a6740ee1a1cad4bbb66a1a75aeca924fb0"
+ref_name = "refs/heads/main"
+checkout_state_id = "5e48c34c62eb0b89adc14aea6ced7dfbed90ad414934d09f98275c0b7e5e2a4b"
+base_commit = "84d9cc5b16a11eaca1cc5f5f62491789a79af210"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
+[[relation]]
+label = "related"
+target = "mem.fact.satan.green-is-not-green"
+
