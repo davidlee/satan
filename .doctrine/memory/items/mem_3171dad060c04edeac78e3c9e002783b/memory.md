@@ -16,6 +16,11 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
 
 ## Start here
 
+0. **Whole-system map**: `doctrine spec show SPEC-002` — the C4 context spec:
+   every repo/container (broker, harness, attrd, patcher, panopticon, goad,
+   oubliette, Postgres, text roots), transports, composition invariants;
+   diagrams in `.doctrine/spec/tech/002/`. Host facts (paths, units, jail
+   mounts, flake pins) live in `~/flakes/SATAN.md`.
 1. **Architecture overview**: `docs/INDEX.md` (in the satan repo — docs flattened,
    no longer `docs/satan/`) — one-line hooks into every doc chunk. Read
    `governance.md` and `architecture.md` first.
