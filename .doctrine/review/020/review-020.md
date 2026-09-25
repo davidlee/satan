@@ -212,3 +212,79 @@ carrying unrelated in-flight changes — stage only these two paths).
   slice: the ADR-017 §3 authority ledger is untouched, POL-001's seat list is
   unchanged, and no requirement is affected (the slice carries no `[requirements]`
   links).
+
+## Reconciliation Outcome
+
+Reconcile pass, 2026-09-25. Input: the `## Reconciliation Brief` above. RV-020
+carries 9 terminal findings — 2 `fix-now` discharged at audit, 3 `verified`
+routed here, 2 `aligned`, 2 `tolerated`. No finding remained `open`, `disputed`
+or `follow-up`.
+
+No REV was needed, and inspection confirmed it rather than assuming it: the
+brief's governance/spec section is empty because nothing at that altitude is
+falsified. The ADR-017 §3 authority ledger has no commit since SL-017, POL-001's
+seat list is unchanged (the mechanism stayed in the client), and SL-020 carries
+no `[requirements]` links, so no requirement changed status.
+
+### Direct edits applied
+
+- **`design.md` §2** — the `notes_read` result example now reads `:truncated
+  :false`, and the truncation section gains the reason: `satan-jsonl-send`
+  serialises with `:null-object :null`, under which a bare elisp `nil` reaches the
+  model as `{}`; the false value is the codebase's own marker `:false`, the same
+  choice `content_read` makes for `:truncated_results`. (RV-020 F-7)
+- **`design.md` §3** — same correction in the `notes_grep` example (F-7), and the
+  `--max-columns` paragraph no longer claims the reader sees the matching phrase:
+  the cut is taken from the start of the line, so a match beyond column 200 is
+  absent from `:text`. The marker, not the phrase, is what the bound guarantees,
+  and `:path`/`:line` keep every hit followable. (RV-020 F-2)
+- **`design.md` §4** — new subsection `## The fd output contract (post-design,
+  user-directed)`, recording `--absolute-path` plus `--relativize`, the
+  round-trip break they repaired, and the fact that this changed a *pre-existing*
+  tool's behaviour beyond what PHASE-01's EX-7 stated. (RV-020 F-3)
+- **`design.md` §6** — the code-impact row for `satan-tools-notes.el` now names
+  the fd argv change (F-3), and the selector sentence says six mechanism paths
+  plus the two doc mirrors of §5, eight in all (F-4).
+- **`~/satan-corpus/tools/notes_read.md`** — `:truncated` stated as the wire
+  values `true` / `false`. (RV-020 F-7)
+- **`~/satan-corpus/tools/notes_grep.md`** — same for `:truncated`, and the
+  `:text` bullet corrected: a line longer than 200 columns is cut from its start,
+  so a phrase sitting past column 200 is not in the text at all; the marker is the
+  guarantee, and `notes_read` can still open the hit. (RV-020 F-7, F-2)
+
+`slice-020.md` needed no change: its scope, affected surface, non-goals, risks and
+verification basis all still describe what shipped, and the two audit-fixed
+defects fell inside the surface it declares.
+
+### REVs completed
+
+None. The governance/spec section of the brief is empty — see the check above.
+
+### Discharged at audit (recorded for completeness)
+
+- RV-020 F-1 (`fix-now`) — PHASE-01's boundary row re-recorded as
+  `217ecee..ac6de17`, so conformance reads a real delta for both phases.
+- RV-020 F-7's code half (`fix-now`) — `5dca87c` emits `t` / `:false`; this pass
+  wrote the matching prose.
+
+### Withdrawn / tolerated (no writes)
+
+- RV-020 F-5, F-6 (`aligned`) — the 11 undeclared conformance paths are harvest
+  records and slice bookkeeping, and `notes_grep`'s `:truncated` deliberately
+  tracks the 50-match hard cap rather than a caller-set `limit`.
+- RV-020 F-8, F-9 (`tolerated`) — the keeper's uncommitted `:budget-tokens` bumps
+  and the stranded placeholder ISS-031 stay out of this slice's commits; rationale
+  lives in the finding dispositions.
+
+### Escalation
+
+None. No item needed the `reconcile → design` back-edge: every divergence was
+expressible as a prose correction to an existing artefact, and the one genuine
+design departure — F-7's `nil` → `:false` — was put to the keeper, who directed
+the local fix rather than deferral to ISS-033.
+
+Handoff to `/close`. Carried forward for it: the close-out commit must be
+path-scoped (the tree holds the keeper's uncommitted budget bumps, `flake.nix`,
+`.doctrine/doctrine.toml` and an untracked ISS-031 placeholder), and the two
+corpus description edits are committed in `~/satan-corpus`, separately from that
+tree's other in-flight work.

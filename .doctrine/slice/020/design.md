@@ -99,7 +99,7 @@ Returns `(ok PLIST)`:
  :body        "#+title: ...\n..."
  :bytes       1841                           ; bytes returned
  :total-bytes 1841                           ; the file's size
- :truncated   nil)
+ :truncated   :false)                        ; t when the body was cut, else :false
 ```
 
 `:title` and `:tags` come from the denote filename convention and are `nil`
@@ -168,6 +168,13 @@ defcustom, default 32768). Over the cap the tool returns the first N bytes, with
 and `:truncated t`. It does **not** error: a partially returned note is still
 useful, and the flags make the partiality and its size explicit.
 
+`:truncated` is `t` or `:false`, never `nil`: `satan-jsonl-send` serialises with
+`:null-object :null`, under which a bare elisp `nil` reaches the model as `{}` —
+the wrong shape for the flag whose job is to say the body is complete. The false
+value is the codebase's own marker (`:false-object :false`), the same choice
+`content_read` makes for `:truncated_results`. A whole body therefore arrives as
+`"truncated": false`. (RV-020 F-7)
+
 The unit is bytes, not characters, and that is a deliberate narrowing of the way
 QUE-002 phrased it (`:chars` / `:total-chars`). Bounding at the read syscall
 costs nothing and needs no decode; reporting a *character* total would require
@@ -210,7 +217,7 @@ Returns `(ok PLIST)`:
  :query     "artifactless"
  :limit     30
  :count     2
- :truncated nil
+ :truncated :false
  :matches   ((:path "journal/2026-05-20__idea.org" :line 12 :text "the artifactless case")
              (:path "protocol.org"                  :line 3  :text "artifactless-focus")))
 ```
@@ -261,8 +268,14 @@ the preview flag is what makes the bound honest. Without the preview, rg replace
 an over-long match with the literal placeholder `[Omitted long matching line]` —
 verified against rg 15.2.0 with these exact flags — and the matching phrase is
 unavailable. With it, the returned `:text` is the line truncated to the limit,
-ending with rg's own marker `[... omitted end of long line]`, so a reader sees
-both the phrase and the fact that the line continues. The bound is kept because
+ending with rg's own marker `[... omitted end of long line]`. The cut is taken
+from the *start* of the line, so a match lying beyond column 200 is not in
+`:text` at all — on one 400-column line, a query at column 92 is present and one
+at column 402 is not (verified against the host rg; `rg --help`: the part of the
+line exceeding the limit is not shown). The **marker**, not the phrase, is what
+the bound guarantees: `:path` and `:line` still identify the hit, which
+`notes_read` can open, but a caller must not read `:text` as containing its
+query. (RV-020 F-2) The bound is kept because
 one unwrapped paragraph in a file that happens to carry one of the three
 extensions would otherwise return a match of unbounded size against a budgeted
 context.
@@ -362,6 +375,21 @@ unreachable corpus is named once:
         root
       (error "notes root not found: %s" satan-tools-notes-root))))
 ```
+
+## The fd output contract (post-design, user-directed)
+
+`notes_recent`'s argv carries `--absolute-path` beside `--base-directory`, and
+its output passes through `--relativize` before it becomes `:path`. Without
+`--absolute-path`, fd with `--base-directory` prints `./journal/x.org`, whose
+leading dot makes `notes_read` refuse every path `notes_recent` hands it
+(`hidden path not readable`) — the round trip between the two doors was broken,
+and the stubbed suite could not see it because its stub emitted bare names
+(`mem.pattern.satan.stub-must-mirror-real-binary-output`). Live verification at
+PHASE-02 found it; `2d0d64f` fixed it.
+
+That is a real behaviour change to a **pre-existing** tool — `:path` was
+`./`-prefixed before — which is outside anything PHASE-01's EX-7 or this design
+stated until now. (RV-020 F-3)
 
 ## The path resolver
 
@@ -641,7 +669,7 @@ stated reason:
 
 | path | change |
 |---|---|
-| `satan/satan-tools-notes.el` | +2 defvars/defcustoms/defconsts; `--run-fd` → `--run`; `--resolve-program`; `--root`; `--resolve`; `--read-capped`; `satan-tool/notes-read` + `satan-tool/notes-grep`; 2 registrations; 1 handler rename |
+| `satan/satan-tools-notes.el` | +2 defvars/defcustoms/defconsts; `--run-fd` → `--run`; `--resolve-program`; `--root`; `--resolve`; `--read-capped`; `satan-tool/notes-read` + `satan-tool/notes-grep`; 2 registrations; 1 handler rename; the fd argv gains `--absolute-path` and its output passes through `--relativize` (`2d0d64f`, post-design — RV-020 F-3) |
 | `satan/test/satan-tools-notes-test.el` | the 16 cases above; `--with-fd-stub` → `--with-exec-stub` and its recorder `--fd-calls` → `--exec-calls`; 11 rename call sites |
 | `satan/test/satan-broker-test.el` | two description fixtures for the `morning` manifest gate |
 | `satan/satan-mode.el` | `morning`, `motd`, `ruminate` `:tools` |
@@ -654,8 +682,8 @@ stated reason:
 | `~/satan-corpus/prompts/ruminate.txt` | the gather phase names the pair |
 
 Design-target selectors (recorded in the runbook step that follows this draft)
-are the five mechanism paths; the corpus files live in the mind repo and are not
-selectors here.
+are the six mechanism paths plus the two doc mirrors of §5 — eight in all; the
+corpus files live in the mind repo and are not selectors here.
 
 ## Implementation order
 
