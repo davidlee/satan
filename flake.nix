@@ -101,7 +101,11 @@
           (rw-bind "/home/david/satan-corpus" "/workspace/satan-corpus")
         ];
 
-        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions ++ corpusJailOptions;
+        doctrineJailOptions = with jailLib.combinators; [
+          (set-env "DOCTRINE_RESERVATION_FALLBACK" "1")
+        ];
+
+        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions ++ corpusJailOptions ++ doctrineJailOptions;
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
         workspaceDeps = [
           "/home/david/flakes/"
