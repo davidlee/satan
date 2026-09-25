@@ -205,19 +205,23 @@ loosening the resolver.
   is, and `tools/notes_recent.md` does not warn. Options: an `:openable` flag on
   each entry, or a sentence in the description. A design question, not a phase
   fix.
-- **Three findings this shell cannot capture as backlog items** (id allocation is
-  a remote reservation, and this devshell's `GIT_SSH_COMMAND` points at an absent
-  store path):
-  1. **`memory_mark`'s `links` argument is unusable** — the client-side schema
-     demands strings, the broker rejects them with `links entries must be
-     objects`. No trace could be linked to its predecessor; the verifier put the
-     prior trace id in the payload prose instead.
-  2. **Nil tool-result values serialise as `{}`, not `false`** (F-3 above):
-     `(satan-jsonl-prepare '(:truncated nil))` → `{"truncated":{}}`. Shared wire
-     layer, system-wide; emitting `:false` per tool would break every
+- **Three findings raised by the verifier are captured** (created with
+  `DOCTRINE_RESERVATION_FALLBACK=1` — the reservation degrades to local when
+  origin is unreachable, which is the escape hatch this shell needs):
+  1. **ISS-032 — `memory_mark`'s `links` argument is unusable**: the args-schema
+     (`satan/satan-tools-memory.el:282`) declares `:items 'string` while the
+     handler (`:90-97`) and `tools/memory_mark.md:28` both require
+     `{relation, target_trace_id}` objects. No trace could be linked to its
+     predecessor; the verifier put the prior trace id in the payload prose.
+     The schema is the outlier — the validator and the description agree.
+  2. **ISS-033 — nil tool-result values serialise as `{}`, not `false`** (F-3
+     above): `(satan-jsonl-prepare '(:truncated nil))` → `{"truncated":{}}`.
+     Shared wire layer, system-wide; emitting `:false` per tool would break every
      `(null (plist-get p :truncated))` caller, since `:false` is truthy in elisp.
-     Same family as ISS-027 / IMP-015.
-  3. **`notes_recent` lists unopenable files** (the residual above).
+     Third instance of the family (ISS-027, IMP-015).
+  3. **ISS-034 — `notes_recent` lists unopenable files** (the residual above).
+  All three carry `references(originates_from) → SL-020`, so a future reader can
+  see which slice produced them.
 - **The verifier's daemon restart loaded the user's uncommitted
   `satan/satan-mode.el` budget raises** (morning 340000, self-edit-* 400000)
   alongside this work. They are live in the running daemon and still uncommitted

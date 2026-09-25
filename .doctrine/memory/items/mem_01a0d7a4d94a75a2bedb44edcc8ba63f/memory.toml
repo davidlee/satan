@@ -4,8 +4,8 @@ schema_version = 1
 lifespan = "episodic"
 memory_type = "fact"
 status = "active"
-title = "`doctrine backlog new` is blocked in this shell: its reservation fetch execs a missing git-ssh-disabled store path"
-summary = "Capturing a backlog item fails before writing anything because the reservation machinery fetches a ref through a nix store path that does not exist here — use a shell where doctrine reaches its git helper."
+title = "Backlog id reservation degrades to local under DOCTRINE_RESERVATION_FALLBACK=1 when origin is unreachable"
+summary = "When origin is unreachable (this devshell's GIT_SSH_COMMAND points at an absent store path), `doctrine backlog new` degrades the id reservation to local under DOCTRINE_RESERVATION_FALLBACK=1, warns loudly, and creates the item."
 created = "2026-09-25"
 updated = "2026-09-25"
 

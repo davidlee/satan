@@ -47,3 +47,25 @@ environment override: id allocation is a remote reservation (`refs/doctrine/
 reservation/*`), and `doctrine reservation` exposes only `list` — there is no
 local fallback. **Create backlog items from a shell with network and
 credentials**, or the finding has to live somewhere else until then.
+
+## Correction (same day): there IS an override
+
+The section above concludes "cannot be made to work by any environment
+override". That is **wrong** — falsified within the hour by the user:
+
+```
+DOCTRINE_RESERVATION_FALLBACK=1 doctrine backlog new issue "…"
+doctrine: reservation reach degraded to local (remote origin unreachable: git
+  command failed: fetch origin +refs/doctrine/reservation/*:…
+  cannot exec '/nix/store/…-git-ssh-disabled': No such file or directory)
+Created ISS-032: …/.doctrine/backlog/issue/032
+```
+
+The verb warns loudly, degrades the reservation to **local**, and creates the
+item — ids allocated locally while offline. So a blocked reservation is a
+*degraded* path, not a dead end; the operator names the override, the CLI does
+the rest.
+
+**Do:** report the blockage with this flag rather than declaring capture
+impossible. **Don't:** conclude from a single failed invocation that an override
+does not exist — ask, or read the verb's own output for the escape hatch.

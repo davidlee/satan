@@ -1,0 +1,31 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 34
+slug = "notes-recent-lists-files-notes-read-cannot-open-with-no-openability-tell"
+title = "notes_recent lists files notes_read cannot open, with no openability tell"
+kind = "issue"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-09-25"
+updated = "2026-09-25"
+tags = ["notes", "satan", "tooling"]
+
+# outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows (SL-048 "the cut") — author them with
+# `doctrine link ITEM-NNN <label> <target>`; `doctrine inspect ITEM-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "SL-020"
+
+[[relation]]
+label = "related"
+target = "DEC-032"
