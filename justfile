@@ -14,6 +14,8 @@ test_dbs := "satan_memory_test trace_test patch_live_test"
 
 check: lint test
 
+gate: check
+
 lint:
     #!/usr/bin/env bash
     set -euo pipefail
