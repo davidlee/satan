@@ -31,6 +31,13 @@
 
 ;;; Code:
 
+;; `just check' must never test stale bytecode.  The package ships `.el' only
+;; and `.elc' is gitignored, but a host Emacs byte-compiling the live tree
+;; leaves `.elc' behind, and `require' prefers it over a NEWER `.el' while
+;; `load-prefer-newer' is nil — so an edited source file would silently be
+;; ignored.  Set it here, before any `require'.
+(setq load-prefer-newer t)
+
 (require 'ert)
 (require 'satan-announce)
 (require 'satan-credential)
