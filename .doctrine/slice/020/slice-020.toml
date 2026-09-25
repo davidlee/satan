@@ -1,7 +1,7 @@
 id = 20
 slug = "notes-read-grep"
 title = "notes_read and notes_grep: read the user's notes corpus from inside the harness"
-status = "plan"
+status = "ready"
 created = "2026-09-25"
 updated = "2026-09-25"
 tags = []

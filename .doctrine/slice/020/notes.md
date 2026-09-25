@@ -30,7 +30,76 @@ was the wrong way round.
 
 ## Harvest
 
-_(empty — harvest at close)_
+fresh-as-of: 2026-09-25 · PHASE-01 completed · mechanism head 124c268 ·
+mind head 1d122dc (corpus: tools/{notes_read,notes_grep}.md new;
+notes_recent.md, org_read_context.md corrected).
+
+### Produced
+
+- **`notes_read` / `notes_grep`** in `satan/satan-tools-notes.el` (commit
+  `124c268`), with 27 tests in `satan/test/satan-tools-notes-test.el`. The
+  `notes_recent` handler is now `satan-tool/notes-recent`; its registered name is
+  unchanged.
+- **Durable decisions** (all `shapes: [SL-020]`): **DEC-029** path confinement,
+  **DEC-030** probe failure is an error, **DEC-031** interactive-surface
+  exposure accepted, **DEC-032** `.org`/`.md`/`.txt` + no hidden component
+  (user-directed), **DEC-033** grep searches what read opens (user-directed;
+  amended in place with a dated correction — the guarantee is one-way, rg's
+  ignore rules narrow the search set), **CON-001** every registered tool is
+  classified in the harness tier ladder.
+- **QUE-002** — whether `notes_read` should paginate when a note exceeds the cap.
+  Open by the user's own instruction; `:total-bytes` at least shows how much is
+  not being seen.
+- **RV-019** — the design review, concluded: 17 findings, all `fix-now`, all
+  verified. Five `major`, all of one species: a design claim the code or the
+  toolchain contradicts.
+
+### Learned (things a future agent would otherwise rediscover)
+
+- **`file-in-directory-p` counts a directory as inside itself**, so containment
+  does *not* refuse the root. The root is refused as a non-file. The design's
+  first draft asserted the opposite and RV-019 F-6 executed the code to disprove
+  it.
+- **rg replaces an over-long match line with the literal `[Omitted long matching
+  line]`** — the matching phrase is unavailable, not "truncated with an ellipsis".
+  `--max-columns-preview` is what keeps the phrase readable (verified against rg
+  15.2.0). Encoded in the argv, the contract and the description.
+- **Emacs aligns `insert-file-contents` to a character boundary** when given a
+  byte END: reading N bytes of a multibyte file yields ≤ N bytes of whole
+  characters, so a byte cap cannot split a character.
+- **The notes test suite must not load stale bytecode.** The devshell leaves
+  `.elc` files beside the sources and `require` prefers them, so a source edit is
+  invisible until `satan/satan-tools-notes.elc` is removed (commit `144247a`
+  addressed the same trap in the runner). Three "failures" in this phase were
+  the old bytecode answering.
+- **`~/satan-corpus` is path-shadowed inside this dev shell.** The corpus is
+  reachable only at `/workspace/satan-corpus`; `(expand-file-name
+  "~/satan-corpus")` resolves to `/home/david/satan-corpus`, which does not exist
+  by path even though `/proc/self/mountinfo` names it as the bind source. So an
+  emacs-side check of `satan-tools-descriptions-dir` fails *here* for
+  environmental reasons — it must be run where the broker actually runs. (Same
+  class as the r3 IT-019 shadowed-bind finding, and as the corpus hippocampus
+  entry written today: 20260925T164847.)
+- **`just test` needs the test databases**; without them one test
+  (`satan-db/test-db-available-p-probes-test-host`) fails. Every run of the suite
+  in this session was therefore "1 unexpected, 177 skipped", all notes tests
+  green.
+- **IT-011's `registered − ## Tools` diff is non-empty before this slice** (15
+  names). PHASE-02 must not add to it — that is the check, not an empty diff.
+
+### Open / hand-forward
+
+- **PHASE-02** is not started: mode allowlists (`morning`, `motd`, `ruminate`),
+  the harness tier ladder (`runloop.py` + its test), four doc mirrors
+  (`docs/governance.md` `## Tools` + `## File map`; `docs/resilience-design.md`
+  §2.2 + §3 inventory), the broker test's description fixtures, and
+  `prompts/ruminate.txt`. Note the fixtures: the `morning` manifest build is
+  gated by them, so they must carry the new names or the suite goes red.
+- **VH-1 (user acceptance)** is PHASE-02's only human criterion: that the tools
+  are reachable in the three modes and usable end to end.
+- The corpus's shadowed-bind issue has its own proposal and hippocampus entries
+  (20260925T164831, 20260925T164847) — not this slice's business, but it is why
+  the description-coverage check could not be run here.
 
 ## Design surface triage (exploring, 2026-09-25)
 
