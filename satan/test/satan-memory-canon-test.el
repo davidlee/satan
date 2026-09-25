@@ -164,8 +164,9 @@
     (should (eq 'derived (plist-get (car emits) :origin)))))
 
 (ert-deftest satan-memory-canon/rule-vcs-recent-commit ()
-  "Each repo in :git_commits emits project:<slug>, deduped, origin observed.
-Slug resolves from :slug, else :remote tail, else :repo basename."
+  "Each repo in :git_commits emits project:<slug>, deduped, origin observed;
+one `artifact:commit' is emitted for the window.  Slug resolves from
+:slug, else :remote tail, else :repo basename."
   (let* ((emits (satan-memory-canon-test--rule
                  'vcs.recent_commit
                  (list :git_commits
@@ -175,8 +176,24 @@ Slug resolves from :slug, else :remote tail, else :repo basename."
                  nil nil))
          (handles (mapcar (lambda (e) (plist-get e :handle)) emits)))
     ;; "satan" deduped to one despite two rows; bough derived from remote.
-    (should (equal '("project:satan" "project:bough") handles))
-    (should (eq 'observed (plist-get (car emits) :origin)))))
+    (should (equal '("project:satan" "project:bough" "artifact:commit") handles))
+    (should (eq 'observed (plist-get (car emits) :origin)))
+    (let ((artifact (cl-find "artifact:commit" emits
+                             :key (lambda (e) (plist-get e :handle))
+                             :test #'equal)))
+      (should artifact)
+      (should (eq 'observed (plist-get artifact :origin)))
+      (should (equal "/git_commits" (plist-get artifact :evidence-pointer))))))
+
+(ert-deftest satan-memory-canon/rule-vcs-recent-commit-artifact-without-slug ()
+  "A commit window emits `artifact:commit' even when no row yields a
+resolvable project slug — the commit is the fact, the slug is a bonus."
+  (let* ((emits (satan-memory-canon-test--rule
+                 'vcs.recent_commit
+                 (list :git_commits (list (list :slug "" :repo nil :remote nil)))
+                 nil nil))
+         (handles (mapcar (lambda (e) (plist-get e :handle)) emits)))
+    (should (equal '("artifact:commit") handles))))
 
 (ert-deftest satan-memory-canon/rule-vcs-recent-commit-empty ()
   (should (null (satan-memory-canon-test--rule

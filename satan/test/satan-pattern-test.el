@@ -16,6 +16,7 @@
 (require 'satan-memory-migrate)
 (require 'satan-memory-grammar)
 (require 'satan-pattern)
+(require 'satan-memory-canon)
 (require 'satan-intervention)
 (require 'satan-audit)
 
@@ -624,6 +625,29 @@ silently drops every form after the first, so a file written as N separate
     ;; every entry must validate (id + label + grammatical cue_handles)
     (dolist (e defs)
       (should (satan-pattern--validate-definition e)))))
+
+(ert-deftest satan-pattern/editor-commit-is-matchable ()
+  "IT-010: every `editor-commit' cue_handle is emitted by the live canon
+for a realistic window — editor focused, a commit landed, then a switch
+to the browser — so the pattern can match a real percept.  Before the
+`artifact:commit' producer landed this pattern was structurally inert
+(the containment join could never be satisfied)."
+  (let* ((defs (satan-pattern--read-file satan-pattern-file))
+         (pattern (cl-find "editor-commit" defs
+                           :key (lambda (p) (plist-get p :id))
+                           :test #'equal))
+         (evidence (list :current_window (list :app_id "emacs")
+                         :git_commits (list (list :slug "satan"
+                                                  :repo "/home/david/dev/satan"))
+                         :focus_segments (list (list :app_id "emacs")
+                                               (list :app_id "firefox"))))
+         (handles (plist-get (satan-memory-canon-canonicalize evidence nil nil)
+                             :handles)))
+    (should pattern)
+    (should (= 3 (length (plist-get pattern :cue_handles))))
+    (should (member "artifact:commit" (plist-get pattern :cue_handles)))
+    (dolist (cue (plist-get pattern :cue_handles))
+      (should (member cue handles)))))
 
 (provide 'satan-pattern-test)
 ;;; satan-pattern-test.el ends here

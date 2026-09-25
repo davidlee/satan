@@ -413,9 +413,14 @@ pwd-independent, so emissions are `observed'; `--merge' dedupes against
 `cwd.project', keeping the higher-priority origin.  Slug derives from a
 row's `:slug', else its `:remote' tail (`.git' stripped), else its
 `:repo' basename.  Open-world `project' namespace — no grammar bump.
-Deduped within the rule so a busy repo yields one handle."
-  (let ((idx -1) seen acc)
-    (dolist (row (plist-get ev :git_commits) (nreverse acc))
+Deduped within the rule so a busy repo yields one handle.
+
+When the window holds at least one commit the rule also emits a single
+`artifact:commit' handle, so a window that holds work but no commit is
+a scorable absence rather than an inferred mood (IT-002/IT-010)."
+  (let* ((rows (plist-get ev :git_commits))
+         (idx -1) seen acc)
+    (dolist (row rows)
       (setq idx (1+ idx))
       (let* ((remote (plist-get row :remote))
              (repo (plist-get row :repo))
@@ -433,7 +438,13 @@ Deduped within the rule so a busy repo yields one handle."
           (push (satan-memory-canon--emit
                  (concat "project:" slug) 'observed
                  (format "/git_commits/%d/slug" idx))
-                acc))))))
+                acc))))
+    (let ((result (nreverse acc)))
+      (if rows
+          (append result
+                  (list (satan-memory-canon--emit
+                         "artifact:commit" 'observed "/git_commits")))
+        result))))
 
 (satan-memory-canon-defrule cwd.file_kind (ev _hints _ctx)
   "Map the first recently-edited file's extension to a closed-world
