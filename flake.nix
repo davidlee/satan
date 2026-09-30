@@ -39,7 +39,7 @@
         ...
       }: let
         inherit (pkgs) lib stdenv;
-        isLinux = stdenv.isLinux;
+        isLinux = stdenv.hostPlatform.isLinux;
         zigPackage = zig-overlay.packages.${system}."default";
 
         jailLib =
