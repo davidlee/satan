@@ -44,3 +44,12 @@ This is the keystone: IDE-002..005 all consume it.
 IMP-011 wants page-recall via memory-store traces and is blocked by the
 memory-substrate carve (IMPR-007). A digest index queried directly reaches
 recall without entrenching the substrate.
+
+## Closed 2026-10-01 — moved to panopticon
+
+Home settled with the user: panopticon, as an opt-in `panopticon-digest`
+batch binary that is panopticon's sole network egress (remote providers via
+OpenRouter; Voyage AI the embeddings candidate). Continued as
+`github.com:davidlee/panopticon.IDE-002`, with the egress decision at
+`github.com:davidlee/panopticon.DEC-002`. IDE-002..005 here remain the SATAN-side
+consumers of that digest.

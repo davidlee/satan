@@ -5,10 +5,10 @@ id = 1
 slug = "page-digest-layer-per-url-summary-key-claims-and-embedding-over-panopticon-content"
 title = "Page digest layer: per-URL summary, key claims and embedding over panopticon content"
 kind = "idea"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "closed"
+resolution = "promoted"
 created = "2026-09-29"
-updated = "2026-09-29"
+updated = "2026-10-01"
 tags = ["browsing", "content", "digest", "satan"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role
