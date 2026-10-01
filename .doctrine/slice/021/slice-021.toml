@@ -1,7 +1,7 @@
 id = 21
 slug = "current-window-replay"
 title = "Replay current_window from the desktop event series"
-status = "design"
+status = "ready"
 created = "2026-09-25"
 updated = "2026-09-25"
 tags = []
