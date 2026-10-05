@@ -1,0 +1,48 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = 18
+slug = "durable-satan-authority-broker"
+title = "Durable SATAN and brokered authority: auth-gateway, git-broker"
+status = "open"
+created = "2026-10-05"
+updated = "2026-10-05"
+tags = ["architecture", "authority", "auth-gateway", "durable", "git-broker", "trust-boundary"]
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+
+[[relation]]
+label = "related"
+target = "ADR-017"
+
+[[relation]]
+label = "related"
+target = "ADR-018"
+
+[[relation]]
+label = "related"
+target = "RFC-017"
+
+[[relation]]
+label = "related"
+target = "SPEC-001"
+
+[[relation]]
+label = "related"
+target = "SPEC-002"
+
+[[relation]]
+label = "related"
+target = "POL-001"
+
+[[relation]]
+label = "related"
+target = "ISS-028"
+
+[[relation]]
+label = "related"
+target = "ISS-029"
+
