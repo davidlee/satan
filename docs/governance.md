@@ -383,7 +383,7 @@ justification):
 | `satan-tools-atsatan.el` | `notes_at_satan_scan` (read; `rg --json` over `~/notes/` excluding `satan/`, enriched with headline + context) + `notes_at_satan_done` (claim by replacing `@satan` with `@satan-was-here` + quoted run-id block). Registers `tick-agent` via `satan-tick-register`. |
 | `satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`), `notes_read` (one note's body — notes-root-relative path, `.org`/`.md`/`.txt` only, byte-capped with `:bytes`/`:total-bytes`/`:truncated`), `notes_grep` (literal `rg` search over exactly the files `notes_read` can open; relative-path hits). |
 | `satan-tools-sway.el` | `sway_border_set` / `sway_border_reset` (visual ephemeral effect). |
-| `satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.emacs.d`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
+| `satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.config/emacs`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
 | `satan-patch.el` | Patch-agent aggregator + `satan-patch-*` interactive surface. |
 | `satan-patch-store.el` | `satan_patch.patch_jobs` PG store; INSERT fires `pg_notify` for queued rows. |
 | `satan-patch-worktree.el` | Worktree allocator + cleanup: `git worktree add <runs-dir>/<job-id>` against current HEAD, branch `satan/patch/<job-id>`. |

@@ -20,15 +20,15 @@
 
 (defcustom satan-tools-vcs-search-roots
   (list (expand-file-name "~/dev/")
-        (expand-file-name "~/.emacs.d/")
+        (expand-file-name "~/.config/emacs/")
         (expand-file-name "~/flakes/"))
   "Roots a bare repo slug is resolved against, in order.
 First existing `ROOT/SLUG' directory wins.  Absolute-path `repo'
 arguments bypass this list entirely.
 
 User-tunable: this is the user's repo-search list, not package
-self-location.  `~/.emacs.d/' stays valid post-extraction and is
-intentionally retained."
+self-location.  The Emacs config dir (`~/.config/emacs/') stays
+valid post-extraction and is intentionally retained."
   :type '(repeat directory) :group 'satan)
 
 (defcustom satan-tools-vcs-git-timeout-seconds 3
