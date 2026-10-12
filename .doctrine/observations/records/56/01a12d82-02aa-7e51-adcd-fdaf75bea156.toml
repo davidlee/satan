@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a12d82-02aa-7e51-adcd-fdaf75bea156"
+recorded_at = "2026-10-12T00:27:37.514156747Z"
+kind = "friction"
+summary = "slice verify-vt cannot attribute VTs for slices committed directly on main"
+detail = "SL-021 PHASE-02: after commit 45297dd added satan-desktop-test.el and -fixture.el on main, verify-vt still reports UNATTRIBUTABLE 'not modified by this slice' for all PHASE-02 VTs (only PHASE-01 VT-1/2 PASS). Attribution seems to miss new files or main-branch commits in capsule mode."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a12d88-63d3-7953-b26b-6abb9c0e9adf"
+recorded_at = "2026-10-12T00:34:35.603878465Z"
+kind = "friction"
+summary = "capsule-phase-planner hit 40-turn limit on SL-021 PHASE-03 without writing a sheet"
+detail = "First planner spent all 40 turns researching (cross-repo doctor + six suites) and wrote nothing; retry with pre-established facts and an explicit 'write early' turn budget succeeded. Also: doctrine memory retrieve takes no positional query (needs --query/--path-scope)."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

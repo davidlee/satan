@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a12d78-ba09-7222-9d14-394ab31872c9"
+recorded_at = "2026-10-12T00:17:29.097266001Z"
+kind = "friction"
+summary = "test DB container exited; just check needs SATAN_TEST_ALLOW_NO_DB=1"
+detail = "SL-021 capsule run: supabase_db_satan container exited, just db-start fails ('already running' but db container exited). Verified with 167 DB suites skipped. PHASE-01 touched no DB suites; later phases may."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
