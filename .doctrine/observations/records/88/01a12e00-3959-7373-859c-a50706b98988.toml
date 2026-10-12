@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a12e00-3959-7373-859c-a50706b98988"
+recorded_at = "2026-10-12T02:45:29.049203009Z"
+kind = "friction"
+summary = "PHASE-05 EX-2 prescribes 'just commit' in ~/satan-corpus, whose recipe is git reset + git add . + date message"
+detail = "Corpus had unrelated uncommitted SATAN state (inbox.org, motd.txt, goad data, hippocampus, proposals). Following EX-2 literally would sweep them into a date-stamped commit. Orchestrator committed tools/activity_read.md alone with a 'tools:' message, matching recent corpus history. Plans that target the corpus should say 'commit the file' rather than name just commit."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
