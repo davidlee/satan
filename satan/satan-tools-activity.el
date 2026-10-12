@@ -16,8 +16,13 @@
 ;;                         title_start/title_end (panopticon strips only
 ;;                         query/fragment at capture, never to origin),
 ;;                         start/end timestamps, duration_s.
-;;   - "current"        -> currently-focused window snapshot from sway.
-;;                         {app_id, workspace, output, title, pid}.
+;;   - "current"        -> the focused window at now, replayed from
+;;                         panopticon's raw desktop log
+;;                         (raw/desktop-YYYY-MM-DD.jsonl).  Keys:
+;;                         :status (ok|disconnected|missing|malformed)
+;;                         and :window (the state keys plus :since; nil
+;;                         unless ok; an ok window without app_id means
+;;                         nothing is focused).
 ;;                         NOTE: title is passed through verbatim and
 ;;                         can be sensitive (browser tab page-title,
 ;;                         editor file path, etc.) — see SATAN.md open
@@ -31,6 +36,7 @@
 (require 'subr-x)
 (require 'satan-tools)
 (require 'satan-jsonl)
+(require 'satan-desktop)
 
 (defcustom satan-tools-activity-dir
   (expand-file-name "~/.local/state/behaviour/")
@@ -69,7 +75,8 @@
    (t raw)))
 
 (defun satan-tool/activity-read (args _ctx)
-  "Implements activity_read.  ARGS: (:scope today|recent_focus :limit INT?).
+  "Implements activity_read.
+ARGS: (:scope today|recent_focus|recent_browser|current :limit INT?).
 Returns (ok PLIST) | (error STRING)."
   (let* ((scope (plist-get args :scope))
          (today (satan-tools-activity--today))
@@ -108,11 +115,10 @@ Returns (ok PLIST) | (error STRING)."
                          :path path
                          :segments (or tail '())))))
       ("current"
-       (let* ((path (expand-file-name "current/desktop.json" root))
-              (data (satan-tools-activity--read-json path)))
+       (let ((probe (satan-desktop-at root (format-time-string "%FT%T%:z"))))
          (cons 'ok (list :scope "current"
-                         :path path
-                         :window data))))
+                         :status (car probe)
+                         :window (cdr probe)))))
       (_ (cons 'error (format "unknown scope: %s" scope))))))
 
 (satan-tool-register

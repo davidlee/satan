@@ -9,6 +9,8 @@
 (require 'cl-lib)
 (require 'satan-tools)
 (require 'satan-tools-activity)
+(require 'satan-desktop-fixture)
+(require 'seq)
 
 (defmacro satan-tools-activity-test--with-root (&rest body)
   "Bind `satan-tools-activity-dir' to a temp dir for BODY."
@@ -49,11 +51,17 @@
       (dolist (l lines) (insert l) (insert "\n")))
     path))
 
-(defun satan-tools-activity-test--write-current-sway (dir payload)
-  (make-directory (expand-file-name "current" dir) t)
-  (let ((path (expand-file-name "current/desktop.json" dir)))
-    (with-temp-file path (insert payload))
-    path))
+(defun satan-tools-activity-test--ago (seconds)
+  "A +10:00 timestamp SECONDS before the wall-clock now."
+  (format-time-string "%FT%T+10:00" (time-subtract nil seconds)
+                      satan-desktop-fixture-zone))
+
+(defun satan-tools-activity-test--write-desktop (events)
+  "Write EVENTS to the raw day files their `:ts' dates name."
+  (pcase-dolist (`(,day . ,group)
+                 (seq-group-by (lambda (e) (substring (plist-get e :ts) 0 10))
+                               events))
+    (satan-desktop-fixture-write satan-tools-activity-dir day group)))
 
 (ert-deftest satan-activity/today-returns-parsed-histogram ()
   "Scope `today' reads histograms/daily-<today>.json and returns a plist."
@@ -149,27 +157,50 @@
       (should (eq (car res) 'ok))
       (should (equal (plist-get (cdr res) :segments) '())))))
 
-(ert-deftest satan-activity/current-returns-window-snapshot ()
-  "Scope `current' returns parsed current/desktop.json verbatim (title included)."
-  (satan-tools-activity-test--with-root
-    (satan-tools-activity-test--write-current-sway
-     satan-tools-activity-dir
-     "{\"app_id\":\"emacs\",\"title\":\"~/notes/foo.org\",\"workspace\":\"09\",\"output\":\"DP-3\",\"pid\":4242}")
-    (let* ((res (satan-tool/activity-read '(:scope "current") nil))
-           (p (cdr res))
-           (w (plist-get p :window)))
-      (should (eq (car res) 'ok))
-      (should (equal (plist-get p :scope) "current"))
-      (should (equal (plist-get w :app_id) "emacs"))
-      (should (equal (plist-get w :workspace) "09"))
-      (should (equal (plist-get w :title) "~/notes/foo.org")))))
+(ert-deftest satan-activity/current-returns-replayed-window ()
+  "Scope `current' replays the focused window from the raw desktop log."
+  (satan-desktop-fixture-with-root satan-tools-activity-dir
+    (let ((ts (satan-tools-activity-test--ago 60)))
+      (satan-tools-activity-test--write-desktop
+       (list (satan-desktop-fixture-event
+              ts "snapshot" :app_id "emacs" :title "~/notes/foo.org"
+              :workspace "09" :output "DP-3" :pid 4242)))
+      (let* ((res (satan-tool/activity-read '(:scope "current") nil))
+             (p (cdr res))
+             (w (plist-get p :window)))
+        (should (eq (car res) 'ok))
+        (should (equal (plist-get p :scope) "current"))
+        (should (equal (plist-get p :status) "ok"))
+        (should (equal (plist-get w :app_id) "emacs"))
+        (should (equal (plist-get w :workspace) "09"))
+        (should (equal (plist-get w :title) "~/notes/foo.org"))
+        (should (equal (plist-get w :since) ts))
+        (should-not (plist-member p :path))))))
 
-(ert-deftest satan-activity/current-missing-file-nil-window ()
-  "Missing current/desktop.json yields ok with :window nil."
-  (satan-tools-activity-test--with-root
-    (let ((res (satan-tool/activity-read '(:scope "current") nil)))
+(ert-deftest satan-activity/current-disconnected-after-disconnect ()
+  "A compositor disconnect after the last snapshot leaves no window."
+  (satan-desktop-fixture-with-root satan-tools-activity-dir
+    (satan-tools-activity-test--write-desktop
+     (list (satan-desktop-fixture-event
+            (satan-tools-activity-test--ago 120) "snapshot"
+            :app_id "emacs" :workspace "09")
+           (satan-desktop-fixture-event
+            (satan-tools-activity-test--ago 60) "compositor_disconnected")))
+    (let* ((res (satan-tool/activity-read '(:scope "current") nil))
+           (p (cdr res)))
       (should (eq (car res) 'ok))
-      (should (null (plist-get (cdr res) :window))))))
+      (should (equal (plist-get p :status) "disconnected"))
+      (should (null (plist-get p :window))))))
+
+(ert-deftest satan-activity/current-missing-without-files ()
+  "No raw desktop files yields ok with status missing and no window."
+  (satan-desktop-fixture-with-root satan-tools-activity-dir
+    (let* ((res (satan-tool/activity-read '(:scope "current") nil))
+           (p (cdr res)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get p :status) "missing"))
+      (should (null (plist-get p :window)))
+      (should-not (plist-member p :path)))))
 
 (ert-deftest satan-activity/unknown-scope-errors ()
   "Unknown :scope is a structured error."
