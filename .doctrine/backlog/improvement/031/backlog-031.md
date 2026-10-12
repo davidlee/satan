@@ -11,3 +11,6 @@ Violates SPEC-002 NF-006 (REQ-018).
 - `~/.config/emacs/lisp/dl-sleipnir-doctor.el` checks `satan-broker--failure-streak-count`, which no longer exists.
 - `satan-tools-activity.el:36` hard-codes `~/.local/state/behaviour/` (other readers honour `XDG_STATE_HOME`).
 - Jails hard-code `/run/user/1000/...` and `$HOME/satan/hippocampus` (`~/dev/satan/flake.nix:72-76,143`) instead of deriving them from the roots.
+- `satan-sensor-alerts.el` focus/browser alert rows carry host-literal hints
+  (`head ~/.local/state/behaviour/segments/...-$(date +%F).jsonl`). SL-021
+  DEC-037 removed host literals from the `:current_window` rows only (RV-022).

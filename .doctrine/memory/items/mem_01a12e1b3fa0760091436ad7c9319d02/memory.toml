@@ -1,0 +1,46 @@
+memory_uid = "mem_01a12e1b3fa0760091436ad7c9319d02"
+memory_key = "mem.fact.satan.corpus-just-commit-sweeps"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Corpus 'just commit' sweeps all dirty state into a dated commit"
+summary = "~/satan-corpus 'just commit' stages everything; commit an agent edit by path instead"
+created = "2026-10-12"
+updated = "2026-10-12"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "corpus"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "a62d2c2d01cd9692ba182a240a15c43ccb0d8bb7"
+ref_name = "refs/heads/main"
+checkout_state_id = "192ba7517a1f23e76cfb35d7d9b8a8da4b1070f9148d68b044f7588938bdaadf"
+base_commit = "3b72ed0f70a049ebb43a24e4a8dde97e8dc8b45b"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-022"
+

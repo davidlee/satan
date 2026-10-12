@@ -1,0 +1,272 @@
+id    = 22
+slug  = "reconciliation-review-of-sl-021"
+title = "reconciliation review of SL-021"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-021 against design.md (DEC-034..DEC-040), plan.toml PHASE-01..05 criteria and ADR-001's class-A invariant. Examined: commits 87a9757, 45297dd, 0a35c36, b0471ff; satan-corpus c07ead9; ~/.config/emacs dl-sleipnir-doctor.el. Evidence: slice conformance 17/17 clean; just check with test DB 1356/1362 (6 env-gated skips); zone-override runs on pre-slice and HEAD trees; reader edge probes; closure grep over satan/ and ~/.config/emacs; live Emacs reader, activity_read and doctor probes. 10 findings, none blocking, all verified; brief written.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-021"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Expected repo docs to describe the replayed current window; observed docs/ still describe the snapshot/mtime model"
+detail = """
+docs/ is model-facing via docs_read. Stale prose:
+- docs/governance.md:528 tool table "live focused-window snapshot"; :814 open thread 10 "sway's focused-window snapshot verbatim".
+- docs/data-collection.md:150, 458, 530, 660 — `current/sway.json`, "sway focus snapshot".
+- docs/memory/design.md:277, 425 — `current/sway.json`.
+- docs/perceptual-design.md:454, 492-494, 573 — `stale-28m` on current window, `panopticon_current_stale`, 5-minute threshold OQ.
+notes.md's reconcile list names perceptual-design §S6, memory/design and governance's panopticon-consumption paragraph, but not data-collection.md, governance's tool-table row or open thread 10."""
+disposition = "fix-now"
+response = "Reconcile edits the stale passages in docs/governance.md (528, 814), docs/data-collection.md (150, 458, 530, 660), docs/memory/design.md (277, 425) and docs/perceptual-design.md (454, 492-494, 573) to the replayed-window model, extending notes.md's reconcile list. Listed in the RV-022 Reconciliation Brief."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Reconcile edits the stale passages in docs/governance.md (528, 814), docs/data-collection.md (150, 458, 530, 660), docs/memory/design.md (277, 425) and docs/perceptual-design.md (454, 492-494, 573) to the replayed-window model, extending notes.md's reconcile list. Listed in the RV-022 Reconciliation Brief."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected design.md to describe what shipped; observed three passages now false"
+detail = """
+(a) §3 says the removed evidence symbols had "no remaining caller" — `~/.config/emacs/lisp/dl-sleipnir-doctor.el` was a caller and was edited under EX-6 (user ruling 2026-09-26).
+(b) §5 says the VT-7 pin test uses real lines copied from a live raw file. satan/test/satan-desktop-test.el:466-505: umbriel lines are shape-faithful but sanitised; niri lines are DERIVED (live niri logs had rotated out).
+(e) §5 code impact lists two fixture functions; satan-desktop-fixture.el also provides -focus, -append, -with-root, -zone (additive)."""
+disposition = "design-wrong"
+response = "Design prose drifted from what shipped: §3 must name the sleipnir doctor as the one external caller (corrected under EX-6, incl. the fboundp guard, F-10); §5 must say the VT-7 pin lines are sanitised (umbriel) / derived (niri, logs rotated) rather than copied; §5 code impact must list the full fixture surface. Per-slice direct edit at reconcile; Reconciliation Brief."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Design prose drifted from what shipped: §3 must name the sleipnir doctor as the one external caller (corrected under EX-6, incl. the fboundp guard, F-10); §5 must say the VT-7 pin lines are sanitised (umbriel) / derived (niri, logs rotated) rather than copied; §5 code impact must list the full fixture surface. Per-slice direct edit at reconcile; Reconciliation Brief."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected plan criteria to be executable as written; observed EX-6/VA-1 and EX-2 could not be followed literally"
+detail = """
+- PHASE-03 EX-6 / VA-1 name `~/.emacs.d`, which no longer exists (config moved to `~/.config/emacs`); the edit and the VA-1 closure grep ran against `~/.config/emacs/lisp`.
+- PHASE-05 EX-2 says commit with `just commit`; the corpus recipe runs `git reset; git add .` and would have swept unrelated dirty SATAN state (inbox, motd, goad, hippocampus, proposals) into a date-stamped commit. c07ead9 committed the one file instead.
+Plan criteria are immutable-append, so neither can be edited in place."""
+disposition = "tolerated"
+response = "Plan criteria are immutable-append, so EX-6/VA-1/EX-2 cannot be rewritten. Both deviations served the criteria's intent: ~/.emacs.d no longer exists and ~/.config/emacs is the same config; `just commit` would have swept unrelated SATAN state into a slice commit, so a single-file commit is the correct reading. Recorded in notes.md at reconcile; the corpus-commit friction is observation 01a12e00."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "Plan criteria are immutable-append, so EX-6/VA-1/EX-2 cannot be rewritten. Both deviations served the criteria's intent: ~/.emacs.d no longer exists and ~/.config/emacs is the same config; `just commit` would have swept unrelated SATAN state into a slice commit, so a single-file commit is the correct reading. Recorded in notes.md at reconcile; the corpus-commit friction is observation 01a12e00."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected the corpus to say `since` is state age, not focus duration (design §2); observed it implied focus duration"
+detail = """~/satan-corpus/tools/activity_read.md:26-27 (c07ead9): "`since` is when that state began, so it says how long they have been on it". Design §2 (lines 157-158): `:since` is when the full state, title included, was last set — "It is *not* 'focused since'". A title change moves `since`, so the model would misread it as focus duration."""
+disposition = "fix-now"
+response = "Fixed in ~/satan-corpus 25bc25f: `since` is when that exact state (title included) was last set, not how long the app has been focused; a title change resets it; an old `since` is not stale."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in ~/satan-corpus 25bc25f: `since` is when that exact state (title included) was last set, not how long the app has been focused; a title change resets it; an old `since` is not stale."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected VH/VA criteria to carry recorded evidence; observed PHASE-03 VA-2 and PHASE-05 VH-1 unrecorded"
+detail = """
+- PHASE-03 VA-2 (live doctor reports a replay status) was deferred to human.
+- PHASE-05 VH-1 (package deployed before the corpus entry landed) is pending.
+- phase-05 sheet is an empty template; notes.md Harvest is a placeholder.
+Seat evidence 2026-10-12: user restarted the Emacs daemon (reported "ok done") before PHASE-05 was chartered; the live Emacs then returned `("ok" . (... :since ...))` from satan-desktop-at, and `satan-tool/activity-read :scope current` returned :scope/:status/:window with no :path — before c07ead9. Live `(sleipnir-doctor--satan-sensors)` returns `current=ok, focus=ok, browser=ok`."""
+disposition = "fix-now"
+response = 'Evidence now exists: VA-2 — live `(sleipnir-doctor--satan-sensors)` returns `current=ok, focus=ok, browser=ok` (2026-10-12). VH-1 — the user reported the Emacs daemon restarted ("ok done") before PHASE-05 was chartered, and live activity_read returned the new shape before c07ead9 landed. Reconcile records both in notes.md and fills the phase-05 sheet findings / Harvest.'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = 'Evidence now exists: VA-2 — live `(sleipnir-doctor--satan-sensors)` returns `current=ok, focus=ok, browser=ok` (2026-10-12). VH-1 — the user reported the Emacs daemon restarted ("ok done") before PHASE-05 was chartered, and live activity_read returned the new shape before c07ead9 landed. Reconcile records both in notes.md and fills the phase-05 sheet findings / Harvest.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "Expected (design §2) that appending events after T never changes the answer; observed malformed can flip to missing"
+detail = 'A garbage-only day file reads ("malformed"). Appending one valid line with ts > T makes it ("missing") (probe in scratch). An ok or disconnected answer never changes; only the malformed/missing distinction does.'
+disposition = "design-wrong"
+response = "The §2 append-invariant is overstated: the decision (ok/disconnected and their window) never changes on append after T, but malformed vs missing can. Behaviour is acceptable (both are non-ok, window nil); qualify the invariant in design §2 at reconcile."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "The §2 append-invariant is overstated: the decision (ok/disconnected and their window) never changes on append after T, but malformed vs missing can. Behaviour is acceptable (both are non-ok, window nil); qualify the invariant in design §2 at reconcile."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Expected DEC-037's rationale to match design §3; observed it says the orphaned stale cooldown entry is harmless"
+detail = 'DEC-037 says "The orphaned stale cooldown entry is harmless". Design §3 (after RV-021 F-13) says the orphaned entry is pruned on the next read. The decision record carries the superseded rationale.'
+disposition = "design-wrong"
+response = "DEC-037's rationale should match design §3 (orphaned stale cooldown entry is pruned on next read, per RV-021 F-13). Governance/knowledge edit at reconcile; Reconciliation Brief."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "DEC-037's rationale should match design §3 (orphaned stale cooldown entry is pruned on next read, per RV-021 F-13). Governance/knowledge edit at reconcile; Reconciliation Brief."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Expected no host literals in sensor-alert hints; observed focus/browser rows still carry them"
+detail = "satan/satan-sensor-alerts.el focus/browser rows: `head ~/.local/state/behaviour/segments/...-$(date +%F).jsonl`. DEC-037's no-host-literal rule covers only the :current_window rows, which comply. Outside SL-021's scope; pre-existing."
+disposition = "follow-up"
+response = "Out of SL-021 scope (DEC-037 covers :current_window rows only). Captured in IMP-031 (decouple the package from host literals), appended 2026-10-12."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Out of SL-021 scope (DEC-037 covers :current_window rows only). Captured in IMP-031 (decouple the package from host literals), appended 2026-10-12."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Expected the suite to pass on any host zone; observed 19 (UTC) / 32 (LA) failures, predating SL-021"
+detail = "Full-suite runs on 87a9757^ and HEAD fail the same tests under TZ=UTC (19) and TZ=America/Los_Angeles (32): observer, intervention-mark, memory-store/patch-store id formats, evidence bounds tests, percept build-empty-sources. Root cause includes satan-memory-canon.el:436-441 (time.day_week formats in host local time, SL-012 vintage). SL-021's own tests pin the zone and pass under LA/UTC/Kiritimati."
+disposition = "follow-up"
+response = "Pre-existing (fails identically on 87a9757^). Captured as ISS-036, linked related to ISS-021."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Pre-existing (fails identically on 87a9757^). Captured as ISS-036, linked related to ISS-021."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "nit"
+title = "Expected the doctor edit to match design §3; observed an extra fboundp guard and a %:z format"
+detail = """dl-sleipnir-doctor.el `--sensors-available-p` gained `(fboundp 'satan-desktop-at)`, not in design. Redundant once satan-memory-evidence (which requires satan-desktop) is loaded, but it turns config/package version skew into "not loaded" rather than void-function. `end` format changed %z -> %:z (harmless; reader accepts both)."""
+disposition = "tolerated"
+response = "The guard is defensive against config/package version skew (doctor reports not-loaded instead of signalling void-function); costs nothing. %:z is accepted by the reader. Mentioned in the design §3 doctor correction (F-2)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "The guard is defensive against config/package version skew (doctor reports not-loaded instead of signalling void-function); costs nothing. %:z is accepted by the reader. Mentioned in the design §3 doctor correction (F-2)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

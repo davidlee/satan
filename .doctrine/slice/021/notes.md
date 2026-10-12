@@ -6,13 +6,39 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
+fresh-as-of: 2026-10-12 · audit · 6d9608c+RV-022
 
 ### Produced
+- PHASE-01 — canon owns `local-date` / `day-shift`; goad + evidence delegate (87a9757)
+- PHASE-02 — `satan-desktop.el` reader + `satan-desktop-fixture.el` (45297dd)
+- PHASE-03 — evidence probe replays at window end; alert causes → DEC-037 vocab; doctor edited in `~/.config/emacs` (0a35c36)
+- PHASE-04 — `activity_read` `current` replays at now (b0471ff)
+- PHASE-05 — corpus `tools/activity_read.md` (satan-corpus c07ead9; wording fix 25bc25f)
+- RV-022 — audit ledger; reconciliation brief there
+- minted: ISS-036 — suite is host-zone dependent (pre-existing); IMP-031 extended — focus/browser alert hints carry host literals
 
 ### Learned
+- mem.fact.satan.corpus-just-commit-sweeps — commit agent corpus edits by path, not `just commit`
+- observation 01a12e00 — corpus phases should say "commit the file"
+- `json-serialize` returning unibyte does not mangle UTF-8 output (PHASE-02 sheet hazard was overstated)
 
 ### Open
+- VT-7 pin lines are sanitised (umbriel) / derived (niri) — capture real niri lines when the logs allow (RV-022 Synthesis)
+
+## Audit evidence (RV-022, 2026-10-12)
+
+- **Plan deviations, tolerated (F-3):** PHASE-03 EX-6 / VA-1 ran against
+  `~/.config/emacs/lisp` (`~/.emacs.d` no longer exists). PHASE-05 EX-2
+  committed the single file instead of `just commit`, which would have swept
+  unrelated dirty corpus state.
+- **VA-2 (F-5):** live `(sleipnir-doctor--satan-sensors)` →
+  `current=ok, focus=ok, browser=ok`.
+- **VH-1 (F-5):** the user restarted the Emacs daemon before PHASE-05 was
+  chartered; the live `activity_read current` returned
+  `:scope/:status/:window` (no `:path`) before c07ead9 landed.
+- **Test DB:** the PHASE-01..04 gates ran with `SATAN_TEST_ALLOW_NO_DB=1`
+  (Postgres down); the audit's full run with the DB up is 1356/1362, 6
+  standing environment-gated skips.
 
 ## Design triage (2026-09-26, exploring)
 
@@ -65,7 +91,7 @@ Not edited by the implementation phases; listed so reconcile finds them
 `docs/memory/design.md` evidence-input rows, `docs/governance.md`'s
 panopticon-consumption paragraph, and IMP-013's body. The corpus edit
 (`~/satan-corpus/tools/activity_read.md`) is committed in its own repo with
-`just commit` there, after the package change is deployed (design sec-4,
+the edited file only (see RV-022 F-3), after the package change is deployed (design sec-4,
 "Landing order").
 
 ### RV-021 second pass (F-6..F-15) — responder notes, 2026-09-26
