@@ -101,15 +101,15 @@ diff-friendly."
 
 (defconst satan-sensor-alerts--causes
   '((:current_window
-     ("stale"     . ("panopticon_current_stale" "warning"
-                     "panopticon current_window stale; daemon may be dead"
-                     "systemctl --user status panopticon-sway"))
-     ("missing"   . ("panopticon_current_missing" "warning"
-                     "panopticon current_window missing"
-                     "systemctl --user status panopticon-sway"))
-     ("malformed" . ("panopticon_current_malformed" "warning"
-                     "panopticon current_window JSON is malformed"
-                     "head -1 ~/.local/state/behaviour/current/desktop.json")))
+     ("disconnected" . ("panopticon_current_disconnected" "warning"
+                        "panopticon's compositor connection is down; focused window unknown"
+                        "systemctl --user status panopticon-sway"))
+     ("missing"      . ("panopticon_current_missing" "warning"
+                        "no desktop state in the day's or previous day's raw desktop log"
+                        "systemctl --user status panopticon-sway"))
+     ("malformed"    . ("panopticon_current_malformed" "warning"
+                        "panopticon desktop log has no parseable line"
+                        "inspect raw/desktop-YYYY-MM-DD.jsonl under satan-tools-activity-dir")))
     (:focus
      ("malformed" . ("panopticon_focus_malformed" "warning"
                      "panopticon focus segments JSON is malformed"
@@ -120,17 +120,21 @@ diff-friendly."
                      "head ~/.local/state/behaviour/segments/browser-$(date +%F).jsonl"))))
   "Map of (SENSOR-KEY KIND-STRING . (CAUSE SEVERITY MESSAGE REMEDIATION)).
 KIND-STRING is matched against the sensor_status value: a status of
-`stale-28m' matches kind `stale' by prefix; `missing' / `malformed' /
-`unreachable' match exactly.  Only the listed combinations fire.")
+`stale-28m' (segment feeds) matches kind `stale' by prefix;
+`disconnected' / `missing' / `malformed' / `unreachable' match exactly.
+Only the listed combinations fire.  The current window is replayed, not
+aged, so it has no `stale' row (SL-021 DEC-035, DEC-037).")
 
 (defun satan-sensor-alerts--match-kind (status)
   "Return the cause kind string matching STATUS, or nil when STATUS is `ok'.
-Accepts `stale-Nm' / `missing' / `malformed' / `unreachable'."
+Accepts `stale-Nm' / `disconnected' / `missing' / `malformed' /
+`unreachable'."
   (cond
    ((null status) nil)
    ((equal status "ok") nil)
    ((and (stringp status) (string-prefix-p "stale-" status)) "stale")
-   ((member status '("missing" "malformed" "unreachable")) status)))
+   ((member status '("disconnected" "missing" "malformed" "unreachable"))
+    status)))
 
 (defun satan-sensor-alerts--lookup-cause (sensor-key kind)
   "Return the (CAUSE SEVERITY MESSAGE REMEDIATION) tuple for SENSOR-KEY+KIND."

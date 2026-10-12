@@ -223,9 +223,9 @@
       "message": {
         "applied": [], "staged": [], "rejected": [], "failed": [],
         "pre_spawn": [{"kind": "sensor_alert",
-                       "cause": "panopticon_current_stale",
+                       "cause": "panopticon_current_disconnected",
                        "severity": "warning",
-                       "message": "panopticon current_window stale (28m).",
+                       "message": "panopticon's compositor connection is down; focused window unknown",
                        "remediation": "systemctl --user status panopticon-sway",
                        "suppressed": false,
                        "dispatched_at": "2026-05-22T11:13Z"}]

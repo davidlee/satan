@@ -51,11 +51,11 @@
 
 (ert-deftest satan-sensor/render-block-mixed-degradation ()
   (let* ((framing '(("sensor_block_header" . "# Sensors")))
-         (ss (list :current_window "stale-28m" :focus "ok"
+         (ss (list :current_window "disconnected" :focus "stale-28m"
                    :browser "missing" :git "malformed"))
          (lines (satan-sensor-render-block framing ss)))
     (should (equal (cadr lines)
-                   "sensors: current=STALE(28m) focus=ok browser=MISSING git=MALFORMED"))))
+                   "sensors: current=DISCONNECTED focus=STALE(28m) browser=MISSING git=MALFORMED"))))
 
 (ert-deftest satan-sensor/render-block-nil-when-no-header ()
   "Self-suppress when framing.txt is missing the seed key."
@@ -75,11 +75,11 @@
 
 (ert-deftest satan-sensor/with-prepare-mirrors-sensor-status ()
   (let* ((prepare (list :run_id "r" :time_now "t"
-                        :sensor_status (list :current_window "stale-28m"
+                        :sensor_status (list :current_window "disconnected"
                                              :focus "ok"
                                              :browser "malformed")))
          (bundle (satan-context--with-prepare (list :mode "tick-pulse") prepare)))
-    (should (equal "stale-28m"
+    (should (equal "disconnected"
                    (plist-get (plist-get bundle :sensor_status)
                               :current_window)))
     (should (equal "malformed"
@@ -166,13 +166,13 @@ or broken feed is not page-worthy — see `--causes')."
                          :quiet-p-fn (lambda (&rest _) nil))))
            (should-not entries)))))))
 
-(ert-deftest satan-sensor-alerts/stale-fires-once-then-cooldown ()
+(ert-deftest satan-sensor-alerts/disconnected-fires-once-then-cooldown ()
   "First call dispatches; second call within cooldown suppresses with reason `cooldown'."
   (satan-sensor-alerts-test--with-tmp-state path
     (satan-sensor-alerts-test--with-run run
       (satan-sensor-alerts-test--silence-notify
        (lambda (counter)
-         (let* ((ss (list :current_window "stale-28m" :focus "ok"
+         (let* ((ss (list :current_window "disconnected" :focus "ok"
                           :browser "ok"))
                 (e1 (satan-sensor-alerts-check
                      ss
@@ -187,7 +187,7 @@ or broken feed is not page-worthy — see `--causes')."
                      :state-file path
                      :quiet-p-fn (lambda (&rest _) nil))))
            (should (= 1 (length e1)))
-           (should (equal "panopticon_current_stale"
+           (should (equal "panopticon_current_disconnected"
                           (plist-get (car e1) :cause)))
            (should (eq :false (plist-get (car e1) :suppressed)))
            (should (stringp (plist-get (car e1) :dispatched_at)))
@@ -202,7 +202,7 @@ or broken feed is not page-worthy — see `--causes')."
     (satan-sensor-alerts-test--with-run run
       (satan-sensor-alerts-test--silence-notify
        (lambda (counter)
-         (let ((ss (list :current_window "stale-28m" :focus "ok"
+         (let ((ss (list :current_window "disconnected" :focus "ok"
                          :browser "ok")))
            (satan-sensor-alerts-check
             ss
@@ -225,7 +225,7 @@ or broken feed is not page-worthy — see `--causes')."
       (satan-sensor-alerts-test--silence-notify
        (lambda (counter)
          (let ((entries (satan-sensor-alerts-check
-                         (list :current_window "stale-28m" :focus "ok"
+                         (list :current_window "disconnected" :focus "ok"
                                :browser "ok")
                          :tool-ctx (satan-tools-notify-test--ctx
                                     run '(notify) "2026-05-22T03:00:00+10:00")
@@ -240,13 +240,13 @@ or broken feed is not page-worthy — see `--causes')."
 ;; A16 — every degradation produces an entry, fired or suppressed
 
 (ert-deftest satan-sensor-alerts/every-degradation-recorded ()
-  "Mix of stale + malformed → multiple entries this run."
+  "Mix of disconnected + malformed → multiple entries this run."
   (satan-sensor-alerts-test--with-tmp-state path
     (satan-sensor-alerts-test--with-run run
       (satan-sensor-alerts-test--silence-notify
        (lambda (_)
          (let* ((entries (satan-sensor-alerts-check
-                          (list :current_window "stale-28m"
+                          (list :current_window "disconnected"
                                 :focus "malformed"
                                 :browser "malformed")
                           :tool-ctx (satan-tools-notify-test--ctx
@@ -254,7 +254,7 @@ or broken feed is not page-worthy — see `--causes')."
                           :state-file path
                           :quiet-p-fn (lambda (&rest _) nil)))
                 (causes (mapcar (lambda (e) (plist-get e :cause)) entries)))
-           (should (member "panopticon_current_stale" causes))
+           (should (member "panopticon_current_disconnected" causes))
            (should (member "panopticon_focus_malformed" causes))
            (should (member "panopticon_browser_malformed" causes))
            (should (= 3 (length entries)))))))))
@@ -269,7 +269,7 @@ names."
       (satan-sensor-alerts-test--silence-notify
        (lambda (_)
          (let* ((entries (satan-sensor-alerts-check
-                          (list :current_window "stale-28m"
+                          (list :current_window "disconnected"
                                 :focus "malformed"
                                 :browser "ok")
                           :tool-ctx (satan-tools-notify-test--ctx
@@ -302,7 +302,7 @@ happen."
       (satan-tools-notify-test--with-projection (calls)
         (satan-announce-with-recorder
           (let* ((entries (satan-sensor-alerts-check
-                           (list :current_window "stale-28m" :focus "ok"
+                           (list :current_window "disconnected" :focus "ok"
                                  :browser "ok")
                            :tool-ctx (satan-tools-notify-test--ctx
                                       run '(notify) "2026-05-22T10:00:00+10:00")
@@ -311,7 +311,7 @@ happen."
                  (created (satan-sensor-alerts-test--created run))
                  (cs (satan-sensor-alerts--cause-state
                       (satan-sensor-alerts--read-state path)
-                      "panopticon_current_stale")))
+                      "panopticon_current_disconnected")))
             (should (= 1 (length entries)))
             (should (eq :false (plist-get (car entries) :suppressed)))
             (should (= 1 (length satan-announce-recorded)))
@@ -339,7 +339,7 @@ a check inside the window records nothing more."
       (satan-tools-notify-test--with-projection
           (calls '(satan-intervention-project-with-verdict))
         (let* ((satan-announce-sink (lambda (_) (error "no D-Bus today")))
-               (ss (list :current_window "stale-28m" :focus "ok"
+               (ss (list :current_window "disconnected" :focus "ok"
                          :browser "ok"))
                (check (lambda (now)
                         (satan-sensor-alerts-check
@@ -351,7 +351,7 @@ a check inside the window records nothing more."
                (e1 (funcall check "2026-05-22T10:00:00+10:00"))
                (cs (satan-sensor-alerts--cause-state
                     (satan-sensor-alerts--read-state path)
-                    "panopticon_current_stale"))
+                    "panopticon_current_disconnected"))
                (e2 (funcall check "2026-05-22T10:15:00+10:00")))
           (should (eq :false (plist-get (car e1) :suppressed)))
           (should (stringp (plist-get (car e1) :dispatched_at)))
@@ -375,7 +375,7 @@ a check inside the window records nothing more."
       (satan-sensor-alerts-test--silence-notify
        (lambda (counter)
          (let ((entries (satan-sensor-alerts-check
-                         (list :current_window "stale-28m" :focus "ok"
+                         (list :current_window "disconnected" :focus "ok"
                                :browser "ok")
                          :tool-ctx (satan-tools-notify-test--ctx
                                     run '() "2026-05-22T10:00:00+10:00")
@@ -395,14 +395,14 @@ a check inside the window records nothing more."
       (satan-tools-notify-test--with-projection ()
         (satan-announce-with-recorder
           (satan-sensor-alerts-check
-           (list :current_window "stale-28m" :focus "ok" :browser "ok")
+           (list :current_window "disconnected" :focus "ok" :browser "ok")
            :tool-ctx (satan-tools-notify-test--ctx
                       run '(notify) "2026-05-22T10:00:00+10:00")
            :state-file path
            :quiet-p-fn (lambda (&rest _) nil))
           (should satan-announce-recorded)
           (should (string-match-p
-                   "SATAN sensor: panopticon_current_stale"
+                   "SATAN sensor: panopticon_current_disconnected"
                    (plist-get (car satan-announce-recorded) :title))))))))
 
 ;; ---------------------------------------------------------------------
@@ -428,6 +428,30 @@ rendered (the source order no longer names it)."
                        :bough "unreachable"))))
     (should (null causes))))
 
+(defun satan-sensor-alerts-test--current-causes (status)
+  "Cause names derived from a `:current_window' STATUS, others `ok'."
+  (mapcar (lambda (c) (plist-get c :cause))
+          (satan-sensor-alerts--derive-causes
+           (list :current_window status :focus "ok" :browser "ok"))))
+
+(ert-deftest satan-sensor-alerts/current-disconnected-derives-cause ()
+  "SL-021 DEC-037 — a disconnected compositor derives its own cause."
+  (should (equal '("panopticon_current_disconnected")
+                 (satan-sensor-alerts-test--current-causes "disconnected"))))
+
+(ert-deftest satan-sensor-alerts/current-window-derives-only-live-causes ()
+  "SL-021 DEC-037 — every status the current window can report derives
+one of exactly three causes; a `stale-Nm' status derives nothing, since
+the current window is no longer judged by age."
+  (should (null (satan-sensor-alerts-test--current-causes "stale-28m")))
+  (should (equal (sort (mapcan #'satan-sensor-alerts-test--current-causes
+                               '("ok" "disconnected" "missing" "malformed"
+                                 "stale-28m"))
+                       #'string<)
+                 '("panopticon_current_disconnected"
+                   "panopticon_current_malformed"
+                   "panopticon_current_missing"))))
+
 (ert-deftest satan-sensor-alerts/read-state-prunes-retired-cause-residue ()
   "VT-2 (RN-17) — persisted state outlives the code that wrote it.
 A `notified.json' pre-seeded with a retired cause's `:causes' entry and
@@ -442,7 +466,7 @@ as the guard for the next retirement."
      path
      '(:causes (:bough_unreachable
                 (:last_notified_at "2026-05-20T09:00:00+10:00")
-                :panopticon_current_stale
+                :panopticon_current_disconnected
                 (:last_notified_at "2026-05-21T09:00:00+10:00"))
        :streaks (:bough_unreachable 5)))
     (let* ((state (satan-sensor-alerts--read-state path))
@@ -452,14 +476,14 @@ as the guard for the next retirement."
       (should-not (plist-member state :streaks))
       ;; unrelated live sensor state untouched
       (should (equal "2026-05-21T09:00:00+10:00"
-                     (plist-get (plist-get causes :panopticon_current_stale)
+                     (plist-get (plist-get causes :panopticon_current_disconnected)
                                 :last_notified_at))))))
 
 (ert-deftest satan-sensor-alerts/known-causes-covers-every-table-entry ()
   "The prune's allow-set is derived from `--causes', not transcribed —
 so a cause added to the table can never be pruned as residue."
   (let ((known (satan-sensor-alerts--known-causes)))
-    (should (member "panopticon_current_stale" known))
+    (should (member "panopticon_current_disconnected" known))
     (should (member "panopticon_current_missing" known))
     (should (member "panopticon_current_malformed" known))
     (should (member "panopticon_focus_malformed" known))

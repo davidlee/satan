@@ -42,8 +42,9 @@ title from being inserted as raw eight-bit bytes."
 
 (defun satan-desktop-fixture-write (root day events)
   "Write EVENTS as ROOT/raw/desktop-DAY.jsonl, one line each, in UTF-8.
-DAY is \"YYYY-MM-DD\".  Overwrites the file, creating `raw/' as needed.  Each element is an
-event plist or a string written verbatim.  Return the file's path."
+DAY is \"YYYY-MM-DD\".  Overwrites the file, creating `raw/' as
+needed.  Each element is an event plist or a string written verbatim.
+Return the file's path."
   (let ((path (expand-file-name (format "raw/desktop-%s.jsonl" day) root))
         (coding-system-for-write 'utf-8))
     (make-directory (file-name-directory path) t)
@@ -51,6 +52,16 @@ event plist or a string written verbatim.  Return the file's path."
       (dolist (event events)
         (insert (satan-desktop-fixture--line event) "\n")))
     path))
+
+(defun satan-desktop-fixture-focus (root ts app)
+  "Write ROOT's raw day file for TS as one snapshot: APP focused on \"main\".
+For suites that only need a focused app at a frozen instant.  The day
+is TS's own date, which matches the reader's under the fixture zone.
+Return the file's path."
+  (satan-desktop-fixture-write
+   root (substring ts 0 10)
+   (list (satan-desktop-fixture-event ts "snapshot"
+                                      :app_id app :workspace "main"))))
 
 (defun satan-desktop-fixture-append (path text)
   "Append TEXT to PATH verbatim, in UTF-8, adding no newline.

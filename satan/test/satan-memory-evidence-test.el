@@ -9,13 +9,17 @@
 (require 'satan-memory-evidence)
 (require 'satan-memory-canon)
 (require 'satan-goad-fixture)
+(require 'satan-desktop-fixture)
 
 (defun satan-memory-evidence-test--with-tmp (body)
   ;; Fixtures live under /tmp by construction and stand in for real paths,
   ;; so the temp-path guard is disabled for them.  The guard is tested
-  ;; directly by the temp-repo / temp-cwd tests.
+  ;; directly by the temp-repo / temp-cwd tests.  The desktop reader is
+  ;; pinned to the fixture zone, so the day file it picks for a `+10:00'
+  ;; instant does not depend on the host's zone.
   (let ((tmp (make-temp-file "satan-ev-test-" t))
-        (satan-memory-evidence-temp-roots nil))
+        (satan-memory-evidence-temp-roots nil)
+        (satan-desktop--zone satan-desktop-fixture-zone))
     (unwind-protect (funcall body tmp)
       (delete-directory tmp t))))
 
@@ -24,6 +28,12 @@
   `(satan-memory-evidence-test--with-tmp
     (lambda (,var)
       ,@body)))
+
+(defun satan-memory-evidence-test--assemble-at (tmp time-now)
+  "Assemble the evidence under behaviour root TMP at TIME-NOW (motd)."
+  (satan-memory-evidence-assemble
+   (list :time_now time-now :mode_name "motd")
+   (list :behaviour_dir (file-name-as-directory tmp))))
 
 ;; ---------------------------------------------------------------------
 ;; Bounds
@@ -180,12 +190,9 @@ called without an explicit start/end."
   "`:cue_only t' returns empty focus/browser segments even when those
 sources would otherwise populate them.  Keeps current_window."
   (satan-memory-evidence-test--in-tmp tmp
-   (let* ((current-dir (expand-file-name "current" tmp))
-          (segments-dir (expand-file-name "segments" tmp)))
-     (make-directory current-dir t)
+   (let ((segments-dir (expand-file-name "segments" tmp)))
      (make-directory segments-dir t)
-     (with-temp-file (expand-file-name "desktop.json" current-dir)
-       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+     (satan-desktop-fixture-focus tmp "2026-05-19T09:59:00+10:00" "firefox")
      (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
        (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n"))
      (let* ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
@@ -230,14 +237,11 @@ stays valid through `--truncate' + canon (no signal)."
 
 (ert-deftest satan-memory-evidence/assemble-reads-panopticon ()
   (satan-memory-evidence-test--in-tmp tmp
-   (let* ((current-dir (expand-file-name "current" tmp))
-          (segments-dir (expand-file-name "segments" tmp))
+   (let* ((segments-dir (expand-file-name "segments" tmp))
           (ctx (list :time_now "2026-05-19T10:00:00+10:00"
                      :mode_name "motd")))
-     (make-directory current-dir t)
      (make-directory segments-dir t)
-     (with-temp-file (expand-file-name "desktop.json" current-dir)
-       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+     (satan-desktop-fixture-focus tmp "2026-05-19T09:59:00+10:00" "firefox")
      (with-temp-file (expand-file-name "focus-2026-05-19.jsonl" segments-dir)
        (insert "{\"app_id\":\"firefox\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n")
        (insert "{\"app_id\":\"emacs\",\"start_ts\":\"2026-05-19T08:00:00+10:00\",\"end_ts\":\"2026-05-19T08:30:00+10:00\",\"duration_s\":1800}\n"))
@@ -395,11 +399,7 @@ all commits.  Good rows from the readable file survive."
 but inside the 24h git window) appears in :git_commits.
 Focus/browser segments remain on the 10-min window."
   (satan-memory-evidence-test--in-tmp tmp
-   (let* ((segments-dir (expand-file-name "segments" tmp))
-          (git-start-iso
-           (satan-memory-evidence--iso-format
-            (time-subtract (date-to-time "2026-05-19T10:00:00+10:00")
-                           (seconds-to-time (* 60 1440))))))
+   (let ((segments-dir (expand-file-name "segments" tmp)))
      (make-directory segments-dir t)
      ;; Git commit at T-15 minutes → outside 10-min focus window, inside 24h git window.
      (with-temp-file (expand-file-name "git-2026-05-19.jsonl" segments-dir)
@@ -490,42 +490,71 @@ no longer consumed (passing them changes nothing)."
      (should (equal (plist-get out :sensor_status)
                     (plist-get with-dead-opts :sensor_status))))))
 
-(ert-deftest satan-memory-evidence/sensor-status-current-stale-drops-slice ()
-  "When desktop.json mtime exceeds the threshold, :current_window is
-dropped from the evidence (set nil) AND the status is tagged
-\"stale-Nm\"."
+(ert-deftest satan-memory-evidence/current-window-at-window-end ()
+  "SL-021 — a past [START, END] gets the window focused at END, not a
+later one and not the one focused at `:time_now'."
   (satan-memory-evidence-test--in-tmp tmp
-   (let* ((current-dir (expand-file-name "current" tmp))
-          (desktop-path (expand-file-name "desktop.json" current-dir))
-          (ctx (list :time_now "2026-05-19T10:00:00+10:00"
-                     :mode_name "motd")))
-     (make-directory current-dir t)
-     (with-temp-file desktop-path
-       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
-     (let ((old (time-subtract (date-to-time "2026-05-19T10:00:00+10:00")
-                               (seconds-to-time (* 60 28)))))
-       (set-file-times desktop-path old))
-     (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
-            (ss (plist-get out :sensor_status)))
-       (should (null (plist-get out :current_window)))
-       (should (equal (plist-get ss :current_window) "stale-28m"))))))
+   (satan-desktop-fixture-write
+    tmp "2026-05-19"
+    (list (satan-desktop-fixture-event "2026-05-19T09:00:00+10:00" "snapshot"
+                                       :app_id "emacs" :workspace "main")
+          (satan-desktop-fixture-event "2026-05-19T09:30:00+10:00"
+                                       "window_focus"
+                                       :app_id "firefox" :workspace "main")))
+   (let ((out (satan-memory-evidence-assemble-with-bounds
+               "2026-05-19T08:45:00+10:00" "2026-05-19T09:15:00+10:00"
+               (list :time_now "2026-05-19T10:00:00+10:00" :mode_name "motd")
+               (list :behaviour_dir (file-name-as-directory tmp)))))
+     (should (equal "emacs"
+                    (plist-get (plist-get out :current_window) :app_id)))
+     (should (equal "ok" (plist-get (plist-get out :sensor_status)
+                                    :current_window))))))
+
+(ert-deftest satan-memory-evidence/sensor-status-current-idle-keeps-slice ()
+  "An event hours before `:time_now' is still the current window: idle
+is not stale (SL-021 DEC-035)."
+  (satan-memory-evidence-test--in-tmp tmp
+   (satan-desktop-fixture-focus tmp "2026-05-19T06:00:00+10:00" "firefox")
+   (let ((out (satan-memory-evidence-test--assemble-at
+               tmp "2026-05-19T10:00:00+10:00")))
+     (should (equal "firefox"
+                    (plist-get (plist-get out :current_window) :app_id)))
+     (should (equal "ok" (plist-get (plist-get out :sensor_status)
+                                    :current_window))))))
 
 (ert-deftest satan-memory-evidence/sensor-status-current-fresh-keeps-slice ()
   (satan-memory-evidence-test--in-tmp tmp
-   (let* ((current-dir (expand-file-name "current" tmp))
-          (desktop-path (expand-file-name "desktop.json" current-dir))
-          (ctx (list :time_now (format-time-string "%Y-%m-%dT%T%:z")
-                     :mode_name "motd")))
-     (make-directory current-dir t)
-     (with-temp-file desktop-path
-       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
-     (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
-            (ss (plist-get out :sensor_status)))
-       (should (equal (plist-get (plist-get out :current_window) :app_id)
-                      "firefox"))
-       (should (equal "ok" (plist-get ss :current_window)))))))
+   (satan-desktop-fixture-focus tmp "2026-05-19T09:59:00+10:00" "firefox")
+   (let ((out (satan-memory-evidence-test--assemble-at
+               tmp "2026-05-19T10:00:00+10:00")))
+     (should (equal "firefox"
+                    (plist-get (plist-get out :current_window) :app_id)))
+     (should (equal "ok" (plist-get (plist-get out :sensor_status)
+                                    :current_window))))))
+
+(ert-deftest satan-memory-evidence/sensor-status-current-disconnected ()
+  "A compositor disconnect after the last state → \"disconnected\", slice nil."
+  (satan-memory-evidence-test--in-tmp tmp
+   (satan-desktop-fixture-write
+    tmp "2026-05-19"
+    (list (satan-desktop-fixture-event "2026-05-19T09:00:00+10:00" "snapshot"
+                                       :app_id "firefox" :workspace "main")
+          (satan-desktop-fixture-event "2026-05-19T09:30:00+10:00"
+                                       "compositor_disconnected")))
+   (let ((out (satan-memory-evidence-test--assemble-at
+               tmp "2026-05-19T10:00:00+10:00")))
+     (should (null (plist-get out :current_window)))
+     (should (equal "disconnected" (plist-get (plist-get out :sensor_status)
+                                              :current_window))))))
+
+(ert-deftest satan-memory-evidence/sensor-status-current-missing ()
+  "No raw desktop log → \"missing\", slice nil."
+  (satan-memory-evidence-test--in-tmp tmp
+   (let ((out (satan-memory-evidence-test--assemble-at
+               tmp "2026-05-19T10:00:00+10:00")))
+     (should (null (plist-get out :current_window)))
+     (should (equal "missing" (plist-get (plist-get out :sensor_status)
+                                         :current_window))))))
 
 (ert-deftest satan-memory-evidence/sensor-status-segments-stale ()
   "Segments file whose newest :end_ts is past the 30-min threshold
@@ -544,19 +573,14 @@ reports \"stale-Nm\" and the slice drops to '()."
        (should (equal "stale-62m" (plist-get ss :focus)))))))
 
 (ert-deftest satan-memory-evidence/sensor-status-malformed-json ()
-  "Malformed desktop.json → status \"malformed\", slice nil."
+  "A desktop log with no parseable line → \"malformed\", slice nil."
   (satan-memory-evidence-test--in-tmp tmp
-   (let* ((current-dir (expand-file-name "current" tmp))
-          (ctx (list :time_now (format-time-string "%Y-%m-%dT%T%:z")
-                     :mode_name "motd")))
-     (make-directory current-dir t)
-     (with-temp-file (expand-file-name "desktop.json" current-dir)
-       (insert "{not-json"))
-     (let* ((out (satan-memory-evidence-assemble
-                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
-            (ss (plist-get out :sensor_status)))
-       (should (null (plist-get out :current_window)))
-       (should (equal "malformed" (plist-get ss :current_window)))))))
+   (satan-desktop-fixture-write tmp "2026-05-19" '("{not-json" "garbage"))
+   (let ((out (satan-memory-evidence-test--assemble-at
+               tmp "2026-05-19T10:00:00+10:00")))
+     (should (null (plist-get out :current_window)))
+     (should (equal "malformed" (plist-get (plist-get out :sensor_status)
+                                           :current_window))))))
 
 ;; ---------------------------------------------------------------------
 ;; Cross-step contract: canon eats assembler output.
@@ -564,13 +588,10 @@ reports \"stale-Nm\" and the slice drops to '()."
 
 (ert-deftest satan-memory-evidence/canon-eats-output-minimal ()
   (satan-memory-evidence-test--in-tmp tmp
-   (let* ((current-dir (expand-file-name "current" tmp))
-          (ctx (list :time_now "2026-05-19T10:00:00+10:00"
-                     :mode_name "motd"
-                     :current_grammar_version 1)))
-     (make-directory current-dir t)
-     (with-temp-file (expand-file-name "desktop.json" current-dir)
-       (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+   (let ((ctx (list :time_now "2026-05-19T10:00:00+10:00"
+                    :mode_name "motd"
+                    :current_grammar_version 1)))
+     (satan-desktop-fixture-focus tmp "2026-05-19T09:59:00+10:00" "firefox")
      (let* ((ev (satan-memory-evidence-assemble
                  ctx (list :behaviour_dir (file-name-as-directory tmp))))
             (canon (satan-memory-canon-canonicalize ev nil ctx))

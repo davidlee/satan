@@ -299,10 +299,12 @@ section.  Guards against silent fallback to a hardcoded header."
 ;; ---------------------------------------------------------------------
 
 (require 'satan-percept)
+(require 'satan-desktop-fixture)
 
 (defmacro satan-resonance-test--with-sensor-fixture (vars &rest body)
   "Parallel to `satan-percept-test--with-fixture' — give BODY a tmp
-behaviour dir and run dir."
+behaviour dir and run dir, with the desktop reader pinned to the
+fixture zone."
   (declare (indent 1))
   (let ((tmp (plist-get vars :tmp))
         (beh (plist-get vars :behaviour))
@@ -311,7 +313,8 @@ behaviour dir and run dir."
             (,beh (file-name-as-directory
                    (expand-file-name "behaviour" ,tmp)))
             (,rd  (file-name-as-directory
-                   (expand-file-name "run" ,tmp))))
+                   (expand-file-name "run" ,tmp)))
+            (satan-desktop--zone satan-desktop-fixture-zone))
        (unwind-protect
            (progn
              (make-directory ,beh t)
@@ -320,10 +323,9 @@ behaviour dir and run dir."
          (delete-directory ,tmp t)))))
 
 (defun satan-resonance-test--write-sway (behaviour app)
-  (let ((dir (expand-file-name "current" behaviour)))
-    (make-directory dir t)
-    (with-temp-file (expand-file-name "desktop.json" dir)
-      (insert (format "{\"app_id\":\"%s\",\"workspace\":\"main\"}" app)))))
+  "Write a raw desktop log under BEHAVIOUR with APP focused just
+before the tests' `time_now'."
+  (satan-desktop-fixture-focus behaviour "2026-05-19T09:59:00+10:00" app))
 
 (defun satan-resonance-test--prepare (run-id time-now)
   (list :run_id run-id :time_now time-now :start_time (current-time)
@@ -336,7 +338,7 @@ cwd carries only ctx-derived handles (mode, day, week).  The gate
 must skip — no store call, no block.  This locks the gate against
 canon-rule renames: if `ctx.mode' or `time.day_week' moves, this
 test trips before §S2 silently weakens."
-  (satan-resonance-test--with-sensor-fixture (:tmp _t :behaviour beh :run-dir rd)
+  (satan-resonance-test--with-sensor-fixture (:tmp tmp :behaviour beh :run-dir rd)
     (let* ((prepare (satan-resonance-test--prepare
                      "20260519T100000-motd-aaaaaa"
                      "2026-05-19T10:00:00+10:00"))
@@ -359,7 +361,7 @@ test trips before §S2 silently weakens."
 `app:firefox' (rule `panopticon.current.app') alongside the ctx-derived
 handles.  The gate admits — the panopticon-observed handle clears the
 noise floor."
-  (satan-resonance-test--with-sensor-fixture (:tmp _t :behaviour beh :run-dir rd)
+  (satan-resonance-test--with-sensor-fixture (:tmp tmp :behaviour beh :run-dir rd)
     (ignore rd)
     (satan-resonance-test--write-sway beh "firefox")
     (let* ((prepare (satan-resonance-test--prepare

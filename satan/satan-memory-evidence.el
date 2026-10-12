@@ -19,8 +19,8 @@
 ;;   :budget_hard_cap_bytes  last-resort byte target (default 65536)
 ;;   :cue_only               t to skip heavy "what happened in the
 ;;                           window" probes (focus/browser segments).
-;;                           Keeps the "what is now" probe
-;;                           (current_window).
+;;                           Keeps current_window, replayed
+;;                           at the window end.
 ;;                           Used by `memory_resonate' cue derivation.
 ;;                           Also skips the goad slice.
 ;;
@@ -37,6 +37,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
+(require 'satan-desktop)
 (require 'satan-goad)
 (require 'satan-memory-canon)
 (require 'satan-jsonl)
@@ -107,17 +108,12 @@ behavioural final reducer is tracked as ISS-001."
 ;; ---------------------------------------------------------------------
 ;; Freshness thresholds (§S6)
 ;;
-;; Per-source seconds-old ceilings.  When a sensor's age exceeds its
-;; threshold the assembler drops the affected slice from the evidence
-;; window AND tags its `:sensor_status' entry as `stale-Nm' so the
-;; sensor-alerts dispatcher (Phase 4.3) can decide whether to notify.
+;; Seconds-old ceiling for the segment feeds.  When the newest segment's
+;; age exceeds it the assembler drops the slice from the evidence window
+;; AND tags its `:sensor_status' entry as `stale-Nm' so the sensor-alerts
+;; dispatcher (Phase 4.3) can decide whether to notify.  The current
+;; window has no ceiling: it is replayed, not aged (SL-021 DEC-035).
 ;; ---------------------------------------------------------------------
-
-(defcustom satan-memory-evidence-current-window-stale-seconds 300
-  "Seconds-old ceiling for `current/desktop.json' mtime before it is stale.
-Default 5 minutes per §S6 open question — tune from observed focus
-cadence."
-  :type 'integer :group 'satan)
 
 (defcustom satan-memory-evidence-segment-stale-seconds 1800
   "Seconds-old ceiling for the newest focus/browser segment before stale."
@@ -139,29 +135,6 @@ String not symbol so the value JSON-serialises directly in the run's
 `bundle.json' / `percept.json' alongside the rest of the evidence
 window."
   (format "stale-%dm" (max 1 (/ age-seconds 60))))
-
-(defun satan-memory-evidence--mtime (path)
-  "Return PATH's mtime as an Emacs time, or nil when PATH is unreadable."
-  (and (file-readable-p path)
-       (file-attribute-modification-time (file-attributes path))))
-
-(defun satan-memory-evidence--current-window-status (path now)
-  "Return (STATUS . DATA) for `current/desktop.json' at PATH.
-STATUS is the JSON-friendly string `\"ok\"' / `\"stale-Nm\"' /
-`\"missing\"' / `\"malformed\"'.  DATA is the parsed plist on success,
-nil on stale / missing / malformed — the assembler treats nil-data
-as drop-the-slice."
-  (let ((mtime (satan-memory-evidence--mtime path)))
-    (cond
-     ((null mtime) (cons "missing" nil))
-     (t (let* ((age (satan-memory-evidence--age-seconds mtime now))
-               (stale (> age satan-memory-evidence-current-window-stale-seconds)))
-          (condition-case _err
-              (let ((data (satan-tools-activity--read-json path)))
-                (if stale
-                    (cons (satan-memory-evidence--stale-tag age) nil)
-                  (cons "ok" data)))
-            (error (cons "malformed" nil))))))))
 
 (defun satan-memory-evidence--newest-segment-end (segments)
   "Return the :end_ts string with the latest INSTANT across SEGMENTS,
@@ -425,12 +398,14 @@ START / END are ISO8601 strings; CTX is the canon ctx plist; OPTS
 matches `satan-memory-evidence-assemble' (the wrapper's
 `:run_started_at' is irrelevant here — bounds are already fixed).
 
-Same shape as the wrapper.  Sensor freshness probes still derive
-from CTX `:time_now', which the observer's caller can either pass
-as the intervention-emitted-at (treating probes as historical
-metadata) or as the real clock (ignoring the probes' values).  The
-observer passes the window end and reads only `:sensor_status'
-`:focus', to gate its acknowledgement check."
+Same shape as the wrapper.  `:current_window' is the desktop state
+replayed at END (`satan-desktop-at'), so a past window gets the
+window focused then.  The segment freshness probes still derive from
+CTX `:time_now', which the observer's caller can either pass as the
+intervention-emitted-at (treating probes as historical metadata) or
+as the real clock (ignoring the probes' values).  The observer passes
+the window end and reads only `:sensor_status' `:focus', to gate its
+acknowledgement check."
   (let* ((time-now (plist-get ctx :time_now))
          (now-t (date-to-time time-now))
          (today (substring end 0 10))
@@ -445,10 +420,8 @@ observer passes the window end and reads only `:sensor_status'
          (budget-hard (or (plist-get opts :budget_hard_cap_bytes)
                           satan-memory-evidence-budget-hard-cap))
          (cue-only (plist-get opts :cue_only))
-         (current-path (expand-file-name "current/desktop.json" root))
          (current-probe (satan-trace-stage "evidence.current_window"
-                          (satan-memory-evidence--current-window-status
-                           current-path now-t)))
+                          (satan-desktop-at root end)))
          (focus-probe (if cue-only
                           (cons "ok" '())
                         (satan-trace-stage "evidence.focus_segments"

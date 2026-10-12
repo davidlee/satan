@@ -1193,9 +1193,9 @@ entries in `actions.json'.  Phase 4.4 — wires the producer side
 schema bump)."
   (let ((dir (make-temp-file "satan-broker-pre-spawn-" t))
         (entries (list (list :kind "sensor_alert"
-                             :cause "panopticon_current_stale"
+                             :cause "panopticon_current_disconnected"
                              :severity "warning"
-                             :message "stale 28m"
+                             :message "compositor down"
                              :suppressed :false
                              :dispatched_at "2026-05-22T11:13Z"))))
     (unwind-protect
@@ -1232,7 +1232,7 @@ schema bump)."
             (let ((ps (plist-get parsed :pre_spawn)))
               (should (listp ps))
               (should (= 1 (length ps)))
-              (should (equal "panopticon_current_stale"
+              (should (equal "panopticon_current_disconnected"
                              (plist-get (car ps) :cause)))
               (should (equal "2026-05-22T11:13Z"
                              (plist-get (car ps) :dispatched_at))))

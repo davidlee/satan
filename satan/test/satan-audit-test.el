@@ -50,9 +50,9 @@ caller supplies it; the four model-action partitions stay untouched."
            '(:summary "s" :actions ())
            (list :applied () :staged () :rejected () :failed ()
                  :pre_spawn (list (list :kind "sensor_alert"
-                                        :cause "panopticon_current_stale"
+                                        :cause "panopticon_current_disconnected"
                                         :severity "warning"
-                                        :message "stale 28m"
+                                        :message "compositor down"
                                         :dispatched_at "2026-05-22T11:13Z")))
            'done)
           (let* ((actions-path (expand-file-name "actions.json" dir))
@@ -72,7 +72,7 @@ caller supplies it; the four model-action partitions stay untouched."
               (should (= 1 (length ps)))
               (should (equal (plist-get (car ps) :kind) "sensor_alert"))
               (should (equal (plist-get (car ps) :cause)
-                             "panopticon_current_stale")))))
+                             "panopticon_current_disconnected")))))
       (delete-directory dir t))))
 
 (ert-deftest satan-audit/pre-spawn-omitted-when-absent ()
@@ -110,9 +110,9 @@ actions still verifies clean — `pre_spawn' must NOT pollute the
              :actions ())
            (list :applied () :staged () :rejected () :failed ()
                  :pre_spawn (list (list :kind "sensor_alert"
-                                        :cause "panopticon_current_stale"
+                                        :cause "panopticon_current_disconnected"
                                         :severity "warning"
-                                        :message "stale 28m"
+                                        :message "compositor down"
                                         :remediation "systemctl --user status panopticon-sway"
                                         :suppressed :false
                                         :dispatched_at "2026-05-22T11:13Z")))

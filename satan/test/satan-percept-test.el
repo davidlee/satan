@@ -18,10 +18,12 @@
 (require 'satan-percept)
 (require 'satan-memory-grammar)
 (require 'satan-audit)
+(require 'satan-desktop-fixture)
 
 (defmacro satan-percept-test--with-fixture (vars &rest body)
   "Bind VARS plist `(:tmp :behaviour :run-dir)' to a fresh tmp tree.
-TMP cleaned up on exit."
+The desktop reader is pinned to the fixture zone for BODY, so a build
+picks the same day file on any host.  TMP cleaned up on exit."
   (declare (indent 1))
   (let ((tmp (plist-get vars :tmp))
         (behaviour (plist-get vars :behaviour))
@@ -30,7 +32,8 @@ TMP cleaned up on exit."
             (,behaviour (file-name-as-directory
                          (expand-file-name "behaviour" ,tmp)))
             (,run-dir (file-name-as-directory
-                       (expand-file-name "run" ,tmp))))
+                       (expand-file-name "run" ,tmp)))
+            (satan-desktop--zone satan-desktop-fixture-zone))
        (unwind-protect
            (progn
              (make-directory ,behaviour t)
@@ -38,12 +41,12 @@ TMP cleaned up on exit."
              ,@body)
          (delete-directory ,tmp t)))))
 
+(defconst satan-percept-test--focused-at "2026-05-19T09:59:00+10:00"
+  "When the fixture's app took focus: just before every test's `time_now'.")
+
 (defun satan-percept-test--write-sway (behaviour app)
-  "Write a `current/desktop.json' under BEHAVIOUR with APP as `app_id'."
-  (let ((dir (expand-file-name "current" behaviour)))
-    (make-directory dir t)
-    (with-temp-file (expand-file-name "desktop.json" dir)
-      (insert (format "{\"app_id\":\"%s\",\"workspace\":\"main\"}" app)))))
+  "Write a raw desktop log under BEHAVIOUR with APP focused."
+  (satan-desktop-fixture-focus behaviour satan-percept-test--focused-at app))
 
 (defun satan-percept-test--prepare (run-id time-now)
   "Return a minimal prepare run_ctx plist for RUN-ID + TIME-NOW.
@@ -317,15 +320,12 @@ segments cover that span at finer (per-URL) grain."
 (defun satan-percept-test--seed-fixture (behaviour day)
   "Write a frozen panopticon fixture under BEHAVIOUR keyed by DAY (YYYY-MM-DD).
 A repeated build over the same fixture is the bone of acceptance A3.
-Includes current/desktop + focus segments + browser segments — same
-shape `satan-memory-evidence' uses in its own assemble tests, so
+Includes the raw desktop log + focus segments + browser segments —
+same shape `satan-memory-evidence' uses in its own assemble tests, so
 this rig stays parallel."
-  (let ((current-dir (expand-file-name "current" behaviour))
-        (segments-dir (expand-file-name "segments" behaviour)))
-    (make-directory current-dir t)
+  (let ((segments-dir (expand-file-name "segments" behaviour)))
     (make-directory segments-dir t)
-    (with-temp-file (expand-file-name "desktop.json" current-dir)
-      (insert "{\"app_id\":\"firefox\",\"workspace\":\"main\"}"))
+    (satan-percept-test--write-sway behaviour "firefox")
     (with-temp-file (expand-file-name (format "focus-%s.jsonl" day)
                                       segments-dir)
       (insert "{\"app_id\":\"Alacritty\",\"start_ts\":\"2026-05-19T09:55:00+10:00\",\"end_ts\":\"2026-05-19T09:58:00+10:00\",\"duration_s\":180}\n")
