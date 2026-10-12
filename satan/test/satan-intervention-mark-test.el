@@ -2,9 +2,9 @@
 
 ;; T1.5b PR 4 — interactive manual override path.
 ;;
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-intervention-mark-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

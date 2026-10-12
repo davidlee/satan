@@ -9,7 +9,8 @@
 ;;     resolved once at load from `load-file-name'.  All package-owned path
 ;;     resolution (memory/migrations, patterns.eld, source roots) anchors here.
 ;;     Future modules MUST anchor to `satan--root', never the Emacs config
-;;     root — that assumption breaks the moment SATAN ships outside `~/.emacs.d'.
+;;     root — that assumption breaks the moment SATAN ships outside
+;;     `user-emacs-directory'.
 ;;
 ;;   * `satan-notes-root' / `satan-journal-today' / `satan-notes-path' — the
 ;;     user NOTES corpus decouple (Axis-1, D4).  One root knob; standard corpus

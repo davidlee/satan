@@ -5,9 +5,9 @@
 ;; directory is a temp dir, and validator behaviour is exercised by
 ;; feeding the listener payloads with deliberate shape problems.
 ;;
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-attribute-listener-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

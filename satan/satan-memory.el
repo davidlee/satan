@@ -4,7 +4,7 @@
 ;; in the five `satan-memory-*' submodules + the `satan-tools-memory'
 ;; tool module and exposes a small
 ;; `satan-memory-*' interactive surface for inspecting the store from
-;; Emacs.  See `~/.emacs.d/satan/memory.design.md' §11.
+;; Emacs.  See `docs/memory/design.md' §11.
 
 (require 'cl-lib)
 (require 'satan-memory-grammar)

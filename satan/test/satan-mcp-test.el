@@ -1,8 +1,8 @@
 ;;; satan-mcp-test.el --- ert tests for satan-mcp MCP server -*- lexical-binding: t; -*-
 
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-mcp-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

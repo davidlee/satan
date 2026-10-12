@@ -1,4 +1,4 @@
-`my/op--cache` (`~/.emacs.d/lisp/dl-secret.el`) is a plain hash table populated
+`my/op--cache` (`~/.config/emacs/lisp/dl-secret.el`) is a plain hash table populated
 on first successful resolve and **never invalidated** — no TTL, no
 rotation hook. It lives as long as the Emacs server, which routinely runs for
 days.

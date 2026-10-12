@@ -1,8 +1,8 @@
 ;;; test-sway-border.el --- ert tests for sway-border tools -*- lexical-binding: t; -*-
 
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l test-sway-border.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

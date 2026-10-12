@@ -3,9 +3,9 @@
 ;; T7 PR 2 — rebuild idempotency against the satan_memory_test DB.
 ;; Tests skip-unless the test DB is reachable.
 ;;
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-intervention-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

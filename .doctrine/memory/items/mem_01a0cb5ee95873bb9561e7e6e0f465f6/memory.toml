@@ -6,7 +6,7 @@ status = "active"
 title = "Rotating a 1Password key does not reach a running Emacs: clear my/op--cache"
 summary = "my/op--cache is per-Emacs-session with no TTL: rotating a key in 1Password needs my/op-forget or the server keeps serving the dead one."
 created = "2026-09-22"
-updated = "2026-09-22"
+updated = "2026-10-12"
 
 [scope]
 paths = []

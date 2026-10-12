@@ -4,9 +4,9 @@
 ;; defined in docs/satan/attributes/outcome-semantics.md §9.  No
 ;; callers yet; this file exercises the validator in isolation.
 ;;
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-audit-intervention-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

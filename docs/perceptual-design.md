@@ -646,7 +646,7 @@ the next tick's start. No live loop, no callbacks.
 ## 6. File layout additions
 
 ```text
-~/.emacs.d/satan/
+satan/
   satan-percept.el           percept builder + persist + capsule render
   satan-motive.el            motive file parse / write / footer state
   satan-tools-motive.el      motive_read / motive_replace handlers

@@ -1,8 +1,8 @@
 ;;; satan-tools-atsatan-test.el --- @satan scan/done tool tests -*- lexical-binding: t; -*-
 
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l ert -l satan-tools-atsatan-test \
 ;;     --eval '(ert-run-tests-batch-and-exit "notes-at-satan-")'
 

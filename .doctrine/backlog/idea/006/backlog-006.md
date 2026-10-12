@@ -9,7 +9,7 @@
 The user keeps a private Emacs learning record in `~/notes`: a skill map
 (capabilities with levels UNKNOWN / AWARE / USING / FLUENT and evidence
 dates), a try-next queue and a dated log. Agents update it through the
-`emacs-coach` skill (`~/.emacs.d/.agents/skills/emacs-coach/`).
+`emacs-coach` skill (`~/.config/emacs/.agents/skills/emacs-coach/`).
 
 SATAN already has the loop this needs: interventions with outcome
 classification (observer), motives and sensors. It could:

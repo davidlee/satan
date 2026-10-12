@@ -574,8 +574,8 @@ CREATE INDEX patch_jobs_repo_branch_idx ON patch_jobs(repo, branch);
     "No automated tests found for notes-only change."
   ],
   "review_commands": [
-    "git -C ~/.emacs.d diff main...satan/self-edit-mech/20260520T190122-canon-tests",
-    "git -C ~/.emacs.d cherry-pick abc1234"
+    "git -C ~/dev/satan diff main...satan/self-edit-mech/20260520T190122-canon-tests",
+    "git -C ~/dev/satan cherry-pick abc1234"
   ]
 }
 ```
@@ -612,7 +612,7 @@ Before running the patch-agent, provide allowed paths.
 Examples:
 
 ```text
-~/.emacs.d/satan/
+~/dev/satan/satan/
 ~/satan-corpus/
 ~/notes/20260519T003129--satan__agent_emacs_project.org
 ```
@@ -672,7 +672,7 @@ The coding harness should receive a self-contained job prompt.
 ```json
 {
   "job_id": "patch_20260520T190122_a13f",
-  "repo": "~/.emacs.d",
+  "repo": "~/dev/satan",
   "worktree_path": "~/.local/state/satan/patch-agent/worktrees/patch_...",
   "base_ref": "main",
   "branch": "satan/self-edit-mech/20260520T190122-canon-tests",
@@ -779,8 +779,8 @@ prompt file mechanical edits
 Default allowed paths:
 
 ```text
-~/.emacs.d/satan/
-~/.emacs.d/test/
+~/dev/satan/satan/
+~/dev/satan/satan/test/
 ~/satan-corpus/tools/
 ```
 
@@ -807,7 +807,6 @@ Default allowed paths:
 
 ```text
 ~/satan-corpus/
-~/.emacs.d/satan/prompts/
 ```
 
 Checks:
@@ -913,7 +912,7 @@ Example inbox item:
 :PROPERTIES:
 :SATAN_PATCH_JOB: patch_20260520T190122_a13f
 :BRANCH: satan/self-edit-mech/20260520T190122-canon-tests
-:REPO: ~/.emacs.d
+:REPO: ~/dev/satan
 :END:
 
 The patch-agent produced 1 commit.
@@ -924,13 +923,13 @@ The patch-agent produced 1 commit.
 
 Review:
 #+begin_src sh
-git -C ~/.emacs.d diff main...satan/self-edit-mech/20260520T190122-canon-tests
-git -C ~/.emacs.d show abc1234
+git -C ~/dev/satan diff main...satan/self-edit-mech/20260520T190122-canon-tests
+git -C ~/dev/satan show abc1234
 #+end_src
 
 Accept:
 #+begin_src sh
-git -C ~/.emacs.d cherry-pick abc1234
+git -C ~/dev/satan cherry-pick abc1234
 #+end_src
 ```
 

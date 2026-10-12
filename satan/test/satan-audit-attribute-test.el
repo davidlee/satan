@@ -7,9 +7,9 @@
 ;; transcript-write boundary (see contract §17.4).  No callers yet;
 ;; this file exercises the validator in isolation.
 ;;
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-audit-attribute-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

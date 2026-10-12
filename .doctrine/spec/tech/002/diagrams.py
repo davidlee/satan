@@ -258,7 +258,7 @@ def composition(out):
   d.path("M 144,240 V 272 Q 144,280 152,280 H 280 Q 288,280 288,272 V 244", "dashed")
   d.label(216, 288, "DRIFT", MUTED)
 
-  d.node(64, 64, 160, 56, "external", "CONFIG", "~/.emacs.d", "require dl-satan", badge="0 in")
+  d.node(64, 64, 160, 56, "external", "CONFIG", "~/.config/emacs", "use-package satan", badge="0 in")
   d.node(248, 64, 712, 56, "backend", "HOST", "host flake  (~/flakes = the nix-config repo)",
          "NixOS + home-manager: systemd units, packages, postgres, jail library", badge="1 in")
   d.node(64, 184, 160, 56, "backend", "TREE", "~/dev/satan", "elisp + bin/ (live)", badge="2 in")

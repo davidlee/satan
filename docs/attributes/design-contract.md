@@ -652,7 +652,7 @@ No transcript-level golden test exists for attributes. The broker's percept A3 e
 
 ## 12. Test surface
 
-Tests are split by which side of the broker/daemon line they exercise. The daemon's tests live in `satan-attrd` (Rust integration tests against a live Postgres); the broker's tests live in `~/.emacs.d/satan/` (ert against the broker's audit + capsule paths).
+Tests are split by which side of the broker/daemon line they exercise. The daemon's tests live in `satan-attrd` (Rust integration tests against a live Postgres); the broker's tests live in `~/dev/satan/satan/test/` (ert against the broker's audit + capsule paths).
 
 T-attr-1b (state + event log) requires:
 
@@ -740,7 +740,7 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 
 The attribute layer is split across two processes. This section is normative; locus diagrams in `T-attr-1-attribute-layer.md` are illustrative.
 
-### 17.1 Broker (elisp, `~/.emacs.d/satan/`)
+### 17.1 Broker (elisp, `~/dev/satan/satan/`)
 
 Owns:
 

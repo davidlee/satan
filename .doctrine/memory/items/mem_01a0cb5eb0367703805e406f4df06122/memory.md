@@ -1,4 +1,4 @@
-`my/op-read` (`~/.emacs.d/lisp/dl-secret.el`) resolves a secret with a
+`my/op-read` (`~/.config/emacs/lisp/dl-secret.el`) resolves a secret with a
 synchronous `call-process`. Emacs is single-threaded, so while `op` waits on a
 1Password authorization dialog **the whole Emacs server is blocked** —
 `emacsclient -e '(+ 1 1)'` hangs until the dialog is answered.

@@ -7,9 +7,9 @@
 ;;   (satan-attribute-snapshot)               -> alist ((name . value) ...)
 ;;   (satan-attribute-render-block FRAMING S) -> list-of-lines | nil
 ;;
-;; Run from CLI (tests):
+;; Run from CLI (tests), at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-attribute-render-test.el -f ert-run-tests-batch-and-exit
 
 (require 'cl-lib)

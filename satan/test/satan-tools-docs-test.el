@@ -1,8 +1,8 @@
 ;;; satan-tools-docs-test.el --- docs_* tool tests -*- lexical-binding: t; -*-
 
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-tools-docs-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)

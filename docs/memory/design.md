@@ -41,8 +41,8 @@ metadata:
 Status: design draft, pre-implementation.
 Prerequisites:
 
-- `~/.emacs.d/memory.brief.md` — substrate principles and addressing rules
-- `~/.emacs.d/docs/satan/governance.md` — broker invariants and ownership model
+- `~/.config/emacs/docs/memory.brief.md` — substrate principles and addressing rules
+- `docs/governance.md` — broker invariants and ownership model
 - `~/notes/20260519T003129--satan__agent_emacs_project.org` — organism framing
 
 This document is the more-grounded plan that follows the brief and the
@@ -566,7 +566,7 @@ git history (see SL-002's notes for the pre-removal SHA) and in SL-001
 - No FDW or replication into bough in v1.
 
 Migrations: numbered SQL files under
-`~/.emacs.d/satan/memory/migrations/NNNN_<slug>.sql`. Forward-only,
+`satan/memory/migrations/NNNN_<slug>.sql`. Forward-only,
 additive where possible. Applied by `satan-memory-migrate`.
 
 **R3 decided 2026-05-19: `psql` subprocess** for both migration runner
@@ -1056,7 +1056,7 @@ producers are anticipated.
 ## 11. File layout
 
 ```text
-~/.emacs.d/satan/
+satan/
   satan-memory.el                   aggregator + satan-memory-* commands
   satan-memory-grammar.el           closed-world enums; alias seed; weight defaults
   satan-memory-canon.el             canonicalizer; rule registry (PURE)

@@ -6,9 +6,9 @@
 ;; - Sync: the elisp constants for grammar v1 equal the rows in
 ;;   `satan_memory.grammar_versions/handle_aliases/handle_weights'.
 ;;
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-memory-grammar-test.el -f ert-run-tests-batch-and-exit
 ;;
 ;; Override target DB with env var SATAN_MEMORY_TEST_DB (default

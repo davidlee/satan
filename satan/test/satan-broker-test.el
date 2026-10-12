@@ -1,9 +1,8 @@
 ;;; satan-broker-test.el --- ert tests for satan-broker -*- lexical-binding: t; -*-
 
-;; Run from CLI:
+;; Run from CLI, at the repo root:
 ;;   emacs --batch \
-;;     -L ~/.emacs.d/core -L ~/.emacs.d/lisp -L ~/.emacs.d/org \
-;;     -L ~/.emacs.d/satan -L ~/.emacs.d/satan/test \
+;;     -L satan -L dev -L satan/test \
 ;;     -l satan-broker-test.el -f ert-run-tests-batch-and-exit
 
 (require 'ert)
