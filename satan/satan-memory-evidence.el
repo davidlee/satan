@@ -37,8 +37,8 @@
 (require 'cl-lib)
 (require 'json)
 (require 'subr-x)
-(require 'calendar)   ; calendar-absolute-from-gregorian / -gregorian-from-absolute
 (require 'satan-goad)
+(require 'satan-memory-canon)
 (require 'satan-jsonl)
 (require 'satan-trace)
 (require 'satan-tools-activity)
@@ -271,18 +271,9 @@ skipped without blanking good rows from sibling files."
           (cons "ok" (or tail '())))))))
 
 (defun satan-memory-evidence--next-day (day-str)
-  "Return the ISO date string for the calendar day after DAY-STR.
-DAY-STR is `%F' (e.g. \"2026-04-05\").  Uses calendar arithmetic so
-DST transitions cannot produce duplicate or skipped dates."
-  (let* ((parsed (parse-iso8601-time-string (concat day-str "T00:00:00")))
-         (decoded (decode-time parsed))
-         (y (decoded-time-year decoded))
-         (m (decoded-time-month decoded))
-         (d (decoded-time-day decoded))
-         (next (calendar-gregorian-from-absolute
-                (1+ (calendar-absolute-from-gregorian (list m d y))))))
-    (format "%04d-%02d-%02d"
-            (elt next 2) (elt next 0) (elt next 1))))
+  "The ISO date string for the calendar day after DAY-STR (`%F').
+Delegates to `satan-memory-canon-day-shift'."
+  (satan-memory-canon-day-shift day-str 1))
 
 (defun satan-memory-evidence--git-feed-paths (root start end)
   "Return `segments/git-%F.jsonl' paths for every calendar day in [START, END].

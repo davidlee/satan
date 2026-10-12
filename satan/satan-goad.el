@@ -58,14 +58,9 @@ seconds (`36000') rather than mutating the process's TZ.")
 (defun satan-goad-local-date (ts &optional zone)
   "The local calendar date, \"YYYY-MM-DD\", of the instant TS.
 ZONE defaults to `satan-goad--zone'.  nil when TS is not an ISO 8601
-date-time with an offset — a raw psql cell must be normalised first
-\(`satan-intervention--normalize-pg-timestamp').  Always the date of a
-parsed instant, never a substring: psql renders `ts' in GMT, so its
-first ten characters are the wrong day for anything emitted before
-10:00 in +10:00 (design sec-2, RV-007 F-33)."
-  (let ((instant (satan-memory-canon-parse-instant ts)))
-    (and instant
-         (format-time-string "%F" instant (or zone satan-goad--zone)))))
+date-time with an offset.  See `satan-memory-canon-local-date' for why
+this is never a substring of TS."
+  (satan-memory-canon-local-date ts (or zone satan-goad--zone)))
 
 ;; ── the queue ───────────────────────────────────────────────────────────────
 

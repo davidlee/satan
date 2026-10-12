@@ -21,6 +21,7 @@
 (require 'cl-lib)
 (require 'subr-x)
 (require 'iso8601)
+(require 'calendar)   ; calendar-absolute-from-gregorian / -gregorian-from-absolute
 (require 'satan-memory-grammar)
 
 ;; ---------------------------------------------------------------------
@@ -139,6 +140,26 @@ Compare the results with `time-less-p', never the strings."
                (decoded-time-hour decoded)
                (encode-time decoded)))
       (error nil))))
+
+(defun satan-memory-canon-local-date (ts &optional zone)
+  "The calendar date, \"YYYY-MM-DD\", of the instant TS in ZONE.
+ZONE is as for `format-time-string'; nil is Emacs's local zone.  nil when
+TS is not an ISO 8601 date-time with an offset (see
+`satan-memory-canon-parse-instant') — a raw psql cell must be normalised
+first.  Always the date of a parsed instant, never a substring: psql
+renders a timestamp in GMT, so its first ten characters are the wrong
+day for anything stamped before 10:00 in +10:00 (RV-007 F-33, ISS-021)."
+  (let ((instant (satan-memory-canon-parse-instant ts)))
+    (and instant (format-time-string "%F" instant zone))))
+
+(defun satan-memory-canon-day-shift (day n)
+  "The date N days after DAY, both \"YYYY-MM-DD\"; N may be negative.
+Pure calendar arithmetic: no zone, and no DST day length to go wrong."
+  (pcase-let ((`(,y ,m ,d) (mapcar #'string-to-number (split-string day "-"))))
+    (pcase-let ((`(,m2 ,d2 ,y2) (calendar-gregorian-from-absolute
+                                 (+ n (calendar-absolute-from-gregorian
+                                       (list m d y))))))
+      (format "%04d-%02d-%02d" y2 m2 d2))))
 
 (defun satan-memory-canon-topic-handle (s)
   "The `topic:' handle for the free text S, or nil when S slugifies to nothing.

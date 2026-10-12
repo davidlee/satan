@@ -520,5 +520,61 @@ simply not a hint any more."
     ;; unrelated hints still normalize
     (should (equal "emacs" (plist-get (plist-get r :normalized) :focal_app)))))
 
+;; ---------------------------------------------------------------------
+;; SL-021 PHASE-01 — shared date helpers
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-memory-canon/day-shift-crosses-month-and-year-ends ()
+  "VT-1 — `day-shift' is calendar arithmetic, forward and back."
+  (should (equal "2026-06-01" (satan-memory-canon-day-shift "2026-05-31" 1)))
+  (should (equal "2026-05-31" (satan-memory-canon-day-shift "2026-06-01" -1)))
+  (should (equal "2026-01-01" (satan-memory-canon-day-shift "2025-12-31" 1)))
+  (should (equal "2025-12-31" (satan-memory-canon-day-shift "2026-01-01" -1))))
+
+(ert-deftest satan-memory-canon/day-shift-handles-leap-days ()
+  "VT-1 — 2024-02-29 exists; 2026-02-29 does not."
+  (should (equal "2024-02-29" (satan-memory-canon-day-shift "2024-02-28" 1)))
+  (should (equal "2024-02-29" (satan-memory-canon-day-shift "2024-03-01" -1)))
+  (should (equal "2026-02-28" (satan-memory-canon-day-shift "2026-03-01" -1))))
+
+(ert-deftest satan-memory-canon/day-shift-zero-and-multi-day ()
+  "VT-1 — N = 0 is the identity; N is a day count, not just plus or minus one."
+  (should (equal "2026-05-31" (satan-memory-canon-day-shift "2026-05-31" 0)))
+  (should (equal "2026-07-01" (satan-memory-canon-day-shift "2026-05-31" 31)))
+  (should (equal "2026-04-30" (satan-memory-canon-day-shift "2026-05-31" -31))))
+
+(ert-deftest satan-memory-canon/local-date-is-the-zone-date-of-the-instant ()
+  "VT-2 — a GMT instant takes the date of the given ZONE, not its substring."
+  (should (equal "2026-09-23"
+                 (satan-memory-canon-local-date "2026-09-22T23:30:00+00" 36000)))
+  (should (equal "2026-09-22"
+                 (satan-memory-canon-local-date "2026-09-22T23:30:00+00" 0)))
+  (should (equal "2026-09-23"
+                 (satan-memory-canon-local-date "2026-09-23T09:30:00+10:00" 36000)))
+  (should (equal "2026-09-23"
+                 (satan-memory-canon-local-date "2026-09-22T23:30:00Z" 36000))))
+
+(ert-deftest satan-memory-canon/local-date-reads-microsecond-stamps ()
+  "VT-2 — fractional seconds do not disturb the date."
+  (should (equal "2026-09-24"
+                 (satan-memory-canon-local-date
+                  "2026-09-24T00:05:26.407718+10:00" 36000)))
+  (should (equal "2026-09-23"
+                 (satan-memory-canon-local-date
+                  "2026-09-24T00:05:26.407718+10:00" 0))))
+
+(ert-deftest satan-memory-canon/local-date-refuses-what-it-cannot-place ()
+  "VT-2 — psql cells, naive stamps, bare dates and non-strings give nil."
+  (dolist (bad '("2026-09-22 23:30:00+00" "2026-09-22 23:30:00.123456+00"
+                 "2026-09-23T09:30:00" "2026-09-23" "" "garbage" nil))
+    (should-not (satan-memory-canon-local-date bad 36000))))
+
+(ert-deftest satan-memory-canon/local-date-nil-zone-is-the-local-zone ()
+  "VT-2 — nil ZONE is Emacs's local zone, whatever the host's TZ."
+  (let ((ts "2026-09-22T23:30:00+00"))
+    (should (equal (format-time-string
+                    "%F" (satan-memory-canon-parse-instant ts))
+                   (satan-memory-canon-local-date ts)))))
+
 (provide 'satan-memory-canon-test)
 ;;; satan-memory-canon-test.el ends here
