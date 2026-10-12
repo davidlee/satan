@@ -233,7 +233,10 @@ flowchart TD
 - Pure with respect to SATAN state: reads two files at most, writes nothing,
   keeps nothing between calls.
 - The same `(ROOT, TIME)` over the same files gives the same answer —
-  appending events after `TIME` never changes it (replayability).
+  appending events after `TIME` never changes the decision (replayability):
+  an `ok` or `disconnected` answer and its window are fixed. Only `malformed`
+  may become `missing` (a garbage-only day file gains a later valid line);
+  both are non-`ok` with no window (RV-022 F-6).
 - `STATUS` is `"ok"` iff `WINDOW` is non-nil.
 
 The first two invariants rest on two premises, both properties of the
@@ -278,7 +281,12 @@ handle on the `memory_resonate` cue path — and the reader's live-case cost kee
 that cheap. `(car current-probe)` feeds `:sensor_status :current_window`,
 `(cdr current-probe)` feeds `:current_window`, as today.
 
-Removed, with no remaining caller:
+Removed. One external caller existed, which this section first missed:
+`~/.config/emacs/lisp/dl-sleipnir-doctor.el` called
+`--current-window-status`. It moved to `satan-desktop-at` under PHASE-03
+EX-6 (user ruling 2026-09-26), behind a defensive
+`(fboundp 'satan-desktop-at)` guard that reports "not loaded" on
+config/package skew (RV-022 F-2, F-10).
 
 | symbol | why it goes |
 |---|---|
@@ -412,6 +420,10 @@ every suite one way to write raw desktop days:
 ```elisp
 (satan-desktop-fixture-event TS EVENT &rest FIELDS)  ; → plist in raw shape
 (satan-desktop-fixture-write ROOT DAY EVENTS)        ; → raw/desktop-DAY.jsonl, UTF-8
+(satan-desktop-fixture-focus ROOT TS APP)            ; → one focused app at TS
+(satan-desktop-fixture-append PATH TEXT)             ; → raw bytes (torn/garbage lines)
+(satan-desktop-fixture-with-root VAR &rest BODY)     ; → temp root, reader zone pinned
+satan-desktop-fixture-zone                           ; → +10:00, the fixtures' zone
 ```
 
 It replaces all five hand-rolled `current/desktop.json` writers:
@@ -452,7 +464,9 @@ New suite `satan/test/satan-desktop-test.el`, against `satan-desktop-at`:
 - events appended after T do not change the answer
 - the day file is chosen by the local date of T under `satan-desktop--zone`
   (a `Z` T late in the UTC day selects the next local day's file)
-- pin test: real umbriel- and niri-shaped lines copied from a live raw file
+- pin test: sanitised copies of live umbriel lines, and niri lines derived
+  from the documented `window_focus` shape (no live niri source — umbriel is
+  the WM; RV-022 F-2)
   (`window_title` / `window_focus` / windowless `window_focus` / `snapshot` /
   lifecycle) decide as above; see "What the tests cannot cover"
 
@@ -491,7 +505,8 @@ Updated suites:
 
 That panopticon's live producers keep emitting full focused state (DEC-036) is
 a fact about another repo, and an unpublished one (sec-1, "The boundary"). The
-fixture encodes it, and the pin test holds the reader against real lines, per
+fixture encodes it, and the pin test holds the reader against live-shaped
+lines (sanitised umbriel; niri derived), per
 the "stub is a claim about a foreign binary" pattern. If the pin lines ever
 disagree with fresh live output, panopticon's shape has moved.
 

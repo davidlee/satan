@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-12 · audit · 6d9608c+RV-022
+fresh-as-of: 2026-10-12 · reconcile · 1307c25+REV-004
 
 ### Produced
 - PHASE-01 — canon owns `local-date` / `day-shift`; goad + evidence delegate (87a9757)
@@ -14,7 +14,8 @@ fresh-as-of: 2026-10-12 · audit · 6d9608c+RV-022
 - PHASE-03 — evidence probe replays at window end; alert causes → DEC-037 vocab; doctor edited in `~/.config/emacs` (0a35c36)
 - PHASE-04 — `activity_read` `current` replays at now (b0471ff)
 - PHASE-05 — corpus `tools/activity_read.md` (satan-corpus c07ead9; wording fix 25bc25f)
-- RV-022 — audit ledger; reconciliation brief there
+- RV-022 — audit ledger; reconciliation brief + outcome there
+- REV-004 — ADR-001 Amendment §3 (`current_window` replayable)
 - minted: ISS-036 — suite is host-zone dependent (pre-existing); IMP-031 extended — focus/browser alert hints carry host literals
 
 ### Learned
@@ -23,7 +24,7 @@ fresh-as-of: 2026-10-12 · audit · 6d9608c+RV-022
 - `json-serialize` returning unibyte does not mangle UTF-8 output (PHASE-02 sheet hazard was overstated)
 
 ### Open
-- VT-7 pin lines are sanitised (umbriel) / derived (niri) — capture real niri lines when the logs allow (RV-022 Synthesis)
+- VT-7 niri pin lines are derived, not captured: umbriel is the live WM, so there is no live niri source; a niri shape drift would go unseen until niri is used again (RV-022 Synthesis)
 
 ## Audit evidence (RV-022, 2026-10-12)
 

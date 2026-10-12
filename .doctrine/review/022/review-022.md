@@ -121,3 +121,44 @@ Standing risks and accepted tradeoffs:
 
 - `doctrine slice research 21 --restamp` — drift is only plan.md/plan.toml
   added after the stamp.
+
+## Reconciliation Outcome
+
+User agreement: "agreed" (2026-10-12) to the full proposed set.
+
+### Direct edits applied
+
+- design.md §2 — append invariant qualified: the decision is append-stable;
+  only `malformed` → `missing` may change (F-6).
+- design.md §3 — the sleipnir doctor named as the one external caller,
+  corrected under PHASE-03 EX-6, with its `fboundp` guard (F-2a, F-10).
+- design.md §5 — full fixture surface listed (F-2e); pin test described as
+  sanitised umbriel + derived niri lines, umbriel being the live WM (F-2b).
+- notes.md — plan deviations and VA-2 / VH-1 evidence (F-3, F-5; written at
+  audit); Harvest restamped; open risk restated for umbriel.
+- Repo docs (F-1): `docs/governance.md` (activity_read row, evidence-module
+  row, open thread 10), `docs/data-collection.md` (four rows),
+  `docs/memory/design.md` (two rows), `docs/perceptual-design.md` (DE-010
+  note, §S6 threshold row, continuity paragraph, sensor/capsule examples,
+  alert causes and sample, open question 1 resolved). Zero hits remain for
+  `current/sway`, `current/desktop`, `panopticon_current_stale` in live docs.
+
+### REVs completed
+
+- REV-004 (`reconcile-sl-021`): done — ADR-001 Amendment §3 records
+  `current_window` as replayable (SL-021); rationale in revision-004.md.
+
+### Knowledge / backlog writes
+
+- DEC-037 rationale: the orphaned cooldown entry is pruned on next read
+  (F-7).
+- IMP-013: `:current_window` move marked delivered by SL-021.
+- Research baseline restamped (`doctrine slice research 21 --restamp`).
+
+### Fixed during audit / follow-up / tolerated
+
+- F-4: fixed in satan-corpus 25bc25f.
+- F-8 → IMP-031; F-9 → ISS-036.
+- F-3, F-10: tolerated, rationale in dispositions.
+
+Reconcile pass complete — handoff to /close.

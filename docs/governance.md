@@ -370,7 +370,7 @@ justification):
 | `satan-memory.el` | Substrate aggregator + `satan-memory-{resonate,show,status}` interactive surface. |
 | `satan-memory-grammar.el` | Closed-world enums, alias seed, default weights for grammar v1 (mirrored in `memory/migrations/0002_grammar_v1.sql`). |
 | `satan-memory-canon.el` | Pure canonicalizer + rule registry; emits handles + per-handle source. Purity grep-lint enforced. |
-| `satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + git/fs) per [[satan-memory-design]] §4; deterministic truncation. Also the §S6 git-activity probe (`--git-commits-status`): reads `segments/git-<day>.jsonl`, bursty-freshness (never stale), adds `:git_commits` + `:git` sensor_status. |
+| `satan-memory-evidence.el` | Impure evidence-window assembly (panopticon + git/fs) per [[satan-memory-design]] §4; deterministic truncation. `:current_window` replays the desktop event series at the window end (`satan-desktop-at`, SL-021). Also the §S6 git-activity probe (`--git-commits-status`): reads `segments/git-<day>.jsonl`, bursty-freshness (never stale), adds `:git_commits` + `:git` sensor_status. |
 | `satan-memory-store.el` | `mark` / `resonate` / `show` against `satan_memory` via `psql` subprocess. |
 | `satan-memory-migrate.el` | Forward-only migration runner; `satan-memory-renormalize` (§7 grammar-bump replay) + `-status`. |
 | `satan-percept.el` | Perceptual-loop §S1: percept builder, persist (`percept.json`), capsule render. Phase 1. |
@@ -525,7 +525,7 @@ Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 | `hippocampus_write` | low | capability `hippocampus-write` | Append a denote hippocampus entry (SATAN-owned, auto-applied). |
 | `inbox_append` | low | capability `inbox-write` | Append a headline to `~/satan-corpus/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
 | `agenda_read` | read | — | Fetch the work calendar via `gcalcli`. Calendar id read from `$WORK_EMAIL`; wrapped in `timeout(1)` so a stalled gcalcli can't freeze the broker. |
-| `activity_read` | read | — | Read panopticon's behaviour state from `~/.local/state/behaviour/`. `scope="today"` returns the daily histogram; `scope="recent_focus"` / `recent_browser` return the last N focus / browser segments; `scope="current"` returns the live focused-window snapshot (`app_id`, `workspace`, `output`, `title`, `pid`). PII redaction is handled by the producer (firefox URLs stripped to origin, incognito dropped). The `current` scope intentionally passes `title` through — see open thread "current-scope title leak". |
+| `activity_read` | read | — | Read panopticon's behaviour state from `~/.local/state/behaviour/`. `scope="today"` returns the daily histogram; `scope="recent_focus"` / `recent_browser` return the last N focus / browser segments; `scope="current"` replays the focused window as of now from `raw/desktop-<date>.jsonl` via `satan-desktop-at`: `:status` (`ok` / `disconnected` / `missing` / `malformed`) plus `:window` (`app_id`, `workspace`, `output`, `title`, `pid`, `window_id`, `since`; nil unless `ok`). PII redaction is handled by the producer (firefox URLs stripped to origin, incognito dropped). The `current` scope intentionally passes `title` through — see open thread "current-scope title leak". |
 | `memory_mark` | low | capability `memory-write` | Persist an `observation` trace into `satan_memory`. The broker canonicalizes evidence deterministically; the LLM supplies typed hints (no raw handles).  Stamped `trace_origin = llm_mark`. |
 | `memory_resonate` | read | — | Inverted-index lookup over `trace_handles`; returns matches scored by `weight * trace.strength`.  No state mutation in v1. |
 | `memory_show_trace` | read | — | Round-trip a trace by id (handles, sources, links). |
@@ -811,14 +811,14 @@ Numbered for cross-referencing in commits / changelog.
    (`return bundle["prompt"]`). No canonical model-facing prose lives
    in package code anymore.
 10. **`activity_read` current-scope title leak** — `scope="current"`
-    returns sway's focused-window snapshot verbatim, including the
-    `title` field. Sway IPC titles surface browser tab page-titles,
+    returns the replayed focused window verbatim, including the
+    `title` field. Compositor titles surface browser tab page-titles,
     editor file paths, Slack thread subjects, etc. — anything the
     focused window puts in its title bar. When this lands in the LLM
     request body the provider can log it. Acceptable for now; tighten
     later either by (a) stripping `:title` SATAN-side or (b) having
-    panopticon write a `current/sway-public.json` without title for
-    consumers like SATAN to read.
+    panopticon emit a title-free desktop stream for consumers like
+    SATAN to replay.
 11. **Perceptual loop v0 (Phases 0–6)** — ✅ landed 2026-05-22→23.
     Percept capsule, auto-resonance, motive file, sensor alerts,
     outcome observer, cooldown floor — all in. Design doc

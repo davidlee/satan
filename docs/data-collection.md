@@ -147,7 +147,7 @@ is described by handler and by model-facing description
 | `today` | `~/.local/state/behaviour/histograms/daily-<date>.json` | Per-app/second/workspace/hour aggregates |
 | `recent_focus` | `~/.local/state/behaviour/segments/focus-<date>.jsonl` | Last N focus segments (app, workspace, start/end, duration) |
 | `recent_browser` | `~/.local/state/behaviour/segments/browser-<date>.jsonl` | Last N browser segments (origin stripped to host, start/end, duration) |
-| `current` | `~/.local/state/behaviour/current/sway.json` | Live snapshot: app_id, workspace, output, title, pid |
+| `current` | `~/.local/state/behaviour/raw/desktop-<date>.jsonl` | Focused window replayed as of now: status + app_id, workspace, output, title, pid, window_id, since |
 
 **Risk:** read. Available to: morning, motd, tick-pulse.
 **Producer:** panopticon (`~/dev/panopticon`) — sway watcher + Firefox
@@ -455,7 +455,7 @@ loss.
 ### 5.4 Evidence window
 
 Every `memory_mark` captures an evidence snapshot:
-- Current window (sway focus)
+- Current window (replayed from the desktop event log at the window end)
 - Focus segments (last 10, window-bounded)
 - Browser segments (last 10, window-bounded)
 - Git state (HEAD short, remote, dirty flag, last 5 commits)
@@ -527,7 +527,7 @@ tools but currently sit as raw files:
 | Behaviour focus segments | `~/.local/state/behaviour/segments/focus-<date>.jsonl` | panopticon | Via `activity_read` |
 | Behaviour browser segments | `~/.local/state/behaviour/segments/browser-<date>.jsonl` | panopticon | Via `activity_read` |
 | Behaviour histograms | `~/.local/state/behaviour/histograms/daily-<date>.json` | panopticon | Via `activity_read` |
-| Current sway window | `~/.local/state/behaviour/current/sway.json` | panopticon | Via `activity_read` |
+| Desktop event log (current window) | `~/.local/state/behaviour/raw/desktop-<date>.jsonl` | panopticon | Via `activity_read` + evidence replay |
 | **Typing speed** | `~/.local/state/satan/log/wpm/<date>.tsv` | Unknown | **None** |
 | Memory substrate | PostgreSQL `satan_memory` | SATAN itself | Via `psql` subprocess |
 
@@ -657,7 +657,7 @@ These write to durable state that is never re-read by any tool:
 | **Agenda** | Probe | Calendar events | Indirect (user manages calendar) |
 | **Activity focus** | Probe | Panopticon focus segments | No (sensor; user's behaviour) |
 | **Activity browser** | Probe | Panopticon browser segments | No (sensor; user's behaviour) |
-| **Current window** | Probe | sway focus snapshot | No (sensor; user's behaviour) |
+| **Current window** | Probe | Focused window replayed from the desktop event log | No (sensor; user's behaviour) |
 | **Bough state** | Probe | Task tree, events, day entry | Indirect (user manages tasks) |
 | **Notes files** | Probe | Recently-edited files | Yes — notes_at_satan_done |
 | **@satan directives** | Probe | User-authored triggers | Yes — notes_at_satan_done |

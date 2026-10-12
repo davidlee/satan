@@ -274,7 +274,7 @@ canonicalize(evidence_window, hints, ctx)
 the broker (§4):
 
 ```text
-current_window      panopticon current/sway.json
+current_window      panopticon raw/desktop-<day>.jsonl (replayed at window end)
 focus_segments[]    panopticon segments/focus-<day>.jsonl tail
 browser_segments[]  panopticon segments/browser-<day>.jsonl tail
 git_state           [removed IMP-034] HEAD short ref, dirty/clean, last 5 commits (cwd-derived)
@@ -422,7 +422,7 @@ previous session's evidence.
 
 | Source                | Path / call                                                          |
 |-----------------------|----------------------------------------------------------------------|
-| panopticon current    | `~/.local/state/behaviour/current/sway.json`                         |
+| panopticon desktop    | `~/.local/state/behaviour/raw/desktop-<day>.jsonl` (replay)          |
 | panopticon focus      | `~/.local/state/behaviour/segments/focus-<day>.jsonl` (tail)         |
 | panopticon browser    | `~/.local/state/behaviour/segments/browser-<day>.jsonl` (tail)       |
 | git state             | `git -C <cwd> log -n 5 --oneline` + `git status --porcelain` (capped)|

@@ -60,6 +60,10 @@ dropped at the adapter.
 
 ### `:current_window` — replay, no new producer
 
+**Delivered by SL-021 (2026-10-12)**: `satan-desktop-at` replays
+`raw/desktop-<date>.jsonl`; status `ok` / `disconnected` / `missing` /
+`malformed`, no age ceiling (DEC-034..DEC-040, ADR-001 Amendment §3).
+
 The desktop event stream already makes current state replayable: current at
 `t` is the state carried by the last `desktop` event at or before `t`. The
 live file is a cache of the same thing. What changes is freshness:
@@ -112,7 +116,7 @@ is a work item there.
 ## Sequencing
 
 1. [[IMP-034]] — drop every cwd read. **Done 2026-09-25.**
-2. `:current_window` replay — mostly SATAN-side; decide the read path first.
+2. `:current_window` replay — **Done 2026-10-12 (SL-021).**
 3. Git status + active project — new signal; needs the panopticon status
    producer and an active-project signal. [[ISS-004]] items 1–2 are obsolete.
 

@@ -119,9 +119,9 @@ pure read-snapshot at perceive, the charge + watermark advance at
 consume.
 
 > **Signal model unchanged here.** DE-010 lands the structural cut
-> only. Perception still reads present-tense live state
-> (`current_window`) — it is **not yet replayable** from a watermark;
-> that promotion is IMP-013. (`git_state` / `fs_state` were dropped
+> only. `current_window` was then a present-tense live read; since
+> SL-021 (IMP-013 move 2) it is replayed from the desktop event series
+> at the window end. (`git_state` / `fs_state` were dropped
 > rather than promoted: IMP-034, 2026-09-25.)
 
 Sequence (perceive/consume, as built):
@@ -427,14 +427,16 @@ Thresholds (start values; tune from observed cadence):
 
 | Source | Threshold | Action when exceeded |
 |---|---|---|
-| `current/sway.json` | 5 min mtime | drop from `current_window` |
+| `raw/desktop-<day>.jsonl` (replayed at window end) | none — never age-dropped (DEC-035) | status `disconnected` / `missing` / `malformed` drops the window |
 | `segments/focus-<day>.jsonl` (latest entry) | 30 min | drop tail |
 | `segments/browser-<day>.jsonl` (latest entry) | 30 min | drop tail |
 | `segments/git-<day>.jsonl` (commit feed) | none — bursty | never stale; in-window slice only |
 | `satan_memory` (psql) | error | log + notify; resonance disabled this run |
 
-**Git is the odd sensor out.** focus/browser/current are *continuous*
-streams where silence means the capture is broken (page-worthy). Commits
+**Git is the odd sensor out.** focus/browser are *continuous*
+streams where silence means the capture is broken (page-worthy); the
+current window is replayed, so its age is information, not a fault
+(SL-021). Commits
 are *bursty*: a feed whose newest entry is days old just means no recent
 commits — normal, not a fault. So the git probe inverts the freshness
 contract: status is only `ok` / `missing` / `malformed`, **never
@@ -451,13 +453,13 @@ Sensor status returned alongside evidence:
 
 ```text
 :sensor_status (:current_window ok :focus ok :browser ok :git ok)
-:sensor_status (:current_window stale-28m :focus ok :browser malformed :git ok)
+:sensor_status (:current_window ok :focus stale-28m :browser malformed :git ok)
 ```
 
 Rendered into the capsule as one line:
 
 ```text
-sensors: current=STALE(28m) focus=4m browser=MALFORMED git=ok
+sensors: current=ok focus=STALE(28m) browser=MALFORMED git=ok
 ```
 
 **Loud failure on shouldn't-be-missing.** When a sensor degrades in a
@@ -466,8 +468,8 @@ a notification **through the existing `notify_send` tool handler**,
 not through an ad-hoc D-Bus call. This routes the alert through the
 normal capability check + audit pipeline. Causes that trigger:
 
-- `current/sway.json` stale > 5 min during non-quiet hours (panopticon
-  daemon likely dead)
+- the desktop log's last event is a compositor disconnect, or today's
+  and yesterday's desktop logs are missing / malformed (SL-021 DEC-037)
 - segmentizer hasn't run for ≥ 36 h
 - malformed JSON in any sensor file
 - psql connection error to `satan_memory`
@@ -489,9 +491,9 @@ v0 adds a sibling key, `pre_spawn`, to `actions.json`:
   "failed":    [...],
   "pre_spawn": [
     { "kind":         "sensor_alert",
-      "cause":        "panopticon_current_stale",
+      "cause":        "panopticon_current_disconnected",
       "severity":     "warning",
-      "message":      "panopticon current_window stale (28m).",
+      "message":      "panopticon's compositor connection is down; focused window unknown",
       "remediation":  "systemctl --user status panopticon-sway",
       "suppressed":   false,
       "dispatched_at": "2026-05-22T11:13Z" }
@@ -570,8 +572,8 @@ each waits on real failure data the v0 run will produce.
 
 These don't block v0 implementation but should be resolved during it.
 
-1. **`current_window` staleness threshold.** Start at 5 minutes; tune
-   from observed sway focus cadence and false-positive notify rate.
+1. **`current_window` staleness threshold.** ✅ resolved (SL-021,
+   DEC-035): no threshold — the window is replayed, never age-dropped.
 2. **"Plausibly related" path predicate.** ✅ resolved (Phase 5.4).
    Observer scopes positive signal to file edits under the motive's
    `:project_cwd:` (option (a)). Predicate guard order
