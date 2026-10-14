@@ -168,8 +168,8 @@ restriction and is expected to wind down gracefully.
 
 **Tier 2 — wind-down.** Triggered by: token usage crosses 85% of budget.
 
-- Drop external reads: `org_read_context`, `bough_read`,
-  `agenda_read`, `notes_read`, `hippocampus_list`, `hippocampus_read`,
+- Drop external reads: `org_read_context`, `bough_read`, `notes_read`,
+  `hippocampus_list`, `hippocampus_read`,
   `notes_at_satan_scan`, `memory_resonate`, `memory_show_trace`,
   `patch_job_create`, `patch_job_status`, `proposal_stage`.
 - Keep: memory writes (`memory_mark`, `hippocampus_write`,
@@ -282,7 +282,6 @@ transition.
 | `hippocampus_grep` | yes | - | - | - |
 | `org_read_context` | yes | yes | - | - |
 | `bough_read` | yes | yes | - | - |
-| `agenda_read` | yes | yes | - | - |
 | `hippocampus_list` | yes | yes | - | - |
 | `hippocampus_read` | yes | yes | - | - |
 | `notes_read` | yes | yes | - | - |

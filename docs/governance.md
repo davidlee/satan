@@ -363,7 +363,6 @@ justification):
 | `satan-tools-notify.el` | `notify_send` (D-Bus). |
 | `satan-tools-hippocampus.el` | `hippocampus_write`; `satan-hippocampus`. Emits an `auto_rule` memory observation when called from a `memory-write` mode (cross-ref hook, [[satan-memory-design]] §10.7). |
 | `satan-tools-inbox.el` | `inbox_append`; `satan-inbox`; `satan-inbox-unread-count`. |
-| `satan-tools-agenda.el` | `agenda_read` (gcalcli → text); timeout-wrapped; calendar id from `$WORK_EMAIL`. |
 | `satan-tools-activity.el` | `activity_read` (panopticon's `~/.local/state/behaviour/` → histogram or focus segments); read-only. |
 | `satan-tools-memory.el` | `memory_mark`, `memory_resonate`, `memory_show_trace` — LLM-facing tools over the memory substrate. |
 | `satan-tools-docs.el` | `docs_list`, `docs_search`, `docs_read` — lazy lookup over the frontmatter-stamped chunks under `docs/` + `docs/emacs/`. |
@@ -492,8 +491,8 @@ justification):
 
 | Mode | Tools | Auto-apply | Budget tokens / tool-calls / wall |
 |---|---|---|---|
-| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `owned` | 20000 / 8 / 90s |
-| `motd` | `org_read_context`, `notify_send`, `inbox_append`, `agenda_read`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
+| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `owned` | 20000 / 8 / 90s |
+| `motd` | `org_read_context`, `notify_send`, `inbox_append`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
 | `tick-pulse` | `org_read_context`, `notify_send`, `inbox_append`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `motive_read`, `motive_replace`, `patch_job_create`, `patch_job_status`, `patch_job_cancel` | `owned` (only `inbox_append`; motives written via `motive_replace` model-side, footer via observer broker-side) | 3000 / 4 / 30s |
 | `tick-agent` | as `tick-pulse` plus `notes_at_satan_scan`, `notes_at_satan_done`, `notes_recent` | as `tick-pulse` (claims directives via `notes_at_satan_done`) | 3000 / 4 / 30s |
 | `self-edit-mech` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read`, `patch_job_create` | `none` | 50000 / 20 / 180s |
@@ -524,7 +523,6 @@ Override per-mode in `satan-mode.el`: `:provider`, `:model`,
 | `notify_send` | low | capability `notify` | D-Bus desktop notification. |
 | `hippocampus_write` | low | capability `hippocampus-write` | Append a denote hippocampus entry (SATAN-owned, auto-applied). |
 | `inbox_append` | low | capability `inbox-write` | Append a headline to `~/satan-corpus/inbox.org` (SATAN-owned, auto-applied; preferred over `notify_send` for non-urgent messages). |
-| `agenda_read` | read | — | Fetch the work calendar via `gcalcli`. Calendar id read from `$WORK_EMAIL`; wrapped in `timeout(1)` so a stalled gcalcli can't freeze the broker. |
 | `activity_read` | read | — | Read panopticon's behaviour state from `~/.local/state/behaviour/`. `scope="today"` returns the daily histogram; `scope="recent_focus"` / `recent_browser` return the last N focus / browser segments; `scope="current"` replays the focused window as of now from `raw/desktop-<date>.jsonl` via `satan-desktop-at`: `:status` (`ok` / `disconnected` / `missing` / `malformed`) plus `:window` (`app_id`, `workspace`, `output`, `title`, `pid`, `window_id`, `since`; nil unless `ok`). PII redaction is handled by the producer (firefox URLs stripped to origin, incognito dropped). The `current` scope intentionally passes `title` through — see open thread "current-scope title leak". |
 | `memory_mark` | low | capability `memory-write` | Persist an `observation` trace into `satan_memory`. The broker canonicalizes evidence deterministically; the LLM supplies typed hints (no raw handles).  Stamped `trace_origin = llm_mark`. |
 | `memory_resonate` | read | — | Inverted-index lookup over `trace_handles`; returns matches scored by `weight * trace.strength`.  No state mutation in v1. |

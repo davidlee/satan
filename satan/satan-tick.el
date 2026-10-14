@@ -124,7 +124,6 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
           "notify_send"
           "hippocampus_write"
           "memory_mark" "memory_resonate" "memory_show_trace"
-          "agenda_read"
           "activity_read"
           "vcs_log"
           "patch_job_create" "patch_job_status")

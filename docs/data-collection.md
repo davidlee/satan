@@ -157,13 +157,6 @@ incognito dropped).
 tabs. No direct kill switch; stopping panopticon's systemd units
 halts data production.
 
-### 3.3 `agenda_read`
-
-**Source:** gcalcli (network), calendar id from `$WORK_EMAIL` env var.
-**What comes through:** Plain-text agenda listing, default 5-day window.
-**Risk:** read. Available to: morning, motd.
-**Control:** User edits the calendar and manages gcalcli OAuth.
-
 ### 3.5 `notes_recent`
 
 **Source:** `fd --changed-after N hours` over `~/notes/`, excludes `satan/`.

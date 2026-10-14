@@ -35,7 +35,6 @@
 (require 'satan-tools-goad)
 (require 'satan-tools-hippocampus)
 (require 'satan-tools-inbox)
-(require 'satan-tools-agenda)
 (require 'satan-tools-activity)
 (require 'satan-tools-content)
 (require 'satan-tools-notes)
