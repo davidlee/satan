@@ -126,6 +126,15 @@ Returns (ok :path P :intervention_id IV-ID) | (error MSG)."
   (satan-tools-inbox--ensure-file)
   (find-file satan-inbox-file))
 
+(defun satan-inbox-show-in-frame (name)
+  "Show the SATAN inbox in the frame named NAME; return that frame.
+Return nil, changing nothing, when no frame is named NAME.  For
+external launchers that own a dedicated inbox frame."
+  (when-let* ((frame (seq-find (lambda (f) (equal (frame-parameter f 'name) name))
+                               (frame-list))))
+    (with-selected-frame frame (satan-inbox))
+    frame))
+
 (defun satan-inbox-unread-count ()
   "Count `:unread:' headlines in the SATAN inbox.
 Cheap; suitable for a status-bar widget called frequently."

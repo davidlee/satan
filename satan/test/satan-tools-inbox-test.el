@@ -128,5 +128,33 @@
                                     (plist-get args :expected-outcome)))))
       (when (file-exists-p tmp) (delete-file tmp)))))
 
+(defmacro satan-inbox-test--in-named-frame (name &rest body)
+  "Run BODY with the selected frame named NAME and showing *scratch*."
+  (declare (indent 1))
+  `(let* ((frame (selected-frame))
+          (old-name (frame-parameter frame 'name))
+          (tmp (make-temp-file "satan-inbox-" nil ".org"))
+          (satan-inbox-file tmp))
+     (unwind-protect
+         (progn
+           (set-frame-parameter frame 'name ,name)
+           (switch-to-buffer (get-buffer-create "*scratch*"))
+           ,@body)
+       (set-frame-parameter frame 'name old-name)
+       (when-let* ((buf (find-buffer-visiting tmp))) (kill-buffer buf))
+       (delete-file tmp))))
+
+(ert-deftest satan-inbox/show-in-frame-switches-named-frame ()
+  (satan-inbox-test--in-named-frame "SATAN inbox"
+    (should (satan-inbox-show-in-frame "SATAN inbox"))
+    (should (equal (buffer-file-name (window-buffer (frame-selected-window)))
+                   (file-truename satan-inbox-file)))))
+
+(ert-deftest satan-inbox/show-in-frame-ignores-unknown-name ()
+  (satan-inbox-test--in-named-frame "SATAN inbox"
+    (should-not (satan-inbox-show-in-frame "no such frame"))
+    (should (equal (buffer-name (window-buffer (frame-selected-window)))
+                   "*scratch*"))))
+
 (provide 'satan-tools-inbox-test)
 ;;; satan-tools-inbox-test.el ends here

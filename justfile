@@ -22,6 +22,8 @@ lint:
     for f in satan/*.el; do
         bin/elisp-locate-paren-error "$f"
     done
+    # Entry scripts need Noctalia's globals, which luau-analyze can't load.
+    luau-analyze noctalia/*/lib/*.luau noctalia/*/test/*.luau
 
 # Fails unless every test DB is reachable: the DB suites `skip-unless` it, so
 # without this a missing DB reports green. SATAN_TEST_ALLOW_NO_DB=1 opts out.
@@ -30,6 +32,7 @@ test: _require-test-dbs
     set -euo pipefail
     emacs --batch -L ./satan -L ./dev -L ./satan/test \
       -l satan-test -f satan-test-run-batch-and-exit
+    for t in noctalia/*/test/*_test.luau; do luau "$t"; done
     (cd satan/harness && python3 -m unittest -q test_gptel_harness)
 
 _require-test-dbs:

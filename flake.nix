@@ -64,6 +64,7 @@
             jailLib.agentsByName.claude
 
             coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
+            luau # noctalia/ plugin tests + lint
           ]
           ++ [doctrine-pkg];
 

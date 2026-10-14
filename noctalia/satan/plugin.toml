@@ -1,0 +1,17 @@
+# SATAN desktop surfaces for Noctalia. Registered as a `path` source pointing
+# at ~/dev/satan/noctalia; see README.md.
+
+id = "davidlee/satan"
+name = "SATAN"
+version = "0.1.0"
+plugin_api = 24 # argv form of runAsync
+author = "davidlee"
+license = "MIT"
+dependencies = ["emacsclient", "umbriel"]
+icon = "inbox"
+description = "SATAN inbox unread count, read from the Emacs server."
+
+# Unread badge. Hidden at zero; shows `inbox-off` when Emacs can't answer.
+[[widget]]
+id = "inbox"
+entry = "inbox.luau"
