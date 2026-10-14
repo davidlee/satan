@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 22
+slug = "harness-reads-only-run-dir-and-spawn-env"
+title = "The harness reads only its run directory and its spawn environment"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "The harness reads its rendered prompt, tool schemas and mode metadata only from bundle.json and manifest.json in its run directory, and its run identity, provider, model, budgets and key only from its environment. It carries no model-facing text of its own and reads no other host state."
+tags = ["spawn"]
+acceptance_criteria = ["The system prompt the model receives is the bundle's prompt, verbatim.", "The tools offered are the manifest's tools, verbatim, apart from tier withdrawal.", "A missing run directory, bundle or manifest ends the run with an error before ready."]

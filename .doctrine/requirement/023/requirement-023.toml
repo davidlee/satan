@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 23
+slug = "broker-and-harness-agree-protocol-version-at-ready"
+title = "Broker and harness agree a protocol version at ready"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "The harness speaks the JSONL protocol catalogued in docs/protocol.md and reports its protocol version in ready; the broker ends a run whose harness reports a different version, or none, before executing any tool call."
+tags = ["protocol"]
+acceptance_criteria = ["ready carries a protocol version field.", "A missing or mismatched version fails the run with a named reason before any tool call executes.", "Both sides validate against the shared protocol fixtures."]

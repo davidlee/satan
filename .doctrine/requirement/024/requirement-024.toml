@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 24
+slug = "every-run-ends-in-one-terminal-message-inside-ceilings"
+title = "Every run ends in exactly one terminal message, inside its token ceilings"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "Each harness run ends with exactly one final or error message. The harness enforces the run's token budget (graceful wind-down) and its absolute token ceiling (hard stop) from broker-set environment, and an error message carries a failure class from a closed set."
+tags = ["runloop", "budget"]
+acceptance_criteria = ["Crossing the absolute ceiling ends the run with final reason max_budget_tokens.", "Exhausting the budget withdraws tools, warns, then ends the run with final reason budget_tokens if the model does not finalise.", "A provider exception ends the run with an error whose class is one of auth, credits, rate_limit, server, timeout, unknown."]

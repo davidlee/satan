@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 19
+slug = "harness-binary-has-one-declared-source"
+title = "The harness binary resolves from one declared source per deployment"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "The broker resolves a mode's harness command against the editor's global executable search path, which names one pinned install per deployment; the calling buffer, timer or working directory cannot change which binary runs. A development build runs only when a mode names it by absolute path."
+tags = ["provenance"]
+acceptance_criteria = ["Resolving a mode's command from a buffer with a buffer-local exec-path or PATH yields the same binary as from a neutral buffer.", "With the default mode specs, the resolved harness is the pinned install from the satan flake input, never a devshell build.", "A development build is selected only by an absolute command path in the mode spec."]

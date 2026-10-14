@@ -1,0 +1,57 @@
+schema = "doctrine.spec.tech"
+version = 1
+
+id = 3
+slug = "satan-harness"
+title = "SATAN harness"
+status = "draft"
+kind = "tech"
+tags = ["harness", "jail", "deployment", "trust-boundary"]
+responsibilities = [
+  "Fix the harness binary's provenance: one declared source per deployment, and the deploy loop that changes it",
+  "Define the spawn contract: what the broker hands the harness (env, cwd, run dir, credentials) and nothing else",
+  "Own the broker-harness wire protocol's requirements; docs/protocol.md stays the message catalogue",
+  "Declare the harness jail profile in terms of named roots and ro/rw, with its forbidden binds",
+  "Contextualise the harness run loop (turns, token tiers, termination, error class) without restating its records",
+]
+category = "runtime"
+c4_level = "container"
+parent = "SPEC-002"
+
+# No product spec (PRD) exists; the why lives in SPEC-002 and ADR-017.
+# descends_from = <none>
+
+# Harness program (untrusted side).
+[[source]]
+language = "python"
+identifier = "satan/harness"
+module = "runloop"
+
+# Broker side of the spawn contract and the wire.
+[[source]]
+language = "elisp"
+identifier = "satan-broker.el"
+module = "satan-broker"
+
+[[source]]
+language = "elisp"
+identifier = "satan-protocol.el"
+module = "satan-protocol"
+
+[[source]]
+language = "elisp"
+identifier = "satan-mode.el"
+module = "satan-mode"
+
+# Build + jail wrapper (satanGptelHarness, satanJailOptions, satan-jailed-gptel-harness).
+[[source]]
+language = "nix"
+identifier = "flake.nix"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"

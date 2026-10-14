@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 20
+slug = "child-env-has-one-base-shared-with-credential-lookup"
+title = "The child environment has one base, shared with credential lookup"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "The harness child's environment is the broker-set SATAN_* variables, the resolved provider key and the mode's declared extra env, laid over one base environment: the editor's global environment, which is also the environment credential lookup reads. No buffer-local environment and no unresolved credential reference reaches the child."
+tags = ["spawn", "credentials"]
+acceptance_criteria = ["A buffer-local process-environment entry in the calling buffer does not reach the child.", "A key reference resolved from the base environment is the key the child receives.", "No credential reference (e.g. an op:// ref) survives into the child's environment."]

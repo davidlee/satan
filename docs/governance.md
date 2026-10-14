@@ -435,7 +435,7 @@ justification):
   `satanJailOptions`, `satanGptelJailOptions`,
   `satan-jailed-fake-harness`, `satan-jailed-gptel-harness`. The broker
   runs the `home.packages` install (`~/.nix-profile/bin`), built from the
-  `satan` flake input — see "Harness resolution" below.
+  `satan` flake input — see "Harness resolution and jail" below.
 - `~/flakes` (Nix config) — `flake.nix` takes this repo as the `satan`
   input (`github:davidlee/satan`, not the local checkout).
 - `~/flakes/modules/home/linux/satan.nix` — imported by Sleipnir; units
@@ -704,25 +704,15 @@ run-id with `status=budget-exceeded`, a synthetic `final.json` carrying
 to disable. Status `budget-exceeded` is a valid terminal — the audit
 verifier accepts it.
 
-### Harness resolution
+### Harness resolution and jail
 
-The broker builds the child from Emacs's **global** environment:
-`(default-value 'process-environment)` for the base env (credential
-lookup reads the same one, SL-018 N5) and `(default-value 'exec-path)`
-to resolve the mode's `:harness :cmd`. The calling buffer's direnv env
-is ignored, so the harness is always the pinned `home.packages` install
-(`~/.nix-profile/bin`, from the `satan` flake input) whichever buffer or
-timer starts the run (ISS-037). To run a dev build, give the mode an
-absolute `:cmd`. The child starts in its run dir, never the calling
-buffer's directory: the jail binds the launcher's cwd rw at
-`/workspace/<basename>`.
-
-### Jail env
-
-`SATAN_RUN_ID`, `SATAN_PROVIDER`, `SATAN_MODEL`, `SATAN_BUDGET_TOKENS`
-forwarded via `try-fwd-env`. `SATAN_RUN_DIR`, `SATAN_HIPPOCAMPUS` set
-to fixed paths inside the jail (`/satan/run`, `/satan/hippocampus`).
-`$HOME/notes` is ro-bound to `/satan/notes`.
+Owned by SPEC-003 (`doctrine spec show SPEC-003`): binary provenance and
+the deploy loop, the spawn contract (global base env, run-dir cwd,
+`SATAN_*` vars, key), and the jail profile by root. In one line: a bare
+`:cmd` resolves on Emacs's global `exec-path` to the pinned
+`home.packages` install whichever buffer or timer starts the run
+(ISS-037); an absolute `:cmd` selects a dev build. Host paths for the
+jail live in `~/flakes/SATAN.md` § Jails.
 
 ### Key resolution (op://)
 

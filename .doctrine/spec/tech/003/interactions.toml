@@ -1,0 +1,10 @@
+[[edge]]
+target = "SPEC-001"
+type = "bound-by"
+notes = "The harness is an untrusted surface; the broker enforces SPEC-001 invariants on its messages. REQ-024 is the harness-side backstop for REQ-004."
+# Interactions — outbound spec -> spec edges (tech specs only).
+# Seeded empty; authored via `doctrine spec interactions add`:
+#   [[edge]]
+#   target = "SPEC-002"       # canonical FK into .doctrine/spec/tech/NNN
+#   type = "uses"             # free-text edge kind (calls / extends / uses / …)
+#   notes = "…"               # optional

@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 21
+slug = "harness-starts-in-its-run-directory"
+title = "The harness starts in its own run directory"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "The harness process starts with its run directory as its working directory, never the launcher's, so the jail's working-directory bind exposes only that run's own directory."
+tags = ["spawn", "jail"]
+acceptance_criteria = ["The child's working directory is its run directory whichever buffer or timer starts the run."]
