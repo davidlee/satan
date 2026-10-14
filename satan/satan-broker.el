@@ -956,7 +956,10 @@ owns that run's finalisation and its stderr buffer."
                            (plist-get cred :base))))
              (process-environment env)
              ;; Global, as for the base env in `--acquire' (ISS-037).
-             (exec-path (default-value 'exec-path)))
+             (exec-path (default-value 'exec-path))
+             ;; The jail binds the launcher's cwd rw; make it the run dir,
+             ;; never the calling buffer's directory (ISS-037).
+             (default-directory (file-name-as-directory dir)))
         ;; `setq' INSIDE the stage: `proc' is non-nil the moment a
         ;; child exists, even if the stage's own bookkeeping throws.
         (satan-trace-stage "spawn.exec"

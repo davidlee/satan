@@ -147,3 +147,14 @@ exists.
 - **Same class, not fixed — patch adapter.** `satan-patch-adapter-pi`
   resolves `jailed-pi` via the calling buffer's `exec-path`; `jailed-pi` is
   not on the global PATH, so it only resolves from devshell buffers.
+
+## Cwd leak fixed (2026-10-14)
+
+`--spawn` binds `default-directory` to the run dir, so the jail's `$PWD` bind
+is `/workspace/<run-id>` (already the run's own dir, also at `/satan/run`)
+instead of the calling buffer's directory. Harness reads no cwd-relative
+paths. Test `harness-cwd-is-run-dir` (red → green); `just check` 1359 ran,
+0 unexpected. Broker reloaded live. `~/flakes/SATAN.md` known-gap removed
+and jail table row updated; `docs/governance.md` notes it.
+
+Patch adapter leak split out → ISS-038. Deferred A/D remain as noted above.

@@ -1609,6 +1609,28 @@ not a buffer-local one (a devshell PATH must not pick the binary)."
       (should seen)
       (should-not (member "/satan-test-buffer-local-bin" seen)))))
 
+(ert-deftest satan-broker/harness-cwd-is-run-dir ()
+  "ISS-037: the child starts in its run dir, not the calling buffer's
+directory (the jail binds the launcher's cwd rw)."
+  (satan-broker-test--with-spawn-stubs dir
+    (let* ((seen nil)
+           (make-process-fn (symbol-function 'make-process))
+           (prepare (list :run_id "rid-cwd"
+                          :time_now "2026-06-03T00:00:00Z"
+                          :start_time (current-time)))
+           (mode '(:name "test" :harness (:cmd "true"))))
+      (with-temp-buffer
+        (setq default-directory temporary-file-directory)
+        (cl-letf (((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (setq seen default-directory)
+                     (apply make-process-fn args))))
+          (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+      (let ((proc (get-process "satan-rid-cwd")))
+        (while (and proc (process-live-p proc))
+          (accept-process-output proc 0.05)))
+      (should (equal seen (file-name-as-directory dir))))))
+
 (ert-deftest satan-broker/dec8-spawn-running-persists-until-sentinel ()
   "AUD-008 F-001: `satan-run--spawn-running' stays t across the live
 async run and is cleared ONLY by the child sentinel — never at the

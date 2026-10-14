@@ -713,7 +713,9 @@ to resolve the mode's `:harness :cmd`. The calling buffer's direnv env
 is ignored, so the harness is always the pinned `home.packages` install
 (`~/.nix-profile/bin`, from the `satan` flake input) whichever buffer or
 timer starts the run (ISS-037). To run a dev build, give the mode an
-absolute `:cmd`.
+absolute `:cmd`. The child starts in its run dir, never the calling
+buffer's directory: the jail binds the launcher's cwd rw at
+`/workspace/<basename>`.
 
 ### Jail env
 
