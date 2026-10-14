@@ -31,3 +31,15 @@ Lock was at `4ecc741` (2026-07-22) — seven weeks behind the working tree.
 Cutover pushed `4ecc741..8a49d16`, bumped the lock (`~` `1aea39ad`),
 switched after the Emacs restart; tick `20260914T125539-tick-pulse-c3dce4`
 ran clean with the `$HOME/satan-corpus/hippocampus` bind.
+
+## Caveat: buffer-dependent (verified 2026-10-14, ISS-037)
+
+The chain above holds only when the calling buffer's environment does not
+already carry the `~/dev/satan` devshell. The broker resolves the harness
+via `PATH` from `satan-broker--direnv-env` merged over the *calling buffer's*
+`process-environment`. From a buffer inside `~/dev/satan` that resolves to
+`/nix/store/…-devshell-dir/bin/jailed-satan-gptel-harness` — the working tree,
+built under impure eval, carrying the dev `.envrc`'s `JAIL_WORKSPACE_DEPS`
+mounts. Timers fire in whatever buffer is current, so ticks can hit it too.
+To check which one a run used: `stderr.log` / binds in the run dir, or
+evaluate the broker's resolution with `with-current-buffer`.
