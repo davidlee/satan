@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1388a77bb78e1a70066cb0cdf0bbb"
+memory_key = "mem.fact.satan.tool-removal-needs-live-reload"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Removing a SATAN tool breaks the live Emacs until modes are reloaded"
+summary = "Mode/tick allowlists are registered at load; deleting a tool's corpus description fails every run whose stale allowlist still names it (spawn_failed: tool description missing)"
+created = "2026-10-14"
+updated = "2026-10-14"
+
+[scope]
+paths = ["satan/satan-mode.el", "satan/satan-tick.el"]
+globs = []
+commands = []
+tags = ["satan", "tools"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "a4bbd13ea018a664bc5c79da18b7105693a01989"
+tree = "afd2b6cc79c6b78f7d550a498b7a78cf260bb8d7"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "a4bbd13ea018a664bc5c79da18b7105693a01989"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
