@@ -341,10 +341,5 @@ subject."
                     resolved))
     (dolist (r resolved) (should (file-directory-p r)))))
 
-(ert-deftest satan-custom-direnv-dir-is-package-repo-root ()
-  (require 'satan-broker)
-  (should (equal satan-direnv-dir
-                 (file-name-directory (directory-file-name satan--root)))))
-
 (provide 'satan-custom-test)
 ;;; satan-custom-test.el ends here

@@ -45,14 +45,6 @@
 
 (defvar satan-memory-store--current-run-id)
 
-(defcustom satan-direnv-dir
-  (file-name-directory (directory-file-name satan--root))
-  "Directory whose `.envrc' is sourced into the jailed-harness environment.
-If non-nil and `envrc--export' is available, the broker resolves direnv
-for this directory and merges the result into `process-environment'
-before spawning the child.  Set to nil to disable."
-  :type '(choice directory (const nil)) :group 'satan)
-
 (defvar satan-broker-provider-key-vars
   '((openrouter . "OPENROUTER_API_KEY")
     (anthropic  . "ANTHROPIC_API_KEY")
@@ -63,33 +55,6 @@ before spawning the child.  Set to nil to disable."
 (defun satan-broker--key-var (mode)
   "MODE's provider API-key env var name, or nil when it has none."
   (cdr (assq (plist-get mode :provider) satan-broker-provider-key-vars)))
-
-(declare-function envrc--export "envrc" (env-dir))
-(declare-function envrc--merged-environment "envrc" (process-env pairs))
-
-(defun satan-broker--direnv-env (base-env)
-  "Return BASE-ENV merged with the direnv export for `satan-direnv-dir'.
-If envrc is not loaded, or the directory has no .envrc, or direnv
-returns no vars, BASE-ENV is returned unchanged.  Direnv errors signal."
-  (if (and satan-direnv-dir
-           (file-directory-p satan-direnv-dir)
-           (file-readable-p (expand-file-name ".envrc" satan-direnv-dir))
-           (fboundp 'envrc--export))
-      (let ((result (envrc--export satan-direnv-dir)))
-        (pcase result
-          ('error (error "direnv failed for %s" satan-direnv-dir))
-          ('none base-env)
-          ((pred listp) (envrc--merged-environment base-env result))
-          (_ base-env)))
-    base-env))
-
-(defun satan-broker--exec-path-from-env (env)
-  "Extract PATH from ENV (a `process-environment' value) and split into list."
-  (let ((path (cl-some (lambda (kv)
-                         (and (string-prefix-p "PATH=" kv)
-                              (substring kv 5)))
-                       env)))
-    (if path (split-string path ":" t) exec-path)))
 
 (defun satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))
@@ -766,13 +731,15 @@ without launching the child."
 (defun satan-broker--acquire (mode)
   "Acquire MODE's provider key under its effective policy (design sec-3).
 Returns the `satan-credential-acquire' verdict, its `:env' form extended
-with `:base', the direnv-merged environment the child is built from
+with `:base', the global environment the child is built from
 \(computed once here, so the key is looked up where the child gets it).
 A mode with no key var gets (:env nil :refs nil :base BASE).  One error
-boundary: a signal from direnv, the policy (streak walk, threshold) or
+boundary: a signal from the policy (streak walk, threshold) or
 the seam becomes (:unavailable ERR), so the run is recorded, not lost."
   (condition-case err
-      (let ((base (satan-broker--direnv-env process-environment))
+      ;; The default value, not the calling buffer's: a direnv buffer must
+      ;; not choose the harness binary or its jail (ISS-037).
+      (let ((base (default-value 'process-environment))
             (key-var (satan-broker--key-var mode)))
         (if (not key-var)
             (list :env nil :refs nil :base base)
@@ -988,7 +955,8 @@ owns that run's finalisation and its stderr buffer."
                            (plist-get (plist-get mode :harness) :env)
                            (plist-get cred :base))))
              (process-environment env)
-             (exec-path (satan-broker--exec-path-from-env env)))
+             ;; Global, as for the base env in `--acquire' (ISS-037).
+             (exec-path (default-value 'exec-path)))
         ;; `setq' INSIDE the stage: `proc' is non-nil the moment a
         ;; child exists, even if the stage's own bookkeeping throws.
         (satan-trace-stage "spawn.exec"

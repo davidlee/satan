@@ -960,18 +960,27 @@ when the child exits before the cond (the verdict is nil)."
       (should (equal (plist-get r :reason) "run_busy"))
       (should-not (plist-get r :spawned)))))
 
-(ert-deftest satan-broker/key-ref-from-direnv-env-is-acquired ()
-  "VT-20: a ref present only in the direnv-merged env is acquired, and that
-merged env is the base the spawn receives."
-  (let* ((merged (append satan-broker-test--ref-env '("FROM_DIRENV=1")))
-         (r (cl-letf (((symbol-function 'satan-broker--direnv-env)
-                       (lambda (_base) merged)))
-              (satan-broker-test--gate-run
-               :backend (list :read satan-broker-test--ref-read)))))
+(ert-deftest satan-broker/key-ref-from-global-env-is-acquired ()
+  "VT-20: a ref in the global env is acquired, and that env is the base
+the spawn receives."
+  (let ((r (satan-broker-test--gate-run
+            :env satan-broker-test--ref-env
+            :backend (list :read satan-broker-test--ref-read))))
     (should (plist-get r :spawned))
-    (should (equal (plist-get (plist-get r :cred) :base) merged))
+    (dolist (kv satan-broker-test--ref-env)
+      (should (member kv (plist-get (plist-get r :cred) :base))))
     (should (equal (plist-get (plist-get r :cred) :env)
                    '("OPENROUTER_API_KEY=sk-or-test")))))
+
+(ert-deftest satan-broker/base-env-ignores-buffer-local-env ()
+  "ISS-037: the child's base env is the global env, whatever buffer the
+run is started from (a direnv buffer must not choose the sandbox)."
+  (with-temp-buffer
+    (setq-local process-environment
+                (cons "SATAN_TEST_BUFFER_LEAK=1" process-environment))
+    (let ((base (plist-get (satan-broker--acquire '(:name "test")) :base)))
+      (should base)
+      (should-not (member "SATAN_TEST_BUFFER_LEAK=1" base)))))
 
 (ert-deftest satan-broker/policy-failure-is-recorded-not-lost ()
   "VT-21: an invalid threshold, or a signalling streak walk, is recorded as
@@ -1522,8 +1531,6 @@ afterwards, so a `.FAILED'-renamed DIR goes with it."
                       ;; Writes the live state root's cursor file otherwise.
                       ((symbol-function 'satan-ingest-cursor-advance)
                        (lambda (&rest _) nil))
-                      ((symbol-function 'satan-broker--exec-path-from-env)
-                       (lambda (&rest _) exec-path))
                       ((symbol-function 'satan-broker--update-most-recent)
                        (lambda (&rest _) nil)))
               ,@body)))
@@ -1578,6 +1585,29 @@ key shadowing the base's ref, and no credential reference at all."
                      "sk-or-test"))
       (should-not (cl-find-if (lambda (kv) (string-match-p "=op://" kv))
                               seen)))))
+
+(ert-deftest satan-broker/harness-resolves-on-global-exec-path ()
+  "ISS-037: the harness command resolves against the global `exec-path',
+not a buffer-local one (a devshell PATH must not pick the binary)."
+  (satan-broker-test--with-spawn-stubs dir
+    (let* ((seen nil)
+           (make-process-fn (symbol-function 'make-process))
+           (prepare (list :run_id "rid-path"
+                          :time_now "2026-06-03T00:00:00Z"
+                          :start_time (current-time)))
+           (mode '(:name "test" :harness (:cmd "true"))))
+      (with-temp-buffer
+        (setq-local exec-path (cons "/satan-test-buffer-local-bin" exec-path))
+        (cl-letf (((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (setq seen exec-path)
+                     (apply make-process-fn args))))
+          (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+      (let ((proc (get-process "satan-rid-path")))
+        (while (and proc (process-live-p proc))
+          (accept-process-output proc 0.05)))
+      (should seen)
+      (should-not (member "/satan-test-buffer-local-bin" seen)))))
 
 (ert-deftest satan-broker/dec8-spawn-running-persists-until-sentinel ()
   "AUD-008 F-001: `satan-run--spawn-running' stays t across the live

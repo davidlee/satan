@@ -409,7 +409,7 @@ justification):
 | `protocol/fixtures.json` | Shared valid/invalid exemplars consumed by both ert and python tests. |
 | `satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
 | `satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
-| `satan-broker.el` | `make-process` driver: sentinel, timeout, direnv, op:// resolution, env pass; `--build-manifest`. |
+| `satan-broker.el` | `make-process` driver: sentinel, timeout, op:// resolution, env pass; `--build-manifest`. |
 | `test/satan-memory-{migrate,grammar,canon,evidence,store,renormalize}-test.el` | Memory substrate ert against `satan_memory_test`; canon also enforces purity. |
 | `test/satan-tools-{memory,hippocampus,atsatan,docs,motive,patch}-test.el` | Tool-handler ert; hippocampus covers the cross-ref hook. |
 | `test/satan-bough-removal-gate-test.el` | SL-002 standing gates: production is bough-free outside a named allowlist; the preserved grammar vocabulary stays whole; no surface claims an enforced evidence byte cap. |
@@ -433,9 +433,9 @@ justification):
 - `~/.emacs.d/core/dl-path.el` — `"~/dev/satan/satan"` on the load path.
 - `flake.nix` (this repo) — `satanFakeHarness`, `satanGptelHarness`,
   `satanJailOptions`, `satanGptelJailOptions`,
-  `satan-jailed-fake-harness`, `satan-jailed-gptel-harness`. Devshell
-  exposes both binaries on PATH; broker's `direnv-env` plumbing picks
-  them up at spawn.
+  `satan-jailed-fake-harness`, `satan-jailed-gptel-harness`. The broker
+  runs the `home.packages` install (`~/.nix-profile/bin`), built from the
+  `satan` flake input — see "Harness resolution" below.
 - `~/flakes` (Nix config) — `flake.nix` takes this repo as the `satan`
   input (`github:davidlee/satan`, not the local checkout).
 - `~/flakes/modules/home/linux/satan.nix` — imported by Sleipnir; units
@@ -704,13 +704,16 @@ run-id with `status=budget-exceeded`, a synthetic `final.json` carrying
 to disable. Status `budget-exceeded` is a valid terminal — the audit
 verifier accepts it.
 
-### direnv-driven exec-path
+### Harness resolution
 
-`satan-direnv-dir` (default: the repo root, parent of `satan--root`)
-is resolved via `envrc--export` at spawn time and merged into
-`process-environment`. Means the jailed binary lives in this repo's
-devshell; no global
-`home.packages` install.
+The broker builds the child from Emacs's **global** environment:
+`(default-value 'process-environment)` for the base env (credential
+lookup reads the same one, SL-018 N5) and `(default-value 'exec-path)`
+to resolve the mode's `:harness :cmd`. The calling buffer's direnv env
+is ignored, so the harness is always the pinned `home.packages` install
+(`~/.nix-profile/bin`, from the `satan` flake input) whichever buffer or
+timer starts the run (ISS-037). To run a dev build, give the mode an
+absolute `:cmd`.
 
 ### Jail env
 

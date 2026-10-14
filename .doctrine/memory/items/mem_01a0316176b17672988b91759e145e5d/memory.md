@@ -6,9 +6,10 @@
   `PGPORT=54322`, `PGUSER`/`PGPASSWORD=postgres`, `SATAN_DB_HOST=$PGHOST` —
   the local Supabase Postgres, same as the dev jail's `supabaseJailOptions`.
   Override with `SATAN_TEST_PG{HOST,PORT,USER,PASSWORD}`.
-- Deliberately **not** in the devshell env: direnv applies it to Emacs buffers
-  and the broker merges `satan-direnv-dir`'s env into spawns, so a `PGPORT`
-  there could redirect the live broker.
+- Deliberately **not** in the devshell env: direnv applies it to Emacs
+  buffers, and the broker's own `psql` calls inherit the calling buffer's
+  env, so a `PGPORT` there could redirect the live broker. (Harness spawns
+  no longer take buffer env — ISS-037.)
 - `SATAN_DB_HOST` is a `psql -h` host (hostname or socket dir), **not** a
   URL. Port/user/password come from `PG*`.
 - Setup: `just db-start` (outside the jail — `supabase start` fails inside),

@@ -32,14 +32,11 @@ Cutover pushed `4ecc741..8a49d16`, bumped the lock (`~` `1aea39ad`),
 switched after the Emacs restart; tick `20260914T125539-tick-pulse-c3dce4`
 ran clean with the `$HOME/satan-corpus/hippocampus` bind.
 
-## Caveat: buffer-dependent (verified 2026-10-14, ISS-037)
+## Resolution is global (ISS-037, 2026-10-14)
 
-The chain above holds only when the calling buffer's environment does not
-already carry the `~/dev/satan` devshell. The broker resolves the harness
-via `PATH` from `satan-broker--direnv-env` merged over the *calling buffer's*
-`process-environment`. From a buffer inside `~/dev/satan` that resolves to
-`/nix/store/…-devshell-dir/bin/jailed-satan-gptel-harness` — the working tree,
-built under impure eval, carrying the dev `.envrc`'s `JAIL_WORKSPACE_DEPS`
-mounts. Timers fire in whatever buffer is current, so ticks can hit it too.
-To check which one a run used: `stderr.log` / binds in the run dir, or
-evaluate the broker's resolution with `with-current-buffer`.
+The broker resolves `:harness :cmd` against `(default-value 'exec-path)` and
+builds the child from `(default-value 'process-environment)`, so the chain
+above holds whichever buffer or timer starts the run. Before ISS-037 a
+buffer inside `~/dev/satan` silently ran the devshell build instead, with
+the dev `.envrc`'s `JAIL_WORKSPACE_DEPS` mounts. To test a dev harness,
+set the mode's `:cmd` to an absolute path deliberately.

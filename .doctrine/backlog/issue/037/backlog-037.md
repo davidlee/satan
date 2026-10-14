@@ -65,3 +65,85 @@ A has independent value as defence in depth. Sequencing TBD.
 
 Related: `mem.fact.satan.runtime-jail-deploys-from-github-input` (now
 caveated with the buffer-dependent path).
+
+## Agreed design (2026-10-14, user: "yes")
+
+Small-work path: agreed sketch + work off this card (no slice). Scope: B + C.
+
+Findings that shaped it:
+- Provider key refs (`*_API_KEY`) are already in Emacs's global env; the
+  harness reads only broker-set `SATAN_*` + forwarded keys. Direnv supplies
+  nothing the harness needs except a `PATH` — the bug.
+- The direnv merge's only load-bearing role is SL-018 RV-013 N5: credential
+  lookup uses exactly the env the child receives. N5 needs *one* base env,
+  not direnv.
+- `satan.nix` already installs the harness via `home.packages` and states the
+  intent: on the broker's exec-path "independent of any devshell/direnv".
+
+```
+before:  base = direnv-export(~/dev/satan) ⊕ calling buffer's env
+         cmd  = executable-find over PATH taken from base
+after:   base = (default-toplevel-value 'process-environment)
+         cmd  = executable-find over (default-toplevel-value 'exec-path)
+```
+
+1. Delete `satan-broker--direnv-env`, `satan-direnv-dir`,
+   `satan-broker--exec-path-from-env`. Base env + exec-path come from the
+   global values, computed once in `--acquire` (N5 preserved).
+2. `:harness :cmd` stays the knob. Global PATH → `~/.nix-profile/bin` (the
+   pinned home-manager install) is the single source. Dev builds are opted
+   into by an absolute `:cmd`.
+3. Tests: VT-20 restated (key ref in base env acquired; child receives
+   exactly that base); new VT — the calling buffer's buffer-local
+   `process-environment` / `exec-path` do not reach the child; drop the
+   `satan-direnv-dir` default test.
+4. Docs/memory: `~/flakes/SATAN.md` jails, memory caveat, this card.
+
+Cost accepted: working in `~/dev/satan` no longer silently runs the dev harness.
+
+Then: sweep for collateral (other `envrc`/direnv consumers, patch adapter,
+MCP, `satan-run` wrapper, systemd units), and plan a harness Spec as the
+home for binary provenance, env contract, and mounts.
+
+Deferred: A (`envWorkspaceDeps` opt-out in `~/flakes/agents`) — next time
+that lib is touched; D (`:jail-profile` → binary) — when a second profile
+exists.
+
+## Implementation (2026-10-14)
+
+- `satan-broker.el`: `--acquire` takes `(default-value 'process-environment)`
+  as base; `--spawn` binds `exec-path` to `(default-value 'exec-path)`.
+  `default-value`, not `default-toplevel-value`: it ignores the buffer-local
+  binding but still honours a dynamic `let` (which binds the default when
+  no local binding exists) — callers and tests can still inject env.
+  Removed `satan-direnv-dir`, `--direnv-env`, `--exec-path-from-env`.
+- Tests: VT-20 restated (`key-ref-from-global-env-is-acquired`); new
+  `base-env-ignores-buffer-local-env`, `harness-resolves-on-global-exec-path`
+  (red first, then green); dropped the `satan-direnv-dir` default test.
+  `just check`: 1358 ran, 0 unexpected.
+- Live check (reloaded broker, from `flake.nix` buffer whose PATH carries the
+  devshell): base env has no devshell PATH; harness →
+  `~/.nix-profile/bin/jailed-satan-gptel-harness`.
+- Docs/memory: `docs/governance.md` (harness resolution section replaces
+  "direnv-driven exec-path", which also wrongly claimed no `home.packages`
+  install); runtime-jail memory; green-check memory clause.
+
+## Collateral sweep
+
+- Pinned harness = `6d9608c`; only harness delta to HEAD is the retired
+  `agenda_read` tier entry. Installed binary's `runloop.py`/`__main__.py`
+  match the pin. No regression from losing the working-tree harness.
+- Harness needs nothing from direnv: jail forwards only broker-set
+  `SATAN_*` + key vars; keys are in Emacs's global env.
+- No other consumer of the removed symbols (elisp, `~/.config/emacs`,
+  `~/flakes`). `satan-run` wrapper is a bare `emacsclient --eval` — fine.
+- **Same class, not fixed — cwd bind.** The jail binds `$PWD` rw at
+  `/workspace/<basename>` (`jailed-agents.nix:148`) and the broker never sets
+  `default-directory`, so the calling buffer's directory becomes a writable
+  mount (from a `~/notes` buffer: notes rw despite the `/satan/notes`
+  ro-bind; from `~`: all of home). Already listed in `~/flakes/SATAN.md`
+  known gaps. Fix candidate: bind `default-directory` to the run dir in
+  `--spawn`.
+- **Same class, not fixed — patch adapter.** `satan-patch-adapter-pi`
+  resolves `jailed-pi` via the calling buffer's `exec-path`; `jailed-pi` is
+  not on the global PATH, so it only resolves from devshell buffers.
