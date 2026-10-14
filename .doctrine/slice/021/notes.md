@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-12 · reconcile · 1307c25+REV-004
+fresh-as-of: 2026-10-14 · close · gate green (1357 tests)
 
 ### Produced
 - PHASE-01 — canon owns `local-date` / `day-shift`; goad + evidence delegate (87a9757)
@@ -21,10 +21,10 @@ fresh-as-of: 2026-10-12 · reconcile · 1307c25+REV-004
 ### Learned
 - mem.fact.satan.corpus-just-commit-sweeps — commit agent corpus edits by path, not `just commit`
 - observation 01a12e00 — corpus phases should say "commit the file"
-- `json-serialize` returning unibyte does not mangle UTF-8 output (PHASE-02 sheet hazard was overstated)
+- `json-serialize` returning unibyte does not mangle UTF-8 output (PHASE-02 sheet hazard was overstated) — consciously not memorised (non-hazard)
 
 ### Open
-- VT-7 niri pin lines are derived, not captured: umbriel is the live WM, so there is no live niri source; a niri shape drift would go unseen until niri is used again (RV-022 Synthesis)
+- VT-7 niri pin lines are derived, not captured: umbriel is the live WM, so there is no live niri source; a niri shape drift would go unseen until niri is used again (RV-022 Synthesis) → RSK-017
 
 ## Audit evidence (RV-022, 2026-10-12)
 

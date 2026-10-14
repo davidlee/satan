@@ -1,9 +1,9 @@
 id = 21
 slug = "current-window-replay"
 title = "Replay current_window from the desktop event series"
-status = "reconcile"
+status = "done"
 created = "2026-09-25"
-updated = "2026-10-12"
+updated = "2026-10-14"
 tags = []
 
 [relationships]
