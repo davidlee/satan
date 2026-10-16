@@ -1,0 +1,46 @@
+memory_uid = "mem_01a144a4d3347012add77b51eb1cce01"
+memory_key = "mem.fact.satan.jailed-pi-home-and-op-keys"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Jailed pi keeps its own home; provider keys are op:// refs"
+summary = "jailed-pi's persistent home is /home/agent/jail.nix/home/agent (its ~/.pi/agent settings, sessions, models-store). Provider *_API_KEY env vars on the host are unresolved op:// refs: run under 'op run --', outside Claude Code's sandbox (the 1Password desktop socket is blocked inside it)."
+created = "2026-10-16"
+updated = "2026-10-16"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi", "jail", "credentials", "satan"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "71affa9487c7cc9741862b47e1018b085d1f3e0a"
+ref_name = "refs/heads/main"
+checkout_state_id = "cba24cf62406ac8ef90a1920c055089ccc3802cd51fe075b2e8b506ef8518e1a"
+base_commit = "9de3a7e9a0b74247ce9f78988f39ebf9af547f17"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "backlog"
+ref = "CHR-012"
+

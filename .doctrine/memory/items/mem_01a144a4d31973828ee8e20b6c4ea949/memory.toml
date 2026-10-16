@@ -1,0 +1,46 @@
+memory_uid = "mem_01a144a4d31973828ee8e20b6c4ea949"
+memory_key = "mem.fact.pi.durable-is-a-library"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi-durable is a library; it does not load coding-agent extensions"
+summary = "@earendil-works/pi-durable has no CLI/TUI and its defineExtension model is incompatible with coding-agent ExtensionAPI extensions (e.g. ~/notes/.pi/extensions/satan.ts); a host program is required — pandaemonium is SATAN's."
+created = "2026-10-16"
+updated = "2026-10-16"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi", "durable", "satan"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "71affa9487c7cc9741862b47e1018b085d1f3e0a"
+ref_name = "refs/heads/main"
+checkout_state_id = "a6b4fc8f8d39b798c0d190a9ed34a64270a618c52f2b6bf1ed3e51615e0f7b7d"
+base_commit = "9de3a7e9a0b74247ce9f78988f39ebf9af547f17"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "backlog"
+ref = "CHR-012"
+

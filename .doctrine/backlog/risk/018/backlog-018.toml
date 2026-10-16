@@ -1,0 +1,36 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 18
+slug = "pandaemonium-daemon-socket-grants-submitabort-to-any-local-process-that-can-connect"
+title = "pandaemonium daemon socket grants submit/abort to any local process that can connect"
+kind = "risk"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-10-16"
+updated = "2026-10-16"
+tags = ["durable", "satan", "security"]
+
+[facet]                         # risk only — every field typed; seeded empty
+likelihood = ""                 # low | medium | high | critical
+impact     = ""                 # low | medium | high | critical
+origin     = ""
+controls   = []
+
+# outbound-only. Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows — author them with
+# `doctrine link RSK-NNN <label> <target>`; `doctrine inspect RSK-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "related"
+target = "CHR-012"
+
+[[relation]]
+label = "related"
+target = "SPEC-001"
