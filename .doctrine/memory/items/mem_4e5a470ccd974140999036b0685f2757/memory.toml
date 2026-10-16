@@ -2,11 +2,11 @@ memory_uid = "mem_4e5a470ccd974140999036b0685f2757"
 memory_key = "mem.fact.satan.elc-stale-cache-void-function"
 schema_version = 1
 memory_type = "fact"
-status = "active"
+status = "superseded"
 title = "SATAN elc stale cache void-function"
 summary = "Stale .elc files cause void-function errors; delete eln-cache and recompile."
 created = "2026-06-16"
-updated = "2026-06-16"
+updated = "2026-10-16"
 
 [scope]
 paths = []
@@ -39,3 +39,7 @@ trust_level = "medium"
 [ranking]
 severity = "none"
 weight = 0
+
+[[relation]]
+label = "superseded_by"
+target = "mem_01a14355c2dd74928691afcf63c562cf"
