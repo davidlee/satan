@@ -11,7 +11,7 @@ updated = "2026-10-16"
 tags = ["durable", "satan"]
 
 [facet]                         # every field typed; seeded empty (captured later)
-datum = "2026-10-16, pandaemonium on @earendil-works/pi-durable 1.3.0 + SQLite: daemon SIGKILLed 3 s into a 10 s bash tool call; on restart the run resumed without resubmission, the call (replay: unsafe, the default) came back as an interrupted error result carrying output committed before the kill, and the model reported the last printed number (4) correctly."
+datum = "2026-10-16, malebolge on @earendil-works/pi-durable 1.3.0 + SQLite: daemon SIGKILLed 3 s into a 10 s bash tool call; on restart the run resumed without resubmission, the call (replay: unsafe, the default) came back as an interrupted error result carrying output committed before the kill, and the model reported the last printed number (4) correctly."
 provenance = "experiment"
 confidence = "high"
 

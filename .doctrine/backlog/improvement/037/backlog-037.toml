@@ -2,8 +2,8 @@ schema = "doctrine.backlog"
 version = 1
 
 id = 37
-slug = "pandaemonium-run-the-daemon-jailed"
-title = "pandaemonium: run the daemon jailed"
+slug = "malebolge-run-the-daemon-jailed"
+title = "malebolge: run the daemon jailed"
 kind = "improvement"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place

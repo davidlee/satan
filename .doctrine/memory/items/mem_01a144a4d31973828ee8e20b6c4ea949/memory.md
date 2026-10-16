@@ -9,10 +9,10 @@ announcement says it "does not replace the Pi coding agent".
   do **not** load. Port them to `defineExtension`/`defineTool`.
 - `pi-durable-subagents` (pi.dev package) is unrelated: a third-party
   coding-agent extension (`pi install`), not built on this library.
-- SATAN's host program is `~/dev/pandaemonium` (CHR-012 spike); findings in
+- SATAN's host program is `~/dev/malebolge` (CHR-012 spike); findings in
   RFC-018 § "Spike findings".
 - MCP: use `@earendil-works/pi-mcp` (stdio/HTTP transports only;
-  pandaemonium adds a unix-socket transport for satan-mcp).
+  malebolge adds a unix-socket transport for satan-mcp).
 - pi-ai's built-in model catalog lags the coding agent's remote catalog
   (cached in `~/.pi/agent/models-store.json`).
 
@@ -22,6 +22,6 @@ announcement says it "does not replace the Pi coding agent".
 `message_update` carries deltas *or* whole `block`/`message` replacements;
 the final entry at `message_end` may hold a tail no update delivered. A client
 that only appends `text_delta`s drops the opening and the tail. Track the
-answer's text and print the unseen suffix (pandaemonium `src/render.ts`).
+answer's text and print the unseen suffix (malebolge `src/render.ts`).
 Reproduce in tests with the faux provider at `tokensPerSecond: 40`,
 `tokenSize: {min: 1, max: 1}`; at 400 tok/s the answer arrives unstreamed.

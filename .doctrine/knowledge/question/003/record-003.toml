@@ -2,8 +2,8 @@ schema = "doctrine.knowledge"
 version = 1
 
 id = 3
-slug = "does-pandaemonium-replace-hello-satan-jpi-satants-as-interactive-satan-or-coexist"
-title = "Does pandaemonium replace hello-satan (jpi + satan.ts) as interactive SATAN, or coexist?"
+slug = "does-malebolge-replace-hello-satan-jpi-satants-as-interactive-satan-or-coexist"
+title = "Does malebolge replace hello-satan (jpi + satan.ts) as interactive SATAN, or coexist?"
 record_kind = "question"
 status = "open"
 created = "2026-10-16"
@@ -11,8 +11,8 @@ updated = "2026-10-16"
 tags = ["durable", "interactive", "satan"]
 
 [facet]                         # every field typed; seeded empty (captured later)
-question = "Does pandaemonium (pi-durable daemon) replace hello-satan (jailed pi coding-agent + .pi/extensions/satan.ts) as the interactive SATAN surface, or do both stay?"
-why_matters = "Two interactive surfaces means two persona/tool bridges to maintain (satan.ts vs src/satan-tools.ts) and two session stores; retiring jpi needs pandaemonium jailed (IMP-037) and resilient to satan-mcp restarts (IMP-038)."
+question = "Does malebolge (pi-durable daemon) replace hello-satan (jailed pi coding-agent + .pi/extensions/satan.ts) as the interactive SATAN surface, or do both stay?"
+why_matters = "Two interactive surfaces means two persona/tool bridges to maintain (satan.ts vs src/satan-tools.ts) and two session stores; retiring jpi needs malebolge jailed (IMP-037) and resilient to satan-mcp restarts (IMP-038)."
 answer      = ""
 answered_by = ""
 answered_on = ""

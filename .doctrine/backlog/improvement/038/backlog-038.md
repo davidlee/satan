@@ -1,4 +1,4 @@
-# IMP-038: pandaemonium: reconnect to satan-mcp when Emacs restarts it
+# IMP-038: malebolge: reconnect to satan-mcp when Emacs restarts it
 
 <!-- Backlog item body — context, detail, links. The structured, queried fields
      live in the sister `backlog-NNN.toml`; this prose is free-form and is never

@@ -2,8 +2,8 @@ schema = "doctrine.backlog"
 version = 1
 
 id = 10
-slug = "native-emacs-client-for-pandaemonium-over-the-watchevents-stream"
-title = "Native Emacs client for pandaemonium over the watchEvents stream"
+slug = "native-emacs-client-for-malebolge-over-the-watchevents-stream"
+title = "Native Emacs client for malebolge over the watchEvents stream"
 kind = "idea"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place

@@ -2,8 +2,8 @@ schema = "doctrine.backlog"
 version = 1
 
 id = 12
-slug = "spike-pi-durable-host-for-interactive-satan-pandaemonium"
-title = "Spike: pi-durable host for interactive SATAN (pandaemonium)"
+slug = "spike-pi-durable-host-for-interactive-satan-malebolge"
+title = "Spike: pi-durable host for interactive SATAN (malebolge)"
 kind = "chore"
 status = "resolved"
 resolution = "done"

@@ -1,4 +1,4 @@
-# RSK-018: pandaemonium daemon socket grants submit/abort to any local process that can connect
+# RSK-018: malebolge daemon socket grants submit/abort to any local process that can connect
 
 <!-- Backlog item body — context, detail, links. The structured, queried fields
      live in the sister `backlog-NNN.toml`; this prose is free-form and is never

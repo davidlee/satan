@@ -2,8 +2,8 @@ schema = "doctrine.backlog"
 version = 1
 
 id = 8
-slug = "pandaemonium-on-pi-env-harness-and-transcript-on-the-host-tools-executing-in-the-microvm"
-title = "pandaemonium on pi-env: harness and transcript on the host, tools executing in the microVM"
+slug = "malebolge-on-pi-env-harness-and-transcript-on-the-host-tools-executing-in-the-microvm"
+title = "malebolge on pi-env: harness and transcript on the host, tools executing in the microVM"
 kind = "idea"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place

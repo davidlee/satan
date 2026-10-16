@@ -2,8 +2,8 @@ schema = "doctrine.backlog"
 version = 1
 
 id = 38
-slug = "pandaemonium-reconnect-to-satan-mcp-when-emacs-restarts-it"
-title = "pandaemonium: reconnect to satan-mcp when Emacs restarts it"
+slug = "malebolge-reconnect-to-satan-mcp-when-emacs-restarts-it"
+title = "malebolge: reconnect to satan-mcp when Emacs restarts it"
 kind = "improvement"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place

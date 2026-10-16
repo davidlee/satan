@@ -2,8 +2,8 @@ schema = "doctrine.knowledge"
 version = 1
 
 id = 4
-slug = "pandaemonium-takes-provider-keys-from-its-environment-via-op-run-until-the-litellm-gateway-exists"
-title = "pandaemonium takes provider keys from its environment via op run until the LiteLLM gateway exists"
+slug = "malebolge-takes-provider-keys-from-its-environment-via-op-run-until-the-litellm-gateway-exists"
+title = "malebolge takes provider keys from its environment via op run until the LiteLLM gateway exists"
 record_kind = "assumption"
 status = "held"
 created = "2026-10-16"
@@ -11,7 +11,7 @@ updated = "2026-10-16"
 tags = ["credentials", "durable", "satan"]
 
 [facet]                         # every field typed; seeded empty (captured later)
-claim = "For the CHR-012 spike and its follow-ups, pandaemonium reads provider keys from its own environment, resolved by 'op run'; ISS-029-style exposure is accepted while it runs unjailed and interactive."
+claim = "For the CHR-012 spike and its follow-ups, malebolge reads provider keys from its own environment, resolved by 'op run'; ISS-029-style exposure is accepted while it runs unjailed and interactive."
 confidence = "high"
 basis = "operator-judgement"
 validation_plan = "Retire when ~/flakes IDE-003 (LiteLLM gateway) lands: point pi-ai's provider base URL at it and drop the env keys."

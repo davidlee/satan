@@ -4,7 +4,7 @@ schema_version = 1
 memory_type = "fact"
 status = "active"
 title = "pi-durable is a library; it does not load coding-agent extensions"
-summary = "@earendil-works/pi-durable has no CLI/TUI and its defineExtension model is incompatible with coding-agent ExtensionAPI extensions (e.g. ~/notes/.pi/extensions/satan.ts); a host program is required — pandaemonium is SATAN's."
+summary = "@earendil-works/pi-durable has no CLI/TUI and its defineExtension model is incompatible with coding-agent ExtensionAPI extensions (e.g. ~/notes/.pi/extensions/satan.ts); a host program is required — malebolge is SATAN's."
 created = "2026-10-16"
 updated = "2026-10-16"
 

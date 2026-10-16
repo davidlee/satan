@@ -1,4 +1,4 @@
-# CHR-012: Spike: pi-durable host for interactive SATAN (pandaemonium)
+# CHR-012: Spike: pi-durable host for interactive SATAN (malebolge)
 
 <!-- Backlog item body — context, detail, links. The structured, queried fields
      live in the sister `backlog-NNN.toml`; this prose is free-form and is never
@@ -22,7 +22,7 @@ coding-agent extensions (`ExtensionAPI`, `pi.registerTool`). Its own
 
 ## Sketch
 
-New repo `~/dev/pandaemonium` (outside satan — RFC-018 D1 home rule):
+New repo `~/dev/malebolge` (outside satan — RFC-018 D1 home rule):
 
 ```
 daemon ── Harness.open(SQLite under satan-state-root/durable/)
@@ -46,7 +46,8 @@ clients: `attach` (terminal) · Emacs v0 = comint over attach
 
 ## Progress (2026-10-16)
 
-Built and verified live. Repo `~/dev/pandaemonium` (e659df6); `just check` green: biome, tsc, 65 vitest tests.
+Built and verified live. Repo `~/dev/malebolge` (e659df6); `just check` green: biome, tsc, 65 vitest tests.
+Built as "pandaemonium"; renamed Malebolge 2026-10-17 (repo, package, env vars, elisp) — remote `github.com/davidlee/Malebolge`.
 
 - Model default `deepseek/deepseek-flash`: what the jailed pi's `~/notes`
   sessions actually ran (jail home `/home/agent/jail.nix/home/agent`).
@@ -77,7 +78,7 @@ Built and verified live. Repo `~/dev/pandaemonium` (e659df6); `just check` green
 fresh-as-of: 2026-10-17 · spike close · 48345df
 
 ### Produced
-- `~/dev/pandaemonium` — pi-durable daemon + attach client + comint client; 65 tests (pandaemonium e659df6)
+- `~/dev/malebolge` — pi-durable daemon + attach client + comint client; 65 tests (malebolge e659df6)
 - `~/notes/justfile` — `hello-durable`, `attach-durable` (notes bbf429b)
 - RFC-018 § Spike findings — F1–F7
 - minted: IMP-037 — jail the daemon; IMP-038 — satan-mcp reconnect; RSK-018 — daemon socket authority; IDE-008 — pi-env habitat; IDE-009 — modes as events; IDE-010 — native Emacs client
@@ -88,5 +89,5 @@ fresh-as-of: 2026-10-17 · spike close · 48345df
 - EVD-004 — SIGKILL mid-tool: run resumes, unsafe tool returns interrupted with committed output
 
 ### Open
-- QUE-003 — does pandaemonium replace hello-satan or coexist
+- QUE-003 — does malebolge replace hello-satan or coexist
 - ASM-004 — env keys via `op run` until `~/flakes` IDE-003

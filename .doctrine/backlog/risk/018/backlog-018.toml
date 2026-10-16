@@ -2,8 +2,8 @@ schema = "doctrine.backlog"
 version = 1
 
 id = 18
-slug = "pandaemonium-daemon-socket-grants-submitabort-to-any-local-process-that-can-connect"
-title = "pandaemonium daemon socket grants submit/abort to any local process that can connect"
+slug = "malebolge-daemon-socket-grants-submitabort-to-any-local-process-that-can-connect"
+title = "malebolge daemon socket grants submit/abort to any local process that can connect"
 kind = "risk"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place
