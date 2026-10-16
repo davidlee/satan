@@ -48,25 +48,35 @@
           else {};
         doctrine-pkg = doctrine.packages.${system}.default;
         wrappedEmacs = inputs.emacs.packages.${system}.default;
-        projectPkgs = with pkgs;
-          [
-            zigPackage
-            nodejs
-            just
-            postgresql_18
-            supabase-cli
-            wrappedEmacs
-            emacsclient-commands
-            sqlite
-            socat
-            bun
+        # The tool set minus the jailed agents: what a SATAN working
+        # environment needs, independent of how it is confined. Exported as
+        # `packages.dev-tools` for consumers that confine differently — the
+        # oubliette microvm capsule puts it in the guest's systemPackages, where
+        # the agents come from the capsule and a bwrap jail is meaningless.
+        devToolPkgs = with pkgs; [
+          zigPackage
+          nodejs
+          just
+          postgresql_18
+          supabase-cli
+          wrappedEmacs
+          emacsclient-commands
+          sqlite
+          socat
+          bun
+          python3 # `just test`: satan/harness unittest
+          ripgrep # content_read search scope (and its tests)
+
+          coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
+          luau # noctalia/ plugin tests + lint
+          doctrine-pkg
+        ];
+        projectPkgs =
+          devToolPkgs
+          ++ lib.optionals isLinux [
             jailLib.agentsByName.codex
             jailLib.agentsByName.claude
-
-            coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
-            luau # noctalia/ plugin tests + lint
-          ]
-          ++ [doctrine-pkg];
+          ];
 
         mcpJailOptions = with jailLib.combinators; [
           # expose SATAN MCP
@@ -310,7 +320,18 @@
           inherit system;
         };
 
-        packages = lib.optionalAttrs isLinux jailPkgs;
+        packages =
+          lib.optionalAttrs isLinux jailPkgs
+          // {
+            # The devshell's tool set as one closure, for out-of-tree consumers
+            # that need the same tools without the devshell (the microvm
+            # capsule's `toolsPackage`), so the VM and the devshell can't drift.
+            dev-tools = pkgs.buildEnv {
+              name = "satan-dev-tools";
+              paths = devToolPkgs;
+              ignoreCollisions = true;
+            };
+          };
 
         devshells.default = {
           packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
