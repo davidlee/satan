@@ -46,8 +46,7 @@ clients: `attach` (terminal) · Emacs v0 = comint over attach
 
 ## Progress (2026-10-16)
 
-Built and verified live. Repo `~/dev/pandaemonium` (uncommitted, awaiting
-user); `just check` green: biome, tsc, 65 vitest tests.
+Built and verified live. Repo `~/dev/pandaemonium` (e659df6); `just check` green: biome, tsc, 65 vitest tests.
 
 - Model default `deepseek/deepseek-flash`: what the jailed pi's `~/notes`
   sessions actually ran (jail home `/home/agent/jail.nix/home/agent`).
@@ -68,18 +67,18 @@ user); `just check` green: biome, tsc, 65 vitest tests.
   - Unit tests with hand-written event sequences missed it; an end-to-end test
     (faux model at 40 tok/s through the real daemon) asserts the exact client
     output and was mutation-checked against both bugs.
-- `~/notes/justfile`: `hello-durable`, `attach-durable` (uncommitted).
+- `~/notes/justfile`: `hello-durable`, `attach-durable` (bbf429b).
 - Findings → RFC-018 § "Spike findings" (F1–F7).
 - Memories: `mem.fact.pi.durable-is-a-library`,
   `mem.fact.satan.jailed-pi-home-and-op-keys`.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-17 · spike close · 9de3a7e (all CHR-012 work uncommitted)
+fresh-as-of: 2026-10-17 · spike close · 48345df
 
 ### Produced
-- `~/dev/pandaemonium` — pi-durable daemon + attach client + comint client; 65 tests (uncommitted, no commits yet)
-- `~/notes/justfile` — `hello-durable`, `attach-durable` (uncommitted)
+- `~/dev/pandaemonium` — pi-durable daemon + attach client + comint client; 65 tests (pandaemonium e659df6)
+- `~/notes/justfile` — `hello-durable`, `attach-durable` (notes bbf429b)
 - RFC-018 § Spike findings — F1–F7
 - minted: IMP-037 — jail the daemon; IMP-038 — satan-mcp reconnect; RSK-018 — daemon socket authority; IDE-008 — pi-env habitat; IDE-009 — modes as events; IDE-010 — native Emacs client
 
