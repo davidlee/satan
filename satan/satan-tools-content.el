@@ -10,6 +10,11 @@
 ;;   - "get"    -> char-offset paginated text_content from sidecar
 ;;   - "filter" -> articles.jsonl rows matching domain/url, metadata + excerpt
 ;;   - "search" -> rg over .md projection, deduped + recency-sorted matches
+;;   - "digest" -> panopticon-digest record (summary, claims, entities)
+;;
+;; recent/filter/search rows carry the digest's :summary when one exists.
+;; Digests live beside the store in ~/.local/state/behaviour/digest/
+;;   <shard>/<hash>.digest.json  (written by `panopticon-digest')
 ;;
 ;; Risk = `read'; no capability required.  Panopticon is the producer
 ;; that handles redaction; SATAN is a downstream consumer.
@@ -25,6 +30,11 @@
 (defcustom satan-tools-content-dir
   (expand-file-name "behaviour/content/" (satan-state-home))
   "Root directory holding panopticon's content store."
+  :type 'directory :group 'satan)
+
+(defcustom satan-tools-content-digest-dir
+  (expand-file-name "behaviour/digest/" (satan-state-home))
+  "Root directory holding panopticon's per-hash page digests."
   :type 'directory :group 'satan)
 
 (defcustom satan-tools-content-default-limit 20
@@ -65,11 +75,13 @@ Bounds I/O for the unbounded index (see DE-005 R6 / DR-005 DEC-6)."
   "Return the full path to `articles.jsonl'."
   (expand-file-name "articles.jsonl" satan-tools-content-dir))
 
+(defun satan-tools-content--shard-path (root hash suffix)
+  "Return `<shard>/<HASH><SUFFIX>' under ROOT, panopticon's sharded layout."
+  (expand-file-name (format "%s/%s%s" (substring hash 0 2) hash suffix) root))
+
 (defun satan-tools-content--sidecar-json-path (hash)
   "Return the path to `<shard>/<hash>.json' for HASH."
-  (expand-file-name
-   (format "%s/%s.json" (substring hash 0 2) hash)
-   satan-tools-content-dir))
+  (satan-tools-content--shard-path satan-tools-content-dir hash ".json"))
 
 (defun satan-tools-content--clamp-limit (raw default hard-max)
   "Clamp RAW integer to [1, HARD-MAX], defaulting to DEFAULT if nil."
@@ -134,6 +146,19 @@ symmetry but currently always uses lenient mode."
   "Return :excerpt from SIDECAR plist, or nil."
   (plist-get sidecar :excerpt))
 
+(defun satan-tools-content--read-digest (hash)
+  "Return the digest record plist for HASH, or nil if absent or unreadable."
+  (condition-case nil
+      (satan-tools-content--read-json
+       (satan-tools-content--shard-path
+        satan-tools-content-digest-dir hash ".digest.json"))
+    (error nil)))
+
+(defun satan-tools-content--with-summary (row hash)
+  "Return ROW with the digest :summary for HASH appended, when digested."
+  (let ((summary (plist-get (satan-tools-content--read-digest hash) :summary)))
+    (if summary (append row (list :summary summary)) row)))
+
 ;; --- recent ---------------------------------------------------
 
 (defun satan-tools-content--scope-recent (args)
@@ -149,7 +174,10 @@ symmetry but currently always uses lenient mode."
          (reversed (nreverse tail)))
     (cons 'ok (list :scope "recent"
                     :limit limit
-                    :captures reversed))))
+                    :captures (mapcar (lambda (a)
+                                        (satan-tools-content--with-summary
+                                         a (plist-get a :content_hash)))
+                                      reversed)))))
 
 ;; --- get ------------------------------------------------------
 
@@ -222,13 +250,15 @@ At least one of :domain / :url is required (DR-005 §4.1)."
                          (satan-tools-content--sidecar-json-path hash)))
                (excerpt (when sidecar
                           (satan-tools-content--excerpt sidecar))))
-          (push (append (list :hash hash
-                              :url (plist-get a :url)
-                              :domain (plist-get a :domain)
-                              :title (plist-get a :title)
-                              :captured_at (plist-get a :captured_at)
-                              :quality_score (plist-get a :quality_score))
-                        (when excerpt (list :excerpt excerpt)))
+          (push (satan-tools-content--with-summary
+                 (append (list :hash hash
+                               :url (plist-get a :url)
+                               :domain (plist-get a :domain)
+                               :title (plist-get a :title)
+                               :captured_at (plist-get a :captured_at)
+                               :quality_score (plist-get a :quality_score))
+                         (when excerpt (list :excerpt excerpt)))
+                 hash)
                 matched))))
     (let ((result (nreverse matched)))
       (cons 'ok (list :scope "filter"
@@ -325,11 +355,13 @@ Uses `rg' subprocess via `call-process' (never shell-command)."
                                                     satan-tools-content--search-snippet-max)
                                          "…")
                                raw-snippet)))
-                       (list :hash h
-                             :url (plist-get a :url)
-                             :domain (plist-get a :domain)
-                             :title (plist-get a :title)
-                             :snippet snippet)))
+                       (satan-tools-content--with-summary
+                        (list :hash h
+                              :url (plist-get a :url)
+                              :domain (plist-get a :domain)
+                              :title (plist-get a :title)
+                              :snippet snippet)
+                        h)))
                    result-hashes)))
             (cons 'ok (list :scope "search"
                             :query query
@@ -337,10 +369,24 @@ Uses `rg' subprocess via `call-process' (never shell-command)."
                             :matches matches
                             :truncated_results (if truncated t :false)))))))))
 
+;; --- digest ---------------------------------------------------
+
+(defun satan-tools-content--scope-digest (args)
+  "Handle `digest' scope.  ARGS: (:hash STRING)."
+  (let* ((hash (plist-get args :hash))
+         (d (satan-tools-content--read-digest hash)))
+    (if (null d)
+        (cons 'error (format "no digest for hash: %s" hash))
+      (cons 'ok (append (list :scope "digest" :hash hash)
+                        (cl-loop for k in '(:url :title :captured_at :digested_at
+                                            :model :summary :claims :entities
+                                            :private_surface)
+                                 append (list k (plist-get d k))))))))
+
 ;; --- Tool handler ---------------------------------------------
 
 (defun satan-tool/content-read (args _ctx)
-  "Implements `content_read'.  ARGS: (:scope recent|get|filter|search …).
+  "Implements `content_read'.  ARGS: (:scope recent|get|filter|search|digest …).
 Returns (ok PLIST) | (error STRING)."
   (let ((scope (plist-get args :scope)))
     (pcase scope
@@ -348,13 +394,14 @@ Returns (ok PLIST) | (error STRING)."
       ("get"     (satan-tools-content--scope-get args))
       ("filter"  (satan-tools-content--scope-filter args))
       ("search"  (satan-tools-content--scope-search args))
+      ("digest"  (satan-tools-content--scope-digest args))
       (_ (cons 'error (format "unknown scope: %s" scope))))))
 
 (satan-tool-register
  (list :name "content_read"
        :risk 'read
        :args-schema '(scope (:type string :required t
-                             :enum ("recent" "get" "filter" "search"))
+                             :enum ("recent" "get" "filter" "search" "digest"))
                       hash (:type string :required nil)
                       query (:type string :required nil)
                       domain (:type string :required nil)

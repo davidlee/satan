@@ -10,21 +10,28 @@
 (defvar satan-tools-content-test--dir nil
   "Temp content store root bound during `--with-store'.")
 
+(defvar satan-tools-content-test--digest-dir nil
+  "Temp digest store root bound during `--with-store'.")
+
 (defmacro satan-tools-content-test--with-store (&rest body)
   "Bind `satan-tools-content-dir' to a temp content store for BODY.
 Also binds `satan-tools-descriptions-dir' to a temp dir so tool
 schema assembly works in tests."
   (declare (indent 0))
   `(let* ((store-dir (make-temp-file "satan-content-" t))
+          (digest-dir (make-temp-file "satan-digest-" t))
           (desc-dir  (make-temp-file "satan-desc-" t))
           (satan-tools-content-dir store-dir)
+          (satan-tools-content-digest-dir digest-dir)
           (satan-tools-descriptions-dir desc-dir))
      ;; Provide a minimal tool description so schema assembly doesn't crash
      (with-temp-file (expand-file-name "content_read.md" desc-dir)
        (insert "Read panopticon page captures."))
-     (setq satan-tools-content-test--dir store-dir)
+     (setq satan-tools-content-test--dir store-dir
+           satan-tools-content-test--digest-dir digest-dir)
      (unwind-protect (progn ,@body)
        (delete-directory store-dir t)
+       (delete-directory digest-dir t)
        (delete-directory desc-dir t))))
 
 (defun satan-tools-content-test--shard-dir (hash)
@@ -81,6 +88,55 @@ Also writes .json sidecars.  Returns the store dir."
    (cl-loop for (hash url domain title captured-at text-content) in articles
             collect (satan-tools-content-test--article-plist
                      hash url domain title captured-at))))
+
+(cl-defun satan-tools-content-test--write-digest (hash &key (summary "A summary.")
+                                                        (private-surface "public"))
+  "Write a panopticon digest record for HASH; return its plist."
+  (let ((dir (expand-file-name (substring hash 0 2)
+                               satan-tools-content-test--digest-dir))
+        (record (list :content_hash hash
+                      :url "https://example.com/digested"
+                      :title "Digested"
+                      :captured_at "2026-09-11T16:46:58.442+10:00"
+                      :digested_at "2026-10-02T09:48:50.558+10:00"
+                      :model "provider/model"
+                      :prompt_version "4"
+                      :summary summary
+                      :claims '("Claim one." "Claim two.")
+                      :entities '((:name "Thing" :type "software"))
+                      :private_surface private-surface)))
+    (make-directory dir t)
+    (with-temp-file (expand-file-name (concat hash ".digest.json") dir)
+      (insert (json-serialize (satan-jsonl-prepare record))))
+    record))
+
+(defconst satan-tools-content-test--hash-digested
+  "d000000000000000000000000000000000000000000000000000000000000001")
+
+(defconst satan-tools-content-test--hash-plain
+  "d000000000000000000000000000000000000000000000000000000000000002")
+
+(defun satan-tools-content-test--make-digest-store ()
+  "Store of two example.com pages; only the first has a digest.
+Both bodies mention \"widget\" so `search' finds both."
+  (satan-tools-content-test--make-store
+   `((,satan-tools-content-test--hash-digested
+      "https://example.com/a" "example.com" "A"
+      "2026-05-31T01:00:00.000Z" "Widget page a.")
+     (,satan-tools-content-test--hash-plain
+      "https://example.com/b" "example.com" "B"
+      "2026-05-31T02:00:00.000Z" "Widget page b.")))
+  (dolist (h (list satan-tools-content-test--hash-digested
+                   satan-tools-content-test--hash-plain))
+    (with-temp-file (expand-file-name (format "%s/%s.md" (substring h 0 2) h)
+                                      satan-tools-content-test--dir)
+      (insert "Widget page.\n")))
+  (satan-tools-content-test--write-digest
+   satan-tools-content-test--hash-digested :summary "About widgets."))
+
+(defun satan-tools-content-test--summaries (rows key)
+  "Alist of (HASH . SUMMARY) for ROWS, hash read from KEY."
+  (mapcar (lambda (r) (cons (plist-get r key) (plist-get r :summary))) rows))
 
 ;; --- recent tests ---------------------------------------------
 
@@ -492,6 +548,67 @@ With scan-max=2 and 5 articles, only the last 2 are returned even with limit=5."
   (let ((res (satan-tool/content-read '(:scope "nonesuch") nil)))
     (should (eq (car res) 'error))
     (should (string-match-p "unknown scope" (cdr res)))))
+
+;; --- digest tests ---------------------------------------------
+
+(ert-deftest satan-content/rows-carry-digest-summary ()
+  "recent, filter and search rows carry :summary exactly when digested."
+  (satan-tools-content-test--with-store
+    (satan-tools-content-test--make-digest-store)
+    (let ((expected `((,satan-tools-content-test--hash-digested . "About widgets.")
+                      (,satan-tools-content-test--hash-plain . nil))))
+      (pcase-dolist (`(,args ,rows-key ,hash-key)
+                     '(((:scope "recent") :captures :content_hash)
+                       ((:scope "filter" :domain "example.com") :captures :hash)
+                       ((:scope "search" :query "widget") :matches :hash)))
+        (let* ((res (satan-tool/content-read args nil))
+               (rows (plist-get (cdr res) rows-key)))
+          (should (eq (car res) 'ok))
+          (should (equal (sort (satan-tools-content-test--summaries rows hash-key)
+                               (lambda (a b) (string< (car a) (car b))))
+                         expected)))))))
+
+(ert-deftest satan-content/digest-returns-record ()
+  "digest scope returns the record's summary, claims, entities and flag."
+  (satan-tools-content-test--with-store
+    (let* ((hash satan-tools-content-test--hash-digested)
+           (record (satan-tools-content-test--write-digest
+                    hash :private-surface "account"))
+           (res (satan-tool/content-read `(:scope "digest" :hash ,hash) nil))
+           (p (cdr res)))
+      (should (eq (car res) 'ok))
+      (should (equal (plist-get p :scope) "digest"))
+      (dolist (k '(:hash :url :title :captured_at :digested_at :model
+                   :summary :claims :private_surface))
+        (should (equal (plist-get p k)
+                       (plist-get record (if (eq k :hash) :content_hash k)))))
+      (should (equal (plist-get p :entities)
+                     '((:name "Thing" :type "software")))))))
+
+(ert-deftest satan-content/digest-missing-errors ()
+  "digest scope errors for an undigested hash."
+  (satan-tools-content-test--with-store
+    (let ((res (satan-tool/content-read
+                `(:scope "digest" :hash ,satan-tools-content-test--hash-plain) nil)))
+      (should (eq (car res) 'error))
+      (should (string-match-p "no digest" (cdr res))))))
+
+(ert-deftest satan-content/digest-malformed-is-absent ()
+  "An unparseable digest file reads as no digest, never an error in rows."
+  (satan-tools-content-test--with-store
+    (satan-tools-content-test--make-digest-store)
+    (with-temp-file (expand-file-name
+                     (format "d0/%s.digest.json" satan-tools-content-test--hash-digested)
+                     satan-tools-content-test--digest-dir)
+      (insert "{not json"))
+    (let ((rows (plist-get (cdr (satan-tool/content-read '(:scope "recent") nil))
+                           :captures)))
+      (should (equal (length rows) 2))
+      (should-not (cl-some (lambda (r) (plist-get r :summary)) rows)))
+    (should (eq (car (satan-tool/content-read
+                      `(:scope "digest" :hash ,satan-tools-content-test--hash-digested)
+                      nil))
+                'error))))
 
 ;; --- dispatch schema validation -------------------------------
 
