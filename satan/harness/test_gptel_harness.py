@@ -22,9 +22,7 @@ import bundle  # noqa: E402
 import protocol  # noqa: E402
 import runloop  # noqa: E402
 from providers import build_provider  # noqa: E402
-from providers.base import CompletionResult, Provider  # noqa: E402
-from providers.deepseek import DeepSeekProvider  # noqa: E402
-from providers.openrouter import OpenRouterProvider  # noqa: E402
+from providers.base import CompletionResult, OpenAICompatibleProvider, Provider  # noqa: E402
 
 
 def _stub_tool_schema(name: str, description: str = "") -> dict:
@@ -87,26 +85,32 @@ class StubProvider(Provider):
         return self._results.pop(0)
 
 
+def _run_harness(provider, stdin: str = "", *, budget: int = 0,
+                 max_budget: int | None = None):
+    """Drive runloop.run() against `provider`; return (rc, emitted lines)."""
+    buf = io.StringIO()
+    env = {
+        "SATAN_RUN_ID": "test-run",
+        "SATAN_BUDGET_TOKENS": str(budget),
+        "SATAN_MODEL": "test-model",
+    }
+    if max_budget is not None:
+        env["SATAN_MAX_BUDGET_TOKENS"] = str(max_budget)
+    with tempfile.TemporaryDirectory() as tmp:
+        make_bundle(tmp)
+        env["SATAN_RUN_DIR"] = tmp
+        with mock.patch.dict(os.environ, env, clear=False), \
+             mock.patch.object(runloop, "build_provider",
+                               return_value=(provider, "test-model")), \
+             mock.patch.object(sys, "stdin", io.StringIO(stdin)), \
+             redirect_stdout(buf):
+            rc = runloop.run()
+    return rc, emitted_lines(buf)
+
+
 class HarnessTests(unittest.TestCase):
     def _run_with(self, provider, *, stdin_lines: list[str] = (), budget: int = 0):
-        buf = io.StringIO()
-        env = {
-            "SATAN_RUN_ID": "test-run",
-            "SATAN_BUDGET_TOKENS": str(budget),
-            "SATAN_PROVIDER": "openrouter",
-            "SATAN_MODEL": "test-model",
-            "OPENROUTER_API_KEY": "test-key",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            make_bundle(tmp)
-            env["SATAN_RUN_DIR"] = tmp
-            with mock.patch.dict(os.environ, env, clear=False), \
-                 mock.patch.object(runloop, "build_provider",
-                                   return_value=(provider, "test-model")), \
-                 mock.patch.object(sys, "stdin", io.StringIO("".join(stdin_lines))), \
-                 redirect_stdout(buf):
-                rc = runloop.run()
-        return rc, emitted_lines(buf)
+        return _run_harness(provider, "".join(stdin_lines), budget=budget)
 
     def test_satan_final_terminates(self):
         provider = StubProvider([
@@ -263,6 +267,14 @@ class HarnessTests(unittest.TestCase):
             bundle.build_system_prompt({})
 
 
+def _error(msg: str, **attrs) -> Exception:
+    """An Exception carrying SDK-style attributes (status_code, type, ...)."""
+    e = Exception(msg)
+    for name, value in attrs.items():
+        setattr(e, name, value)
+    return e
+
+
 class ErrorClassificationTests(unittest.TestCase):
     """Tests for classify_error() and structured error payloads."""
 
@@ -311,16 +323,47 @@ class ErrorClassificationTests(unittest.TestCase):
         self.assertEqual(runloop.classify_error(e), "unknown")
 
     def test_classify_by_status_code(self):
-        def with_status(code):
-            e = Exception("provider error")
-            e.status_code = code
-            return e
+        for code, kind in [(401, "auth"), (402, "credits"), (429, "rate_limit"),
+                           (500, "server"), (503, "server")]:
+            with self.subTest(code=code):
+                self.assertEqual(
+                    runloop.classify_error(_error("provider error", status_code=code)),
+                    kind)
 
-        self.assertEqual(runloop.classify_error(with_status(401)), "auth")
-        self.assertEqual(runloop.classify_error(with_status(402)), "credits")
-        self.assertEqual(runloop.classify_error(with_status(429)), "rate_limit")
-        self.assertEqual(runloop.classify_error(with_status(500)), "server")
-        self.assertEqual(runloop.classify_error(with_status(503)), "server")
+    def test_classify_budget_exceeded_429_is_credits(self):
+        e = _error("Error code: 429 - Budget has been exceeded! Current cost: 5",
+                   status_code=429, type="budget_exceeded")
+        self.assertEqual(runloop.classify_error(e), "credits")
+
+    def test_classify_plain_429_stays_rate_limit(self):
+        e = _error("Error code: 429 - slow down", status_code=429, type="rate_limit_error")
+        self.assertEqual(runloop.classify_error(e), "rate_limit")
+
+    def test_classify_403_model_access_is_auth(self):
+        e = _error("Error code: 403 - key not allowed to access model deepseek-pro",
+                   status_code=403)
+        self.assertEqual(runloop.classify_error(e), "auth")
+
+    def test_classify_connection_error_is_server(self):
+        class APIConnectionError(Exception):
+            pass
+
+        class LinkDown(APIConnectionError):  # unrelated name: any base class counts
+            pass
+
+        for cls in (APIConnectionError, LinkDown):
+            with self.subTest(cls=cls.__name__):
+                self.assertEqual(runloop.classify_error(cls("Connection error.")), "server")
+
+    def test_classify_api_timeout_is_timeout_not_server(self):
+        class APIConnectionError(Exception):
+            pass
+
+        class APITimeoutError(APIConnectionError):
+            pass
+
+        # Message avoids the timeout regex: the class-name rule must do the work.
+        self.assertEqual(runloop.classify_error(APITimeoutError("Request failed.")), "timeout")
 
     def test_classify_no_substring_false_positives(self):
         self.assertEqual(runloop.classify_error(Exception("generate a response")), "unknown")
@@ -332,24 +375,7 @@ class StructuredErrorTests(unittest.TestCase):
     """Verify provider errors emit structured JSON in the error field."""
 
     def _run_with(self, provider, *, stdin_lines: list[str] = (), budget: int = 0):
-        buf = io.StringIO()
-        env = {
-            "SATAN_RUN_ID": "test-run",
-            "SATAN_BUDGET_TOKENS": str(budget),
-            "SATAN_PROVIDER": "openrouter",
-            "SATAN_MODEL": "test-model",
-            "OPENROUTER_API_KEY": "test-key",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            make_bundle(tmp)
-            env["SATAN_RUN_DIR"] = tmp
-            with mock.patch.dict(os.environ, env, clear=False), \
-                 mock.patch.object(runloop, "build_provider",
-                                   return_value=(provider, "test-model")), \
-                 mock.patch.object(sys, "stdin", io.StringIO("".join(stdin_lines))), \
-                 redirect_stdout(buf):
-                rc = runloop.run()
-        return rc, emitted_lines(buf)
+        return _run_harness(provider, "".join(stdin_lines), budget=budget)
 
     def test_provider_error_emits_structured_payload(self):
         """Provider exception → error msg with JSON payload containing
@@ -486,24 +512,7 @@ class TierDegradationTests(unittest.TestCase):
         ])
         tool_result = json.dumps({"type": "tool_result", "id": "c1",
                                    "ok": True, "result": {"content": ""}}) + "\n"
-        buf = io.StringIO()
-        env = {
-            "SATAN_RUN_ID": "test-run",
-            "SATAN_BUDGET_TOKENS": "1000",
-            "SATAN_PROVIDER": "openrouter",
-            "SATAN_MODEL": "test-model",
-            "OPENROUTER_API_KEY": "test-key",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            make_bundle(tmp)
-            env["SATAN_RUN_DIR"] = tmp
-            with mock.patch.dict(os.environ, env, clear=False), \
-                 mock.patch.object(runloop, "build_provider",
-                                   return_value=(provider, "test-model")), \
-                 mock.patch.object(sys, "stdin", io.StringIO(tool_result)), \
-                 redirect_stdout(buf):
-                rc = runloop.run()
-        lines = emitted_lines(buf)
+        rc, lines = _run_harness(provider, tool_result, budget=1000)
         self.assertEqual(rc, 0)
         tier_changes = [m for m in lines
                         if m.get("type") == "log" and m.get("kind") == "tier_changed"]
@@ -545,24 +554,7 @@ class TierDegradationTests(unittest.TestCase):
                            "ok": True, "result": {"content": ""}}) + "\n"
         tr2 = json.dumps({"type": "tool_result", "id": "c2",
                            "ok": True, "result": {"content": ""}}) + "\n"
-        buf = io.StringIO()
-        env = {
-            "SATAN_RUN_ID": "test-run",
-            "SATAN_BUDGET_TOKENS": "1000",
-            "SATAN_PROVIDER": "openrouter",
-            "SATAN_MODEL": "test-model",
-            "OPENROUTER_API_KEY": "test-key",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            make_bundle(tmp)
-            env["SATAN_RUN_DIR"] = tmp
-            with mock.patch.dict(os.environ, env, clear=False), \
-                 mock.patch.object(runloop, "build_provider",
-                                   return_value=(provider, "test-model")), \
-                 mock.patch.object(sys, "stdin", io.StringIO(tr1 + tr2)), \
-                 redirect_stdout(buf):
-                rc = runloop.run()
-        lines = emitted_lines(buf)
+        rc, lines = _run_harness(provider, tr1 + tr2, budget=1000)
         self.assertEqual(rc, 0)
         tier_changes = [m for m in lines
                         if m.get("type") == "log" and m.get("kind") == "tier_changed"]
@@ -577,25 +569,8 @@ class BackstopTests(unittest.TestCase):
 
     def _run_with(self, provider, *, stdin_lines: list[str] = (),
                   budget: int = 0, max_budget: int = 0):
-        buf = io.StringIO()
-        env = {
-            "SATAN_RUN_ID": "test-run",
-            "SATAN_BUDGET_TOKENS": str(budget),
-            "SATAN_MAX_BUDGET_TOKENS": str(max_budget),
-            "SATAN_PROVIDER": "openrouter",
-            "SATAN_MODEL": "test-model",
-            "OPENROUTER_API_KEY": "test-key",
-        }
-        with tempfile.TemporaryDirectory() as tmp:
-            make_bundle(tmp)
-            env["SATAN_RUN_DIR"] = tmp
-            with mock.patch.dict(os.environ, env, clear=False), \
-                 mock.patch.object(runloop, "build_provider",
-                                   return_value=(provider, "test-model")), \
-                 mock.patch.object(sys, "stdin", io.StringIO("".join(stdin_lines))), \
-                 redirect_stdout(buf):
-                rc = runloop.run()
-        return rc, emitted_lines(buf)
+        return _run_harness(provider, "".join(stdin_lines),
+                            budget=budget, max_budget=max_budget)
 
     def test_max_budget_forces_immediate_final(self):
         """Exceeding max_budget_tokens terminates immediately, no tier
@@ -755,7 +730,7 @@ def _fake_openai_module():
 
 
 class ProviderFactoryTests(unittest.TestCase):
-    """Verify build_provider dispatches to the right subclass + base_url.
+    """Verify build_provider reads the gateway trio and nothing else.
 
     The real `openai` SDK is not in scope for these unit tests (and may
     be absent in the dev env). Inject a fake module into `sys.modules`
@@ -763,76 +738,43 @@ class ProviderFactoryTests(unittest.TestCase):
     resolves to `FakeOpenAI`.
     """
 
+    GATEWAY_ENV = {
+        "SATAN_MODEL": "deepseek-flash",
+        "LLM_GATEWAY_URL": "http://gw.test/v1",
+        "LLM_GATEWAY_KEY": "gw-key",
+    }
+
     def _build(self, env: dict) -> tuple[Provider, str]:
         with mock.patch.dict(os.environ, env, clear=True), \
              mock.patch.dict(sys.modules, {"openai": _fake_openai_module()}):
             FakeOpenAI.last_kwargs = {}
             return build_provider()
 
-    def test_openrouter_dispatch(self):
-        provider, model = self._build({
-            "SATAN_PROVIDER": "openrouter",
-            "SATAN_MODEL": "x-ai/grok",
-            "OPENROUTER_API_KEY": "or-key",
-        })
-        self.assertIsInstance(provider, OpenRouterProvider)
-        self.assertEqual(model, "x-ai/grok")
-        self.assertEqual(FakeOpenAI.last_kwargs["api_key"], "or-key")
-        self.assertEqual(FakeOpenAI.last_kwargs["base_url"],
-                         "https://openrouter.ai/api/v1")
+    def _assert_gateway_provider(self, provider, model):
+        self.assertIsInstance(provider, OpenAICompatibleProvider)
+        self.assertEqual(model, "deepseek-flash")
+        self.assertEqual(FakeOpenAI.last_kwargs["api_key"], "gw-key")
+        self.assertEqual(FakeOpenAI.last_kwargs["base_url"], "http://gw.test/v1")
 
-    def test_deepseek_dispatch(self):
-        provider, model = self._build({
-            "SATAN_PROVIDER": "deepseek",
-            "SATAN_MODEL": "deepseek-chat",
-            "DEEPSEEK_API_KEY": "ds-key",
-        })
-        self.assertIsInstance(provider, DeepSeekProvider)
-        self.assertEqual(model, "deepseek-chat")
-        self.assertEqual(FakeOpenAI.last_kwargs["api_key"], "ds-key")
-        self.assertEqual(FakeOpenAI.last_kwargs["base_url"],
-                         "https://api.deepseek.com")
+    def test_gateway_trio_builds_provider(self):
+        self._assert_gateway_provider(*self._build(self.GATEWAY_ENV))
 
-    def test_default_provider_is_openrouter(self):
-        provider, _ = self._build({
-            "SATAN_MODEL": "any",
-            "OPENROUTER_API_KEY": "k",
-        })
-        self.assertIsInstance(provider, OpenRouterProvider)
+    def test_each_missing_or_empty_var_raises(self):
+        for var in self.GATEWAY_ENV:
+            for bad in (None, ""):
+                with self.subTest(var=var, value=bad):
+                    env = {k: v for k, v in self.GATEWAY_ENV.items() if k != var}
+                    if bad is not None:
+                        env[var] = bad
+                    with self.assertRaisesRegex(RuntimeError, f"^{var} not set$"):
+                        self._build(env)
 
-    def test_unknown_provider_raises(self):
-        with self.assertRaisesRegex(RuntimeError, "unknown SATAN_PROVIDER"):
-            self._build({
-                "SATAN_PROVIDER": "claude-native",
-                "SATAN_MODEL": "x",
-            })
-
-    def test_missing_model_raises(self):
-        with self.assertRaisesRegex(RuntimeError, "SATAN_MODEL not set"):
-            self._build({"SATAN_PROVIDER": "deepseek",
-                         "DEEPSEEK_API_KEY": "k"})
-
-    def test_missing_key_raises(self):
-        with self.assertRaisesRegex(RuntimeError, "DEEPSEEK_API_KEY not set"):
-            self._build({"SATAN_PROVIDER": "deepseek",
-                         "SATAN_MODEL": "deepseek-chat"})
-
-    def test_unresolved_op_ref_key_raises(self):
-        """Literal op:// reference must be rejected, not sent to provider.
-
-        The broker has a scrubber that strips these before spawn; this
-        is the harness-side belt-and-braces in case anything slips through.
-        Without this guard a transient op-resolution failure produces an
-        opaque provider 401 (`****tial`) rather than a diagnosable error.
-        """
-        with self.assertRaisesRegex(RuntimeError,
-                                    "unresolved op:// reference"):
-            self._build({
-                "SATAN_PROVIDER": "deepseek",
-                "SATAN_MODEL": "deepseek-chat",
-                "DEEPSEEK_API_KEY":
-                    "op://API_KEYS/DEEPSEEK_API_KEY/credential",
-            })
+    def test_stray_legacy_provider_vars_are_ignored(self):
+        # Today's broker still sends these; the new harness must tolerate them.
+        env = {**self.GATEWAY_ENV,
+               "SATAN_PROVIDER": "openrouter",
+               "OPENROUTER_API_KEY": "or-key"}
+        self._assert_gateway_provider(*self._build(env))
 
 
 if __name__ == "__main__":

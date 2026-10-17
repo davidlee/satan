@@ -41,3 +41,15 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 - DEC-048 — $20 lifetime budget for the `satan` key: confirm with the user at PHASE-07 EX-1
 - research.md drifted from slice/design (advisory); not restamped — design supersedes it
 - CHR-009 (reindent `satan-broker--spawn`) overlaps PHASE-05; candidate to fold in
+
+## PHASE-01 execution (harness on the gateway)
+
+### Done
+- `build_provider` now reads SATAN_MODEL / LLM_GATEWAY_URL / LLM_GATEWAY_KEY via `_required`; registry, deepseek/openrouter adapters, `SATAN_PROVIDER` and the `op://` check removed. Stray `SATAN_PROVIDER` is ignored.
+- `classify_error`: budget_exceeded -> credits, 403 "not allowed to access model" -> auth, then MRO-name rules (APITimeoutError -> timeout before APIConnectionError -> server). No openai import in runloop.
+- Tests: factory tests rewritten; classify tests added with an `_error` helper; five duplicated run-env blocks collapsed into `_run_harness`.
+- Python 55 tests OK (54 before). `just check` 1368/1374, 6 skipped (same as baseline). ruff E,F,W clean; VA-1 empty.
+
+### Learned
+- `doctrine slice verify-vt` stays UNATTRIBUTABLE until the phase's files are committed (it keys on files modified by the slice's commits).
+- A docstring that mentions `SATAN_PROVIDER` trips the VA-1 rg; reword rather than exempt.

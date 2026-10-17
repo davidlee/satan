@@ -113,11 +113,31 @@ class RunState:
 
 # -- Error classification ---------------------------------------------------
 
+# Rules run in this order, before the status-code branches:
+#  1. budget_exceeded is a 429 at the gateway but means the key's budget is
+#     spent, not throttling: it must precede the 429 branch.
+#  2. 403 "not allowed to access model" is a key-configuration fault (auth).
+#     A plain 403 (e.g. an OpenRouter moderation flag) is not a bad key, so it
+#     falls through to the word-boundary match on the message text.
+#  3/4. SDK transport errors, matched by class name along the MRO so this
+#     module needs no openai import. APITimeoutError subclasses
+#     APIConnectionError, so the timeout rule must come first.
+_BUDGET_EXCEEDED = "budget_exceeded"
+_MODEL_ACCESS_DENIED = "not allowed to access model"
+
+
 def classify_error(e: Exception) -> str:
-    # 403 has no status-code branch: OpenRouter answers 403 for a moderation
-    # flag, not a bad key, so it falls through to the word-boundary match on
-    # the message text (design SL-017 sec-7).
     code = getattr(e, "status_code", None)
+    msg = str(e).lower()
+    class_names = {c.__name__ for c in type(e).__mro__}
+    if getattr(e, "type", None) == _BUDGET_EXCEEDED:
+        return "credits"
+    if code == 403 and _MODEL_ACCESS_DENIED in msg:
+        return "auth"
+    if "APITimeoutError" in class_names:
+        return "timeout"
+    if "APIConnectionError" in class_names:
+        return "server"
     if code == 401:
         return "auth"
     if code == 402:
@@ -126,7 +146,6 @@ def classify_error(e: Exception) -> str:
         return "rate_limit"
     if isinstance(code, int) and code >= 500:
         return "server"
-    msg = str(e).lower()
     if re.search(r"\b(429|rate[ _-]?limit(ed)?|quota)\b", msg):
         return "rate_limit"
     if re.search(r"\b(401|unauthori[sz]ed|authentication|invalid api key|api key expired)\b", msg):

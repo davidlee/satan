@@ -1,15 +1,12 @@
 """Provider abstraction: completion contract + result type + OAI-v1 base.
 
-`Provider` is the ABC the runloop sees. `OpenAICompatibleProvider`
-collapses every provider whose wire shape is OpenAI v1 chat-completions
-(OpenRouter, DeepSeek, etc.) into one concrete implementation
-parameterised by `base_url` and `api_key`. Concrete adapters subclass it
-purely as a configuration row.
+`Provider` is the ABC the runloop sees. `OpenAICompatibleProvider` is the
+one concrete implementation: OpenAI v1 chat-completions against a
+`base_url` (the LLM gateway) with an `api_key`.
 
-DeepSeek's reasoning models (and any future thinking-mode provider)
-emit a `reasoning_content` field on the assistant message outside the
-OpenAI schema. DeepSeek then *requires* that the field be echoed back
-on the next request or rejects with HTTP 400. We capture it on
+Thinking-mode models behind the gateway emit a `reasoning_content` field
+on the assistant message outside the OpenAI schema, and some reject the
+next request unless it is echoed back. We capture it on
 `CompletionResult` and the runloop attaches it to the assistant message
 it appends to history, so the next provider call carries it through.
 """

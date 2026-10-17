@@ -1,8 +1,15 @@
-"""Provider registry: dispatch on SATAN_PROVIDER env to a concrete adapter.
+"""Provider factory: one OpenAI-compatible endpoint, the LLM gateway.
 
-Adapters speak OpenAI v1 chat-completions via the shared
-`OpenAICompatibleProvider` base. Adding a new OAI-compatible provider is
-a two-line subclass + a row here.
+The gateway (LiteLLM) fronts every upstream model; the harness names a
+model by gateway alias and never sees upstream credentials. The jail
+launcher supplies all three variables:
+
+  SATAN_MODEL        gateway model alias (e.g. `deepseek-flash`)
+  LLM_GATEWAY_URL    gateway base URL (OpenAI v1 chat-completions)
+  LLM_GATEWAY_KEY    the key issued for this jail
+
+Any other variables (e.g. provider selectors from an older broker) are
+ignored.
 """
 
 from __future__ import annotations
@@ -10,41 +17,25 @@ from __future__ import annotations
 import os
 
 from .base import CompletionResult, OpenAICompatibleProvider, Provider
-from .deepseek import DeepSeekProvider
-from .openrouter import OpenRouterProvider
-
-# provider name -> (subclass, key env var)
-_REGISTRY: dict[str, tuple[type[OpenAICompatibleProvider], str]] = {
-    "openrouter": (OpenRouterProvider, "OPENROUTER_API_KEY"),
-    "deepseek":   (DeepSeekProvider,   "DEEPSEEK_API_KEY"),
-}
 
 
 def build_provider() -> tuple[Provider, str]:
-    provider_name = os.environ.get("SATAN_PROVIDER", "openrouter").lower()
-    model = os.environ.get("SATAN_MODEL") or ""
-    if not model:
-        raise RuntimeError("SATAN_MODEL not set")
-    entry = _REGISTRY.get(provider_name)
-    if entry is None:
-        raise RuntimeError(f"unknown SATAN_PROVIDER: {provider_name}")
-    cls, key_var = entry
-    key = os.environ.get(key_var)
-    if not key:
-        raise RuntimeError(f"{key_var} not set")
-    if key.startswith("op://"):
-        raise RuntimeError(
-            f"{key_var} is an unresolved op:// reference; "
-            "broker should have resolved this before spawn"
-        )
-    return cls(key), model
+    model = _required("SATAN_MODEL")
+    url = _required("LLM_GATEWAY_URL")
+    key = _required("LLM_GATEWAY_KEY")
+    return OpenAICompatibleProvider(key, base_url=url), model
+
+
+def _required(var: str) -> str:
+    value = os.environ.get(var) or ""
+    if not value:
+        raise RuntimeError(f"{var} not set")
+    return value
 
 
 __all__ = [
     "CompletionResult",
-    "DeepSeekProvider",
     "OpenAICompatibleProvider",
-    "OpenRouterProvider",
     "Provider",
     "build_provider",
 ]
