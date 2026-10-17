@@ -582,6 +582,35 @@ Returns the result-note plist — `:verdict' or `:projection' as a
            #'satan-intervention-project-with-verdict payload verdict))
       (error (list :verdict (satan-intervention--failed verr))))))
 
+(defun satan-intervention-emit (ctx record-args emit)
+  "Record an intervention on CTX, then EMIT it; the tool result.
+RECORD-ARGS are `satan-intervention-record' keyword args, less `:ctx'.
+EMIT, called with no args once the record is durable (SL-017
+DEC-018), performs the side effect and returns a result plist; a
+signal means the keeper never saw it.
+
+Returns:
+  (ok EMITTED... :intervention_id IV [:projection ...])    emitted;
+  (ok :intervention_id IV :delivered :false :error ERR
+      [:verdict ...] [:projection ...])                    never seen;
+  (error . MSG)  the record failed, and EMIT was not called.
+Every recorded intervention returns `ok', so a sensor cooldown arms on
+the record."
+  (condition-case rerr
+      (let* ((payload (apply #'satan-intervention-record :ctx ctx record-args))
+             (iv (list :intervention_id (plist-get payload :intervention_id))))
+        (condition-case perr
+            (cons 'ok (append (funcall emit) iv
+                              (satan-intervention-try-project
+                               #'satan-intervention-project payload)))
+          (error
+           (cons 'ok (append iv
+                             (list :delivered :false
+                                   :error (error-message-string perr))
+                             (satan-intervention-mark-undelivered
+                              ctx payload perr))))))
+    (error (cons 'error (error-message-string rerr)))))
+
 (cl-defun satan-intervention-classify
     (&key ctx intervention-id classification confidence evidence
           maturity next-revisit-at source classified-at

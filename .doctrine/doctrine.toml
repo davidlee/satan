@@ -37,3 +37,6 @@ allow-local-fallback = true
 [verification]
 commit = ["just","check"]
 gate   = ["just","check"]
+
+[install]
+installed-version = "0.46.7"

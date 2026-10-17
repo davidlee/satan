@@ -458,6 +458,7 @@ populated from ALIST `((NAME . CONTENT) …)'."
      ("org_update_owned_block" . "Replace a SATAN-owned org block.")
      ("proposal_stage"         . "Stage a proposal.")
      ("notify_send"            . "Send a desktop notification.")
+     ("speak"                  . "Speak aloud.")
      ("hippocampus_list"       . "List hippocampus entries.")
      ("hippocampus_read"       . "Read a hippocampus entry.")
      ("hippocampus_write"      . "Write to the hippocampus.")

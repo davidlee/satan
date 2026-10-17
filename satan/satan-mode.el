@@ -103,7 +103,7 @@ Dotfiles must not be the source of truth for prompt content."
        :prompt-file (expand-file-name "morning.txt" satan-prompts-dir)
        :context-fn 'satan-context-morning
        :tools '("org_read_context" "org_update_owned_block"
-                "proposal_stage" "notify_send"
+                "proposal_stage" "notify_send" "speak"
                 "hippocampus_list" "hippocampus_read" "hippocampus_write"
                 "hippocampus_overwrite" "hippocampus_delete"
                 "hippocampus_grep" "hippocampus_rename"
@@ -116,7 +116,7 @@ Dotfiles must not be the source of truth for prompt content."
                 "motive_read" "motive_replace"
                 "vcs_log"
                 "docs_list" "docs_search" "docs_read")
-       :capabilities '(write-daily stage-proposal notify hippocampus-write
+       :capabilities '(write-daily stage-proposal notify speak hippocampus-write
                        inbox-write memory-write motive-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev
@@ -132,7 +132,7 @@ Dotfiles must not be the source of truth for prompt content."
  (list :name "motd"
        :prompt-file (expand-file-name "motd.txt" satan-prompts-dir)
        :context-fn 'satan-context-motd
-       :tools '("org_read_context" "notify_send" "inbox_append"
+       :tools '("org_read_context" "notify_send" "speak" "inbox_append"
                 "hippocampus_list" "hippocampus_read" "hippocampus_write"
                 "hippocampus_overwrite" "hippocampus_delete"
                 "hippocampus_grep" "hippocampus_rename"
@@ -143,7 +143,7 @@ Dotfiles must not be the source of truth for prompt content."
                 "memory_show_trace"
                 "motive_read" "motive_replace"
                 "vcs_log")
-       :capabilities '(notify inbox-write memory-write motive-write
+       :capabilities '(notify speak inbox-write memory-write motive-write
                        hippocampus-write)
        :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
        :jail-profile 'specDev

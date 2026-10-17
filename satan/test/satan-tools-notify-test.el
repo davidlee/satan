@@ -243,7 +243,7 @@ carries an undelivered `unknown' verdict, projected with its parent."
                         run "intervention.outcome_classified"))
              (v (car verdicts)))
         (should (eq t (plist-get res :ok)))
-        (should (equal :null (plist-get result :id)))
+        (should-not (plist-member result :id))
         (should (equal iv-id (plist-get result :intervention_id)))
         (should (equal :false (plist-get result :delivered)))
         (should (equal "no D-Bus today" (plist-get result :error)))

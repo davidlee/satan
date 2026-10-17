@@ -80,14 +80,14 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
             (list :name full-name
               :prompt-file prompt-file
               :context-fn 'satan-context-tick
-              :tools '("org_read_context" "notify_send" "inbox_append"
+              :tools '("org_read_context" "notify_send" "speak" "inbox_append"
                         "activity_read" "notes_recent"
                         "sway_border_set" "sway_border_reset"
                         "memory_mark" "memory_resonate"
                         "memory_show_trace"
                         "motive_read" "motive_replace"
                         "vcs_log" "goad_ask")
-              :capabilities '(notify inbox-write memory-write motive-write
+              :capabilities '(notify speak inbox-write memory-write motive-write
                                goad-ask)
               :harness '(:cmd "jailed-satan-gptel-harness" :args () :env nil)
               :jail-profile 'specDev
@@ -121,13 +121,13 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
           "notes_at_satan_intervention_done"
           "org_read_context"
           "inbox_append"
-          "notify_send"
+          "notify_send" "speak"
           "hippocampus_write"
           "memory_mark" "memory_resonate" "memory_show_trace"
           "activity_read"
           "vcs_log"
           "patch_job_create" "patch_job_status")
- :capabilities '(write-notes inbox-write memory-write notify)
+ :capabilities '(write-notes inbox-write memory-write notify speak)
  :budget-tokens 100000
  :budget-tool-calls 15
  :timeout-seconds 120)

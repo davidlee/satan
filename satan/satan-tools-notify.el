@@ -38,59 +38,29 @@ ARGS:  (:title STR :body STR :urgency low|normal|critical :timeout INT-MS).
 CTX:   broker-supplied tool-ctx with `:id', `:mode-name', `:time-now',
        and `:audit'.
 
-Side effects, in order (SL-017 DEC-018):
-  1. `satan-intervention-record' appends `intervention.created' to the
-     run's transcript.  If it signals, nothing is shown.
-  2. `satan-announce' pops the notification.
-  3. `satan-intervention-project' INSERTs into `satan_interventions';
-     its failure is only a note.  If the pop signalled instead,
-     `satan-intervention-mark-undelivered' records and projects an
-     undelivered verdict.
-
-Returns:
-  (ok :id N :intervention_id IV [:projection \"failed: MSG\"])  shown;
-  (ok :id :null :intervention_id IV :delivered :false :error ERR
-      [:verdict ...] [:projection ...])                       not shown;
-  (error . MSG) on bad args or a failed record — nothing shown.
-Every recorded intervention returns `ok', so a sensor cooldown arms on
-the record."
-  (let* ((title   (plist-get args :title))
-         (body    (plist-get args :body))
-         (urgency (plist-get args :urgency))
-         (timeout (or (plist-get args :timeout)
-                      satan-notify-default-timeout)))
+Recorded, popped and projected by `satan-intervention-emit', which
+documents the result shapes; a shown pop adds its D-Bus `:id'.
+Returns (error . MSG) on bad args."
+  (let ((title   (plist-get args :title))
+        (body    (plist-get args :body))
+        (urgency (plist-get args :urgency)))
     (if (not (and (stringp title) (stringp body)))
         (cons 'error "title and body must be strings")
-      (condition-case rerr
-          (let* ((payload (satan-intervention-record
-                           :ctx ctx
-                           :kind "notify"
-                           :target-surface "dbus"
-                           :message (format "%s — %s" title body)
-                           :expected-outcome "user reads or acknowledges the notification within window"
-                           :outcome-window-minutes
-                           satan-notify-intervention-window-minutes
-                           :severity (satan-notify--severity-for-urgency urgency)))
-                 (iv-id (plist-get payload :intervention_id)))
-            (condition-case perr
-                (let ((notify-id (satan-announce
-                                  :title title
-                                  :body body
-                                  :urgency (satan-notify--announce-urgency urgency)
-                                  :timeout timeout)))
-                  (cons 'ok
-                        (append
-                         (list :id notify-id :intervention_id iv-id)
-                         (satan-intervention-try-project
-                          #'satan-intervention-project payload))))
-              (error
-               (cons 'ok
-                     (append
-                      (list :id :null :intervention_id iv-id
-                            :delivered :false
-                            :error (error-message-string perr))
-                      (satan-intervention-mark-undelivered ctx payload perr))))))
-        (error (cons 'error (error-message-string rerr)))))))
+      (satan-intervention-emit
+       ctx
+       (list :kind "notify"
+             :target-surface "dbus"
+             :message (format "%s — %s" title body)
+             :expected-outcome "user reads or acknowledges the notification within window"
+             :outcome-window-minutes satan-notify-intervention-window-minutes
+             :severity (satan-notify--severity-for-urgency urgency))
+       (lambda ()
+         (list :id (satan-announce
+                    :title title
+                    :body body
+                    :urgency (satan-notify--announce-urgency urgency)
+                    :timeout (or (plist-get args :timeout)
+                                 satan-notify-default-timeout))))))))
 
 (satan-tool-register
  (list :name "notify_send"

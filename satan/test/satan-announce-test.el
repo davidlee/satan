@@ -65,6 +65,60 @@
                    (list :app satan-notify-app :title "t" :body "b"
                          :urgency 'normal :timeout nil)))))
 
+(defun satan-announce-test--speak-with (script)
+  "Deliver speech \"-e hi\" through a fake `say' running SCRIPT (sh).
+Wait for it to exit; return (ARGV . JOURNALED-LINES).  The text starts
+with an option flag on purpose: `say' must still take it as text."
+  (let* ((dir (make-temp-file "satan-say-" t))
+         (say (expand-file-name "say" dir))
+         (argv (expand-file-name "argv" dir))
+         (satan-speak-program say)
+         logged)
+    (unwind-protect
+        (progn
+          (with-temp-file say
+            (insert "#!/bin/sh\nprintf '%s\\n' \"$@\" > " argv "\n" script "\n"))
+          (set-file-modes say #o755)
+          (cl-letf (((symbol-function 'call-process)
+                     (lambda (cmd &rest args)
+                       (when (equal cmd "logger")
+                         (push (car (last args)) logged))
+                       0)))
+            (let ((proc (satan-announce-deliver (list :speech "-e hi"))))
+              (while (or (process-live-p proc)
+                         (buffer-live-p (process-buffer proc)))
+                (accept-process-output proc 0.05))))
+          (cons (with-temp-buffer (insert-file-contents argv)
+                                  (split-string (buffer-string) "\n" t))
+                logged))
+      (delete-directory dir t))))
+
+(ert-deftest satan-announce/deliver-speaks-text-as-text ()
+  "SPEECH runs `satan-speak-program' with the text after `--'; a clean
+exit journals nothing."
+  (let ((r (satan-announce-test--speak-with "exit 0")))
+    (should (equal '("--" "-e hi") (car r)))
+    (should-not (cdr r))))
+
+(ert-deftest satan-announce/failed-speech-is-journaled ()
+  "A non-zero `say' exit journals its status and output."
+  (let ((r (satan-announce-test--speak-with "echo 'no voice' >&2; exit 3")))
+    (should (equal 1 (length (cdr r))))
+    (should (string-match-p "exit 3.*no voice" (cadr r)))))
+
+(ert-deftest satan-announce/speech-runs-in-satan-environment ()
+  "`satan-speak-environment' reaches the speech program: SATAN's voice
+is its own, not the keeper's `say' default."
+  (let* ((satan-speak-environment '("PIPER_VOICE=test-voice"))
+         (r (satan-announce-test--speak-with
+             "echo \"voice=$PIPER_VOICE\" >&2; exit 1")))
+    (should (string-match-p "voice=test-voice" (cadr r)))))
+
+(ert-deftest satan-announce/unstartable-speech-propagates ()
+  "Speech that cannot start signals, like a failed pop."
+  (let ((satan-speak-program "/nonexistent/say"))
+    (should-error (satan-announce-deliver (list :speech "hi")))))
+
 (ert-deftest satan-announce/with-recorder-captures-and-isolates ()
   "The recorder captures announcements, newest first, and resets per use."
   (satan-announce-with-recorder
