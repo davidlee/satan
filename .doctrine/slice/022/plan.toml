@@ -69,11 +69,32 @@ specs        = []
 requirements = []
 
 [[phase]]
+id        = "PHASE-07"
+name      = "Deploy the harness (cross-repo)"
+objective = "Deploy the gateway harness and jails while Emacs runs today's broker: issue the satan key, push satan at PHASE-02, update flakes and home-switch, and probe the deployed launcher (DEC-048 steps 1–4, moved ahead of the broker work by the user 2026-10-18). After this phase Emacs may reload satan at any point."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete and committed; `just check` and `just check-jails` green at that commit; the user is present and has approved pushing satan and committing in ~/flakes." },
+  { id = "EN-2", text = "No broker change has landed yet (PHASE-03 not started), so the pushed commit pairs the new harness with today's broker." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The satan gateway key is issued for deepseek-flash only, budget per DEC-048 (or the figure the user sets)." },
+  { id = "EX-2", text = "satan pushed; in ~/flakes the satan lock at the PHASE-02 commit and the agents lock updated, features/satan/patcher.nix drops apiKeyRefs/opBin/opAccount, SATAN.md updated (secrets, known gaps), home-switch run. agents/gateway.nix untouched." },
+  { id = "EX-3", text = "~/.config/satan-patcher/policy.toml defaults are llm-gateway/deepseek-flash and the cheap+code tag is gone." },
+]
+verification = [
+  { id = "VH-1", expects = "The flake check's probes pass against readlink -f ~/.nix-profile/bin/jailed-satan-gptel-harness (the home-switch build)." },
+  { id = "VH-2", expects = "A broker tick on today's broker with the new harness succeeds, and llm-gateway list shows spend on satan." },
+  { id = "VH-3", expects = "Patcher: best effort, given ISS-038 and ISS-039." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
 id        = "PHASE-03"
 name      = "Typed launcher refusal; frontiers commit on ready"
 objective = "A child that dies before `ready` without an error message ends spawn_failed with a broker spawn-failed audit event carrying its stderr tail; perception frontiers commit once, on the first `ready`, from the snapshots taken at perceive (design § A refused launch, § Frontiers commit on ready; DEC-041). Additive: the credential path still exists."
 entrance_criteria = [
-  { id = "EN-1", text = "PHASE-02 complete; `just check` green." },
+  { id = "EN-1", text = "PHASE-07 complete (the deployed harness is the gateway one); `just check` green." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "satan-run has a `ready` slot; the ready arm of satan-broker--dispatch sets it and calls satan-broker--commit-frontiers only when it was nil." },
@@ -115,7 +136,7 @@ name      = "Retire the credential surface"
 objective = "No SATAN code resolves, holds or forwards a provider key: the broker's key and credential-policy machinery, SATAN_PROVIDER, profile :provider, the credential mode keys and satan-credential.el go (design § What goes; DEC-042, DEC-044). Closes invariants I1 and I6 in this repo."
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-04 complete; `just check` green." },
-  { id = "EN-2", text = "Hazard acknowledged: from here the working tree's broker sends no key or SATAN_PROVIDER, so the running Emacs must not reload satan until PHASE-07's home-switch (design § Across repos)." },
+  { id = "EN-2", text = "PHASE-07 complete: the deployed harness is the gateway one, so a broker that sends no key or SATAN_PROVIDER works under it (design § Across repos)." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "satan-broker.el: provider-key-vars, --key-var, --acquire, --credential-policy, --credential-streak-age, satan-credential-escalate-after, the :deferred/:unavailable gate arms, --write-credential-deferred-run, --evict-on-auth (and its --finalize call), the scrub, SATAN_PROVIDER emission and \"credential_deferred\" in --streak-transparent-reasons are gone; the busy arm tests only satan-run--spawn-running; signature is satan-broker--spawn (mode prepare dir) with child env (default-value 'process-environment) plus SATAN_*." },
@@ -150,35 +171,14 @@ specs        = []
 requirements = []
 
 [[phase]]
-id        = "PHASE-07"
-name      = "Deploy the harness (cross-repo)"
-objective = "With Emacs still on the old broker, ship the new harness and jails: issue the satan key, push satan, update flakes and home-switch, and probe the deployed launcher (DEC-048 steps 1–4)."
-entrance_criteria = [
-  { id = "EN-1", text = "PHASE-06 complete and committed; the user is present and has approved pushing satan and committing in ~/flakes." },
-  { id = "EN-2", text = "The running Emacs has not reloaded satan since PHASE-05 began." },
-]
-exit_criteria = [
-  { id = "EX-1", text = "The satan gateway key is issued for deepseek-flash only, budget per DEC-048 (or the figure the user sets)." },
-  { id = "EX-2", text = "satan pushed; in ~/flakes the satan and agents locks updated, features/satan/patcher.nix drops apiKeyRefs/opBin/opAccount, SATAN.md updated (secrets, known gaps), home-switch run. agents/gateway.nix untouched." },
-  { id = "EX-3", text = "~/.config/satan-patcher/policy.toml defaults are llm-gateway/deepseek-flash and the cheap+code tag is gone." },
-]
-verification = [
-  { id = "VH-1", expects = "The flake check's probes pass against readlink -f ~/.nix-profile/bin/jailed-satan-gptel-harness (the home-switch build)." },
-  { id = "VH-2", expects = "A broker tick on the old broker with the new harness succeeds, and llm-gateway list shows spend on satan." },
-  { id = "VH-3", expects = "Patcher: best effort, given ISS-038 and ISS-039." },
-]
-specs        = []
-requirements = []
-
-[[phase]]
 id        = "PHASE-08"
 name      = "Emacs cutover and live checks"
 objective = "Restart Emacs onto the new satan, then drop the satan credential backend from the emacs config, and confirm the invariants live (DEC-048 steps 5–7; design § What the tests cannot cover)."
 entrance_criteria = [
-  { id = "EN-1", text = "PHASE-07 complete (deployed harness is the new one)." },
+  { id = "EN-1", text = "PHASE-06 complete and committed; the user has approved pushing satan." },
 ]
 exit_criteria = [
-  { id = "EX-1", text = "Emacs restarted on the new satan." },
+  { id = "EX-1", text = "satan pushed; Emacs restarted on the new satan." },
   { id = "EX-2", text = "In ~/.config/emacs: satan-credential-function (apps/dl-satan.el) and my/satan-credential with its tests (lisp/dl-secret.el, lisp/test/dl-secret-test.el; emacs VT-26) removed; that repo's tests green; committed with the user's approval." },
 ]
 verification = [

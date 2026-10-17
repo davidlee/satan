@@ -7,44 +7,44 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 
 ## Overview
 
-Six phases in this repo, then two cross-repo rollout phases. The in-repo
-phases go from additive to destructive: first the parts that work under
-today's broker, then the deletions that require the new harness to be
-deployed.
+Eight phases. Ids are immutable, so the execution order (the array order in
+`plan.toml`) is not numeric: the deploy phase, PHASE-07, runs third.
 
 ```
-PHASE-01 harness ──> PHASE-02 jails + flake check ──> PHASE-03 refusal + frontiers
-                                                            │
-PHASE-08 Emacs cutover <── PHASE-07 deploy <── PHASE-06 docs <── PHASE-05 retire creds <── PHASE-04 patch keyless
+PHASE-01 harness ─> PHASE-02 jails + flake check ─> PHASE-07 deploy harness (cross-repo)
+                                                          │
+PHASE-08 Emacs cutover <─ PHASE-06 docs <─ PHASE-05 retire creds <─ PHASE-04 patch keyless <─ PHASE-03 refusal + frontiers
 ```
 
 ## Sequencing & Rationale
 
-- **PHASE-01 first.** The harness change is self-contained Python, and the
-  new harness runs under today's broker (design § Across repos). Every later
-  phase can assume it.
-- **PHASE-02 after PHASE-01.** The gateway-mode jail stops forwarding
-  `SATAN_PROVIDER`, which only the old harness needed. The flake check lands
-  with the jail it asserts, and its negative control (VA-1) proves the check
-  can fail before anything relies on it.
+- **PHASE-01, PHASE-02: everything the deployed side needs.** The harness
+  becomes a gateway client, and the jails move to gateway mode with a flake
+  check that asserts them. Both work under today's broker (design § Across
+  repos). PHASE-02's negative control (VA-1) proves the check can fail before
+  anything relies on it.
+- **PHASE-07 next: deploy before the broker work** (user, 2026-10-18; DEC-048
+  amended). Push satan at PHASE-02, lock flakes to it, run `home-switch`. No
+  later phase touches `flake.nix` or the harness, so this one deploy is
+  final. From then on, the running Emacs can reload satan at any point. That
+  removes the window RV-023 F-2 described, instead of guarding it by
+  discipline.
 - **PHASE-03 before the deletions.** The refusal path and the move of the
-  frontier commits to `ready` are new behaviour, and they are additive: the
-  credential path still works alongside them. Landing them on their own keeps
-  the riskiest broker change (the frontier move, RV-023 F-1/F-16/F-18) in a
-  diff that deletes nothing, and easy to review.
-- **PHASE-04 before PHASE-05.** `satan-credential.el` is consumed by both the
-  patch path and the broker. Emptying the smaller consumer first leaves
-  PHASE-05 with one consumer to cut and then the module to delete.
-- **PHASE-05 opens the rollout hazard.** From here the working tree's broker
-  sends no key and no `SATAN_PROVIDER`. The deployed (old) harness would fail
-  under it, so the running Emacs must not reload satan until PHASE-07's
-  `home-switch`. That condition is the phase's EN-2.
-- **PHASE-06** documents the end state in one pass, once the code no longer
-  changes.
-- **PHASE-07 / PHASE-08** follow DEC-048's order: key, push, flakes and
-  `home-switch` (new harness, old broker), policy file, then restart Emacs,
-  and only then the emacs config edit. Both need the user present: they push,
-  commit in other repos, and restart the user's editor.
+  frontier commits to `ready` are new behaviour, and they are additive.
+  Landing them alone keeps the riskiest broker change (RV-023 F-1/F-16/F-18)
+  in a diff that deletes nothing. With gateway jails deployed, a missing key
+  file already produces real launcher refusals, so the new path is useful
+  from the start.
+- **PHASE-04 before PHASE-05.** `satan-credential.el` has two consumers.
+  Emptying the patch path first leaves PHASE-05 one consumer to cut, then the
+  module to delete.
+- **PHASE-06** documents the end state once the code stops moving.
+- **PHASE-08** pushes the final satan, restarts Emacs onto it, and only then
+  drops the emacs credential backend, which the old broker would still have
+  called. It runs the live checks.
+
+PHASE-07 and PHASE-08 need the user present: they issue a key, push, commit
+in other repos, and restart the user's editor.
 
 ## Notes
 
@@ -53,6 +53,10 @@ PHASE-08 Emacs cutover <── PHASE-07 deploy <── PHASE-06 docs <── PHA
 - `~/flakes/agents/gateway.nix` has another session's uncommitted work.
   PHASE-02 only reads `~/flakes/agents`; PHASE-07 edits in `~/flakes` leave
   that file alone.
+- design.md § Across repos draws a single satan landing. The split into two
+  pushes keeps its one ordering constraint (the deployed harness changes
+  before Emacs loads a broker that sends no key), so the design stands; DEC-048
+  carries the amended order.
 - Open, non-blocking: QUE-004 (where the flat `reasoning_effort` convention is
   written down); the satan key's $20 budget (DEC-048) is the user's call at
   PHASE-07.
