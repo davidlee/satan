@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14a40-01c8-71b1-bdc3-d41fcc57c364"
+recorded_at = "2026-10-17T14:24:31.176105436Z"
+kind = "friction"
+summary = "just check/just lint run no ruff; Python lint only gates at nix build"
+detail = "SL-022 PHASE-01: flake.nix runs ruff check --select E,F,W --ignore E501,E402 over satan/harness at Nix build time, but just check never does. A ruff failure in harness code would surface only at PHASE-02/07 builds. Planner had to make a manual ruff run (store path) the Python lint gate. Candidate: add ruff to just lint."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

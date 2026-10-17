@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14a40-01d1-79f0-ac8b-cfc99ecdbe32"
+recorded_at = "2026-10-17T14:24:31.185107471Z"
+kind = "friction"
+summary = "verify-vt UNATTRIBUTABLE until the phase is committed"
+detail = "SL-022: doctrine slice verify-vt reports UNATTRIBUTABLE ('file not modified by this slice') for VTs whose test files have uncommitted edits; it attributes only committed changes, so a worker cannot use it as a pre-commit gate."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

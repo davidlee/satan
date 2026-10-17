@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14a40-01ce-7b82-ac2c-477d3a6e6052"
+recorded_at = "2026-10-17T14:24:31.182283211Z"
+kind = "friction"
+summary = "test DB unavailable: just db-start fails, podman socket down"
+detail = "SL-022 PHASE-01/02 orchestrator: just db-start -> 'Cannot connect to the Docker daemon at unix:///run/user/1000/podman/podman.sock'. Ran SATAN_TEST_ALLOW_NO_DB=1; ert still shows only 7 skips (same as plain run), so it is unclear which DB suites actually ran — the skip count does not reveal DB mode."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
