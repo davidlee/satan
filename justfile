@@ -16,6 +16,11 @@ check: lint test
 
 gate: check
 
+# Nix: assert the built harness jail launcher (flake check, Linux).
+# Separate from `check`, which stays Nix-free.
+check-jails:
+    nix build --no-link -L .#checks.x86_64-linux.harness-jail-profile
+
 lint:
     #!/usr/bin/env bash
     set -euo pipefail

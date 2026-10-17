@@ -46,6 +46,10 @@
           if isLinux
           then inputs.agents.lib.${system}.mkJailedAgents {}
           else {};
+        # LLM gateway clients (DEC-047): the harness has its own key; the pi
+        # jails and jailed-claude share pi's. Lazy, so darwin never forces them.
+        piGateway = jailLib.gatewayClient "pi";
+        satanGateway = jailLib.gatewayClient "satan";
         doctrine-pkg = doctrine.packages.${system}.default;
         wrappedEmacs = inputs.emacs.packages.${system}.default;
         # The tool set minus the jailed agents: what a SATAN working
@@ -87,11 +91,6 @@
           (try-readwrite "/run/user/1000/emacs/server")
         ];
 
-        apiKeyJailOptions = with jailLib.combinators; [
-          (try-fwd-env "OPENROUTER_API_KEY")
-          (ro-bind "/usr/bin/env" "/usr/bin/env")
-        ];
-
         supabaseJailOptions = with jailLib.combinators; [
           (try-fwd-env "DOCKER_HOST")
           (try-readwrite "/run/user/1000/podman/podman.sock")
@@ -116,7 +115,7 @@
           (set-env "DOCTRINE_RESERVATION_FALLBACK" "1")
         ];
 
-        jailEnvOptions = apiKeyJailOptions ++ supabaseJailOptions ++ mcpJailOptions ++ corpusJailOptions ++ doctrineJailOptions;
+        jailEnvOptions = supabaseJailOptions ++ mcpJailOptions ++ corpusJailOptions ++ doctrineJailOptions;
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
         workspaceDeps = [
           "/home/david/flakes/"
@@ -167,7 +166,7 @@
         ];
 
         # SATAN — phase-2 real harness.  Drives an OpenAI-compatible
-        # chat-completions loop (OpenRouter v1 by default).  Speaks the
+        # chat-completions loop against the LLM gateway.  Speaks the
         # SATAN JSONL protocol; terminates on a `satan_final` tool call.
         # Multi-file since phase 3B: protocol / bundle / runloop /
         # providers.  See satan/harness/__main__.py.
@@ -214,17 +213,13 @@
           };
 
         # Extra env passed through the bwrap jail for the real harness:
-        # provider selection + cumulative token budget + per-provider keys.
+        # SATAN_* only — no provider key forwards (the gateway holds those).
         satanGptelJailOptions =
           satanJailOptions
           ++ (with jailLib.combinators; [
-            (try-fwd-env "SATAN_PROVIDER")
             (try-fwd-env "SATAN_MODEL")
             (try-fwd-env "SATAN_BUDGET_TOKENS")
-            (try-fwd-env "OPENROUTER_API_KEY")
-            (try-fwd-env "ANTHROPIC_API_KEY")
-            (try-fwd-env "OPENAI_API_KEY")
-            (try-fwd-env "DEEPSEEK_API_KEY")
+            (try-fwd-env "SATAN_MAX_BUDGET_TOKENS")
           ]);
 
         jailPkgs = lib.optionalAttrs isLinux {
@@ -232,44 +227,27 @@
             profile = "specDev";
             allowSelfAsSubagent = true;
             maxSubagentDepth = 2;
+            subagents = ["pi" "claude"];
             extraPkgs = projectPkgs;
             extraOptions = jailEnvOptions;
+            gateway = piGateway;
             inherit workspaceDeps;
-            # Patch-agent adapter pre-resolves op:// refs via
-            # `my/op-read-env' (Emacs session cache) and exports the
-            # plaintext into `process-environment' before spawning, so
-            # skip the outer `op run' wrapper that would prompt
-            # biometric per launch.  `passApiKeysFromEnv = true' keeps
-            # the bwrap `--setenv VAR "$VAR"' forwarding so the
-            # caller-side env still flows into the jail.  Same path
-            # `satan-jailed-gptel-harness' uses.
-            useOpEnv = false;
-            subagents = ["pi" "dirge" "claude"];
-            passApiKeysFromEnv = true;
           };
           jailed-pi-research = jailLib.makeJailedPi {
             name = "pi-research";
             profile = "research";
             extraPkgs = projectPkgs;
-            extraOptions = apiKeyJailOptions ++ corpusJailOptions;
-            inherit workspaceDeps;
-          };
-          jailed-opencode = jailLib.makeJailedOpencode {
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
+            extraOptions = corpusJailOptions;
+            gateway = piGateway;
             inherit workspaceDeps;
           };
           jailed-claude = jailLib.makeJailedClaude {
             profile = "specDev";
+            subagents = ["pi" "claude"]; # pi agents run nested on the pi gateway
+            maxSubagentDepth = 2;
             extraPkgs = projectPkgs;
             extraOptions = jailEnvOptions;
-            inherit workspaceDeps;
-          };
-          jailed-dirge = jailLib.makeJailedDirge {
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            extraOptions = apiKeyJailOptions ++ corpusJailOptions;
+            gateway = piGateway;
             inherit workspaceDeps;
           };
           # jailed-codex = jailLib.makeJailedCodex {
@@ -296,25 +274,84 @@
             agent = satanGptelHarness;
             profile = "specDev";
             extraOptions = satanGptelJailOptions;
+            gateway = satanGateway;
             workspaceDeps = [];
-            # Emacs broker pre-resolves op:// refs via `my/op-read-env'
-            # and caches in `my/op--cache' for the Emacs session, so the
-            # outer `op run' wrapper would prompt 1Password biometric on
-            # every tick. Disable it; keep `passApiKeysFromEnv' so the
-            # broker's plaintext env still flows into the jail.
-            useOpEnv = false;
-            passApiKeysFromEnv = true;
           };
           jailed-shell = jailLib.makeJailedAgent {
             name = "shell";
             agent = pkgs.zsh;
             profile = "specDev";
             extraPkgs = projectPkgs;
-            subagents = ["pi" "dirge" "claude"];
+            subagents = ["pi" "claude"];
             extraOptions = jailEnvOptions;
+            gateway = piGateway;
           };
           bubblewrap = pkgs.bubblewrap;
         };
+
+        # Every probe string of the `harness-jail-profile` check, and no
+        # other binding: the I1 closure sweep excludes this one by name.
+        # Written literally, never derived from `satanGptelJailOptions`, so
+        # dropping a forward there fails the check instead of moving it.
+        harnessJailProbes = {
+          outerAbsent = ["op run"];
+          innerPresent = [
+            "--args 22 22< <(printf"
+            "--setenv LLM_GATEWAY_KEY \"$(<"
+            "--setenv LLM_GATEWAY_URL"
+            "--setenv SATAN_MODEL \"\${SATAN_MODEL}\""
+            "--setenv SATAN_BUDGET_TOKENS \"\${SATAN_BUDGET_TOKENS}\""
+            "--setenv SATAN_MAX_BUDGET_TOKENS \"\${SATAN_MAX_BUDGET_TOKENS}\""
+          ];
+          innerAbsent = ["API_KEY" "SATAN_PROVIDER"];
+          # Absent once the `<(printf …)` substitutions are stripped: the
+          # key travels over `--args 22`, never on bwrap's argv.
+          argvAbsent = ["LLM_GATEWAY_KEY"];
+        };
+
+        # The built harness launcher, as text (DEC-046). Pure: reads store
+        # files, launches nothing.
+        harnessJailProfile = let
+          probe = helper: file: label:
+            lib.concatMapStringsSep "\n"
+            (s: "${helper} ${lib.escapeShellArg label} \"${file}\" ${lib.escapeShellArg s}");
+          p = harnessJailProbes;
+        in
+          pkgs.runCommand "harness-jail-profile" {} ''
+            # `! cmd` never trips errexit, so every assertion is an `if`.
+            fail() {
+              echo "harness-jail-profile: $*" >&2
+              exit 1
+            }
+            # must / must_not <label> <file> <string>
+            must() {
+              if ! grep -Fq -- "$3" "$2"; then fail "$1 must contain '$3'"; fi
+            }
+            must_not() {
+              if grep -Fq -- "$3" "$2"; then fail "$1 must not contain '$3'"; fi
+            }
+
+            name=satan-gptel-harness
+            outer=${jailPkgs.satan-jailed-gptel-harness}/bin/jailed-$name
+            test -f "$outer" || fail "no outer launcher at $outer"
+            ${probe "must_not" "$outer" "outer launcher" p.outerAbsent}
+
+            # The gateway wrapper execs the bwrap launcher; an empty match
+            # would make every must_not below pass, so it fails first.
+            inner=$(sed -n "s|^exec \(/nix/store/[^ ]*-jailed-$name/bin/jailed-$name\) .*|\1|p" "$outer")
+            if [ -z "$inner" ] || [ ! -f "$inner" ]; then
+              fail "outer launcher execs no inner jailed-$name (not a gateway wrapper?)"
+            fi
+            ${probe "must" "$inner" "inner launcher" p.innerPresent}
+            ${probe "must_not" "$inner" "inner launcher" p.innerAbsent}
+
+            # The strip stops at the first `)`, which closes the nested `$(<`
+            # after the key's name.
+            sed 's/<(printf[^)]*)//g' "$inner" > "$TMPDIR/argv-only"
+            ${probe "must_not" "$TMPDIR/argv-only" "inner argv" p.argvAbsent}
+
+            touch $out
+          '';
       in {
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
@@ -332,6 +369,10 @@
               ignoreCollisions = true;
             };
           };
+
+        checks = lib.optionalAttrs isLinux {
+          harness-jail-profile = harnessJailProfile;
+        };
 
         devshells.default = {
           packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);

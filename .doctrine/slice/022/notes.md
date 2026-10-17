@@ -53,3 +53,20 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 ### Learned
 - `doctrine slice verify-vt` stays UNATTRIBUTABLE until the phase's files are committed (it keys on files modified by the slice's commits).
 - A docstring that mentions `SATAN_PROVIDER` trips the VA-1 rg; reword rather than exempt.
+
+## PHASE-02 execution (jails on the gateway, and the flake check)
+
+### Done
+- `flake.lock` `agents`: `cfda05a5` -> `8b0206dd` (GitHub main, descends from `a24a0f03`). Only that node's `rev`/`narHash`/`lastModified` moved.
+- `flake.nix`: `piGateway` / `satanGateway` (`jailLib.gatewayClient`); jailed-pi, jailed-pi-research, jailed-shell, jailed-claude on `piGateway` (subagents `["pi" "claude"]`); harness on `satanGateway`; `satanGptelJailOptions` forwards SATAN_MODEL, SATAN_BUDGET_TOKENS, SATAN_MAX_BUDGET_TOKENS only. Removed `apiKeyJailOptions`, both `useOpEnv`/`passApiKeysFromEnv` pairs, jailed-opencode, jailed-dirge, the `"dirge"` subagent, the SATAN_PROVIDER forward.
+- Probe strings live in one binding, `harnessJailProbes` (the I1 sweep excludes it by name). `checks.x86_64-linux.harness-jail-profile` (`harnessJailProfile`) asserts them over the built outer + inner launchers; `just check-jails` builds it.
+- Red first: against the pre-change jail the check failed with `harness-jail-profile: outer launcher execs no inner jailed-satan-gptel-harness (not a gateway wrapper?)`.
+- VA-1 negative control, on the green tree (each reverted by hand, `diff` against a green copy empty, `just check-jails` green after):
+  1. Added `(try-fwd-env "OPENROUTER_API_KEY")` to `satanGptelJailOptions` -> `harness-jail-profile: inner launcher must not contain 'API_KEY'`.
+  2. Removed `(try-fwd-env "SATAN_MAX_BUDGET_TOKENS")` -> `harness-jail-profile: inner launcher must contain '--setenv SATAN_MAX_BUDGET_TOKENS "${SATAN_MAX_BUDGET_TOKENS}"'`.
+- VA-2: `nix build` of jailed-pi, jailed-pi-research, jailed-shell, jailed-claude, satan-jailed-gptel-harness succeeds (Nix ruff gate passes on PHASE-01 harness code); `nix flake show` lists `checks.x86_64-linux.harness-jail-profile` and no jailed-opencode/jailed-dirge; darwin evaluates.
+- `SATAN_TEST_ALLOW_NO_DB=1 just check`: ert 1367/1374, 7 skipped (same as baseline); Python 55 OK. `just lint` clean; `alejandra --check flake.nix` clean.
+
+### Learned
+- In a Nix `"…"` string, a bash `${X}` probe is `\${X}`; reading the check's generated `buildCommand` (`nix derivation show`) confirms the probe text before trusting a green.
+- Absent-probes must guard the file first: `grep` on a missing file exits 2, which an `if grep` reads as "absent". The inner-launcher extraction fails loudly before any `must_not` runs.
