@@ -1,7 +1,7 @@
 id = 22
 slug = "satan-llm-gateway"
 title = "SATAN's jails and patcher on the LLM gateway"
-status = "plan"
+status = "ready"
 created = "2026-10-17"
 updated = "2026-10-17"
 tags = ["gateway", "jail", "satan", "secrets"]
