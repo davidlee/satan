@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 48
+slug = "sl-022-cross-repo-order-satan-first-emacs-with-it-flakes-last"
+title = "SL-022 cross-repo order: satan first, emacs with it, flakes last"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "S/flake.lock and F/flake.lock pin agents at cfda05a5 (no gatewayClient); the deployed harness builds through F's satan input with agents.follows. The patcher runs jailed-pi from its unit PATH and passes --provider openrouter from an untracked policy.toml."
+choice = "1) Issue the satan key (deepseek-flash only; 20 USD lifetime). 2) Land and push satan with agents re-locked to >= a24a0f03; the running Emacs must not reload satan yet. 3) In flakes: update the satan and agents locks; drop the patcher key refs; update SATAN.md; home-switch (the new harness works with the old broker). 4) Edit policy.toml defaults to llm-gateway/deepseek-flash and remove the cheap+code tag. 5) Restart Emacs onto the new satan. 6) Then drop the emacs satan credential backend. 7) Manual checks including a probe of the deployed launcher. Amended 2026-10-18 after RV-023 F-2 F-3: the deployed harness comes from flakes' locked satan input; home-switch overrides agents in-tree; so the flakes agents re-lock is hygiene."
+alternatives = []
+rationale = "Each step builds on a pinned, pushed predecessor; F can only follow a pushed S. The patcher gets the minimum (OQ-1)."
+consequences = ["Coordinates with emacs:SL-015: E edits ride this slice, not SL-015.", "The budget figure is the user's to adjust."]
+decided_by = "user (2026-10-18, agreed agent lean)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

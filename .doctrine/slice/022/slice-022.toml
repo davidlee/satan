@@ -1,0 +1,159 @@
+id = 22
+slug = "satan-llm-gateway"
+title = "SATAN's jails and patcher on the LLM gateway"
+status = "plan"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = ["gateway", "jail", "satan", "secrets"]
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "flake.lock"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-broker.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-patch-adapter-pi.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-patch-runner.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-credential.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/providers/**"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/runloop.py"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/__main__.py"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/harness/test_gptel_harness.py"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-run.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-mode.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-credential-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-credential-fixture.el"
+intent = "design-target"
+
+[[selector]]
+selector = "dev/satan-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-broker-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-patch-runner-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-mode-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/governance.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/patch/handover.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/patch/plan.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/architecture.md"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-context.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-ingest-cursor.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-ingest-cursor-test.el"
+intent = "design-target"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "POL-001"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "REQ-016"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SPEC-003"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "QUE-004"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

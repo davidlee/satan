@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 45
+slug = "a-gateway-budget-exceeded-response-classifies-as-credits"
+title = "A gateway budget_exceeded response classifies as credits"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "LiteLLM 1.102 answers an exhausted key budget with HTTP 429, error type budget_exceeded, message 'Budget has been exceeded!' (litellm/exceptions.py:988-1012, proxy/auth/auth_exception_handler.py:46-51). classify_error (runloop.py:116-140) maps 429 to rate_limit."
+choice = "classify_error checks, before the status-code branches: e.type == budget_exceeded -> credits; a 403 'not allowed to access model' -> auth; a class named APITimeoutError on the MRO -> timeout; a class named APIConnectionError on the MRO -> server. Class-name matching keeps runloop.py free of an openai import. Amended 2026-10-18 after RV-023 F-6 F-7 F-17."
+alternatives = ["Leave it as rate_limit"]
+rationale = "Hitting the insurance cap (DEC-043) is an out-of-money incident, not throttling; credits is the closed-set class for that (SPEC-003 REQ-024)."
+consequences = []
+decided_by = "user (2026-10-18, agreed agent lean)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

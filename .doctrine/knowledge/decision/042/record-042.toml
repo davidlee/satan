@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 42
+slug = "retire-satan-credentialel-and-the-sl-018-credential-surface-outright"
+title = "Retire satan-credential.el and the SL-018 credential surface outright"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "With every jail on the gateway, nothing in satan resolves a provider key. satan-credential.el (the op:// seam), its dl-secret backend in the emacs config, the per-mode credential policy and the credential_* run statuses exist only for that."
+choice = "Delete satan-credential.el and its tests/fixture; the broker key-var map, acquisition, credential policy, escalation defcustom, credential-refs slot and auth eviction; the :credential-policy/:credential-escalate-after mode keys; the patch adapter key vars and the runner readiness gate. In the emacs repo, in the same step, delete the satan-credential-function setting (dl-satan.el) and my/satan-credential with its VT-26 tests (dl-secret.el). dev/satan-test.el loses its scrub."
+alternatives = ["Keep only scrub until env.zsh stops exporting op:// refs"]
+rationale = "Cutover, not addition (ADR-017 §3, POL-001). Jails start from an empty environment (env -i) with explicit forwards, so op:// refs in the Emacs env cannot reach a jailed child."
+consequences = ["Supersedes DEC-020, DEC-021, DEC-022; ISS-023 and ASM-002 become moot.", "An unjailed dev harness (:cmd override) inherits Emacs env refs until emacs:SL-015 retires the env.zsh exports; refs are not secrets.", "SPEC-003 REQ-020/022 need a REV: ref exclusion is jail-enforced."]
+decided_by = "user (2026-10-17)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

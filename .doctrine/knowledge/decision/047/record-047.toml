@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 47
+slug = "satan-jails-follow-the-sl-013-gateway-pattern-pi-key-for-pi-jails-satan-key-for-the-harness"
+title = "satan jails follow the SL-013 gateway pattern: pi key for pi jails, satan key for the harness"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "flakes:SL-013 moved the emacs flake jails (E commit 069e9b6). User settled OQ-1 (satan and pi keys) and OQ-5 (delete opencode, dirge)."
+choice = 'piGateway = jailLib.gatewayClient "pi" on jailed-pi; jailed-pi-research; jailed-shell and jailed-claude. jailed-claude also gets subagents = ["pi" "claude"] and maxSubagentDepth = 2 so it can run pi (research) agents nested on the pi gateway, matching the emacs flake. satanGateway = jailLib.gatewayClient "satan" on satan-jailed-gptel-harness. Drop useOpEnv/passApiKeysFromEnv everywhere. Delete apiKeyJailOptions; jailed-opencode; jailed-dirge and dirge in subagents. satanGptelJailOptions forwards SATAN_MODEL; SATAN_BUDGET_TOKENS and SATAN_MAX_BUDGET_TOKENS only. SATAN-jailed-fake-harness stays offline. Amended 2026-10-18: the user overruled RV-023 F-8.'
+alternatives = []
+rationale = "One proven pattern across repos; the gateway carries no provider keys (apiKeys = [] is enforced at eval). claude gets the gateway only to suppress the default op run; it signs in by OAuth."
+consequences = ["ISS-029 criteria 3-4 close for S.", "The launcher hint prints the jail name as the alias (cosmetic; flakes backlog)."]
+decided_by = "user (2026-10-18, agreed agent lean)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

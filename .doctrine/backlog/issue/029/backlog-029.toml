@@ -26,3 +26,8 @@ label = "references"
 role = "concerns"
 descriptor = "violates this system invariant"
 target = "REQ-016"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-022"

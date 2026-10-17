@@ -1,0 +1,496 @@
+id    = 23
+slug  = "design-review-of-sl-022"
+title = "design review of SL-022"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Hostile pass over SL-022 design.md sec-1..sec-9 against code (broker spawn/dispatch, ingest cursor, sensor probes, harness providers/runloop), flakes jail modules and governance; 18 findings, all dispositioned and re-checked at rev 28."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-022"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "A refused launch still consumes the perceptual frontiers"
+detail = "Probe watermark commits and satan-ingest-cursor-advance run in satan-broker--spawn before make-process (satan-broker.el:886-918, invariant comment 905-911). Under DEC-041 a launcher refusal (gateway down, key missing) advances watermarks for a model that never ran; SL-018 refused before --spawn so nothing advanced."
+disposition = "fix-now"
+response = """
+Integrated: probe commits and ingest-cursor advance move to satan-broker--commit-frontiers, called from the ready arm (sec-4 'Frontiers commit on ready'); invariant I5 and a refusal-leaves-cursors-unchanged test (sec-7); DEC-041 amended. Route review: a design defect repaired in prose, settled by design judgement in this review.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: probe commits and ingest-cursor advance move to satan-broker--commit-frontiers, called from the ready arm (sec-4 'Frontiers commit on ready'); invariant I5 and a refusal-leaves-cursors-unchanged test (sec-7); DEC-041 amended."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "add route: lock refuses a disposed major with no route"
+disposition = "fix-now"
+route = "review"
+response = """
+Integrated: probe commits and ingest-cursor advance move to satan-broker--commit-frontiers, called from the ready arm (sec-4 'Frontiers commit on ready'); invariant I5 and a refusal-leaves-cursors-unchanged test (sec-7); DEC-041 amended. Route review: a design defect repaired in prose, settled by design judgement in this review.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "Every tick fails between landing satan and the flakes home-switch"
+detail = "Emacs loads satan live from ~/dev/satan (dl-path.el:7) but the harness on PATH comes from flakes' locked satan input (features/satan/harness.nix:27; home-switch does not override satan). New broker sends no keys/SATAN_PROVIDER; old harness defaults to openrouter and reads an unresolved op:// ref. sec-6 orders E right after S, opening the window."
+disposition = "fix-now"
+response = """
+Integrated: sec-6 rewritten around component provenance. The new harness works with the old broker, so the order is: land+push satan (Emacs must not reload satan), flakes update+home-switch, then restart Emacs, then the emacs edit. DEC-048 amended. Route review: a sequencing defect repaired in prose, settled by design judgement in this review.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: sec-6 rewritten around component provenance. The new harness works with the old broker, so the order is: land+push satan (Emacs must not reload satan), flakes update+home-switch, then restart Emacs, then the emacs edit. DEC-048 amended."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "add route: lock refuses a disposed major with no route"
+disposition = "fix-now"
+route = "review"
+response = """
+Integrated: sec-6 rewritten around component provenance. The new harness works with the old broker, so the order is: land+push satan (Emacs must not reload satan), flakes update+home-switch, then restart Emacs, then the emacs edit. DEC-048 amended. Route review: a sequencing defect repaired in prose, settled by design judgement in this review.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "F agents re-lock rationale is wrong"
+detail = "home-switch passes tree_override, so agents comes from the in-tree path, which already has gatewayClient (flakes justfile:14,98). The re-lock is hygiene for non-override evaluation; the deployed launcher is built from the flakes working tree, not what the satan flake check asserts."
+disposition = "fix-now"
+response = "Integrated: verified home-switch overrides agents in-tree but not satan (flakes justfile:14,98; bin/dev-checkouts). Rationale corrected (the agents re-lock is hygiene); VH probe of the deployed launcher added (sec-7)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: verified home-switch overrides agents in-tree but not satan (flakes justfile:14,98; bin/dev-checkouts). Rationale corrected (the agents re-lock is hygiene); VH probe of the deployed launcher added (sec-7)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "spawn_failed covers any death before ready without an error message"
+detail = "Python import-time crash, bwrap prelude failure, external kill/OOM, exit 0 before ready all become spawn_failed; process-exit-status is a signal number for signals, so :exit-code alone is ambiguous (satan-broker.el:142-146,196-199)."
+disposition = "fix-now"
+response = "Integrated: the rule is now 'dies before ready without an error message'; audit payload carries :process-status exit|signal plus :code; sec-4 names the covered cases; DEC-041 retitled."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: the rule is now 'dies before ready without an error message'; audit payload carries :process-status exit|signal plus :code; sec-4 names the covered cases; DEC-041 retitled."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Tick trace records a refused launch as spawned"
+detail = "satan-broker-run stamps outcome spawned synchronously (satan-broker.el:727-729); the refusal arrives in the sentinel after the tick closed; only the synchronous --record-spawn-failure restamps (:1028)."
+disposition = "tolerated"
+response = "Accepted and stated in sec-4: the tick trace keeps 'spawned'; run status and audit are the record. Restamping a closed tick is not worth the machinery."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "Accepted and stated in sec-4: the tick trace keeps 'spawned'; run status and audit are the record. Restamping a closed tick is not worth the machinery."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Two gateway failures classify as unknown"
+detail = "Model not on the key's list: LiteLLM 403 'not allowed to access model' (auth_checks.py:4048-4052) has no classify_error branch. A gateway restart mid-run raises openai APIConnectionError, also unknown (runloop.py:116-140)."
+disposition = "fix-now"
+response = "Integrated: 403 model access -> auth; APITimeoutError -> timeout checked before APIConnectionError -> server, both matched by MRO class name (see F-17); sec-3 table and sec-7 tests."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: 403 'not allowed to access model' -> auth (key-config fault, always notifies); APIConnectionError -> server (sec-3 table and rules; sec-7 tests)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Re-review: APITimeoutError subclasses APIConnectionError, so timeouts became server."
+disposition = "fix-now"
+response = "Integrated: 403 model access -> auth; APITimeoutError -> timeout checked before APIConnectionError -> server, both matched by MRO class name (see F-17); sec-3 table and sec-7 tests."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Budget detection can use the SDK error type"
+detail = "openai SDK unwraps body.get('error') and sets .type; getattr(e,'type')=='budget_exceeded' suffices. The SDK retries 429 twice by default, so an exhausted budget costs two extra round trips."
+disposition = "fix-now"
+response = "Integrated: detection uses getattr(e,'type'); SDK 429 retries (2) stated, refused calls cost nothing, default left alone."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: detection uses getattr(e,'type'); SDK 429 retries (2) stated, refused calls cost nothing, default left alone."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "jailed-claude needs apiKeys = [] only, not the pi gateway"
+detail = "makeJailedAgent uses the op wrapper only when useOpEnv && selectedApiKeys != [] (jailed-agents.nix:613-617). Gateway mode hands claude an unused pi key and makes it refuse to start when keys/pi is missing or the gateway is down."
+disposition = "tolerated"
+response = "Observation verified (apiKeys = [] alone drops op run), but the user overruled the fix: jailed-claude must run pi research agents as subagents, which needs pi in subagents plus the pi gateway (nested pi inherits the parent env and gets the models.json bind). It now matches the emacs flake. The cost the finding names, claude not starting while the gateway is down, is accepted. DEC-047 amended."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: verified (jailed-agents.nix:613-617; makeJailedClaude passes args through). jailed-claude gets apiKeys = [] and no gateway; divergence from the emacs flake stated (sec-2); DEC-047 amended."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "User direction 2026-10-18: jailed-claude must run pi research agents."
+disposition = "tolerated"
+response = "Observation verified (apiKeys = [] alone drops op run), but the user overruled the fix: jailed-claude must run pi research agents as subagents, which needs pi in subagents plus the pi gateway (nested pi inherits the parent env and gets the models.json bind). It now matches the emacs flake. The cost the finding names, claude not starting while the gateway is down, is accepted. DEC-047 amended."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Dead seams left behind in the patch path and broker spawn"
+detail = "satan-patch-runner--with-warnings/--credential-warnings become dead (patch-runner.el:270-284,313-320); the adapter :env input only ever carried credentials; the new --spawn signature without cred is unstated (~8 test sites use satan-broker-test--no-cred)."
+disposition = "fix-now"
+response = "Integrated: --with-warnings/--credential-warnings deleted, adapter :env input dropped (sec-5), new --spawn (mode prepare dir) signature and removal of satan-broker-test--no-cred stated (sec-4, sec-7, sec-8)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: --with-warnings/--credential-warnings deleted, adapter :env input dropped (sec-5), new --spawn (mode prepare dir) signature and removal of satan-broker-test--no-cred stated (sec-4, sec-7, sec-8)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Historic credential_deferred runs end streaks rather than being ignored"
+detail = "Removing credential_deferred from satan-broker--streak-transparent-reasons (satan-broker.el:318-333) makes a historic run a different cause that ends the streak walk; sec-4's wording understates this."
+disposition = "fix-now"
+response = "Integrated: sec-4 now states that a historic credential_deferred run ends a spanning streak, accepted because streaks only pace notifications and such runs stop on landing."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: sec-4 now states that a historic credential_deferred run ends a spanning streak, accepted because streaks only pace notifications and such runs stop on landing."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "The I1 closure grep hits lines the design keeps"
+detail = "The flake check's own probe strings ('op run') sit in flake.nix; satan-broker-test.el:1418 fixture 'OPENROUTER_API_KEY not set' is not in the deletion list."
+disposition = "fix-now"
+response = "Integrated: probe strings live in one named let binding the I1 sweep excludes (sec-2, sec-7); the OPENROUTER_API_KEY fixture becomes LLM_GATEWAY_KEY (sec-7)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: probe strings live in one named let binding the I1 sweep excludes (sec-2, sec-7); the OPENROUTER_API_KEY fixture becomes LLM_GATEWAY_KEY (sec-7)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "policy.toml tag points at an unserved model"
+detail = '[tag."cheap+code"] model qwen/qwen-2.5-coder-32b-instruct is not served by the gateway; once the provider is llm-gateway those jobs fail.'
+disposition = "fix-now"
+response = "Integrated: the cheap+code tag is removed from policy.toml (sec-5, sec-8, DEC-048)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: the cheap+code tag is removed from policy.toml (sec-5, sec-8, DEC-048)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "Spec revision list misses two points"
+detail = "REQ-025 REV should name LLM_GATEWAY_URL (set-env, not a SATAN_* forward); REQ-020's premise (base env shared with credential lookup) needs retitle/withdrawal; the launcher process itself still receives the Emacs env until emacs:SL-015."
+disposition = "fix-now"
+response = "Integrated in sec-9: REQ-020 retitle/withdraw, REQ-025 names LLM_GATEWAY_URL/fd key, launcher env caveat."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated in sec-9: REQ-020 retitle/withdraw, REQ-025 names LLM_GATEWAY_URL/fd key, launcher env caveat."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "nit"
+title = "State diagram incomplete"
+detail = "No dashed edge though prose says so; missing spawned->failed (error before ready) and ready->timed_out; refusal label should be 'dies before ready without an error message'."
+disposition = "fix-now"
+response = "Integrated: diagram adds spawned->failed (error before ready), ready->timed_out, frontier commit on ready; prose no longer claims a dashed edge."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: diagram adds spawned->failed (error before ready), ready->timed_out, frontier commit on ready; prose no longer claims a dashed edge."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "nit"
+title = "Undecoded ids, a mis-cite and plan leakage"
+detail = "Bare OQ-1/OQ-5 beside flakes:SL-013 OQ-1; VT-20, VT-26, inq-5 undecoded; SPEC-001 REQ-010 (daemons fail closed with client absent) mis-cited for a client-recorded refusal; sec-6 diagram carries literal CLI commands (plan content)."
+disposition = "fix-now"
+response = "Integrated: OQ ids qualified as SL-022 OQ-n with synopsis; VT-20/VT-26/ASM-002/ISS-023 decoded; REQ-010 cite replaced by SPEC-001 REQ-003 + SPEC-003 'Failure at spawn'; CLI commands removed from the sec-6 diagram (they live in DEC-048 / the plan)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: OQ ids qualified as SL-022 OQ-n with synopsis; VT-20/VT-26/ASM-002/ISS-023 decoded; REQ-010 cite replaced by SPEC-001 REQ-003 + SPEC-003 'Failure at spawn'; CLI commands removed from the sec-6 diagram (they live in DEC-048 / the plan)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "minor"
+title = "Ingest cursor advance at ready skips rows the model never saw"
+detail = "satan-ingest-cursor-advance reads each source's live head when called (satan-ingest-cursor.el:166-180); called at ready, rows arriving during launch are skipped unseen."
+disposition = "fix-now"
+response = "Integrated (sec-4): perceive snapshots ingest heads via new pure satan-ingest-cursor-heads into :probe_snapshots :ingest; satan-ingest-cursor-advance takes an optional heads snapshot and writes max(current, snapshot). Tests in sec-7."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated (sec-4): perceive snapshots ingest heads via new pure satan-ingest-cursor-heads into :probe_snapshots :ingest; satan-ingest-cursor-advance takes an optional heads snapshot and writes max(current, snapshot). Tests in sec-7."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-17"
+status = "verified"
+severity = "minor"
+title = "Connection-error rule needs an openai import the harness tests lack"
+detail = "isinstance(e, openai.APIConnectionError) requires importing openai in runloop.py (runloop.py:12-30); just test runs plain python3 without openai and injects a fake SDK only around build_provider."
+disposition = "fix-now"
+response = "Integrated (sec-3): rules 3-4 match class names along the MRO (APITimeoutError -> timeout first, then APIConnectionError -> server); no openai import in runloop.py. Tests use fake exception classes."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated (sec-3): rules 3-4 match class names along the MRO (APITimeoutError -> timeout first, then APIConnectionError -> server); no openai import in runloop.py. Tests use fake exception classes."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+[[finding]]
+id = "F-18"
+status = "verified"
+severity = "nit"
+title = "commit-frontiers needs a once-only guard"
+detail = "A second ready from a misbehaving harness would advance watermarks and enqueue attribute payloads twice."
+disposition = "fix-now"
+response = "Integrated (sec-4): the ready arm sets the ready slot and commits frontiers only when it was nil; a second ready is audited only. Test in sec-7."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated (sec-4): the ready arm sets the ready slot and commits frontiers only when it was nil; a second ready is audited only. Test in sec-7."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-checked against design.md rev 28 and the cited code"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14a1556ae78b397b8619c7a124933"
+memory_key = "mem.fact.satan.llm-gateway-error-shapes"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "LLM gateway (LiteLLM 1.102) error and reasoning shapes"
+summary = "budget exhausted = 429 type budget_exceeded; model not on key = 403; bad key = 401; DeepSeek reasoning_content passes through both ways"
+created = "2026-10-17"
+updated = "2026-10-17"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["gateway", "litellm", "harness"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "64f12bba365b06b62c5b6e75bd7c86e7d04d9d84"
+ref_name = "refs/heads/main"
+checkout_state_id = "a2b596c89a8c1e83b0c2bc9788bbbe144891a4e89969b9cf8c2153ecffca55ed"
+base_commit = "2619867b94efb279cd3ce4f59cad275d2ce8ac03"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "doc"
+ref = ".doctrine/slice/022/design.md"
+

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 44
+slug = "the-harness-talks-only-to-the-gateway-provider-selection-moves-into-the-model-alias"
+title = "The harness talks only to the gateway; provider selection moves into the model alias"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The harness registry maps SATAN_PROVIDER to a subclass whose only content is a base_url, plus a key var. Behind the gateway the provider is chosen by the model alias (deepseek-flash, later openrouter/<id>)."
+choice = 'build_provider returns OpenAICompatibleProvider(LLM_GATEWAY_KEY, base_url=LLM_GATEWAY_URL); both env vars required, a missing one is a named error. Delete deepseek.py, openrouter.py, the registry and SATAN_PROVIDER. satan-profiles drop :provider (deepseek-flash becomes (:model "deepseek-flash")); the broker stops emitting SATAN_PROVIDER.'
+alternatives = ["A gateway registry row with :provider gateway in the profile (the original lean)"]
+rationale = "With one provider, a registry and a provider selector are speculative generality; the gateway already routes by alias. Less code, one policy field (model)."
+consequences = ["Refines the user-agreed lean (:provider gateway) by deleting :provider instead; flagged to the user.", "Probe 2026-10-18: reasoning_content round-trips through the gateway; a bad key gives 401, classified auth."]
+decided_by = "user (2026-10-17), refined by agent"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

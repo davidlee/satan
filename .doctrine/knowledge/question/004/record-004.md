@@ -1,0 +1,5 @@
+# QUE-004: Where is the gateway client wire convention for reasoning effort recorded?
+
+<!-- Knowledge record body — context, detail, links. The structured, queried
+     fields live in the sister `record-NNN.toml`; this prose is free-form and is
+     never structurally parsed (the storage rule). -->

@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14a155683750184bea44c557772fe"
+memory_key = "mem.fact.satan.deploy-provenance-split"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "SATAN broker and deployed harness come from different builds"
+summary = "Emacs loads satan elisp live from ~/dev/satan; the deployed harness/jailed-* on PATH come from flakes' LOCKED satan input; home-switch overrides agents in-tree but not satan"
+created = "2026-10-17"
+updated = "2026-10-17"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "deploy", "flakes"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "64f12bba365b06b62c5b6e75bd7c86e7d04d9d84"
+ref_name = "refs/heads/main"
+checkout_state_id = "edcb9c76a012bb468eb1555756f0fc1cd6a3d69c295a7eb49e6f54409bc4628d"
+base_commit = "2619867b94efb279cd3ce4f59cad275d2ce8ac03"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "doc"
+ref = ".doctrine/slice/022/design.md"
+

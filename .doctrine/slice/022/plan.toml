@@ -1,0 +1,191 @@
+# Implementation plan for SL-022 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-022"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase, in execution order — the authored array order
+# IS the order; never sort by id. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored. Criterion ids are local to their phase, bare, and
+# equally immutable. Reference a criterion from another phase phase-qualified
+# (PHASE-03/EX-8).
+[[phase]]
+id        = "PHASE-01"
+name      = "Harness on the gateway"
+objective = "The Python harness reads SATAN_MODEL, LLM_GATEWAY_URL and LLM_GATEWAY_KEY, talks to one OpenAI-compatible endpoint, and classifies the gateway's failure shapes (design § Harness; DEC-044, DEC-045). The new harness also works under today's broker."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (run rev 34); `just check` green at the phase's start commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`build_provider` returns (OpenAICompatibleProvider(key, base_url=url), model) from the three env vars, each raising '<VAR> not set' when empty; a stray SATAN_PROVIDER is ignored." },
+  { id = "EX-2", text = "`providers/deepseek.py`, `providers/openrouter.py`, the registry, SATAN_PROVIDER and the op:// check are gone from satan/harness; `base.py` docstring and `__main__.py` env docstring name the gateway pair." },
+  { id = "EX-3", text = "`classify_error` applies rules 1–4 of design § Error classes, in order, before the status-code branches; rules 3–4 match class names along the MRO and runloop.py imports no openai." },
+  { id = "EX-4", text = "Run tests drop SATAN_PROVIDER / OPENROUTER_API_KEY fixtures; `just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "provider factory: gateway pair reaches FakeOpenAI; each missing var raises; stray SATAN_PROVIDER ignored", test_file = "satan/harness/test_gptel_harness.py", keywords = ["LLM_GATEWAY_URL", "LLM_GATEWAY_KEY", "SATAN_PROVIDER", "not set"], waived = false },
+  { id = "VT-2", expects = "classify_error: budget_exceeded is credits; 403 model access is auth; fake APITimeoutError(APIConnectionError) is timeout and fake APIConnectionError is server; plain 429 rate_limit, 401 auth", test_file = "satan/harness/test_gptel_harness.py", keywords = ["budget_exceeded", "not allowed to access model", "APITimeoutError", "APIConnectionError"], waived = false },
+  { id = "VT-3", expects = "build_provider reads the gateway pair; no registry", test_file = "satan/harness/providers/__init__.py", keywords = ["def build_provider", "LLM_GATEWAY_URL", "LLM_GATEWAY_KEY", "def _required"], waived = false },
+  { id = "VA-1", expects = "`rg 'SATAN_PROVIDER|_API_KEY|op://' satan/harness --glob '!test_*'` returns nothing; `rg -n '^import openai|^from openai' satan/harness/runloop.py` returns nothing." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Jails on the gateway, and the flake check"
+objective = "Every model-using jail in flake.nix uses agents' gateway mode (satan key for the harness, pi key for the pi jails and jailed-claude); opencode/dirge and apiKeyJailOptions go; the harness jail forwards the SATAN_* budget values; a Linux flake check asserts the built harness launcher (design § Jails; DEC-046, DEC-047)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete (the jail sets no SATAN_PROVIDER, which the old harness needed)." },
+  { id = "EN-2", text = "`~/flakes/agents` at or past a24a0f03 (has gatewayClient); only read, never edited: another session has uncommitted work in agents/gateway.nix." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "flake.nix matches design § flake.nix shape: piGateway on jailed-pi, jailed-pi-research, jailed-shell, jailed-claude (subagents [pi claude], maxSubagentDepth 2); satanGateway on satan-jailed-gptel-harness; satanGptelJailOptions forwards SATAN_MODEL, SATAN_BUDGET_TOKENS, SATAN_MAX_BUDGET_TOKENS and nothing else model-related." },
+  { id = "EX-2", text = "No apiKeyJailOptions, useOpEnv/passApiKeysFromEnv pair, jailed-opencode, jailed-dirge or \"dirge\" subagent remains in flake.nix." },
+  { id = "EX-3", text = "flake.lock `agents` ≥ a24a0f03." },
+  { id = "EX-4", text = "checks.x86_64-linux.harness-jail-profile asserts every probe in design § The flake check; probe strings live in one let binding; `just check-jails` builds it green; `just check` stays Nix-free and green." },
+]
+verification = [
+  { id = "VT-1", expects = "gateway clients, budget forward and the check exist in flake.nix", test_file = "flake.nix", keywords = ["gatewayClient \"satan\"", "gatewayClient \"pi\"", "SATAN_MAX_BUDGET_TOKENS", "harness-jail-profile", "--args 22 22< <(printf"], waived = false },
+  { id = "VT-2", expects = "check-jails recipe builds the flake check", test_file = "justfile", keywords = ["check-jails", "harness-jail-profile"], waived = false },
+  { id = "VA-1", expects = "Negative control: add a stray (try-fwd-env \"OPENROUTER_API_KEY\") to satanGptelJailOptions, observe `just check-jails` fail on the API_KEY probe, revert. Repeat with SATAN_MAX_BUDGET_TOKENS removed. Record both failures in the phase notes." },
+  { id = "VA-2", expects = "`nix build` of jailed-pi, jailed-pi-research, jailed-shell, jailed-claude and satan-jailed-gptel-harness succeeds; `nix flake show` lists no jailed-opencode or jailed-dirge." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Typed launcher refusal; frontiers commit on ready"
+objective = "A child that dies before `ready` without an error message ends spawn_failed with a broker spawn-failed audit event carrying its stderr tail; perception frontiers commit once, on the first `ready`, from the snapshots taken at perceive (design § A refused launch, § Frontiers commit on ready; DEC-041). Additive: the credential path still exists."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete; `just check` green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-run has a `ready` slot; the ready arm of satan-broker--dispatch sets it and calls satan-broker--commit-frontiers only when it was nil." },
+  { id = "EX-2", text = "Probe commits and satan-ingest-cursor-advance no longer run in --spawn before make-process; observer pass, satan-run-enrich and the sensor-alert check still do." },
+  { id = "EX-3", text = "satan-ingest-cursor-heads (pure) exists; perceive stores its result under :probe_snapshots :ingest; satan-ingest-cursor-advance (&optional heads) writes max(current, snapshot) per source and keeps read-head behaviour without an argument." },
+  { id = "EX-4", text = "The --spawn sentinel wrapper calls satan-broker--record-launch-refusal when the process ended, the run is not ready and status is running; failure-reason spawn_failed (first write wins); audit payload (:process-status exit|signal :code N :stderr TAIL), TAIL from the pure satan-broker--stderr-tail capped at 2 KiB." },
+  { id = "EX-5", text = "`just check` green; lint zero warnings." },
+]
+verification = [
+  { id = "VT-1", expects = "stub :cmd printing to stderr and exiting 1 before ready ends failed with spawn_failed, spawn-failed audit event with :code 1 and stderr; probe watermarks and ingest cursor unchanged. Error-before-ready keeps the harness class. Ready-then-exit is plain failed with frontiers advanced. Second ready commits nothing (watermarks, attribute enqueue count unchanged). stderr-tail cuts to N bytes.", test_file = "satan/test/satan-broker-test.el", keywords = ["spawn_failed", "spawn-failed", "satan-broker--stderr-tail", "satan-broker--commit-frontiers"], waived = false },
+  { id = "VT-2", expects = "advance given a heads snapshot writes max(current, snapshot) and ignores newer live heads; heads returns the per-source plist", test_file = "satan/test/satan-ingest-cursor-test.el", keywords = ["satan-ingest-cursor-heads", "satan-ingest-cursor-advance"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Patch path keyless"
+objective = "The elisp patch runner and pi adapter resolve, hold and scrub no keys; the runner's readiness no longer depends on a credential backend (design § Elisp patch runner and adapter; DEC-042)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete; `just check` green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-patch-adapter-pi-api-key-vars, the adapter :env input and its scrub are gone; the adapter's child env is process-environment." },
+  { id = "EX-2", text = "The runner's --queue-ready-p keeps its peek without the credential probe or the credential_deferred journal line; the post-claim satan-credential-resolve, --credential-warnings and --with-warnings are gone; satan-patch-runner-enabled stays; no --provider is passed." },
+  { id = "EX-3", text = "Credential tests in satan-patch-runner-test.el deleted (no session, resolved keys, failing key warns, adapter failure keeps warnings, scrubbed child env); `just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "a ready queue claims and runs a job with no credential backend bound", test_file = "satan/test/satan-patch-runner-test.el", keywords = ["satan-patch-runner--queue-ready-p"], waived = false },
+  { id = "VT-2", expects = "the adapter's child env is process-environment", test_file = "satan/test/satan-patch-adapter-test.el", keywords = ["process-environment"], waived = false },
+  { id = "VA-1", expects = "`rg 'satan-credential|api-key-vars|credential-warnings|with-warnings' satan/satan-patch*.el satan/test/satan-patch*.el` returns nothing." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Retire the credential surface"
+objective = "No SATAN code resolves, holds or forwards a provider key: the broker's key and credential-policy machinery, SATAN_PROVIDER, profile :provider, the credential mode keys and satan-credential.el go (design § What goes; DEC-042, DEC-044). Closes invariants I1 and I6 in this repo."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete; `just check` green." },
+  { id = "EN-2", text = "Hazard acknowledged: from here the working tree's broker sends no key or SATAN_PROVIDER, so the running Emacs must not reload satan until PHASE-07's home-switch (design § Across repos)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-broker.el: provider-key-vars, --key-var, --acquire, --credential-policy, --credential-streak-age, satan-credential-escalate-after, the :deferred/:unavailable gate arms, --write-credential-deferred-run, --evict-on-auth (and its --finalize call), the scrub, SATAN_PROVIDER emission and \"credential_deferred\" in --streak-transparent-reasons are gone; the busy arm tests only satan-run--spawn-running; signature is satan-broker--spawn (mode prepare dir) with child env (default-value 'process-environment) plus SATAN_*." },
+  { id = "EX-2", text = "satan-run.el drops credential-refs; satan-mode.el drops --check-credential-keys and the :credential-policy lines; satan-profiles is ((deepseek-flash . (:model \"deepseek-flash\")))." },
+  { id = "EX-3", text = "satan-credential.el, satan-credential-test.el, satan-credential-fixture.el deleted; dev/satan-test.el loses the require, backend binding and scrub; the credential/rotation/eviction/mode-key tests and satan-broker-test--no-cred go; the error-class fixture reads 'LLM_GATEWAY_KEY not set'." },
+  { id = "EX-4", text = "`just check` green; lint zero warnings." },
+]
+verification = [
+  { id = "VT-1", expects = "child env carries SATAN_MODEL and the budget values and no SATAN_PROVIDER (replaces SL-018 VT-20)", test_file = "satan/test/satan-broker-test.el", keywords = ["SATAN_MODEL", "SATAN_PROVIDER", "LLM_GATEWAY_KEY not set"], waived = false },
+  { id = "VT-2", expects = "profiles carry :model only", test_file = "satan/test/satan-mode-test.el", keywords = ["deepseek-flash"], waived = false },
+  { id = "VA-1", expects = "I1 closure sweep: `rg '_API_KEY|op://|op run|satan-credential' satan/ dev/ flake.nix` hits only the flake check's named probe-string binding." },
+  { id = "VA-2", expects = "I6 sweep: no key path, gateway URL or llm-gateway socket path in satan/*.el or satan/harness (`rg 'llm-gateway/keys|127.0.0.1:4000' satan/`)." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Docs: the gateway story"
+objective = "Repo docs describe the gateway model: which client key each jail uses, that SATAN holds no provider key, how a launcher refusal surfaces, and how to issue keys (scope item 8)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "docs/governance.md (key resolution, providers, jails), docs/architecture.md, docs/patch/handover.md and docs/patch/plan.md no longer describe op:// resolution, satan-credential or provider keys as current; each names the gateway and the satan/pi client split." },
+  { id = "EX-2", text = "SL-022 work in this repo committed; `just check` and `just check-jails` green at that commit." },
+]
+verification = [
+  { id = "VA-1", expects = "`rg -i 'satan-credential|op://|OPENROUTER_API_KEY|DEEPSEEK_API_KEY' docs/` hits only text marked historical; docs/governance.md names keys/satan and keys/pi." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Deploy the harness (cross-repo)"
+objective = "With Emacs still on the old broker, ship the new harness and jails: issue the satan key, push satan, update flakes and home-switch, and probe the deployed launcher (DEC-048 steps 1–4)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete and committed; the user is present and has approved pushing satan and committing in ~/flakes." },
+  { id = "EN-2", text = "The running Emacs has not reloaded satan since PHASE-05 began." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The satan gateway key is issued for deepseek-flash only, budget per DEC-048 (or the figure the user sets)." },
+  { id = "EX-2", text = "satan pushed; in ~/flakes the satan and agents locks updated, features/satan/patcher.nix drops apiKeyRefs/opBin/opAccount, SATAN.md updated (secrets, known gaps), home-switch run. agents/gateway.nix untouched." },
+  { id = "EX-3", text = "~/.config/satan-patcher/policy.toml defaults are llm-gateway/deepseek-flash and the cheap+code tag is gone." },
+]
+verification = [
+  { id = "VH-1", expects = "The flake check's probes pass against readlink -f ~/.nix-profile/bin/jailed-satan-gptel-harness (the home-switch build)." },
+  { id = "VH-2", expects = "A broker tick on the old broker with the new harness succeeds, and llm-gateway list shows spend on satan." },
+  { id = "VH-3", expects = "Patcher: best effort, given ISS-038 and ISS-039." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "Emacs cutover and live checks"
+objective = "Restart Emacs onto the new satan, then drop the satan credential backend from the emacs config, and confirm the invariants live (DEC-048 steps 5–7; design § What the tests cannot cover)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete (deployed harness is the new one)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Emacs restarted on the new satan." },
+  { id = "EX-2", text = "In ~/.config/emacs: satan-credential-function (apps/dl-satan.el) and my/satan-credential with its tests (lisp/dl-secret.el, lisp/test/dl-secret-test.el; emacs VT-26) removed; that repo's tests green; committed with the user's approval." },
+]
+verification = [
+  { id = "VH-1", expects = "A morning or motd tick succeeds on the new broker; llm-gateway list shows spend on satan." },
+  { id = "VH-2", expects = "ps -o args on a live harness shows no key." },
+  { id = "VH-3", expects = "With keys/satan moved aside, a tick ends spawn_failed with the launcher's message in the audit; key restored afterwards." },
+  { id = "VH-4", expects = "After the emacs edit and a restart, Emacs starts clean: no void-variable or unknown-defcustom warning for satan-credential-function." },
+]
+specs        = []
+requirements = []

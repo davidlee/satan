@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 49
+slug = "provider-credential-custody-leaves-satans-authority-inventory"
+title = "Provider-credential custody leaves SATAN's authority inventory"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "RFC-018 D3 proposes ledger row 8 (provider credential custody, emacs-client to auth-gateway), enforced at the symbols SL-022 deletes."
+choice = "Do not add row 8. At reconcile, note in the ADR-017 authority ledger that provider-credential custody left SATAN's inventory for the host LLM gateway (SL-022); annotate RFC-018 D3/D5 step 1 accordingly."
+alternatives = ["Add row 8 with a new auth-gateway owner token"]
+rationale = "After SL-022 no SATAN surface holds or resolves a provider key; the gateway is host deployment (DEC-043), not a SATAN authority owner."
+consequences = []
+decided_by = "user (2026-10-18, agreed agent lean)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

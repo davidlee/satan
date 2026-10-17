@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 46
+slug = "the-harness-jail-profile-is-asserted-by-a-flake-check-over-the-built-launcher"
+title = "The harness jail profile is asserted by a flake check over the built launcher"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "REQ-025 wants the harness env forward list asserted against the built wrapper; S/flake.nix has no checks output and just check runs no nix. Precedent: F/agents/jailed-agents-test.nix gateway_probes greps built launchers."
+choice = "Add checks.<system>.harness-jail-profile to S/flake.nix: a runCommand that greps the built satan-jailed-gptel-harness outer and inner launchers. It asserts: no op run, no API_KEY, gateway key over --args 22 and absent from argv, LLM_GATEWAY_URL set, SATAN_MAX_BUDGET_TOKENS/SATAN_MODEL/SATAN_BUDGET_TOKENS forwarded, no SATAN_PROVIDER. A just check-jails recipe builds it. just check stays nix-free."
+alternatives = ["Put nix builds in just check (slow, and every ert edit pays for it)", "An elisp test reading flake.nix text (asserts source, not the built wrapper)"]
+rationale = "Asserts the built artefact, as REQ-025 requires, reusing the F test idiom; shaped so ISS-028 can extend it with bind-list assertions (REQ-025 criteria 1-3)."
+consequences = []
+decided_by = "user (2026-10-18, agreed agent lean)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

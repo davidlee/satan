@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 43
+slug = "gateway-key-budgets-are-deployment-side-insurance-caps-outside-satan-policy"
+title = "Gateway key budgets are deployment-side insurance caps, outside SATAN policy"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Each gateway key carries a lifetime USD budget and a model list. Counted as SATAN ceilings they would restate policy (ADR-018 D2, SPEC-001 REQ-006) and add a third enforcement point (REQ-009, RFC-018 OQ-2)."
+choice = "Gateway budgets are host-deployment insurance against runaway spend, tuned with generous headroom over day-to-day use. SATAN's daily token budget and per-run max stay the authoritative ceilings. Gateway caps are not in the ADR-017 ledger."
+alternatives = []
+rationale = "The user wants a backstop that never trips in normal operation. Distinct purpose and owner, so not dual enforcement."
+consequences = ["The model list on the satan key is deployment config, not a policy restatement.", "Tripping a cap is an incident, surfaced as credits (inq-5)."]
+decided_by = "user (2026-10-18)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"

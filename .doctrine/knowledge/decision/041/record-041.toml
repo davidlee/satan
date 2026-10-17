@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 41
+slug = "a-launcher-refusal-is-a-typed-spawn-failed-run-audited-with-the-launcher-stderr"
+title = "A child that dies before ready is a typed spawn_failed run; frontiers commit on ready"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-17"
+updated = "2026-10-17"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Under gateway mode the jail launcher, not the broker, reads the key file; a missing/unreadable key or a down gateway exits 1 before the harness says ready. Today that ends as an untyped failed run whose reason lives only in stderr.log (satan-broker.el:196-200, 981-992)."
+choice = "A child that dies before sending ready without having sent an error message is spawn_failed: the broker sets failure-reason spawn_failed and appends a broker spawn-failed audit event with process status (exit or signal), code and a bounded stderr tail. Perception frontiers commit once, on the first ready, from snapshots taken at perceive (probe snapshots and ingest-cursor heads), so a refused launch advances no frontier and no unseen row is skipped. The broker never reads key files or gateway paths."
+alternatives = ["Broker pre-checks the key file before allocation (keeps DEC-020 acquire-before-allocate, but puts a host path in satan: SPEC-002 REQ-018)", "Leave the untyped failed run"]
+rationale = "Fail closed with a typed, audited outcome (SPEC-001 REQ-010, REQ-003) without satan knowing host facts. Reuses spawn_failed rather than minting a reason."
+consequences = ["Supersedes DEC-020: a key failure now allocates a run (a child that died) instead of a no-child run", "credential_deferred and credential_unavailable statuses retire", "Also covers bwrap prelude failures and import-time crashes and external kills before ready", "The tick trace still says spawned for a refused launch: the run status and audit are the record", "Amended 2026-10-18 after RV-023 F-1 F-4 F-5"]
+decided_by = "user (2026-10-17, took agent lean)"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-022"
