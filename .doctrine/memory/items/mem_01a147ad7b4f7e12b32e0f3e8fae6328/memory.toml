@@ -1,0 +1,46 @@
+memory_uid = "mem_01a147ad7b4f7e12b32e0f3e8fae6328"
+memory_key = "mem.fact.jail.bind-the-socket-directory-not-the-file"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Jails must bind a unix socket's directory, not the socket file"
+summary = "A bwrap bind of a socket file pins its inode; when the server deletes and re-listens (satan-mcp-start does), the jail gets ECONNREFUSED. Bind the parent directory."
+created = "2026-10-17"
+updated = "2026-10-17"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "bwrap", "satan-mcp", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "1b13620fdbb011fdc1b88ce51d731106941de286"
+ref_name = "refs/heads/main"
+checkout_state_id = "271ffc5f293669d77a8876af7c6e88013bcda99f0a12cc88b3403652d7e4b26b"
+base_commit = "c853621cd26c6e17a503bc892834ac3bd44dd82a"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "backlog"
+ref = "ISS-042"
+
