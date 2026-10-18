@@ -3,3 +3,5 @@
 <!-- Knowledge record body — context, detail, links. The structured, queried
      fields live in the sister `record-NNN.toml`; this prose is free-form and is
      never structurally parsed (the storage rule). -->
+
+The gateway's contract as a whole, including the client wire contract, is specified in flakes:SPEC-001 (LLM gateway, draft tech spec, ~/flakes).

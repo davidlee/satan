@@ -70,3 +70,14 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 ### Learned
 - In a Nix `"…"` string, a bash `${X}` probe is `\${X}`; reading the check's generated `buildCommand` (`nix derivation show`) confirms the probe text before trusting a green.
 - Absent-probes must guard the file first: `grep` on a missing file exits 2, which an `if grep` reads as "absent". The inner-launcher extraction fails loudly before any `must_not` runs.
+
+## PHASE-07 execution (2026-10-18, in-session with the user)
+
+- EX-1: user issued `llm-gateway issue satan --models deepseek-flash --budget 20 --out ~/.config/llm-gateway/keys/satan` ($20 confirmed by the user).
+- EX-2: user pushed satan (main @ 7ee74c2) and relocked flakes (satan 7ee74c2, agents 8b0206dd; the user's update also moved other inputs). Agent edited `features/satan/patcher.nix` (dropped opBin/opAccount/apiKeyRefs; module default `{}` also drops the `op read` ExecStartPre) and `SATAN.md` (secrets → gateway keys; patcher row; removed the argv-key and SATAN_MAX_BUDGET_TOKENS known gaps). Committed flakes df07c800 with path-limited commit; `agents/gateway.nix` and the other session's staged `emacs/emacs.nix` untouched. User ran home-switch.
+- EX-3: `~/.config/satan-patcher/policy.toml` defaults → `llm-gateway` / `deepseek-flash`; `[tag."cheap+code"]` removed.
+- VH-1: flake-check probes re-run by hand against `readlink -f ~/.nix-profile/bin/jailed-satan-gptel-harness` (outer k374j1k1…, inner 0kkwwd8b…): all pass; launcher reads `keys/satan`.
+- VH-2: user ran satan-tick on today's broker; runs 20261018T125910-tick-agent-f351e0 and 20261018T125926-tick-pulse-952f23 both `done`. `llm-gateway list`: satan spent $0.0187 of $20.
+- VH-3: satan-patcher restarted 12:52 active, no ExecStartPre. Job execution not exercised (ISS-038/039).
+- Observed: today's broker still runs `satan-credential` pre-spawn, so a 1Password prompt appears per run (tick-agent via satan-run); dismissing it fails the run (likely cause of the 08:16 motd / 09:16 morning failures). Expected until PHASE-05 removes the credential path.
+- QUE-004 answered by the flakes session (flakes:DEC-074); body now also cites flakes:SPEC-001 (LLM gateway spec).

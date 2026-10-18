@@ -5,17 +5,17 @@ id = 4
 slug = "gateway-reasoning-effort-convention"
 title = "Where is the gateway client wire convention for reasoning effort recorded?"
 record_kind = "question"
-status = "open"
+status = "answered"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 question = "Should the gateway's client wire convention (clients send flat OpenAI reasoning_effort; the gateway translates per provider) be documented once in ~/flakes README § LLM gateway, or left to emacs:SL-015's design?"
 why_matters = "SL-022 (satan harness) and emacs:SL-015 (gptel inq-5 flattens reasoning to reasoning_effort) must not diverge; the convention's owner is the gateway, not either client."
-answer      = ""
-answered_by = ""
-answered_on = ""
+answer = "In ~/flakes, owned by the gateway: flakes:DEC-074 (clients send flat reasoning_effort; thinking and reasoning still admitted for existing clients) and README § LLM gateway, 'Client wire contract'. Correction to the premise: the gateway translates nothing; LiteLLM's provider adapters map reasoning_effort, and the gateway only admits it (allowed_openai_params on OpenRouter routes). SL-022 and emacs:SL-015 cite flakes:DEC-074. Flat effort on DeepSeek alone and on Fireworks is not yet verified (a DEC-074 consequence)."
+answered_by = "user (2026-10-18), via flakes session"
+answered_on = "2026-10-18"
 
 [evidence]                      # free-text citations (supports / contradicts / notes)
 supports    = []
