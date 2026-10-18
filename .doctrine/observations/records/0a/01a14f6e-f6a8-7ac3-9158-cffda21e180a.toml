@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f6e-f6a8-7ac3-9158-cffda21e180a"
+recorded_at = "2026-10-18T14:33:54.600445451Z"
+kind = "friction"
+summary = "PHASE-10 batch B worker exceeded ~250k context (296k)"
+detail = "SL-023 PHASE-10 batch B (opus, 140 tool uses, 32 min): fault matrix over 14 recovery rows plus paused shapes in one worker. A three-way split (rejoin core / matrix / scheduler+start wiring) would have kept each under budget. Also: Session.close settles admitted work before storage closes, so a run must not write endings while stopping — candidate memory."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f2b-6b3b-7621-9840-0d60c2b44b90"
+recorded_at = "2026-10-18T13:20:07.995220668Z"
+kind = "friction"
+summary = "PHASE-09 STOP-1: pause trigger point only decidable by experiment"
+detail = "SL-023 PHASE-09 batch A: signalling the run's abort from afterTool discarded the replaced tool result (abort lands before the tool task commits); from afterTools the ordering held only by a microtask race (a one-macrotask delay leaked a second provider request). Neither pi-durable 1.3.0 types nor the design expose this; resolved with a gate refusal 'paused'. The design's 'before another model request' had no mechanism."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

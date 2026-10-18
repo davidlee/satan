@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f51-37f2-7592-b0b5-e85709550172"
+recorded_at = "2026-10-18T14:01:25.234849086Z"
+kind = "friction"
+summary = "JobStore cannot be Proxied for fault injection (private #fields)"
+detail = "SL-023 PHASE-10 batch A: a Proxy over JobStore throws on private #db access, so crash-at-write-boundary fixtures must subclass (CrashingJobStore). Also: harness.inspect().scheduling is a cleaner I14 oracle than wrapping the harness — candidate memory."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
