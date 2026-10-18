@@ -1,0 +1,40 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 5
+slug = "sl023-door-as-sketched"
+title = "Oubliette SL-005 pins the room door as Plan F §5 sketches: agent user, runner key in the room declaration, unix-socket relay"
+record_kind = "assumption"
+status = "held"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+claim           = "Oubliette SL-005 pins the room door as Plan F \u00a75 sketches: a non-root agent user whose authorized key is the runner's (a value in the room's declaration), reached through a unix-socket relay distinct from the capsule relay, with a writable+executable home; no model door needed for option D."
+confidence      = "high"            # low | medium | high
+basis           = "observation"            # observation | prior-art | design-inference | external-source | operator-judgement
+validation_plan = "Check oubliette SL-005's locked design for \u00a75 user/key/relay and home writability before SL-023's door-touching decisions lock."
+validated_by    = ""
+validated_on    = ""
+invalidated_by  = ""
+invalidated_on  = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-023"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "EVD-005"

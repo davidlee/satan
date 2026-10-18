@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14d7610627a30bbf6002369387cb3"
+memory_key = "mem.pattern.satan.pi-env-oubliette-gateway"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Driving an oubliette guest from a host pi-durable harness: pi-env via relay, pi-ai via the LLM gateway"
+summary = "pi-env reaches a capsule through -F config ProxyCommand to /run/capsule/<slot>/ssh.sock; pi-ai's built-in provider re-pointed at 127.0.0.1:4000/v1 with the gateway key in its env var"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "oubliette", "durable"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "cf7c306b00fd13d307895b82abc0a7f983ed7f85"
+ref_name = "refs/heads/main"
+checkout_state_id = "884c9586dd87d2e4926f596fde772584cd3112484d44b1df8701b8de5a778b32"
+base_commit = "1c3c4de14bf2da32b6b83356c0d438ed4dd1b148"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "evidence"
+ref = "EVD-005"
+

@@ -1,0 +1,32 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 6
+slug = "sl023-room-down-policy"
+title = "What the patch runner does while the room is down: pause the job, or let the model retry against connection errors"
+record_kind = "question"
+status = "open"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+question    = "When the room is stopped mid-job (routine before probes, oubliette DEC-031), does the runner pause the job until the room is back, or let the model keep issuing tool calls that fail with connection errors?"
+why_matters = "EVD-005: an interrupted pi-env call reaches the model as an ordinary tool error and the model recovered; but while the room stays down every call fails (spawn_error), burning turns and budget. Bears on ceilings (REQ-004), job state (a paused state in patch_jobs?) and whether the runner needs room-liveness awareness."
+answer      = ""
+answered_by = ""
+answered_on = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-023"
