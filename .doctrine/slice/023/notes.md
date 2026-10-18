@@ -795,3 +795,121 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
   1. `cd ~/flakes && just home-switch` (runs `home-manager switch --flake '.#david@Sleipnir' <local overrides>`).
   2. Emacs: restart, or `M-x eval-buffer` in dl-satan.el, or `emacsclient -e '(setq satan-patch-runner-enabled nil)'`; reload satan checkout so the fence is live.
 - Post-deploy verification (agent): `systemctl --user is-active satan-patcher` -> `inactive`/unit not found; `systemctl --user is-enabled satan-patcher` -> not `enabled`; `pgrep -a satan-patcher` -> nothing; `emacsclient -e 'satan-patch-runner-enabled'` -> `nil`; `psql -d satan_memory -Atc "select state,count(*) from patch_jobs where state not in ('needs_review','failed','cancelled','accepted_external','stale') group by 1"` -> no rows; `emacsclient -e '(satan-tool/patch-job-create (list :directive "x" :mode "self-edit-mech" :repo "/tmp" :allowed_paths (list "a") :start nil) nil)'` -> `(error . "patch runner migration in progress ...")`.
+
+## PHASE-16 batch A (worker, sonnet)
+
+### A0: EX-5 precondition (recorded before the refusal was built)
+- `@earendil-works/pi-durable` 1.3.0 (installed, pinned beside pi-env 1.3.0). Re-run at malebolge `3eef85a`: `grep -rnwE "login|logout|getAuth" node_modules/@earendil-works/pi-durable/dist` returns 0 lines. pi-durable never calls or destructures `getAuth`/`login`/`logout` on the job's `Models` view.
+- `models.<member>` uses in pi-durable: `harness/generation.js` `streamSimple` (:315), `fetchDeferred` (:151), `cancelDeferred` (:183); `harness/compaction.js` `completeSimple` (:128), `getModel` (:64); `codemode/models.js` `classify`, `generateImages`, `getModelsOfType`, `getAvailableOfType`, `getModelOfType`. None is an auth member.
+- pi-ai resolves auth internally (`applyAuth` calls `this.getAuth` on the real `Models`); `gatedModels` delegates to `real` bound, so refusing the view's auth members cannot affect generation.
+- `generation.js:183` calls `cancelDeferred` on abort: the old gate refused it when exhausted (the bug DEC-057's 2026-10-19 ruling fixes).
+
+### Batch A produced (malebolge, uncommitted on baseline 3eef85a)
+- `src/runner/model-gate.ts`: `cancelDeferred` removed from `ENTRY_POINTS` and delegated bound to `real` (never consulted, never counted, never refused; DEC-057 2026-10-19). `getAuth`/`login`/`logout` now reject `GateRefused("credentials")` via one shared `refuseCredentials`; new `Refusal` member `"credentials"` with fixed text (contains no retryable wording; the EX-6 word-scan test covers it). `rethrow` deleted (unused). Doc comments updated.
+- `test/runner/model-gate.test.ts`: `credentials` added to `REFUSAL_REASONS`; `cancelDeferred` row dropped from `ENTRY_ROWS` and the refusal filter removed; unit tests for cancelDeferred-always-passes and for getAuth/login/logout refused (spies prove `real` untouched); harness test inverted: exhausted `model_requests: 1`, abort reaches the provider (`cancelledDeferred` non-empty), `model_requests` stays 1, no ceiling event, `seen == ["streamSimple"]`. fetchDeferred (exhausted refused) and runtime.models-from-a-tool tests unchanged and green.
+- Red evidence: 4 tests failed before the source change (credentials wording, cancelDeferred unit, auth unit, cancelDeferred harness); 47 passed.
+- Result: model-gate.test.ts 51 tests green; `just check` green (see hand-back for totals).
+- OQ-4 ruling applied: `GateRefused` with reason `credentials`.
+
+## PHASE-16 batch B (worker, opus)
+
+Malebolge, uncommitted on `0824e56` (batch A). Rulings applied: OQ-1 (a)
+`reachable(repo: RepoConfig, jobId)`, both adapters (the slot ignores the
+arguments); OQ-2 the probe IS the collect, so a `capsule` that cannot spawn is
+`ChannelFailed` (a deploy fault fails loud); OQ-3 the sheet's defaults.
+
+### What changed, by EX / VT
+- **EX-1 / VT-6** (`config.ts`): `probe_timeout_s` gone from `DOOR_KEYS.room`,
+  `RoomDoorConfig` and the parse, so `onlyKeys` refuses it under either kind.
+  Test: one `it.each` "probe_timeout_s under kind = %s refuses start: the probe
+  is a collect" (slot + room). Superseded rows deleted (parsed `probeTimeoutS`,
+  missing-key row, 0 / fractional rows, the old slot row); fixture line removed.
+- **EX-1, EX-2 / VT-1** (`room.ts`): port member is
+  `reachable(repo, jobId)`, doc per rev 63. Room `reachable` = `collect` with
+  `ChannelUnavailable` → false, everything else rethrown; it inherits the
+  `transfer_timeout_s` bound, the exit mapping and the VT-2 cross-check (no
+  second implementation). `roomProbeArgs` deleted; `RoomDoor` narrowed to
+  `room`. Slot: the private probe is renamed `probe` (still used by `step()`),
+  exported as `reachable`. Tests: describe "reachable(repo, job) over a room is
+  this job's collect (DEC-060, VT-1)" — 0 → true with the collect argv and the
+  quarantine ref written; 75 → false; hang → false at 600_000; 1 → ChannelFailed
+  `channel_failed`; 2 → `channel_refusal`; bad stdout → ChannelFailed; spawn
+  failure → ChannelFailed (OQ-2). Timeout describe renamed "room verbs past
+  their bound: transfer_timeout_s (no probe_timeout_s: the probe is a
+  collect)", bounds `[600_000 ×3]`; real `sleep 60` test now calls
+  `reachable(repo, JOB)` with `transferTimeoutS: 1`. "channel from config"
+  room case answers 75 and expects `["assistant","collect","satan","job/pj-1"]`.
+- **EX-3 / VT-2** (`room.ts`): room `collect` compares stdout (one trailing
+  `\n` allowed) with `lsRemoteLine(landed)` = `<oid>\t<ref>`; any difference is
+  `ChannelFailed` naming both. The "no pinned format" comment is gone. Fake
+  room: prints `<oid>\t<ref>\n`; new knob `collectStdout`. Test: it.each over
+  another oid, another ref (`refs/capsule/<room>/heads/job/other`), ref first,
+  space for the tab, two lines, empty.
+- **EX-4 / VT-3** (`jobs.ts`, `pause.ts`, `run.ts`, `collect.ts`):
+  `TRANSITIONS.waiting_room` gains `collecting` (LEGAL updated; a unit test
+  shows the edge charges no `active_ms`). `awaitRoom(deps, repo, job, signal)`
+  rethrows a probe `ChannelFailed`; `awaitResume` catches only `instanceof
+  ChannelFailed` → `roomProbeFailed` (`collecting`, `end_reason = error`,
+  payload `{ reason: error.reason, message }`), returned as `{ ended }` so the
+  existing `superviseRun` tail collects it. `Run` gains `repo` (set in
+  `openRun` from `Resolved`), so the waiting episode reuses the run's resolved
+  repo, no new lookup. `retryPendingCollection` passes the job's repo
+  (`config.repos.get`, as `collectJob` does) and maps a probe `ChannelFailed`
+  to `failOutright` with `collectionFailed(error)` = `{ reason:
+  "collection_failed", channel, message }`, now shared with `collectJob`'s
+  catch. Tests (pause.test.ts, "a probe ChannelFailed ends the job, never
+  parked (VT-3, EX-4)"): waiting half — transitions after `waiting_room` are
+  exactly `collecting, failed`, class `error`, no resume (2 provider calls);
+  pending half — `roomKindCollectWorld`, exit 1 on retry → `failed`, class
+  `error`, `channel: channel_failed`, last transitions `pending_collection,
+  failed`. Recovery (rejoin → awaitResume): "row 11, the rejoined probe
+  ChannelFailed: collecting with end_reason error, no resume".
+
+### Red evidence
+- VT-6: room row failed (config parsed) before the config change.
+- VT-2: all 6 rows failed (collect resolved) before the cross-check.
+- VT-1: 9 room tests failed before the adapter change ("exit 75" passed in red
+  only because the old ssh probe had been removed from the fake: not
+  discriminating in red, discriminating after).
+- VT-3: waiting half stayed `waiting_room`; pending half threw ChannelFailed.
+  jobs.test: 3 failed (edge missing). Recovery row 11 written after green;
+  checked by disabling the `awaitResume` catch: it and the VT-3 waiting test
+  both failed, then the catch was restored.
+
+### Result
+- `just check` green: 46 files, 1157 tests, lint zero warnings, typecheck and
+  format clean, coverage gate met.
+- Flake check: room/pause/recovery/collect tests (179) run 5× green. The fake
+  channels' git (slot and room `gitStep`) runs with `ISOLATED_ENV`
+  (`maintenance.auto=false`), so the extra per-probe fetch cannot start
+  detached maintenance. Agent commits in run worlds use their own env
+  (`GIT_CONFIG_GLOBAL=/dev/null`), unchanged and unaffected by this phase.
+
+### SL-006 sec-6 revision followed
+Oubliette `ad2dd7d` (last change to SL-006 design): collect prints one line
+`<oid>\t<ref>` in `ls-remote` order (sec-6 and the GitChannel row). This closes
+PHASE-15 relay item S1. Source and fixture header comments now cite it.
+
+### Judgement calls (for /audit)
+- **Cross-check is an exact line compare, not a parse.** The sheet suggested a
+  parse function reusing `OID`; comparing stdout with the expected line built
+  from the quarantine needs no parse and rejects every malformed shape. `OID`
+  is not reused here (the quarantine's oid needs no validation).
+- **Unconfigured repo in `retryPendingCollection`:** the probe is skipped and
+  the job goes to `collecting`, where `collectJob` fails it
+  `repo_not_configured`, as before this phase.
+- **`awaitRoom` takes the repo positionally** from `run.repo` (new `Run`
+  field) rather than resolving config itself; pause.ts stays door-free.
+- `prepare.test.ts`'s zero-argument stub still type-checks against the new
+  member, so it is unchanged.
+- The rejoined-probe recovery test ends class `no_changes`, not `error` (the
+  job never committed; the class table ranks `no_changes` first). It asserts
+  `end_reason = error`, class `no_changes` and the `waiting_room → collecting`
+  edge.
+
+### Friction
+- vitest does not typecheck, so a red run with a changed signature exercises
+  runtime behaviour only; `npx tsc --noEmit` was the guide for callers.
+- Lint caught `expect.stringMatching` in a `toMatchObject` as unsafe `any`
+  assignment, and a default destructured parameter tipping `complexity` past 8
+  in the fake; both reshaped.
