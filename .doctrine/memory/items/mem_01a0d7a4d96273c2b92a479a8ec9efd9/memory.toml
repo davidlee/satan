@@ -3,11 +3,11 @@ memory_key = "mem.fact.satan.broker-test-credential-stub-order-dependence"
 schema_version = 1
 lifespan = "episodic"
 memory_type = "fact"
-status = "active"
+status = "retracted"
 title = "An isolated broker test run reports credential_unavailable: order dependence on an earlier test's stub"
 summary = "satan-broker/run-emits-one-tick-row-outcome-spawned is green in the full suite and red when run alone — an earlier test installs the credential stub it depends on."
 created = "2026-09-25"
-updated = "2026-09-25"
+updated = "2026-10-18"
 
 [scope]
 paths = ["satan/test/satan-broker-test.el"]

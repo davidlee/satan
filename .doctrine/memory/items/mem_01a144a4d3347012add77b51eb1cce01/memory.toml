@@ -2,11 +2,11 @@ memory_uid = "mem_01a144a4d3347012add77b51eb1cce01"
 memory_key = "mem.fact.satan.jailed-pi-home-and-op-keys"
 schema_version = 1
 memory_type = "fact"
-status = "active"
+status = "retracted"
 title = "Jailed pi keeps its own home; provider keys are op:// refs"
 summary = "jailed-pi's persistent home is /home/agent/jail.nix/home/agent (its ~/.pi/agent settings, sessions, models-store). Provider *_API_KEY env vars on the host are unresolved op:// refs: run under 'op run --', outside Claude Code's sandbox (the 1Password desktop socket is blocked inside it)."
 created = "2026-10-16"
-updated = "2026-10-16"
+updated = "2026-10-18"
 
 [scope]
 paths = []
