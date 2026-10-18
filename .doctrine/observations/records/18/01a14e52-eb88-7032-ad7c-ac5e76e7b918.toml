@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e52-eb88-7032-ad7c-ac5e76e7b918"
+recorded_at = "2026-10-18T09:23:39.528303693Z"
+kind = "friction"
+summary = "Research thread misdescribed capsule provision's source repo (CAPSULE_REPO/profile, not cwd)"
+detail = "SL-023 PHASE-06: planner sheet relied on research thread 3; worker caught it only by reading ~/dev/oubliette/host/git-channel.nix. Oubliette slot verbs are recorded in no doctrine entity. Reinforces mem.pattern.satan.stub-must-mirror-real-binary-output."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

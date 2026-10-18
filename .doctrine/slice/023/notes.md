@@ -228,3 +228,43 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - `ack` is per job (S10): all ids and states are checked before any write, but the writes are separate transactions.
 - R6: `lineSplitter` buffers unbounded per connection (same-uid only).
 - `openRunnerStore`/`Harness.open` failures in `startRunner` leave the database open; the process exits on refusal.
+
+## PHASE-06 (worker, opus)
+
+### Produced
+- malebolge (uncommitted): `src/runner/room.ts` (port `GitChannel` {refresh, collect → `{ quarantine, ref, oid }`, reachable}; `ChannelUnavailable` / `ChannelFailed`; `jobBranch`; slot adapter `slotChannel(door, cli, reader)` over a `SlotCli` port with `execCapsule`; one-function argv builders `provisionArgs` / `collectArgs` / `probeArgs` / `returnToWorkArgs` (PROVISIONAL) and `collectedJobRef`; `channelFromConfig` and `roomConnection` (Q3: PHASE-07's env.ts calls it), both `StartRefused` without the door keys); `src/runner/collect.ts` (`collectJob`, `retryPendingCollection`, `CollectDeps` = {jobs, channel, quarantine, config}); `src/runner/exec.ts` (`runProgram`: the one subprocess helper, 64 MiB maxBuffer; `runGit` now sits on it); `src/runner/git.ts` (`resolveCommit`; `resolveBranch` delegates; `QuarantineReader` / `gitQuarantineReader.inspect` → ancestry, all-commit paths (`log -z --reverse --name-only --format= -m --no-renames`), commits oldest first, shortstat diffstat); `jobs.ts` (`recordReviewed` I7, `pendingCollectionExpired`); `errors.ts` += `reviewed_oid_mismatch`; `store.ts` `JobUpdate` += `baseOid`, `reviewedOid`, `quarantineRef`, `class`, `failure`, and `transition(id, to, now, payload?, fields?)`; `config.ts` `[door]` += `slot`, `quarantine` (~-expanded), `profile`; `views.resultBody(job, collected?)` adds `quarantine`, `commits`, `diffstat`; `control.ts` `result` reads the latest `collected` event.
+- Tests: `test/runner/room.test.ts` (VT-1, 45 cases incl. EX-3 structural test), `room-fixture.ts` (`roomWorld`, `fakeSlot`, `collectWorld`), `exec.test.ts`; `git-fixture.ts` gains `tempDir`, `gitIn`, `tempBareRepo`, `tempClone`, nested-path `commit`; extended git/config/jobs/store/views/control tests. 662 -> 730 tests; lines 97.69% -> 97.82%. 0 inline eslint-disable.
+
+### Learned
+- Oubliette's provision source repo is `${CAPSULE_REPO:-$profile_path}` (host/git-channel.nix `src=`), not the cwd; `<ref>` is any commit-ish there. The adapter passes the resolved **oid** with `CAPSULE_REPO = repo.path`, so the guest gets exactly the oid refresh returns (closes Q4's resolve/push race without a guest recheck). The push is unforced: a guest `work` ahead of the new base refuses (→ ChannelFailed).
+- `capsule <slot> <verb>` supplies `--capsule` and `--profile` itself (README); `--profile` in `provisionArgs` is only used when `[door] profile` is set.
+- Node's `ExecFileException` is `Omit<ErrnoException, "code">`, so `prefer-promise-reject-errors` refuses rejecting it directly; wrap in a new `Error` with `cause`. A signal kill has a non-numeric `code` and says nothing of the signal in `message`.
+- `git log -m` lists a merge's paths against each parent; without `--reverse` paths and commits come newest first.
+- Subclassing `JobStore` (`override transition`) is a clean crash-injection seam for the two-write window.
+
+### Deviations from the sheet
+- `SlotCli` is `(args, env?)`, not `(args, cwd?)`: the source repo travels in `CAPSULE_REPO` (above).
+- Exec: new `exec.ts` `runProgram` shared by `runGit` and `execCapsule` (no second exec path); maxBuffer 64 MiB (R6).
+- T4: `pendingCollectionExpired(job, now, maxMs): boolean` instead of a 3-valued decision taking `reachable`; the probe stays in `retryPendingCollection` (abandon at the bound without probing, Q6).
+- Store: `transition` gains an optional `fields` argument (the outcome columns ride the transition's one event) rather than collect.ts rebuilding the transition change; `JobUpdate` also gains `baseOid` (fixture, and PHASE-07's refresh).
+- Error outcomes go through `classify({ collection: { ok: false } })`, so a cancelled job whose collection fails ends `cancelled` (class `error`), not `failed`. Rows that cannot be collected at all (repo gone from config: `repo_not_configured`; no `base_oid`/`end_reason`: `corrupt_job`) and `collection_abandoned` go straight to `failed`, class `error`.
+- `failure` reasons used: `<class>` (+ `offending`), `collection_failed`, `check_failed` (inspect threw; `reviewed_oid` still recorded, collected event without commits), `reviewed_oid_mismatch` (+ `recorded`, `collected`), `collection_abandoned` (+ `pendingSince` ISO), `repo_not_configured`, `corrupt_job`.
+- EX-3 structural pattern is `/\bcapsule|\bslot|\bdoor/i` over every `src/` file; owners `runner/room.ts`, `runner/config.ts`. Exports other modules import (`channelFromConfig`, `roomConnection`, `GitChannel`, `ChannelUnavailable`) are named door-free so importing them passes.
+
+### Open (for /audit to reconcile)
+- Q1 drift (EX-1 wording): the slot's collect transfers every guest head; the adapter only reads and records `refs/capsule/<slot>/heads/job/<id>`. Narrowing the transfer belongs to the room adapter (SL-005). Commented at the collect site.
+- Q2 port drift (/reconcile): `collect` returns `{ quarantine, ref, oid }` (design §5.2 says `{ ref, oid }`); result details live in the `collected` event payload, not columns.
+- Q4 PROVISIONAL: `refresh` runs `capsule <slot> ssh git -C <guestPath> switch work` before provision (`returnToWorkArgs`, citing host/git-channel.nix:272, pending H1). A dirty guest worktree then fails provision (ChannelFailed), fail closed.
+- `reviewed_oid_mismatch` was appended to `ERROR_CODES`, the control socket's code set, though it never reaches the socket (design §5.2 lists the wire codes).
+- `execCapsule` itself is untested (no real `capsule` in tests by rule); H1 covers it.
+- H1 (human, slot f) — commands verbatim from the sheet; note the provision source is `CAPSULE_REPO` / the profile's path, not the cwd, so the `cd` alone may not select the repo:
+  ```
+  cd ~/dev/satan && capsule f provision main          # add --profile <name> if refused
+  capsule f ssh 'git -C <slot clone> switch -c job/h1-test work && \
+    git -C <slot clone> commit --allow-empty -m h1'
+  capsule f collect; echo "exit $?"
+  git -C /var/lib/capsule/collect/f.git for-each-ref refs/capsule/f/heads/
+  capsule f stop; capsule f collect; echo "exit $?"; capsule f ssh true; echo "probe $?"
+  capsule f start
+  ```
+  Expect: `refs/capsule/f/heads/job/h1-test` present; collect exits 1 while stopped and the probe is non-zero. Also confirm the quarantine is readable by the runner's user (R4), and what `provision` does when guest HEAD is `job/h1-test` (Q4).
