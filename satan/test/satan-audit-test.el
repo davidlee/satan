@@ -113,7 +113,7 @@ actions still verifies clean — `pre_spawn' must NOT pollute the
                                         :cause "panopticon_current_disconnected"
                                         :severity "warning"
                                         :message "compositor down"
-                                        :remediation "systemctl --user status panopticon-sway"
+                                        :remediation "systemctl --user status panopticon-desktop"
                                         :suppressed :false
                                         :dispatched_at "2026-05-22T11:13Z")))
            'done)

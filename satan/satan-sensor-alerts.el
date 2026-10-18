@@ -103,10 +103,10 @@ diff-friendly."
   '((:current_window
      ("disconnected" . ("panopticon_current_disconnected" "warning"
                         "panopticon's compositor connection is down; focused window unknown"
-                        "systemctl --user status panopticon-sway"))
+                        "systemctl --user status panopticon-desktop"))
      ("missing"      . ("panopticon_current_missing" "warning"
                         "no desktop state in the day's or previous day's raw desktop log"
-                        "systemctl --user status panopticon-sway"))
+                        "systemctl --user status panopticon-desktop"))
      ("malformed"    . ("panopticon_current_malformed" "warning"
                         "panopticon desktop log has no parseable line"
                         "inspect raw/desktop-YYYY-MM-DD.jsonl under satan-tools-activity-dir")))

@@ -501,7 +501,7 @@ v0 adds a sibling key, `pre_spawn`, to `actions.json`:
       "cause":        "panopticon_current_disconnected",
       "severity":     "warning",
       "message":      "panopticon's compositor connection is down; focused window unknown",
-      "remediation":  "systemctl --user status panopticon-sway",
+      "remediation":  "systemctl --user status panopticon-desktop",
       "suppressed":   false,
       "dispatched_at": "2026-05-22T11:13Z" }
   ]
