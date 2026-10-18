@@ -47,7 +47,7 @@ T1.5b landed before the attributes tranche (the negative classifier was self-con
 | [T4](T4-modes-field.md)            | Drop tool-spec `:modes` field       | merged      | —              | done — `:modes' stripped from all tool specs; `satan-mode-check-tool-references' enforces |
 | [T6](T6-test-monolith.md)          | Test monolith split                 | merged      | —              | done — monolith deleted, per-module files |
 | [T7](T7-intervention-records.md)   | Intervention records                | merged      | —              | done — audit events + projection + write API + observer read-path swap (PRs 1–5) |
-| [T8](T8-pi-adapter-keys.md)        | pi-adapter API-key externalisation  | not-started | —              | TBD (JSON vs README; user-decidable) |
+| [T8](T8-pi-adapter-keys.md)        | pi-adapter API-key externalisation  | abandoned   | —              | obsolete — SL-022 deleted the key list; keys are the LLM gateway's |
 
 Status enum: `not-started | in-progress | merged | abandoned`.
 
@@ -67,7 +67,7 @@ Mirrors CODE_REVIEW.md §6 — decisions only the user can make. Update inline a
 2. **`:harmful` automation policy.** *Pending user* (recommendation: manual-only v1).
 3. **`transcript.jsonl` retention post-T7.** *Pending user.*
 4. **T2 + T3 abort conditions.** *Pending user.*
-5. **T8 path (JSON spec vs README).** *Pending user* (recommendation: JSON).
+5. **T8 path (JSON spec vs README).** *Moot: SL-022 deleted the key list (T8 abandoned).*
 6. **Backfill policy for pre-T7 interventions.** *Pending user* (recommendation: option (a) clean break — no synthetic data).
 7. **Determinism test boundary acknowledgement.** *Noted; T7 PR 1 must update tests.*
 8. **Model visibility of `intervention_id`.** *Pending user* (recommendation: id-only v1; outcome-state on explicit `intervention_status` tool call).

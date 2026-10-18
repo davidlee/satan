@@ -1,5 +1,10 @@
 # THEMES.md — Architect's prioritized refactor themes
 
+> **Historical:** 2026-05 code review, pre-extraction (`dl-satan-*`
+> names). Credential and provider-key findings are obsolete since
+> SL-022: SATAN holds no provider key; model traffic goes through the
+> LLM gateway.
+
 Working artifact. The rendered review for the user lives at `CODE_REVIEW.md` at the project root; this file is the per-theme worksheet with full migration detail.
 
 Eight hypotheses (`THEMES.draft.md`) became seven surviving themes after sub-agent verification + a GPT-5.5 push-back round. Two were dropped (H5 patch-agent split — load-bearing; H9 defcustom scatter — no real finding). One was correction-only (H10 governance tool drift — scout's count was wrong; doc lists all 22+ tools). GPT-5.5 surfaced **T1.5** (negative-classifier design) as a theme distinct from T1's mechanical refactor and reframed **T7** around audit-as-source-of-truth.

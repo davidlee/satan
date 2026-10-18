@@ -137,3 +137,22 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 - `satan-run-id-time` (`satan-run.el`) has no production caller now (only `--credential-streak-age` used it); only its VT-28 test reads it. Candidate for deletion.
 - `mem.fact.satan.broker-test-credential-stub-order-dependence` is obsolete; retire or rewrite.
 - The stale `satan/satan-credential.elc` from a host compile is still on disk (untracked, gitignored).
+
+## PHASE-06 execution (docs: the gateway story)
+
+### Done
+- T1 baseline sweeps at 55f9507 matched the sheet's hit list. One sheet claim was wrong: the governance file map is rooted at `~/dev/satan/satan/`, so `harness/...` rows are correct paths; only the providers row's content was stale.
+- `docs/governance.md`: § Key resolution (op://) replaced by § Model access: the LLM gateway (two-client table naming `keys/satan` and `keys/pi`; launcher passes `LLM_GATEWAY_KEY` by fd and sets `LLM_GATEWAY_URL`; broker reads no key file or gateway path; refused launch = `spawn_failed` + `broker spawn-failed` with status, code, 2 KiB stderr tail; gateway error classes; `llm-gateway issue/list`; DEC-043 budgets as insurance, figures cited to `~/flakes/SATAN.md` § Secrets; the `harness-jail-profile` guard; one historical line). Also rewritten: § Jail and runtime governance (gateway key, not provider key; network reach), file-map rows for broker, patch adapter, harness providers; profiles carry `:model` only; tick default profile; spawn-contract paragraph (no key; SPEC-003 still says "key" until reconcile); open thread 5 (no provider selector); thread 12's "op popup count" marked obsolete; `just check-jails` added to Operations.
+- `docs/architecture.md`: gateway arrow in the centre-of-gravity diagram; Harness adapter paragraph (gateway, satan/pi split, no provider key, `spawn_failed`), pointing to governance for detail.
+- `docs/patch/handover.md`: frontmatter `status: historical`, description marked as a May-2026 record; top banner with current state (gateway, satan/pi split, adapter keyless, `api-key-vars` deleted); inline markers on § Op-cache path port and open item 3.
+- `docs/patch/plan.md`: model-access note under the intro (gateway, satan/pi split); §2.2 jailed-pi paragraph rewritten; risk 2 marked historical/resolved.
+- `docs/refactor/T8-pi-adapter-keys.md`: status `abandoned` (the refactor plan's enum has no `obsolete`), banner, "Current shape" heading renamed historical; `docs/refactor/plan.md` row and open question 5 updated.
+- `docs/review/`: identical historical banner on 04, 05, 06, 12, 99, THEMES; CODE_REVIEW's frozen note extended.
+- Jail network reach verified, not assumed: `specDev` and `research` profiles carry jail.nix `network` (shared host network); `offline` has none (`~/flakes` 8b0206dd `agents/jailed-agents.nix` `profileOptions`). The gateway is a loopback service, not a network filter.
+- Verify: `just check` exit 0, DB live (ert 1346 ran, 1340 passed, 6 skipped; Python 54 OK). `just check-jails` exit 0.
+
+### Learned
+- Sweep hygiene again: the new guard sentence named `SATAN_PROVIDER` as asserted-absent, tripping the secondary sweep; reworded to "no provider selector".
+
+### Open
+- governance.md § Tick mode family still describes pre-SL-022 tick defaults (3000 tokens / 4 calls / 30 s, three-tool surface); `satan-tick.el` registers 100000 / 10 / 120 s and a wider tool list. Not gateway-related; left for a docs chore.

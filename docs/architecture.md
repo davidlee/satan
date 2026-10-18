@@ -20,7 +20,7 @@ systemd / manual invocation
         ↓
 Emacs client            (current owner of every authority item)
         ↓
-jailed harness/model    (untrusted reasoning)
+jailed harness/model    (untrusted reasoning)  →  LLM gateway  →  providers
         ↓
 JSONL protocol          (membrane)
         ↓
@@ -64,11 +64,19 @@ places at once — the broker is an implementation, and an interchangeable
 one.
 
 ### Harness adapter
-Talks to a model or model-running environment (OpenRouter, gptel,
-pi.dev, zerostack, local model runner, fake test harness).
-Replaceable. Translates between the SATAN protocol and the
+Talks to a model or model-running environment (today the gptel harness
+and the fake test harness; pi.dev, zerostack or a local runner could
+follow). Replaceable. Translates between the SATAN protocol and the
 harness-specific interface. No adapter should become the canonical
 definition of SATAN behaviour.
+
+Model traffic goes through the host LLM gateway, never to a provider
+directly. SATAN holds no provider key: each jail's launcher passes the
+child a gateway client key — `satan` for the broker's harness, `pi`
+for the pi jails and the patch agent. A child that dies before `ready`
+(for example, the launcher refused for a missing key) ends
+`spawn_failed`. Detail: [[satan-governance]] § "Model access: the LLM
+gateway".
 
 ### Model
 Performs reasoning. Receives model-facing prompts, relevant hippocampus,

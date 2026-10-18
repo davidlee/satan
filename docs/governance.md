@@ -289,12 +289,17 @@ operationally active by accident.
 ## Jail and runtime governance
 
 Least privilege. The jail exposes only: prepared input bundle; allowed
-scratch/output paths; necessary model-provider network access if
-applicable; controlled environment variables. It does not expose:
-arbitrary home directory, secrets, SSH keys, browser profile, mail,
-full note tree with write access, database credentials, unrestricted
-shell authority. If the model needs access to something sensitive, it
-requests a broker tool.
+scratch/output paths; one LLM gateway client key (never a provider
+key); controlled environment variables. It does not expose:
+arbitrary home directory, provider keys or other secrets, SSH keys,
+browser profile, mail, full note tree with write access, database
+credentials, unrestricted shell authority. If the model needs access to
+something sensitive, it requests a broker tool.
+
+Network: the harness jail uses the `specDev` profile, which shares the
+host network; the gateway is how it reaches models, not a network
+filter. The fake harness runs `offline` (no network). See "Model
+access: the LLM gateway" below.
 
 ## Audit governance
 
@@ -386,7 +391,7 @@ justification):
 | `satan-patch.el` | Patch-agent aggregator + `satan-patch-*` interactive surface. |
 | `satan-patch-store.el` | `satan_patch.patch_jobs` PG store; INSERT fires `pg_notify` for queued rows. |
 | `satan-patch-worktree.el` | Worktree allocator + cleanup: `git worktree add <runs-dir>/<job-id>` against current HEAD, branch `satan/patch/<job-id>`. |
-| `satan-patch-adapter.el` | Adapter protocol (`Provider`-like); pre-resolves API keys via `my/op-read-env`. |
+| `satan-patch-adapter.el` | Adapter protocol and registry: runner dispatches a job to a named adapter, which returns a result plist via `on-finish`. Adapters handle no keys; `jailed-pi` is a `pi` gateway client. |
 | `satan-patch-adapter-pi.el` | `pi`-CLI adapter; stdin EOF close, `--system-prompt` (not `-file`), stderr persisted to sidecar log. |
 | `satan-patch-runner.el` | Background runner: claims queued jobs, spawns adapter in jail, persists transcript + result; `satan-patch-runner-enabled` defcustom can hand queue off to standalone Go daemon at `~/dev/satan-patcher/`. |
 | `satan-patch-listener.el` | `pg_notify` LISTEN bridge waking the runner without polling. |
@@ -409,7 +414,7 @@ justification):
 | `protocol/fixtures.json` | Shared valid/invalid exemplars consumed by both ert and python tests. |
 | `satan-audit.el` | Append-only artifact writer + 6-predicate verifier. |
 | `satan-budget.el` | Daily token ceiling: enumerates today's `runs/`, sums per-run `usage.tokens_total`, gates the broker pre-spawn. |
-| `satan-broker.el` | `make-process` driver: sentinel, timeout, op:// resolution, env pass; `--build-manifest`. |
+| `satan-broker.el` | `make-process` driver: sentinel, timeout, `SATAN_*` env pass (no key), typed launch refusal (`spawn_failed`), frontier commit on first `ready`; `--build-manifest`. |
 | `test/satan-memory-{migrate,grammar,canon,evidence,store,renormalize}-test.el` | Memory substrate ert against `satan_memory_test`; canon also enforces purity. |
 | `test/satan-tools-{memory,hippocampus,atsatan,docs,motive,patch}-test.el` | Tool-handler ert; hippocampus covers the cross-ref hook. |
 | `test/satan-bough-removal-gate-test.el` | SL-002 standing gates: production is bough-free outside a named allowlist; the preserved grammar vocabulary stays whole; no surface claims an enforced evidence byte cap. |
@@ -421,7 +426,7 @@ justification):
 | `harness/protocol.py` | JSONL validator + `emit*` / `read_tool_result`. |
 | `harness/bundle.py` | `load_bundle` / `load_manifest` / `build_system_prompt` / `build_tools`. |
 | `harness/runloop.py` | Turn loop + budget guard + tool-call dispatch. |
-| `harness/providers/{base,openrouter}.py`, `__init__.py` | `Provider` ABC, OpenAI-v1 adapter, `build_provider` registry. |
+| `harness/providers/base.py`, `__init__.py` | `Provider` ABC and the one OpenAI-compatible client; `build_provider` points it at the LLM gateway from `SATAN_MODEL`, `LLM_GATEWAY_URL`, `LLM_GATEWAY_KEY`. |
 | `harness/test_gptel_harness.py` | stdlib unittest cases (no network). |
 | `test/satan-MODULE-test.el` | Phase-3 unit ert, split per source module (T6). |
 | `test/satan-integration-test.el` | 1 e2e ert (skips unless `SATAN_TEST_JAIL_BIN` set). |
@@ -509,9 +514,10 @@ Capabilities: `morning` and `motd` (and `tick-*`) carry `memory-write` so
 the memory_mark + hippocampus cross-ref hook are admitted; `self-edit-*`
 lanes are read-only against the substrate.
 
-All three use DeepSeek (`deepseek-flash`, the `deepseek-flash` profile) by default.
-Override per-mode in `satan-mode.el`: `:provider`, `:model`,
-`:budget-tokens`.
+All three use the `deepseek-flash` profile by default. A profile
+(`satan-profiles`, `satan-mode.el`) carries `:model` only — a gateway
+model alias; the gateway, not SATAN, maps it to a provider. Override
+per-mode with `:model` or `:budget-tokens`.
 
 ## Tools
 
@@ -555,6 +561,9 @@ self-terminates with `reason=budget_tokens`.
 # Build the jailed harnesses.
 nix build .#satan-jailed-fake-harness  --no-link --print-out-paths
 nix build .#satan-jailed-gptel-harness --no-link --print-out-paths
+
+# Assert the harness launcher passes the gateway key by fd and no provider key.
+just check-jails
 
 # Standalone protocol smoke (no Emacs) — fake harness.
 JAIL=$(nix build .#satan-jailed-fake-harness --no-link --print-out-paths)/bin/jailed-satan-fake-harness
@@ -687,8 +696,8 @@ Each tick mode is registered via `satan-tick-register SHORT-NAME
 &rest OVERRIDES`. The helper applies the standard defaults
 (`org_read_context` + `notify_send` + `inbox_append` tool surface,
 `(notify inbox-write)` capabilities, 3000-token / 4-call / 30-second
-budget, `satan-context-tick` + `satan-output/tick`,
-`anthropic/claude-haiku-4.5`). Prompts live at
+budget, `satan-context-tick` + `satan-output/tick`, the
+`deepseek-flash` profile). Prompts live at
 `~/satan-corpus/prompts/tick/<short-name>.txt`. Add a tick by writing a
 prompt file and calling `(satan-tick-register "name")` from the
 config.
@@ -708,19 +717,80 @@ verifier accepts it.
 
 Owned by SPEC-003 (`doctrine spec show SPEC-003`): binary provenance and
 the deploy loop, the spawn contract (global base env, run-dir cwd,
-`SATAN_*` vars, key), and the jail profile by root. In one line: a bare
+`SATAN_*` vars), and the jail profile by root. The broker passes no
+key: the jail launcher supplies the gateway pair (next section).
+SPEC-003 still lists a key in the spawn contract until SL-022's
+reconcile revises it. In one line: a bare
 `:cmd` resolves on Emacs's global `exec-path` to the pinned
 `home.packages` install whichever buffer or timer starts the run
 (ISS-037); an absolute `:cmd` selects a dev build. Host paths for the
 jail live in `~/flakes/SATAN.md` § Jails.
 
-### Key resolution (op://)
+### Model access: the LLM gateway
 
-Mode `:provider` symbol maps via `satan-broker-provider-key-vars`
-(`openrouter` → `OPENROUTER_API_KEY`, plus `anthropic`, `openai`,
-`deepseek`). Broker calls `my/op-read-env` at spawn to resolve any
-`op://` ref to plaintext, wrapped in `condition-case` so a locked 1P
-doesn't crash the run. Resolved plaintext is forwarded into the jail.
+SATAN holds no provider key (SL-022). All model traffic goes through
+the host LLM gateway, which holds the provider credentials and maps a
+model alias to a provider. Its contract is flakes:SPEC-001; its
+reasoning-effort convention is flakes:DEC-074 (both in `~/flakes`).
+
+Each jail is a gateway client with its own key file:
+
+| client | key file | jails |
+|---|---|---|
+| `satan` | `keys/satan` | `satan-jailed-gptel-harness` |
+| `pi` | `keys/pi` | `jailed-pi`, `jailed-pi-research`, `jailed-shell`, `jailed-claude` |
+
+`SATAN-jailed-fake-harness` is `offline` and needs no key. The pi jails
+share one pi home, hence one key; `jailed-claude` signs in by OAuth but
+runs pi subagents on the `pi` key.
+
+How the key reaches the child:
+
+- The jail launcher (generated by `flake.nix` via `gatewayClient`)
+  reads `~/.config/llm-gateway/keys/<name>`, passes it into the jail as
+  `LLM_GATEWAY_KEY` over a file descriptor (bwrap `--args`, never
+  argv), and sets `LLM_GATEWAY_URL`.
+- The harness reads `SATAN_MODEL`, `LLM_GATEWAY_URL` and
+  `LLM_GATEWAY_KEY` (`harness/providers/__init__.py`) and ignores any
+  other provider variable.
+- The broker reads no key file and no gateway path (SPEC-002 REQ-018:
+  no host literals); it adds only `SATAN_*` variables (and a mode's
+  `:harness :env`, empty in every shipped mode) to the global base env. The patch runner and pi adapter pass `process-environment`
+  unchanged.
+
+A refused launch. The launcher exits 1 before the harness starts when
+the key file is missing, empty or unreadable, or the gateway is not
+running, printing the fix to stderr. Any child that dies before `ready`
+without sending `error` is handled the same way (DEC-041):
+
+- the run ends `failed` with reason `spawn_failed`;
+- the audit gains `broker spawn-failed` with the process status
+  (`exit`/`signal`), exit code and the last 2 KiB of stderr — the
+  launcher names the key file's path, never its content;
+- perception frontiers commit only on the first `ready`, so a refused
+  launch consumes no percept.
+
+Errors from the gateway itself reach the harness as API errors and are
+classified there (`harness/runloop.py`): bad key 401 → `auth`; key
+budget spent, 429 with type `budget_exceeded` → `credits` (not rate
+limiting); model not on the key's list, 403 → `auth`.
+
+Issuing keys:
+`llm-gateway issue <name> --models <m> --budget <usd> --out ~/.config/llm-gateway/keys/<name>`;
+`llm-gateway list` shows spend. Gateway budgets are deployment-side
+insurance against runaway spend (DEC-043), not SATAN policy:
+`satan-budget-daily-tokens` and `SATAN_MAX_BUDGET_TOKENS` remain
+SATAN's ceilings. Current models and budgets per key:
+`~/flakes/SATAN.md` § Secrets.
+
+Guard: `just check-jails` builds the flake check
+`harness-jail-profile`, which asserts the harness launcher forwards no
+`API_KEY` variable and no provider selector, passes the gateway key by
+fd, and keeps it off argv.
+
+Historical: before SL-022 the broker mapped a mode's provider to a
+provider key variable and resolved 1Password refs at spawn
+(DEC-020..022; replaced by DEC-041 and DEC-042).
 
 ### Four traps from the Nix integration
 
@@ -782,9 +852,9 @@ Numbered for cross-referencing in commits / changelog.
    `satan_final`. If it doesn't, the harness force-terminates with
    `final{reason=budget_tokens}` (the old behaviour, now an escape
    hatch rather than the primary path).
-5. **Pi / Zerostack harness adapter** — same `Provider` interface,
-   different runtime. Plug-in via env (`SATAN_PROVIDER=pi`). Not
-   started.
+5. **Pi / Zerostack harness adapter** — a different runtime behind the
+   same JSONL protocol. There is no provider-selector env; such a
+   harness would be another jail on a gateway client key. Not started.
 6. **Self-describing manifest** — ✅ done 2026-05-19 (phase 2E).
    Broker writes full JSON Schema for each allowed tool into
    `manifest.json["tools"]`; harness reads verbatim. Descriptions are
@@ -826,7 +896,8 @@ Numbered for cross-referencing in commits / changelog.
     content (tick + self-edit prompts routing patch-shaped work via
     `patch_job_create`) in flight. 5 open issues per
     `docs/patch/handover.md` (PATH resolution for jailed-pi,
-    cancel doesn't kill process, op popup count, empty stdout log on
+    cancel doesn't kill process, op popup count — obsolete since
+    SL-022, the adapter resolves no key — empty stdout log on
     success, §4.6 acceptance owed). Possible pivot: extract runner to
     the standalone Go daemon at `~/dev/satan-patcher/` (noted in
     `patch/archive/handover-phase3-mechanism.md`; not decided). Phase

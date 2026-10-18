@@ -1,5 +1,10 @@
 # 99-QUESTIONS.md — Unresolved questions
 
+> **Historical:** 2026-05 code review, pre-extraction (`dl-satan-*`
+> names). Credential and provider-key findings are obsolete since
+> SL-022: SATAN holds no provider key; model traffic goes through the
+> LLM gateway.
+
 These are places where I was unsure, deferred judgement, or saw ambiguous signal. The architect should resolve.
 
 ## Architecture/layering

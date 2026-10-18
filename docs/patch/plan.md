@@ -13,6 +13,13 @@ metadata:
 
 Companion to [brief.md](brief.md). Brief = what + why; this = how + sequence.
 
+> **Model access (since SL-022, 2026-10).** `jailed-pi` reaches models
+> through the host LLM gateway as the `pi` client (`keys/pi`, supplied
+> by its launcher); the broker's harness is the separate `satan` client.
+> SATAN and the adapter hold no provider key. Key-handling text below
+> predates this and is marked. Detail: [governance](../governance.md)
+> § "Model access: the LLM gateway".
+
 ## 0. Settled decisions
 
 | Topic | Decision | Source |
@@ -237,7 +244,7 @@ jailed-pi \
   -p <directive-with-context>
 ```
 
-Run with `default-directory = <worktree-path>`. `jailed-pi` already bwraps cwd to `/workspace/<basename>` via `baseJailOptions` and forwards API keys via `apiKeyPassThrough` (no `op run` needed since `passApiKeysFromEnv` reads from Emacs's env — same path SATAN broker uses today, see memory `satan-secret` pattern).
+Run with `default-directory = <worktree-path>`. `jailed-pi` already bwraps cwd to `/workspace/<basename>` via `baseJailOptions`. It is a `pi` gateway client: its launcher passes `keys/pi` into the jail as `LLM_GATEWAY_KEY`; the adapter forwards no key and passes `process-environment` unchanged. (Historical, pre-SL-022: keys were forwarded from Emacs's env via `apiKeyPassThrough`.)
 
 Parse the JSON event stream as it lands. Track:
 
@@ -411,7 +418,7 @@ Add iff doing so doesn't blow scope.
 ## 5. Risks & open questions
 
 1. **jailed-pi cwd vs worktree.** `baseJailOptions` binds `$PWD` to `/workspace/<basename>`. If worktree path is `~/.local/state/satan/patch-agent/worktrees/<job_id>`, basename `<job_id>` is fine, but pi inside the jail sees `/workspace/<job_id>`. Pi's own `--worktree`-related commands should be disabled (`--tools` allowlist excludes them — we pass `read,write,edit,bash,grep,find,ls` only). Confirm at impl time that pi doesn't refuse to start without a sensible-looking project name.
-2. **API key path inside jail.** `passApiKeysFromEnv = useOpEnv = true` means the bwrap wrapper does `op run` then `--setenv`. Emacs invoking `jailed-pi` from a desktop-launched session: `op` must be on PATH and unlocked. Already a precondition for SATAN broker today; should "just work". Document as a known precondition.
+2. **API key path inside jail.** *(Historical; resolved by SL-022: `jailed-pi` uses the gateway's `pi` key, so there is no `op` precondition.)* `passApiKeysFromEnv = useOpEnv = true` means the bwrap wrapper does `op run` then `--setenv`. Emacs invoking `jailed-pi` from a desktop-launched session: `op` must be on PATH and unlocked. Already a precondition for SATAN broker today; should "just work". Document as a known precondition.
 3. **`accept_all` permission inside pi.** Default pi permission mode is "standard" — interactive prompts. For headless we need `--accept-all` or config `accept_all: true`. Decision: pass `--accept-all` from the adapter, on the basis that the jail itself is the safety boundary. Document explicitly.
 4. **Repo as worktree target with `~/.emacs.d` open in user's Emacs.** Creating a worktree off `~/.emacs.d` is fine (git supports many worktrees of one repo). But `home-manager switch` from the user's session vs concurrent commits from the worktree could race during nix evaluation. Not a correctness problem (separate working trees), but worth a note.
 5. **Pi vs zerostack feature parity.** Pi has clear headless mode. Zerostack adapter is TUI-first; if/when we need it, plan to use its ACP server (`--features acp`) and speak ACP. Out of scope for v1.

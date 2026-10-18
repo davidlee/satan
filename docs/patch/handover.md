@@ -1,15 +1,25 @@
 ---
 name: satan-patch-handover
-description: SATAN patch-agent handover — current state (Phase-3 content + op-cache port + pi fixes)
+description: SATAN patch-agent handover — May 2026 session record (Phase-3 content + op-cache port + pi fixes); historical
 metadata:
   type: handover
   topic: satan-patch
-  status: living
+  status: historical
   updated_at: 03398479
   verified_at: 03398479
 ---
 
 # SATAN patch-agent — Handover (Phase-3-content + op-cache port)
+
+> **Historical (May 2026).** This is a session record, not current
+> state. Its key handling is superseded by SL-022 (2026-10): model
+> traffic goes through the host LLM gateway, and SATAN holds no
+> provider key. The broker's harness is the `satan` gateway client;
+> `jailed-pi` is the `pi` client and gets `keys/pi` from its own
+> launcher. The pi adapter resolves, holds and scrubs no key and passes
+> `process-environment` unchanged; `satan-patch-adapter-pi-api-key-vars`
+> is deleted. Current account: [governance](../governance.md) § "Model
+> access: the LLM gateway".
 
 Builds on [archive/handover-phase3-mechanism.md](archive/handover-phase3-mechanism.md) (Phase-3 mechanism).  Read that
 first; this file is a delta.
@@ -74,7 +84,7 @@ T4 deleted it; the mode-spec `:tools' allowlist is now the only
 source of truth and `satan-mode-check-tool-references' enforces
 consistency at load.
 
-## Op-cache path port (the big one)
+## Op-cache path port (the big one) — historical, superseded by SL-022
 
 Symptom of the day: `jailed-pi` wedged for 21 min — wrapper sat in
 `op run` waiting for biometric.  Root cause: prior to this session
@@ -196,7 +206,7 @@ direnv-elisp's env loaded).
    sits behind a cancelled-but-still-spawned ancestor and only
    runs after the timeout.
 
-3. **Op popup count after Emacs restart.**  `my/op--cache` is
+3. **Op popup count after Emacs restart.** *(Obsolete since SL-022: the adapter resolves no key.)*  `my/op--cache` is
    per-Emacs-session, so the first tick post-restart prompts
    biometric for each `op://` ref in
    `satan-patch-adapter-pi-api-key-vars`.  User saw 4 prompts.

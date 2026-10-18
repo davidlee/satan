@@ -1,6 +1,10 @@
 # SATAN code review — refactor recommendations before attributes lands
 
 > **Note (2026-05-23):** Themes extracted into [`docs/satan/refactor/`](docs/satan/refactor/plan.md) as living per-theme briefs. This file preserved as the frozen point-in-time review.
+>
+> **Historical (2026-10):** pre-extraction (`dl-satan-*` names).
+> Credential and provider-key findings are obsolete since SL-022: SATAN
+> holds no provider key; model traffic goes through the LLM gateway.
 
 ## 1. Executive summary
 

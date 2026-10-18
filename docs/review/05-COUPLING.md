@@ -1,5 +1,10 @@
 # 05-COUPLING.md — Coupling smells
 
+> **Historical:** 2026-05 code review, pre-extraction (`dl-satan-*`
+> names). Credential and provider-key findings are obsolete since
+> SL-022: SATAN holds no provider key; model traffic goes through the
+> LLM gateway.
+
 ## Broker centrality (intentional — see architecture doc)
 
 `dl-satan-broker.el` requires 14 modules. It is the central orchestration hub. Per the architecture doc, this is the design intent. However:

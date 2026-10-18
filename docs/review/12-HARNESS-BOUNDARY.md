@@ -1,5 +1,10 @@
 # 12-HARNESS-BOUNDARY.md — Elisp↔Python harness contract surface
 
+> **Historical:** 2026-05 code review, pre-extraction (`dl-satan-*`
+> names). Credential and provider-key findings are obsolete since
+> SL-022: SATAN holds no provider key; model traffic goes through the
+> LLM gateway.
+
 ## Protocol (JSONL messages)
 
 Both sides implement and test against the same spec (`docs/satan/protocol.md`) and fixtures (`protocol/fixtures.json`):
