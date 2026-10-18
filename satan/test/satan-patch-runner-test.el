@@ -13,7 +13,6 @@
 (require 'satan-memory-migrate)
 (require 'satan-tools-patch)
 (require 'satan-patch-adapter-pi)
-(require 'satan-patch-fixture)
 
 (defconst satan-patch-runner-test--db "satan_memory_test")
 
@@ -31,6 +30,35 @@
   (satan-db-psql
    satan-patch-runner-test--db satan-memory-migrate-host satan-memory-migrate-psql-program
    (list "-c" "TRUNCATE patch_job_events, patch_jobs RESTART IDENTITY CASCADE")))
+
+(defun satan-patch-runner-test--insert-queued (repo &rest overrides)
+  "Insert a queued job for REPO via the store; return `(ok :job_id ID :state S)'.
+OVERRIDES (:directive :mode :base_ref :allowed_paths :adapter) are merged
+onto defaults.  Lived in satan-patch-fixture.el until that became the fake
+runner (SL-023 PHASE-13); dies with this suite."
+  (let* ((args (append overrides
+                       (list :directive "fix the thing"
+                             :mode "self-edit-mech"
+                             :base_ref "HEAD"
+                             :allowed_paths '("satan/" "test/")
+                             :adapter "pi")))
+         (mode (plist-get args :mode))
+         (job-id (satan-patch-store-job-id-new
+                  (format-time-string "%Y-%m-%dT%H:%M:%S%z"))))
+    (pcase (satan-patch-store-insert
+            :job-id job-id :mode mode
+            :directive (plist-get args :directive)
+            :repo repo
+            :base_ref (plist-get args :base_ref)
+            :branch (satan-patch-worktree-branch-name mode "fixture")
+            :worktree_path (satan-patch-worktree-path-for job-id)
+            :adapter (plist-get args :adapter)
+            :allowed_paths (plist-get args :allowed_paths))
+      (`(ok . ,_)
+       (satan-patch-store-event
+        job-id "transition" (list :from nil :to "queued" :reason "created"))
+       (cons 'ok (list :job_id job-id :state "queued")))
+      (err err))))
 
 (defun satan-patch-runner-test--mkrepo (dir)
   (make-directory dir t)
@@ -134,7 +162,7 @@ BEHAVIOR is one of:
 
 (defun satan-patch-runner-test--enqueue (repo)
   "Insert a queued job pointing at REPO with adapter=fake.  Returns job-id."
-  (pcase (satan-patch-fixture-enqueue
+  (pcase (satan-patch-runner-test--insert-queued
           repo :directive "fix it" :base_ref "main" :adapter "fake")
     (`(ok . ,info) (plist-get info :job_id))
     (other (ert-fail (format "enqueue: %S" other)))))
@@ -336,7 +364,7 @@ BEHAVIOR is one of:
             (call-process "git" nil nil nil "add" "satan/hello.el")
             (call-process "git" nil nil nil "commit" "-q" "-m" "seed"))
           (let* ((create
-                  (satan-patch-fixture-enqueue
+                  (satan-patch-runner-test--insert-queued
                    repo
                    :directive
                    "Replace the contents of satan/hello.el with the single line ';; replaced\\n'. Then commit."

@@ -1,239 +1,238 @@
-;;; satan-tools-patch-test.el --- broker-tool ert -*- lexical-binding: t; -*-
+;;; satan-tools-patch-test.el --- the patch_job_* tools -*- lexical-binding: t; -*-
 
-;; Exercises the five patch_job_* tools end-to-end against
-;; `satan_memory_test'.  Builds a throwaway git repo for the
-;; worktree-touching test paths.
+;; The tools against the fake runner in satan-patch-fixture.el (SL-023
+;; VT-1): no database, no live socket.  `satan-intervention-create' is
+;; stubbed; its own suite covers it.
 
 (require 'ert)
 (require 'cl-lib)
+(require 'satan-tools)
 (require 'satan-tools-patch)
-(require 'satan-patch-store)
-(require 'satan-patch-worktree)
-(require 'satan-memory-migrate)
 (require 'satan-patch-fixture)
 
-(defconst satan-tools-patch-test--db "satan_memory_test")
+(defconst satan-tools-patch-test--create-args
+  (list :directive "fix the flaky walk" :mode "fix" :repo "goad-walk"
+        :allowed_paths '("src/" "test/"))
+  "A valid `patch_job_create' call.")
 
-(defun satan-tools-patch-test--reachable-p ()
-  (pcase (satan-db-psql
-          satan-tools-patch-test--db satan-memory-migrate-host satan-memory-migrate-psql-program
-          (list "-A" "-t" "-c" "SELECT 1"))
-    (`(ok . ,_) t)
-    (_ nil)))
+(defconst satan-tools-patch-test--summary
+  (list :jobId "pj-1" :state "needs_review" :submissionId "sat-1"
+        :mode "fix" :repo "goad-walk" :baseRef "main"
+        :createdAt "2026-10-19T00:00:00.000Z" :updatedAt "2026-10-19T00:05:00.000Z"
+        :endReason "completed" :class "partial" :reviewedOid "abc123")
+  "A wire summary of a job awaiting review, flagged partial.")
 
-(defun satan-tools-patch-test--truncate ()
-  (satan-db-psql
-   satan-tools-patch-test--db satan-memory-migrate-host satan-memory-migrate-psql-program
-   (list "-c" "TRUNCATE patch_job_events, patch_jobs RESTART IDENTITY CASCADE")))
+(defvar satan-tools-patch-test--interventions nil
+  "Keyword plists `satan-intervention-create' was called with, newest first.")
 
-(defun satan-tools-patch-test--mkrepo (dir)
-  (make-directory dir t)
-  (let ((default-directory dir))
-    (call-process "git" nil nil nil "init" "-q" "-b" "main")
-    (call-process "git" nil nil nil "config" "user.email" "t@t")
-    (call-process "git" nil nil nil "config" "user.name" "t")
-    (with-temp-file (expand-file-name "README" dir) (insert "seed\n"))
-    (call-process "git" nil nil nil "add" "README")
-    (call-process "git" nil nil nil "commit" "-q" "-m" "init"))
-  dir)
+(defun satan-tools-patch-test--intervention-stub (result)
+  "A `satan-intervention-create' recording its args and returning RESULT.
+RESULT is the id to return, or `:signal' to signal a `user-error'."
+  (lambda (&rest args)
+    (push args satan-tools-patch-test--interventions)
+    (if (stringp result)
+        result
+      (user-error "intervention projection failed"))))
 
-(defmacro satan-tools-patch-test--with-fixture (var-repo &rest body)
-  "Postgres-backed fixture: truncated tables, temp git repo and worktree root.
-Binds VAR-REPO to the repo path for BODY."
+(defmacro satan-tools-patch-test--with-interventions (result &rest body)
+  "Run BODY with `satan-intervention-create' stubbed to RESULT.
+RESULT is the id to return, or `:signal' to signal a `user-error'."
   (declare (indent 1))
-  `(progn
-     (skip-unless (satan-tools-patch-test--reachable-p))
-     (skip-unless (executable-find "git"))
-     (satan-tools-patch-test--truncate)
-     (let* ((,var-repo (make-temp-file "satan-patch-tools-repo-" t))
-            (wt-root (make-temp-file "satan-patch-tools-wt-" t))
-            (satan-patch-store-database satan-tools-patch-test--db)
-            (satan-patch-worktree-root wt-root))
-       (unwind-protect
-           (progn
-             (satan-tools-patch-test--mkrepo ,var-repo)
-             ,@body)
-         (when (file-directory-p ,var-repo) (delete-directory ,var-repo t))
-         (when (file-directory-p wt-root) (delete-directory wt-root t))))))
+  `(let ((satan-tools-patch-test--interventions nil))
+     (cl-letf (((symbol-function 'satan-intervention-create)
+                (satan-tools-patch-test--intervention-stub ,result)))
+       ,@body)))
+
+(defun satan-tools-patch-test--create (&rest overrides)
+  "Call `patch_job_create' with the valid args, OVERRIDES first."
+  (satan-tool/patch-job-create
+   (append overrides satan-tools-patch-test--create-args) '(:id "run-1")))
+
+(defun satan-tools-patch-test--submitting (job-id)
+  "A fake runner accepting a submit as JOB-ID, queued."
+  (satan-patch-fixture-answering
+   `(("submit" . (:jobId ,job-id :state "queued")))))
 
 ;; ---------------------------------------------------------------------
-;; create (fenced)
+;; patch_job_create
 ;; ---------------------------------------------------------------------
 
-(ert-deftest satan-tools-patch/create-refused-migration-in-progress ()
-  "Valid calls are refused during the SL-023 cutover; nothing is inserted."
-  (let ((repo (make-temp-file "satan-patch-fence-repo-" t)))
-    (unwind-protect
-        (cl-letf (((symbol-function 'satan-patch-store-insert)
-                   (lambda (&rest _) (ert-fail "store insert reached"))))
-          (pcase (satan-tool/patch-job-create
-                  (list :directive "x" :mode "self-edit-mech"
-                        :repo repo :allowed_paths '("satan/") :start nil)
-                  nil)
-            (`(error . ,msg)
-             (should (string-match-p "patch runner migration in progress" msg)))
-            (other (ert-fail (format "expected refusal, got %S" other)))))
-      (delete-directory repo t))))
+(ert-deftest satan-tools-patch/create-returns-intervention_id-and-sends-one-submissionId ()
+  (satan-patch-fixture-with-runner (satan-tools-patch-test--submitting "pj-7")
+    (satan-tools-patch-test--with-interventions "run-1.iv001"
+      (should (equal (satan-tools-patch-test--create)
+                     '(ok :job_id "pj-7" :state "queued"
+                          :intervention_id "run-1.iv001")))
+      (let ((requests (satan-patch-fixture-requests)))
+        (should (= 1 (length requests)))
+        (let ((submit (car requests)))
+          (should (equal (plist-get submit :op) "submit"))
+          (should (string-prefix-p "sat-" (plist-get submit :submissionId)))
+          (should (equal (plist-get submit :directive) "fix the flaky walk"))
+          (should (equal (plist-get submit :mode) "fix"))
+          (should (equal (plist-get submit :repo) "goad-walk"))
+          (should (equal (plist-get submit :allowedPaths) '("src/" "test/")))
+          (should-not (plist-member submit :baseRef))
+          (should-not (plist-member submit :tags))))
+      (let ((iv (car satan-tools-patch-test--interventions)))
+        (should (equal (plist-get iv :kind) "patch_job"))
+        (should (equal (plist-get iv :target-surface) "pj-7"))
+        (should (equal (plist-get iv :message) "fix the flaky walk"))))))
 
-(ert-deftest satan-tools-patch/create-rejects-missing-repo ()
-  (skip-unless (satan-tools-patch-test--reachable-p))
-  (satan-tools-patch-test--truncate)
-  (let ((satan-patch-store-database satan-tools-patch-test--db))
-    (pcase (satan-tool/patch-job-create
-            (list :directive "x" :mode "self-edit-mech"
-                  :repo "/nonexistent/repo"
-                  :allowed_paths '("/"))
-            nil)
-      (`(error . ,_) t)
-      (other (ert-fail (format "expected error, got %S" other))))))
+(ert-deftest satan-tools-patch/create-sends-the-optional-fields-it-is-given ()
+  (satan-patch-fixture-with-runner (satan-tools-patch-test--submitting "pj-7")
+    (satan-tools-patch-test--with-interventions "iv"
+      (satan-tools-patch-test--create
+       :base_ref "dev" :tags '("walk") :source '(:slug "flaky")
+       :context '(:issue 4))
+      (let ((submit (car (satan-patch-fixture-requests))))
+        (should (equal (plist-get submit :baseRef) "dev"))
+        (should (equal (plist-get submit :tags) '("walk")))
+        (should (equal (plist-get submit :source) '(:slug "flaky")))
+        (should (equal (plist-get submit :context) '(:issue 4)))))))
 
-(ert-deftest satan-tools-patch/create-rejects-bad-mode ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tool/patch-job-create
-            (list :directive "x" :mode "bogus"
-                  :repo repo :allowed_paths '("/"))
-            nil)
-      (`(error . ,msg) (should (string-match-p "unknown mode" msg)))
-      (other (ert-fail (format "expected error, got %S" other))))))
+(ert-deftest satan-tools-patch/create-returns-intervention_error-when-the-intervention-fails ()
+  "The job exists either way: the model must see its id, not a bare error."
+  (satan-patch-fixture-with-runner (satan-tools-patch-test--submitting "pj-7")
+    (satan-tools-patch-test--with-interventions :signal
+      (should (equal (satan-tools-patch-test--create)
+                     '(ok :job_id "pj-7" :state "queued"
+                          :intervention_error "intervention projection failed"))))))
 
-(ert-deftest satan-tools-patch/create-rejects-empty-allowed ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tool/patch-job-create
-            (list :directive "x" :mode "self-edit-mech"
-                  :repo repo :allowed_paths '())
-            nil)
-      (`(error . ,_) t)
-      (other (ert-fail (format "expected error, got %S" other))))))
+(ert-deftest satan-tools-patch/create-fails-closed-when-the-runner-is-unreachable ()
+  (let ((satan-patch-rpc-socket
+         (expand-file-name "absent.sock" (make-temp-file "satan-tools-patch-" t))))
+    (satan-tools-patch-test--with-interventions "iv"
+      (pcase (satan-tools-patch-test--create)
+        (`(error . ,msg) (should (string-prefix-p "patch runner unreachable" msg)))
+        (other (ert-fail (format "expected error, got %S" other))))
+      (should-not satan-tools-patch-test--interventions))))
 
-;; ---------------------------------------------------------------------
-;; status + result
-;; ---------------------------------------------------------------------
+(ert-deftest satan-tools-patch/create-reports-a-refusal-with-its-code ()
+  (satan-patch-fixture-with-runner
+      (lambda (_request)
+        (satan-patch-fixture-refusal "invalid_request" "unknown repo \"x\""))
+    (satan-tools-patch-test--with-interventions "iv"
+      (should (equal (satan-tools-patch-test--create)
+                     '(error . "invalid_request: unknown repo \"x\"")))
+      (should-not satan-tools-patch-test--interventions))))
 
-(ert-deftest satan-tools-patch/status-and-result-round-trip ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
-      (`(ok . ,info)
-       (let ((job-id (plist-get info :job_id)))
-         (pcase (satan-tool/patch-job-status (list :job_id job-id) nil)
-           (`(ok . ,s)
-            (should (equal (plist-get s :state) "queued"))
-            (should (equal (plist-get s :directive) "fix the thing")))
-           (e (ert-fail (format "status: %S" e))))
-         (pcase (satan-tool/patch-job-result (list :job_id job-id) nil)
-           (`(ok . ,r)
-            (should (equal (plist-get r :state) "queued"))
-            (should (null (plist-get r :result)))
-            (should (equal (plist-get r :review_commands) '())))
-           (e (ert-fail (format "result: %S" e))))))
-      (err (ert-fail (format "create: %S" err))))))
+(ert-deftest satan-tools-patch/create-never-resends-a-submissionId-after-a-hang ()
+  (satan-patch-fixture-with-runner (lambda (_request) :hang)
+    (let ((satan-patch-rpc-timeout 0.2))
+      (satan-tools-patch-test--with-interventions "iv"
+        (pcase (satan-tools-patch-test--create)
+          (`(error . ,msg) (should (string-match-p "no response" msg)))
+          (other (ert-fail (format "expected error, got %S" other))))
+        (should (= 1 (length (satan-patch-fixture-requests))))
+        (should-not satan-tools-patch-test--interventions)))))
 
-(ert-deftest satan-tools-patch/status-missing-job ()
-  (skip-unless (satan-tools-patch-test--reachable-p))
-  (satan-tools-patch-test--truncate)
-  (let ((satan-patch-store-database satan-tools-patch-test--db))
-    (pcase (satan-tool/patch-job-status (list :job_id "patch_missing") nil)
-      (`(error . ,msg) (should (string-match-p "no such job" msg)))
-      (other (ert-fail (format "expected error, got %S" other))))))
+(ert-deftest satan-tools-patch/create-refuses-empty-allowed_paths-before-the-runner ()
+  (satan-patch-fixture-with-runner (satan-tools-patch-test--submitting "pj-7")
+    (pcase (satan-tools-patch-test--create :allowed_paths '())
+      (`(error . ,msg) (should (string-match-p "allowed_paths" msg)))
+      (other (ert-fail (format "expected error, got %S" other))))
+    (should-not (satan-patch-fixture-requests))))
 
-(ert-deftest satan-tools-patch/result-includes-review-commands ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
-      (`(ok . ,info)
-       (let ((job-id (plist-get info :job_id)))
-         (satan-patch-store-update-state
-          job-id "needs_review"
-          :finished_at (format-time-string "%Y-%m-%dT%H:%M:%S%z")
-          :result (list :summary "did it"
-                        :commits (list (list :sha "abc1234"
-                                             :subject "msg"))
-                        :diffstat (list :files_changed 1
-                                        :insertions 2
-                                        :deletions 0)))
-         (pcase (satan-tool/patch-job-result (list :job_id job-id) nil)
-           (`(ok . ,r)
-            (should (equal (plist-get r :state) "needs_review"))
-            (let ((cmds (plist-get r :review_commands)))
-              (should (= 3 (length cmds)))
-              (should (cl-some (lambda (s) (string-match-p "cherry-pick abc1234" s)) cmds))))
-           (e (ert-fail (format "result: %S" e))))))
-      (err (ert-fail (format "create: %S" err))))))
+(ert-deftest satan-tools-patch/create-schema-offers-the-configured-modes ()
+  (let* ((schema (plist-get (satan-tool-lookup "patch_job_create") :args-schema))
+         (keys (cl-loop for (key) on schema by #'cddr collect key)))
+    (should (equal (plist-get (plist-get schema 'mode) :enum) satan-tools-patch-modes))
+    (should (equal keys '(directive mode repo allowed_paths base_ref tags source context)))
+    (should (satan-tool-validate-args (satan-tool-lookup "patch_job_create")
+                                      (list :directive "x" :mode "self-edit-mech"
+                                            :repo "r" :allowed_paths '("a"))))))
 
 ;; ---------------------------------------------------------------------
-;; cancel
+;; patch_job_status / patch_job_result
 ;; ---------------------------------------------------------------------
 
-(ert-deftest satan-tools-patch/cancel-queued ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
-      (`(ok . ,info)
-       (let ((job-id (plist-get info :job_id)))
-         (pcase (satan-tool/patch-job-cancel (list :job_id job-id) nil)
-           (`(ok . ,r)
-            (should (equal (plist-get r :state) "cancelled")))
-           (e (ert-fail (format "cancel: %S" e))))))
-      (err (ert-fail (format "create: %S" err))))))
+(ert-deftest satan-tools-patch/status-projects-the-summary-with-its-partial-flag ()
+  (satan-patch-fixture-with-runner
+      (satan-patch-fixture-answering
+       `(("status" . (:job ,satan-tools-patch-test--summary))))
+    (should (equal (satan-tool/patch-job-status '(:job_id "pj-1") nil)
+                   '(ok :job_id "pj-1" :state "needs_review" :mode "fix"
+                        :repo "goad-walk" :base_ref "main" :class "partial"
+                        :end_reason "completed" :reviewed_oid "abc123"
+                        :created_at "2026-10-19T00:00:00.000Z"
+                        :updated_at "2026-10-19T00:05:00.000Z"
+                        :partial t)))
+    (should (equal (plist-get (car (satan-patch-fixture-requests)) :jobId) "pj-1"))))
 
-(ert-deftest satan-tools-patch/cancel-refuses-terminal ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
-      (`(ok . ,info)
-       (let ((job-id (plist-get info :job_id)))
-         (satan-patch-store-update-state
-          job-id "failed"
-          :finished_at (format-time-string "%Y-%m-%dT%H:%M:%S%z"))
-         (pcase (satan-tool/patch-job-cancel (list :job_id job-id) nil)
-           (`(error . ,_) t)
-           (other (ert-fail (format "expected error, got %S" other))))))
-      (err (ert-fail (format "create: %S" err))))))
+(ert-deftest satan-tools-patch/status-carries-a-failed-jobs-failure ()
+  (let ((failure '(:reason "path_violation" :offending ("etc/passwd"))))
+    (satan-patch-fixture-with-runner
+        (satan-patch-fixture-answering
+         `(("status" . (:job (:jobId "pj-2" :state "failed" :class "path_violation"
+                              :failure ,failure)))))
+      (pcase (satan-tool/patch-job-status '(:job_id "pj-2") nil)
+        (`(ok . ,job)
+         (should (equal (plist-get job :failure) failure))
+         (should (eq (plist-get job :partial) :false)))
+        (other (ert-fail (format "status: %S" other)))))))
 
-;; ---------------------------------------------------------------------
-;; prepare-stub + cleanup
-;; ---------------------------------------------------------------------
+(ert-deftest satan-tools-patch/result-projects-the-outcome ()
+  (let ((commits '((:oid "abc123" :subject "fix the walk")))
+        (diffstat '(:files 1 :insertions 2 :deletions 0)))
+    (satan-patch-fixture-with-runner
+        (satan-patch-fixture-answering
+         `(("result" . (:jobId "pj-1" :state "needs_review" :usage (:modelRequests 7)
+                        :class "complete" :endReason "completed" :baseOid "b0"
+                        :reviewedOid "abc123" :quarantineRef "refs/q/pj-1"
+                        :quarantine "/q.git" :commits ,commits :diffstat ,diffstat
+                        :repoPath "/home/u/dev/goad-walk"))))
+      (should (equal (satan-tool/patch-job-result '(:job_id "pj-1") nil)
+                     `(ok :job_id "pj-1" :state "needs_review" :class "complete"
+                          :end_reason "completed" :reviewed_oid "abc123"
+                          :base_oid "b0" :quarantine "/q.git"
+                          :quarantine_ref "refs/q/pj-1" :commits ,commits
+                          :diffstat ,diffstat :partial :false
+                          :model_requests 7))))))
 
-(ert-deftest satan-tools-patch/prepare-and-cleanup ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
-      (`(ok . ,info)
-       (let ((job-id (plist-get info :job_id)))
-         (pcase (satan-patch-prepare job-id)
-           (`(ok . ,wt-info)
-            (should (file-directory-p (plist-get wt-info :worktree-path)))
-            (pcase (satan-patch-store-get job-id)
-              (`(ok . ,row)
-               (should (equal (plist-get row :state) "running"))))
-            ;; cleanup refuses non-terminal
-            (pcase (satan-tool/patch-job-cleanup
-                    (list :job_id job-id) nil)
-              (`(error . ,_) t)
-              (other (ert-fail (format "expected refuse, got %S" other))))
-            ;; advance to terminal, then cleanup
-            (satan-patch-store-update-state job-id "failed")
-            (pcase (satan-tool/patch-job-cleanup
-                    (list :job_id job-id :delete_branch t) nil)
-              (`(ok . ,r)
-               (should (plist-get r :removed_worktree))
-               (should (plist-get r :deleted_branch)))
-              (e (ert-fail (format "cleanup: %S" e)))))
-           (e (ert-fail (format "prepare: %S" e))))))
-      (err (ert-fail (format "create: %S" err))))))
+(ert-deftest satan-tools-patch/unknown-job-reports-the-runners-code ()
+  (satan-patch-fixture-with-runner
+      (lambda (_request) (satan-patch-fixture-refusal "unknown_job" "no job pj-9"))
+    (dolist (tool '(satan-tool/patch-job-status satan-tool/patch-job-result
+                    satan-tool/patch-job-cancel))
+      (should (equal (funcall tool '(:job_id "pj-9") nil)
+                     '(error . "unknown_job: no job pj-9"))))))
 
 ;; ---------------------------------------------------------------------
-;; description files all present
+;; patch_job_cancel
 ;; ---------------------------------------------------------------------
+
+(ert-deftest satan-tools-patch/cancel-sends-its-reason ()
+  (satan-patch-fixture-with-runner
+      (satan-patch-fixture-answering '(("cancel" . (:state "cancelled"))))
+    (should (equal (satan-tool/patch-job-cancel
+                    '(:job_id "pj-1" :reason "superseded") nil)
+                   '(ok :job_id "pj-1" :state "cancelled")))
+    (satan-tool/patch-job-cancel '(:job_id "pj-1") nil)
+    (let ((requests (satan-patch-fixture-requests)))
+      (should (equal (plist-get (car requests) :reason) "superseded"))
+      (should (equal (plist-get (cadr requests) :reason)
+                     "cancelled via patch_job_cancel")))))
+
+;; ---------------------------------------------------------------------
+;; registry
+;; ---------------------------------------------------------------------
+
+(ert-deftest satan-tools-patch/registers-the-four-runner-tools ()
+  (dolist (name '("patch_job_create" "patch_job_status"
+                  "patch_job_result" "patch_job_cancel"))
+    (should (satan-tool-lookup name)))
+  (should-not (satan-tool-lookup "patch_job_cleanup")))
 
 (ert-deftest satan-tools-patch/descriptions-resolvable ()
   ;; Model-facing descriptions live in the host-only corpus
   ;; (`satan-corpus-root'; SL-012 D4/POL), not shipped in the package.
   (skip-unless (file-readable-p
                 (expand-file-name "patch_job_create.md" satan-tools-descriptions-dir)))
-  (dolist (name '("patch_job_create"
-                  "patch_job_status"
-                  "patch_job_result"
-                  "patch_job_cancel"
-                  "patch_job_cleanup"))
-    (let ((p (expand-file-name (concat name ".md")
-                               satan-tools-descriptions-dir)))
-      (should (file-readable-p p)))))
+  (dolist (name '("patch_job_create" "patch_job_status"
+                  "patch_job_result" "patch_job_cancel"))
+    (should (file-readable-p
+             (expand-file-name (concat name ".md") satan-tools-descriptions-dir)))))
 
 (provide 'satan-tools-patch-test)
 ;;; satan-tools-patch-test.el ends here
