@@ -17,3 +17,7 @@ Revised 2026-10-18 at RV-025 third pass (F-8): warning placement is read from it
 
 
 Revised 2026-10-18 at SL-023 PHASE-01 (user ruling, "DEC-057 - yes"): EVD-006 proved the gate on streamSimple/completeSimple; the spike found two paths outside it — deferred polling/cancellation (fetchDeferred, cancelDeferred) and a tool's runtime.models ungated entry points (complete, stream, classify, generateImages, streamDeferred; reachable from codemode). Both are gated and counted. The refusal must avoid pi-ai's retryable wording so the retry policy does not re-ask a refusing gate.
+
+
+
+Revised 2026-10-19 (user: 'i'll take the recommendations'): cancelDeferred always passes uncounted, even when exhausted — refusing it leaves an admitted request billing; the gated view refuses getAuth/login/logout, conditional on pi-durable never calling them through the job's view (else escalate).

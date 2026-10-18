@@ -366,13 +366,14 @@ interface GitChannel {
   refresh(repo: RepoConfig, baseRef: string): Promise<Oid>;
   /** Fetch job/<id> from the room into quarantine; return the ref and its oid. */
   collect(repo: RepoConfig, jobId: JobId): Promise<{ ref: string; oid: Oid }>;
-  /** Cheap reachability probe for pause/resume and pending_collection. */
-  reachable(): Promise<boolean>;
+  /** Reachability probe for pause/resume and pending_collection (room: this job's collect). */
+  reachable(job: JobId): Promise<boolean>;
 }
 ```
 
 Errors are typed: `ChannelUnavailable` (room down — retry later) vs
-`ChannelFailed` (anything else). Two adapters, chosen by `[door] kind`; nothing
+`ChannelFailed` (anything else); `reachable` answers false for unavailable and,
+room, throws `ChannelFailed`. Two adapters, chosen by `[door] kind`; nothing
 outside `room.ts` and `config.ts` knows which. The job branch `job/<id>` is
 created at `base_oid` in the guest clone through the execution environment
 during `preparing`. Only `job/<id>` is collected; uncommitted work never
@@ -391,10 +392,10 @@ SL-006 ships. `<room>` and `<repo>` are config: the door's room name and the
 
 | Port member | Room adapter |
 |---|---|
-| `refresh` | check `base_ref` still exists in the real repo; `capsule <room> push <repo> <base_ref>` → oid on stdout, which is `base_oid` (exactly what the guest received; push resolves the branch in the target's host checkout, the same checkout as `[repo.*].path`); the guest-side steps follow in `preparing` (§5.4) |
-| `collect` | `capsule <room> collect <repo> job/<id>` → `refs/capsule/<room>/heads/job/<id>` in the repo's `quarantine` (`/var/lib/capsule/collect/<room>/<repo>.git`); ref and oid read from stdout, the ref required to be exactly that name |
-| `reachable` | `capsule <room> ssh <user> true` exits 0 |
-| errors | exit 75, or no exit within the verb's timeout (`push`/`collect`: the repo's `transfer_timeout_s`; probe: `probe_timeout_s`) → `ChannelUnavailable` (room down, guest frozen, or a hung prompt; no probe needed; a timeout is audited as `channel_timeout`, distinct from exit 75; retried within `max_room_wait` / `max_pending_collection`); 1 → `ChannelFailed`, including authentication and a changed host key (a trust failure, not downtime — never retried as a pause); 2 → `ChannelFailed` marked a refusal (a runner bug: argv or config), audited as such — except that exit 2 from `push` first re-checks `refs/heads/<base_ref>` in the real repo, and an absent branch is `base_ref_invalid` (deleted between the runner's check and push's own resolve) |
+| `refresh` | check `base_ref` still exists in the real repo; `capsule <room> push <repo> <base_ref>` → stdout `<oid>`, which is `base_oid` (exactly what the guest received; push resolves the branch in the target's host checkout, the same checkout as `[repo.*].path`); the guest-side steps follow in `preparing` (§5.4) |
+| `collect` | `capsule <room> collect <repo> job/<id>` → `refs/capsule/<room>/heads/job/<id>` in the repo's `quarantine` (`/var/lib/capsule/collect/<room>/<repo>.git`); stdout `<oid>\t<ref>` (git ls-remote order; progress and errors on stderr), the ref required to be exactly that name; the adapter reads the ref from the quarantine, and a stdout oid or ref that differs from it is `ChannelFailed` |
+| `reachable` | job-scoped: the job's `collect` (above), bounded by the repo's `transfer_timeout_s`; 0 → true; 75 or timeout → false; 1 and 2 throw, as below — a trust failure is never downtime. Idempotent: `job/<id>` exists from `preparing` on, and a later collect overwrites the quarantine ref. Not `capsule <room> ssh <user> true`: that is the human's door, outside the channel's exit contract (stopped → 1, changed key or refused auth → 255) and interactive |
+| errors | exit 75, or no exit within the verb's timeout (`push`/`collect`, the probe included: the repo's `transfer_timeout_s`) → `ChannelUnavailable` (room down, guest frozen, or a hung prompt; no probe needed; a timeout is audited as `channel_timeout`, distinct from exit 75; retried within `max_room_wait` / `max_pending_collection`); 1 → `ChannelFailed`, including authentication and a changed host key (a trust failure, not downtime — never retried as a pause); 2 → `ChannelFailed` marked a refusal (a runner bug: argv or config), audited as such — except that exit 2 from `push` first re-checks `refs/heads/<base_ref>` in the real repo, and an absent branch is `base_ref_invalid` (deleted between the runner's check and push's own resolve) |
 
 **Killing a verb.** Each verb is spawned as the leader of its own process group
 (`capsule` → `capsule-room-git` → git → ssh → socat). On its timeout the
@@ -509,8 +510,8 @@ run as the module owner, authenticate with that user's default identity
 `{ uid; keys; }` lists both keys (CON-004) — a deployment fact for
 `~/flakes/SATAN.md`. The verbs run ssh without `BatchMode`; a prompt that hangs
 is bounded by the verb's timeout and reads as `ChannelUnavailable`. The live
-room rung checks that push, collect and the probe run non-interactively as the
-runner user. pi-env deploys its daemon under the agent's home, which
+room rung checks that push and collect run non-interactively as the runner
+user. pi-env deploys its daemon under the agent's home, which
 must be writable and executable (ASM-005's open caveat; checked at the live
 room rung).
 
@@ -673,7 +674,6 @@ identity = "…"                 # the runner's private key
 known_hosts = "/var/lib/capsule/room/assistant/known_hosts"   # oubliette's; read only
 host_key_alias = "room-assistant"
 session_path = "/run/current-system/sw/bin/session"   # room kind; required, documented value
-probe_timeout_s = 15           # room kind: bound on `capsule <room> ssh <user> true`
 # slot kind instead: slot, quarantine (the slot's), profile, host (guest address); returnToWork applies
 ```
 
@@ -687,7 +687,7 @@ are never derived (I13): the alias is configured, not built from `room`
 each room repo names its own quarantine. `session_path` is required: the value
 shown is the documented one, not a built-in fallback. `transfer_timeout_s`
 (per repo) bounds that repo's `push` and `collect` and must cover a first full
-push into a fresh `git init` clone; `probe_timeout_s` bounds the probe. On
+push into a fresh `git init` clone; it also bounds the probe (a collect). On
 expiry the verb's process group is killed, it is treated as exit 75, and the
 audit records `channel_timeout` (§5.2). `guest_path` must equal the target's
 `guestPath`; the runner holds a copy because `~/flakes` renders this file from
@@ -737,9 +737,10 @@ stateDiagram-v2
   waiting_room --> running: room reachable → resume message
   running --> collecting: completed / ceiling / cancel / error
   waiting_room --> pending_collection: max_room_wait / cancel
+  waiting_room --> collecting: probe ChannelFailed (end_reason = error)
   collecting --> pending_collection: channel unavailable
   pending_collection --> collecting: channel reachable
-  pending_collection --> failed: max_pending_collection (collection_abandoned)
+  pending_collection --> failed: max_pending_collection (collection_abandoned) / probe ChannelFailed (error)
   collecting --> needs_review: complete / partial
   collecting --> failed: no_changes / path_violation / error
   collecting --> cancelled: end_reason = cancelled
@@ -816,7 +817,16 @@ the provider boundary. The runner gives the harness a `Models` view whose job
 models wrap both provider entry points pi-durable uses (`src/runner/model-gate.ts`):
 `streamSimple` (generation and its retries) and `completeSimple` (compaction
 summaries). Every provider call the job makes passes the gate; the view
-delegates neither entry point unwrapped.
+delegates neither entry point unwrapped. Deferred polling (`fetchDeferred`) and
+a tool's calls through `runtime.models` (`complete`, `stream`, `classify`,
+`generateImages`, `streamDeferred`) are gated by the same rule. Two exceptions
+(user rulings, 2026-10-19): `cancelDeferred` always passes, budget exhausted or
+not, and is never counted — refusing it would leave an admitted deferred
+request running and billing at the provider; `getAuth`, `login` and `logout`
+are always refused, so a tool reaching `runtime.models` gets no credentials.
+Before building that refusal the implementer confirms pi-durable itself never
+calls them through the job's view; if it does, that is an escalation, not a
+workaround.
 Before each send the gate, purely from (attempt count, `pi.usage`, ceilings):
 
 1. refuses if any ceiling is exhausted or usage cannot be read — the stream
@@ -882,7 +892,7 @@ sequenceDiagram
   R->>H: conversation.abort()  (before another model request)
   R->>R: tx: state = waiting_room, pause_requested = 0, pause_count += 1, stop deadline timer
   loop backoff
-    R->>G: reachable()?
+    R->>G: reachable(job)?
   end
   G-->>R: true
   R->>H: submit(requestId = resume-<job>-<pause_count>): "The environment restarted. Your last call may not have completed. Check state and continue."
@@ -919,13 +929,18 @@ sequenceDiagram
 - `max_room_wait` bounds the wait; then `end_reason = room_unavailable` and the
   job moves to `pending_collection`, collected when the room returns. A cancel
   while waiting takes the same path with `end_reason = cancelled`.
+- Room: the probe is the job's `collect` (§5.2). A probe that throws
+  `ChannelFailed` (changed host key, refused auth, refusal) ends the wait:
+  `end_reason = error`, then `collecting` — never parked on a healthy room.
 - A planned-stop signal from oubliette is a later, door-touching option.
 
 ### Collection and classification (DEC-060)
 
 1. `collect` fetches `job/<id>` into quarantine. `ChannelUnavailable` →
-   `pending_collection`, retried when `reachable()`; bounded by
-   `max_pending_collection`, then `failed(collection_abandoned)`, audited.
+   `pending_collection`, retried when `reachable(job)` (room: that probe is
+   this collect; the redo is idempotent); bounded by `max_pending_collection`,
+   then `failed(collection_abandoned)`, audited. A probe `ChannelFailed` →
+   `failed`, class `error`.
 2. Record `reviewed_oid` = collected oid (immutable from here). Room: then
    clean the clone (`git reset --hard`, `git clean -ffd`; §5.2). Idempotent, so
    a restart in `collecting` redoes it; a failed clean is audited, does not
@@ -1029,9 +1044,9 @@ Each row is exercised by fault injection at its write boundary.
 | `running` | re-arm the deadline from `active_ms` + (now − `running_since`) | `resume()` continues it; an interrupted unsafe tool reaches the model as `interrupted` |
 | `running`, warning threshold passed, no warning receipt | — | resubmit the warning (`warn-<job id>`; returns the existing submission if admitted), then write the receipt with its `submissionId` |
 | `waiting_room`, warning threshold passed and no placed warning on record (no receipt, or its submission record has no `entry`) | — | the resume message carries the warning text |
-| `waiting_room` | *(enabled)* resume probing; bound from `state_entered_at` | on reachable: submit the resume message (`requestId` = `resume-<job id>-<pause_count>`) |
+| `waiting_room` | *(enabled)* resume probing; bound from `state_entered_at`; probe `ChannelFailed` → `end_reason = error`, `collecting` | on reachable: submit the resume message (`requestId` = `resume-<job id>-<pause_count>`) |
 | `collecting` | *(enabled)* redo collect (idempotent fetch), classification (pure) and, room, the clean (idempotent) | — |
-| `pending_collection` | *(enabled)* resume retrying; bound from `state_entered_at` | — |
+| `pending_collection` | *(enabled)* resume retrying; bound from `state_entered_at`; probe `ChannelFailed` → `failed`, class `error` | — |
 | `needs_review`, terminal | — | — |
 
 Replay concerns runner crashes only. `read` reruns after a crash; `write`,
@@ -1108,7 +1123,8 @@ silently.
 - **I16 Running means admitted.** A job is `running` only after its initial
   prompt is admitted.
 - **I17 Gate on every provider call.** Every provider call a job makes passes
-  the model gate, which counts it before sending.
+  the model gate, which counts it before sending — except `cancelDeferred`,
+  which always passes uncounted.
 
 ### Assumptions
 
@@ -1150,10 +1166,12 @@ silently.
 | Verb killed on its timeout | the whole process group dies before the retry; no orphan holds a ref lock |
 | Configured `guest_path` has no `.git` in the room | `failed(error)`, `guest_path_invalid`; config drifted from the target's `guestPath` |
 | Room channel verb exits 1 on auth or a changed host key | `ChannelFailed` → `failed(error)` (preparing) or class `error` (collecting); never treated as room down |
+| Host key changes or auth is refused while `waiting_room` | the probe (the job's collect) exits 1 → `ChannelFailed`; `end_reason = error`, `collecting` — not parked until `max_room_wait` |
+| Room `collect` stdout oid or ref differs from the quarantine ref | `ChannelFailed` |
 | Room channel verb exits 2 | `ChannelFailed`, audited as a refusal (runner bug) |
 | Guest freezes with tap and relay up | daemon connection: pi-env's 30 s silence limit drops it (ssh keepalive is a later backstop) → typed lost → pause; channel verbs: their timeout → `ChannelUnavailable`, retried within `max_room_wait` |
 | Room channel verb exceeds its timeout (incl. an ssh prompt waiting for input) | group killed; `ChannelUnavailable`, as exit 75; audited `channel_timeout` |
-| First push into a fresh clone sends the full history | bounded by the repo's `transfer_timeout_s`, sized for it, not by the short probe timeout |
+| First push into a fresh clone sends the full history | bounded by the repo's `transfer_timeout_s`, sized for it |
 | `dirty_clone` wedges a repo (abandoned collection, failed clean) | every later job on it fails until the operator cleans via `capsule <room> ssh`; no automatic clean outside post-collect |
 | Agent commits on another branch | not collected; may yield `no_changes` |
 | Agent leaves uncommitted work | not collected (the warning tells it to commit) |
@@ -1165,6 +1183,8 @@ silently.
 | `satan/patch/<id>` already exists in real repo | Emacs refuses promotion; nothing written |
 | User moves `satan/patch/<id>` before reporting | runner refuses `receipt_mismatch` |
 | Runner disabled with jobs queued | they stay queued; nothing schedules |
+| Budget exhausted with a deferred request admitted at the provider | `cancelDeferred` passes the gate uncounted; `fetchDeferred` is refused like any send |
+| A tool calls `getAuth`/`login`/`logout` through `runtime.models` | refused by the gated view; no credential leaves it |
 | Gateway refuses (budget) | a failed attempt, counted by the gate; the run's error path ends it → collection with `end_reason = error` |
 
 <!-- doctrine:section sec-5 -->
@@ -1181,16 +1201,22 @@ by the user's rulings:
   is cleaned by hand via `capsule <room> ssh` (§5.2, §5.4). A `clean-clone
   <repo>` control-socket operation (from Emacs) is deferred to the backlog.
 - **OQ-3 Channel verb timeout** — per-repo `transfer_timeout_s` for
-  `push`/`collect`, short `probe_timeout_s` for the probe; expiry is
+  `push`/`collect` and the probe (a collect; no separate probe timeout,
+  ruling 2026-10-19); expiry is
   `ChannelUnavailable`, as exit 75, audited separately as `channel_timeout`,
   retried within `max_room_wait` (§5.2, §5.3).
+- **Room reachability** (oubliette RV-018; user ruling 2026-10-19) —
+  `capsule <room> ssh <user> true` is the human's door, not a channel verb;
+  `reachable` is job-scoped and runs the job's collect (§5.2). Oubliette pinned
+  stdout: push `<oid>`, collect `<oid>\t<ref>`; progress and errors on stderr.
 - **Verb identity** (RV-026 F-4) — the verbs use the module owner's default
   key; the room user lists it and satan's key (§5.2 Identities).
 
 Remaining:
 
 - **SL-006 lock drift.** The room adapter tracks SL-006 sec-6 until it locks;
-  a change there re-opens §5.2's room rows, not the port. Oubliette is fixing
+  a change there re-opens §5.2's room rows, not the port; verb stdout and
+  exit codes are already pinned (oubliette RV-018). Oubliette is fixing
   two sec-6 wordings this design already follows (the `guest_path` check is in
   `preparing`; clone hygiene is the runner's). A third is not yet relayed: sec-5
   says every door to a room, "satan's runner" named, uses `accept-new`; this
@@ -1247,7 +1273,7 @@ This table is an index.
 | DEC-059 | `base_ref` is a real-repo branch validated by the runner; slimmed room-model states. | Producer resolves `base_ref` (dual enforcement). |
 | DEC-060 | Git-channel port; collect every ended job; classify from quarantine; commit check authoritative. | Per-call allowlist only (`bash` bypasses it). |
 | DEC-061 | Approval and enactment in Emacs by a plain fetch of the quarantine ref (no land verb); land `satan/patch/<id>`; runner verifies a receipt. | Runner enacts promotion on an RPC (socket would reach real repos). |
-| DEC-0NN *(proposed)* | Room adapter and room door kind behind the existing ports, built now against SL-006 sec-6 fixtures; strict runner host keys (oubliette learns them); `session` by configured absolute path; per-repo transfer and probe timeouts → unavailable; clean clone (`-ffd`) after collect only, check-only in preparing; slot stays the live rung until SL-006 ships. | Wait for SL-006 to ship before building (serialises two repos' work). |
+| DEC-0NN *(proposed)* | Room adapter and room door kind behind the existing ports, built now against SL-006 sec-6 fixtures; strict runner host keys (oubliette learns them); `session` by configured absolute path; per-repo transfer timeouts → unavailable; clean clone (`-ffd`) after collect only, check-only in preparing; slot stays the live rung until SL-006 ships. | Wait for SL-006 to ship before building (serialises two repos' work). |
 | DEC-062 | Ledger: new lifecycle and allowlist rows; rows 4, 5, 6 split; token `patch-runner`. | Keep token `satan-patcher` (names a retired repo). |
 | DEC-063 | Cutover: fence, deploy, client cutover with table drop, remove Go; one consumer throughout. | Keep a fallback runner (half-extraction). |
 | DEC-064 | Runner tech spec under SPEC-002, written at reconcile. | Spec before implementation (ahead of evidence). |
@@ -1263,7 +1289,9 @@ fit and process-private state; POL-001's IMP-006 destination).
 | pi-durable / pi-env are experimental and change without notice. | Exact version pins in one place (malebolge's `package.json`), shared by both binaries; upgrades are deliberate and gated by the harness tests and the env conformance suite. |
 | Room adapter built against an unlocked design (SL-006 sec-6). | One port, two adapters; door values are config; nothing outside `room.ts`, `env.ts`'s connection factory and config knows the door. Fixture tests pin argv and exit-code mapping, so a sec-6 change shows as a red test. Re-check against SL-006 at its lock, before the live room rung. |
 | Runner config drifts from the room (`guest_path`, repo name, quarantine). | Rendered by `~/flakes` from the same oubliette target attrset; the `preparing` `guest_path` check and the push oid gate the first command. |
-| A frozen guest hangs ssh. | Daemon connection: pi-env's 30 s silence limit turns it into a typed lost failure → pause (ssh keepalive, of which only `ServerAliveCountMax` is ours, is a backstop). Channel verbs: per-repo transfer / probe timeouts, killing the process group → `ChannelUnavailable`. |
+| A trust failure reads as downtime and parks a job on a healthy room. | The room probe is the job's collect, under the channel's exit contract (1 → `ChannelFailed`, fails the job); never `ssh <user> true` (255, interactive). |
+| A frozen guest makes each room probe wait out `transfer_timeout_s`. | A stopped room exits 75 at once; probing backs off and stays bounded by `max_room_wait` / `max_pending_collection`. |
+| A frozen guest hangs ssh. | Daemon connection: pi-env's 30 s silence limit turns it into a typed lost failure → pause (ssh keepalive, of which only `ServerAliveCountMax` is ours, is a backstop). Channel verbs: per-repo transfer timeouts, killing the process group → `ChannelUnavailable`. |
 | Cleaning the clone destroys uncollected work. | Only after a successful collect; `preparing` never cleans. |
 | A real room stop surfaces differently from a killed daemon, or pi-durable erases the error type. | The pause spike is the plan's first phase; recognition is by type at the `JobConnection`, before pi-durable converts it; never by text. |
 | The model gate cannot sit in every provider call's path (OQ-1). | Demonstrated in the first spike; on failure amend DEC-057 to the weaker guarantee; the deadline timer remains regardless. |
@@ -1302,9 +1330,9 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
 | Socket | every op, schema refusal, watch replay | real UDS in a temp dir |
 | Acceptance fixtures | behaviour ported from the deleted ert tests and the Go policy/classify/reconcile tests (POL-001) | per the layer they exercise |
 | Elisp client | RPC tools, watch-driven inbox, promote/reject | ert against a fake socket server |
-| Room adapter | argv for `push`/`collect`/`ssh true`; exit 75/1/2 and timeout mapping; stdout oid and ref parsing; the `session` daemon command; clean-after-collect; trust-failure record from typed host-key errors; config per door kind | stubbed `capsule` (`SlotCli` seam, incl. one that never exits), a stubbed command function, local env; pure where possible |
+| Room adapter | argv for `push`/`collect`; the job-scoped probe; exit 75/1/2 and timeout mapping; stdout oid and ref parsing, cross-checked against the quarantine; the `session` daemon command; clean-after-collect; trust-failure record from typed host-key errors; config per door kind | stubbed `capsule` (`SlotCli` seam, incl. one that never exits), a stubbed command function, local env; pure where possible |
 | Live smoke | one job end to end against a slot through the gateway | env-gated; not in `just check` |
-| Live room rung | one job end to end against a room; reconnect after a room stop; silence-limit drop on a frozen guest; a changed host key on reconnect fails as `host_key`, not a pause; agent home writable; push, collect and probe run non-interactively as the runner user (module owner's default key) | deferred until oubliette SL-006 ships; env-gated |
+| Live room rung | one job end to end against a room; reconnect after a room stop; silence-limit drop on a frozen guest; a changed host key on reconnect fails as `host_key`, not a pause; agent home writable; push and collect run non-interactively as the runner user (module owner's default key) | deferred until oubliette SL-006 ships; env-gated |
 
 ### Key test cases
 
@@ -1325,6 +1353,11 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
 - *unreadable usage denies the next request.*
 - *with the budget exhausted, the next generation request, a retry and a
   compaction summary each reach no provider* (model gate; faux provider).
+- *with the budget exhausted, `cancelDeferred` reaches the provider and leaves
+  `model_requests` unchanged; `fetchDeferred` and a tool's `runtime.models`
+  `complete` are refused.*
+- *the gated `Models` view refuses `getAuth`, `login` and `logout`, and a
+  pi-durable job run never calls them through it.*
 - *the attempt counter counts failed attempts and survives restart.*
 - *a restart during a long call charges the crash interval to active
   wall-clock; a restart during `waiting_room` or `pending_collection` does not
@@ -1390,6 +1423,12 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
   no probe; 1 (incl. auth / host key) is `ChannelFailed`; 2 is a refusal.*
 - *room `refresh` returns push's stdout oid; `collect` refuses a ref other than
   `refs/capsule/<room>/heads/job/<id>`.*
+- *room `collect` whose stdout `<oid>\t<ref>` differs from the quarantine ref
+  (oid or ref) is `ChannelFailed`.*
+- *room `reachable(job)` runs `capsule <room> collect <repo> job/<id>`: 0 →
+  true; 75 or `transfer_timeout_s` → false; 1 throws `ChannelFailed`; 2 a refusal.*
+- *a changed host key during `waiting_room` (probe exits 1) ends the wait with
+  `end_reason = error` and collects; the job is not left parked.*
 - *the room daemon command is `ssh <sshArguments> session <repo> -- <daemon>`
   with the job's repo; a lost failure through it still pauses (JobConnection
   outer).*
@@ -1398,8 +1437,8 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
   a clean fresh clone takes `git switch -c job/<id> <oid>`.*
 - *after a successful room collect the clone is reset and cleaned, ignored
   files kept; a failed collect leaves the tree untouched.*
-- *a room `push`/`collect` past the repo's `transfer_timeout_s`, or the probe
-  past `probe_timeout_s`, is killed and maps to `ChannelUnavailable`, audited
+- *a room `push`/`collect` (the probe included) past the repo's
+  `transfer_timeout_s` is killed and maps to `ChannelUnavailable`, audited
   `channel_timeout` (not as exit 75); in `preparing` it retries within
   `max_room_wait`.*
 - *the post-collect clean removes an untracked nested repo (`-ffd`) and keeps
@@ -1422,8 +1461,8 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
   grandchild is dead before the retry starts.*
 - *config: a room door key under `kind = "slot"` (or the reverse, e.g. `host`
   under `kind = "room"`), or a missing `host_key_alias`, `session_path` or
-  `transfer_timeout_s`/`probe_timeout_s`, refuses start; so does `[repo.*].quarantine` under
-  `kind = "slot"`.* (The door ssh config's `ServerAliveCountMax` is a
+  `transfer_timeout_s`, refuses start; so do `[repo.*].quarantine` under
+  `kind = "slot"` and `probe_timeout_s` under either kind.* (The door ssh config's `ServerAliveCountMax` is a
   `~/flakes` rendering, checked there.)
 
 ### Closure evidence
@@ -1458,7 +1497,7 @@ for this slice while SL-006 is unshipped.
 
 | Repo / path | Change |
 |---|---|
-| `~/dev/malebolge` | IMP-041 lint move first; then the runner binary (`src/runner-main.ts`, `src/runner/*`, `test/runner/*`); `src/models.ts` gains the gateway-routed provider; `pi-env` pinned beside `pi-durable`; `package.json` `bin` gains the runner; `just check` covers both binaries. Amendment: `config.ts` `[door] kind` with closed per-kind keys, `host_key_alias`, `room`, `session_path`, `probe_timeout_s`, `[repo.*].quarantine` and `transfer_timeout_s`; `room.ts` room adapter beside the slot adapter, `roomConnection` reads the alias; `exec.ts` process-group spawn and group kill on timeout; `env.ts` room daemon `Connection` (strict `sshArguments`, `session_path` launch, room name as ssh host); `run.ts` `connect(repo)`; `prepare.ts` `guest_path` and clean-tree checks, skipped on a redo after admission; trust-failure record in the command function; `collect.ts` clean after collect |
+| `~/dev/malebolge` | IMP-041 lint move first; then the runner binary (`src/runner-main.ts`, `src/runner/*`, `test/runner/*`); `src/models.ts` gains the gateway-routed provider; `pi-env` pinned beside `pi-durable`; `package.json` `bin` gains the runner; `just check` covers both binaries. Amendment: `config.ts` `[door] kind` with closed per-kind keys, `host_key_alias`, `room`, `session_path` (`probe_timeout_s` removed), `[repo.*].quarantine` and `transfer_timeout_s`; `room.ts` room adapter beside the slot adapter, `roomConnection` reads the alias; `reachable(job)` on the port, room probe = the job's collect (`roomProbeArgs` removed), collect stdout cross-checked against the quarantine; `pause.ts`/`collect.ts` pass the job and end a job on a thrown `ChannelFailed`; `exec.ts` process-group spawn and group kill on timeout; `env.ts` room daemon `Connection` (strict `sshArguments`, `session_path` launch, room name as ssh host); `run.ts` `connect(repo)`; `prepare.ts` `guest_path` and clean-tree checks, skipped on a redo after admission; trust-failure record in the command function; `collect.ts` clean after collect |
 | `~/flakes` | runner unit as the oubliette module owner (CON-003), with its `enabled` switch, config file, state and runtime dirs; runner config (repos, `guest_path`, quarantine, door) rendered from the oubliette target/room attrsets; door ssh config (`ProxyCommand`, `ServerAliveCountMax`); satan's dedicated public key and the module owner's default public key in the room user's `{ uid; keys; }` (CON-004); `satan-patcher` module and flake input removed; jail-profile tests assert `$XDG_RUNTIME_DIR/satan-runner` absent; runner keypair + gateway credential wiring; `SATAN.md` updated |
 | `~/.config/emacs/apps/dl-satan.el` | `satan-patch-runner-enabled` set nil (fence), then removed |
 | `~/dev/satan-patcher` | archived, with migration 0006 |
