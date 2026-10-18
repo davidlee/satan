@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cfd-58f7-7792-8939-04dc773d6b10"
+recorded_at = "2026-10-18T03:10:34.231340897Z"
+kind = "friction"
+summary = "Stale memories after SL-022: jailed-pi-home-and-op-keys, broker-test-credential-stub-order-dependence"
+detail = "SL-022 PHASE-05/06: mem.fact.satan.jailed-pi-home-and-op-keys still says provider keys are op:// refs; mem.fact.satan.broker-test-credential-stub-order-dependence describes a cause PHASE-05 removed. Both need retiring/rewriting (/reviewing-memory); orchestrator did not edit memories."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

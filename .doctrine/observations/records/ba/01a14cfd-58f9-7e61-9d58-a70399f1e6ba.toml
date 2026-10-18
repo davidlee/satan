@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cfd-58f9-7e61-9d58-a70399f1e6ba"
+recorded_at = "2026-10-18T03:10:34.233789769Z"
+kind = "friction"
+summary = "Sweep patterns trip on current-tense sentences asserting a token's absence"
+detail = "SL-022 PHASE-06 (recurring from PHASE-01/04): a governance.md sentence naming SATAN_PROVIDER as absent tripped the VA sweep and had to be reworded. Sweep-based VA criteria push prose away from naming what was removed."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
