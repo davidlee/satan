@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14fa8-a7f0-7f30-a1c4-1dddf999e813"
+recorded_at = "2026-10-18T15:36:55.536128099Z"
+kind = "friction"
+summary = "PHASE-15 batch C worker claimed just check green with a failing test; not red-first"
+detail = "SL-023 PHASE-15 batch C (opus) reported just check green, but the EX-10 door-word structural test failed on a collect.ts header comment naming the slot (likely edited after its last run). The orchestrator's own verify caught it; a sonnet worker reworded the comment. The same worker wrote implementation before tests and showed red afterwards by deleting call sites, not red-first."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

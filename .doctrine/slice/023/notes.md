@@ -727,3 +727,45 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - PHASE-12 deploy fact (carry-forward 2, unchanged): the runner runs as the oubliette module owner (CON-003), slot deploy included.
 - S2 relay (strict vs SL-006 sec-5 `accept-new`) is still outstanding. This batch builds strict.
 - `biome.json` was already modified in the tree before batch B and is left as found.
+
+## PHASE-15 batch C (worker, opus)
+
+### Produced
+- Uncommitted delta in malebolge on `c495a49`:
+  - `src/runner/room.ts`: `GitChannel` gains `checkClone(shell, repo, signal) → CloneDefect | undefined` and `cleanClone(shell, signal)` (A1). `ShellOutput`/`RoomShell` move here from prepare.ts (the port's types); `RoomShell` takes an optional `cwd`. `succeeded` moves here too (shared by `ensureJobBranch` and the clean). Slot: both no-ops. Room: exported `checkRoomClone` (`test -d <guest_path>/.git` run from `/`, then `git status --porcelain --untracked-files=normal`; defect `guest_path_invalid {guestPath}` or `dirty_clone {paths}`) and `cleanRoomClone` (`git reset --quiet --hard`, `git clean -ffd --quiet`).
+  - `src/runner/shell.ts` (new): `roomShell`, moved unchanged from prepare.ts except the per-call `cwd`. Used by preparing and by collection, so it no longer lives in prepare.ts.
+  - `src/runner/prepare.ts`: `readyRoom` runs `channel.checkClone` every attempt, after the base and before `ensureJobBranch`; a defect is `PrepareFailed(defect)` → `failed(error)`. A `ChannelUnavailable` from the check retries as before. Row 5 (`recordRunning`) never reaches `readyRoom` (carry-forward 4).
+  - `src/runner/collect.ts`: `CollectDeps.connect` (moved from `RunDeps`, which inherits it). `checkAndClassify`: inspect → `recordCollected` (durable) → `cleanAfterCollect` → mismatch/check/classify. The clean opens its own connection (pi-env `Connection` starts at its first request, so the slot's no-op never starts one), runs through `roomShell` (counting), closes it in `finally`. A failure appends `clean_failed {reason, message}` (reason = the channel error's `reason`, e.g. `channel_unavailable`, `channel_failed`, `host_key`) and changes nothing else.
+  - `src/runner/vocab.ts`: `EVENT_KINDS` appends `clean_failed`.
+  - `src/runner/start.ts`: the scheduler's `CollectDeps` gets `connect: room.connect` (one lambda for runs, pending-collection retries and rejoin row 12); `runDeps` inherits it.
+- Tests (1117 → 1142; 46 files):
+  - `prepare.test.ts` (VT-7): fresh unborn clone takes `git switch -c job/<id> <oid>`; guest_path without `.git` and absent → `guest_path_invalid`; untracked file + untracked dir → `dirty_clone` with paths, tree and branch left as found; ignored-only passes. Fake-channel: check runs every attempt after the base; a defect fails with no branch work, no sleep.
+  - `recovery.test.ts`: the `watched` channel now runs the room's real hygiene in the slot clone and records `check`/`clean`, so the whole matrix exercises it. New: row 4 with residue → `dirty_clone`, no switch, no model call; row 5 with the agent's files → no `check`, records `running` once, `needs_review` (VT-7 fault injection); row 12 crash at `collected` with residue → rejoin collects then cleans, residue gone (VT-8, R1). The disabled matrix's "no env command" assertion now also covers check/clean (R1 disabled half).
+  - `collect.test.ts` (new, VT-8): reset + `clean -ffd` (tracked edit reset, untracked file and nested repo removed, ignored kept); idempotent; failed collect (exit 1) and room down (exit 75) leave the tree untouched; stale `index.lock` → `clean_failed channel_failed`, outcome unchanged; per kind (slot/room `daemonConnection`): lost start → no `pause_requested`, no pause event, `clean_failed channel_unavailable`; `HostKeyChangedError` → `clean_failed host_key`; crash before the clean → still `collecting` with `reviewed_oid`, re-collect cleans, `collected` once.
+  - `room.test.ts`: VT-2 preparing half (`readyRoom` over the real room adapter: hung push retried within `max_room_wait`, then past it `room_unavailable` / `channel_timeout`); slot hygiene never touches the shell; EX-10 structural test split (below).
+  - `room-fixture.ts`: `roomKindWorld({ guestAtClone })`; `roomKindCollectWorld` uses it (clean runs for real); `collectWorldOver` gives `connect: localConnection`; new `readying(world)` (a preparing job + `readyRoom` through a local daemon).
+- EX-10 regexes: door words `/\bcapsule|\bslot|\bdoor/i` → files ⊆ {room.ts, config.ts, env.ts}, ⊇ {room.ts, config.ts}; kind words `/["'](?:slot|room)["']|\bsession_?path|\b(?:probe|transfer)_?timeout_?s\b|\b(?:slot|room)Door(?:Config)?\b/i` → exactly {room.ts, config.ts}. Mutation: a `transferTimeoutS` read in collect.ts fails the kind test; `// the slot` in prepare.ts fails the door test.
+- `just check` green: fmt, lint 0, tsc, 1142 tests. Coverage vs `c495a49`: lines 98.14% (98.07), statements 97.97% (97.90), branches 94.11% (94.04), functions 98.17% (98.16).
+- Mutation-checked (each fails a test; restored from copies, `cmp`-verified): check without `cwd /`; `clean -fd`; clean before `recordCollected`; clean failure rethrown. Red shown before green for the check (5 failing) and the clean (8 failing) by removing each call site.
+
+### Learned
+- pi-env `Connection` is lazy: the constructor stores options; `#connect` starts on the first request. A connection that is never used costs nothing and `close()` on it is safe.
+- An exec whose `cwd` does not exist fails on a live connection (ChannelFailed), so "guest_path absent" needs the check run from `/` to be `guest_path_invalid`. `RemoteExecutionEnv.exec` takes a per-call `cwd`.
+- The run fixture's agent commits with `git add -A`, so planted agent files outside `allowed_paths` become a `path_violation`; plant under `src/`.
+
+### Deviations from the sheet
+- Clean placed after `recordCollected`, not between `channel.collect` and `checkAndClassify` (A4): design §5.4 step 2 says "Record `reviewed_oid` … then clean". Still before classification, so a crash leaves `collecting`. Covers all three `collectJob` callers.
+- Clean also runs when the recorded oid mismatches or the quarantine read fails: the collect itself succeeded, and the clean discards only working-tree residue (commits stay on the job branch).
+- `checkClone` returns the defect instead of throwing (no new error class; prepare.ts wraps it in `PrepareFailed`, kind-blind).
+- `RoomShell` gained an optional `cwd` (for the check from `/`).
+- New `shell.ts` for `roomShell` (A1 left it to the worker); `succeeded` moved to room.ts.
+- `clean_failed` is a new event kind (audit vocab append).
+- The row-5 "agent's files → running" VT-7 case lives in `recovery.test.ts` (needs the restart harness); prepare.test.ts holds VT-7's other cases and keywords. Same split as VT-2 (adapter in room.test.ts by A; preparing half added there by C, A's unit test kept in prepare.test.ts).
+
+### Open
+- The clean's signal is never aborted (`CollectDeps` has no `stopping`); a hung git in a live room would hold collection. Same as preparing's shell; out of scope with the `stopping`-into-sleeps item.
+- `clean_failed`'s non-channel fallback reason (`clean_failed`) is not covered by a test.
+- PHASE-12 deploy fact (carry-forward 2, unchanged): the runner runs as the oubliette module owner (CON-003), slot deploy included.
+- PHASE-11/12: a `dirty_clone` wedge needs the operator remedy (design §5.2); worth a line in the runbook. `clean_failed` events are the signal to watch.
+- Relays to oubliette still open: S2 (strict vs sec-5 `accept-new`), S1 (collect stdout format). EX-11: fixtures follow SL-006 at `73ec574`; re-check at SL-006 lock (CHR-016).
+- Carried from B, untouched: `CeilingLatch` rename; the `host_key` model-gate race; `cancelDeferred`; gated view's `getAuth`/`login`/`logout`; `biome.json` (pre-existing `!.mcp.json` edit, left as found).
