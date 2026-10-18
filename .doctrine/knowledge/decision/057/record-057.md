@@ -13,3 +13,7 @@ Revised 2026-10-18 at design review (RV-025 F-1, F-6, F-8; Codex gpt-6-sol), adj
 Revised 2026-10-18 at RV-025 verification (F-8, F-15): the warning is a steer, admission and delivery are distinct, and the gate wraps completeSimple (compaction) as well as streamSimple.
 
 Revised 2026-10-18 at RV-025 third pass (F-8): warning placement is read from its submission record (Harness.submission(id).status(), id stored in the warning receipt), not the active transcript; a job resuming past the threshold with no placed warning on record, including a crash before the receipt, gets the warning in its resume message.
+
+
+
+Revised 2026-10-18 at SL-023 PHASE-01 (user ruling, "DEC-057 - yes"): EVD-006 proved the gate on streamSimple/completeSimple; the spike found two paths outside it — deferred polling/cancellation (fetchDeferred, cancelDeferred) and a tool's runtime.models ungated entry points (complete, stream, classify, generateImages, streamDeferred; reachable from codemode). Both are gated and counted. The refusal must avoid pi-ai's retryable wording so the retry policy does not re-ask a refusing gate.

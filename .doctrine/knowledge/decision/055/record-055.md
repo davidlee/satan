@@ -11,3 +11,7 @@ Revised 2026-10-18 at design review (RV-025 F-2, F-5; Codex gpt-6-sol): pi-durab
 
 
 Revised 2026-10-18 at RV-025 verification (F-16, F-17): the env wrapper records pause_requested durably at catch time (afterTool only reads; no in-memory fallback), and each waiting episode's resume message is named resume-<job id>-<pause_count>, pause_count incremented with waiting_room, so a restart resubmits the same id.
+
+
+
+Revised 2026-10-18 at SL-023 PHASE-01 (user ruling, "DEC-055 - agreed"): EVD-009 showed pi-env 1.3.0 erases the lost-connection type for exec at the ExecutionEnv layer; the live room-stop spike (malebolge spike-results/room-stop-2026-10-18T07-38-01.165Z.json) showed the ExecutionEnv seam saw a plain ExecutionError while a Connection subclass saw two typed lost failures, with no false positive on a same-message ordinary error. Recognition moves from the ExecutionEnv wrapper to a per-job Connection subclass covering info(), session() and request(); the mark is idempotent.
