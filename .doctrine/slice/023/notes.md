@@ -323,3 +323,29 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - If `toCollecting`'s own store write fails, the row stays `running` (drain stops, logged); PHASE-10 recovery covers it.
 - Six identical `messageOf(error)` helpers in `src/runner/` (collect, prepare, room, run, scheduler, start): candidate for one export from `errors.ts` (outside this batch's file set).
 - run.ts untested until B2.1; VT-1 case 7 (settle failure → `collecting`, `end_reason = error`) pins B1.4.
+
+## PHASE-07 batch B2 (worker, opus)
+
+### Produced
+- malebolge (uncommitted on b2136a0):
+  - B2.1 `test/runner/run.test.ts` (VT-1, 14 tests). World: faux provider, runner store and pi on **one** `:memory:` SQLite handle (production shape, so EVD-008 is exercised, not MemoryStorage), `JobTools` + `jobGuard({ currentJob: tenancy.guarded })` + a `blockingTool`, `env: tenancy.env`, `connect` = local pi-env daemon, `roomWorld({ guestAtClone: true })`'s fake slot channel, a real scheduler seating each job. Scenarios: write + bash commit → `needs_review` with the event order `submitted, conversation, policy, →preparing, refreshed, →running, →collecting, collected, →needs_review`; initial prompt `requestId` = job id (read back via `tx.submissionByRequest`, matches the `running` payload's `submissionId`); out-of-allowlist `write` → `Tool call blocked`, `blocked_tool`, no file; same change via `bash` → `path_violation` → `failed`; room down past `max_room_wait` → `failed(room_unavailable)`, zero provider calls, no collect; `job/<id>` at another oid → `job_branch_moved`, branch untouched, no call; policy unresolvable → `preparing` → `failed`, no `policy` event; recorded conversation unknown to pi → `conversation_missing`; faux `stopReason: "error"` → `collecting` `end_reason = error`, `submissionReason: model_error` (STOP 2 pin); settle failure (Proxy whose `wait` rejects) → `collecting` `settle_failed`, collected (I12); cancel: seated-before-preparing, while preparing (refresh gated), just before submit (cancel inside `readPrompt`), while running (`conversation.abort`, answered at `collecting`/`cancelled`, then collected → `cancelled`). Mutation-checked: `endReasonOf` constant, `conversation.abort` removed, `toCollecting` ignoring the cancel — each fails a test.
+  - B2.2 `start.ts`: door checked at start (`channelFromConfig` + `roomConnection` → `StartRefused`, I13); `roomTenancy`; harness opened with `registry: registryOf([JobTools, guard])`, `env: tenancy.env`, `models` unwrapped (PHASE-08's seam); one `store.jobs` for control, scheduler and run; `ControlDeps.wake/cancel` = the scheduler's; `scheduler.wake()` once after serve; `close`: server → `stop.abort()` → harness. `StartOptions.room?: RoomAccess { channel, connect }` is the test seam (named without door words: room.test's structural check). runner-main tests: enabled start drains a job queued before start (faux, one provider call, `failed/no_changes`); `enabled = false` leaves it `queued`, no conversation, zero provider calls; a `[door]` lacking `host` refuses start.
+  - B2.3 `messageOf` exported once from `errors.ts`; the six named copies plus five inline/renamed ones (protocol, control, git, rows `errorMessage`, config) use it. `toolResults(harness, conversation?)` in `test/harness-fixture.ts` reads a job's conversation.
+- `just check`: fmt-check clean (103 files), lint 0, tsc clean, 41 files / 869 tests, lines 98.09% (run.ts 100% lines, start.ts 97.9%).
+
+### Learned
+- `Harness` doc: `submit`, `abort`, `compact`, `Submission.wait`, `waitForTask` each enable scheduling on a passive harness. start.ts never calls `resume()`; I14 rests entirely on the scheduler making none of those calls when disabled (now tested).
+- The fake slot's `provision` refuses unless the guest HEAD is `work`; a test that pre-makes `job/<id>` (`guestJob`) must `switch work` again or refresh fails `ChannelFailed`.
+- The agent's `bash` runs in the test process environment through the local daemon: a commit needs `GIT_CONFIG_GLOBAL=/dev/null` and an explicit identity, or the user's git config leaks in.
+- A cancel while preparing is answered only once `refresh` returns: `GitChannel.refresh` takes no signal, so `base_oid` and `refreshed` are recorded before the cancel lands.
+
+### Deviations from the sheet
+- Storage: shared SQLite (`openRunnerStore(":memory:")`) instead of pi `MemoryStorage`, to run the EVD-008 shape.
+- `connect` builds `roomConnection(config)` once at start, not per call (fail closed at start).
+- `messageOf` consolidation reached five files beyond the six named (same expression, inline).
+
+### Open
+- `close` does not wait for a seated run: the harness and db close under it; its next write fails and is logged, the row stays in flight for PHASE-10 recovery. Awaiting `scheduler.idle()` would let a long run block shutdown. Orchestrator to rule.
+- The door is now required at start even with `enabled = false` (I13 read strictly).
+- **PHASE-09 forward:** `settle` waits on the *initial* submission. A pause settles it `unanswered: aborted` and the resume is a new submission, so PHASE-09 must re-target the wait (and not read that `aborted` as a cancel — `RunControl` decides cancel, `endReasonOf` would say `error`).
+- **PHASE-15 forward:** `runJob` closes the job's connection in its `finally`, *before* `collectJob`. The post-collect clean needs a room shell after collection: extend the connection's life past `collectJob` (or open a second one); the seam is `runJob`'s `finally`.
