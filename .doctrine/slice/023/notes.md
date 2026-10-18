@@ -541,3 +541,59 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - Not tested in A: the R3 warn-record arm of `warningThresholdPassed` (it needs a crash on `appendEvent("warning")` after the steer's admission: batch B row 9 exercises it); `startRunner` running `recoverHost` (covered by the fixture's mirror, not by runner-main.test).
 - A job submitted on a disabled runner after startup is not parked until the next disabled restart. Harmless: `queued` has no bound.
 - The two open user questions (`cancelDeferred` under an exhausted budget; the gated view's `getAuth`/`login`/`logout`) are untouched, as is `host_key_alias`.
+
+## PHASE-10 batch B (worker, opus)
+
+### Produced
+- malebolge (uncommitted on a0faedf):
+  - `src/runner/rejoin.ts` (new): `rejoinJob(deps, held, control)`, restart recovery's phase B. It re-reads the job (`readSnapshot`), plans with `recoveryPlan(…, true)`, and maps the plan's action kinds to entries (`ENTRIES`, first match): `redo_refresh` / `ensure_job_branch` → `prepareAndAdmit` (rows 3, 4); `record_running` → `transition(preparing → running, { submissionId, requestId: job id })`, then the reopened segment armed (row 5); `abort_then_waiting_room` → `conversation.abort`, then an unarmed segment that settles to `waiting_room` (row 6); `rearm_deadline` → the reopened segment armed, plus, on `resubmit_warning`, the segment's own warning made due and awaited (rows 8, 9); `resume_probing` → `awaitResume` with the plan's `withWarning` (rows 10, 11). `redo_collect` → `collectJob` (row 12). Order inside `superviseRun`'s enter: room work, then the act, then `harness.resume()`, only when a segment was entered (R1, R2). `RejoinDeps` = `RunDeps` with the harness widened by `snapshot | submission | resume`, plus `limitsOf`. The `Submission` is reopened with `harness.submission(record.id)`.
+  - `src/runner/run.ts`: `superviseRun(deps, job, resolved, control, enter)` owns the connection, stops, tenancy and collection, so `runJob` and the rejoin share them. `Entered = { segment, trail } | { ended }`. `runSegments` starts from an `Entered`. `awaitResume(…, withWarning?)` returns an `Entered`. `prepareAndAdmit`, `unarmed`, and the `NO_TRAIL` constant are new. The `openRun`, `armed`, `endUnrun`, `Resolved`, `Run`, `Admitted`, `Seated`, `Stops` and `WarningTrail` exports are new. Also new: `RunDeps.stopping`, the runner shutting down. `settle` and `prepareAndAdmit` rethrow while it is aborted, so they write no `settle_failed` or `failed` row (see Deviations).
+  - `src/runner/ending.ts` (new): `Ending`, `endReasonOf`, `settledEnding`, `ceilingEnding` and `enterCollecting`, moved out of run.ts. This breaks the run ↔ recover import cycle.
+  - `src/runner/recover.ts`: `JobRecovery` += `carrier` (the last receipt's submission record) and `dueTrigger`. `dueTrigger` replaces `thresholdPassed`: `wall_clock` when the clock alone passes, else `usage`, else, when a `warn-<id>` record exists (R3), `usage`.
+  - `src/runner/scheduler.ts`: `SchedulerDeps.rejoin`. `pick()` seats a held job that is not `pending_collection` once per process through `rejoin` (`rejoinClaims`). A job still held after its rejoin rests the drain, logged. Wake, drain and idle moved to `drainer()` (max-lines). Disabled still never drains, so it never rejoins.
+  - `src/runner/warning.ts`: `recordWarning` writes once per `requestId` (the PHASE-09 double `trigger: "resume"` receipt). `WarningDeps.jobs` += `events`. `RunWarning.given()` awaits the warning in progress without closing it.
+  - `src/runner/start.ts`: `runDeps: RejoinDeps` (`limitsOf`, `stopping: stop.signal`), and `rejoin` passed to the scheduler.
+  - Tests: `recovery.test.ts` +21:
+    - Rows 1, 3, 4, 4-moved, 5, 6, 7→12, 8, 8 VT-3 (parked), 9 usage, 9 R3, 10, 11 shape b (R1: `inspect().scheduling === "paused"` at the rejoin's probe), 11 shape c (resume once), and 11 waited out (R2: paused, no resume).
+    - Rows 3, 8 and 12 with `close` as the fault, shape (e), and the EX-5 Go fixtures.
+  - Other test files:
+    - `scheduler.test.ts` +5: rejoined not run, once only, `pending_collection` never rejoined, disabled, cancel routed.
+    - `runner-main.test.ts` +1: `startRunner` rejoins a `preparing` row. The disabled test now asserts `parked_at` (phase A at startup).
+    - `pause.test.ts` +1: receipt dedupe.
+  - Fixtures (`run-fixture.ts`): `rejoin` wired through `openProcess` (`rejoinHarness`). `restart(w, { enabled, script })`. The fixture's `close` aborts `stopping` first, as start.ts does. A dead or stopping process's logs are dropped. In `recovery.test.ts`: `started` / `crashedAt` / `inFlight`, the `Room.before(verb)` hook (`dieAtProbe`, `closingAt`), `stoppedAfterSubmit(prefix)` (closes pi right after an admission), `recordOf`, `heard`.
+- `just check`: fmt clean, lint 0, tsc clean, 45 files / 1029 tests (baseline 1001). Coverage: lines 97.98%, branches 93.69%. rejoin.ts has 89.65% lines; the uncovered lines are the missing-conversation/segment guards, "nothing to rejoin", and the policy-resolve failure.
+- Mutation-checked, each fails a test:
+  - resume sent from a fresh count (sent twice);
+  - `resume()` before the rejoin's room work;
+  - the scheduler draining while disabled;
+  - row 9's act dropped;
+  - row 9 awaited with `close` (withholds it);
+  - row 5 entered through `prepare` (re-judges the branch);
+  - row 8 unarmed;
+  - the `stopping` guard in `settle` removed;
+  - the once-per-job claim removed (hot loop: hangs).
+
+### Learned
+- A reopened `Submission` (`harness.submission(record.id)`) in a new passive harness can be waited on. `resume()` continues its run, and pi gives the interrupted `wait` tool's result as "interrupted and may have partially run". The sheet's STOP did not trigger.
+- **`close` did not leave in-flight rows the way a crash does.** `Session.close` lets admitted work settle before the storage closes. The seated run's `submission.wait` failed ("Harness is closed") while the database was still open, so the run wrote `collecting / settle_failed / error` and then collected, and the job ended `failed`. Before this batch, a runner stop failed every running job. PHASE-07 B2 Open's claim ("the next write fails; the row stays") held only for writes after the database closed.
+- In the fixture, a crash with `crashAt` stops only runner writes. pi in the "dead" process goes on, and the gate refuses its model calls once the tenant leaves. To freeze pi at a boundary, close the harness right after the admission (`stoppedAfterSubmit`). The close is idempotent (`Session.#closing`).
+- `RunWarning.close()` sets `closed` synchronously, so `due(); close()` withholds the warning it just made due. A `given()` that does not close was needed.
+- A type predicate on a claim function (`held is Job`) narrows the false branch to `undefined`. That made the "no held job" check an unnecessary condition. The claim now returns a plain boolean.
+
+### Deviations from the sheet
+- `RunDeps.harness` is not widened. `RejoinDeps` narrows `harness` to `RunDeps["harness"] & Pick<Harness, "snapshot" | "submission" | "resume">`. `runJob` needs none of these, and the three test harness wrappers stay as they are. `RecoverDeps.harness` is unchanged (read-only).
+- **`RunDeps.stopping` is new, and changes shutdown behaviour.** A run whose runner is shutting down rethrows instead of writing `settle_failed` (`settle`) or `failed` (`prepareAndAdmit` → `endUnrun`). The row stays as a crash leaves it. This was needed for the sheet's close-as-fault matrix rows. Survivor: the `prepareAndAdmit` guard, because "row 3 by close" waits for the full close and its writes fail anyway.
+- Row 6's act is an explicit `conversation.abort`. Its segment has no timers, since the table does not re-arm on row 6. `settleSubmission` may abort again, which is harmless.
+- Row 9: the act goes through the rejoined segment's `RunWarning` (`due(trigger)` + `given()`), not a bare `submitWarning`. A soft timer that is already past fires during the re-arm (phase A, before the act) and would otherwise race a second receipt. The trigger is `wall_clock` when the clock alone passes, else `usage`. When only the R3 record proves the threshold, the trigger is `usage` by elimination, because active wall-clock only grows. The R3 test fires the soft timer early, so its receipt says `usage` where the run had `wall_clock`. No real run reaches that.
+- No `resume()` for row 12 (collecting), or for an entry that ended before a segment (row 4 `job_branch_moved`, row 11 waited out or cancelled). This extends R2: nothing of the conversation continues.
+- Row 1 has no rejoin entry. `queued` is never held, and `runJob`'s `ensureConversation` is the act (AS-5). Row 13 has no new test: batch A's VT-3 test is the enabled row-13 path.
+- The receipt dedupe reads the events, then appends (not one transaction). The run is the job's only writer.
+- `rejoinClaims` has no `enabled` check: `wake` is the single disabled gate (never drains), and the disabled scheduler test pins it.
+- EX-5: `TestReconcile_FailsCrashedRunner` → "a crashed running row is recovered (continued and collected), not failed" (the deliberate DEC-054 change). `TestReconcile_IgnoresNonRunningStates` → `recoverHost` leaves queued and terminal rows' events unchanged. `LeavesLiveRunnerAlone` and `IgnoresOtherHost` are N/A: there is one runner, one host and one store file.
+
+### Open
+- A rejoin of a non-`preparing` row whose recorded policy or repo no longer resolves throws. The scheduler logs it and rests; the job stays held until the next restart, and no test covers this. A `preparing` row fails as `runJob` would.
+- PHASE-11+ forward: `stopping` is the run's shutdown signal now. `awaitRoom` and `readyRoom` sleeps could take it, so that a stop does not hold the process for up to 60 s (PHASE-09 B Open). It is not done here.
+- PHASE-11+ forward: a cancel that arrives after startup but before the rejoin seats the job goes through the store (`jobs.cancel`), as for any unseated job.
+- PHASE-15 forward: the row-4 checks seam is the `prepare` entry (`readyRoom`). Row 5 never reaches it, and `ensure_job_branch` is only on the no-record branch. `host_key_alias` is untouched.
+- The two open user questions are untouched: `cancelDeferred` under an exhausted budget, and the gated view's `getAuth`/`login`/`logout`. `biome.json` is untouched.
