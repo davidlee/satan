@@ -499,3 +499,45 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - A `submitResume` or transition that throws mid-episode propagates out of `runJob` (the drain logs and stops) and leaves `waiting_room` for recovery, like any other unexpected run error.
 - Mutation survivor: dropping `segment.warning.wasDue()` from the trail is caught only at unit level (`RunWarning.wasDue`). No deterministic run-level way was found to make the warning due but never given before a pause.
 - The two open user questions (`cancelDeferred` under an exhausted budget; the gated view's `getAuth`/`login`/`logout`) are untouched.
+
+## PHASE-10 batch A (worker, opus)
+
+### Produced
+- malebolge (uncommitted on ae787a8):
+  - `src/runner/store.ts`: migration V2 `ALTER TABLE jobs ADD COLUMN parked_at TEXT` (V1 untouched). `JobStore.parkAll(now)` / `unparkAll(now)`: one transaction each over every job, through a private `#changeAll` that shares `writeChange` with `change` (refactor). `JobUpdate.parkedAt` (`null` clears); `applyUpdate` clears `runningSince` and `parkedAt` on `null`.
+  - `src/runner/rows.ts` `parkedAt` codec (last column); `vocab.ts` `EVENT_KINDS` += `parked`, `unparked`.
+  - `src/runner/jobs.ts`: pure `park(job, now)` and `rebase(job, now)` → `{ update, parkedAt, shiftedMs }`. Table: `RecoverySnapshot.initialSubmission`; the `preparing, base_oid set` row split in place (no record → `ensure_job_branch` + `submit_initial_prompt`, with the PHASE-15 checks seam as a comment; record → phase B `record_running`, new `HarnessAction`). `ENABLED_ONLY` (room actions + `rearm_deadline`) filtered from phase A when disabled. `STARTUP_ACTIONS` (`to_collecting`) and `splitPhaseA(plan)` → `{ atStartup, inRejoin }` state R1's split.
+  - `src/runner/recover.ts` (new): `RecoverDeps` (harness typed `Pick<Harness, "commit" | "snapshot">`, so phase A cannot call a progress-asking member), `readSnapshot(deps, job)` → `JobRecovery { snapshot, segment? }`, `recoverHost(deps, enabled)`.
+  - `src/runner/durable-ids.ts`: `submissionRecordOf(session, conversationId, requestId)`. `pause.ts`: `segmentRequestId(job)`. `policy.ts`: `recordedPolicy(record)` (AS-2 decoder; `config.ts` exports `isThinkingLevel`). `model-gate.ts`: `catalogLimits(models)(ref)`. `run.ts`: exports `Ending`, `settledEnding`, `ceilingEnding(ending, ceiling?)` (now takes the reason, not the latch), and `enterCollecting` (the run's and recovery's one `collecting` write).
+  - `src/runner/start.ts`: `recoverHost` after `usage.bind`, before `serveControl` and `wake`; header comment updated. `closingOnFailure(harness, step)` replaces the two inline catch-and-close blocks (max-lines).
+  - Tests: `test/runner/recovery.test.ts` (new, 13): VT-2/EX-6 disabled matrix, 7 states each reached by a real run that crashes at its write boundary (`preparing` ×3, `running` + pause, `waiting_room`, `collecting`, `pending_collection`): clock past every bound, no channel verb, no connect, row unchanged except `parked_at`, `harness.inspect().scheduling === "paused"`, faux `callCount` 0. EX-3 pause kept. Row 7 disabled → `collecting/completed`, payload `reason: "recovered"`; with a gate `ceiling` event → `ceiling_exceeded` (AS-3). EX-7 parked once over two disabled restarts. VT-3 park half: `pending_collection` parked 10 days, enabled restart → retried and collected (`needs_review`), one `unparked`, parked span not charged. `readSnapshot` `initialSubmission` false/true. `store.test` +7 (v1 → v2 migration, v2 refuses v1's list, park/unpark incl. one-tx rollback and state-entered-while-parked). `jobs.test`: recovery rows rewritten (row numbers, disabled column per row: the old "disabled keeps phase A" test was wrong under EX-6), EX-8 no branch judgement, R1 disjointness, `splitPhaseA`, `park`/`rebase` units. `policy.test` +2, `model-gate.test` +1.
+  - Fixtures (`run-fixture.ts`): `runWorld` split into `openProcess(shared, { enabled, resume, crashAt })`. `RunWorldOptions.path` / `crashAt`; `storeFile()`; `restart(world, { enabled })` (close without awaiting the run, reopen passive on the same file/room/clock, `recoverHost`, `wake`). `CrashingJobStore` (subclass, not Proxy: `#db` private fields break a Proxy `this`): the write labelled `crashAt` (`eventLabel`: kind or `transition:<to>`; `prompt` = the prompt read before submit) and every later write throw `Crash`, and its `dead` signal is the scheduler's `stop`. `world.crash()`, `world.advance(ms)`, `world.close()`, `world.recoverDeps`. `ROOM_DOWN`, `roomGoesDown`, `lostBash` promoted from pause.test; `kinds` now uses `eventLabel`.
+- `just check`: fmt clean, lint 0, tsc clean, 45 files / 1001 tests (baseline 44 / 968), lines 98.15%. recover.ts 90.24% lines: uncovered are the unreadable-usage arm, two guard throws and the per-row log.
+- Mutation-checked, each fails a test: rebase without clearing `parked_at` (re-base twice); `running_since` not shifted; room action kept when disabled; `harness.resume()` in `recoverHost` (progress call while disabled: 9 tests); row 7 before row 6; park instead of unpark on enabled; ceiling reason ignored.
+
+### Learned
+- `harness.inspect(context).scheduling` is `"paused" | "running" | "closing"`: a direct, non-mocking check that nothing asked pi for progress. Verified in pi-durable's js: `commit`, `snapshot`, `submission(id)`, `inspect` never call `tasks.resume()`; `submit`, `abort`, `compact`, `waitForIdle`, `waitForTask`, `Submission.wait` do.
+- A `JobStore` Proxy cannot intercept writes: methods touch `#db`, which throws on a Proxy receiver. A subclass overriding `change`/`appendEvent` catches every row write (`transition`, `cancel`, `markPause` go through `this.change`).
+- Re-base rule: a bound's start moves by its own parked time, `since + (now − max(parkedAt, since))`. A state entered while parked (a control-socket cancel on a disabled runner moves `waiting_room` → `pending_collection`) starts at unpark; a flat `+ (now − parkedAt)` would put `state_entered_at` in the future.
+- A crash point needs the scheduler stopped too: the fixture's fake `sleep` advances the clock, so a still-draining dead process "waits out" `max_pending_collection` before the restart. The crashed store's `dead` signal is the scheduler's `stop`.
+
+### Deviations from the sheet
+- A4/A5 code was written before its integration tests (recovery.test.ts needed the fixture first); A1-A3 were red first. Each A4/A5 invariant was then mutation-checked instead.
+- `readSnapshot` returns `JobRecovery { snapshot, segment? }`, not a bare snapshot: row 7 needs the settled record for `settledEnding`, and batch B needs `segment.id` to reacquire the `Submission`.
+- The usage half of AS-4 uses the gate's own `shouldWarn` over `pi.usage` with the model's limits (`limitsOf` = `catalogLimits` in start.ts). A model the catalog lacks gets zero limits (only the soft fractions and `model_requests` apply). Unreadable usage → wall-clock only.
+- Row 7's `collecting` payload gains `reason: "recovered"`.
+- `recoverHost` logs and skips a job whose views cannot be read, and returns nothing. Batch B recomputes the plan at rejoin.
+- `rearm_deadline` sits in `ENABLED_ONLY` and outside `STARTUP_ACTIONS`: it runs in the rejoined run (settled assumption).
+
+### Open
+- **Batch B seam.**
+  - `readSnapshot(recoverDeps, job)` → `{ snapshot, segment? }`. `segment` is the running segment's `SubmissionRecord`: `harness.submission(segment.id)` reacquires it.
+  - `recoveryPlan(snapshot, true)` + `splitPhaseA(plan).inRejoin`: the room actions and `rearm_deadline`, to run in the rejoin before phase B. The startup part is already done.
+  - `HarnessAction` `record_running` (row 5) → `transition(preparing → running, { submissionId: String(segment.id), requestId: job.id })`.
+  - `recordedPolicy(job.policy)` (AS-2). `segmentRequestId`, `submissionRecordOf`.
+  - `ceilingEnding` / `enterCollecting` / `settledEnding` exported from run.ts.
+  - Fixture: `restart(world, { enabled: true })` already calls `recoverHost` then `wake()`. B adds the rejoin to `SchedulerDeps`, and `restart` picks it up through `openProcess`. `crashAt` labels, `world.crash()`, `storeFile()`.
+- Batch B must give the rejoin `RecoverDeps` plus `RunDeps`, widening `RunDeps.harness` with `resume`/`submission` (sheet B2). `RecoverDeps.harness` stays read-only.
+- Not tested in A: the R3 warn-record arm of `warningThresholdPassed` (it needs a crash on `appendEvent("warning")` after the steer's admission: batch B row 9 exercises it); `startRunner` running `recoverHost` (covered by the fixture's mirror, not by runner-main.test).
+- A job submitted on a disabled runner after startup is not parked until the next disabled restart. Harmless: `queued` has no bound.
+- The two open user questions (`cancelDeferred` under an exhausted budget; the gated view's `getAuth`/`login`/`logout`) are untouched, as is `host_key_alias`.
