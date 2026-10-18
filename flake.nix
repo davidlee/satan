@@ -73,7 +73,6 @@
 
           coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           luau # noctalia/ plugin tests + lint
-          doctrine-pkg
         ];
         projectPkgs =
           devToolPkgs
@@ -363,9 +362,12 @@
             # The devshell's tool set as one closure, for out-of-tree consumers
             # that need the same tools without the devshell (the microvm
             # capsule's `toolsPackage`), so the VM and the devshell can't drift.
+            # One exception: doctrine. The devshell and jails use the host's
+            # cargo install (agents' hostDoctrine); a capsule has no host
+            # binary, so it gets this flake's pinned build.
             dev-tools = pkgs.buildEnv {
               name = "satan-dev-tools";
-              paths = devToolPkgs;
+              paths = devToolPkgs ++ [doctrine-pkg];
               ignoreCollisions = true;
             };
           };
