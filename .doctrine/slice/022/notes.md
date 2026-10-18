@@ -156,3 +156,13 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 
 ### Open
 - governance.md § Tick mode family still describes pre-SL-022 tick defaults (3000 tokens / 4 calls / 30 s, three-tool surface); `satan-tick.el` registers 100000 / 10 / 120 s and a wider tool list. Not gateway-related; left for a docs chore.
+
+## PHASE-08 execution (2026-10-18, in-session with the user)
+
+- EX-1: user pushed satan (main = origin/main @ 5c0e2d9) and restarted Emacs onto it.
+- EX-2: user removed `satan-credential-function` (apps/dl-satan.el) and `my/satan-credential` + tests (lisp/dl-secret.el, lisp/test/dl-secret-test.el) in ~/.config/emacs; its `just check` green; user committed. Agent then removed the leftover "1Password backend" comment in apps/dl-satan.el at the user's request (emacs ceb3062, path-limited commit).
+- VH-4: running Emacs (uptime ~6 min): `satan-credential-function` unbound, feature `satan-credential` not loaded, no satan-credential / void-variable lines in *Messages* or *Warnings*. A native-comp warning `dl-secret.el:59 notifications-notify not known to be defined` predates the edit (function-body `require`); not SL-022.
+- VH-1: `satan-run motd` → 20261018T142127-motd-280fae `done`, no 1Password prompt path left in the broker. `llm-gateway list`: satan spent $0.0515 of $20 (was $0.0187 at PHASE-07).
+- VH-2: during a live tick, argv of the launcher (jailed-satan-gptel-harness, pid 3767857) and the harness python (pid 3768154) scanned for the literal key: absent. bwrap is exec'd in the launcher's pid; its argv is covered by the flake check's `argvAbsent` probe (PHASE-07 VH-1 on the deployed launcher).
+- VH-3: keys/satan renamed aside for one tick → 20261018T143609-tick-pulse-a7d140.FAILED, final.json reason `spawn_failed`; transcript has `broker spawn-failed` {process-status exit, code 1, stderr = launcher's "gateway key … is missing, empty or unreadable" message}; key restored (mode 600).
+- Observed: the launcher's refusal hint names the alias `satan-gptel-harness` (the jail name), not the issued alias `satan` — cosmetic, owned by ~/flakes/agents.
