@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e0a-9897-7da3-8f1b-9c344f6a7839"
+recorded_at = "2026-10-18T08:04:39.703356942Z"
+kind = "friction"
+summary = "malebolge biome.json files.includes skips root config files"
+detail = "SL-023 PHASE-02: Biome format check covers src/**, test/**, *.json only, so eslint.config.js and vitest.config.ts are unformatted-checked; Biome linter still enabled in biome.json (editor diagnostics). Fix needs an edit to the user-owned dirty biome.json (add root *.ts/*.js, linter.enabled false) - left to the user."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

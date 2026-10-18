@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e0a-9895-7e21-8f55-80c5a55d54a2"
+recorded_at = "2026-10-18T08:04:39.701090432Z"
+kind = "friction"
+summary = "complexity:8 counts every case label; large-union switches need a handler table"
+detail = "SL-023 PHASE-02 worker: eslint complexity 8 (IMP-041) counts each case, so an exhaustive switch over a large union (render.ts Printable events) cannot pass. A typed handler table keyed by the union's type field satisfies complexity and exhaustiveness without assertions; runner phases will meet this again. Also import-x/no-duplicates autofix with default options produced 'import type { A, type B }' which vitest refuses to parse; prefer-inline: true fixes it."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

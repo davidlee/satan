@@ -35,3 +35,14 @@ tool.
 
 Land before SL-023's runner code, so the runner is written under it rather
 than retrofitted.
+
+## Resolution (2026-10-18, SL-023 PHASE-02)
+
+Done in malebolge `239794c`: `eslint.config.js` (strictTypeChecked +
+stylisticTypeChecked, projectService, the rule list above), Biome kept as
+format check only (`just fmt-check`), `just check` green with zero warnings,
+zero type assertions, zero eslint-disable. typescript-eslint 8.71.x needs
+TypeScript < 6.1 with the classic compiler API, so malebolge now pins
+`typescript@6.0.3` (was the Go-native 7.0.2); CHR-015 tracks the return to
+TS 7. Note: the root `eslint.config.js`/`vitest.config.ts` fall outside
+Biome's `files.includes` in malebolge's `biome.json` (user-owned, not edited).

@@ -126,3 +126,22 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
   - PHASE-07/EX-3: env.ts must also pass the per-job Connection subclass (RemoteExecutionEnvOptions.connection).
   - PHASE-08/EX-1, VT-1: gate names only streamSimple/completeSimple; DEC-057 now also gates fetchDeferred, cancelDeferred and runtime.models complete/stream/classify/generateImages/streamDeferred; refusal avoids pi-ai retryable wording.
   - PHASE-09/EX-1: "env wrapper ... before rethrow" becomes the Connection subclass with an idempotent mark (one stop raised two lost failures).
+
+## PHASE-02 quality gates (2026-10-18, worker)
+
+### Produced
+- malebolge (uncommitted, for the orchestrator): `eslint.config.js` (typescript-eslint strictTypeChecked + stylisticTypeChecked, projectService, IMP-041 rule list), `tsconfig.json` (DEC-053 flags), `vitest.config.ts` (V8, `src/**`, `src/*-main.ts` excluded, lines >= 85), `justfile`/`package.json` (`fmt-check` = `biome format .`, `lint` = `eslint . --max-warnings 0`, `check: fmt-check lint typecheck test`), typescript pinned 6.0.3 (T0 option A; CHR-015 covers TS 7).
+- `src/json.ts` `isRecord` — the one narrowing guard for parsed JSON (protocol, models store, render wire decode, test fixtures, spike).
+- `src/render.ts` dispatches through an exhaustive `Handlers` table keyed by event type (a new AgentEvent type fails to compile); `toPrintable` decodes a wire line (discriminant check only, the daemon is a trusted peer). Answer-text tracking across message_start/update/end unchanged; render tests now go through `toPrintable`.
+- 0 inline eslint-disable. 86 -> 103 tests. Coverage baseline (ratchet start): lines 94.96%, statements 94.42%, branches 83.22%.
+
+### Learned
+- `import-x/no-duplicates` autofix (default `prefer-inline: false`) merged `import type {A}` into `import {type B, c}` as `import type {A, type B, c}` — invalid, and vitest/oxc refuses to parse it. Config now sets `prefer-inline: true`; one file needed a manual repair.
+- `complexity: 8` counts every `case` label, so a switch over pi-durable's 25-member `AgentEvent` cannot pass; a mapped `Handlers` table (`{ [E in Printable as E["type"]]: E }`) plus a generic `dispatch(handlers, type, event)` passes both complexity and exhaustiveness without an assertion.
+- `switch-exhaustiveness-check` at defaults flags a `default:` that hides union members; use `"block" in change` narrowing or enumerate the members.
+- Hoisted function declarations lose a top-level `const` narrowing (spike `slot`): pass the narrowed value in.
+- Biome's `files.includes` (in the user's dirty `biome.json`) covers `src/**`, `test/**`, `*.json` only — root `eslint.config.js` / `vitest.config.ts` are not format-checked.
+
+### Open
+- `biome.json`: add root `*.ts`/`*.js` to `files.includes` and set `linter.enabled: false` (user's file; not touched).
+- Behaviour edges taken while removing assertions (judged non-functional, listed for audit): `withMissingModels` now adds only chat models to `getModels()` (all to `getAllModels()`; new test); `readModelsStore` returns `{}` for a non-object store and drops entries lacking string `id`/`provider`; `attach` throws "not an event" on a non-object line (was a TypeError); daemon-main logs and exits 1 on a failed signal-stop (was an unhandled rejection); `persona` render extracted as `readPersona`, plus an integration test reading the rendered section from a turn's system entry.

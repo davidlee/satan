@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e0a-9892-7f20-b7e0-67ee2be29825"
+recorded_at = "2026-10-18T08:04:39.698152186Z"
+kind = "friction"
+summary = "typescript-eslint cannot run on TypeScript 7 (Go-native, no compiler API); malebolge pinned TS 6.0.3"
+detail = "SL-023 PHASE-02 planner found malebolge pinned typescript 7.0.2, whose npm package ships only tsc.js/getExePath/version; typescript-eslint 8.71.x peers typescript <6.1.0 and projectService needs the classic API. Neither DEC-053 nor IMP-041 anticipated it. Orchestrator pinned 6.0.3 (one compiler, all DEC-053 flags work); CHR-015 tracks return to TS 7."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
