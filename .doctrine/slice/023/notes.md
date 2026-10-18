@@ -179,3 +179,24 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - `exhausted` order: `ceiling_exceeded` before `usage_unavailable`.
 - Prompt "notes" convention wording is the worker's; corpus prompt may restate it.
 - Cancelled-with-clean-commits class `partial` (from batch A) still open.
+
+## PHASE-04 (worker, opus)
+
+### Produced
+- malebolge (uncommitted, for the orchestrator): `src/runner/store.ts` (`MIGRATIONS` [v1], `migrate(db, migrations)`, `JobStore` with `submit` / `change` / `transition` / `cancel` / `markPause` / `appendEvent` / `get` / `bySubmission` / `list` / `events`, `openRunnerStore(path, { newId })`, `PI_PREFIX`), `src/runner/rows.ts` (`Job`, `NewJob`, `JobEvent`, the column codec table `JOB_CODECS`, `encodeJob` / `decodeJob` / `encodeEvent` / `decodeEvent` / `decodeSchemaVersion`, `columnOf`, `JOB_FIELDS`), `src/runner/ids.ts` (`newJobId(now, random)` hand-rolled ULID, `systemJobIds`); `vocab.ts` gains `EVENT_KINDS`, `isEndReason`, `isJobClass`, `isEventKind` over one `memberOf` guard (`isJobState` now uses it); `fields.ts` exports `isStringArray`. Tests `test/runner/{store,rows,ids}.test.ts`, fixture `test/runner/store-fixture.ts` (`openTestStore`, `NEW_JOB`, `sequentialIds`, `T0`). 539 -> 600 tests; lines 97.15% -> 97.77%. 0 inline eslint-disable.
+- OQ-A ruled (a): v1 `jobs` carries `ceilings TEXT NOT NULL DEFAULT '{}'` after `source`; otherwise the §5.3 DDL verbatim (comments included) plus the two append-only triggers. `job_schema` is created by the migrator (`IF NOT EXISTS`, seeded 0).
+- `change(id, now, decide)` is the one read-modify-write path: read, `decide(job)` (jobs.ts patch), write only the patched columns + `updated_at`, append the event, all on the `tx` handle in one `BEGIN IMMEDIATE`. Later phases add callers by widening `JobUpdate` (today `Partial<JobPatch>`).
+
+### Learned
+- `sqlite_master` holds `sqlite_autoindex_*` objects for PRIMARY KEY/UNIQUE columns, including `sqlite_autoindex_pi_document_revisions_1` for pi: partition host vs pi objects by `tbl_name`, not by name prefix.
+- No-`as` codec: a non-homomorphic mapped type `{ [K in JobField]: Codec<Job[K]> }` (keeps `undefined` in optional fields' types, unlike `-?`) plus a generic `<K>(job: Pick<Job, K>, field: K)` indexes the table without assertions; decode still lists fields once (required in the base, optional via `setDefined`) because building a typed object from a loop needs a cast.
+- `explicit-function-return-type` flags arrows inside an object literal returned from a generic arrow; use a function declaration with a typed `const codec: Codec<T>`.
+- vitest `%j` in a test name throws on `bigint` (JSON); use `%s`.
+
+### Open (for /audit to reconcile)
+- Drift: `jobs.ceilings` column (OQ-A) is not in design §5.3.
+- Timestamps are ISO-8601 UTC ms text limited to years 1970-9999 (A1; keeps lexical = time order). Equal-ms `created_at` ties: `list` orders by `created_at, id`; the scheduler (PHASE-07) should do the same or use `rowid`.
+- Submit is SELECT-by-`submission_id` then INSERT inside the one `BEGIN IMMEDIATE` (the sheet sketched `INSERT … ON CONFLICT DO NOTHING`); the UNIQUE constraint remains the backstop.
+- `submitted` event payload is the `NewJob` as passed (validated request without `op`/`requestId`). Transition payload is `{ ...caller, from, to }` plus `endReason` when the patch sets it (cancel, A3).
+- `openRunnerStore` does not close the database when `migrate` refuses (runner start refuses and exits); revisit if a long-lived process ever retries opens.
+- I2 "no other process opens the file" is operational (PHASE-12 unit); in code `migrate` is called only by `openRunnerStore`.
