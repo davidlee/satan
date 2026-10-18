@@ -113,3 +113,27 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 ### Open (for later phases)
 - PHASE-05: `dev/satan-test.el` (~100-106) credential nil-backend binding and scrub; `satan/test/satan-credential-fixture.el` still used by the broker test.
 - PHASE-06: `docs/patch/handover.md:97,202` and `docs/refactor/T8-pi-adapter-keys.md` still name `api-key-vars`.
+
+## PHASE-05 execution (credential surface retired)
+
+### Done
+- Baseline (DB at 127.0.0.1:54322 reachable): ert 1384 ran, 1378 passed, 6 skipped (the sheet said 7); Python 55 OK.
+- `satan-broker.el`: dropped the `satan-credential` require, `provider-key-vars`, `--key-var`, `--evict-on-auth` (and its `--finalize` call), the credential-policy section (`satan-credential-escalate-after`, `satan-run-attended`, `--credential-streak-age`, `--credential-policy`), `--acquire`, `--write-credential-deferred-run`, and the `:deferred`/`:unavailable` gate arms. The busy arm tests only `satan-run--spawn-running`. `--streak-transparent-reasons` is `("session_blocked" "run_busy")`. `--spawn (mode prepare dir)`; child env = `SATAN_RUN_*` + `satan-env` (`SATAN_MODEL`/`_BUDGET_TOKENS`/`_MAX_BUDGET_TOKENS`) + harness `:env` + `(default-value 'process-environment)`. No `SATAN_PROVIDER`, no scrub. `satan-broker--spawn` not reindented (CHR-009).
+- OQ-1 (orchestrator): `satan-run-attended` deleted, along with its binding in `satan-run` (`satan.el`) and VT-17.
+- `satan-run.el`: `credential-refs` slot gone. `satan-mode.el`: `satan-profiles` = `((deepseek-flash . (:model "deepseek-flash")))`, docstring rewritten; `--check-credential-keys` and both `:credential-policy 'prompt` lines gone.
+- Deleted `satan-credential.el`, `satan-credential-test.el` (18 tests) and `satan-credential-fixture.el`. `dev/satan-test.el` lost the require, the nil-backend binding and the env scrub.
+- Tests: VT-1 `satan-broker/child-env-is-global-env-plus-satan-vars` (also covers ISS-037; `base-env-ignores-buffer-local-env` deleted). VT-2 `satan-mode/profiles-carry-model-only` (shape: every shipped profile's keys are exactly `(:model)`, `deepseek-flash` present, no registered mode has `:provider`/`:credential-*`). `profile-merges-under-mode-keys` replaces the credential-key merge test. `done-run-ends-the-failure-streak` keeps the third block of `done-runs-end-both-streaks`; helpers renamed `--with-streak-runs`/`--streak-id`. `session-blocked-transparent-to-failure-streak` lost its `credential_deferred` row and gained an A2 block: a historic `credential_deferred` now ends the streak. Error-class fixture reads `LLM_GATEWAY_KEY not set`. Python `test_stray_legacy_provider_vars_are_ignored` deleted (VA-1; outside EX-3's file list).
+- Reds: VT-1 gave wrong-number-of-arguments at the 3-arg call. A scratch 4-arg variant (not committed) failed on `SATAN_PROVIDER=openrouter` after the positive `SATAN_*` asserts passed. A buffer-local-base variant failed on `SATAN_TEST_BUFFER_LEAK`. VT-2 failed with `(deepseek-flash (:provider :model))`; with the profile fixed, it failed again on `("motd" :credential-policy)`.
+- After: `just check` exit 0 with the DB live: ert 1346 ran, 1340 passed, 6 skipped (-38 = 18 credential + 19 broker net + 1 mode net); Python 54 OK; `just lint` clean.
+- Run in isolation, `run-emits-one-tick-row-outcome-spawned` now passes: the order dependence is gone. The isolated `^satan-broker/` run passes 59/59.
+- VA-1 `rg -n '_API_KEY|op://|op run|satan-credential' satan/ dev/ flake.nix` -> `flake.nix:297:          outerAbsent = ["op run"];` only. VA-2 `rg 'llm-gateway/keys|127.0.0.1:4000' satan/` -> no hits; `rg -n 'LLM_GATEWAY_URL|/run/.*llm-gateway' satan/*.el` -> no hits.
+
+### Learned
+- `(require 'satan)` in `satan-broker-test.el` is load-bearing beyond its old "attended flag" comment: it registers every tool module morning names (`manifest-tools-shape` fails without it in an isolated run). The full suite hides this, because another file loads `satan` first.
+- A second `--spawn` stub, outside `--gate-run`, in `run-emits-one-tick-row-outcome-spawned`, still had a 4-arg lambda. Only the isolated broker run caught it: `rg '_cred'` is the sweep.
+- `should-not (list …)` is always non-nil: wrap a diagnostic payload as `(and COND (list …))`.
+
+### Open
+- `satan-run-id-time` (`satan-run.el`) has no production caller now (only `--credential-streak-age` used it); only its VT-28 test reads it. Candidate for deletion.
+- `mem.fact.satan.broker-test-credential-stub-order-dependence` is obsolete; retire or rewrite.
+- The stale `satan/satan-credential.elc` from a host compile is still on disk (untracked, gitignored).

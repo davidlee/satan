@@ -15,10 +15,9 @@
 (require 'satan-budget)               ; budget gating cross-cutter
 (require 'cl-macs)                       ; cl-letf used in tool-ctx tests
 (require 'satan-mode)                 ; manifest-tools-shape resolves "morning"
-(require 'satan)                      ; satan-run (SL-018 attended flag)
+(require 'satan)                      ; registers every tool module morning names
 (require 'satan-tick)
 (require 'satan-run-test)             ; satan-run-test--mkrun fixture
-(require 'satan-credential-fixture)
 ;; Tool modules must be loaded so each registers via `satan-tool-register'
 ;; before `satan-broker--build-manifest' looks them up.
 (require 'satan-tools-notify)
@@ -276,9 +275,10 @@ regression)."
       (delete-directory root t))))
 
 (ert-deftest satan-broker/session-blocked-transparent-to-failure-streak ()
-  "`session_blocked', `credential_deferred' and `run_busy' are transparent:
-they neither extend nor break a same-cause failure streak, and the walk's
-position numbering steps over them (EX-3)."
+  "`session_blocked' and `run_busy' are transparent: they neither extend
+nor break a same-cause failure streak, and the walk's position numbering
+steps over them (EX-3).  The retired `credential_deferred' is not: a
+historic one now ends the streak (SL-022 design, accepted)."
   (let* ((root (make-temp-file "satan-runs-streak-transparent-" t))
          (satan-runs-dir root))
     (unwind-protect
@@ -287,8 +287,6 @@ position numbering steps over them (EX-3)."
                                  "failed" "auth" t)
           (satan-run-test--mkrun root "20260520T080000-motd-bbbbbb"
                                  "failed" "session_blocked")
-          (satan-run-test--mkrun root "20260520T090000-motd-cccccc"
-                                 "failed" "credential_deferred")
           (satan-run-test--mkrun root "20260520T093000-motd-eeeeee"
                                  "failed" "run_busy")
           (let* ((newest-dir (satan-run-test--mkrun
@@ -296,10 +294,18 @@ position numbering steps over them (EX-3)."
                               "failed" "auth" t))
                  (newest (satan-run-outcome newest-dir))
                  (streak (satan-broker--failure-streak "motd" newest)))
-            (should (= 2 (length streak)))
             (should (equal (mapcar (lambda (o) (plist-get o :run-id)) streak)
                            '("20260520T100000-motd-dddddd"
-                             "20260520T070000-motd-aaaaaa")))))
+                             "20260520T070000-motd-aaaaaa"))))
+          (satan-run-test--mkrun root "20260520T103000-motd-cccccc"
+                                 "failed" "credential_deferred")
+          (let* ((newest-dir (satan-run-test--mkrun
+                              root "20260520T110000-motd-ffffff"
+                              "failed" "auth" t))
+                 (newest (satan-run-outcome newest-dir)))
+            (should (equal (mapcar (lambda (o) (plist-get o :run-id))
+                                   (satan-broker--failure-streak "motd" newest))
+                           '("20260520T110000-motd-ffffff")))))
       (delete-directory root t))))
 
 (ert-deftest satan-broker/announce-journals-every-failure-ascii ()
@@ -741,21 +747,15 @@ pop a desktop alert).  The bundle is verify-clean."
 ;; ---------- SL-018 PHASE-03: run_busy gate (DEC-023) ----------
 
 (cl-defun satan-broker-test--gate-run
-    (&key busy session perceive-error policy env backend attended setup)
+    (&key busy session perceive-error setup)
   "Run `satan-broker-run' \"morning\" through the pre-spawn gates.
 BUSY binds `satan-run--spawn-running', SESSION `satan-run--session-active';
-PERCEIVE-ERROR non-nil makes perceive signal.  POLICY, when given,
-overrides morning's `:credential-policy'.  ENV is prepended to
-`process-environment' (the fixture pins morning to openrouter, so its
-key var is OPENROUTER_API_KEY).
-BACKEND, a plist of `satan-credential-fixture-backend' keys, installs
-the fake backend (default: none).  ATTENDED binds `satan-run-attended'.
-SETUP, a function of the runs root, runs first.  `--spawn' is stubbed
-and captures its verdict.
+PERCEIVE-ERROR non-nil makes perceive signal.  SETUP, a function of the
+runs root, runs first.  `--spawn' is stubbed.
 
-Returns (:reason R :dir DIR :run-id ID :spawned BOOL :cred VERDICT
-:calls CALLS :announced ANNOUNCEMENTS), R nil when it spawned; the
-temp runs root is deleted afterwards, so DIR is for its name only."
+Returns (:reason R :dir DIR :run-id ID :spawned BOOL :announced
+ANNOUNCEMENTS), R nil when it spawned; the temp runs root is deleted
+afterwards, so DIR is for its name only."
   (let (result)
     (satan-broker-test--with-tool-descriptions
      satan-broker-test--morning-tool-descriptions
@@ -765,26 +765,8 @@ temp runs root is deleted afterwards, so DIR is for its name only."
               (satan-budget-daily-tokens 2500000)
               (satan-run--spawn-running busy)
               (satan-run--session-active session)
-              (satan-run-attended attended)
               (satan-trace-enabled nil)
-              (process-environment (append env process-environment))
-              (log (list nil))
-              (satan-credential-function
-               (and backend
-                    (apply #'satan-credential-fixture-backend log backend)))
-              ;; Pin the provider: the gate is under test, not the
-              ;; profile morning ships with.
-              (morning (plist-put (copy-sequence
-                                   (satan-mode-resolve "morning"))
-                                  :provider 'openrouter))
-              (satan-modes (cons (cons "morning"
-                                       (if policy
-                                           (plist-put morning
-                                                      :credential-policy
-                                                      policy)
-                                         morning))
-                                 satan-modes))
-              (spawned nil) (cred nil))
+              (spawned nil))
          (unwind-protect
              (satan-announce-with-recorder
                (when setup (funcall setup root))
@@ -793,8 +775,8 @@ temp runs root is deleted afterwards, so DIR is for its name only."
                               (lambda (&rest _) (error "perceive boom"))
                             #'satan-broker-test--minimal-perceive))
                          ((symbol-function 'satan-broker--spawn)
-                          (lambda (_mode prepare _dir verdict)
-                            (setq spawned t cred verdict)
+                          (lambda (_mode prepare _dir)
+                            (setq spawned t)
                             (plist-get prepare :run_id))))
                  (let* ((run-id (satan-broker-run "morning"))
                         (dir (satan-run-locate-dir run-id root)))
@@ -809,19 +791,10 @@ temp runs root is deleted afterwards, so DIR is for its name only."
                                               dir "final.json")
                                              :reason))
                                :dir dir :run-id run-id
-                               :spawned spawned :cred cred
-                               :calls (reverse (car log))
+                               :spawned spawned
                                :announced satan-announce-recorded)))))
            (delete-directory root t)))))
     result))
-
-(defun satan-broker-test--journal-lines (announcements)
-  "The journal lines among recorded ANNOUNCEMENTS."
-  (delq nil (mapcar (lambda (a) (plist-get a :journal)) announcements)))
-
-(defun satan-broker-test--pops (announcements)
-  "The recorded ANNOUNCEMENTS that request a desktop pop."
-  (cl-remove-if-not (lambda (a) (plist-get a :title)) announcements))
 
 (ert-deftest satan-broker/run-busy-refuses-silently ()
   "VT-27: a live child → `run_busy' no-child run: no spawn, no rename, no pop."
@@ -841,164 +814,6 @@ temp runs root is deleted afterwards, so DIR is for its name only."
                             :reason)
                  "session_blocked"))
   (should (plist-get (satan-broker-test--gate-run) :spawned)))
-
-;; ---------- SL-018 PHASE-05: the credential gate (design sec-3, sec-5) ----------
-
-(defconst satan-broker-test--ref-env
-  '("OPENROUTER_API_KEY=op://API_KEYS/OPENROUTER_API_KEY/credential")
-  "Morning's key var holding an uncached 1Password reference.")
-
-(defconst satan-broker-test--ref-read
-  '(("op://API_KEYS/OPENROUTER_API_KEY/credential" . "sk-or-test"))
-  "What the fake backend reads for `satan-broker-test--ref-env'.")
-
-(ert-deftest satan-broker/defer-mode-without-session-defers ()
-  "VT-2: defer, no session → `credential_deferred': silent, journalled, and
-the backend saw only lookup / session-p, never read."
-  (let* ((r (satan-broker-test--gate-run
-             :policy 'defer :env satan-broker-test--ref-env
-             :backend (list :read satan-broker-test--ref-read)))
-         (lines (satan-broker-test--journal-lines (plist-get r :announced))))
-    (should (equal (plist-get r :reason) "credential_deferred"))
-    (should-not (plist-get r :spawned))
-    (should-not (string-suffix-p ".FAILED" (plist-get r :dir)))
-    (should-not (satan-broker-test--pops (plist-get r :announced)))
-    (should (equal lines (list (format "credential_deferred morning %s"
-                                       (plist-get r :run-id)))))
-    (should (equal (satan-credential-fixture-ops (plist-get r :calls))
-                   '(lookup session-p)))))
-
-(ert-deftest satan-broker/prompt-mode-reads-with-its-label ()
-  "VT-3: prompt, no session → read with the mode's context label; spawns."
-  (let ((r (satan-broker-test--gate-run
-            :env satan-broker-test--ref-env
-            :backend (list :read satan-broker-test--ref-read))))
-    (should (plist-get r :spawned))
-    (should (member '(read "op://API_KEYS/OPENROUTER_API_KEY/credential"
-                           "satan broker/morning")
-                    (plist-get r :calls)))
-    (should (equal (plist-get (plist-get r :cred) :env)
-                   '("OPENROUTER_API_KEY=sk-or-test")))
-    (should (equal (plist-get (plist-get r :cred) :refs)
-                   '(("OPENROUTER_API_KEY"
-                      . "op://API_KEYS/OPENROUTER_API_KEY/credential"))))))
-
-(ert-deftest satan-broker/live-session-cold-cache-spawns-without-prompt ()
-  "VT-5: a live session lets even a defer mode read (silently) and spawn."
-  (let ((r (satan-broker-test--gate-run
-            :policy 'defer :env satan-broker-test--ref-env
-            :backend (list :session t :read satan-broker-test--ref-read))))
-    (should (plist-get r :spawned))
-    (should (equal (satan-credential-fixture-ops (plist-get r :calls))
-                   '(lookup session-p read)))))
-
-(ert-deftest satan-broker/attended-run-prompts-in-a-defer-mode ()
-  "VT-8: `satan-run-attended' → read, whatever the mode's policy."
-  (let ((r (satan-broker-test--gate-run
-            :policy 'defer :attended t :env satan-broker-test--ref-env
-            :backend (list :read satan-broker-test--ref-read))))
-    (should (plist-get r :spawned))
-    (should (memq 'read (satan-credential-fixture-ops (plist-get r :calls))))))
-
-(ert-deftest satan-broker/acquisition-precedes-run-allocation ()
-  "VT-9: a read that blocks yields a run-id minted after it returned."
-  (let* ((answered nil)
-         (satan-broker-test--slow-read
-          (lambda (op &rest args)
-            (pcase op
-              ('read (sleep-for 1.2)
-                     (setq answered (current-time))
-                     "sk-or-test")
-              (_ (ignore args) nil))))
-         (r (satan-broker-test--gate-run
-             :env satan-broker-test--ref-env
-             :setup (lambda (_root)
-                      (setq satan-credential-function
-                            satan-broker-test--slow-read)))))
-    (should (plist-get r :spawned))
-    (should answered)
-    (should (time-less-p (time-subtract answered 1)
-                         (satan-run-id-time (plist-get r :run-id))))))
-
-(ert-deftest satan-broker/failed-prompt-read-is-credential-unavailable ()
-  "VT-13: a failed prompting read → `.FAILED' run, reason
-`credential_unavailable', journal line, its own same-cause streak."
-  (let* ((r (satan-broker-test--gate-run
-             :env satan-broker-test--ref-env :backend (list :read nil)
-             :setup (lambda (root)
-                      (satan-run-test--mkrun
-                       root "20200101T000000-morning-aaaaaa"
-                       "failed" "credential_unavailable" t))))
-         (lines (satan-broker-test--journal-lines (plist-get r :announced))))
-    (should (equal (plist-get r :reason) "credential_unavailable"))
-    (should (string-suffix-p ".FAILED" (plist-get r :dir)))
-    (should (= 1 (length lines)))
-    (should (string-match-p "credential_unavailable x2 since 20200101T000000"
-                            (car lines)))))
-
-(ert-deftest satan-broker/quit-during-a-prompt-is-recorded ()
-  "C-g during a blocking prompt → a recorded `credential_unavailable' run."
-  (should (equal (plist-get (satan-broker-test--gate-run
-                             :env satan-broker-test--ref-env
-                             :backend (list :quit '(read)))
-                            :reason)
-                 "credential_unavailable")))
-
-(ert-deftest satan-broker/busy-run-never-touches-the-backend ()
-  "VT-14: busy at entry → no backend call, `run_busy'; still `run_busy'
-when the child exits before the cond (the verdict is nil)."
-  (let ((r (satan-broker-test--gate-run
-            :busy t :env satan-broker-test--ref-env
-            :backend (list :session t :read satan-broker-test--ref-read))))
-    (should (equal (plist-get r :reason) "run_busy"))
-    (should-not (plist-get r :calls)))
-  (cl-letf* ((perceive (symbol-function 'satan-broker-test--minimal-perceive))
-             ((symbol-function 'satan-broker-test--minimal-perceive)
-              (lambda (&rest args)
-                (setq satan-run--spawn-running nil) ; child exits mid-run
-                (apply perceive args))))
-    (let ((r (satan-broker-test--gate-run
-              :busy t :env satan-broker-test--ref-env
-              :backend (list :session t :read satan-broker-test--ref-read))))
-      (should (equal (plist-get r :reason) "run_busy"))
-      (should-not (plist-get r :spawned)))))
-
-(ert-deftest satan-broker/key-ref-from-global-env-is-acquired ()
-  "VT-20: a ref in the global env is acquired, and that env is the base
-the spawn receives."
-  (let ((r (satan-broker-test--gate-run
-            :env satan-broker-test--ref-env
-            :backend (list :read satan-broker-test--ref-read))))
-    (should (plist-get r :spawned))
-    (dolist (kv satan-broker-test--ref-env)
-      (should (member kv (plist-get (plist-get r :cred) :base))))
-    (should (equal (plist-get (plist-get r :cred) :env)
-                   '("OPENROUTER_API_KEY=sk-or-test")))))
-
-(ert-deftest satan-broker/base-env-ignores-buffer-local-env ()
-  "ISS-037: the child's base env is the global env, whatever buffer the
-run is started from (a direnv buffer must not choose the sandbox)."
-  (with-temp-buffer
-    (setq-local process-environment
-                (cons "SATAN_TEST_BUFFER_LEAK=1" process-environment))
-    (let ((base (plist-get (satan-broker--acquire '(:name "test")) :base)))
-      (should base)
-      (should-not (member "SATAN_TEST_BUFFER_LEAK=1" base)))))
-
-(ert-deftest satan-broker/policy-failure-is-recorded-not-lost ()
-  "VT-21: an invalid threshold, or a signalling streak walk, is recorded as
-a `credential_unavailable' run rather than losing the trigger."
-  (let ((satan-credential-escalate-after "4h"))
-    (should (equal (plist-get (satan-broker-test--gate-run
-                               :policy 'defer :env satan-broker-test--ref-env)
-                              :reason)
-                   "credential_unavailable")))
-  (cl-letf (((symbol-function 'satan-broker--credential-streak-age)
-             (lambda (&rest _) (error "streak walk boom"))))
-    (should (equal (plist-get (satan-broker-test--gate-run
-                               :policy 'defer :env satan-broker-test--ref-env)
-                              :reason)
-                   "credential_unavailable"))))
 
 ;; ---------- VT-1 (SL-011): one tick trace row per satan-broker-run ----------
 
@@ -1047,7 +862,7 @@ the stage wraps inside the shared perceive fn record onto the tick."
              (cl-letf (((symbol-function 'satan-percept-build)
                         #'satan-broker-test--fixture-percept)
                        ((symbol-function 'satan-broker--spawn)
-                        (lambda (_mode prepare _dir _cred)
+                        (lambda (_mode prepare _dir)
                           (plist-get prepare :run_id))))
                (let* ((run-id (satan-broker-run "morning"))
                       (ticks (satan-broker-test--tick-rows trace-dir))
@@ -1426,7 +1241,7 @@ double-encoded JSON payload."
 (ert-deftest satan-broker/error-class-unknown-for-plain-string ()
   "`satan-broker--error-class' returns \"unknown\" for an init-path error
 that is a plain string, not JSON."
-  (let ((obj (list :type "error" :error "init failed: OPENROUTER_API_KEY not set")))
+  (let ((obj (list :type "error" :error "init failed: LLM_GATEWAY_KEY not set")))
     (should (equal (satan-broker--error-class obj) "unknown"))))
 
 (ert-deftest satan-broker/failed-run-final-carries-failure-reason ()
@@ -1498,9 +1313,6 @@ precedence — the Risks section's named regression)."
 
 ;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
 
-(defconst satan-broker-test--no-cred '(:env nil :refs nil :base nil)
-  "An acquisition verdict for a keyless run with an empty base env.")
-
 (defvar satan-memory-store--current-run-id) ; `--spawn' sets it; tests bind it
 
 (defmacro satan-broker-test--with-spawn-collaborators (root dir &rest body)
@@ -1570,34 +1382,38 @@ runs for real.  Tests override individual stubs with an inner
                   (lambda (&rest _) nil)))
          ,@body))))
 
-(ert-deftest satan-broker/child-env-is-base-plus-resolved-key ()
-  "VT-20: the child gets the verdict's base env plus its resolved key, the
-key shadowing the base's ref, and no credential reference at all."
+(ert-deftest satan-broker/child-env-is-global-env-plus-satan-vars ()
+  "VT-1 (SL-022; replaces SL-018 VT-20): the child env is the global env
+plus the `SATAN_*' run values, with no `SATAN_PROVIDER' even for a mode
+that names a provider (the gateway owns provider choice).  A buffer-local
+env never reaches the child (ISS-037)."
   (satan-broker-test--with-spawn-stubs dir
     (let* ((seen nil)
            (make-process-fn (symbol-function 'make-process))
+           (process-environment (cons "FROM_GLOBAL=1" process-environment))
            (prepare (list :run_id "rid-env"
                           :time_now "2026-06-03T00:00:00Z"
                           :start_time (current-time)))
-           (mode '(:name "test" :provider openrouter :harness (:cmd "true")))
-           (cred '(:env ("OPENROUTER_API_KEY=sk-or-test")
-                   :refs (("OPENROUTER_API_KEY" . "op://v/or/credential"))
-                   :base ("FROM_BASE=1"
-                          "OPENROUTER_API_KEY=op://v/or/credential"
-                          "UNRELATED_KEY=op://v/other/credential"))))
-      (cl-letf (((symbol-function 'make-process)
-                 (lambda (&rest args)
-                   (setq seen process-environment)
-                   (apply make-process-fn args))))
-        (satan-broker--spawn mode prepare dir cred))
+           (mode '(:name "test" :provider openrouter :model "m-test"
+                   :budget-tokens 5 :max-budget-tokens 9
+                   :harness (:cmd "true"))))
+      (with-temp-buffer
+        (setq-local process-environment
+                    (cons "SATAN_TEST_BUFFER_LEAK=1" process-environment))
+        (cl-letf (((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (setq seen process-environment)
+                     (apply make-process-fn args))))
+          (satan-broker--spawn mode prepare dir)))
       (let ((proc (get-process "satan-rid-env")))
         (while (and proc (process-live-p proc))
           (accept-process-output proc 0.05)))
-      (should (member "FROM_BASE=1" seen))
-      (should (equal (getenv-internal "OPENROUTER_API_KEY" seen)
-                     "sk-or-test"))
-      (should-not (cl-find-if (lambda (kv) (string-match-p "=op://" kv))
-                              seen)))))
+      (dolist (kv '("SATAN_MODEL=m-test" "SATAN_BUDGET_TOKENS=5"
+                    "SATAN_MAX_BUDGET_TOKENS=9" "SATAN_RUN_ID=rid-env"
+                    "FROM_GLOBAL=1"))
+        (should (member kv seen)))
+      (should-not (getenv-internal "SATAN_PROVIDER" seen))
+      (should-not (getenv-internal "SATAN_TEST_BUFFER_LEAK" seen)))))
 
 (ert-deftest satan-broker/harness-resolves-on-global-exec-path ()
   "ISS-037: the harness command resolves against the global `exec-path',
@@ -1615,7 +1431,7 @@ not a buffer-local one (a devshell PATH must not pick the binary)."
                    (lambda (&rest args)
                      (setq seen exec-path)
                      (apply make-process-fn args))))
-          (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+          (satan-broker--spawn mode prepare dir)))
       (let ((proc (get-process "satan-rid-path")))
         (while (and proc (process-live-p proc))
           (accept-process-output proc 0.05)))
@@ -1638,7 +1454,7 @@ directory (the jail binds the launcher's cwd rw)."
                    (lambda (&rest args)
                      (setq seen default-directory)
                      (apply make-process-fn args))))
-          (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+          (satan-broker--spawn mode prepare dir)))
       (let ((proc (get-process "satan-rid-cwd")))
         (while (and proc (process-live-p proc))
           (accept-process-output proc 0.05)))
@@ -1655,7 +1471,7 @@ synchronous launch return (the original unwind-protect bug)."
            ;; A real but long-lived child so the run is genuinely "live"
            ;; after spawn returns; no :timeout-seconds so no timer.
            (mode '(:name "test" :harness (:cmd "sleep" :args ("30"))))
-           (run-id (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+           (run-id (satan-broker--spawn mode prepare dir)))
       (should (equal run-id "rid-flag"))
       ;; Child still running → flag MUST still be set.  The bug cleared
       ;; it here, at synchronous return.
@@ -1700,7 +1516,7 @@ struct the filter is handed."
                    'PRE))
                 ((symbol-function 'satan-broker--make-filter)
                  (lambda (ctx) (setq run-ctx ctx) #'ignore)))
-        (should (equal run-id (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+        (should (equal run-id (satan-broker--spawn mode prepare dir)))
         (let ((proc (get-process (format "satan-%s" run-id))))
           (while (process-live-p proc) (accept-process-output proc 0.1))
           (accept-process-output nil 0.1)))
@@ -1803,7 +1619,7 @@ The accumulator starts stamped \"spawned\", as `satan-broker-run'
 leaves it.  Returns (:run-id ID :outcome STAMP :announced RECORDED)."
   (let ((satan-trace--current (list :outcome "spawned")))
     (satan-announce-with-recorder
-      (let ((run-id (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+      (let ((run-id (satan-broker--spawn mode prepare dir)))
         (list :run-id run-id
               :outcome (plist-get satan-trace--current :outcome)
               :announced satan-announce-recorded)))))
@@ -1943,7 +1759,7 @@ finalises exactly once and kills the stderr buffer."
             (progn
               (cl-letf (((symbol-function 'run-with-timer)
                          (lambda (&rest _) (error "timer wiring"))))
-                (should-error (satan-broker--spawn mode prepare dir satan-broker-test--no-cred)))
+                (should-error (satan-broker--spawn mode prepare dir)))
               (should (= 0 finalized))
               (should-not satan-run--spawn-running)
               (should (process-live-p (get-process proc-name)))
@@ -2119,7 +1935,7 @@ after the spawn returns and before the wait (to kill the child)."
        (let ((,announced
               (satan-announce-with-recorder
                 (satan-broker--spawn ,mode (satan-broker-test--spawn-prepare)
-                                     ,dir satan-broker-test--no-cred)
+                                     ,dir)
                 ,after-spawn
                 (satan-broker-test--settle)
                 satan-announce-recorded)))
@@ -2295,229 +2111,37 @@ handle any more."
             (should (equal '("bough_node:abc" "app:emacs") (append handles nil)))))
       (delete-directory dir t))))
 
-;; ── SL-018 PHASE-04: effective credential policy (design sec-4, sec-8) ─────
+;; ── Failure streak: the status guard (RV-013 N8) ──────────────────────────
 
-(defconst satan-broker-test--policy-now
-  (encode-time '(0 0 12 20 5 2026 nil -1 nil))
-  "Noon, 2026-05-20: the \"now\" of the policy tests.")
-
-(defun satan-broker-test--policy-id (hh mm)
-  "A tick-pulse run-id minted at HH:MM on the policy tests' day."
+(defun satan-broker-test--streak-id (hh mm)
+  "A tick-pulse run-id minted at HH:MM on 2026-05-20."
   (format "20260520T%02d%02d00-tick-pulse-%06x" hh mm (+ (* hh 100) mm)))
 
-(cl-defmacro satan-broker-test--with-policy-runs ((&rest runs) &rest body)
+(cl-defmacro satan-broker-test--with-streak-runs ((&rest runs) &rest body)
   "Run BODY with `satan-runs-dir' holding RUNS, each (HH MM STATUS REASON)."
   (declare (indent 1))
-  `(let* ((root (make-temp-file "satan-policy-" t))
+  `(let* ((root (make-temp-file "satan-streak-" t))
           (satan-runs-dir root))
      (unwind-protect
          (progn
            (dolist (r ',runs)
              (satan-run-test--mkrun
-              root (satan-broker-test--policy-id (nth 0 r) (nth 1 r))
+              root (satan-broker-test--streak-id (nth 0 r) (nth 1 r))
               (nth 2 r) (nth 3 r) (equal (nth 2 r) "failed")))
            ,@body)
        (delete-directory root t))))
 
-(defun satan-broker-test--policy (&rest mode-keys)
-  "Effective policy for a tick-pulse mode with MODE-KEYS, at noon."
-  (satan-broker--credential-policy (append '(:name "tick-pulse") mode-keys)
-                                   satan-broker-test--policy-now))
-
-(ert-deftest satan-broker/credential-policy-static ()
-  "VT-4: prompt stays prompt; absent means defer; attended always prompts."
-  (satan-broker-test--with-policy-runs ()
-    (should (equal (satan-broker-test--policy :credential-policy 'prompt)
-                   '(:policy prompt :context "satan broker/tick-pulse")))
-    (should (equal (satan-broker-test--policy)
-                   '(:policy defer :context "satan broker/tick-pulse")))
-    (let ((satan-run-attended t))
-      (should (eq (plist-get (satan-broker-test--policy) :policy) 'prompt)))))
-
-(ert-deftest satan-broker/credential-policy-escalates-on-an-old-streak ()
-  "VT-4: a credential_deferred streak at least the threshold old escalates."
-  (satan-broker-test--with-policy-runs ((7 0 "failed" "credential_deferred")
-                                        (7 30 "failed" "session_blocked")
-                                        (8 0 "failed" "credential_deferred")
-                                        (8 30 "failed" "run_busy"))
-    (let ((p (satan-broker-test--policy)))   ; oldest 07:00, 5h ago ≥ 4h
-      (should (eq (plist-get p :policy) 'prompt))
-      (should (string-match-p "escalated: deferred 5h"
-                              (plist-get p :context))))
-    ;; A longer threshold on the mode itself: not yet due.
-    (should (eq (plist-get (satan-broker-test--policy
-                            :credential-escalate-after 21600)
-                           :policy)
-                'defer))))
-
-(ert-deftest satan-broker/credential-policy-young-or-broken-streak-defers ()
-  "VT-4: a young streak defers; a success ends the streak."
-  (satan-broker-test--with-policy-runs ((10 0 "failed" "credential_deferred"))
-    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer)))
-  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred")
-                                        (9 0 "done" nil)
-                                        (10 0 "failed" "credential_deferred"))
-    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer))))
-
-(ert-deftest satan-broker/credential-policy-bad-duration-signals ()
-  "A bad effective duration signals (PHASE-05's boundary records it)."
-  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred"))
-    (let ((satan-credential-escalate-after "4h"))
-      (should-error (satan-broker-test--policy)))))
-
-(ert-deftest satan-broker/done-runs-end-both-streaks ()
-  "VT-23: `final.json's reason alone never makes a run transparent or counted:
-a `done' run whose reason reads like a deferral ends both streaks."
-  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred")
-                                        (9 0 "done" "credential_deferred")
-                                        (10 0 "failed" "credential_deferred"))
-    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer)))
-  (satan-broker-test--with-policy-runs ((6 0 "failed" "credential_deferred")
-                                        (9 0 "done" "session_blocked"))
-    (should (eq (plist-get (satan-broker-test--policy) :policy) 'defer)))
-  (satan-broker-test--with-policy-runs ((6 0 "failed" "unknown")
+(ert-deftest satan-broker/done-run-ends-the-failure-streak ()
+  "VT-23: `final.json's reason alone never makes a run transparent: a
+`done' run whose reason reads like a transparent one ends the streak."
+  (satan-broker-test--with-streak-runs ((6 0 "failed" "unknown")
                                         (9 0 "done" "run_busy")
                                         (10 0 "failed" "unknown"))
     (let ((newest (satan-run-outcome
-                   (satan-run-locate-dir (satan-broker-test--policy-id 10 0)
+                   (satan-run-locate-dir (satan-broker-test--streak-id 10 0)
                                          satan-runs-dir))))
       (should (= 1 (length (satan-broker--failure-streak "tick-pulse"
                                                          newest)))))))
-
-(ert-deftest satan-broker/only-a-human-at-the-keyboard-is-attended ()
-  "VT-17: `satan-run' binds `satan-run-attended' only when interactive;
-a non-interactive call and `satan-tick' leave it nil (fail closed)."
-  (let (seen)
-    (cl-letf (((symbol-function 'satan-broker-run)
-               (lambda (_name) (push satan-run-attended seen) "rid"))
-              ((symbol-function 'satan-tick-quiet-p) #'ignore)
-              ((symbol-function 'satan-tick-pick) (lambda () "tick-pulse")))
-      (satan-run "tick-pulse")
-      (satan-tick)
-      (cl-letf (((symbol-function 'called-interactively-p)
-                 (lambda (&rest _) t)))
-        (satan-run "tick-pulse")))
-    (should (equal (reverse seen) '(nil nil t)))))
-
-;; ── SL-018 PHASE-06: rotation self-heal (design sec-6) ─────────────────────
-
-(defconst satan-broker-test--auth-ref "op://API_KEYS/OPENROUTER_API_KEY/credential")
-
-(cl-defun satan-broker-test--auth-run (&key class final backend sentinel)
-  "Finish a run whose harness reported error CLASS (nil: none), then
-return (:calls CALLS :dir DIR :records TRANSCRIPT :announced A :flag F).
-FINAL, when non-nil, is the run's own final.  BACKEND is a plist of
-`satan-credential-fixture-backend' keys (default: the ref cached).  With
-SENTINEL the run ends through the child sentinel, else `--finalize'."
-  (let* ((root (make-temp-file "satan-evict-" t))
-         (satan-runs-dir root)
-         (run-id "20260524T100000-test-abcdef")
-         (dir (satan-run-dir-for-id run-id root))
-         (log (list nil))
-         (satan-credential-function
-          (apply #'satan-credential-fixture-backend log
-                 (or backend
-                     (list :cache (list (cons satan-broker-test--auth-ref
-                                              "sk-dead"))))))
-         (satan-run--spawn-running t))
-    (make-directory dir t)
-    (unwind-protect
-        (satan-announce-with-recorder
-          (let* ((prepare (list :run_id run-id
-                                :time_now "2026-05-24T10:00:00+1000"
-                                :start_time (current-time)))
-                 (mode '(:name "test" :auto-apply none :capabilities ()))
-                 (run-ctx (make-satan-run
-                           :id run-id :mode mode
-                           :start-time (plist-get prepare :start_time)
-                           :dir dir :status 'running :final final
-                           :audit (satan-audit-open
-                                   dir (list :run_id run-id :mode '(:name "test"))
-                                   '(:bundle t) prepare)
-                           :prepare prepare
-                           :credential-refs
-                           (list (cons "OPENROUTER_API_KEY"
-                                       satan-broker-test--auth-ref)))))
-            (when class
-              (satan-broker--on-error
-               run-ctx (list :type "error"
-                             :error (json-serialize
-                                     (list :class class :detail "x")))))
-            (if sentinel
-                (funcall (satan-broker--make-sentinel run-ctx) nil "finished\n")
-              (satan-broker--finalize run-ctx))
-            (let ((d (satan-run-dir run-ctx)))
-              (list :calls (reverse (car log))
-                    :dir d
-                    :records (satan-jsonl-read-file
-                              (expand-file-name "transcript.jsonl" d)
-                              :null-object :null)
-                    :announced satan-announce-recorded
-                    :flag satan-run--spawn-running))))
-      (delete-directory root t))))
-
-(defun satan-broker-test--forgets (r)
-  "The `forget' calls among R's backend calls."
-  (cl-remove-if-not (lambda (c) (eq (car c) 'forget)) (plist-get r :calls)))
-
-(ert-deftest satan-broker/auth-failure-evicts-the-used-ref ()
-  "VT-6: only a classified `auth' failure evicts, and only the ref used."
-  (should (equal (satan-broker-test--forgets
-                  (satan-broker-test--auth-run :class "auth"))
-                 (list (list 'forget satan-broker-test--auth-ref))))
-  (dolist (class '("credits" "unknown" "rate_limit" nil))
-    (should-not (satan-broker-test--forgets
-                 (satan-broker-test--auth-run :class class))))
-  ;; A final whose reason says "auth" proves nothing: the run is `done'.
-  (should-not (satan-broker-test--forgets
-               (satan-broker-test--auth-run :final '(:reason "auth"))))
-  ;; Nor does a `done' status with the slot set, however it came about.
-  (satan-credential-fixture-with (calls)
-    (satan-broker--evict-on-auth
-     (make-satan-run :status 'done :failure-reason "auth"
-                     :credential-refs (list (cons "OPENROUTER_API_KEY"
-                                                  satan-broker-test--auth-ref))))
-    (should-not (funcall calls))))
-
-(ert-deftest satan-broker/eviction-lets-the-next-run-read-the-new-key ()
-  "VT-29: after an `auth' eviction the next acquisition re-reads the ref and
-gets the rotated key, not the dead cached one."
-  (let* ((log (list nil))
-         (satan-credential-function
-          (satan-credential-fixture-backend
-           log
-           :cache (list (cons satan-broker-test--auth-ref "sk-dead"))
-           :session t
-           :read (list (cons satan-broker-test--auth-ref "sk-rotated"))))
-         (env (list (concat "OPENROUTER_API_KEY=" satan-broker-test--auth-ref)))
-         (acquire (lambda ()
-                    (plist-get (satan-credential-acquire
-                                env '("OPENROUTER_API_KEY") 'defer "ctx")
-                               :env))))
-    (should (equal (funcall acquire) '("OPENROUTER_API_KEY=sk-dead")))
-    (let ((run-ctx (make-satan-run
-                    :status 'failed :failure-reason "auth"
-                    :credential-refs (list (cons "OPENROUTER_API_KEY"
-                                                 satan-broker-test--auth-ref)))))
-      (satan-broker--evict-on-auth run-ctx))
-    (should (equal (funcall acquire) '("OPENROUTER_API_KEY=sk-rotated")))))
-
-(ert-deftest satan-broker/failed-eviction-is-recorded-and-finalize-completes ()
-  "VT-15: a signalling forget → `evict-failed' event; the rename, the
-announce and the spawn-running reset all still happen."
-  (let* ((r (satan-broker-test--auth-run
-             :class "auth" :sentinel t
-             :backend (list :signal '(forget))))
-         (evict (cl-find-if (lambda (rec)
-                              (and (equal (plist-get rec :dir) "broker")
-                                   (equal (plist-get rec :event) "evict-failed")))
-                            (plist-get r :records))))
-    (should evict)
-    (should (equal (plist-get (plist-get evict :payload) :var)
-                   "OPENROUTER_API_KEY"))
-    (should (string-suffix-p ".FAILED" (plist-get r :dir)))
-    (should (plist-get r :announced))
-    (should-not (plist-get r :flag))))
 
 (provide 'satan-broker-test)
 ;;; satan-broker-test.el ends here

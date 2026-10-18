@@ -66,9 +66,7 @@
   "Run a SATAN session in mode NAME.  Returns the run-id string."
   (interactive
     (list (completing-read "SATAN mode: " (satan-mode-names) nil t)))
-  (let ((run-id (let ((satan-run-attended
-                       (called-interactively-p 'interactive)))
-                  (satan-broker-run name))))
+  (let ((run-id (satan-broker-run name)))
     (when (called-interactively-p 'interactive)
       (message "SATAN run started: %s" run-id))
     run-id))

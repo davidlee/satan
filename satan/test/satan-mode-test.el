@@ -25,45 +25,32 @@
                               (error-message-string err))))))
 
 ;; ---------------------------------------------------------------------
-;; SL-018: credential policy keys (design sec-4)
+;; Profiles
 ;; ---------------------------------------------------------------------
 
-(defmacro satan-mode-test--isolated (&rest body)
-  "Run BODY with a private mode registry and profile table."
-  `(let ((satan-modes nil)
-         (satan-profiles '((p . (:credential-policy prompt
-                                 :credential-escalate-after 60)))))
-     ,@body))
-
-(ert-deftest satan-mode/register-validates-credential-keys ()
-  "VT-18: a bad policy or duration signals at registration."
-  (satan-mode-test--isolated
-    (dolist (bad '((:credential-policy ask)
-                   (:credential-policy "prompt")
-                   (:credential-escalate-after -1)
-                   (:credential-escalate-after "4h")))
-      (should-error (satan-mode-register (append '(:name "m") bad))))
-    (satan-mode-register '(:name "ok" :credential-policy defer
-                           :credential-escalate-after 0))
-    (satan-mode-register '(:name "absent"))
-    (should (equal (satan-mode-names) '("absent" "ok")))))
-
-(ert-deftest satan-mode/credential-keys-merge-from-profile ()
-  "VT-18: a profile carries the keys; the mode's own value wins."
-  (satan-mode-test--isolated
+(ert-deftest satan-mode/profile-merges-under-mode-keys ()
+  "A mode inherits its profile's keys; the mode's own value wins."
+  (let ((satan-modes nil)
+        (satan-profiles '((p . (:model "p-model")))))
     (satan-mode-register '(:name "a" :profile p))
-    (satan-mode-register '(:name "b" :profile p :credential-policy defer))
-    (should (eq (plist-get (satan-mode-resolve "a") :credential-policy) 'prompt))
-    (should (= (plist-get (satan-mode-resolve "a") :credential-escalate-after) 60))
-    (should (eq (plist-get (satan-mode-resolve "b") :credential-policy) 'defer))))
+    (satan-mode-register '(:name "b" :profile p :model "b-model"))
+    (should (equal (plist-get (satan-mode-resolve "a") :model) "p-model"))
+    (should (equal (plist-get (satan-mode-resolve "b") :model) "b-model"))))
 
-(ert-deftest satan-mode/morning-and-motd-prompt ()
-  "The modes meant to be seen prompt; the tick pulse defers by absence."
-  (should (eq (plist-get (satan-mode-resolve "morning") :credential-policy)
-              'prompt))
-  (should (eq (plist-get (satan-mode-resolve "motd") :credential-policy)
-              'prompt))
-  (should-not (plist-get (satan-mode-resolve "tick-pulse") :credential-policy)))
+(ert-deftest satan-mode/profiles-carry-model-only ()
+  "VT-2 (SL-022): a shipped profile names a model and nothing else (the
+gateway owns provider choice), and no registered mode carries a
+provider or a credential key."
+  (let ((shipped (eval (car (get 'satan-profiles 'standard-value)) t)))
+    (should (assq 'deepseek-flash shipped))
+    (pcase-dolist (`(,name . ,plist) shipped)
+      (should (equal (list name (cl-loop for k in plist by #'cddr collect k))
+                     (list name '(:model))))))
+  (should (equal (satan-profile-resolve 'deepseek-flash)
+                 '(:model "deepseek-flash")))
+  (pcase-dolist (`(,name . ,spec) satan-modes)
+    (dolist (k '(:provider :credential-policy :credential-escalate-after))
+      (should-not (and (plist-member spec k) (list name k))))))
 
 (provide 'satan-mode-test)
 ;;; satan-mode-test.el ends here

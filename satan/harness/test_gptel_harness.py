@@ -769,13 +769,6 @@ class ProviderFactoryTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, f"^{var} not set$"):
                         self._build(env)
 
-    def test_stray_legacy_provider_vars_are_ignored(self):
-        # Today's broker still sends these; the new harness must tolerate them.
-        env = {**self.GATEWAY_ENV,
-               "SATAN_PROVIDER": "openrouter",
-               "OPENROUTER_API_KEY": "or-key"}
-        self._assert_gateway_provider(*self._build(env))
-
 
 if __name__ == "__main__":
     unittest.main()

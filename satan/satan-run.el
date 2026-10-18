@@ -49,9 +49,6 @@ is the handler that writes SATAN's self-curated memory there."
   ;; SL-017 sec-7: the harness's parsed error class, or "spawn_failed".
   ;; First write wins — see `satan-broker--on-error'.
   failure-reason
-  ;; SL-018 sec-6: the ((VAR . REF) …) the run's key was acquired from, so
-  ;; an `auth' failure evicts exactly the ref this run used.
-  credential-refs
   ;; SL-022 DEC-041: nil until the child's first `ready'.  Gates the one
   ;; frontier commit and the launch-refusal rule (a child that dies
   ;; un-ready, without an `error', is `spawn_failed').

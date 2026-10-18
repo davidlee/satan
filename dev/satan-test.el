@@ -40,7 +40,6 @@
 
 (require 'ert)
 (require 'satan-announce)
-(require 'satan-credential)
 (require 'satan-custom)
 (require 'satan-db)
 
@@ -96,14 +95,8 @@ from a test run."
   ;; under the recording sink, so nothing any test forgets to stub can
   ;; still reach D-Bus or the journal.  A `let', not a `setq' — running
   ;; this from a live Emacs (check-interactive) never silences its real
-  ;; alerts once the run ends.  Likewise no credential backend (SL-018):
-  ;; a live Emacs wires `satan-credential-function' to 1Password, and no
-  ;; test may reach it; suites that need one bind the fake fixture.
+  ;; alerts once the run ends.
   (let ((satan-announce-sink #'satan-announce-record)
-        (satan-credential-function nil)
-        ;; ...and no inherited credential reference: a test that wants one
-        ;; puts it in the env itself, so no result depends on the shell.
-        (process-environment (satan-credential-scrub process-environment))
         ;; ...and no live goad state (SL-016): every suite that assembles
         ;; evidence reads the goad queue and day records, so point both at
         ;; paths that do not exist.  Suites that want goad bind the goldens
