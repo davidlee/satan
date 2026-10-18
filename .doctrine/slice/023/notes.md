@@ -145,3 +145,37 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 ### Open
 - `biome.json`: add root `*.ts`/`*.js` to `files.includes` and set `linter.enabled: false` (user's file; not touched).
 - Behaviour edges taken while removing assertions (judged non-functional, listed for audit): `withMissingModels` now adds only chat models to `getModels()` (all to `getAllModels()`; new test); `readModelsStore` returns `{}` for a non-object store and drops entries lacking string `id`/`provider`; `attach` throws "not an event" on a non-object line (was a TypeError); daemon-main logs and exits 1 on a failed signal-stop (was an unhandled rejection); `persona` render extracted as `readPersona`, plus an integration test reading the rendered section from a turn's system entry.
+
+## PHASE-03 batch A (2026-10-18, worker)
+
+### Produced
+- malebolge (uncommitted): `src/fields.ts` (shared untrusted-JSON readers incl. `onlyKeys`, `required`, `setDefined`; `src/protocol.ts` now reuses them), `src/runner/{errors,vocab,config,classify,protocol}.ts`, tests `test/fields.test.ts`, `test/runner/{config,classify,protocol}.test.ts`, fixture `test/runner/config-fixture.ts`; `smol-toml` 1.9.1 dependency. 151 -> 292 tests; lines 96.44%.
+- config: closed tables at every level; ladder layers are `PolicyLayer`; repos/modes/tags are `Map`s. classify: allowlist + table. protocol: 8 ops via a `Handlers` table, `checkSubmit` with a `SUBMIT_CHECKS` seam for the ceiling-maximum check (batch B).
+
+### Learned
+- `no-misused-spread` forbids `[...string]`; a regex table is the lint-clean and clearer form for the `check-ref-format` shape rules.
+- `explicit-function-return-type` does not exempt arrows inside tuple-typed arrays; use data (regexes) instead of predicate tables.
+- Plain-object lookups by user-chosen names (repo, mode) must use `Map`: `toString`/`__proto__` otherwise resolve.
+
+### Open
+- Cancelled-with-clean-commits class is `partial` (design table says only "class recorded"); confirm at audit.
+- `base_ref` existence (refs/heads) is the git layer's, PHASE-05/06.
+
+## PHASE-03 batch B (2026-10-18, worker, opus)
+
+### Produced
+- malebolge (uncommitted): `src/runner/policy.ts` (ladder, `pickTagRule`, `checkCeilingsWithinMaxima`, `configEntry`), `src/runner/prompt.ts` (`composePrompt`), `src/runner/ceilings.ts` (`closeSegment`, `activeWallClockMs`, `remaining`, `exhausted`, `maxTokens`, `shouldWarn`), `src/runner/jobs.ts` (`TRANSITIONS`, `TERMINAL`, `transition`, `cancel`, `markPauseRequested`, `parseJobState`, `recoveryPlan` + `RECOVERY_TABLE`); tests `test/runner/{policy,ceilings,jobs}.test.ts`. Touched batch A: `protocol.ts` (`SUBMIT_CHECKS` = knownMode + ceilingsWithinMaxima; repo/mode via `configEntry`), `config.ts` (`ceilingsFrom`), `vocab.ts` (`isJobState`). 539 tests; lines 97.15%.
+
+### Learned
+- `unicorn/no-array-reduce` is on: fold layers with a `for` loop.
+- Arrow members of an interface-typed object array (`RECOVERY_TABLE: readonly RecoveryRow[]`) pass `explicit-function-return-type`; arrows in a function-typed tuple array (`SUBMIT_CHECKS`) do not. Named functions there.
+- `exactOptionalPropertyTypes` makes "row with a null column" fixtures awkward: build the minimal record as a constant and spread the optional field in, rather than passing `undefined`.
+
+### Open (for /audit to reconcile)
+- Settled-beats-pause ordering in the `running` recovery rows: reverted by orchestrator: pause precedes settled, per design §5.4 order and the crash-after-abort window.
+- `resolvePolicy` refuses an unknown mode/repo at preparing (config changed since submit) — not stated in design; fail-closed reading of I13.
+- Pure model uses epoch ms and booleans; PHASE-04 store maps to TEXT timestamps and INTEGER flags.
+- `cancel` stamps `end_reason = cancelled` on queued/preparing too (design only implies it after a run).
+- `exhausted` order: `ceiling_exceeded` before `usage_unavailable`.
+- Prompt "notes" convention wording is the worker's; corpus prompt may restate it.
+- Cancelled-with-clean-commits class `partial` (from batch A) still open.

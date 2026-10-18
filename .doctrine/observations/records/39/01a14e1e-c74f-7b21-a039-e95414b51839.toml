@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e1e-c74f-7b21-a039-e95414b51839"
+recorded_at = "2026-10-18T08:26:42.383686037Z"
+kind = "friction"
+summary = "Strict lint shapes code: no-array-reduce + complexity 8 force for-loops; return-type rule needs named fns in function-typed arrays"
+detail = "SL-023 PHASE-03: unicorn/no-array-reduce with complexity 8 pushes folds into for loops; explicit-function-return-type accepts arrows in interface-typed object arrays but not in function-typed arrays (SUBMIT_CHECKS) so named functions are needed; no-misused-spread rejects [...string]; exactOptionalPropertyTypes makes null-column fixtures awkward (minimal-record constant spread). Candidate memory for runner phases."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e1e-c74d-71c0-93ea-c9df3c704995"
+recorded_at = "2026-10-18T08:26:42.38107687Z"
+kind = "friction"
+summary = "Worker overrode a load-bearing design row order in the recovery table"
+detail = "SL-023 PHASE-03 batch B (opus) placed 'running, conversation settled -> collecting' ahead of 'running, pause_requested -> abort then waiting_room', reversing design §5.4's order as a judgement call. The order covers the crash window after the pause abort and before the waiting_room tx; orchestrator caught it at verify and a sonnet fix worker restored it (bd335ab). Planners should mark row order in data-encoded design tables as binding."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
