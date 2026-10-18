@@ -416,3 +416,44 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
   - **PHASE-09 (pause):** a pause must `timers.stop()` (deadline + soft) and re-arm via `armCeilingTimers` from the fresh row on resume. The resume message carries `WARNING_TEXT` when the threshold passed and `warningPlaced` is false or there is no receipt — reuse `warning.ts`. Keep the pause abort separate from the ceiling latch (a pause is not an exhaustion); note `runWarning`'s `stop` signal is cancel-or-ceiling today — a pause must also close/withhold the run's warning. `settle` still waits on the initial submission only.
   - **PHASE-10 (recovery):** re-arm from `active_ms` + (now − `running_since`) after the DEC-065 `parked_at` re-base; `armCeilingTimers` takes only the row. The "running, threshold passed, no receipt" row calls `submitWarning` (same `requestId` → existing submission) then writes the receipt. `model_requests` survives restart (A3).
   - **PHASE-15 (room adapter):** the timers' `stop` and the warning close live in `settleRun`, not `runJob`'s `finally`; moving connection lifetime past `collectJob` must not drag them.
+
+## PHASE-09 batch A (worker, opus)
+
+### Produced
+- malebolge (uncommitted on 9dab8e5):
+  - `src/runner/pause.ts`: `pausingObserver({ jobs, now }, jobId)`, the running job's `ConnectionObserver`: `lost` → `jobs.markPause(jobId, now, { ...failure })`, awaited before the rethrow. `env.ts` untouched (`RUNNING_OBSERVER` removed from run.ts).
+  - `src/runner/guard.ts`: `GuardedJob.paused` (the trigger); `GuardDeps.jobs` += `get`; `PAUSED_RESULT_TEXT` = "environment unavailable; paused"; `pausedJob(api)` reads the row's `pause_requested`, never a result; `afterTool` (ToolTask) replaces the result `{ isError: true, output: [PAUSED_RESULT_TEXT] }`; `afterTools` (GenerationTask) signals `paused()`. See Deviations.
+  - `src/runner/tenancy.ts`: `guarded()` passes `paused` through.
+  - `src/runner/run.ts`: `Admitted.pause: AbortController` (per segment, AS-5; never the latch); tenant `paused` aborts it; `meterOf(...)` extracted from `admit` (max-lines) with `pausePending`; `settleSubmission` waits on cancel | ceiling | pause, then `conversation.abort`; `afterSegment`: cancel, then ceiling → `toCollecting` as before; else the durable row's `pause_requested` → `transition(running → waiting_room, <settlement payload>)`, no end reason; else `toCollecting`. `runJob` returns a `waiting_room` job without `collectJob` (seat held by the row; tenant unseated and connection closed in `finally` as before).
+  - `src/runner/model-gate.ts` (STOP-1 ruling 1): `Refusal` += `paused`; `REFUSALS.paused` = "model gate refused the request: job paused while its room is down"; `Meter.pausePending()`; the signal checked right after the seated job (before the usage read); `judge` declines when the row has `pause_requested`; both throw `GateRefused("paused")` without `meter.refused`, count or event.
+  - `src/runner/store.ts`: `RequestVerdict` += `{ kind: "decline" }`, which `admitModelRequest` enacts as nothing.
+  - Tests: `test/runner/pause.test.ts` (11: VT-2 info/session/exec each mark durable before the rethrow; two concurrent lost failures → one mark, one event; same text as `Error` / non-lost `RemoteError` → no mark; VT-1 pause half on `runWorld`; STOP-1 race with `abort` held until the submission settles; cancel and ceiling each win over a pending pause; EX-4 same-text bash failure → no pause, second model call). `guard.test.ts` +4 (afterTool replaces + signals; row not result; no job → nothing; text not retryable). `model-gate.test.ts` +2 (paused marked / signalled: no provider call, no count, no ceiling event, no latch) and `paused` in the refusal-text table. `store.test.ts` +1 (decline writes nothing). `tenancy.test.ts` updated.
+  - Fixtures: `env-fixture.ts` gains `FailingConnection(failWhen, inner?)` (promoted from env-pause's spike class, now delegating), `lostError(code)`, `LOST_TEXT`; env-pause.test uses them. `run-fixture.ts`: `RunWorldOptions.connection` (wrap the local daemon), `until` promoted from ceilings-harness.test.
+- `just check`: fmt clean, lint 0, tsc clean, 44 files / 947 tests, lines 98.14% (pause.ts, guard.ts, model-gate.ts 100% lines; run.ts uncovered lines are the three pre-existing log-only arms).
+- Mutation-checked, each fails a test: idempotency guard dropped (`markPauseRequested`); `afterTool` reading the result text; latch tripped on pause; signal fired from `afterTool`; gate pause check removed; precedence ignored in `afterSegment`.
+
+### Learned
+- **STOP-1 observed order.** Signalled from `afterTool` (the sheet's A2), the run's `conversation.abort()` lands *before* the tool task commits its result: the transcript shows `<harness> [error] Tool bash was aborted`, never the replaced result (6/6 runs). No second provider call in that arrangement.
+- Signalled from `afterTools` (every call of the round terminal and committed; before `finishToolRound`'s commit hands over to the next generation), the replaced result lands and the plain path shows one provider call (8/8). But that is a microtask race: delaying `abort` by one macrotask (`setTimeout` 0, 1, 5, 20, 100 ms) gives a second provider request every time (`callCount` 2, `model_requests` 2). Not guaranteed by construction, so ruling 1's gate refusal is in.
+- pi-ai's `isRetryableAssistantError` is false unless the retryable pattern matches; "out of budget" only matters to override a retryable match. The `paused` text matches neither, so it is not retryable.
+- `afterTools` runs outside pi transactions (its store read settles on the shared handle), like `beforeTool`/`afterTool`.
+- pi-durable has `ToolControl.terminate` (end the run at the round's final boundary, no next generation) — but only when *every* call of the round asks. Not used: the design's mechanism is the runner's abort.
+- A cancel or ceiling winning over a pending pause leaves `pause_requested = 1` on a `collecting`/terminal row. It is inert: `markPauseRequested` no-ops outside `running`, and recovery's `running, pause_requested = 1` row only matches `running`.
+
+### Deviations from the sheet
+- The trigger is split. `afterTool` still replaces the result; the signal fires from `afterTools`, because from `afterTool` the abort discards the replaced result (binding order steps 5 and 6 would run in reverse).
+- STOP-1: gate refusal `paused` (ruling 1), checked on the in-memory signal and on the durable mark inside the gate's transaction. That needed a store verdict `decline` (a no-op), a small vocabulary addition to `RequestVerdict`, not to `vocab.ts`.
+- `waiting_room` vs `collecting` is decided by the durable row after the settle, not by which signal woke the run (AS-1: the mark is the record). A run whose submission settled `done` with the mark set still goes to `waiting_room`.
+- The `waiting_room` transition payload is the segment's settlement (`submission`, `submissionReason`), not a `{ pause: … }` field.
+- A0: the spike's `PAUSE_SCHEMA`/`markPause`/`pauseRequested` stay in `env-fixture.ts`, because the live PHASE-01 harness `room-stop-spike.ts` still uses them. env-pause.test is not folded into pause.test (it holds the real-daemon-kill and ExecutionEnv-seam evidence).
+- Added cancel/ceiling-over-pause precedence tests (sheet A3 named the precedence, no test).
+
+### Open
+- Batch B forward:
+  - Per-segment state lives in `Admitted`: `pause`, `warning`, `timers`. The tenant's `paused` and `meter.pausePending` close over that segment's `pause`, so a resume must re-seat (`tenancy.enter`) or rebind. While the old segment's signal stays fired the gate refuses `paused`, which covers the waiting episode for free if the tenant stays seated.
+  - `runJob`'s `finally` unseats the tenant and closes the connection before the job is returned in `waiting_room`. AS-4 moves both past the waiting episode.
+  - The paused segment's settlement may be `unanswered: aborted` or `unanswered: model_error` (a racing request the gate declined). The settle re-target must read neither as an end reason.
+  - AS-3 ruling: the carried warning is recorded as a standard `warning` event `{ requestId, submissionId, trigger: "resume" }`. The resumed segment's `runWarning` already skips when a `warning` event exists.
+  - Signal latency: `afterTools` waits for every call of the round, so a long parallel call that is not lost delays the abort to the round's end. With the room down, the round's other env calls fail fast.
+- PHASE-10 forward: the durable mark is set before any abort. A mark set with no tool round to signal it (e.g. pi's own env use) is still acted on when the segment settles (`afterSegment` reads the row). Recovery's `running, pause_requested = 1` row matches this state.
+- PHASE-15 forward: `host_key_alias` is required for the slot kind (I13); `room.ts` currently derives `pi-env-<slot>` (batch C moved here).
