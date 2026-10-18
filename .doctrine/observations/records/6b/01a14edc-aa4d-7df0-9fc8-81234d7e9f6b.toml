@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14edc-aa4d-7df0-9fc8-81234d7e9f6b"
+recorded_at = "2026-10-18T11:54:06.797843896Z"
+kind = "friction"
+summary = "doctrine backlog new: reservation remote unreachable, fell back to local id"
+detail = "SL-023 plan-append worker: backlog new hit 'Permission denied (publickey)' on reservation remote, allocated CHR-016 locally; also backlog new lacks body/link flags, needing separate link calls and hand-written .md body."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

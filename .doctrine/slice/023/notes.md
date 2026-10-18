@@ -294,3 +294,32 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - `RemoteExecutionEnv` id is per job (`pi-env:job-<id>`) as the sheet says, though every job sees the same room files; equal ids are what pi uses to share file namespaces.
 - Host key trust: `roomDaemon` needs the room's key already in `known_hosts` under `pi-env-<slot>` (pi-env `scanHostKey`/`acceptHostKey`); no runner verb does that yet — an operator step for PHASE-12/H-steps.
 - Settlement API (STOP 2) and pending_collection (OQ-1) untouched here.
+
+## PHASE-07 batch B1 (worker, opus)
+
+### Produced
+- malebolge (uncommitted, kept the interrupted batch-B work and completed it):
+  - B1.0 green-up: formatted `prepare.ts`, `run.ts`, `conversations.test.ts` (named files only); 9 lint errors fixed — `preparingFailure`'s nested ternary → `failureReason`; `readyRoom` calls `signal.throwIfAborted()` at the top of each attempt (post-sleep check dropped); scheduler drain is `while (takeDirty()) { while (await step()) {} }`; tenancy/scheduler/test object-literal arrows → function declarations.
+  - B1.1 VT-3 in `scheduler.test.ts` `describe("the seat (EX-8) …")`: a left-over `collecting` job and a `pending_collection` job (held mid-backoff) each keep queued B `queued` until A is terminal; a live run blocked inside its collecting step keeps B out until it returns. **These passed on the existing code** (EX-8 already met by `IN_FLIGHT`): they are the regression pin.
+  - B1.2 `src/runner/backoff.ts` (`Sleep`, `abortableSleep`, `roomRetryDelay`, moved from prepare.ts; tested in `backoff.test.ts`). Scheduler: `SchedulerDeps` += `sleep: Sleep`, `stop: AbortSignal`. A held `pending_collection` job is retried from the drain (`pendingRetries`: `retryPending`, then `sleep(roomRetryDelay(n), stop)` while it stays; count per job), no wake needed; the bound stays `retryPendingCollection`'s (`collection_abandoned`). Other held states still rest the drain. `stop` aborted → no pick/retry, a pause ends, `wake` is a no-op. `turns()` (the cancel/pick serialiser) extracted to module level.
+  - B1.3 `test/runner/prepare.test.ts` (17 tests, one `describe` per function): `roomShell` exit/stdout/stderr over a local daemon, lost daemon → `ChannelUnavailable`, exec in a missing cwd → `ChannelFailed`; `ensureJobBranch` through real git in `roomWorld({ guestAtClone: true })` (absent → made and checked out; at base → switched; moved → `job_branch_moved` with both oids, branch untouched, HEAD still `work`); `readyRoom` (refresh once + `refreshed` event; recorded `base_oid` kept; down at refresh or shell retried with asserted delays; past `max_room_wait` → `room_unavailable`, pauses capped by time left `[1000, 1500]`; `ChannelFailed` not retried; abort stops before the next attempt); `preparingFailure` table. Mutation-checked (3 mutations in prepare.ts → 4 failures).
+  - `localConnection` / `lostConnection` promoted to `env-fixture.ts`; `env.test.ts` and `env-pause.test.ts` import them (two copies of `localConnection` removed; no third lost-daemon construction).
+  - B1.4 run.ts: `RunDeps.connect: (repo: RepoConfig) => Connection`; `startPreparing` resolves `{ policy, repo }` (`Resolved`) once and `admit` takes it. I12: `settle` never throws — a settlement failure (not a cancel) is an `Ending` `{ reason: "settle_failed", message }`, `end_reason = error`, so the job still reaches `collecting` and is collected.
+- `just check` green: fmt-check clean (102 files; biome.json not flagged), lint 0, tsc clean, 40 files / 852 tests, lines 93.66% (run.ts at 0% until B2.1's VT-1).
+
+### Learned
+- `max-lines-per-function` (80) bit `createScheduler` once the retry loop landed; extracting `turns()` and `pendingRetries()` as module functions and taking `stop` as a dep signal (the sheet's alternative to a `stop()` method) kept it under without hiding state.
+- The pre-existing `settledPayload` spread `record.reason` (e.g. `aborted`) after the cancel's `reason`, overwriting the user's cancel reason in the event. Now the submission's reason is `submissionReason`; a payload's `reason` names why the job moved.
+- A `Sleep` that returns immediately makes a never-leaving `pending_collection` spin the drain forever in tests — scheduler tests that leave a job pending must block their sleep or terminate the job.
+
+### Deviations from the sheet
+- B1.2: `stop` is a `SchedulerDeps.stop: AbortSignal`, not a `Scheduler.stop()` method (sheet allowed either). B2.2's `close` aborts the controller it passed in.
+- B1.4: `settledPayload` key `reason` → `submissionReason` (collision fix above). Settlement failure under a cancel keeps the cancel's `reason` and adds `message`.
+- B1.3 touched `env-fixture.ts`, `env.test.ts`, `env-pause.test.ts` (not in §5's list) to share the connection constructions, as the sheet's "do not write a third" asks.
+
+### Open
+- `retryPending` throwing (e.g. the row left `pending_collection` concurrently) stops the drain with a log until the next wake — same policy as a run's unexpected failure.
+- A backoff pause may overshoot `max_pending_collection` by up to one delay (≤ 60 s); the bound is enforced at the next probe, not by the sleep.
+- If `toCollecting`'s own store write fails, the row stays `running` (drain stops, logged); PHASE-10 recovery covers it.
+- Six identical `messageOf(error)` helpers in `src/runner/` (collect, prepare, room, run, scheduler, start): candidate for one export from `errors.ts` (outside this batch's file set).
+- run.ts untested until B2.1; VT-1 case 7 (settle failure → `collecting`, `end_reason = error`) pins B1.4.
