@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cf3-ac55-7ae3-9811-76de5d37db05"
+recorded_at = "2026-10-18T03:00:00.213283265Z"
+kind = "friction"
+summary = "Sheet call-site list missed a 4-arg --spawn stub; isolated suite run caught it"
+detail = "SL-022 PHASE-05: the planner's list of satan-broker--spawn call sites missed the stub in run-emits-one-tick-row-outcome-spawned. rg on the parameter name ('_cred') would have found it. Also: broker test's (require 'satan) dependence is masked in the full suite because another file loads satan first; and mem.fact.satan.broker-test-credential-stub-order-dependence is now obsolete (the cause was removed) and should be retired."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

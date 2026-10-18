@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cf3-ac57-7e30-badf-cc9088da38af"
+recorded_at = "2026-10-18T03:00:00.215334853Z"
+kind = "friction"
+summary = "Intermittent process-sentinel error aborts just test (ISS-044)"
+detail = "SL-022 CHR-009 verify: 1 of 5 just check runs aborted with 'error in process sentinel: Opening output file: No such file or directory, /tmp/satan-spawn-*/run/stderr.log' right after satan-broker/dec8-sentinel-clears-flag-on-exit-events; reruns green. Likely a real-process spawn test whose temp dir is removed before the sentinel's stderr.log flush (satan-broker.el ~line 464). Filed ISS-044. Whitespace-only commit cannot be the cause."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

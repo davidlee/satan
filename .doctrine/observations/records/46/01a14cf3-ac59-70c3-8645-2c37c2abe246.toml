@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cf3-ac59-70c3-8645-2c37c2abe246"
+recorded_at = "2026-10-18T03:00:00.21733309Z"
+kind = "friction"
+summary = "git diff -w check polluted by unrelated uncommitted edits"
+detail = "CHR-009 verify 'git diff -w empty' failed literally because of another session's uncommitted QUE-004 edits; had to scope to -- satan. Briefs should give the pathspec."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

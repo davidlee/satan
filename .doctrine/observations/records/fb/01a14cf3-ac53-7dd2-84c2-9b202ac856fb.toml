@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cf3-ac53-7dd2-84c2-9b202ac856fb"
+recorded_at = "2026-10-18T03:00:00.211261077Z"
+kind = "friction"
+summary = "SL-022 PHASE-05 planner hit 40-turn cap researching, wrote no sheet"
+detail = "First capsule-phase-planner for PHASE-05 spent all 40 turns reading (broker test is ~2.4k lines) and delivered nothing. A respawn with an explicit ~20-call research budget and 'write the sheet, the worker can do fine-grained discovery' finished in 17 calls. Planner briefs for large deletion phases should carry a research budget."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
