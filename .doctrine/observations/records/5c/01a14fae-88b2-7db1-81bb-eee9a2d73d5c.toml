@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14fae-88b2-7db1-81bb-eee9a2d73d5c"
+recorded_at = "2026-10-18T15:43:20.754707767Z"
+kind = "friction"
+summary = "SL-023 plan names a stale flakes path for satan-patcher"
+detail = "PHASE-11 EX-2/sheet: plan cites ~/flakes/modules/home/linux/satan-patcher.nix; the real file is ~/flakes/features/satan/patcher.nix. Planner's T4 also missed satan-patch-runner-test.el as a consumer of the fenced handler (10 runner test failures on first check; fixed via a shared satan-patch-fixture.el). Stale .elc files in satan/ bite ad-hoc emacs --batch runs without load-prefer-newer."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

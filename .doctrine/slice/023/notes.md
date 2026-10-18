@@ -769,3 +769,29 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - PHASE-11/12: a `dirty_clone` wedge needs the operator remedy (design §5.2); worth a line in the runbook. `clean_failed` events are the signal to watch.
 - Relays to oubliette still open: S2 (strict vs sec-5 `accept-new`), S1 (collect stdout format). EX-11: fixtures follow SL-006 at `73ec574`; re-check at SL-006 lock (CHR-016).
 - Carried from B, untouched: `CeilingLatch` rename; the `host_key` model-gate race; `cancelDeferred`; gated view's `getAuth`/`login`/`logout`; `biome.json` (pre-existing `!.mcp.json` edit, left as found).
+
+## PHASE-11 (worker, sonnet)
+
+### Produced
+- T1 pre-fence: non-terminal `patch_jobs` query returned zero rows; all rows `failed|21`; `systemctl --user is-active satan-patcher` = `active`.
+- `satan/satan-tools-patch.el`: unconditional fence clause before the success `t` branch of `satan-tool/patch-job-create` -> `(error . "patch runner migration in progress (SL-023 cutover): patch_job_create is fenced")`; docstring updated. PHASE-13 deletes it.
+- `satan/test/satan-tools-patch-test.el`: new `create-refused-migration-in-progress` (no DB; store-insert stubbed to fail). Removed `create-success` / `create-emits-intervention-args`, the intervention stub and ctx const; setup now via fixture.
+- `satan/test/satan-patch-fixture.el` (new, not a suite file): `satan-patch-fixture-enqueue` inserts a queued job via the store plus the `queued` transition event. Used by tools-patch and patch-runner tests (DRY).
+- `satan/test/satan-patch-runner-test.el`: `--enqueue` and the real-pi test use the fixture (they went through the fenced handler; the sheet missed this).
+- `~/.config/emacs/apps/dl-satan.el`: `satan-patch-runner-enabled` -> nil with comment.
+- `~/flakes/features/satan/patcher.nix`: `enable = false` with comment; `~/flakes/SATAN.md` satan-patcher row Role -> disabled (fenced).
+
+### Learned
+- Plan path `modules/home/linux/satan-patcher.nix` is stale; real file is `features/satan/patcher.nix`.
+- Ad-hoc `emacs --batch -l` picks stale `.elc` ("newer than byte-compiled file; using older file") and shows the old handler; `just check` runner sets `load-prefer-newer`. Use `--eval '(setq load-prefer-newer t)'` for ad-hoc runs.
+- Red evidence: new test failed ("store insert reached") before the clause; green after.
+- `just check`: 1347 tests, 0 unexpected, 6 skipped (none are patch-tool tests; all 11 `satan-tools-patch/*` ran and passed, DB reachable). Skips: patch-listener integration, runner real-pi, 3 memory-grammar db-sync, integration morning.
+
+### Deviations
+- Touched `satan-patch-runner-test.el` and added `satan-patch-fixture.el` (outside the sheet's listed test file) because runner tests called the fenced handler.
+
+### Open
+- Human steps (EX-3/VH-1), not done:
+  1. `cd ~/flakes && just home-switch` (runs `home-manager switch --flake '.#david@Sleipnir' <local overrides>`).
+  2. Emacs: restart, or `M-x eval-buffer` in dl-satan.el, or `emacsclient -e '(setq satan-patch-runner-enabled nil)'`; reload satan checkout so the fence is live.
+- Post-deploy verification (agent): `systemctl --user is-active satan-patcher` -> `inactive`/unit not found; `systemctl --user is-enabled satan-patcher` -> not `enabled`; `pgrep -a satan-patcher` -> nothing; `emacsclient -e 'satan-patch-runner-enabled'` -> `nil`; `psql -d satan_memory -Atc "select state,count(*) from patch_jobs where state not in ('needs_review','failed','cancelled','accepted_external','stale') group by 1"` -> no rows; `emacsclient -e '(satan-tool/patch-job-create (list :directive "x" :mode "self-edit-mech" :repo "/tmp" :allowed_paths (list "a") :start nil) nil)'` -> `(error . "patch runner migration in progress ...")`.
