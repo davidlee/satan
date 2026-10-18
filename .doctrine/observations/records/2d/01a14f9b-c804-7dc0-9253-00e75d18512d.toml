@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f9b-c804-7dc0-9253-00e75d18512d"
+recorded_at = "2026-10-18T15:22:51.780898017Z"
+kind = "friction"
+summary = "pi-env HostKey*Error classes leave .name as Error"
+detail = "SL-023 PHASE-15 batch B: classifiers/tests keyed on error .name silently mis-sort pi-env's HostKeyChangedError/HostKeyUnknownError; use instanceof. Also: eslint -f unix formatter no longer available (use -f json); no-unnecessary-condition rejects a closure-assigned let read after reset (worked around with an array + .at())."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -654,3 +654,76 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - PHASE-12 deploy fact (carry-forward 2): the runner unit runs as the oubliette module owner (CON-003), for the slot deploy too. Nothing in config implies otherwise.
 - S2 (host-key policy drift vs SL-006 sec-5 accept-new) is still a relay item. S1's unpinned collect stdout is moot for the runner, but worth relaying.
 - Untouched: `cancelDeferred` under an exhausted budget; the gated view's `getAuth`/`login`/`logout`; `biome.json`.
+
+## PHASE-15 batch B (worker, opus)
+
+### Produced
+- Uncommitted delta in malebolge on `ba4f0d3`:
+  - `src/runner/env.ts`: `roomDaemon` (pi-env `sshConnection`) is replaced by:
+    - `daemonCommand(room, launch, helpers)`: pi-env's `sshConnectionFor` recipe. `detectPlatform` once per connection, `deployDaemon` every start, then `[ssh, ...sshArguments(target, true), <launch words, each POSIX-quoted, space-joined>]`. `DaemonHelpers` (`ssh`, `detectPlatform`, `deployDaemon`) is the test seam; production uses pi-env's own (strict by default). The quoter is local to env.ts.
+    - `DaemonConnection extends Connection`: wraps the command and keeps a trust record. A start that throws `HostKeyChangedError`/`HostKeyUnknownError` is recorded (by `instanceof`) before the rethrow. Only a start whose command is built (host key checked) clears it, so the rule fails closed: a later non-trust failure, or a concurrent start racing the reader, leaves `untrusted`.
+    - `daemonConnection(room, launch, helpers?)`.
+    - `ConnectionObserver.untrusted(failure, trust)` (required member). `JobConnection` reads the inner `DaemonConnection`'s record at every lost failure and calls `untrusted` instead of `lost`. A non-daemon inner (test fixtures) has no record.
+  - `src/runner/room.ts`: `Launch` type and `daemonLaunch(config, repo)`. The slot launch is `[daemon]`; the room launch is `[session_path, repo.name, "--", daemon]`, with `session_path` verbatim. `ChannelFailed.reason` gains `host_key`.
+  - `src/runner/start.ts`: `connect(repo)` = `daemonConnection(roomConnection(config), daemonLaunch(config, repo))`. Each call makes a new connection, so each job gets its own trust record (A3).
+  - `src/runner/prepare.ts`: `roomShell`'s counting observer collects trust failures. An exec failing after one throws `ChannelFailed` `host_key`, so `readyRoom` does not retry and `preparingFailure` records `failed(error)` with reason `host_key`. Nothing marks a pause.
+  - `src/runner/pause.ts`: `pausingObserver(deps, jobId, untrusted)`. Its `untrusted` marks nothing.
+  - `src/runner/run.ts`: `openRun` passes `() => stops.latch.trip("host_key")`, the existing abort machinery. No second mechanism. `toCollecting` uses `latchedEnding`.
+  - `src/runner/ceiling-latch.ts`: `LatchReason = Exhaustion | "host_key"`.
+  - `src/runner/ending.ts`: `latchedEnding`. `host_key` → `end_reason = error`, payload `reason: "host_key"`; otherwise `ceilingEnding`.
+- Tests (1095 → 1117; 45 files):
+  - `env.test.ts` (VT-5):
+    - Room command = `ssh <sshArguments(target, true)> '<session_path>' '<repo>' '--' '<daemon>'`, with the room name as host and the alias and `known_hosts` from config. `session_path` is verbatim (a `'` in it is quoted) and the repo is the job's.
+    - Slot command = the daemon path alone.
+    - `StrictHostKeyChecking=yes`.
+    - `detectPlatform` is called once and `deployDaemon` every start, both on the configured target.
+    - A lost failure through either kind's `daemonConnection` reaches `lost`.
+    - Both `HostKey*Error`s reach `untrusted`, never `lost`.
+    - The fail-closed rule, and the rule that a start past the key check clears the record.
+    - A non-daemon connection's loss is `lost`.
+  - `pause.test.ts` (VT-6):
+    - Running, for each `HostKey*Error`: the room's restart fails trust. The job ends `failed`/class `error` after `collected`, with `endReason: error`, collecting payload `reason: host_key`, no `pause` event, no `waiting_room`, `pauseRequested` false.
+    - Preparing, for each: `failed`, reason `host_key`, no sleep (not retried), no model call.
+    - A plain failure of the same restart still pauses (`waiting_room`).
+  - `recovery.test.ts`: row 8 restart redo with the host key changed meanwhile. The rejoined run aborts to collecting (`host_key`), never `waiting_room` (EX-5's "restart redo included").
+  - `prepare.test.ts` (EX-8 / carry-forward 5, preparing half): `roomShell` over each kind's `daemonConnection`. A lost start is `ChannelUnavailable`; each `HostKey*Error` is `ChannelFailed` `host_key` → `failed`/`error`.
+- Fixtures:
+  - `env-fixture.ts`: `REMOTE`, `DAEMON`, `fakeHelpers(ssh, failure?)`, `doorFacts(config)`, and `RebuiltRoom` (a `DaemonConnection` that delegates to the local daemon until a `ROOM-DOWN` exec, then fails every start with the given error through the production trust record).
+  - `run-fixture.ts`: `roomRebuilt(failure)` and `roomUntrusted(failure)`.
+- `just check` green: fmt, lint 0, tsc, 1117 tests. Coverage vs `ba4f0d3`: lines 98.07% (98.08), statements 97.90% (97.86), branches 94.04% (93.95), functions 98.16% (98.12). The 0.01 drop in lines is `start.ts`'s production `connect` lambda, now on its own line and never called in tests (as before; its old one-liner counted as covered).
+- Mutation-checked, each fails a test:
+  - `JobConnection` ignoring the record.
+  - The record cleared at start, and the record never cleared.
+  - `sshArguments(target, false)`.
+  - `detectPlatform` on every start.
+  - `latchedEnding` without the `host_key` branch.
+  - `roomShell` without the `host_key` branch.
+  - `openRun` not tripping the latch.
+  - The room launch with a fixed repo, and without `session_path`.
+- Each mutant was restored from the in-memory original, not by git. No stray processes were left behind.
+- `grep`: nothing in `src` calls `acceptHostKey`/`forgetHostKey`/`scanHostKey`, uses `accept-new`, or passes `sshArguments(…, false)`.
+
+### Learned
+- pi-env's `HostKeyChangedError`/`HostKeyUnknownError` do not set `name`; it stays `Error`. Tell them apart by `instanceof` or `constructor.name`, never by `.name`.
+- `Connection.#start` calls the command function synchronously inside its own try. A rejection becomes `RemoteError{spawn_error, lost: true}` with only the message, so the type survives only in a record the command keeps.
+- `typescript-eslint` `no-unnecessary-condition` flags a closure-assigned `let x: T | undefined` read after a reset (TS narrows it to `undefined`). `roomShell` keeps the trust failures in an array, read with `.at(before)`.
+
+### Deviations from the sheet
+- **The trust record lives on the connection (`DaemonConnection`), not as a `JobConnection` constructor option (B4).** `JobConnection` reads it from its inner by `instanceof`. This keeps `RunDeps.connect: (repo) => Connection` and every `enter`/`openRun`/`admit` signature unchanged, and the record cannot be wired to the wrong connection. A connection that is not a `DaemonConnection` has no record (its losses are `lost`).
+- **The record is cleared only by a start that passes the key check (fail closed),** not reset at every start. This closes a race in which a concurrent start cleared the record before `JobConnection` read it, turning a changed key into a pause.
+- **Preparing's trust failure is `ChannelFailed` `host_key`, not `PrepareFailed` (B4).** `failureReason` already maps `ChannelFailed.reason`, and the design classes a changed key as `ChannelFailed`. It also suits batch C's clean, which uses `roomShell` outside preparing.
+- The launch is words (`Launch = (daemon) => readonly string[]`), computed in room.ts. env.ts quotes and joins them, so room.ts knows no shell quoting. `daemonLaunch` reads `door.kind` in room.ts only (EX-10).
+- `ConnectionObserver.untrusted` is required, not optional. An observer without it must not silently fall back to `lost` (a pause).
+- No `vocab.ts` change: failure and payload reasons are free strings, not a closed vocabulary.
+
+### Open
+- **The gate does not refuse a model request that races the `host_key` abort.** The pause has STOP-1 (`pausePending`); the latch has no equivalent for `host_key`. One raced request costs one model turn, then the abort lands, and `end_reason` is still `error`/`host_key` (`latchedEnding` overrides). The design does not ask for it, so nothing was built. If wanted, the meter could refuse on `latch.reason() === "host_key"` with its own refusal text.
+- **The latch is still named `CeilingLatch`/`ceilingLatch`,** though it now carries `host_key`. Renaming it (e.g. `RunLatch`) touches run.ts and `ceiling-latch.test.ts` only. Not done, to keep B's diff focused.
+- `daemonCommand` does not refuse a Windows remote; its launch quoting is POSIX. Rooms and slots are Linux. Such a start would fail as `lost` (a pause), not trust.
+- **Batch C:**
+  - Carry-forward 5's clean half (the clean through `roomShell` in `collectJob`) is C's. `roomShell` gives `ChannelFailed` `host_key` there, so C's audit of a failed clean should record `reason`.
+  - C7's structural test: env.ts now names no door words. The header was reworded to "kind of room". `daemonLaunch` (the kind read) is in room.ts.
+  - `CollectDeps.connect` (A4) can reuse `start.ts`'s `connect(repo)` lambda (`RoomAccess.connect`).
+- PHASE-12 deploy fact (carry-forward 2, unchanged): the runner runs as the oubliette module owner (CON-003), slot deploy included.
+- S2 relay (strict vs SL-006 sec-5 `accept-new`) is still outstanding. This batch builds strict.
+- `biome.json` was already modified in the tree before batch B and is left as found.

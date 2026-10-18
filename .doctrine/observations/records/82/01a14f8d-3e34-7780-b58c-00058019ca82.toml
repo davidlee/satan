@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f8d-3e34-7780-b58c-00058019ca82"
+recorded_at = "2026-10-18T15:06:58.996748687Z"
+kind = "friction"
+summary = "git 2.55 background auto-maintenance flaked malebolge temp-repo tests"
+detail = "SL-023 PHASE-15 batch A worker: git fetch starts auto-maintenance in the background, which can still be writing in a temp bare repo when the test deletes it (ENOTEMPTY), ~1 in 15 runs of the job-branch-moved test. Fixed by maintenance.auto=false in the test git environment (40/40 green). Memory candidate."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f8d-3e37-7f30-9d64-062f84160f6c"
+recorded_at = "2026-10-18T15:06:58.999670479Z"
+kind = "friction"
+summary = "Mutation runs orphaned hanging stub processes"
+detail = "SL-023 PHASE-15 batch A worker: a mutant dropping the exec bound left 'sleep 1000' stub processes reparented to init; killed by pid, stub changed to sleep 60. Hanging-verb helpers should reap their own processes."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

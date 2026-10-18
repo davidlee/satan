@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f73-e0e7-7bd2-af23-0445eae488b4"
+recorded_at = "2026-10-18T14:39:16.711281638Z"
+kind = "friction"
+summary = "PHASE-15 planner hit 40-turn cap with no sheet written"
+detail = "capsule-phase-planner (opus) for SL-023 PHASE-15 spent all 40 turns reading (116k tokens, 42 tool uses) despite an explicit instruction to draft the sheet by turn ~15; it wrote nothing and delivered no hand-back. SendMessage is not available to the orchestrator, so the run could not be continued; a fresh planner had to be respawned and re-read everything."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
