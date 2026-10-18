@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 63
+slug = "sl023-cutover"
+title = "SL-023 cutover: delete both old runners, drop patch_jobs from satan_memory, one consumer at every step"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "POL-001: cutover, never addition; ISS-039: two consumers enabled today."
+choice = "Deployment sequence, verified against deployed service state at each step (not only green repo checks): (1) fence — disable both old consumers (satan-patch-runner-enabled in the editor config and the satan-patcher unit in ~/flakes) and confirm neither runs; (2) runner deployed from malebolge and enabled while no producer submits; (3) satan client cutover: delete elisp satan-patch-{runner,worktree,adapter,adapter-pi,prompt,classify,store,listener}, rewrite satan-tools-patch.el as an RPC client and satan-patch-inbox.el as watch-driven, add the promote/reject command, and a new migration drops patch_jobs and patch_job_events (17 failed rows discarded); (4) flakes: remove the satan-patcher module and flake input; archive the Go repo and its migration 0006. Never more than one consumer enabled. Deleted modules' tests are ported as runner acceptance fixtures. Tools fail closed with an error when the runner is unreachable. Closes ISS-030, ISS-038, ISS-039, ISS-041 and CHR-003 by supersession."
+alternatives = ["Retarget the Go runner", "Keep the elisp runner as fallback"]
+rationale = "Half-extraction is the named hazard; fencing first makes the one-consumer invariant hold across a deployment that today runs two."
+consequences = ["POL-001 IMP-006 destination line updated"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

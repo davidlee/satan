@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 54
+slug = "sl023-store-and-replay"
+title = "SL-023 runner: one pi-durable store, one conversation per job; only read is replay-safe"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "pi-durable allows one owning process per storage and reruns a tool interrupted by a process crash only if it is declared replay: safe; built-in read/write/edit/bash declare no replay policy (unsafe by default)."
+choice = "The runner owns one pi-durable store (inside the shared SQLite file, DEC-052) with one conversation per job; the job row records the conversation id. read is wrapped (wrapTool) as replay: safe; write, edit and bash stay unsafe, so after a runner crash the model receives an interrupted result and decides. Restart recovery follows a written per-state recovery table, exercised by fault injection at each write boundary."
+alternatives = ["One store per room or per repo", "Every coding tool replay-safe"]
+rationale = "One process (DEC-051) means one store; per-room stores only pay with several processes. read is pure; write writes whole content and is idempotent. edit can half-apply and bash has arbitrary effects."
+consequences = ["Replay concerns runner crashes only; room stops are handled by the room-down policy"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

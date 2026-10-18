@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 64
+slug = "sl023-runner-spec-home"
+title = "SL-023 patch runner gets its own tech spec under SPEC-002, authored at reconcile"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SPEC-003 OQ-3 defers the surviving runner and its spec to SL-023; SPEC-002 lists the patch runner as a separate container with its own spec."
+choice = "A new runner tech spec under SPEC-002, authored at reconcile from the locked design; until then the design carries it. SPEC-002's container list and SPEC-003 OQ-3 are updated with it."
+alternatives = ["Fold into SPEC-003", "Author the spec before implementation"]
+rationale = "The runner is its own container; writing the spec from shipped, audited behaviour avoids a spec ahead of evidence."
+consequences = ["Reconcile carries a spec-authoring task"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

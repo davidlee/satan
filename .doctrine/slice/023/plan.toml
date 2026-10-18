@@ -1,0 +1,317 @@
+# Implementation plan for SL-023 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# Paths: M = /home/david/dev/malebolge (runner code), this repo = ~/dev/satan.
+# VT test_file paths outside this repo are absolute; verify-vt reports them
+# UNATTRIBUTABLE (this repo's git cannot see malebolge commits) — expected.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-023"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Spike: model gate and room-down signal"
+objective = "Prove, against pinned pi-durable 1.3.0 and pi-env 1.3.0, the mechanisms the design builds ceilings and pause on, before any phase builds on them: the model gate in every provider call's path (design §6 OQ-1), pi-env's typed failure on a real room stop caught at an env wrapper, and the spike confirmations of §6."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-023 design locked (run dr-01a14d77)." },
+  { id = "EN-2", text = "An oubliette capsule slot (slot f, EVD-005) can be started by the user (`! capsule f start`, needs sudo) and reached through its relay." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`@earendil-works/pi-env` pinned at the exact pi-durable version in M's package.json." },
+  { id = "EX-2", text = "RV-025 F-1 / design §6 OQ-1: with a faux provider and memory storage, a Models view wrapping both `streamSimple` and `completeSimple` refuses once the budget is exhausted, and the next generation request, a retry, and a compaction summary each reach no provider; a durable attempt counter counts failed attempts and survives a harness reopen. If the view cannot sit in every call's path, STOP and /consult: DEC-057 is amended to the weaker guarantee per the user's ruling before PHASE-08." },
+  { id = "EX-3", text = "RV-025 F-2: against the slot, a `capsule f stop` mid-tool-call surfaces at an `ExecutionEnv` wrapper as a typed pi-env failure (matched by type/code, never message text); an ordinary tool error with the same message text is not recognised. The typed failure's exact class/code is recorded." },
+  { id = "EX-4", text = "The wrapper's host write on the shared SQLite adapter, made while catching that failure, settles (runs outside any pi transaction) and is durable before `afterTool` runs (RV-025 F-17)." },
+  { id = "EX-5", text = "A `whenBusy: \"steer\"` submission made mid-run is placed after the current tool round, before the next model request; `Harness.submission(id).status()` on a paused harness reads the record without enabling scheduling." },
+  { id = "EX-6", text = "Findings captured as evidence records (doctrine knowledge, kind evidence) and EVD/notes cite them; F-1 and F-2 verified on RV-025 against that evidence, or the slice stops for a DEC-057/DEC-055 amendment." },
+]
+verification = [
+  { id = "VT-1", expects = "faux-provider spike test: exhausted budget → no provider call on generation, retry and compaction; counter survives reopen", test_file = "/home/david/dev/malebolge/test/runner/model-gate.test.ts", keywords = ["streamSimple", "completeSimple", "compaction", "retry"], waived = false },
+  { id = "VH-1", expects = "user starts and stops slot f on request during the live room-stop spike (sudo)" },
+  { id = "VA-1", expects = "evidence records for EX-3..EX-5 cite the run (commands, observed types, versions); F-1/F-2 verdicts recorded on RV-025" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Quality gates: typescript-eslint and strict tsc (IMP-041, DEC-053)"
+objective = "Move M's lint to typescript-eslint strictTypeChecked per IMP-041, tighten tsc and coverage per DEC-053, and raise M's existing code and the PHASE-01 spike test to the bar, before runner code is written."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "eslint flat config carries IMP-041's rule set (strictTypeChecked + stylisticTypeChecked with projectService; unsafe family, promise hygiene, strict-boolean-expressions, switch exhaustiveness, no assertions, complexity/depth/length limits, import and unicorn rules); Biome kept as formatter only or dropped. The config is not copied from or cited to any private config." },
+  { id = "EX-2", text = "tsconfig: strict plus noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitOverride, noPropertyAccessFromIndexSignature, noFallthroughCasesInSwitch." },
+  { id = "EX-3", text = "vitest V8 line coverage threshold 85%, entry points excluded." },
+  { id = "EX-4", text = "`just check` in M (lint + typecheck + test) green with zero warnings over all existing code." },
+  { id = "EX-5", text = "IMP-041 closed (`doctrine backlog`), citing the commit." },
+]
+verification = [
+  { id = "VT-1", expects = "eslint config enables strictTypeChecked with projectService", test_file = "/home/david/dev/malebolge/eslint.config.js", keywords = ["strictTypeChecked", "projectService", "strict-boolean-expressions", "switch-exhaustiveness-check"], waived = false },
+  { id = "VT-2", expects = "tsconfig carries the DEC-053 flags", test_file = "/home/david/dev/malebolge/tsconfig.json", keywords = ["noUncheckedIndexedAccess", "exactOptionalPropertyTypes", "noPropertyAccessFromIndexSignature"], waived = false },
+  { id = "VA-1", expects = "`just check` output in M shows lint, typecheck and tests green, zero warnings, coverage ≥ 85%" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Pure core and ported acceptance fixtures"
+objective = "Build the runner's pure modules — config, protocol, jobs (transitions and the recovery table as data), policy ladder, prompt composition, ceilings arithmetic, classification and allowlist — with the old runners' behaviour ported as acceptance fixtures (POL-001)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete (lint gates in force)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/runner/config.ts` parses the §5.3 TOML shape; parse error, missing `prompt_file`, or unknown keys refuse (I13)." },
+  { id = "EX-2", text = "`src/runner/protocol.ts` parses the full schema of every §5.2 operation; unknown keys and invalid values yield `invalid_request` before any effect (I5)." },
+  { id = "EX-3", text = "`src/runner/jobs.ts` encodes the §5.4 state machine and the restart-recovery table (phase A / phase B columns) as pure functions; illegal transitions are refused." },
+  { id = "EX-4", text = "`policy.ts` resolves the DEC-056 ladder (defaults → [defaults] → mode → tag longest match → repo entry → submit), clamps to [maxima] and refuses a submit value above a maximum; `prompt.ts` is a pure function of (prompt text, policy, job)." },
+  { id = "EX-5", text = "`ceilings.ts` computes remaining allowance, the warning trigger (soft threshold or under one request's allowance, whichever first), the output cap and active wall-clock (`active_ms` + now − `running_since`)." },
+  { id = "EX-6", text = "`classify.ts`: allowlist semantics ported from `satan-patch-worktree-path-allowed-p` (prefix with `/`, exact otherwise, `./` stripped, `..` and absolute refused); the §5.4 classification table, including `end_reason = error` → `error`/`failed` and cancelled → `cancelled`." },
+  { id = "EX-7", text = "Acceptance fixtures port the behaviour of the elisp ert tests (allowlist, classify, prompt) and the Go policy/classify tests; the list of ported cases is recorded in the phase sheet." },
+]
+verification = [
+  { id = "VT-1", expects = "protocol: unknown key refused for every op; baseRef HEAD refused base_ref_invalid", test_file = "/home/david/dev/malebolge/test/runner/protocol.test.ts", keywords = ["invalid_request", "base_ref_invalid", "report-disposition", "watch"], waived = false },
+  { id = "VT-2", expects = "jobs: transitions and recovery table rows", test_file = "/home/david/dev/malebolge/test/runner/jobs.test.ts", keywords = ["waiting_room", "pending_collection", "pause_requested", "recovery"], waived = false },
+  { id = "VT-3", expects = "policy ladder, clamp and refusal; prompt composition", test_file = "/home/david/dev/malebolge/test/runner/policy.test.ts", keywords = ["ceiling_above_maximum", "tag", "mode"], waived = false },
+  { id = "VT-4", expects = "ceilings arithmetic and warning trigger", test_file = "/home/david/dev/malebolge/test/runner/ceilings.test.ts", keywords = ["soft_threshold", "maxTokens", "active_ms"], waived = false },
+  { id = "VT-5", expects = "classification table and allowlist", test_file = "/home/david/dev/malebolge/test/runner/classify.test.ts", keywords = ["path_violation", "no_changes", "partial", "complete"], waived = false },
+  { id = "VT-6", expects = "config refuses missing prompt_file", test_file = "/home/david/dev/malebolge/test/runner/config.test.ts", keywords = ["prompt_file", "maxima"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Store and audit"
+objective = "Open one runner-local SQLite file through one adapter shared by pi-durable (prefix `pi_`) and host queries; own the job schema and migrations; append-only `job_events` written in the state change's transaction (DEC-052, DEC-054, DEC-057)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/runner/store.ts` creates the §5.3 schema (`job_schema`, `jobs`, `job_events`, index) and migrates by version; the runner is the only migrator (I2)." },
+  { id = "EX-2", text = "Insert-or-return-existing by `submission_id` (idempotent submit)." },
+  { id = "EX-3", text = "Triggers refuse UPDATE and DELETE on `job_events` (I11)." },
+  { id = "EX-4", text = "Every state change and its event commit in one host transaction; `state_entered_at`, `running_since`, `active_ms`, `pause_count` maintained by the transition writer." },
+  { id = "EX-5", text = "pi-durable `SqliteStorage.open(db, { prefix: \"pi_\" })` and host queries share the one adapter in tests (in-memory)." },
+]
+verification = [
+  { id = "VT-1", expects = "store: migrations, idempotent submit, append-only events, atomic state+event", test_file = "/home/david/dev/malebolge/test/runner/store.test.ts", keywords = ["submission_id", "job_events", "UPDATE", "DELETE", "prefix"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Control socket and runner entry"
+objective = "Serve the DEC-058 control socket and stand up the runner binary: every §5.2 operation over NDJSON on a same-uid UDS in its own runtime directory, the watch stream, the `enabled` kill switch, and fail-closed start."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/runner/control.ts` serves submit, cancel, status, list, result, report-disposition, ack and watch with the §5.2 request/response shapes and error codes; socket at `$XDG_RUNTIME_DIR/satan-runner/control.sock`, dir 0700, socket 0600." },
+  { id = "EX-2", text = "submit validates repo (config name) and `baseRef` against the real repo (`check-ref-format --branch`, `refs/heads/<baseRef>` exists; omitted → default branch), inserts the job with `conversation_id` null plus event, creates the conversation and records its id, wakes the scheduler; same `submissionId` returns the existing job." },
+  { id = "EX-3", text = "watch: on connect one frame per `needs_review` job and per unacked failed/cancelled job, then `job_changed` on every transition; `ack` sets `announced_at` and stops resends." },
+  { id = "EX-4", text = "report-disposition promoted verifies read-only that `refs/heads/satan/patch/<id>` resolves to `reviewed_oid`, else `receipt_mismatch` (I8); no operation writes a real repo (I3)." },
+  { id = "EX-5", text = "`src/runner-main.ts` (bin entry in package.json): loads config, opens store and harness, refuses start on missing prompt file or bad config (I13); `enabled = false` refuses submit with `runner_disabled` while status/list/result stay readable." },
+]
+verification = [
+  { id = "VT-1", expects = "socket: every op over a real UDS in a temp dir; schema refusal; watch replay and ack", test_file = "/home/david/dev/malebolge/test/runner/control.test.ts", keywords = ["receipt_mismatch", "runner_disabled", "announced_at", "needs_review", "submissionId"], waived = false },
+  { id = "VT-2", expects = "runner refuses to start with a missing prompt file", test_file = "/home/david/dev/malebolge/test/runner/runner-main.test.ts", keywords = ["prompt_file", "refuse"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Git channel, slot adapter, collection"
+objective = "Implement the DEC-060 git-channel port with a slot-backed adapter, and the collection path: refresh, collect into quarantine, reachability, ancestry and allowlist over every commit in `base_oid..reviewed_oid`, classification into the next state."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/runner/room.ts`: `GitChannel` (refresh, collect, reachable) with typed `ChannelUnavailable` / `ChannelFailed`; slot adapter maps them onto oubliette's slot verbs; only `job/<id>` is collected." },
+  { id = "EX-2", text = "Collection records `reviewed_oid` (immutable once set, I7), checks ancestry from `base_oid` and every changed path across all commits (I6), classifies, and transitions; `ChannelUnavailable` → `pending_collection`, retried on `reachable()`, bounded by `max_pending_collection` then `failed(collection_abandoned)`." },
+  { id = "EX-3", text = "Nothing outside `room.ts` and config knows the door (ASM-005)." },
+]
+verification = [
+  { id = "VT-1", expects = "git channel over temp bare repos as room and quarantine: all-commits allowlist, history rewrite fails ancestry, pending_collection retry", test_file = "/home/david/dev/malebolge/test/runner/room.test.ts", keywords = ["ChannelUnavailable", "reviewed_oid", "path_violation", "pending_collection"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Run path: scheduler, preparing, running, collecting"
+objective = "Drive a job end to end in the harness: FIFO one-in-flight scheduler, `preparing` (policy, refresh, job branch via env exec, initial prompt with requestId = job id), `running` with the room tools through the per-job pi-env environment and the guard's early path check, then collection."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/runner/scheduler.ts`: one job in flight across repos, FIFO by `created_at`, woken by submit (no tick); a `waiting_room` job holds the slot; `enabled = false` schedules nothing (I14)." },
+  { id = "EX-2", text = "`preparing`: resolves policy into `job.policy` (audited), refresh → `base_oid`, `git switch -c job/<id> <base_oid>` in the guest clone (another oid → `failed(error)`, never force-moved), initial prompt submitted with `requestId` = job id; `running` recorded only after admission (I16). Room down retries with backoff, bounded by `max_room_wait`, then `failed(room_unavailable)` with no conversation turn; cancel while preparing → `cancelled` without collection." },
+  { id = "EX-3", text = "`src/runner/env.ts` builds pi-env's remote `ExecutionEnv` per job from door config (ssh config with relay ProxyCommand, keypair, known_hosts, guest cwd); tools are pi-durable's read/write/edit/bash, `read` wrapped `replay: \"safe\"`, the rest unsafe (DEC-054)." },
+  { id = "EX-4", text = "`src/runner/guard.ts` `beforeTool` blocks write/edit outside the allowlist as early feedback, audited as `blocked_tool`; the authoritative check stays at collection." },
+  { id = "EX-5", text = "A settled run moves to `collecting` with `end_reason` set; cancel while running aborts then collects and ends `cancelled`." },
+  { id = "EX-6", text = "The env seam is held to pi-env's `registerEnvConformance` with a local env." },
+]
+verification = [
+  { id = "VT-1", expects = "harness run path with faux provider + memory storage + local env: submit → needs_review; write outside allowlist blocked early, same change via bash caught at collection", test_file = "/home/david/dev/malebolge/test/runner/run.test.ts", keywords = ["needs_review", "blocked_tool", "requestId", "room_unavailable"], waived = false },
+  { id = "VT-2", expects = "env seam conformance", test_file = "/home/david/dev/malebolge/test/runner/env.test.ts", keywords = ["registerEnvConformance"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "Ceilings: model gate, deadline, warning"
+objective = "Build DEC-057's ceilings on the gate PHASE-01 demonstrated: the model gate (deny, count, cap) on both provider entry points, the independent deadline timer on active wall-clock, and the one warning steer with its receipt."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete; PHASE-01/EX-2 passed (or DEC-057 amended to the weaker guarantee, in which case this phase builds that instead)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/runner/model-gate.ts`: a Models view wrapping `streamSimple` and `completeSimple`, neither delegated unwrapped; before each send it refuses on an exhausted ceiling or unreadable usage (I10) with no provider call, then aborts the job with `ceiling_exceeded` / `usage_unavailable`; otherwise increments `model_requests` durably and sets `maxTokens` from the remaining budget (I17)." },
+  { id = "EX-2", text = "Deadline timer armed for remaining active wall-clock aborts in-flight work (long bash or model call); `waiting_room` time does not count; a crash interval is charged." },
+  { id = "EX-3", text = "Warning: one steer (`whenBusy: \"steer\"`, requestId `warn-<job id>`) at the first of soft threshold or under one request's allowance; its `job_events` receipt carries the admitted `submissionId`; placement read via `Harness.submission(id).status()` (`entry` present)." },
+  { id = "EX-4", text = "A ceiling hit collects partial work and offers it `needs_review`, flagged partial." },
+]
+verification = [
+  { id = "VT-1", expects = "gate: exhausted budget → generation, retry, compaction reach no provider; failed attempts counted; counter survives restart; unreadable usage denies", test_file = "/home/david/dev/malebolge/test/runner/model-gate.test.ts", keywords = ["streamSimple", "completeSimple", "usage_unavailable", "model_requests"], waived = false },
+  { id = "VT-2", expects = "deadline aborts a long bash; waiting time excluded; warning delivered once", test_file = "/home/david/dev/malebolge/test/runner/ceilings-harness.test.ts", keywords = ["deadline", "warn-", "ceiling_exceeded", "partial"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-09"
+name      = "Room down: pause and resume"
+objective = "Pause a job on a typed room failure and resume it with one message when the room returns (DEC-055), on the env-boundary signal PHASE-01 proved."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-08 complete; PHASE-01/EX-3 and EX-4 passed." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The env wrapper catches the typed failure recorded in PHASE-01, writes `pause_requested = 1` plus event durably before rethrow; `afterTool` only reads it and replaces the result; the runner aborts before another model request; `waiting_room` recorded with `pause_count += 1`, deadline stopped. No in-memory fallback." },
+  { id = "EX-2", text = "Probing with backoff; on reachable the resume message is submitted with requestId `resume-<job id>-<pause_count>`, carrying the warning text when the threshold has passed with no placed warning on record; `running` re-armed." },
+  { id = "EX-3", text = "`max_room_wait` (bounded from `state_entered_at`) → `room_unavailable` → `pending_collection`; cancel while waiting takes the same path with `end_reason = cancelled`." },
+  { id = "EX-4", text = "A tool error with the same text as the typed failure does not pause." },
+]
+verification = [
+  { id = "VT-1", expects = "pause/resume with faux provider and a failing local env: typed failure pauses, same-text error does not; resume id stable; warning carried when unplaced", test_file = "/home/david/dev/malebolge/test/runner/pause.test.ts", keywords = ["pause_requested", "pause_count", "resume-", "waiting_room"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-10"
+name      = "Restart recovery"
+objective = "Implement DEC-054's two-phase startup — phase A host-only with read-only harness views, phase B the one in-flight job's harness act then `resume()` — and exercise every recovery-table row by fault injection at its write boundary."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-09 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Phase A settles every job row from the §5.4 table using job tables, git reads, the probe and read-only views only (I15)." },
+  { id = "EX-2", text = "Phase B (enabled only) performs the in-flight job's act per the table — create/record conversation, resubmit initial prompt, abort a recorded pause, resubmit warning, submit resume message — then `resume()`." },
+  { id = "EX-3", text = "Disabled restart runs phase A only and makes no progress-asking call; a recorded pause stays recorded; status reads the job as it was." },
+  { id = "EX-4", text = "Each recovery-table row has a fault-injection test at its write boundary; no task is scheduled before phase A completes; no resume message is sent twice." },
+  { id = "EX-5", text = "Reconcile behaviour ported from the Go runner's crash-reconcile tests as acceptance fixtures." },
+]
+verification = [
+  { id = "VT-1", expects = "restart in every recovery-table state reaches the expected next state; disabled restart never starts the conversation", test_file = "/home/david/dev/malebolge/test/runner/recovery.test.ts", keywords = ["phase A", "phase B", "conversation_id", "enabled", "resume-"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-11"
+name      = "Cutover step 1: fence"
+objective = "Fence both old consumers and the producer (DEC-063 step 1) so the one-consumer invariant holds before the runner deploys."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-10 complete (runner feature-complete against faux provider and local env)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan: `patch_job_create` refuses with \"patch runner migration in progress\" (fence commit); ert covers it." },
+  { id = "EX-2", text = "`~/.config/emacs/apps/dl-satan.el` sets `satan-patch-runner-enabled` nil; `~/flakes` disables the satan-patcher unit." },
+  { id = "EX-3", text = "Deployed state verified: neither consumer running (systemctl, Emacs variable), no non-terminal `patch_jobs` rows." },
+]
+verification = [
+  { id = "VT-1", expects = "ert: patch_job_create refuses during migration", test_file = "satan/test/satan-tools-patch-test.el", keywords = ["migration in progress"], waived = false },
+  { id = "VH-1", expects = "user applies the flakes switch and reloads Emacs config; agent checks deployed state with them" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-12"
+name      = "Cutover step 2: deploy the runner"
+objective = "Deploy the runner from M as a user unit with its config, state and runtime dirs, keypair and gateway credential, and prove one job end to end against the slot through the gateway with no Emacs involved (DEC-063 step 2)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-11 complete." },
+  { id = "EN-2", text = "A gateway key for a new client can be issued and delivered to the runner unit (~/flakes SL-011; DEC-049). If not, /consult before deploying." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`~/flakes`: runner unit with `enabled` switch, config file, state dir (`$XDG_STATE_HOME/satan/runner/`) and runtime dir (`$XDG_RUNTIME_DIR/satan-runner/`); runner keypair and gateway credential wired (SL-011); `SATAN.md` updated." },
+  { id = "EX-2", text = "Jail-profile tests assert `$XDG_RUNTIME_DIR/satan-runner` is bound into no jail (I4, REQ-016)." },
+  { id = "EX-3", text = "Live smoke (env-gated, not in `just check`): one job submitted over the socket runs against the slot via the gateway, lands in quarantine, reaches `needs_review`; enabled only while no producer submits." },
+]
+verification = [
+  { id = "VA-1", expects = "deployed unit state, socket permissions, jail-profile test output and live smoke transcript recorded in notes" },
+  { id = "VH-1", expects = "user applies the flakes deploy and starts the slot for the smoke" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-13"
+name      = "Cutover step 3: Emacs client"
+objective = "Cut the satan client over to the runner (DEC-063 step 3): RPC tools, watch-driven inbox, promote/reject, deletion of the elisp runner, and the `patch_jobs` drop migration."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-12 complete (runner deployed and smoke-tested)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`satan-tools-patch.el`: `patch_job_create/_status/_result/_cancel` as bounded synchronous RPC on a fresh connection; one `submissionId` per call, never retried; intervention created for the runner job id and `intervention_id` returned, or ok with `intervention_error`; no `HEAD` default; runner unreachable → error; `patch_job_cleanup` and `satan-patch-prepare` removed." },
+  { id = "EX-2", text = "`satan-patch-inbox.el` watch-driven with reconnect/backoff; idempotent org append by job id; failed/cancelled notices acked; renders `reviewed_oid`, class, partial flag." },
+  { id = "EX-3", text = "`satan-patch-promote.el`: promote fetches the quarantine ref to `refs/satan/incoming/<id>` (async process), requires it equal `reviewed_oid`, creates `refs/heads/satan/patch/<id>` by compare-and-swap against absent, deletes the incoming ref, reports promoted; reject reports rejected. The exact fetch form is verified against a real quarantine." },
+  { id = "EX-4", text = "Deleted: `satan-patch-{runner,worktree,adapter,adapter-pi,prompt,classify,store,listener}.el` and their tests; `satan-patch.el` shrinks to tools + inbox + promote; `satan-custom-test.el` inventories and the `satan-db.el` comment updated." },
+  { id = "EX-5", text = "`satan/memory/migrations/0009_drop_patch_jobs.sql` refuses while any non-terminal row exists, then drops `patch_job_events`, `patch_jobs` and their trigger function." },
+  { id = "EX-6", text = "`~/satan-corpus/tools/patch_job_{create,status,result,cancel}.md` rewritten for the new contract and `patch_job_cleanup.md` deleted, committed with `just commit` in the corpus repo." },
+  { id = "EX-7", text = "`just check` in this repo green." },
+]
+verification = [
+  { id = "VT-1", expects = "ert RPC tools against a fake socket server: intervention_id, intervention_error, unreachable runner errors", test_file = "satan/test/satan-tools-patch-test.el", keywords = ["intervention_error", "intervention_id", "submissionId"], waived = false },
+  { id = "VT-2", expects = "ert watch inbox: needs_review appended once across reconnects; failed notice acked", test_file = "satan/test/satan-patch-inbox-test.el", keywords = ["needs_review", "ack"], waived = false },
+  { id = "VT-3", expects = "ert promotion against temp git repos: mismatch refused; existing branch refused touching nothing", test_file = "satan/test/satan-patch-promote-test.el", keywords = ["satan/patch/", "reviewed_oid", "incoming"], waived = false },
+  { id = "VT-4", expects = "drop migration refuses non-terminal rows", test_file = "satan/memory/migrations/0009_drop_patch_jobs.sql", keywords = ["patch_jobs", "patch_job_events"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-14"
+name      = "Cutover step 4: retire the Go runner; closure run"
+objective = "Remove satan-patcher from ~/flakes, archive its repo with migration 0006 (DEC-063 step 4), and produce the closure evidence: a job from `patch_job_create` end to end against the slot, promoted and rejected from Emacs."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-13 complete and deployed in Emacs." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`~/flakes`: satan-patcher module and flake input removed; `~/dev/satan-patcher` archived; `satan-patch-runner-enabled` removed from `dl-satan.el`." },
+  { id = "EX-2", text = "Closure run: one job promoted and one rejected from Emacs, both from `patch_job_create` against the slot through the gateway; deployed state shows exactly one consumer (the runner)." },
+  { id = "EX-3", text = "Notes record the evidence the audit needs for ledger rows (DEC-062), issue closures (ISS-030, ISS-038, ISS-039, ISS-041, CHR-003) and IDE-007." },
+]
+verification = [
+  { id = "VH-1", expects = "user promotes one job and rejects another from the Emacs inbox" },
+  { id = "VA-1", expects = "deployed state (units, Emacs vars), runner job_events for both jobs and the real-repo branch recorded in notes" },
+]
+specs        = []
+requirements = []

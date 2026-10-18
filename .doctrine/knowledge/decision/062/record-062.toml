@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 62
+slug = "sl023-ledger-changes"
+title = "SL-023 ledger changes: patch-runner owns job lifecycle, path allowlist, its ceiling, audit and switch"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ADR-017 §3 ledger rows 1-7; no queue-consumer row; rows 4, 5 and 6 are one row each; legend token satan-patcher was never an owner and names the retired Go repo."
+choice = "At SL-023's audit: add 'patch-job lifecycle / queue consumer' (owner patch-runner, governs ADR-018 D3; QUE-001) and 'per-job path allowlist' (patch-runner, REQ-002); split row 4 into run actions (emacs-client) / patch-job actions (patch-runner); split row 5 into run budget (emacs-client) / per-job ceiling (patch-runner); split row 6 per switch, the runner's owned by patch-runner, satan-patch-runner-enabled deleted; rename legend token satan-patcher to patch-runner (malebolge runner binary). Promotion is an approval surface, not a row. Credential custody stays out (DEC-049)."
+alternatives = ["Keep token satan-patcher"]
+rationale = "Every authority the runner enforces gets one owner and a transition line; splits keep one owner per row."
+consequences = ["Transition lines appended in the same change (INV-3)"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

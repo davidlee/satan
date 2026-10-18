@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 51
+slug = "sl023-runner-ts-in-malebolge"
+title = "SL-023 runner is one TypeScript process, a second binary in ~/dev/malebolge"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "QUE-005: pi-durable and pi-env exist only as Node libraries. POL-001 makes Rust the SATAN-daemon target with workload-fit exceptions; ADR-018 D1 wants one daemon repository (not yet stood up; expected Cargo workspace)."
+choice = "The runner is a single TypeScript process hosting the pi-durable harness, its queue, policy, composition, classification and control socket. It lives in ~/dev/malebolge as a second binary beside the interactive daemon, sharing gateway model wiring, NDJSON framing and the unix-socket server, and one pin set for pi-durable/pi-env. Separate process, store and disable switch from the interactive daemon (POL-001: one binary per extraction)."
+alternatives = ["Rust core over UDS RPC driving a TS harness host", "Home in ~/dev/satan under runner/", "A new repository"]
+rationale = "The enforcement points (path allowlist, ceilings, abort) are pi-durable hooks in the harness process; a Rust core would either call back per tool call or split one authority across two processes. Workload fit, as with panopticon's Python. malebolge already holds the reusable wiring and the pi pins."
+consequences = ["Recorded POL-001 workload-fit exception", "ADR-018 D1 scoped by its 2026-10-18 amendment (REV-006) so the runner may sit outside the daemon repo", "malebolge's purpose widens to pi-durable hosts", "POL-001's IMP-006 destination updated (REV-006)"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 50
+slug = "sl023-option-d-boundary"
+title = "SL-023 patch runner follows option D: a host daemon runs a pi-durable harness, tools run in the room via pi-env"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-023 must settle who owns scheduling, queueing, prompt composition, policy enforcement, classification and approval for patch jobs run in the oubliette assistant room. Oubliette DEC-031 makes room stops routine; EVD-005 shows a host pi-durable harness with pi-env tools in a slot loses at most one tool call on a dropped connection."
+choice = "Option D. A runner daemon on the host is the sole patch_jobs consumer and owns scheduling, policy ladder, prompt composition, harness hosting, per-tool-call enforcement (path allowlist, ceilings), classification and its own kill switch. Tools run in the room through pi-env over the door relay. Emacs keeps the producer tool (thin submit), the inbox notice and the promotion approval act (ADR-017 §1) and holds no job state. Oubliette owns room, door, refresh push, quarantine fetch and graceful stop. The gateway owns model routing, keys and deployment budgets."
+alternatives = ["A — elisp runner, pi inside the room: fails ADR-018 D5 and loses the run on every room stop", "B — daemon runner, pi inside the room: loses the run on every room stop (no owner for survival)"]
+rationale = "Only D gives run-survives-room-stop an owner (research F1, EVD-005); the room needs no model door or guest key (F2); every tool call passes host-side hooks where SATAN enforces policy."
+consequences = ["Both existing runners (elisp satan-patch-*, Go satan-patcher) are retired; logic ported, not code", "Emacs talks to the runner over RPC only", "Door-touching parts defer to oubliette SL-005 (ASM-005)"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

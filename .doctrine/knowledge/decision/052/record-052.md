@@ -1,0 +1,4 @@
+Revised 2026-10-18 before design lock, after an informal critical review (gpt-6-sol; no RV ledger), triage accepted by the user — finding 2: two databases share no commit boundary, and pi-durable documents a shared database with prefixed tables (README § Storage); finding 8: the ADR-018 D3 reading becomes an amendment, not a clarification.
+
+
+Revised 2026-10-18 during drafting, user ruling on design §6 OQ-2: pi-durable creates a conversation in its own commit, and a host-table write joining that commit is unverified. The ordered creation (job row first, conversation_id nullable, first submission with requestId = job id, recovery row "job without conversation → create") replaces the claim that the job row and its conversation are created in one transaction.

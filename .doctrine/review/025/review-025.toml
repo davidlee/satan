@@ -1,0 +1,694 @@
+id    = 25
+slug  = "design-review-of-sl-023"
+title = "design review of SL-023"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Third (final) Codex pass, gpt-6-sol high, read-only, on thread 01a14dba: re-checked F-4, F-8, F-13, F-15..F-18 against design.md and pi-durable sources, plus new defects in changed passages. Verified F-4, F-13, F-15..F-19; F-8 verified after three repair rounds (read path, then receipt-less crash window); raised F-19 (I15 wording). F-1 and F-2 stay answered for their demonstrate route after slice phases."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-023"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "blocker"
+title = "the proposed pre-request guard cannot deny a model request"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 1. Location: §5.4, lines 617–625.
+`beforeRequest` may replace messages, but its type has no deny or request-options result ([harness/types.d.ts](/home/david/dev/malebolge/node_modules/@earendil-works/pi-durable/dist/harness/types.d.ts:687)); throwing from a hook is reported and skipped ([README.md](/home/david/dev/malebolge/node_modules/@earendil-works/pi-durable/README.md:713)). **Scenario:** usage is exhausted, the guard throws, and the provider request still starts, violating DEC-057 and SPEC-001 REQ-004. **Repair:** define and test a gate at the actual `Models.streamSimple` call boundary, covering retries and compaction, before claiming pre-request denial. **Verified against source.**"""
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Correct: a throwing hook is reported and skipped (pi-durable README, failure model item 3), and beforeRequest returns only messages, so no hook can deny a request. Repair: denial, the request counter and the output cap move to one model gate at the provider boundary. The runner supplies the harness a Models view whose job models wrap the provider stream; every provider call for the job, retries and compaction summaries included, passes it. The gate increments a durable per-job attempt counter before sending, refuses (an error from the stream, no provider call) when any ceiling is exhausted or usage is unreadable, and sets maxTokens from the remaining allowance. This also carries design section 6 OQ-1. Criterion: with a faux provider, a job whose budget is exhausted makes no provider call on the next generation request, on a retry, or on a compaction summary; the attempt counter survives restart. Host phase constraint: the gate must be demonstrated in the harness against the pinned pi-durable before any phase builds ceilings on it; if it cannot sit in the path, DEC-057 is amended to the weaker guarantee per the user ruling.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Correct: a throwing hook is reported and skipped (pi-durable README, failure model item 3), and beforeRequest returns only messages, so no hook can deny a request. Repair: denial, the request counter and the output cap move to one model gate at the provider boundary. The runner supplies the harness a Models view whose job models wrap the provider stream; every provider call for the job, retries and compaction summaries included, passes it. The gate increments a durable per-job attempt counter before sending, refuses (an error from the stream, no provider call) when any ceiling is exhausted or usage is unreadable, and sets maxTokens from the remaining allowance. This also carries design section 6 OQ-1. Criterion: with a faux provider, a job whose budget is exhausted makes no provider call on the next generation request, on a retry, or on a compaction summary; the attempt counter survives restart. Host phase constraint: the gate must be demonstrated in the harness against the pinned pi-durable before any phase builds ceilings on it; if it cannot sit in the path, DEC-057 is amended to the weaker guarantee per the user ruling.
+"""
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "blocker"
+title = "a typed pi-env exception may not remain typed at `afterTool`"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 2. Location: §5.4, lines 645–660.
+pi-durable converts an exception from tool execution or environment construction into a generic `tool_error` diagnostic containing its message before invoking `afterTool` ([tool.js](/home/david/dev/malebolge/node_modules/@earendil-works/pi-durable/dist/harness/tool.js:287)). EVD-005 observed an error message, not a typed signal at this hook. **Scenario:** a room stop throws from the remote environment; the hook cannot distinguish it from an ordinary tool error, so the model spends turns retrying. **Repair:** make the first spike prove the hook-visible representation; if exceptions are erased, catch and encode the typed failure in a tool wrapper before pi-durable converts it. **Inferred for pi-env; conversion verified against source.**"""
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Correct: the tool runner catches exceptions from env construction and execute before afterTool sees a result (pi-durable dist harness tool.js, the catch around runtime.env and tool.execute), so a typed pi-env error can reach the hook only as text. Repair: recognition moves to the environment boundary. The runner wraps pi-env's ExecutionEnv for each job; the wrapper catches pi-env's typed connection-lost or spawn failure before pi-durable converts it, records the room-down condition for that job, and rethrows. afterTool consults that recorded condition, never the result text, then replaces the result and triggers the pause. Criterion: in the pause spike against a stopped slot, the wrapper observes a typed failure (not a message match) and the job pauses before another model request; an ordinary tool error with the same message text does not pause. Host phase constraint: the first spike phase must establish the typed signal before the pause machinery is built on it.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Correct: the tool runner catches exceptions from env construction and execute before afterTool sees a result (pi-durable dist harness tool.js, the catch around runtime.env and tool.execute), so a typed pi-env error can reach the hook only as text. Repair: recognition moves to the environment boundary. The runner wraps pi-env's ExecutionEnv for each job; the wrapper catches pi-env's typed connection-lost or spawn failure before pi-durable converts it, records the room-down condition for that job, and rethrows. afterTool consults that recorded condition, never the result text, then replaces the result and triggers the pause. Criterion: in the pause spike against a stopped slot, the wrapper observes a typed failure (not a message match) and the job pauses before another model request; an ordinary tool error with the same message text does not pause. Host phase constraint: the first spike phase must establish the typed signal before the pause machinery is built on it.
+"""
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "blocker"
+title = "a crash can strand a job in `running` before its first submission"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 3. Location: §5.4, lines 542 and 598–600; recovery line 745.
+The design moves to `running` after branch creation, then configures and submits the prompt. Recovery leaves `running` to `resume()`, which only continues admitted work (DEC-052; [README.md](/home/david/dev/malebolge/node_modules/@earendil-works/pi-durable/README.md:108)). **Scenario:** the runner dies after recording `running` but before `submit`; restart finds no pending task, and the job holds the sole slot forever. **Repair:** persist an admission marker or check for the job’s submission and retry it with the stable job `requestId` before resuming. Fault-inject that exact gap. **Inferred from verified ordering.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. The job moved to running before the initial submission was admitted, and resume continues only admitted work. Repair: the initial submission belongs to preparing. A job leaves preparing for running only after submit with requestId equal to the job id has returned (admitted). Recovery for preparing with base_oid and conversation recorded resubmits the initial prompt with the same requestId (pi-durable returns the existing submission if it was admitted) and then records running. Recovery table and fault-injection list gain this boundary.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. The job moved to running before the initial submission was admitted, and resume continues only admitted work. Repair: the initial submission belongs to preparing. A job leaves preparing for running only after submit with requestId equal to the job id has returned (admitted). Recovery for preparing with base_oid and conversation recorded resubmits the initial prompt with the same requestId (pi-durable returns the existing submission if it was admitted) and then records running. Recovery table and fault-injection list gain this boundary.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "blocker"
+title = "recovery cannot promise “before the scheduler starts” while it calls `abort` or `submit`"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 4. Location: §5.4, lines 724–750.
+Both operations start pi-durable scheduling, as its API explicitly states ([harness/types.d.ts](/home/david/dev/malebolge/node_modules/@earendil-works/pi-durable/dist/harness/types.d.ts:639)). The `pause_requested` and `waiting_room` recovery rows require those calls; the disabled path simultaneously promises no such calls. **Scenario:** recovering one row starts another pending conversation before the remaining host rows are settled, or a disabled runner performs an abort that starts scheduling. **Repair:** separate read-only reconciliation from scheduler-starting operations, specify their order and a gate that prevents any model/tool enactment until reconciliation completes, and give disabled recovery its own explicit table. **Verified against source.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Contest accepted. Phase A may now read the harness's read-only views (inspect, a conversation's view), which pi-durable documents as never enabling scheduling (Harness type docs: read-only viewers never do). The settled-conversation row reads that view. The prohibition is restated as no call that asks for progress (submit, abort, compact, waits), including for a disabled runner.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: Harness docs state submit, compact, abort, wait and waitForIdle enable task scheduling. Repair: startup becomes two phases. Phase A is host-only: it settles every job row from the recovery table using job tables, git reads and the reachability probe, with no harness call. Phase B runs only when enabled and touches only the one job that can be in flight (one job globally, so at most one conversation has pending work): resubmit the initial prompt, complete a recorded pause by abort, or submit the resume message; then resume. Disabled: phase A only, no harness call at all; a recorded pause stays recorded. The design no longer claims recovery completes before the scheduler starts, only that host state is settled before any harness call.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+Codex verification pass: phase A claims to use job tables only and make no harness call, yet its row "running, conversation settled, no transition recorded" needs to know whether the conversation has settled; no host field or read path supplies that fact.
+"""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Contest accepted. Phase A may now read the harness's read-only views (inspect, a conversation's view), which pi-durable documents as never enabling scheduling (Harness type docs: read-only viewers never do). The settled-conversation row reads that view. The prohibition is restated as no call that asks for progress (submit, abort, compact, waits), including for a disabled runner.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex third pass: phase A uses job tables, git, probe and read-only harness views; submit/abort only in enabled-only phase B; pi-durable Harness docs state read-only viewers never enable scheduling (harness/types.d.ts:639)."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "`waiting_room` loses whether preparation or a run was interrupted"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 5. Location: §5.4, lines 545, 573–574, 654–655 and 747.
+A room unavailable during `preparing` has had no conversation turn; recovery nevertheless submits the “environment restarted” message. **Scenario:** refresh or branch creation fails while the room is down; after restart, the resume message becomes the first input although the base and job branch may not be ready. **Repair:** persist the interrupted phase and resume preparation from its last completed step; submit the recovery message only after an initial run was admitted. **Inferred from the stated state machine.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct observation; different repair. Rather than persisting which phase was interrupted, preparing never enters waiting_room: with the room unreachable, preparing retries refresh and branch creation with backoff, bounded by max_room_wait, then ends failed with reason room_unavailable (nothing has run, nothing to collect). waiting_room is entered only from running, matching DEC-059's running to waiting_room pair, so the resume message always follows an admitted run.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct observation; different repair. Rather than persisting which phase was interrupted, preparing never enters waiting_room: with the room unreachable, preparing retries refresh and branch creation with backoff, bounded by max_room_wait, then ends failed with reason room_unavailable (nothing has run, nothing to collect). waiting_room is entered only from running, matching DEC-059's running to waiting_room pair, so the resume message always follows an admitted run.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "the ceiling inputs do not support the specified request and cost arithmetic"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 6. Location: §5.4, lines 613–625.
+`pi.usage` contains aggregate model/tool token and cost totals, not a request count ([usage.d.ts](/home/david/dev/malebolge/node_modules/@earendil-works/pi-durable/dist/harness/usage.d.ts:4)); `maxTokens` limits output, while usage also charges input ([pi-ai types.d.ts](/home/david/dev/malebolge/node_modules/@earendil-works/pi-ai/dist/types.d.ts:279)). **Scenario:** failed requests consume a request allowance without a recoverable count; a large prompt exceeds remaining cost even with a small output cap. **Repair:** persist request attempts at the provider boundary and specify how input and compaction spend are bounded or accounted for. Resolve the unproven cap mechanism against DEC-057 before locking the claimed guarantee. **Verified against types; failure scenario inferred.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: pi.usage holds aggregate token and cost totals per model and per tool, no request count; maxTokens bounds output only. Repair, in prose: the request ceiling counts attempts recorded by the model gate (see F-1), durably, before each send. Token and cost checks compare pi.usage totals (which include input, failed, aborted and compaction spend) against the ceiling before each send. The guarantee is stated precisely: spend may exceed a ceiling by at most one request, whose output is capped by the gate and whose input cost is that of its prompt. This is DEC-057's strict-up-to-one-capped-request, defined; the gate mechanism itself is routed on F-1.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: pi.usage holds aggregate token and cost totals per model and per tool, no request count; maxTokens bounds output only. Repair, in prose: the request ceiling counts attempts recorded by the model gate (see F-1), durably, before each send. Token and cost checks compare pi.usage totals (which include input, failed, aborted and compaction spend) against the ceiling before each send. The guarantee is stated precisely: spend may exceed a ceiling by at most one request, whose output is capped by the gate and whose input cost is that of its prompt. This is DEC-057's strict-up-to-one-capped-request, defined; the gate mechanism itself is routed on F-1.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "elapsed-time recovery lacks durable start points"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 7. Location: §5.3, lines 425–435 and §5.4, lines 626–629, 668–677.
+`active_ms` is checkpointed per turn/transition, but there is no persisted `running_since`, `waiting_since`, or `pending_collection_since`. **Scenario:** a runner crashes 40 minutes into a long tool call; restart re-arms a one-hour active ceiling from the earlier checkpoint. Repeated restarts can similarly reset room-wait or collection-abandonment timing if `updated_at` is used. **Repair:** persist entry times for each timed state, define how crash intervals are charged, and test restart during long calls and waits. **Inferred from the schema and recovery rules.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Repair: jobs gain state_entered_at (set on every transition) and running_since (start of the current running segment). Active wall-clock is active_ms from closed segments plus now minus running_since; a crash interval is charged to the job (fail closed). Room-wait and pending-collection bounds measure from state_entered_at, which restarts do not reset. Tests: restart during a long call and during each bounded wait.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Repair: jobs gain state_entered_at (set on every transition) and running_since (start of the current running segment). Active wall-clock is active_ms from closed segments plus now minus running_since; a crash interval is charged to the job (fail closed). Room-wait and pending-collection bounds measure from state_entered_at, which restarts do not reset. Tests: restart during a long call and during each bounded wait.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "“warning delivered once” has an unresolved crash window"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 8. Location: §5.4, lines 630–634.
+The proposed `beforeRequest` message rewrite affects one request only ([harness/types.d.ts](/home/david/dev/malebolge/node_modules/@earendil-works/pi-durable/dist/harness/types.d.ts:687)), while the delivery marker is a separate host `job_events` write. **Scenario:** a crash after the event but before the provider request suppresses the warning forever; reversing that order permits a duplicate. **Repair:** choose a durable, idempotent warning submission and define the event as a receipt of its committed admission, then fault-inject both boundaries. **Inferred from verified API and store ordering.**"""
+disposition = "fix-now"
+route = "review"
+response = "Contest accepted. Rather than a second lookup by requestId, the waiting_room recovery rule is widened: past the warning threshold with no placed warning on record (no receipt, or a receipt whose record has no entry), the resume message carries the warning text. The only cost is one repeated advisory when a warning was placed just before the crash, which is tolerated. Paragraph, recovery row and a test for the crash window updated."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Repair, settling DEC-057's deferred mechanism choice: the warning is a queued submission with requestId warn-<job id>, so resubmitting is a no-op. The job_events warning row is written after the submission is admitted, as its receipt. Recovery: a job past the warning threshold with no warning receipt resubmits (idempotent) and then writes the receipt. Whether a queued submission reaches the model before the next request mid-run is confirmed in the pause spike. DEC-057 gets a revision note.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+Codex verification pass: a stable requestId and an admission receipt close duplicate admission, but admission is treated as delivery. The design does not specify whenBusy steer; pi-durable defaults a busy input to a follow-up (placed only when the run answers), and abort withdraws queued inputs (README Busy Conversations; Abort), so a pause can withdraw an admitted warning that was never seen.
+"""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Contest accepted. The warning is now a steer (whenBusy steer: placed after the current tool round, before the next model request) with requestId warn-<job id>. The job_events row records admission only; delivery is placement in the transcript, read from the read-only view. Because a pause abort withdraws an unplaced steer and resubmitting the same requestId returns the withdrawn submission, a job resuming with an admitted but unplaced warning carries the warning text in its resume message (recovery row added). Steer placement mid-run joins the pause spike's confirmations. DEC-057 choice and note updated.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "Codex third pass: steer, stable requestId, admission receipt, abort withdrawal and resume fallback are right, but delivery is read from the conversation's active transcript view. EntryRecord carries no requestId (types.d.ts:290-305) and compaction can drop a placed warning from the active view; the design does not name the read-only submission lookup (Session.submissionByRequest, types.d.ts:903) that establishes placement."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Contest accepted, verified against pi-durable: EntryRecord has no requestId; SubmissionRecord (types.d.ts:336) has status queued/placed/done/unanswered and an entry once placed; Session.submissionByRequest (types.d.ts:903) is a read-only lookup Harness inherits. Design 5.4 now reads placement from that record: placed when it carries an entry (placed, done, or unanswered with an entry); queued, or unanswered with no entry (withdrawn), is not placed. Phase A's read-only views name the lookup; the recovery row and invariants summary cite the record; test added for a placed warning compacted out of the active view."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "Codex confirmation: status and entry rules match pi-durable, but the named lookup does not exist where cited: submissionByRequest is on Tx (types.d.ts:710-724) and Storage (861-903), not Session (814-847) or Harness. Specify a supported read path."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Contest accepted; my previous response misread the interface boundary. The supported read path is Harness.submission(id) then Submission.status() (harness/types.d.ts:43-48, 658); neither is among the calls that enable scheduling (harness/types.d.ts:639). The warning's job_events row now carries the admitted submissionId; the recovery row writes the receipt with the id returned by the idempotent resubmit; phase A's read-only views name status() by stored id. The spike confirms status() on a paused harness leaves scheduling paused."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "Codex confirmation (inferred): the read path is valid when a receipt exists, but a crash after warning admission and a recorded pause, before the receipt stores the submissionId, reaches waiting_room with no id to check; the warning was withdrawn by the recovery abort and is never delivered (design 684-690, 830-835)."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Contest accepted. Rather than a second lookup by requestId, the waiting_room recovery rule is widened: past the warning threshold with no placed warning on record (no receipt, or a receipt whose record has no entry), the resume message carries the warning text. The only cost is one repeated advisory when a warning was placed just before the crash, which is tolerated. Paragraph, recovery row and a test for the crash window updated."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex confirmation: waiting_room recovery carries the warning when there is no receipt or the stored submission has no entry, covering the receipt-less crash window; repeated advisory explicitly tolerated; test added."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "major"
+title = "`end_reason = error` has no classification rule"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 9. Location: §5.4, lines 683–692.
+The state machine sends a running error to collection, and the gateway-refusal edge case sets `end_reason = error` (line 846), but the classification table covers only collection/check errors and three other end reasons. **Scenario:** a provider fails after the agent committed valid partial work; collection succeeds, but the implementor must guess whether to offer the commits, fail the job, or leave it collecting. **Repair:** add an explicit `error` outcome, including whether valid commits are reviewable and how its class and terminal state are recorded. **Verified against design and DEC-060.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: the classification table had no row for end_reason error. Repair per DEC-060 (error class goes to failed): end_reason error with a successful collection yields class error, state failed; collected commits stay in quarantine for inspection and are not promotable.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: the classification table had no row for end_reason error. Repair per DEC-060 (error class goes to failed): end_reason error with a successful collection yields class error, state failed; collected commits stay in quarantine for inspection and are not promotable.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "major"
+title = "promotion can race another branch writer"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 10. Location: §5.4, lines 705–713.
+Emacs checks that `satan/patch/<id>` is absent, fetches directly into it, and deletes it if the oid differs. **Scenario:** another process creates or changes that branch between the check and fetch; the fetch or cleanup can affect a ref Emacs did not create. **Repair:** fetch to an isolated temporary ref, verify its oid, then create the final ref with an atomic absent-ref compare-and-swap; report only that verified ref. **Inferred from the design’s check–write–delete sequence.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Repair: Emacs fetches the quarantine ref into an isolated temporary ref (refs/satan/incoming/<id>), requires it to equal reviewed_oid, then creates refs/heads/satan/patch/<id> with git update-ref and an empty old value (fails if the ref exists), and deletes the temporary ref. Emacs never deletes or moves a branch it did not create.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Repair: Emacs fetches the quarantine ref into an isolated temporary ref (refs/satan/incoming/<id>), requires it to equal reviewed_oid, then creates refs/heads/satan/patch/<id> with git update-ref and an empty old value (fails if the ref exists), and deletes the temporary ref. Emacs never deletes or moves a branch it did not create.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "major"
+title = "the proposed async Emacs RPC client does not fit the current tool-handler contract"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 11. Location: §5.2, lines 381–385 and §10, line 1010.
+`satan-tool-dispatch` calls a handler and immediately expects an `(ok . value)` result ([satan-tools.el](/home/david/dev/satan/satan/satan-tools.el:165)); both broker and MCP call it synchronously ([satan-broker.el](/home/david/dev/satan/satan/satan-broker.el:93), [satan-mcp.el](/home/david/dev/satan/satan/satan-mcp.el:305)). **Scenario:** a handler starts an async socket request and returns before its response; the model receives an incorrect or empty result. **Repair:** specify a bounded synchronous RPC approach or design the async dispatch and audit changes across both callers; add those files to code impact and verification. **Verified against current code.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: satan-tool-dispatch calls the handler and expects an immediate ok/error value; broker and MCP call it synchronously. Repair: request/response operations (submit, status, list, result, cancel, report-disposition, ack) are bounded synchronous RPCs on a fresh local connection with a short deadline; the runner answers them without waiting on jobs. Only the inbox watch is an asynchronous, long-lived connection. No change to satan-tools.el dispatch.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: satan-tool-dispatch calls the handler and expects an immediate ok/error value; broker and MCP call it synchronously. Repair: request/response operations (submit, status, list, result, cancel, report-disposition, ack) are bounded synchronous RPCs on a fresh local connection with a short deadline; the runner answers them without waiting on jobs. Only the inbox watch is an asynchronous, long-lived connection. No change to satan-tools.el dispatch.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "major"
+title = "the fence disables consumers but leaves the old producer live"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 12. Location: §5.4, lines 769–777.
+Step 2 assumes “no producer submits” without an enforcing action; the current `patch_job_create` still inserts into Postgres ([satan-tools-patch.el](/home/david/dev/satan/satan/satan-tools-patch.el:125)). **Scenario:** a model calls the old tool between fencing and client cutover; its queued row has no consumer and is later dropped by migration. **Repair:** explicitly fence or stop the producer, verify no submissions can reach the old table, and drain/refuse any row created during the transition. **Inferred from verified cutover and code paths.**"""
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Repair: the fence fences the producer too. Step 1 ships a satan change where patch_job_create refuses (runner migration in progress) alongside disabling both consumers, and verifies no non-terminal patch_jobs rows exist. The drop migration refuses to run while any non-terminal row exists, so a row created in a transition window cannot be silently dropped.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Repair: the fence fences the producer too. Step 1 ships a satan change where patch_job_create refuses (runner migration in progress) alongside disabling both consumers, and verifies no non-terminal patch_jobs rows exist. The drop migration refuses to run while any non-terminal row exists, so a row created in a transition window cannot be silently dropped.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "major"
+title = "the producer rewrite omits intervention creation"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 13. Location: §10, lines 1010 and 1027.
+The current successful create path emits `intervention.created`, returns `intervention_id`, and ties the intervention to the job id ([satan-tools-patch.el](/home/david/dev/satan/satan/satan-tools-patch.el:139)); the design’s new tool result lists only job id/state. **Scenario:** jobs run successfully but the existing observer has no patch-job intervention to classify, silently losing that learning path. **Repair:** state whether this behavior is retained; if retained, define idempotent intervention creation and the response contract across a socket-response loss. **Verified against current code; omission inferred.**"""
+disposition = "fix-now"
+route = "review"
+response = "Contest accepted. The 10 corpus tool-description row now says create returns job_id, state and intervention_id, or intervention_error when the intervention create failed (the job still exists), matching 5.2 and its test."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: the current producer creates a patch_job intervention keyed by the job id and returns intervention_id. Repair: retained. After the runner's submit response, Emacs creates the intervention (kind patch_job, target the runner's job id) and returns intervention_id; as today, a failed intervention create does not fail the tool. If the submit response is lost, the tool returns an error and no intervention exists for that job, the same degradation as today's tolerated failure. Code impact and tests updated.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+Codex verification pass: intervention creation is restored, but no idempotency rule prevents a second intervention if a submit is retried; and the response's claim that a failed intervention create does not fail the tool as today is false: the current tool returns an error (satan-tools-patch.el condition-case around satan-intervention-create).
+"""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Contest accepted on both counts. Idempotency: each tool call mints one submissionId and sends it once; Emacs never retries a submit, so one tool call yields at most one job and one intervention. The false as-today claim is corrected: today a failed intervention create returns an error although the job is queued. The design now deliberately departs from that: it returns ok with job_id and intervention_error, because an error invites the model to submit a duplicate job. Test added.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "Codex third pass: 5.2 states the at-most-once call and intervention_error, but the 10 code-impact row for the corpus tool descriptions still says create returns only job_id and state, omitting intervention_id and intervention_error."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Contest accepted. The 10 corpus tool-description row now says create returns job_id, state and intervention_id, or intervention_error when the intervention create failed (the job still exists), matching 5.2 and its test."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex confirmation: the 10 tool-description row now includes intervention_id and intervention_error, matching 5.2."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "minor"
+title = "the planned lifecycle ledger row under-cites its own duty"
+detail = """
+Codex (gpt-6-sol) design review of SL-023, finding 14. Location: §5.3, lines 515–525.
+It includes runner RPC schema validation but lists only ADR-018 D3 as governing authority. The ledger says an ADR substitutes only where no REQ covers a duty ([authority-ledger.md](/home/david/dev/satan/.doctrine/adr/017/authority-ledger.md:36)); SPEC-001 REQ-001 explicitly covers validation. **Scenario:** the migration audit checks lifecycle ownership but lacks an addressable requirement for runner-side validation. **Repair:** cite REQ-001 alongside ADR-018 D3 in that row and test the validation enforcement site at audit. **Verified against source.**"""
+disposition = "fix-now"
+response = """
+Correct: SPEC-001 REQ-001 covers schema validation, and the ledger prefers a REQ over an ADR. Repair: the lifecycle row cites REQ-001 alongside ADR-018 D3.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Correct: SPEC-001 REQ-001 covers schema validation, and the ledger prefers a REQ over an ADR. Repair: the lifecycle row cites REQ-001 alongside ADR-018 D3.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex (gpt-6-sol) verification pass, 2026-10-18: repair present in design.md and addresses the original complaint."
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "major"
+title = "Compaction may bypass the model gate"
+detail = "Codex verification pass, new finding N-1 (inferred). The design wraps the provider stream, but pi-durable calls Models.completeSimple for compaction (dist/harness/compaction.js) while generation calls streamSimple (dist/harness/generation.js). If the view delegates completeSimple to the original Models, a summary request escapes the gate. Repair: intercept both entry points; prove it in the OQ-1 spike."
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: compaction calls Models.completeSimple, generation streamSimple. The gate's Models view now wraps both entry points and delegates neither unwrapped (design 5.4, module table, DEC-057). Demonstrating that the view sits in every provider call's path stays with F-1's instrument route; the spike criterion gains compaction via completeSimple. Settled in prose here; not a second routed finding against the gate.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct: compaction calls Models.completeSimple, generation streamSimple. The gate's Models view now wraps both entry points and delegates neither unwrapped (design 5.4, module table, DEC-057). Demonstrating that the view sits in every provider call's path stays with F-1's instrument route; the spike criterion gains compaction via completeSimple. Settled in prose here; not a second routed finding against the gate.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex third pass: the Models view wraps streamSimple (generation.js:315) and completeSimple (compaction.js:128), neither delegated unwrapped. Coverage demonstration stays with F-1."
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "major"
+title = "Resume-message identity is not restart-stable"
+detail = "Codex verification pass, new finding N-2 (inferred). Recovery submits resume-<job id>-<n>, but the schema stores no episode number or admitted resume id. A crash after admission but before running is recorded can choose a new n and admit two resume messages; pi-durable deduplicates only the same requestId. Repair: persist or deterministically derive the id per waiting episode."
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Jobs gain pause_count, incremented in the transaction that records waiting_room; the resume message's requestId is resume-<job id>-<pause_count>, restart-stable, so a crash after admission resubmits the same id and pi-durable returns the existing submission. Recovery row and test added.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. Jobs gain pause_count, incremented in the transaction that records waiting_room; the resume message's requestId is resume-<job id>-<pause_count>, restart-stable, so a crash after admission resubmits the same id and pi-durable returns the existing submission. Recovery row and test added.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex third pass: pause_count stored, incremented with waiting_room, forms resume-<job id>-<pause_count> in flow and recovery; same requestId returns the existing submission (README 117-123)."
+
+[[finding]]
+id = "F-17"
+status = "verified"
+severity = "major"
+title = "The pause fallback loses its recovery marker"
+detail = "Codex verification pass, new finding N-3 (inferred). If the afterTool hook cannot write through the shared adapter, the design permits an in-memory pause mark written after the hook returns. A crash between those steps leaves pause_requested 0, and the running recovery row resumes work. Repair: a durable mark at the env boundary, or a proven ordering closing the window."
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. The in-memory fallback is removed. The env wrapper records pause_requested durably (with its event) when it catches the typed failure, before rethrowing and before afterTool runs; afterTool only reads. A crash anywhere after the catch leaves a recorded pause for recovery. The spike confirms the wrapper's host write runs outside any pi transaction (tool execution, not a hook commit); this is part of F-2's demonstration. DEC-055 note updated.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Correct. The in-memory fallback is removed. The env wrapper records pause_requested durably (with its event) when it catches the typed failure, before rethrowing and before afterTool runs; afterTool only reads. A crash anywhere after the catch leaves a recorded pause for recovery. The spike confirms the wrapper's host write runs outside any pi transaction (tool execution, not a hook commit); this is part of F-2's demonstration. DEC-055 note updated.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex third pass: env wrapper records pause_requested and its event before rethrow; afterTool only reads; pi-durable catches env/tool exceptions before the tool error settles (tool.js:287-308). Shared-adapter write stays an F-2 spike obligation."
+
+[[finding]]
+id = "F-18"
+status = "verified"
+severity = "minor"
+title = "System diagram still shows the old promotion write"
+detail = "Codex verification pass, new finding N-4 (verified). The 5.1 diagram edge says git fetch reviewed_oid directly to satan/patch/<id>, while the repaired sequence fetches the quarantine ref to a temporary ref and creates the branch by compare-and-swap. Repair: update the edge."
+disposition = "fix-now"
+response = """
+Correct. The 5.1 diagram's promotion edge now reads: fetch quarantine ref to a temporary ref, require reviewed_oid, create satan/patch/<id> by compare-and-swap.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Correct. The 5.1 diagram's promotion edge now reads: fetch quarantine ref to a temporary ref, require reviewed_oid, create satan/patch/<id> by compare-and-swap.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex third pass: the 5.1 edge shows quarantine-ref fetch, OID check and compare-and-swap branch creation, matching the promotion sequence."
+
+[[finding]]
+id = "F-19"
+status = "verified"
+severity = "minor"
+title = "I15 still forbids any harness call before phase A completes"
+detail = "Codex third pass, new finding (verified). 5.5 I15 requires phase A to settle host state before any harness call, while repaired phase A reads harness read-only views (inspect, a conversation's view). A literal implementation or test of I15 rejects the read needed to reconcile a settled conversation. Repair: before any harness call that asks for progress; pi-durable exempts read-only viewers from scheduling (harness/types.d.ts:641-656)."
+disposition = "fix-now"
+response = "Correct. I15 now reads: before any harness call that asks for progress (read-only views are allowed). Swept siblings: the disabled-runner paragraph and phase A already say 'asks for progress'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Correct. I15 now reads: before any harness call that asks for progress (read-only views are allowed). Swept siblings: the disabled-runner paragraph and phase A already say 'asks for progress'."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Codex confirmation: I15 now bars only progress-asking harness calls during phase A, matching the phase A rule."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

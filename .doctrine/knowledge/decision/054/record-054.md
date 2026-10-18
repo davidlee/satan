@@ -1,0 +1,1 @@
+Revised 2026-10-18 before design lock, after an informal critical review (gpt-6-sol; no RV ledger), triage accepted by the user — finding 9: a replayed whole-file write can clobber guest state changed after an unrecorded first write, so write is no longer replay-safe; finding 2: restart recovery needs a per-state table.

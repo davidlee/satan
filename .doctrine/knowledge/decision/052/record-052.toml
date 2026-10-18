@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 52
+slug = "sl023-job-store-sqlite"
+title = "SL-023 job state and the pi-durable store share one runner-local SQLite file; patch_jobs leaves satan_memory"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Under DEC-050 Emacs talks to the runner over RPC only; patch_jobs/patch_job_events have no other reader (the observer and audit name patch_job only as an intervention kind) and no foreign keys (migration 0005). Today the table has two schema owners (elisp 0005, Go 0006; REQ-013). pi-durable already stores transcripts in SQLite via node:sqlite."
+choice = "One SQLite database in the runner's state directory, opened through one node:sqlite adapter shared by host queries and pi-durable (SqliteStorage with prefix pi_), so host writes queue behind pi transactions. Job tables and pi tables live in the same file. Creation is ordered, not atomic: the job row is written first with conversation_id null; the runner then creates the conversation, records its id, and makes the job's first submission with requestId = job id; restart recovery creates a missing conversation (a conversation created but not recorded is never submitted to). Submissions carry idempotent ids. The runner is the sole schema owner, migrator and validator. At cutover patch_jobs and patch_job_events are dropped from satan_memory by a new elisp migration; Go migration 0006 is retired with satan-patcher."
+alternatives = ["System Postgres satan_memory with the runner as sole schema owner"]
+rationale = "Single process and single reader: SQLite gives single ownership (REQ-013 and REQ-009) without a Postgres client. One file removes the two-store restart reconciliation problem (no shared commit boundary between two databases). Tests run on in-memory databases."
+consequences = ["ADR-018 D3 scoped by its 2026-10-18 amendment (REV-006): Postgres is the shared state store and process-private state may live outside it", "Removes a multiple-owner overlap on satan_memory (RSK-015)", "Job history is inspected with sqlite3 or the status RPC and not psql"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

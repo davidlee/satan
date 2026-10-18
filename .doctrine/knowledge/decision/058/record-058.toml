@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 58
+slug = "sl023-control-socket"
+title = "SL-023 runner control socket: same-uid UDS never bound into a jail, NDJSON request/response, no promotion"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ADR-018 D3 moves control to UDS RPC; RSK-018: malebolge's socket is guarded only by runtime-dir permissions and any jail binding that dir can drive it; ISS-028: jails can reach around the protocol."
+choice = "Socket at $XDG_RUNTIME_DIR/satan-runner/control.sock, dir 0700, socket 0600, NDJSON request/response reusing malebolge framing. Operations: submit, cancel, status, list, result, report-disposition, ack, and a watch stream for needs_review, failed and cancelled notices (replacing the pg_notify listener); on each watch connect the runner resends every needs_review job and every failed or cancelled job Emacs has not acked. The runner validates the full schema of every operation before acting (REQ-001 on its own surface). Authentication is same-uid plus the invariant that the socket path is never bound into any jail. No operation writes a real repo; a promoted disposition is accepted only as a receipt the runner verifies (DEC-061)."
+alternatives = ["Capability token file", "Postgres NOTIFY wake (retired by ADR-018 D3)"]
+rationale = "A token readable by any process that can reach the socket adds nothing; keeping the path out of every jail is the real boundary. Keeping promotion off the socket leaves it no path into the real repos."
+consequences = ["Jail profiles must assert the path is absent (REQ-016, ISS-028)", "ADR-018 OQ-2/OQ-3 stay open: this is the runner's own surface"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

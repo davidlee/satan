@@ -85,7 +85,10 @@ ADR-018 D1 — `satan-attrd` is absorbed by it, not a peer authority.
   and schema emission, owned by the core and published read-only to every
   surface (ADR-018 D2). Pure data plus pure functions; the first entry in the
   ADR-017 §3 ledger.
-- **IMP-006** patch runner → `satan-patcher` (pivot-pending, in flight).
+- **IMP-006** patch runner → a TypeScript runner binary in `~/dev/malebolge`
+  hosting pi-durable (SL-023, DEC-051), by workload fit under ADR-018's
+  2026-10-18 amendment. Retires both the elisp runner and the Go
+  `satan-patcher`.
 - **IMP-007** memory substrate → `satan-memoryd` (biggest editor-mismatch).
 - **IMP-008** audit verifier → `satan-audit` CLI (mechanical, CI-useful).
 - **IMP-009** observer → daemon, folds into IMP-007 or stands alone.
@@ -124,8 +127,8 @@ Absent any trigger, leave it.
 - **Rust is the target language for SATAN-orbit daemons** (PG + LISTEN/NOTIFY +
   RPC + invariant-heavy dispatchers + replay determinism; `sqlx` compile-time
   query checking). bough is the in-orbit precedent; its scaffolding is the
-  cheapest start. `satan-patcher` being Go is incidental; panopticon being
-  Python is workload fit and stands.
+  cheapest start. panopticon being Python and the patch runner being
+  TypeScript (pi-durable) are workload fit and stand.
 - **The trust boundary is a protocol, not a process** (ADR-017 §2). Safety is
   defined by invariants every surface must satisfy — schema-validated actions,
   mode/tool allowlists, append-only audit, token ceilings, kill switches — and
@@ -167,6 +170,11 @@ carve-early principle are untouched.
 thin-shell rationale covers output that lands at the keeper's editor. It is now
 explicit that a shell for a second human surface (goad) answers No and is a
 recorded tenant. No seat list changes, and no extraction is triggered.
+
+**2026-10-18 — the patch runner's destination (REV-006, SL-023).** IMP-006's
+destination moves from the Go `satan-patcher` to a TypeScript runner in
+`~/dev/malebolge`, by workload fit under ADR-018's amendment of the same date.
+The test, triggers and principles are otherwise unchanged.
 
 ## References
 

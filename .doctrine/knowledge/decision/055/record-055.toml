@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 55
+slug = "sl023-room-down-pause"
+title = "SL-023 runner pauses a job while the room is down and resumes its conversation when reachable"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "QUE-006. Oubliette DEC-031 makes room stops routine. EVD-005: a lost pi-env connection reaches the model as a tool error and the model recovers, but while the room stays down every call fails, burning turns and budget."
+choice = "Proven first: a spike against a real room/slot stop (capsule f stop) confirms the typed failure pi-env raises. Recognition is at the environment boundary, never by text: a per-job wrapper over pi-env's ExecutionEnv catches the typed failure before pi-durable converts it to an ordinary error result, and marks the job room-down; an afterTool hook reads that mark, replaces the result and triggers the pause before another model request. The runner then aborts the conversation's current work and sets the job to waiting_room; the transcript is kept. waiting_room is entered only from running; a room down during preparing retries within max_room_wait, then fails room_unavailable. A reachability probe with backoff watches the room; when reachable the runner submits one message stating the environment restarted, the last call may not have completed, check state and continue. Waiting time does not count against ceilings; max_room_wait bounds it, after which the job moves to pending_collection (DEC-060). The pause/resume transition is restart-safe per the recovery table (DEC-054)."
+alternatives = ["Let the model retry against connection errors"]
+rationale = "Pausing spends nothing while the room is down; the resume message reproduces the recovery observed in EVD-005."
+consequences = ["patch_jobs gains waiting_room and pending_collection states", "The spike is the plan's first phase", "A planned-stop/drain signal from oubliette is a later door-touching option"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

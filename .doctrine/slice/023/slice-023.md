@@ -29,19 +29,28 @@ clone rejects it) is consistent with that.
    tools), the patch runner, oubliette (room, door, git channel, quarantine),
    the coding harness (pi) and the LLM gateway — who schedules, queues,
    composes prompts, enforces policy, classifies results, holds credentials,
-   and owns the approval surface.
+   and owns the approval surface. *Decided: option D (DEC-050).*
 2. **Decide where the runner lives**, on evidence: elisp, the existing Go
    `satan-patcher` retargeted, or a new daemon (POL-001 names Rust as the
    target). Weigh POL-001 / IMP-006 (patch runner is an extraction candidate),
    ADR-017 (each authority item has one owner; Emacs keeps the approval
-   surfaces), and elisp's single-threaded blocking.
+   surfaces), and elisp's single-threaded blocking. *Decided: one TypeScript
+   process in `~/dev/malebolge` hosting pi-durable (DEC-051), under ADR-018's
+   2026-10-18 amendment (REV-006).*
 3. **Fix the `patch_jobs` contract**, including ISS-041 (`base_ref` must be a
-   branch name, or something the consumer resolves to one).
-4. **Drive jobs into the room and back**: dispatch over the door oubliette
-   pins (Plan F §5, ssh as a non-root agent user), result collection from the
-   quarantine (Plan F §4), and classification.
-5. **Promote from quarantine** through an Emacs approval surface (ADR-017).
-6. **Retire the old path** on adoption: one queue consumer, not two.
+   branch name, or something the consumer resolves to one). *Decided:
+   DEC-059 (contract, states), DEC-052 (runner-local SQLite store).*
+4. **Drive jobs into the room and back**: tools run in the room through
+   pi-env over the door oubliette pins (Plan F §5, ssh as a non-root agent
+   user), result collection from the quarantine (Plan F §4), and
+   classification (DEC-054..DEC-057, DEC-060). Room adapter and door config
+   wait on oubliette SL-005 (ASM-005); a capsule slot stands in.
+5. **Promote from quarantine** through an Emacs approval surface (ADR-017;
+   DEC-061).
+6. **Retire the old path** on adoption: one queue consumer, not two
+   (DEC-063: both old runners deleted, fenced first).
+7. **Hold the runner to strict quality gates** (DEC-053; lint move IMP-041
+   precedes the runner code).
 
 ## Non-Goals
 
@@ -65,32 +74,43 @@ slot or a stub.
 
 ## Affected surface (coarse)
 
-- `satan/satan-patch-*.el`, `satan/satan-tools-patch.el` — runner, store,
-  adapters, prompt, classify, inbox, listener; producer tool.
-- `~/dev/satan-patcher` — retargeted or retired.
+- `~/dev/malebolge` — new runner binary, shared wiring, lint/test gates.
+- `satan/satan-patch-*.el` — runner, store, adapters, prompt, classify,
+  listener deleted; `satan-tools-patch.el` rewritten as an RPC client (still creating the
+  observer's `patch_job` intervention),
+  `satan-patch-inbox.el` watch-driven, a new promote/reject command; a
+  migration drops `patch_jobs`.
+- `~/dev/satan-patcher` — retired and archived.
 - `~/flakes/modules/home/linux/satan-patcher.nix`, `~/.config/emacs/apps/dl-satan.el`
   (`satan-patch-runner-enabled`) — deployment and disable switches.
-- `.doctrine/adr/017/authority-ledger.md` — a new queue-consumer /
-  job-lifecycle row; row 6 (kill switches) split if a daemon owns its switch.
-  Credential custody is not a ledger item (DEC-049).
+- `.doctrine/adr/017/authority-ledger.md` — rows per DEC-062 (job lifecycle,
+  path allowlist; rows 4, 5, 6 split; token `patch-runner`). Credential
+  custody is not a ledger item (DEC-049).
+- A new runner tech spec under SPEC-002, at reconcile (DEC-064).
 
 ## Risks, assumptions, open questions
 
-- **Assumption:** satan-patcher works and only its integration is broken
-  (user recollection; research verifies).
+- **Assumption (retired by research):** satan-patcher works and only its
+  integration is broken — half-right (research 2b); both runners retired.
+- **Assumption:** ASM-005 (door as Plan F §5 sketches).
 - **Risk:** designing door-touching parts before oubliette pins §4/§5 means
   designing against a sketch.
-- **Open:** runner on this host (unix-socket relay) or on the tailnet? Plan F
-  expects this host.
-- **Open:** does an always-up room's probe-blocking cost (Plan F, "Two
-  operational costs") change anything SATAN-side?
+- **Risk:** pi-durable / pi-env are experimental; versions pinned.
+- **Risk:** two load-bearing mechanisms are unproven: the model gate that
+  enforces ceilings (RV-025 F-1, design §6 OQ-1) and pi-env's typed room-stop
+  failure reaching the env wrapper (F-2). The first phase is a spike that
+  demonstrates both; if the gate fails, DEC-057 is amended to the weaker
+  guarantee.
+- **Settled:** the runner runs on this host (DEC-050). Routine room stops
+  pause a job rather than lose it (DEC-055).
 
 ## Verification / closure intent
 
 - A job created by `patch_job_create` runs end to end in the room (or a
   stand-in slot before the room lands), lands in quarantine, is classified,
   and is promoted or rejected from Emacs.
-- Exactly one `patch_jobs` consumer is enabled.
+- Exactly one job queue consumer runs: the runner. Both old runners are
+  deleted and `patch_jobs` is dropped.
 - ADR-017 authority ledger updated for every item that changed owner.
 - ISS-030, ISS-038, ISS-039, ISS-041 and CHR-003 closed (fixed or
   superseded); IDE-007 resolved into this slice.

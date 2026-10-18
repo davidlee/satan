@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 59
+slug = "sl023-job-contract"
+title = "SL-023 patch job contract: base_ref is a real-repo branch validated by the runner; slimmed room-model state machine"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ISS-041: the producer sends base_ref HEAD and the Go clone rejects it. Contract validation in both elisp and a daemon would be dual enforcement (REQ-009). The 0005 states assume a worktree model and cross-process claim; accepted_external and stale have no writer."
+choice = "base_ref must name a branch of the real repo; the runner validates at submit (check-ref-format --branch and ref exists) and rejects otherwise; when omitted, the repo pin's default branch applies; the runner records base_oid at refresh and reviewed_oid at collection. States: queued → preparing → running ⇄ waiting_room → collecting ⇄ pending_collection → needs_review → promoted | rejected; any non-terminal → cancelled or failed(reason); a job is terminal only on a known collection outcome. claimed, preparing_worktree, accepted_external and stale are dropped. The runner is the authoritative validator of every RPC (full schema); the Emacs tool argument schema is only the model-facing gate (ledger row 1). The per-job policy is runner config; the ADR-018 D2 policy artifact does not exist yet and the runner restates nothing from it."
+alternatives = ["Producer resolves base_ref", "Keep the 0005 state set"]
+rationale = "One validator, one owner; the room model needs refresh and pause states, not worktree or claim states."
+consequences = ["Producer default HEAD removed", "Store is runner-local SQLite (DEC-052)"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

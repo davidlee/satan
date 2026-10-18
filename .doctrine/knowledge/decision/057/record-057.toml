@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 57
+slug = "sl023-ceilings-and-audit"
+title = "SL-023 runner owns per-job ceilings with a pre-abort warning, and its own append-only job audit"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "REQ-004: neither runner has a SATAN ceiling beyond a 1800 s timeout; gateway budgets are not SATAN ceilings (DEC-043). REQ-003: patch jobs are unaudited; ledger row 4 forbids a third writer to the run audit; routing audit through Emacs fails client-absent (ADR-017 §4)."
+choice = "Per-job ceilings on model requests, cost (USD) and tokens from pi.usage (which counts failed, aborted and compaction spend), and active wall-clock. A model gate, a Models view wrapping both provider entry points (streamSimple, completeSimple), sits in every provider call the job makes (generation, retry, compaction): before each send it refuses if any ceiling is exhausted or usage is unreadable, otherwise counts the attempt durably and sets max output tokens from the remaining budget. Spend therefore exceeds a ceiling by at most one request, output capped, input that of its prompt. An independent deadline timer aborts in-flight work (including a long model call or bash) at the wall-clock ceiling; a crash interval is charged to the job. Runner config holds hard maxima; a job may only lower them. One in-band warning, at the soft threshold (default 80%) or when the remaining budget falls under one request's allowance, whichever is first, tells the agent to commit work in progress and write notes; it is an idempotent steer (whenBusy steer, requestId warn-<job id>) whose job_events row records admission; delivery is its placement in the transcript, and a warning withdrawn unplaced by a pause abort is carried by the resume message. A refusal or the hard ceiling aborts and the job proceeds to collection (DEC-060) with reason ceiling_exceeded. Audit: an append-only job_events table plus the pi-durable transcript record what the runner enacts; ledger row 4 splits into run actions (emacs-client) and patch-job actions (patch-runner)."
+alternatives = ["Gateway budgets only", "Audit relayed to Emacs over RPC", "Hard abort with no warning"]
+rationale = "Enforcement sits where the hooks are and holds with Emacs absent; the warning reduces lost work at the ceiling; a separate log keeps row 4 single-writer per log."
+consequences = ["The model gate is demonstrated at the pinned pi-durable before ceilings build on it; if it cannot sit in the request path this decision is amended to the weaker guarantee", "Ledger row 4 split recorded at audit"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

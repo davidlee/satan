@@ -1,7 +1,7 @@
 id = 23
 slug = "room-patch-runner"
 title = "Patch runner for the oubliette assistant room"
-status = "design"
+status = "ready"
 created = "2026-10-18"
 updated = "2026-10-18"
 tags = []
@@ -12,19 +12,35 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "satan/satan-patch*.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/satan-tools-patch.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/test/satan-patch*"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = ".doctrine/adr/017/authority-ledger.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-tools-patch-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/memory/migrations/0009_drop_patch_jobs.sql"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-custom-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-db.el"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"

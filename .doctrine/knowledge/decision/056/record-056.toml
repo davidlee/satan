@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 56
+slug = "sl023-scheduling-composition"
+title = "SL-023 runner schedules one job at a time, FIFO, woken by submit; policy ladder and prompt composition ported"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "One room; the Go runner used LISTEN + a 30 s tick and a crash reconcile of running rows; ADR-018 D3 retires pg_notify control traffic."
+choice = "One job in flight globally, FIFO by created_at. The submit RPC wakes the scheduler; no tick, no pg_notify. On startup the runner reopens the harness (which runs nothing), settles every job's host state by the recovery table, and only then calls harness.resume(), which continues running conversations; waiting_room jobs keep waiting, queued jobs are scheduled. With the kill switch off it never calls resume, submit or wait. The policy ladder (defaults → mode → tag → repo pin → row) is ported from Go. The patch prompt is read from a corpus path given explicitly in runner config, with no fallback; CHR-003 becomes that config value."
+alternatives = ["One job per repo concurrently in the room", "Keep a periodic tick"]
+rationale = "One room, one job keeps contention and failure handling simple; durable conversations make crash reconcile a reopen, not a state repair."
+consequences = ["Concurrency can widen later per room without changing the contract"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

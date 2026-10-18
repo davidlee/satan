@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 53
+slug = "sl023-runner-quality-gates"
+title = "SL-023 runner quality gates: strict tsc + Biome now, typescript-eslint strictTypeChecked via IMP-041"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "User asked for aggressive linting and a clean test suite for the runner in ~/dev/malebolge (DEC-051). Biome 2.5.15 lacks the type-aware no-unsafe-* family, strict-boolean-expressions and assertion bans; its promise and exhaustiveness rules are nursery on its own inference."
+choice = "One just check for malebolge (lint + typecheck + test, zero warnings). Types: strict plus noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitOverride, noPropertyAccessFromIndexSignature, noFallthroughCasesInSwitch. Lint: Biome recommended at error plus the nursery promise/exhaustiveness rules, until IMP-041 moves lint to typescript-eslint strictTypeChecked (sequenced before runner code). Tests: vitest; pure-function unit tests (policy ladder, composition, classification); harness tests on pi-durable's faux provider and memory storage; tool seam against a local ExecutionEnv held to registerEnvConformance; ert and Go tests ported as acceptance fixtures (POL-001); one env-gated live smoke against a slot. Coverage: V8 line threshold 85%, ratcheted, entry points excluded. 2-space format."
+alternatives = ["Biome only", "typescript-eslint immediately inside SL-023"]
+rationale = "Strictness where agents cut corners (any, assertions, floating promises, truthiness) needs tsc-backed lint; the backlog item keeps the tool move its own unit of work while sequencing it ahead of the runner."
+consequences = ["IMP-041 precedes SL-023's runner phases", "malebolge's existing code is raised to the same bar"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"
