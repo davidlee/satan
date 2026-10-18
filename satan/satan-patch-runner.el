@@ -25,8 +25,6 @@
 (require 'satan-patch-prompt)
 (require 'satan-patch-adapter)
 (require 'satan-patch-adapter-pi)
-(require 'satan-credential)
-(require 'satan-announce)
 
 (defcustom satan-patch-runner-idle-seconds 30
   "Idle-timer cadence at which `satan-patch-runner-tick' runs.
@@ -206,10 +204,10 @@ record terminal state."
      ;; a note in warnings.  No commit.
      ((and (null commits) clean)
       (let* ((noop-warnings (append warnings (list "no changes produced")))
-             (adapter-with-warnings
+             (noop-adapter-result
               (plist-put (copy-sequence adapter-result) :warnings noop-warnings))
              (result-json (satan-patch-runner--assemble-result
-                           row adapter-with-warnings nil diffstat)))
+                           row noop-adapter-result nil diffstat)))
         (satan-patch-runner--transition
          job-id (plist-get row :state) "needs_review"
          :finished_at (satan-patch-runner--now-iso)
@@ -250,44 +248,20 @@ Returns (ok . ROW') with the row reloaded after transition, or
             (err err))))))))
 
 (defun satan-patch-runner--queue-ready-p ()
-  "Non-nil when a job is queued and its credentials resolve unprompted.
-Peeks without claiming, so an idle runner never calls the credential
-backend and a deferred job stays `queued' for the next poke (SL-018 design
-sec-7).  The var list is the pi adapter's: only pi rows exist."
+  "Non-nil when a job is queued.
+Peeks without claiming, so an idle runner claims nothing.  Nil on an
+empty queue or a failed peek."
   (pcase (satan-patch-store-list :state "queued" :limit 1)
     (`(error . ,msg)
      (message "satan-patch-runner: queue peek failed: %s" msg)
      nil)
     (`(ok . nil) nil)
-    (_
-     (or (satan-credential-ready-p process-environment
-                                   satan-patch-adapter-pi-api-key-vars)
-         (progn
-           (message "satan-patch-runner: no credential session; job stays queued")
-           (satan-announce :journal "credential_deferred patch")
-           nil)))))
-
-(defun satan-patch-runner--credential-warnings (failed)
-  "Adapter warnings for FAILED, the ((VAR . ERR) …) of a lenient resolve."
-  (mapcar (lambda (f)
-            (format "credential %s unresolved: %s"
-                    (car f) (error-message-string (cdr f))))
-          failed))
-
-(defun satan-patch-runner--with-warnings (warnings on-finish)
-  "ON-FINISH, wrapped to prepend WARNINGS to the adapter result's."
-  (if (null warnings)
-      on-finish
-    (lambda (result)
-      (funcall on-finish
-               (plist-put (copy-sequence result) :warnings
-                          (append warnings (plist-get result :warnings)))))))
+    (_ t)))
 
 (defun satan-patch-runner-tick ()
   "Drive one queued patch job through to a terminal state.
 Idempotent: no-op when another job is already in flight in this
-Emacs, when `satan-patch-runner-enabled' is nil, or when the queued
-job's credentials would need a prompt.
+Emacs, when `satan-patch-runner-enabled' is nil, or when nothing is queued.
 Returns the claimed job-id, or nil if nothing was picked up."
   (when (and satan-patch-runner-enabled
              (null satan-patch-runner--active)
@@ -306,21 +280,13 @@ Returns the claimed job-id, or nil if nothing was picked up."
              (pcase (satan-patch-runner--prepare-worktree claimed-row)
                (`(error . ,_) nil)
                (`(ok . ,row)
-                (let* ((cred (satan-credential-resolve
-                              process-environment
-                              satan-patch-adapter-pi-api-key-vars
-                              "satan patch-adapter/pi"))
-                       (input (plist-put (satan-patch-prompt-build row)
-                                         :env (plist-get cred :env)))
-                       (adapter (or (plist-get row :adapter) "pi")))
+                (let ((input (satan-patch-prompt-build row))
+                      (adapter (or (plist-get row :adapter) "pi")))
                   (satan-patch-adapter-invoke
                    adapter row input
                    :on-finish
-                   (satan-patch-runner--with-warnings
-                    (satan-patch-runner--credential-warnings
-                     (plist-get cred :failed))
-                    (lambda (result)
-                      (satan-patch-runner--finish job-id result)))))))
+                   (lambda (result)
+                     (satan-patch-runner--finish job-id result))))))
            (error
             (satan-patch-runner--fail
              job-id (plist-get claimed-row :state) "runner_exception"

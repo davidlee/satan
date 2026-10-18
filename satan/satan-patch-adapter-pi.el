@@ -23,25 +23,10 @@
 (require 'json)
 (require 'subr-x)
 (require 'satan-patch-adapter)
-(require 'satan-credential)
 
 (defcustom satan-patch-adapter-pi-program "jailed-pi"
   "Executable name (or absolute path) of the jailed-pi wrapper."
   :type 'string :group 'satan-patch)
-
-(defcustom satan-patch-adapter-pi-api-key-vars
-  '("ANTHROPIC_API_KEY" "OPENROUTER_API_KEY" "DEEPSEEK_API_KEY"
-    "OPENAI_API_KEY" "GEMINI_API_KEY" "MISTRAL_API_KEY"
-    "VOYAGE_API_KEY")
-  "Env vars whose credential refs are resolved before spawning jailed-pi.
-The patch runner checks readiness over these before claiming a job and
-resolves them through `satan-credential-resolve' after (SL-018 design sec-7);
-the bwrap wrapper forwards each var into the jail via
-`--setenv VAR \"$VAR\"'.  Requires jailed-pi to be built with
-`useOpEnv = false; passApiKeysFromEnv = true'.  Narrow this to the
-provider pi is configured for: a cold ref to an unused provider still
-holds jobs back until a credential session is live."
-  :type '(repeat string) :group 'satan-patch)
 
 (defcustom satan-patch-adapter-pi-tools
   "read,write,edit,bash,grep,find,ls"
@@ -50,7 +35,7 @@ holds jobs back until a credential session is live."
 
 (defcustom satan-patch-adapter-pi-extra-args nil
   "Extra arguments appended verbatim before `-p DIRECTIVE'.
-Useful for `--thinking', `--api-key', etc.  No shell quoting."
+Useful for `--thinking'.  No shell quoting."
   :type '(repeat string) :group 'satan-patch)
 
 ;; ---------------------------------------------------------------------
@@ -254,12 +239,7 @@ executable).  See `satan-patch-adapter' for the protocol."
                  job-id log-path max-bytes))
          (stderr-buf (generate-new-buffer
                       (format " *satan-patch-pi-stderr-%s*" job-id)))
-         (default-directory (file-name-as-directory wt))
-         ;; INPUT's :env holds the runner's resolved keys; they shadow
-         ;; the refs, and the scrub drops every ref left over.
-         (process-environment
-          (satan-credential-scrub
-           (append (plist-get input :env) process-environment))))
+         (default-directory (file-name-as-directory wt)))
     ;; reset log file
     (with-temp-file log-path (insert ""))
     (let* ((proc

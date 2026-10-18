@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cde-32b8-7f30-abcc-c89b21ba3715"
+recorded_at = "2026-10-18T02:36:32.82479253Z"
+kind = "friction"
+summary = "phase-plan skill says planner flips in_progress; orchestrator owns the flip"
+detail = "SL-022 PHASE-04 planner: the phase-plan skill instructs flipping the phase to in_progress, conflicting with the capsule orchestrator loop. Also 'doctrine slice phases 22' printed only 'Phases up to date.' with no per-phase status."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

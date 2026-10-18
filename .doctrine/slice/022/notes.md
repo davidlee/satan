@@ -96,3 +96,20 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 - The stderr-pipe race (R1) did not appear in 80 runs incl. 8-way load; no drain added. Revisit if a production refusal shows empty `:stderr`.
 - Isolated `satan-broker-test.el` fails `run-emits-one-tick-row-outcome-spawned` (`credential_unavailable`): pre-existing at HEAD, credential-stub order dependence; gone with PHASE-05.
 - The test DB at 127.0.0.1:54322 was reachable despite podman being down: only 7 tests skip, not ~140.
+
+## PHASE-04 execution (keyless patch path)
+
+### Done
+- Patch runner and pi adapter resolve, hold and scrub no key. `satan-patch-runner--queue-ready-p` now means "a job is queued" (peek kept; error and empty return nil). The `credential_deferred patch` journal line, `--credential-warnings` and `--with-warnings` are gone; runner no longer requires `satan-credential` or `satan-announce`.
+- Adapter child inherits `process-environment` unchanged; INPUT `:env` is ignored. `satan-patch-adapter-pi-api-key-vars` deleted.
+- VT-1 `satan-patch-runner/ready-queue-runs-without-credentials`; VT-2 `satan-patch-adapter-pi/child-env-is-process-environment`. Peek-error and lost-claim tests rewritten without the credential fixture (`peek-error-claims-nothing`, `lost-claim-race-returns-nil`).
+- Suite 1388 -> 1384 ran, 7 skipped throughout; runner DB tests ran.
+
+### Learned
+- The naive "child env has no refs" test is vacuous under the harness scrub. Real reds: `plist-member :env` on the tick's INPUT, and an ignored `:env` sentinel in the adapter test.
+- The VA-1 sweep pattern `with-warnings` matched an unrelated local (`adapter-with-warnings`, renamed `noop-adapter-result`). Anchor sweep patterns.
+- Runner `--with-fixture` now relies on the `dev/satan-test.el` env scrub until PHASE-05 removes the credential module.
+
+### Open (for later phases)
+- PHASE-05: `dev/satan-test.el` (~100-106) credential nil-backend binding and scrub; `satan/test/satan-credential-fixture.el` still used by the broker test.
+- PHASE-06: `docs/patch/handover.md:97,202` and `docs/refactor/T8-pi-adapter-keys.md` still name `api-key-vars`.

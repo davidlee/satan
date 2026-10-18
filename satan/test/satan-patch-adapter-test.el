@@ -3,6 +3,7 @@
 (require 'ert)
 (require 'cl-lib)
 (require 'satan-patch-adapter)
+(require 'satan-patch-adapter-pi)
 
 (defmacro satan-patch-adapter-test--with-clean-registry (&rest body)
   "Run BODY with `satan-patch-adapters' bound to a fresh empty list."
@@ -62,6 +63,34 @@
     (should (eq 'failure (plist-get f :status)))
     (should (equal "boom" (plist-get f :error)))
     (should (= 1 (plist-get f :exit-code)))))
+
+(ert-deftest satan-patch-adapter-pi/child-env-is-process-environment ()
+  "The pi child inherits `process-environment' as is; INPUT's :env is ignored."
+  (let* ((seen nil)
+         (make-process-fn (symbol-function 'make-process))
+         (wt (make-temp-file "satan-pi-wt-" t))
+         (log (make-temp-file "satan-pi-log-" nil ".jsonl"))
+         (done nil)
+         (satan-patch-adapter-pi-program "true")
+         (bound (cons "SATAN_PATCH_TEST_SENTINEL=1" process-environment))
+         (process-environment bound))
+    (unwind-protect
+        (cl-letf (((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (setq seen process-environment)
+                     (apply make-process-fn args))))
+          (satan-patch-adapter-pi-invoke
+           (list :id "job-env" :worktree_path wt)
+           (list :log-path log :directive "x"
+                 :env '("SATAN_PATCH_EXTRA=1"))
+           :on-finish (lambda (_r) (setq done t)))
+          (with-timeout (5 (ert-fail "pi stub never finished"))
+            (while (not done) (accept-process-output nil 0.05)))
+          (should (equal seen bound))
+          (should (equal (getenv-internal "SATAN_PATCH_TEST_SENTINEL" seen) "1"))
+          (should-not (getenv-internal "SATAN_PATCH_EXTRA" seen)))
+      (delete-directory wt t)
+      (delete-file log))))
 
 (provide 'satan-patch-adapter-test)
 ;;; satan-patch-adapter-test.el ends here
