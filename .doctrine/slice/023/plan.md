@@ -7,7 +7,8 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 
 ## Overview
 
-Fifteen phases in four groups. PHASE-15 was appended after the design's
+Seventeen phases in four groups (PHASE-16 and PHASE-17 appended later; see
+Sequencing). PHASE-15 was appended after the design's
 room-adapter amendment (rev 56, DEC-065); it runs between PHASE-10 and the
 cutover, so ids no longer follow execution order:
 
@@ -56,6 +57,15 @@ repo, `~/flakes`, `~/.config/emacs` and `~/satan-corpus`.
   one-consumer invariant (I1) holds at every step; each step is checked
   against deployed state, not only green checks. PHASE-12 smoke-tests the
   runner over its socket before any producer can reach it.
+- **Rulings of 2026-10-19 (PHASE-16, PHASE-17, PHASE-12 amended).** PHASE-16
+  applies design rev 63 (room probe = the job's collect; DEC-057 rulings).
+  PHASE-17 builds the gateway-routed provider no earlier phase built (design
+  §5.1, §10): provider `gateway`, catalog rendered from `~/flakes`
+  `agents/gateway.nix` as the jails render it, key by systemd
+  `LoadCredential=`. PHASE-12 then deploys against the live `assistant` room,
+  not a slot (EX-6..EX-12 supersede EX-3/EX-4 and VH-1's slot wording), covers
+  CHR-016's live items there, and runs from malebolge's live tree until
+  CHR-017 packages it. Execution order: … 15 → 16 → 17 → 12 → 13 → 14.
 
 ## Notes
 
@@ -75,6 +85,8 @@ repo, `~/flakes`, `~/.config/emacs` and `~/satan-corpus`.
   a room stop, a changed host key refusing, non-interactive verbs as the
   runner user. Waits on oubliette SL-006 shipping; backlog, not a phase and not
   closure evidence (design §9). The slot stays the live rung for PHASE-12/14.
+  Amended by user ruling 2026-10-19: PHASE-12 covers the rung's live items
+  against the `assistant` room (EX-10); the rest stays in CHR-016.
 - **Out of the phases.** Ledger rows (DEC-062) land at audit; the runner tech
   spec (DEC-064) at reconcile; issue closures at close. PHASE-14 gathers their
   evidence.

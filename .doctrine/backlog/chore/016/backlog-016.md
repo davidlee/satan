@@ -29,3 +29,26 @@ Deployment facts it needs in `~/flakes` / `SATAN.md`: runner config rendered
 from the oubliette target/room attrsets; door `ssh_config` (`ProxyCommand`,
 `ServerAliveCountMax`); satan's key and the module owner's default key in the
 room user's `{ uid; keys; }`.
+
+## Covered by SL-023 PHASE-12 (user ruling 2026-10-19)
+
+PHASE-12 deploys the runner against the live `assistant` room instead of a
+slot, so it covers these items live (PHASE-12 EX-6, EX-7, EX-10):
+
+- one job end to end against `assistant`, `[door] kind = "room"`, repo
+  `goad-walk`, result left in quarantine;
+- reconnect after a room stop (`capsule assistant stop` / `start`): pause,
+  then resume through a fresh `session`-launched daemon;
+- push, collect and the probe (now a collect, design rev 63) run
+  non-interactively as the runner user;
+- a changed host key fails `host_key`, never a pause — the runner half only,
+  through a scratch instance with a tampered copy of `known_hosts`.
+
+Still deferred here:
+
+- silence-limit drop on a frozen guest (pi-env 30 s `SILENCE_LIMIT_MS`) →
+  pause;
+- oubliette's own verbs refusing a changed host key (exit 1): exercising it
+  live would mean editing the real `known_hosts`;
+- the agent home being writable and executable (ASM-005's open caveat);
+- the re-check of the room adapter at oubliette SL-006's lock.

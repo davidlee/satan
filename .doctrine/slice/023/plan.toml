@@ -276,6 +276,7 @@ entrance_criteria = [
   { id = "EN-2", text = "A gateway key for a new client can be issued and delivered to the runner unit (~/flakes SL-011; DEC-049). If not, /consult before deploying." },
   { id = "EN-3", text = "PHASE-15 complete." },
   { id = "EN-4", text = "PHASE-16 complete (sequenced after PHASE-15, before this phase)." },
+  { id = "EN-5", text = "PHASE-17 complete (gateway-routed provider, user ruling 2026-10-19); sequenced after PHASE-16, before this phase." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "`~/flakes`: runner unit with `enabled` switch, config file, state dir (`$XDG_STATE_HOME/satan/runner/`) and runtime dir (`$XDG_RUNTIME_DIR/satan-runner/`); runner keypair and gateway credential wired (SL-011); `SATAN.md` updated." },
@@ -283,10 +284,19 @@ exit_criteria = [
   { id = "EX-3", text = "Live smoke (env-gated, not in `just check`): one job submitted over the socket runs against the slot via the gateway, lands in quarantine, reaches `needs_review`; enabled only while no producer submits." },
   { id = "EX-4", text = "Under DEC-065 (design rev 56): the deployed config is `[door] kind = \"slot\"` with every slot key configured, `host_key_alias` included (never derived, I13); the runner's slot `known_hosts` is seeded once out of band (pi-env `scanHostKey` + `acceptHostKey`) and that operator step is in `~/flakes/SATAN.md` (unseeded, the first daemon start is a trust failure); the runner unit runs as the oubliette module owner (CON-003)." },
   { id = "EX-5", text = "From the oubliette relay (2026-10-19), both required for strict host-key checking: for the room kind, `known_hosts` = `/var/lib/capsule/room/<room>/known_hosts` and `host_key_alias` = `room-<room>`, exactly; the runner unit runs as the oubliette module owner (CON-003), since that directory is 0700." },
+  { id = "EX-6", text = "Supersedes EX-3 (user ruling 2026-10-19): the live smoke (env-gated, not in `just check`) runs against the live `assistant` room (`/srv/fleet/flake.nix` `rooms.assistant`, read-only). One job, submitted over the socket, targets `goad-walk` with a trivial directive, runs through the gateway, lands in `/var/lib/capsule/collect/assistant/goad-walk.git` and reaches `needs_review`; its result stays in quarantine and is never promoted. The runner stays enabled after the smoke (supersedes EX-3's \"enabled only while no producer submits\")." },
+  { id = "EX-7", text = "Supersedes EX-4's slot kind, slot keys and `known_hosts` seeding (user ruling 2026-10-19): the deployed config is `[door] kind = \"room\"`, `room = \"assistant\"`, `user = \"agent\"`, `identity = ~/.ssh/malebolge.key` (the runner's own key, already in the room user's keys), `known_hosts = /var/lib/capsule/room/assistant/known_hosts`, `host_key_alias = \"room-assistant\"`, `session_path = /run/current-system/sw/bin/session`, every other room key configured; `[repo.goad-walk]`: `path = ~/dev/goad-walk`, `guest_path = /work/goad-walk`, `default_branch = \"main\"` (the host checkout's only branch, the push's base_ref), `quarantine = /var/lib/capsule/collect/assistant/goad-walk.git`, `transfer_timeout_s`. No `known_hosts` seeding: oubliette's push learns the key; the runner never writes it. EX-5 stands." },
+  { id = "EX-8", text = "Gateway wiring to PHASE-17's contract (user ruling 2026-10-19): the unit carries `LoadCredential=<the config's [gateway] credential>:/home/david/.config/llm-gateway/keys/satan-runner` (key already issued); the config's `[gateway] catalog` names the catalog file `~/flakes` renders from `agents/gateway.nix` `models` with the jails' own render (`piGatewayConfig`, moved to a shared place, never copied). The key is on no argv and in no environment." },
+  { id = "EX-9", text = "Deploy source (user ruling 2026-10-19): the unit runs `src/runner-main.ts` from the live tree `~/dev/malebolge` with `nodejs_24`. Packaging malebolge as a flake input is CHR-017, which lands before SL-023 closure." },
+  { id = "EX-10", text = "CHR-016 live-room-rung items against `assistant` (user ruling 2026-10-19; env-gated): (a) reconnect after a room stop: a running job pauses on the user's `capsule assistant stop` and, after `capsule assistant start`, resumes through a fresh `session`-launched daemon; (b) push, collect and the probe (a collect) run non-interactively as the runner user; (c) a changed host key fails `host_key`, never a pause: with the deployed runner stopped (I1), a scratch instance (own config, state and runtime dirs) whose `known_hosts` is a tampered copy of the room's runs one job, which fails `host_key` in `preparing`. The real `known_hosts` is never edited; oubliette's verbs refusing a changed key stay with oubliette's tests." },
+  { id = "EX-11", text = "`~/flakes/SATAN.md` runbook: the `dirty_clone` remedy (design §5.2: `capsule assistant ssh agent -- git -C <guest_path> status` / `reset --hard` / `clean -ffd`) and how to watch for `clean_failed` audit events, which leave the next job on that repo failing `dirty_clone`." },
+  { id = "EX-12", text = "Supplements EX-2 (user ruling 2026-10-19): the satan-attrd and goad jails are swept read-only for the runner's runtime dir, with a note and no new tests; their jail configs are compared with satan's flake and doctrine's flake jail configs and drift is reported in notes, not fixed." },
 ]
 verification = [
   { id = "VA-1", expects = "deployed unit state, socket permissions, jail-profile test output and live smoke transcript recorded in notes" },
   { id = "VH-1", expects = "user applies the flakes deploy and starts the slot for the smoke" },
+  { id = "VA-2", expects = "notes record the room smoke (job events to needs_review, quarantine ref), the reconnect transcript, the tampered-known_hosts host_key failure, non-interactive verb runs, and the jail sweep and drift report" },
+  { id = "VH-2", expects = "supersedes VH-1's slot start (user ruling 2026-10-19): user runs the home switch, `capsule assistant start`, enables the runner, runs the smoke, and stops and starts the room for the reconnect" },
 ]
 specs        = []
 requirements = []
@@ -391,6 +401,29 @@ verification = [
   { id = "VT-4", expects = "with the budget exhausted, cancelDeferred reaches the provider and leaves model_requests unchanged; fetchDeferred and a tool's runtime.models complete are refused", test_file = "/home/david/dev/malebolge/test/runner/model-gate.test.ts", keywords = ["cancelDeferred", "model_requests", "fetchDeferred"], waived = false },
   { id = "VT-5", expects = "the gated Models view refuses getAuth, login and logout", test_file = "/home/david/dev/malebolge/test/runner/model-gate.test.ts", keywords = ["getAuth", "login", "logout"], waived = false },
   { id = "VT-6", expects = "config: probe_timeout_s under either kind refuses start", test_file = "/home/david/dev/malebolge/test/runner/config.test.ts", keywords = ["probe_timeout_s"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-17"
+name      = "Gateway-routed model provider"
+objective = "Build the gateway-routed provider design §5.1 and §10 give `src/models.ts` (user ruling 2026-10-19): provider `gateway`, its catalog read from the file `~/flakes` renders from `agents/gateway.nix` `models.*.pi` as the jails do, its key read from the runner's systemd credential; the runner's catalog is that provider alone."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-16 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/models.ts`: a pure constructor builds pi-ai provider `gateway` (`createProvider`, `openai-completions`) from a parsed catalog and a key: the catalog is the jails' render (`piGatewayConfig`: exactly one provider entry with `baseUrl`, `api`, `models`; its `apiKey` placeholder ignored); every model gets `provider = \"gateway\"` and the catalog's `baseUrl`. A malformed catalog (no or several providers, a model without `id`, `contextWindow`, `maxTokens` or `cost`, an `api` other than `openai-completions`) refuses: the cost ceiling (DEC-057) never runs on a model priced zero by omission." },
+  { id = "EX-2", text = "Key custody: the provider's `ApiKeyAuth` holds the key in a closure and resolves it per request; the key is never put in `process.env` (the runner's ssh, git and capsule children inherit it) or on any argv, and the auth has no `login`." },
+  { id = "EX-3", text = "`src/runner/config.ts`: a `[gateway]` table, closed keys `catalog` (absolute path, `~` expanded) and `credential` (a systemd credential id), both required. `start.ts` reads the catalog file and `$CREDENTIALS_DIRECTORY/<credential>` (trailing newline trimmed) at start; an unset `CREDENTIALS_DIRECTORY`, a missing, unreadable or empty key file, or a bad catalog is `StartRefused` (I13). The runner's `Models` hold the gateway provider alone, so `[defaults] model = \"gateway/deepseek-flash\"` resolves and no built-in provider is reachable." },
+  { id = "EX-4", text = "Split with PHASE-12 (user ruling 2026-10-19): the unit's `LoadCredential=` line, the catalog file's render in `~/flakes` (moving `piGatewayConfig` out of `agents/jailed-agents.nix` to a place both the jails and the unit import) and the config's `[gateway]` values are PHASE-12's (EX-8); this phase owns the runner side and a checked-in catalog fixture with the jails' render shape, whose source flakes commit the notes record." },
+  { id = "EX-5", text = "`just check` in M green; lint zero warnings." },
+]
+verification = [
+  { id = "VT-1", expects = "gateway provider from the catalog fixture: getModel(\"gateway\", \"deepseek-flash\") has the catalog baseUrl and cost; a request through a local fake HTTP server reaches the catalog baseUrl with `Authorization: Bearer <key>`; malformed catalogs (two providers, missing cost, wrong api) refuse", test_file = "/home/david/dev/malebolge/test/models.test.ts", keywords = ["gateway", "baseUrl", "cost", "Authorization"], waived = false },
+  { id = "VT-2", expects = "key custody: after building the provider and making a request, the key is in no process.env value", test_file = "/home/david/dev/malebolge/test/models.test.ts", keywords = ["process.env", "ApiKeyAuth"], waived = false },
+  { id = "VT-3", expects = "config: a missing [gateway] table, catalog or credential, or an unknown key in it, refuses start", test_file = "/home/david/dev/malebolge/test/runner/config.test.ts", keywords = ["gateway", "catalog", "credential"], waived = false },
+  { id = "VT-4", expects = "start: CREDENTIALS_DIRECTORY unset, key file missing or empty, or catalog unreadable is StartRefused; with both present the runner starts and its catalog offers only provider gateway", test_file = "/home/david/dev/malebolge/test/runner/runner-main.test.ts", keywords = ["CREDENTIALS_DIRECTORY", "StartRefused", "gateway"], waived = false },
 ]
 specs        = []
 requirements = []
