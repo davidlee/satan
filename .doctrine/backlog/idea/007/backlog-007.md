@@ -38,11 +38,14 @@ capsule slot, and fetching straight into `refs/remotes/satan/*`.
   real repo: guest-authored packs are attacker-shaped, and oubliette's size
   bound covers one packfile, not the whole transfer (oubliette NOTES item 34,
   RSK-006). Promoting into the real repo is the human's step.
-- **Model credentials through a socket door.** LiteLLM (~/flakes IDE-003)
-  listens on a host unix socket. A forwarder running inside the room's network
-  namespace (`socat` TCP to that socket) exposes it to the guest; nothing
-  routes from guest to host. The guest holds only a LiteLLM virtual key,
-  limited to named models, with its own budget, and revocable on the host.
+- **Model credentials through a socket door.** The LLM gateway (~/flakes
+  SL-011: LiteLLM on a host unix socket) is reached by a forwarder running
+  inside the room's network namespace (`socat` TCP to that socket); nothing
+  routes from guest to host. The socket's directory is 0750, so the forwarder
+  needs `SupplementaryGroups=llm-gateway`. The guest holds only a gateway key
+  from the gateway's own SQLite store (not a LiteLLM virtual key; flakes
+  DEC-046, DEC-050), limited to named models, with its own budget, and
+  revocable on the host.
 - **Per-repo tools via a launcher.** Each repo's tool set is built on the host
   and baked into the image; nix-direnv can't work in a guest with no egress.
   `session <repo> -- <cmd>` puts that repo's tools on `PATH`, `cd`s into its

@@ -1,0 +1,87 @@
+id = 23
+slug = "room-patch-runner"
+title = "Patch runner for the oubliette assistant room"
+status = "design"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "satan/satan-patch*.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-tools-patch.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-patch*"
+intent = "scope-relevant"
+
+[[selector]]
+selector = ".doctrine/adr/017/authority-ledger.md"
+intent = "scope-relevant"
+
+[[relation]]
+label = "governed_by"
+target = "POL-001"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "IDE-007"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "ISS-030"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "ISS-038"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "ISS-039"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "ISS-041"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "IMP-006"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "IDE-008"
+
+[[relation]]
+label = "related"
+target = "RFC-018"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
