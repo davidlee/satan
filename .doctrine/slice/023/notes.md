@@ -108,3 +108,21 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - EX-3 live: human runs `capsule f start` (if stopped) → `just spike-room-stop` in ~/dev/malebolge → `capsule f stop` at the IN FLIGHT marker → `capsule f start`; then an EVD from the results file.
 - DEC-055 placement (Connection seam vs ExecutionEnv) — to the user via the orchestrator.
 - RV-025 F-1/F-2 verdicts — orchestrator.
+
+## PHASE-01 close (2026-10-18, orchestrator)
+
+### Produced
+- EVD-010 — live room stop (`capsule f stop` mid-exec, slot f): Connection seam saw two typed lost RemoteErrors (codes `unknown`, `spawn_error`), durable mark settled <=5 ms; ExecutionEnv seam saw a plain ExecutionError (isConnectionLost false); a same-message ordinary error was not recognised. Results: `~/dev/malebolge/spike-results/room-stop-2026-10-18T07-38-01.165Z.json` (gitignored).
+- RV-025 F-2 verified as raiser against EVD-010 + EVD-009 (F-1 verified earlier against EVD-006).
+
+### Exit criteria
+- EX-1 pi-env 1.3.0 pinned (malebolge c3fa08e). EX-2 EVD-006. EX-4 EVD-008 + EVD-010 (markSettledMs). EX-5 EVD-007.
+- EX-3 met at the Connection seam, not literally at an `ExecutionEnv` wrapper: EVD-009/EVD-010 show the type is erased there. DEC-055 amended by user ruling (2c01639): per-job Connection subclass over info()/session()/request(), idempotent mark. Recorded class/code: RemoteError, `unknown` and `spawn_error`, lost true.
+- EX-6 evidence EVD-006..010; F-1, F-2 verified; DEC-055 and DEC-057 amended.
+
+### Drift (for /audit -> /reconcile; locked design not edited)
+- design.md §5.4, and any section naming the ExecutionEnv wrapper as the recognition point or the gate as streamSimple/completeSimple only, drifts from amended DEC-055 / DEC-057. The DECs govern.
+- plan.toml criteria worded on the pre-amendment DECs (left unrewritten; ids immutable — phase planners for 07-09 plan to the amended DECs):
+  - PHASE-07/EX-3: env.ts must also pass the per-job Connection subclass (RemoteExecutionEnvOptions.connection).
+  - PHASE-08/EX-1, VT-1: gate names only streamSimple/completeSimple; DEC-057 now also gates fetchDeferred, cancelDeferred and runtime.models complete/stream/classify/generateImages/streamDeferred; refusal avoids pi-ai retryable wording.
+  - PHASE-09/EX-1: "env wrapper ... before rethrow" becomes the Connection subclass with an idempotent mark (one stop raised two lost failures).

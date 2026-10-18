@@ -54,7 +54,7 @@ note = "Demonstrated in SL-023 PHASE-01 (EVD-006; malebolge c3fa08e, test/runner
 
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "a typed pi-env exception may not remain typed at `afterTool`"
 detail = """
@@ -78,6 +78,11 @@ route = "demonstrate"
 response = """
 Correct: the tool runner catches exceptions from env construction and execute before afterTool sees a result (pi-durable dist harness tool.js, the catch around runtime.env and tool.execute), so a typed pi-env error can reach the hook only as text. Repair: recognition moves to the environment boundary. The runner wraps pi-env's ExecutionEnv for each job; the wrapper catches pi-env's typed connection-lost or spawn failure before pi-durable converts it, records the room-down condition for that job, and rethrows. afterTool consults that recorded condition, never the result text, then replaces the result and triggers the pause. Criterion: in the pause spike against a stopped slot, the wrapper observes a typed failure (not a message match) and the job pauses before another model request; an ordinary tool error with the same message text does not pause. Host phase constraint: the first spike phase must establish the typed signal before the pause machinery is built on it.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against EVD-010 (live capsule f stop mid-exec) and EVD-009. The type does not survive at an ExecutionEnv wrapper (exec erases it to ExecutionError unknown), but it does at a per-job Connection subclass: two typed lost RemoteErrors (unknown, spawn_error) from one stop, durable pause mark settled in <=5 ms before afterTool, no false positive on a same-message ordinary error. DEC-055 amended (user ruling, 2c01639) to Connection-seam recognition over info/session/request with an idempotent mark; the finding concern (typed failure lost before afterTool) is answered by the durable mark at catch time."
 
 [[finding]]
 id = "F-3"

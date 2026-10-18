@@ -1,0 +1,25 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 10
+slug = "sl023-live-room-stop"
+title = "Live room stop (capsule f stop mid-exec): the Connection seam sees typed lost RemoteErrors; the ExecutionEnv seam sees a plain ExecutionError"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "2026-10-18, pi-env 1.3.0 + pi-durable 1.3.0, slot f (10.99.0.2, host key SHA256:YAHgtvDZ8TPjpfSPJ44OS8dk1UzTkC9WU3vHauLo70k). Command: just spike-room-stop in ~/dev/malebolge (test/runner/room-stop-spike.ts, malebolge c3fa08e); the user ran capsule f stop at the IN FLIGHT marker, then capsule f start. Results: ~/dev/malebolge/spike-results/room-stop-2026-10-18T07-38-01.165Z.json (gitignored). Outcome failed (a real stop): in flight at 273 ms, last output 12320 ms, failure 13222 ms (902 ms after last output). ExecutionEnv seam: exec returned ExecutionError code unknown, message pi-env connection lost, isConnectionLost false on error and cause - the type is erased (confirms EVD-009). Connection seam (Connection subclass passed as RemoteExecutionEnvOptions.connection): two typed failures from one stop, both op exec, name RemoteError, lost true - codes unknown (13217 ms) and spawn_error (13237 ms); the durable pause mark on the shared adapter settled in 5 ms and 0 ms; pauseRequestedOnAdapter true. One stop therefore raises more than one lost failure, so the mark must be idempotent. A follow-up exec 15 ms later failed ExecutionError spawn_error (ssh exit 255, socat cannot connect /run/capsule/f/ssh.sock), isConnectionLost false at the env seam. Negative: an ordinary error with the same message text was not recognised (sameMessageOrdinaryError false). No other failures. Answers RV-025 F-2; basis of the DEC-055 amendment (Connection-seam recognition)."
+provenance = "experiment"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
