@@ -597,3 +597,60 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - PHASE-11+ forward: a cancel that arrives after startup but before the rejoin seats the job goes through the store (`jobs.cancel`), as for any unseated job.
 - PHASE-15 forward: the row-4 checks seam is the `prepare` entry (`readyRoom`). Row 5 never reaches it, and `ensure_job_branch` is only on the no-record branch. `host_key_alias` is untouched.
 - The two open user questions are untouched: `cancelDeferred` under an exhausted budget, and the gated view's `getAuth`/`login`/`logout`. `biome.json` is untouched.
+
+## PHASE-15 batch A (worker, opus)
+
+### Produced
+- Uncommitted delta in malebolge on `b82fa19`:
+  - `src/runner/config.ts`: `[door] kind` is required, `"slot"` or `"room"`. `DoorConfig = SlotDoorConfig | RoomDoorConfig`. `[door]` keys are closed per kind: shared `kind`, `user`, `known_hosts`, `host_key_alias`; slot adds `slot`, `quarantine`, `host`, `profile`, `ssh_config`, `identity`; room adds `room`, `ssh_config`, `identity`, `session_path`, `probe_timeout_s`. Every key a kind needs is required at parse, and `host_key_alias` is required for both kinds (I13). `session_path` is kept verbatim (no `~` expansion). The door is read before the repos. `[repo.*]` takes `quarantine` and `transfer_timeout_s` only under a room door and requires them there, so a slot door or no door refuses them. `RepoConfig` gains `name` (the `[repo.*]` key) and the optional `quarantine` / `transferTimeoutS`.
+  - `src/runner/exec.ts`: `runProgram` now runs over `spawn`, with one output path for bounded and unbounded runs. stdin is `/dev/null`. Output is decoded once at the end. Overflow at 64 MiB kills the program and rejects. With `timeoutMs`, the program is spawned `detached` (its own session and process group). Past the bound: TERM to `-pgid`, poll `kill(-pgid, 0)` until the group is empty or `killGraceMs` (default 5 s) passes, then KILL to the group and poll again. It then awaits the leader's `exit` and rejects `TimedOut`. `execFile`'s timeout is not used. Git calls stay unbounded.
+  - `src/runner/room.ts`:
+    - `SlotCli` is renamed `CapsuleCli` and now takes `(args, ProgramOptions)`. `execCapsule` is still the one production implementation.
+    - `ChannelUnavailable.reason` is `channel_unavailable | channel_timeout`. `ChannelFailed.reason` is `channel_failed | channel_refusal`.
+    - Shared helpers: `collectedJobRef(name, id)` (slot or room), `baseTip` (`base_ref_invalid`), `landed` (resolves the ref in the quarantine).
+    - New `roomChannel(door, cli, reader)` with pure `roomPushArgs`, `roomCollectArgs`, `roomProbeArgs` and `roomVerbError`.
+    - `refresh`: check `refs/heads/<base_ref>`, then `push`. Push's stdout must be a 40- or 64-hex oid, and that oid is returned. A push exit 2 re-checks the branch: absent → `base_ref_invalid`, else a refusal.
+    - `collect`: runs the verb, then resolves `refs/capsule/<room>/heads/job/<id>` in the repo's `quarantine` (`landed`). stdout is ignored (orchestrator ruling on S1).
+    - `reachable`: `capsule <room> ssh <user> true`, bounded by `probe_timeout_s`.
+    - Exit codes: 75 → `ChannelUnavailable` (no probe); 2 → `ChannelFailed` `channel_refusal`; any other non-zero → `ChannelFailed`. `TimedOut` → `ChannelUnavailable` `channel_timeout`.
+    - `channelFromConfig` dispatches on kind. `roomConnection` reads the union: host is the slot's `host` or the room's name, and `hostKeyAlias` comes from config. The `pi-env-${slot}` derivation and the `lacking` helper are deleted (config refuses missing keys now).
+  - `src/runner/prepare.ts`: `ChannelFailed` records `failure.reason = error.reason`, so a refusal is `channel_refusal`. The `room_unavailable` failure carries `channel: error.reason`.
+  - `src/runner/collect.ts`: the `pending_collection` transition's reason is `error.reason` (`channel_timeout` for a timeout). The `collection_failed` payload carries `channel: error.reason` for a `ChannelFailed`. No new writer.
+- Tests (baseline 1029 → 1095; 45 files):
+  - `config.test.ts` (VT-4): room parse, kind missing/unknown/non-string, room keys under slot (door and repo), repo room keys with no door, slot keys under room, each kind's required keys missing, timeout validation, `session_path` verbatim.
+  - `exec.test.ts` (VT-3): bounded resolve, process group plus grandchild dead before the reject, KILL after the grace when the leader or the grandchild ignores TERM, output overflow.
+  - `room.test.ts` (VT-1, VT-2 adapter half, EX-9): refresh, collect, exit-code typing, bounds passed (600 000 / 15 000 ms), a fake timeout and a real never-exiting `sleep` killed at its bound, reachable, `channelFromConfig` room, `roomConnection` both kinds and the configured alias, the EX-9 `result` quarantine and ref, and collection audit (`channel_timeout` → `pending_collection` then retried; exit 2 → `collection_failed` `channel: channel_refusal`).
+  - `prepare.test.ts`: refusal → `channel_refusal`; a timeout retried within `max_room_wait`, then `room_unavailable` with `channel: channel_timeout`.
+- Fixtures:
+  - `config-fixture.ts`: `EXAMPLE_TOML` gains `kind = "slot"` and `host_key_alias = "pi-env-f"`. New `ROOM_TOML` (room `assistant`, `/work/satan`, `/var/lib/capsule/collect/assistant/satan.git`), `roomVariant`, `roomConfig`.
+  - `room-fixture.ts`: `fakeRoom` and `roomKindWorld()`. The guest clone is unborn (`git init -b work`), and the quarantine is made by collect. `ROOM_DOOR`, `roomKindCollectWorld`. `collectWorld` is generalised to `collectWorldOver(world, config, …)`. The header records "follows oubliette SL-006 design sec-4/5/6 at 73ec574; re-check at SL-006's lock (CHR-016)" (EX-11).
+  - `git-fixture.ts`: `tempUnbornRepo`, and `ISOLATED_ENV` sets `maintenance.auto=false` (see Learned).
+- `just check` green: fmt, lint 0, tsc, 1095 tests. Coverage vs baseline: lines 98.08% (97.98), statements 97.86% (97.75), branches 93.95% (93.69), functions 98.12% (98.05). room.ts lines 100%.
+- Mutation-checked, each fails a test:
+  - exec: signalling `pgid` instead of `-pgid`; no KILL after the grace.
+  - room: 75 typed as failed; push exit-2 re-check removed; refresh returning the locally resolved oid; collect reading `refs/capsule/<repo>/…`; probe unbounded.
+
+### Learned
+- **git 2.55 `fetch` starts auto-maintenance detached.** It can still be writing in a temp bare repo when `onTestFinished` removes it, giving `ENOTEMPTY` from `rmSync`. This was a pre-existing flake, about 1 in 15 runs of "a job branch moved after reviewed_oid …". `maintenance.auto=false` in `ISOLATED_ENV` fixed it: 0 failures in 40 runs. Memory candidate.
+- Node `detached: true` calls `setsid()`, so the bounded program leads its own group and `kill(-pid)` reaches every descendant that stays in it. A descendant that calls `setsid` itself escapes; out of scope.
+- The group check `kill(-pgid, 0)` counts zombies, so "group empty" means reaped. That is the guarantee the retry needs ("no orphaned git holding a ref lock").
+- A mutant that drops the bound leaves `sleep` orphaned under init (ppid 1, pgid of the vitest group). The real-hang stub is now `sleep 60`, not `sleep 1000`.
+
+### Deviations from the sheet
+- **`RepoConfig.name` is new.** The port passes `RepoConfig`, and the room argv needs `<repo>` (the `[repo.*]` key). Batch B's room launch needs it too (`<session_path> <repo> -- <daemon>`). Two test literals were updated.
+- Room repo keys are flat optional fields on `RepoConfig` (as the sheet suggests). The room adapter guards them (`roomRepo` → `ChannelFailed`), though config already guarantees them.
+- Config refuses missing door keys at parse, not in `channelFromConfig` / `roomConnection` (StartRefused). runner-main's "refuses a [door] … naming the missing key" still passes, through the parse error.
+- S1 is resolved per the orchestrator: collect stdout is not parsed. The fake still prints `<ref> <oid>` with a comment that the format is unpinned.
+- The fake room's exit codes for front-end usage refusals (unknown room or target) are 2, and the probe on a down room is 255 (ssh's own failure). SL-006 sec-5 does not pin these. The adapter types only 75/2/other.
+- Audit by reason. `pending_collection` transition `reason` is now `channel_timeout` for a timeout; the slot keeps `channel_unavailable`. `collection_failed` gains a `channel` field, and `room_unavailable` (preparing) gains a `channel` field.
+- `runProgram` stdin is now `/dev/null` (`execFile` left an open pipe). No caller writes stdin.
+
+### Open
+- **Batch B:**
+  - `roomConnection` gives a room door's host as the room name, but `start.ts`'s `connect` still uses pi-env's `sshConnection` with the daemon-path launch and accept-new. Until B lands, a room-kind config starts and would run the wrong daemon command. Only fixtures use the room kind, so nothing live is affected.
+  - Use `repo.name` for the launch's `<repo>`.
+  - The `DOOR_WORDS` structural test still passes unchanged: prepare.ts and collect.ts mention no door words. C7 splits it.
+- **Batch C:** VT-2's `max_room_wait` keyword is not yet in `room.test.ts`. The preparing-timeout retry is tested in `prepare.test.ts` (`readyRoom` with a `channel_timeout` `ChannelUnavailable`). C should add the VT-2 preparing-half test in `room.test.ts`, or move it there.
+- PHASE-12 deploy fact (carry-forward 2): the runner unit runs as the oubliette module owner (CON-003), for the slot deploy too. Nothing in config implies otherwise.
+- S2 (host-key policy drift vs SL-006 sec-5 accept-new) is still a relay item. S1's unpinned collect stdout is moot for the runner, but worth relaying.
+- Untouched: `cancelDeferred` under an exhausted budget; the gated view's `getAuth`/`login`/`logout`; `biome.json`.
