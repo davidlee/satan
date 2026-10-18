@@ -1,0 +1,32 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 3
+slug = "runner-runs-as-room-module-owner"
+title = "The patch runner runs as the oubliette module owner: the room door socket is mode 0600"
+record_kind = "constraint"
+status = "active"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+statement = "The patch runner process runs as the oubliette module owner (the user that owns the capsule-room module), because the room door socket /run/capsule-room/<room>/ssh.sock is mode 0600. Source: oubliette SL-005 design sec-6 relay, item 4."
+source = "external"
+applies_to = ["SL-023", "satan-runner unit"]
+waiver_reason = ""
+waived_by     = ""
+waived_on     = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

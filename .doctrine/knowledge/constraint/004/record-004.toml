@@ -1,0 +1,32 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 4
+slug = "room-user-declares-uid"
+title = "A satan room declaration carries a declared uid (1000-29999) for each user"
+record_kind = "constraint"
+status = "active"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+statement = "Each user in a satan room declaration is { uid; keys; } with a declared uid in 1000-29999; the runner's public key goes in keys. Source: oubliette SL-005 design sec-6 relay item 6; oubliette RSK-012, commit a22f882."
+source = "external"
+applies_to = ["SL-023", "satan room declaration (~/flakes)"]
+waiver_reason = ""
+waived_by     = ""
+waived_on     = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"
