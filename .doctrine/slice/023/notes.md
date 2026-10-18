@@ -1155,3 +1155,27 @@ One-line observations (no recommendations beyond these):
 - EX-10c (`/tmp/runner-host-key.txt`): the scratch instance failed from preparing with reason host_key ("The host key of assistant changed"), endReason error, no waiting_room. The real known_hosts sha256 (6c9d7ea1…8ec73) was unchanged before and after.
 
 **Verdict.** EX-6, EX-10 and VH-2 met. The runner is left running and enabled (user ruling 5). The prompt draft `~/satan-corpus/prompts/patch-agent.md` is still uncommitted, awaiting user review (the deployed runner reads it). The WAL read-only store read worked in practice (judgement call 7 resolved).
+
+## PHASE-13 (cutover step 3: Emacs client)
+
+### Batch C: deletion, migration, corpus, sweep (sonnet worker)
+
+**Produced.**
+
+- EX-4. Deleted `satan/satan-patch-{runner,worktree,adapter,adapter-pi,prompt,classify,store,listener}.el` and `satan/test/satan-patch-{runner,worktree,adapter,classify,store,listener}-test.el`. `satan-patch.el` now requires rpc, tools, inbox, promote only. `satan-custom-test.el` inventories updated (corpus vars 11 / 13 call sites; state vars 8; require-all and segment allowlist drop the patch modules; "one live path" wording). Comment-only rewords in `satan-db.el`, `satan-attribute.el`, `satan-attribute-listener-test.el`.
+- Stale gitignored `.elc` deleted: `satan-patch{,-adapter,-adapter-pi,-classify,-inbox,-listener,-prompt,-runner,-store,-worktree}.elc` and `satan-tools-patch.elc` (changed module, was stale).
+- EX-5. `satan/memory/migrations/0009_drop_patch_jobs.sql`: DO-block RAISE while any row is outside {needs_review, failed, cancelled, accepted_external, stale}; then drops `patch_job_events`, `patch_jobs`, `patch_jobs_set_updated_at()`. VT-4 in `satan-memory-migrate-test.el`: `0009-refuses-while-a-job-is-non-terminal` (running row -> user-error, tables remain, max(version) stays 8), `0009-drops-tables-when-all-jobs-are-terminal`; `applies-real-migrations` now (1..9). Red first (3 failures), green after the SQL. Production apply (`M-x satan-memory-migrate` against `satan_memory`) remains a deploy step; PHASE-11 found 21 rows, all `failed`.
+- EX-6. `~/satan-corpus/tools/patch_job_{create,status,result,cancel}.md` rewritten; `patch_job_cleanup.md` removed with `git rm` (staged). NOT committed (E3): `just commit` would sweep `prompts/patch-agent.md` and runtime dirt. The user or orchestrator commits by path: `git -C ~/satan-corpus add tools/patch_job_*.md` (plus the staged deletion).
+- Docs: `docs/governance.md` module/test/migration/tool rows updated; `docs/INDEX.md` marks the Patch agent docs superseded. `docs/patch/*`, `docs/review/*`, `docs/attributes/*` left as historical.
+- E4: `~/.config/emacs/lisp/dl-sleipnir-doctor.el` (clean in git beforehand) — the four store/runner/worktree patch checks collapsed to one `patch-runner` check reporting `satan-patch-inbox-running-p`. `apps/dl-satan.el` untouched (`satan-patch-runner-enabled nil`, PHASE-14).
+
+**Rulings applied (batches A-C).** E1 `result.repoPath` (M2) plus M1 `failure` on the summary; E2 mode enum from `satan-tools-patch-modes` (default `("fix")`), repo a plain config name, corpus producer prompts (`self-edit-*`, `tick/agent`) not edited (gap to backlog, orchestrator); E3 corpus edits by path, no `just commit`; E4 doctor check replaced; E5 directive stays off the wire.
+
+**EX-7.** `just check` green: 1307 ran, 1303 as expected, 0 unexpected, 4 skipped (integration/morning-end-to-end, three satan-memory-grammar db-sync); luau and python suites ok.
+
+**Open: live steps (orchestrator/user).**
+
+- Restart Emacs or reload `satan-mode.el`, `satan-tick.el`, `satan-patch.el`; `patch_job_cleanup` must be gone from the live `satan-tools` and its description file is deleted, otherwise spawn fails (mem_01a1388a77bb78e1a70066cb0cdf0bbb). Stale `.elc` removed above, but a long-lived Emacs holds the old definitions.
+- Runner redeploy needed for M1/M2 (`failure` on summary, `repoPath` on result) to be live.
+- Corpus commit by path (above); apply migration 0009 to `satan_memory`.
+- Then start the inbox watch and confirm the two goad-walk `needs_review` jobs land once each; PHASE-14 does closure promote/reject and the `dl-satan.el` / flake `satan-patcher` removal.

@@ -31,6 +31,9 @@ metadata:
 - [memory/handover](memory/handover.md) — current memory-substrate state
 
 ## Patch agent
+
+Superseded by the malebolge patch runner (SL-023); these predate it and describe the removed elisp runner.
+
 - [patch/brief](patch/brief.md) — technical brief
 - [patch/plan](patch/plan.md) — implementation plan
 - [patch/handover](patch/handover.md) — current patch-agent state

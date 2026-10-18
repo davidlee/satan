@@ -201,7 +201,7 @@ dir holding an empty transcript.jsonl, bound as `tmp' inside BODY."
         (should (equal '(55) received))))))
 
 ;; ---------------------------------------------------------------------
-;; --report-death (mirrors satan-patch-listener-test.el)
+;; --report-death
 ;; ---------------------------------------------------------------------
 
 (ert-deftest satan-attribute-listener/report-death-fires-critical-notification ()

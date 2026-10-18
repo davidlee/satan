@@ -54,7 +54,7 @@ projection UPSERT.  Operator rollback path for the attributes tranche
 \(design-contract §17.3).  Daemon rejects unknown major.")
 
 ;; ---------------------------------------------------------------------
-;; JSON helpers (shared shape with satan-patch-store)
+;; JSON helpers
 ;; ---------------------------------------------------------------------
 
 ;; ---------------------------------------------------------------------

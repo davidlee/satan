@@ -388,22 +388,17 @@ justification):
 | `satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`), `notes_read` (one note's body — notes-root-relative path, `.org`/`.md`/`.txt` only, byte-capped with `:bytes`/`:total-bytes`/`:truncated`), `notes_grep` (literal `rg` search over exactly the files `notes_read` can open; relative-path hits). |
 | `satan-tools-sway.el` | `sway_border_set` / `sway_border_reset` (visual ephemeral effect). |
 | `satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.config/emacs`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
-| `satan-patch.el` | Patch-agent aggregator + `satan-patch-*` interactive surface. |
-| `satan-patch-store.el` | `satan_patch.patch_jobs` PG store; INSERT fires `pg_notify` for queued rows. |
-| `satan-patch-worktree.el` | Worktree allocator + cleanup: `git worktree add <runs-dir>/<job-id>` against current HEAD, branch `satan/patch/<job-id>`. |
-| `satan-patch-adapter.el` | Adapter protocol and registry: runner dispatches a job to a named adapter, which returns a result plist via `on-finish`. Adapters handle no keys; `jailed-pi` is a `pi` gateway client. |
-| `satan-patch-adapter-pi.el` | `pi`-CLI adapter; stdin EOF close, `--system-prompt` (not `-file`), stderr persisted to sidecar log. |
-| `satan-patch-runner.el` | Background runner: claims queued jobs, spawns adapter in jail, persists transcript + result; `satan-patch-runner-enabled` defcustom can hand queue off to standalone Go daemon at `~/dev/satan-patcher/`. |
-| `satan-patch-listener.el` | `pg_notify` LISTEN bridge waking the runner without polling. |
-| `satan-patch-classify.el` | `@satan` directive → patch-shape classifier (used by `tick-agent` + `self-edit-*` to route patch-shaped work via `patch_job_create`). |
-| `satan-patch-inbox.el` | Inbox handoff: writes `~/satan-corpus/inbox.org` entry on patch completion. |
-| `satan-patch-prompt.el` | Patch-agent system prompt assembler (per-job). |
-| `satan-tools-patch.el` | LLM-facing tools: `patch_job_create`, `patch_job_status`, `patch_job_result`, `patch_job_cancel`, `patch_job_cleanup`. See `docs/patch/{brief,plan,handover}.md`. |
+| `satan-patch.el` | Patch client aggregator (SL-023): requires rpc, tools, inbox, promote; starts the inbox watch in interactive Emacs. The patch runner itself is malebolge (separate repo). |
+| `satan-patch-rpc.el` | The one NDJSON client for the runner control socket (`$XDG_RUNTIME_DIR/satan-runner/control.sock`): bounded one-shot calls and the persistent `watch`. |
+| `satan-patch-promote.el` | Promote (fetch quarantine ref, CAS-create `refs/heads/satan/patch/<id>`, report disposition) and reject, from the inbox entry. |
+| `satan-patch-inbox.el` | Watch-driven inbox: appends `~/satan-corpus/inbox.org` entries for `needs_review` and failed/cancelled jobs (idempotent by job id), reconnecting with backoff. |
+| `satan-tools-patch.el` | LLM-facing tools, one bounded RPC each to the patch runner: `patch_job_create`, `patch_job_status`, `patch_job_result`, `patch_job_cancel`. |
 | `memory/migrations/0001_init.sql` | Substrate schema (§6.2). |
 | `memory/migrations/0002_grammar_v1.sql` | v1 grammar seed (aliases + namespace weights). |
 | `memory/migrations/0003_memory_functions.sql` | `memory_mark_trace`, `memory_resonate`, `memory_show_trace`, `handle_weight_for`. |
 | `memory/migrations/0004_grammar_v2_fixture.sql` | Operator-applied fixture bump exercising the renormalize CLI (adds `planning -> phase:orientation`). |
 | `memory/migrations/0005_patch_jobs.sql` | Patch-agent schema: `satan_patch.patch_jobs` table + index. |
+| `memory/migrations/0009_drop_patch_jobs.sql` | SL-023: drops the patch_jobs tables (refuses while a job is non-terminal). |
 | `docs/memory/design.md` | Substrate design (§§0–11). |
 | `satan-context.el` | Per-mode bundle assembly; strict `--read-required`; scaffold assembly; recent-runs block via `:recent-runs N` mode-spec key. |
 | `satan-output.el` | Mode output handlers (`morning`, `motd`, `tick`, `self-edit`; the last is shared by both `self-edit-{mech,mind}` lanes). |
@@ -419,7 +414,7 @@ justification):
 | `test/satan-tools-{memory,hippocampus,atsatan,docs,motive,patch}-test.el` | Tool-handler ert; hippocampus covers the cross-ref hook. |
 | `test/satan-bough-removal-gate-test.el` | SL-002 standing gates: production is bough-free outside a named allowlist; the preserved grammar vocabulary stays whole; no surface claims an enforced evidence byte cap. |
 | `test/satan-{percept,resonance,motive,observer,sensor-alerts,tank,context}-test.el` | Perceptual-loop module ert (Phases 1–6). |
-| `test/satan-patch-{store,worktree,adapter,runner,listener,classify,inbox}-test.el` | Patch-agent module ert. |
+| `test/satan-patch-{rpc,inbox,promote}-test.el`, `test/satan-tools-patch-test.el` | Patch-client module ert against a fake runner socket (`test/satan-patch-fixture.el`). |
 | `bin/satan-run` | Shell wrapper (`emacsclient --eval`). |
 | `bin/satan-run-tick` | Tick wrapper; calls `(satan-tick)` which picks + quiet-checks. |
 | `harness/__main__.py` | Entrypoint: sys.path bootstrap + `main`. |
@@ -543,11 +538,10 @@ per-mode with `:model` or `:budget-tokens`.
 | `notes_recent` | read | — | `fd --changed-after N hours` over `~/notes/`; newest-first, capped at 200, denote-style title/tag parsed. |
 | `notes_read` | read | — | Body of one note under `~/notes/`, named by a notes-root-relative path. Absolute paths, `..`, hidden components, symlink escapes and extensions outside `.org`/`.md`/`.txt` are refused as errors. Capped in bytes at `satan-tools-notes-read-max-bytes`; `:bytes`/`:total-bytes`/`:truncated` report what was not read. |
 | `notes_grep` | read | — | Literal case-insensitive `rg` search over exactly the files `notes_read` can open (globs derived from the same extension list); one `{path,line,text}` per hit with paths relative to `~/notes/`, a total cap with `:truncated`, no per-file cap. A missing or failing `rg` is an error, not an empty result. |
-| `patch_job_create` | medium | capability `patch-job-create` | Enqueue a patch job: writes `satan_patch.patch_jobs` row, fires `pg_notify`, runner picks up + allocates `git worktree add` + branch `satan/patch/<job-id>` + spawns adapter in jail. See `docs/patch/{brief,plan,handover}.md`. |
-| `patch_job_status` | read | — | Read job state from `satan_patch.patch_jobs` (queued/claimed/preparing_worktree/running/needs_review/failed/cancelled + 3 optional). |
-| `patch_job_result` | read | — | Read job result JSON when terminal; includes branch ref user can cherry-pick. |
-| `patch_job_cancel` | medium | capability `patch-job-cancel` | Cancel a job; may not kill an already-running adapter process (open issue per `patch/handover.md`). |
-| `patch_job_cleanup` | medium | capability `patch-job-cleanup` | Remove a job's worktree + branch after user has acted on its result. |
+| `patch_job_create` | medium | capability `patch-job-create` | Submit a patch job to the patch runner over its control socket (SL-023): `directive`, `mode`, `repo` (runner config name), `allowed_paths`; returns `job_id`. Review is promote/reject in Emacs. |
+| `patch_job_status` | read | — | Job state and summary from the runner (incl. `failure`, `class`, `reviewed_oid`, partial flag). |
+| `patch_job_result` | read | — | Job result from the runner: class, `reviewed_oid`, quarantine ref, commits, diffstat. |
+| `patch_job_cancel` | medium | capability `patch-job-cancel` | Cancel a job via the runner (optional `reason`). |
 
 The python harness intercepts a synthetic `satan_final(summary,
 actions[])` tool call as the terminal signal and emits the broker's

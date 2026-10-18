@@ -161,7 +161,7 @@ default that derives from another variable or from the environment."
 ;; ── SL-015 VT-2: every dependent default follows its root ───────────────────
 ;;
 ;; The point of naming the roots is that one knob moves everything below it.
-;; These walk the whole surface — 12 corpus defaults, 10 state defaults — by
+;; These walk the whole surface — 11 corpus defaults, 8 state defaults — by
 ;; re-evaluating each `standard-value' under a rebound root, the idiom from
 ;; `satan-run-test.el'.  Heavy requires sit inside the bodies, per this file's
 ;; convention, so the pure surface above still runs if a module is mid-decouple.
@@ -169,29 +169,28 @@ default that derives from another variable or from the environment."
 (defconst satan-custom-test--corpus-vars
   '(satan-prompts-dir satan-motd-path satan-proposals-dir
     satan-motive-file satan-motive-archive-file
-    satan-patch-prompt-system-file satan-hippocampus-dir
+    satan-hippocampus-dir
     satan-system-scaffold-file satan-system-framing-file
     satan-self-edit-mind-roots satan-inbox-file
     satan-tools-descriptions-dir)
-  "The 12 defaults that must derive from `satan-corpus-root' (14 call sites —
+  "The 11 defaults that must derive from `satan-corpus-root' (13 call sites —
 `satan-self-edit-mind-roots' spans three).
 SL-015 PHASE-02 moved `satan-runs-dir' and `satan-sensor-wpm-log-dir' to
 `satan-custom-test--state-vars': run bundles and wpm telemetry are runtime
 state, not authored corpus (design D3).")
 
 (defconst satan-custom-test--state-vars
-  '(satan-patch-worktree-root satan-patch-prompt-log-root
-    satan-sensor-state-file satan-sensor-wpm-state-file
+  '(satan-sensor-state-file satan-sensor-wpm-state-file
     satan-ingest-cursor-state-file satan-sensor-content-state-file
     satan-sensor-curiosity-state-file satan-trace-dir
     satan-runs-dir satan-sensor-wpm-log-dir)
-  "The 10 defaults that must derive from `satan-state-root'.")
+  "The 8 defaults that must derive from `satan-state-root'.")
 
 (defun satan-custom-test--require-all ()
   (mapc #'require
-        '(satan-mode satan-tools-org satan-motive satan-patch-prompt satan-run
+        '(satan-mode satan-tools-org satan-motive satan-run
           satan-context satan-sensor-wpm satan-tools-inbox satan-tools
-          satan-patch-worktree satan-sensor-alerts satan-ingest-cursor
+          satan-sensor-alerts satan-ingest-cursor
           satan-sensor-content satan-sensor-curiosity satan-trace
           satan-tools-notes satan-tools-atsatan satan-tools-content)))
 
@@ -263,8 +262,8 @@ default that happens to start with the root but bakes in a literal below it."
 ;; code once the roots exist — it belongs inside the root defaults, once.  This
 ;; is that invariant made executable, and it is deliberately WEAKER than I1's
 ;; letter: it only flags a `"satan/…"` literal used as the NAME argument of an
-;; `expand-file-name' whose DIR argument is one of the roots.  Two live path
-;; expressions legitimately keep the segment and are named here rather than in
+;; `expand-file-name' whose DIR argument is one of the roots.  One live path
+;; expression legitimately keeps the segment and is named here rather than in
 ;; a comment, so a future edit that removes one fails loudly (design D10).
 ;;
 ;; Not swept in, and not violations: docstrings, the atsatan exclude glob
@@ -272,13 +271,10 @@ default that happens to start with the root but bakes in a literal below it."
 ;; including the allowed-path and branch-name fixtures.
 
 (defconst satan-custom-test--satan-segment-allowlist
-  '(("satan-mcp.el" . "satan/mcp")
-    ("satan-patch-worktree.el" . "satan/%s/%s-%s"))
+  '(("satan-mcp.el" . "satan/mcp"))
   "Live `\"satan/…\"' path expressions that must survive SL-015.
 `satan-mcp.el' resolves the MCP socket under XDG_RUNTIME_DIR — a fourth
-location outside all three roots (DEC-10 forbids /tmp).
-`satan-patch-worktree.el' builds a job-id/branch prefix which is joined under
-`satan-patch-worktree-root' by its caller, so the segment is data, not a root.")
+location outside all three roots (DEC-10 forbids /tmp).")
 
 (ert-deftest satan-custom-no-satan-segment-under-a-root ()
   "No `\"satan/…\"' literal is joined onto a satan root in production code."

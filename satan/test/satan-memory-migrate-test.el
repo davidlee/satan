@@ -86,11 +86,11 @@
   (satan-memory-migrate-test--reset-db)
   (let ((satan-memory-migrate-database satan-memory-migrate-test--db))
     (let ((applied (satan-memory-migrate-apply)))
-      (should (equal '(1 2 3 4 5 6 7 8) applied)))
+      (should (equal (quote (1 2 3 4 5 6 7 8 9)) applied)))
     (let ((status (satan-memory-migrate-status)))
       (should (cl-every (lambda (e) (eq 'applied (plist-get e :status)))
                         status))
-      (should (= 8 (length status))))))
+      (should (= 9 (length status))))))
 
 (ert-deftest satan-memory-migrate/re-apply-is-noop ()
   (skip-unless (satan-memory-migrate-test--db-available-p))
@@ -144,6 +144,70 @@
        (let ((status (satan-memory-migrate-status)))
          (should (eq 'missing (plist-get (car status) :status))))
        (should-error (satan-memory-migrate-apply) :type 'user-error)))))
+
+;; ---------- 0009: drop patch_jobs (SL-023 EX-5) ----------
+
+(defconst satan-memory-migrate-test--real-dir satan-memory-migrate-directory
+  "The package's real migrations directory, captured before any rebinding.")
+
+(defun satan-memory-migrate-test--copy-real (dir upto)
+  "Copy the real migrations 0001..UPTO into DIR."
+  (dolist (row (satan-memory-migrate--list-files
+                satan-memory-migrate-test--real-dir))
+    (when (<= (plist-get row :version) upto)
+      (copy-file (plist-get row :path)
+                 (expand-file-name (plist-get row :filename) dir) t))))
+
+(defun satan-memory-migrate-test--sql (sql)
+  "Run SQL against the test DB; return (ok . OUT) or (error . MSG)."
+  (satan-db-psql satan-memory-migrate-test--db satan-memory-migrate-host
+                 satan-memory-migrate-psql-program
+                 (list "-A" "-t" "-c" sql)))
+
+(defun satan-memory-migrate-test--scalar (sql)
+  "Trimmed single-value result of SQL; fails the test on a psql error."
+  (let ((r (satan-memory-migrate-test--sql sql)))
+    (should (eq 'ok (car r)))
+    (string-trim (cdr r))))
+
+(defun satan-memory-migrate-test--insert-patch-job (state)
+  "Insert one minimal patch_jobs row in STATE (columns per 0005)."
+  (satan-memory-migrate-test--sql
+   (format "INSERT INTO patch_jobs (id, state, mode, directive, repo, base_ref, branch, worktree_path, allowed_paths_json) VALUES ('pj-test', '%s', 'fix', 'd', 'r', 'HEAD', 'b', '/w', '[]');"
+           state)))
+
+(defun satan-memory-migrate-test--table-exists-p (name)
+  (equal "t" (satan-memory-migrate-test--scalar
+              (format "SELECT to_regclass('%s') IS NOT NULL;" name))))
+
+(ert-deftest satan-memory-migrate/0009-refuses-while-a-job-is-non-terminal ()
+  (skip-unless (satan-memory-migrate-test--db-available-p))
+  (satan-memory-migrate-test--with-tempdir
+   (lambda (dir)
+     (satan-memory-migrate-test--copy-real dir 8)
+     (should (equal '(1 2 3 4 5 6 7 8) (satan-memory-migrate-apply)))
+     (should (eq 'ok (car (satan-memory-migrate-test--insert-patch-job "running"))))
+     (satan-memory-migrate-test--copy-real dir 9)
+     (should-error (satan-memory-migrate-apply) :type 'user-error)
+     ;; Refusal is atomic: tables stay, version 9 is not recorded.
+     (should (satan-memory-migrate-test--table-exists-p "patch_jobs"))
+     (should (satan-memory-migrate-test--table-exists-p "patch_job_events"))
+     (should (equal "8" (satan-memory-migrate-test--scalar
+                         "SELECT max(version) FROM schema_migrations;"))))))
+
+(ert-deftest satan-memory-migrate/0009-drops-tables-when-all-jobs-are-terminal ()
+  (skip-unless (satan-memory-migrate-test--db-available-p))
+  (satan-memory-migrate-test--with-tempdir
+   (lambda (dir)
+     (satan-memory-migrate-test--copy-real dir 8)
+     (satan-memory-migrate-apply)
+     (should (eq 'ok (car (satan-memory-migrate-test--insert-patch-job "failed"))))
+     (satan-memory-migrate-test--copy-real dir 9)
+     (should (equal '(9) (satan-memory-migrate-apply)))
+     (should-not (satan-memory-migrate-test--table-exists-p "patch_jobs"))
+     (should-not (satan-memory-migrate-test--table-exists-p "patch_job_events"))
+     (should (equal "0" (satan-memory-migrate-test--scalar
+                         "SELECT count(*) FROM pg_proc WHERE proname = 'patch_jobs_set_updated_at';"))))))
 
 (provide 'satan-memory-migrate-test)
 ;;; satan-memory-migrate-test.el ends here
