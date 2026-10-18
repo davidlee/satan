@@ -1046,3 +1046,88 @@ with it, the host-key script stops at the missing deployed config).
   planning probe with a literal path could not show it.
 - The `~/flakes` gate output is dominated by lock-diff noise from the dev
   overrides; rc is the only reliable signal.
+
+### Batch B (worker, sonnet)
+
+Prose against a checklist, plus a read-only sweep. Edits: the prompt draft only
+(and this section). Nothing committed, no tests added, nothing fixed.
+
+**Prompt draft.** `/home/david/satan-corpus/prompts/patch-agent.md` — new,
+**uncommitted, for the user's review** (the runner refuses to start without the
+file, `prompt_file` is checked before `enabled`). Written against design §5.2
+(Job contract, Policy ladder and prompt, Execution environment, Tools offered),
+§5.4 (collection and classification) and `src/runner/prompt.ts` (the job block
+it appends). It explains, and does not restate, the job-block values or the
+commit-footer template. The old `patch-agent/prompt.md` is untouched.
+
+Departures from the old prompt: dropped the bubblewrap jail framing (now an
+isolated VM room; no network uplink); the worktree (now a clone at `cwd`); the
+`checks` list (the runner runs none, DEC-059; agent runs the repo's checks if
+asked); `.satan-patch-manifest.json`; the "one commit" rule and cherry-pick
+review (now: commit as you go on `job/<id>`, only that branch is collected);
+the inline commit footer/subject template (the job block supplies it). Added:
+collection semantics (uncommitted work discarded), allowlist checked at
+collection (`path_violation`, never promotable), pauses invisible, ceilings may
+end the job, human promotes in Emacs, repo-relative paths only (`~`/absolute
+match nothing), tools `read`/`write`/`edit`/`bash` in the clone with the repo's
+tool set on `PATH`.
+
+**Jail sweep (EX-12).** Pattern: `grep -rIl --dereference-recursive -e
+satan-runner -e credentials -e /run/user/1000 -e XDG_RUNTIME_DIR` over each
+repo (`.direnv/flake-inputs` copies are cached upstream sources, ignored), plus
+a grep of the built launchers (`nix build .#jailed-pi --no-link --offline`
+works for both; outer `op run` wrapper and the inner bwrap launcher both
+scanned).
+
+| repo | `satan-runner` | `/run/user/1000` whole | `/run/user/1000/credentials` | verdict |
+|---|---|---|---|---|
+| satan-attrd | none | no | none | not exposed |
+| goad | none | no | none | not exposed |
+
+- satan-attrd `flake.nix:70`: `(try-readwrite "/run/user/1000/docker.sock")`, one
+  socket file only. Built inner launcher: two occurrences of
+  `/run/user/1000/docker.sock`, nothing else under `/run/user`. (The
+  `tests/common/mod.rs:67` hit is the word "credentials" in a URL-parsing
+  comment.)
+- goad `flake.nix:48,190-192`: comments say the host `/run/user/1000` is
+  deliberately kept out; `:59-60` and `:192` set `XDG_RUNTIME_DIR` to
+  `/tmp/xdg-runtime` (inside the jail's tmpfs) rather than binding or
+  forwarding the host's. Built inner launcher: one `XDG_RUNTIME_DIR`
+  occurrence (the set-env), no `/run/user/1000`.
+- Neither flake has any `satan-runner` reference, and neither is covered by a
+  `runner-socket-unjailed` check (see table).
+
+**Drift report.** References: `~/dev/satan/flake.nix` (S) and
+`~/dev/doctrine/flake.nix` (D). All four lock the same `agents` rev
+(`ea3cf561bc`, lastModified 1792329380); S also carries a second `agents_2`
+node (`4869e4fb8a`, via a transitive input). So the library version is not
+drift today; the differences are in how each flake uses it.
+
+| feature | satan (S) | doctrine (D) | satan-attrd | goad |
+|---|---|---|---|---|
+| `agents` pin | ea3cf561bc | ea3cf561bc | ea3cf561bc | ea3cf561bc |
+| gateway client | `gatewayClient "pi"` on every jail, `"satan"` on harness (`:51-52`) | `gatewayClient "pi"` via `mkJail` (`:186`) | **none**: launcher is `op run --env-file ...api-keys.env` (built output) | **none**: same `op run` wrapper |
+| provider keys | via gateway key on FD 22 | via gateway key on FD 22 | stock env forwarding (`try-fwd-env "OPENROUTER_API_KEY"`, `:67`) | own `apiKeysViaFd` on fd 21, `passApiKeysFromEnv = false` (`:119-140`) |
+| bound pi `models.json` / `piGatewayConfig` | via gateway client | via gateway client | absent | absent |
+| shared `mkJail` helper | no (each jail spelled out) | yes (`:177-190`) | no | yes (`mkJail`, `:196`) |
+| profiles | specDev, research, offline (harness) | specDev, research | specDev, research | specDev (research absent) |
+| jails exported | jailed-pi, -pi-research, -claude, -shell, SATAN harnesses; codex commented out | pi, pi-research, claude, codex, shell | pi, pi-research, claude, codex (opencode/gemini commented) | claude, codex, pi |
+| `subagents` | `["pi" "claude"]` | claude/codex/shell take lists | none | claude `["codex"]`, codex `["claude" "codex"]` |
+| `try-fwd-env` | MCP/DB/DOCKER vars (`:84-100`) | `DOCTRINE_BIN` | `DATABASE_URL`, keys, `DOCKER_HOST` | none (set-env only) |
+| runtime-dir binds | `/run/user/1000/satan/mcp/mcp.sock`, `emacs/server`, `podman/podman.sock`; forwards `XDG_RUNTIME_DIR` (`:84-95`) | none | `docker.sock` only | none; `XDG_RUNTIME_DIR=/tmp/xdg-runtime` |
+| MCP / harness socket | yes (MCP, emacs server) | no | no | no |
+| `exposePostgres` | via `supabaseJailOptions` env | no | `exposePostgres = true` on jailed-pi | no |
+| profile / jail checks in flake | `harness-jail-profile`, `runner-socket-unjailed` (`:405-406`) | none | none | none |
+| `workspaceDeps` | explicit list | `JAIL_WORKSPACE_DEPS` env (`--impure`) | `["/home/david/.emacs.d/"]` (stale) | none (devshell-relative) |
+| `CLAUDE_CODE_SHELL` pin | no | yes | no | yes |
+| network profile | specDev (host loopback shared) | specDev | specDev | specDev |
+
+One-line observations (no recommendations beyond these):
+- Neither attrd nor goad uses the gateway, so a gateway-era `piGatewayConfig`
+  change (PHASE-12 Batch A's `cost`) does not reach them; they still hold
+  provider keys in the jail.
+- Neither has a `runner-socket-unjailed`-style check: exposure is true today
+  only by absence of a bind, and nothing would catch a future one.
+- attrd's `workspaceDeps` still names `~/.emacs.d/`, a frozen corpus path
+  (project governance note).
+- goad has no `research` jail; attrd has no `subagents` and no shared `mkJail`.
