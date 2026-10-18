@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15167-9a33-7113-8afe-0d90a9362049"
+recorded_at = "2026-10-18T23:45:06.611349396Z"
+kind = "friction"
+summary = "Corpus just commit sweeps all dirty state"
+detail = "SL-023 PHASE-13 EX-6 says commit with just commit, but the recipe is git reset; git add ., which would commit the uncommitted prompts/patch-agent.md and runtime dirt. Committed by path instead."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15167-9a29-75b2-8024-16791198e74a"
+recorded_at = "2026-10-18T23:45:06.601732988Z"
+kind = "friction"
+summary = "In-process fake unix-socket server can SIGPIPE-kill the ert batch"
+detail = "SL-023 PHASE-13 batch B: if the client closes before the in-process fake server answers, the server writes to a dead peer and Emacs dies rc 141 with no ert summary. Tests must wait for the request to be recorded before closing. Documented in satan/test/satan-patch-fixture.el."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15167-9a2e-7302-871b-d9f042cfa96a"
+recorded_at = "2026-10-18T23:45:06.606490727Z"
+kind = "friction"
+summary = "Agent cannot restart the satan-runner user unit"
+detail = "SL-023 PHASE-13: systemctl --user restart satan-runner (to pick up malebolge 7457a75, runner runs from the working tree) was denied by the permission classifier (interfere with workloads) even with no active jobs. Runner redeploys are human steps."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

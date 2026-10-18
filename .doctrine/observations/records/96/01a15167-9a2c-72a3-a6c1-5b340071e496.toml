@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15167-9a2c-72a3-a6c1-5b340071e496"
+recorded_at = "2026-10-18T23:45:06.604104612Z"
+kind = "friction"
+summary = "Stale gitignored .elc files shadow source in live Emacs"
+detail = "SL-023 PHASE-13: satan/*.elc from an earlier compile predated batches A-C; just check sets load-prefer-newer so tests pass, but a live require loads old code. Batch C deleted the patch .elc files; other modules still have .elc."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

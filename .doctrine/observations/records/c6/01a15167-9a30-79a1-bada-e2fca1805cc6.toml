@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15167-9a30-79a1-bada-e2fca1805cc6"
+recorded_at = "2026-10-18T23:45:06.608733159Z"
+kind = "friction"
+summary = "Nushell Bash tool breaks nested heredoc quoting"
+detail = "SL-023 PHASE-13 planner and workers: python heredocs inside bash -c under nushell failed on nested quotes; agents fell back to writing /tmp scripts."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
