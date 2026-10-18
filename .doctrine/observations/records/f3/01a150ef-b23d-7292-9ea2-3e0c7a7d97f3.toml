@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a150ef-b23d-7292-9ea2-3e0c7a7d97f3"
+recorded_at = "2026-10-18T21:34:08.445711215Z"
+kind = "friction"
+summary = "Bash heredoc into python3 breaks on nested quotes"
+detail = "SL-023 PHASE-16 planner: a heredoc fed to python3 via the Bash tool (nu shell host) broke on nested quotes; worked around with a throwaway /tmp script."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

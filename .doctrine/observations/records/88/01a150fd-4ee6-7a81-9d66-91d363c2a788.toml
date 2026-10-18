@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a150fd-4ee6-7a81-9d66-91d363c2a788"
+recorded_at = "2026-10-18T21:49:00.518311789Z"
+kind = "friction"
+summary = "vitest red runs miss signature breaks; tsc --noEmit needed"
+detail = "SL-023 PHASE-16 batch B: after changing GitChannel.reachable's signature, vitest (no typecheck) only exercised runtime behaviour; callers were found with npx tsc --noEmit. Lint also rejected expect.stringMatching inside toMatchObject (unsafe any)."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
