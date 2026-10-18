@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15136-543d-7603-afa4-727c06af5604"
+recorded_at = "2026-10-18T22:51:17.437490122Z"
+kind = "friction"
+summary = "planner escalated a /srv/fleet edit that no longer existed"
+detail = "SL-023 PHASE-12 re-plan planner reported goad-walk removed from the assistant room via an uncommitted fleet edit; orchestrator found targets = targetNames with goad-walk present (fleet then at a newer HEAD b3011a7, clean). Concurrent edits in sibling repos make working-tree findings perishable; planners should cite the commit/hash they read."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15136-543f-7d72-93e0-874df87a71c0"
+recorded_at = "2026-10-18T22:51:17.439624131Z"
+kind = "friction"
+summary = "~/flakes gate output is dominated by lock-diff noise"
+detail = "SL-023 PHASE-12 batch A worker: just gate prints mostly dev-override lock diffs; exit code is the only reliable signal."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

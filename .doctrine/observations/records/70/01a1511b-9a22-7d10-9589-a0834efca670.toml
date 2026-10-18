@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1511b-9a22-7d10-9589-a0834efca670"
+recorded_at = "2026-10-18T22:22:05.858775528Z"
+kind = "friction"
+summary = "capsule-phase-planner hit its 40-turn agent limit without a hand-back"
+detail = "SL-023 PHASE-17 planner (plan appends + sheet) was given a 45-turn budget in its prompt but the agent definition caps at 40; it finished the files (plan appends, CHR-016/017, phase-17.md) but stopped before SubagentHandback, and the orchestrator holds no SendMessage to resume it. Orchestrator had to reconstruct the hand-back from the diff and the sheet. Budget prompts should stay under the definition's maxTurns, or the definition should state its cap."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

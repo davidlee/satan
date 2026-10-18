@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15136-5437-78d2-8047-4fe487d8edb6"
+recorded_at = "2026-10-18T22:51:17.431893793Z"
+kind = "friction"
+summary = "systemd-run transient units expand no specifiers in properties"
+detail = "SL-023 PHASE-12 batch A: -p LoadCredential=x:%h/... is refused (Credential source is invalid) and -E X=%S passes through literally, unlike unit files. Planner's probe used a literal path so it did not show; host-key scratch script passes absolute paths."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
