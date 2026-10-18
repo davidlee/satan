@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14f18-9bf5-7723-98d6-b3e8f03a2a18"
+recorded_at = "2026-10-18T12:59:35.285062172Z"
+kind = "friction"
+summary = "Faux response steps blocking on options.signal hang if abort precedes the step"
+detail = "SL-023 PHASE-08 B: a faux provider step waiting on signal must check signal.aborted first; the listener never fires otherwise. Also vitest coverage gate fails single-file runs; use --coverage.enabled=false while iterating."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

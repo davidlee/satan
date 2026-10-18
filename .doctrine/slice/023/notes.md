@@ -382,3 +382,37 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - The `cancelDeferred` harness test waits 200 ms after the first provider call for the poll checkpoint to commit before aborting (no public read of `LiveDoc`); stable over 5 runs, but timing-based.
 - `warnDue` is wired as a no-op; batch B consumes it (and must schedule the steer outside the gate's task).
 - No seated job → refusal `no_job` with no count, no event, no signal (AS-1); nothing ends the generation's run except the error result.
+
+## PHASE-08 batch B (worker, opus)
+
+### Produced
+- malebolge (uncommitted on df435a8):
+  - `src/runner/deadline.ts`: `Timer` port `(ms, fire) => { cancel }`, `systemTimer`; `armCeilingTimers({ job, ceilings, softThreshold, now, timer, expire, warn })` arms the deadline (`active_wall_clock_s`) and the soft timer (`softThreshold ×` it) from the row's `activeMs` + open segment (`activeWallClockMs`); a passed moment fires during the call; past the deadline only `expire` fires (warning moot); `stop()` cancels both and guards callbacks already in hand.
+  - `src/runner/warning.ts`: `WARNING_TEXT` (runner constant, OQ-C), `warningRequestId` (the one `warn-` spelling; `jobs.ts` recovery uses it), `submitWarning` (submit steer, then `warning` event `{ requestId, submissionId, trigger }`), `warningPlaced(harness, submissionId)` (`submission(id).status().entry`), `runWarning` — once per run, given from a microtask (never on the gate's stack), skipped if a `warning` event exists, withheld once closed or the run is stopping; failures go to `failed` (logged), never thrown.
+  - `src/runner/store.ts`: `recordCeiling(id, now, payload)`; it and `admitModelRequest` share `appendCeilingOnce` — one `ceiling` event per job, first source wins.
+  - `src/runner/run.ts`: `RunDeps.timer`, `RunDeps.log`; `runStops` (latch + one `signal` for cancel-or-ceiling + deadline `expire` = trip at once, then record `{ reason, source: "deadline" }`); warning built before seating (gate `warnDue` → `due("usage")`); timers armed right after the `running` commit from the returned row (soft → `due("wall_clock")`); `settleRun`: settle, then in `finally` stop timers, close the warning, abort a stray warning run, await the deadline's event — all before `toCollecting`.
+  - `src/runner/start.ts`: `timer: systemTimer`, `log: options.log`.
+  - Tests: `test/runner/run-fixture.ts` (promoted `runWorld` etc.; `manualTimer`, `RunWorld.timers`; fixture `log` throws), `test/runner/ceilings-harness.test.ts` (16), `store.test.ts` (+1).
+- `just check`: fmt clean, lint 0, tsc clean, 43 files / 927 tests, lines 98.12% (deadline.ts, warning.ts, store.ts 100% lines; run.ts 96.7% — the three log-only catch arms).
+
+### Learned
+- A steer submitted to an **idle** conversation is placed and starts a new run (`admitSubmission`). A warning racing the run's end therefore starts a stray run after `settle`; `settleRun` closes the warning, reads its status, and aborts the conversation when it is `queued`/`placed`. Tested by holding the warning's submit until the initial submission settles.
+- A faux response step that blocks on `options.signal` must check `signal.aborted` first: an abort before the step runs never fires the listener (hang).
+- `close()` withholds a `due` made in the same tick (the give runs a microtask later and re-checks after its last await). Tests that want a warning given wait for its receipt before closing.
+- The deadline's event write lands before `collecting` in practice even without the `await stops.expired()`; the await is defensive (a mutation removing it is not caught).
+
+### Deviations from the sheet
+- One `armCeilingTimers` for both timers (the seam PHASE-09/10 stop/re-arm as a unit), not a separate `armDeadline`.
+- `RunDeps.log` added (warning/deadline-event failures the run outlives, I12).
+- Stray-warning abort in `settleRun` — not in the sheet; needed for "nothing fires into collection".
+- `warningPlaced` false is tested on a queued steer mid-run (active harness), not on a `resume: false` harness.
+- `submitWarning(deps, trigger)` takes `WarningDeps { conversation, jobs, jobId, now }` (not the job row).
+
+### Open
+- Gate-vs-deadline race: the deadline trips the latch first, then writes its event; a gate refusal inside that window writes `source: "gate"` first. One event either way; the recorded source may name the gate.
+- `warningPlaced` takes a branded `SubmissionId`; the receipt stores its text. PHASE-10 recovery must recover the id, e.g. `tx.submissionByRequest(conversationId, warningRequestId(jobId))`, not parse the text.
+- If `admit` throws after the prompt is submitted (e.g. the `running` transition fails), the warning is never closed; benign (no timers yet) but unaudited.
+- Forward notes:
+  - **PHASE-09 (pause):** a pause must `timers.stop()` (deadline + soft) and re-arm via `armCeilingTimers` from the fresh row on resume. The resume message carries `WARNING_TEXT` when the threshold passed and `warningPlaced` is false or there is no receipt — reuse `warning.ts`. Keep the pause abort separate from the ceiling latch (a pause is not an exhaustion); note `runWarning`'s `stop` signal is cancel-or-ceiling today — a pause must also close/withhold the run's warning. `settle` still waits on the initial submission only.
+  - **PHASE-10 (recovery):** re-arm from `active_ms` + (now − `running_since`) after the DEC-065 `parked_at` re-base; `armCeilingTimers` takes only the row. The "running, threshold passed, no receipt" row calls `submitWarning` (same `requestId` → existing submission) then writes the receipt. `model_requests` survives restart (A3).
+  - **PHASE-15 (room adapter):** the timers' `stop` and the warning close live in `settleRun`, not `runJob`'s `finally`; moving connection lifetime past `collectJob` must not drag them.
