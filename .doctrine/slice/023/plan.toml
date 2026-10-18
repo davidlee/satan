@@ -166,6 +166,7 @@ exit_criteria = [
   { id = "EX-4", text = "`src/runner/guard.ts` `beforeTool` blocks write/edit outside the allowlist as early feedback, audited as `blocked_tool`; the authoritative check stays at collection." },
   { id = "EX-5", text = "A settled run moves to `collecting` with `end_reason` set; cancel while running aborts then collects and ends `cancelled`." },
   { id = "EX-6", text = "The env seam is held to pi-env's `registerEnvConformance` with a local env." },
+  { id = "EX-7", text = "Supersedes the narrower wording of EX-3 under amended DEC-055 (PHASE-01 user ruling; EVD-009): `src/runner/env.ts` passes a per-job `Connection` subclass as `RemoteExecutionEnvOptions.connection` when building the remote `ExecutionEnv`, so PHASE-09 recognition sits at the connection seam." },
 ]
 verification = [
   { id = "VT-1", expects = "harness run path with faux provider + memory storage + local env: submit → needs_review; write outside allowlist blocked early, same change via bash caught at collection", test_file = "/home/david/dev/malebolge/test/runner/run.test.ts", keywords = ["needs_review", "blocked_tool", "requestId", "room_unavailable"], waived = false },
@@ -186,10 +187,13 @@ exit_criteria = [
   { id = "EX-2", text = "Deadline timer armed for remaining active wall-clock aborts in-flight work (long bash or model call); `waiting_room` time does not count; a crash interval is charged." },
   { id = "EX-3", text = "Warning: one steer (`whenBusy: \"steer\"`, requestId `warn-<job id>`) at the first of soft threshold or under one request's allowance; its `job_events` receipt carries the admitted `submissionId`; placement read via `Harness.submission(id).status()` (`entry` present)." },
   { id = "EX-4", text = "A ceiling hit collects partial work and offers it `needs_review`, flagged partial." },
+  { id = "EX-5", text = "Supersedes the narrower wording of EX-1 under amended DEC-057 (PHASE-01 user ruling): the model gate also wraps deferred polling and cancellation (`fetchDeferred`, `cancelDeferred`) and every `runtime.models` entry point a tool can reach (`complete`, `stream`, `classify`, `generateImages`, `streamDeferred`); each is refused on an exhausted ceiling or unreadable usage and counted in `model_requests`, none delegated unwrapped." },
+  { id = "EX-6", text = "Under amended DEC-057: the gate's refusal error text avoids pi-ai's retryable wording, so the retry policy does not re-ask a refusing gate." },
 ]
 verification = [
   { id = "VT-1", expects = "gate: exhausted budget → generation, retry, compaction reach no provider; failed attempts counted; counter survives restart; unreadable usage denies", test_file = "/home/david/dev/malebolge/test/runner/model-gate.test.ts", keywords = ["streamSimple", "completeSimple", "usage_unavailable", "model_requests"], waived = false },
   { id = "VT-2", expects = "deadline aborts a long bash; waiting time excluded; warning delivered once", test_file = "/home/david/dev/malebolge/test/runner/ceilings-harness.test.ts", keywords = ["deadline", "warn-", "ceiling_exceeded", "partial"], waived = false },
+  { id = "VT-3", expects = "gate covers fetchDeferred, cancelDeferred and runtime.models complete/stream/classify/generateImages/streamDeferred (refused when exhausted, counted); refusal text is not classified retryable by pi-ai and triggers no retry (supersedes VT-1's narrower scope under amended DEC-057)", test_file = "/home/david/dev/malebolge/test/runner/model-gate.test.ts", keywords = ["fetchDeferred", "cancelDeferred", "runtime.models", "streamDeferred", "retryable"], waived = false },
 ]
 specs        = []
 requirements = []
@@ -206,9 +210,11 @@ exit_criteria = [
   { id = "EX-2", text = "Probing with backoff; on reachable the resume message is submitted with requestId `resume-<job id>-<pause_count>`, carrying the warning text when the threshold has passed with no placed warning on record; `running` re-armed." },
   { id = "EX-3", text = "`max_room_wait` (bounded from `state_entered_at`) → `room_unavailable` → `pending_collection`; cancel while waiting takes the same path with `end_reason = cancelled`." },
   { id = "EX-4", text = "A tool error with the same text as the typed failure does not pause." },
+  { id = "EX-5", text = "Supersedes the narrower wording of EX-1 under amended DEC-055 (PHASE-01 user ruling; EVD-009, EVD-010): recognition sits in the per-job `Connection` subclass covering `info()`, `session()` and `request()`, not an `ExecutionEnv` wrapper; it writes `pause_requested = 1` plus event durably before rethrow, and the mark is idempotent — one room stop raising two lost failures yields one pause request and one event." },
 ]
 verification = [
   { id = "VT-1", expects = "pause/resume with faux provider and a failing local env: typed failure pauses, same-text error does not; resume id stable; warning carried when unplaced", test_file = "/home/david/dev/malebolge/test/runner/pause.test.ts", keywords = ["pause_requested", "pause_count", "resume-", "waiting_room"], waived = false },
+  { id = "VT-2", expects = "Connection-subclass recognition: typed lost failure from info(), session() or request() marks pause; two lost failures from one stop yield one pause_requested mark and one event; same-text ordinary error does not pause (supersedes VT-1's env-wrapper framing under amended DEC-055)", test_file = "/home/david/dev/malebolge/test/runner/pause.test.ts", keywords = ["Connection", "pause_requested", "idempotent", "request"], waived = false },
 ]
 specs        = []
 requirements = []
