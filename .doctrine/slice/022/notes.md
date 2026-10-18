@@ -21,7 +21,7 @@ another prose pass.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · audit (RV-024) · 2243b41
+fresh-as-of: 2026-10-18 · done (RV-024 reconciled via REV-005) · f2a608a
 
 ### Produced
 - PHASE-01..08 done, run order 01, 02, 07, 03, 04, 05, 06, 08 (satan edbd018..9b44a21; flakes df07c800; emacs ceb3062 + the user's dl-secret commit)
@@ -37,7 +37,7 @@ fresh-as-of: 2026-10-18 · audit (RV-024) · 2243b41
 - retracted: mem.fact.satan.jailed-pi-home-and-op-keys, mem.fact.satan.broker-test-credential-stub-order-dependence
 
 ### Open
-- RV-024 Reconciliation Brief — SPEC-003/SPEC-002 REVs, ADR-017 ledger note + RFC-018, DEC-020/021/022 supersession, ASM-002, ISS-023, QUE-001, ISS-029 split, selector registry + design.md mirrors
+- flakes:IMP-030 — origin of this slice, in ~/flakes; resolve there
 - ISS-038 / ISS-039 — patcher's `jailed-pi` resolution (PHASE-07/08 patcher checks were best effort)
 - ISS-044 — stderr flush race still loses stderr.log and can abort `just test`
 - flakes:IMP-037 — launcher refusal hint names the jail, not the key alias
