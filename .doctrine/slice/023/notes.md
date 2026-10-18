@@ -90,3 +90,21 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - Further review passes (2026-10-18, after RV-025 concluded): none before lock. Three Codex passes converged; the last rounds found only wording and one crash-window edge. What remains unproven is empirical, not textual: the model gate (F-1, OQ-1), pi-env failure typing and the wrapper's host write (F-2, F-17), steer placement mid-run and status() leaving scheduling paused. The first-phase spike is the next probe; a re-review is warranted only if the spike fails and DEC-057/DEC-055 are amended.
 - ASM-005 — oubliette SL-005 pins the door as Plan F §5 sketches (room adapter, door config, promotion verb wait on it)
 - QUE-005, QUE-006 — answered (DEC-051, DEC-055)
+
+## PHASE-01 spike — offline half (2026-10-18, worker)
+
+### Produced
+- malebolge: pi-env 1.3.0 pinned exact; spike tests `test/runner/{model-gate,steer-status,env-pause}.test.ts`, fixtures `test/runner/{runner,gate,env}-fixture.ts`, `openFauxHarness` in `test/harness-fixture.ts`; live spike `test/runner/room-stop-spike.ts` + `just spike-room-stop` (results in gitignored `spike-results/`) — uncommitted
+- EVD-006 (model gate in every provider path), EVD-007 (steer placement, passive status), EVD-008 (pause mark on shared adapter, durable before afterTool), EVD-009 (pi-env exec erases the lost type)
+
+### Learned
+- OQ-1 holds at pi-durable 1.3.0: a Proxy Models view over `streamSimple`/`completeSimple` gates generation, retry (generation re-entry) and compaction (manual and threshold); counter on the shared adapter survives reopen (EVD-006). DEC-057 needs no amendment on that ground.
+- The view does NOT gate: `fetchDeferred`/`cancelDeferred` (poll/cancel of an admitted deferred request), and the ungated `complete`/`stream`/`classify`/`generateImages` that tools reach through `api.models` (the same view object). Coding tools never call models; codemode does. DEC-057 "every provider call" wording is the orchestrator's/user's call.
+- Gate refusal text must avoid pi-ai's retryable pattern (`overloaded`, `5xx`, `connection.?lost`, …) or the retry policy re-asks a refused gate.
+- pi-env 1.3.0 `exec()` drops the RemoteError (ExecutionError `unknown`, no cause); file ops keep it as `FileError.cause`. The type survives at a `Connection` subclass — which must observe `info()`/`session()` as well as `request()` (a file op can lose the connection resolving its path). DEC-055's `ExecutionEnv` placement cannot recognise a lost room on `bash` by type (EVD-009) — placement decision is open (S2), pending the live run.
+- Host writes on the shared adapter from the env seam and reads in `afterTool` settle: both run outside pi storage transactions (EVD-008).
+
+### Open
+- EX-3 live: human runs `capsule f start` (if stopped) → `just spike-room-stop` in ~/dev/malebolge → `capsule f stop` at the IN FLIGHT marker → `capsule f start`; then an EVD from the results file.
+- DEC-055 placement (Connection seam vs ExecutionEnv) — to the user via the orchestrator.
+- RV-025 F-1/F-2 verdicts — orchestrator.

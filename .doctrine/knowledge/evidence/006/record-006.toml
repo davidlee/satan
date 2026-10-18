@@ -1,0 +1,30 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 6
+slug = "sl023-model-gate-spike"
+title = "pi-durable 1.3.0: a Models view gating streamSimple and completeSimple sits in every provider request path (generation, retry, compaction)"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "2026-10-18, @earendil-works/pi-durable 1.3.0 + pi-ai 1.3.0, faux provider, pi state and the gate's counter on one SQLite file (shared adapter). Spike gatedModels (malebolge test/runner/gate-fixture.ts): a Proxy over the real Models overriding only streamSimple and completeSimple; each runs lazyStream(model, admit-then-delegate), admit = one host transaction on the adapter that refuses at budget or inserts a runner_attempts row. Test file test/runner/model-gate.test.ts (just check, 11 tests green). Shown: (1) generation — budget 0, zero faux calls, run ends with the gate's error message; (2) retry — retry policy {enabled, baseDelayMs 1}, faux '503 overloaded' then budget exhausted: the retry is re-entry through streamSimple and reaches no provider; the failed attempt is counted; (3) compaction — manual compact() and threshold-driven (small contextWindow) compaction both call completeSimple through the view (control: attempts [streamSimple, completeSimple, ...]); exhausted, the summary reaches no provider (manual: task failed with the refusal; threshold: the input settles unanswered, reason model_error, detail carries the refusal); (4) counter: a failed attempt plus a success, harness closed, reopened on the same file: counter reads 2 and the gate refuses with zero provider calls. Red check: every test fails when the view returns the real Models unwrapped. Grep of pi-durable/dist: the only provider calls are generation.js:315 streamSimple, compaction.js:128 completeSimple, generation.js:151 fetchDeferred and :183 cancelDeferred (deferred poll/cancel of an already-admitted request), and tool.js:204 handing runtime.models to tools (codemode's models.classify/generateImages use it). Characterised: fetchDeferred passes through the view uncounted (test 'deferred polling passes through the view uncounted'); a tool's api.models is the same gated view (completeSimple refused) but its ungated entry points — complete/stream/classify/generateImages — reach the provider (test 'a tool's runtime.models is the gated view, but its ungated entry points reach the provider'). Harness passes the Models object through unwrapped (no copy)."
+provenance = "experiment"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-023"

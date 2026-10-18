@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14deb-4b24-7620-b931-b0db2dbce260"
+recorded_at = "2026-10-18T07:30:28.260282959Z"
+kind = "friction"
+summary = "capsule-phase-planner hit its 40-turn cap researching and wrote nothing"
+detail = "SL-023 PHASE-01: first planner spent all 40 turns on research (pi-env dist unpacking, design reads) and produced no sheet and no hand-back. A retry with an explicit budget (draft sheet by ~12th call, hand back by ~32nd, leave open questions as worker tasks) succeeded in 18 calls. Planner prompts or the agent definition should require an early draft write."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

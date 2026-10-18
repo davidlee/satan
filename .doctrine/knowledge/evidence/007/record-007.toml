@@ -1,0 +1,30 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 7
+slug = "sl023-steer-status-spike"
+title = "pi-durable 1.3.0: a mid-run steer is placed after the tool round, before the next model request; submission status() reads without enabling scheduling"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "2026-10-18, pi-durable 1.3.0, faux provider. Test file malebolge test/runner/steer-status.test.ts (3 tests green). (1) 'a mid-run steer is placed after the tool round, before the next model request': tool call blocked on a test-held promise, submit({type:input, whenBusy:steer, requestId:warn-x}) mid-tool, release: transcript is user, assistant(tool call), toolResult, user(steer), assistant; the second provider request's context ends [toolResult, user(steer)]; submission status() then carries entry. Red check: whenBusy followUp fails the test. (2) Repeated requestId returns the same submission id while queued and after placement; one pi.user entry for it. (3) 'status() on a paused harness ...': SQLite file; first process places warn-x, then closes mid-tool with warn-y queued; reopened via Harness.open without resume(): Harness.submission(id).status() returns warn-x {status done, entry} and warn-y {status queued, no entry}; inspect() reports scheduling 'paused' with live tasks, unchanged after 200 ms, zero provider calls; control: resume() then runs the queued work and warn-y gains an entry."
+provenance = "experiment"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-023"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14deb-4b29-73d2-89a7-e5a4f077ed1c"
+recorded_at = "2026-10-18T07:30:28.265293493Z"
+kind = "friction"
+summary = "pi-env ignores ~/.ssh/config identity for slot relay; key must be passed explicitly"
+detail = "SL-023 PHASE-01: pi-env runs ssh with -F <its config>, so ~/.ssh/config is not read and the slot key ~/.ssh/id (not a default identity name) must be passed explicitly. Candidate addition to mem.pattern.satan.pi-env-oubliette-gateway."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

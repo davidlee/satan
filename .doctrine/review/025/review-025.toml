@@ -22,7 +22,7 @@ ref   = "SL-023"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "the proposed pre-request guard cannot deny a model request"
 detail = """
@@ -46,6 +46,11 @@ route = "demonstrate"
 response = """
 Correct: a throwing hook is reported and skipped (pi-durable README, failure model item 3), and beforeRequest returns only messages, so no hook can deny a request. Repair: denial, the request counter and the output cap move to one model gate at the provider boundary. The runner supplies the harness a Models view whose job models wrap the provider stream; every provider call for the job, retries and compaction summaries included, passes it. The gate increments a durable per-job attempt counter before sending, refuses (an error from the stream, no provider call) when any ceiling is exhausted or usage is unreadable, and sets maxTokens from the remaining allowance. This also carries design section 6 OQ-1. Criterion: with a faux provider, a job whose budget is exhausted makes no provider call on the next generation request, on a retry, or on a compaction summary; the attempt counter survives restart. Host phase constraint: the gate must be demonstrated in the harness against the pinned pi-durable before any phase builds ceilings on it; if it cannot sit in the path, DEC-057 is amended to the weaker guarantee per the user ruling.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated in SL-023 PHASE-01 (EVD-006; malebolge c3fa08e, test/runner/model-gate.test.ts, 11 tests). A Models view wrapping streamSimple and completeSimple against pinned pi-durable 1.3.0 with a faux provider: once the budget is exhausted, a generation request, a retry and a manual or threshold compaction summary each reach no provider (callCount unchanged); a durable SQLite attempt counter counts the failed attempt and survives a harness reopen. A red check (unwrapped Models) fails all 9 gate tests. Caveats routed to the user, not blocking this finding: fetchDeferred polling passes through uncounted, and a tool's runtime.models exposes ungated entry points (complete/stream/classify/generateImages/streamDeferred). DEC-057's 'every provider call' wording needs a ruling on both. maxTokens setting is PHASE-08 scope."
 
 [[finding]]
 id = "F-2"

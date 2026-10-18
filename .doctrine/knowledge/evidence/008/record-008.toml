@@ -1,0 +1,30 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 8
+slug = "sl023-pause-mark-shared-adapter"
+title = "A pause mark written on the shared SQLite adapter from pi-env's lost failure settles outside any pi transaction and is durable before afterTool"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "2026-10-18, pi-durable 1.3.0 + pi-env 1.3.0, offline (local pi-env daemon binary from localDaemon()). Test file malebolge test/runner/env-pause.test.ts. pi state on SqliteStorage.open(db) and runner tables on the same NodeSqliteDatabase. Env = RemoteExecutionEnv over ObservedConnection (test/runner/env-fixture.ts: a Connection subclass delegating info/session/request/close/kill to a real Connection) with CodingTools' bash. Daemon SIGTERMed when exec is sent: ObservedConnection catches RemoteError{name RemoteError, code unknown, fields.lost true} (isConnectionLost) and, before rethrowing, writes pause_requested=1 plus a job_events row in one db.transaction — settles (bounded 2 s), and an afterTool hook reading the row via db sees it already set ([true]); the tool result text afterTool otherwise gets is 'pi-env connection lost'. Negative ('%s with the same message is not recognised'): an ordinary Error and a RemoteError without lost, both with message 'pi-env connection lost', produce the same tool-result text and no mark. Control: a raw db call inside db.transaction does not settle (300 ms bound) — the hazard the bound guards against. Tool execute and afterTool run outside pi's storage transactions (pi-durable dist/harness/tool.js:292, :403). Not shown: a real VM stop (EX-3, live)."
+provenance = "experiment"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-023"

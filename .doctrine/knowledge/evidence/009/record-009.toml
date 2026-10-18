@@ -1,0 +1,30 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 9
+slug = "sl023-pi-env-exec-type-erasure"
+title = "pi-env 1.3.0 erases the lost-connection type on exec (ExecutionError, no cause); file ops keep it as FileError.cause; the Connection seam keeps it"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "2026-10-18, pi-env 1.3.0. Inspection: remote-env.js exec() catch maps a RemoteError to new ExecutionError(code, error.message) with no cause (codes timeout/aborted/shell_unavailable/spawn_error kept, everything else incl. lost -> 'unknown'); file ops use toFileError, which keeps the RemoteError as FileError.cause. Experiment (malebolge test/runner/env-pause.test.ts 'ExecutionEnv seam: exec returns the lost failure without its type; file ops keep it as cause'): daemon command that exits before ready gives pi-env's own lost RemoteError; env.exec returns ExecutionError code 'unknown', cause undefined (isConnectionLost(cause) false); env.readTextFile returns FileError whose cause is a RemoteError with isConnectionLost true. At the Connection seam both are typed: [exec, unknown, lost] and [info, unknown, lost] — the file op lost the connection in info() resolving its path, before any request, so a Connection-seam observer must cover info() and session() as well as request(). pi-durable's bash tool throws the ExecutionError, which pi-durable turns into tool_error text. A lost spawn failure (child 'error') is RemoteError code spawn_error lost:true; exec keeps only code spawn_error, which a daemon-reported spawn failure also uses."
+provenance = "experiment"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-023"

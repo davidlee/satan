@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14deb-4b27-7d32-8c1c-20906d845a57"
+recorded_at = "2026-10-18T07:30:28.263085649Z"
+kind = "friction"
+summary = "doctrine knowledge new prints a git access-rights error on every call though the record is created"
+detail = "SL-023 PHASE-01 worker: each 'doctrine knowledge new' (EVD-006..009) printed a git 'correct access rights / repository exists' error, yet each record was written. The worker also patched record-008.toml with sed (a line citation) instead of 'doctrine knowledge edit evidence', because facet fields are set only via edit after new, and the phase-sheet hint omitted that step."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
