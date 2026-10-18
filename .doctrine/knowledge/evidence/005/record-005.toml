@@ -1,0 +1,35 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 5
+slug = "pi-env-oubliette-slot-spike"
+title = "pi-env drives an oubliette slot through its relay; a dropped connection fails one tool call and the run recovers"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = ["durable", "oubliette", "satan", "spike"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "2026-10-18, oubliette slot f (stand-in for the room), @earendil-works/pi-env 1.3.0 + pi-durable 1.3.0. (1) pi-env reached agent@guest through the slot's unix-socket relay via a -F config file with ProxyCommand=socat; it uploaded its daemon into ~/.pi over ssh and ran exec/read/write/git commit in the guest. (2) Daemon SIGTERMed mid-exec: the call failed immediately with partial output kept, no orphaned guest processes, and the next request started a fresh daemon in ~150 ms. (3) pi-durable harness on the host, deepseek-flash via the host LLM gateway, CodingTools in the guest: daemon killed 4 s into `sleep 25`; the model got an error tool result 'pi-env connection lost', checked repo state, reran the command, wrote NOTES.md and committed (709e5d1). Run settled done; cost $0.0013. Not tested: a real VM stop, host-harness crash resume across it."
+provenance = "experiment"               # inspection | experiment | reproduction | citation
+confidence = "high"               # low | medium | high
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SL-023"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "IDE-008"
