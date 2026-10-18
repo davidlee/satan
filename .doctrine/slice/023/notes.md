@@ -58,38 +58,31 @@ cutover (two consumers live, ISS-039).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written, 14 phases materialised, slice ready · e8f4012 + uncommitted
+fresh-as-of: 2026-10-19 · design locked rev 63 (run dr-01a14d77); PHASE-01..13, 15..17 completed; PHASE-14 blocked (human steps done except migrate check); PHASE-18 to be appended · 6a04180
 
 ### Produced
-- SL-023 scoped, linked (IDE-007/008, RFC-018, ISS-030/038/039/041, IMP-006; governed_by POL-001, ADR-017, ADR-018) — 42b2dea
-- IDE-007 gateway-key wording corrected — 42b2dea
-- research round + option-D spike against capsule slot f — artefact on disk, not committed
-- design run inquiry complete: DEC-050..DEC-064 (shape SL-023); inq-14 deferred on ASM-005 — uncommitted
-- REV-006 applied: ADR-018 D1/D3 scope amendment, POL-001 IMP-006 destination — uncommitted
-- IMP-041 (malebolge lint → typescript-eslint, before runner code) — uncommitted
-- slice scope aligned to the decisions (objective 7 added) — uncommitted
-- design.md drafted: 14 sections materialised, design-target selectors recorded; user rulings on §6 OQ-1..OQ-6 and pre-ready fixes 1-6 applied; DEC-052 (ordered creation) and DEC-058 (ack op, failure resend) amended with revision notes; `drafting-ready` recorded — uncommitted
-- DEC-056 amended (recovery before resume); run advanced to reviewing; Codex (gpt-6-sol) pass on RV-025: 14 findings (4 blocker, 9 major, 1 minor), all accepted fix-now and integrated; F-1/F-2 routed demonstrate (model gate, env-boundary failure typing), rest review; DEC-055 and DEC-057 amended — uncommitted
-- RV-025 third pass: F-4, F-8, F-13, F-15..F-19 verified; F-19 raised; DEC-057 note (warning placement via submission record) — uncommitted
-- design locked 2026-10-18: section attestations, review-disposed (conducted RV-025), design-accepted; slice-023.md risks/closure reconciled — uncommitted
-- plan.toml + plan.md (PHASE-01..14), phase sheets materialised, slice status ready — uncommitted
-- slot f left running; its volume holds `~/sl023-spike` and the pi-env daemon in `~/.pi`
+- design amended twice and re-locked: rev 56 (room adapter, RV-026 conducted, 14 findings) — 5bbc0fc; rev 63 (room probe = job collect; DEC-057 gate rulings; RV-027 waived) — 15662ba
+- DEC-065 (room adapter + door kind); DEC-055, DEC-057, DEC-060, DEC-061 amended (revision notes in each body)
+- EVD-006..010 (PHASE-01 spike: gate, steer, pause, room stop)
+- PHASE-15/16/17 appended (room adapter; probe + gate rulings; gateway provider); criteria appended to PHASE-07/08/09/10/12/14
+- backlog: IMP-042 (clean-clone op), CHR-016 (live room rung — mostly verified in PHASE-12), CHR-017 (package malebolge as flake input), ISS-046 (producer lanes refused after cutover)
+- runner live as `satan-runner` user unit, room `assistant`, repo goad-walk; three live smokes passed (PHASE-12 "Live evidence")
+- ASM-005 validated; CON-003, CON-004 (oubliette SL-005/006 relays) — fc0f92c
 
 ### Learned
-- pi-durable: no hook can deny a request (throwing hooks are skipped); tool/env exceptions are converted before afterTool; submit/abort/compact/wait start the task scheduler
-- doctrine orders design sections by id *lexically* (sec-10 before sec-2) and has no section delete; bodies were rebound so reading order holds
-- pi-durable 1.3.0 `beforeRequest` rewrites messages only — no per-request maxTokens hook (design §6 OQ-1)
-- EVD-005 — pi-env drives a slot through its relay; dropped connection fails one tool call, run recovers
-- mem.pattern.satan.pi-env-oubliette-gateway — recipe: pi-env via relay ProxyCommand, pi-ai via the gateway
-- pi-durable: one SQLite file may hold pi tables (prefix) and host tables via one adapter; built-in tools declare no replay (unsafe) — cited in DEC-052/054
-- Biome 2.5 lacks tsc-backed unsafe-any / strict-boolean / assertion rules — IMP-041
+- pi-durable: no hook can deny a request → model gate is a Models view; pause abort needs the gate to refuse `paused` (PHASE-09 STOP-1)
+- pi-env 1.3.0 erases the lost-connection type for exec at ExecutionEnv → JobConnection at the Connection seam (EVD-009/010)
+- `capsule <room> ssh … true` is the human door (exit 1 stopped / 255 key) — never a probe (oubliette RV-018)
+- node:sqlite deadlocks when db is used inside a transaction (EVD-008)
+- agents cannot restart user units (permission classifier); planners hit 40-turn caps without save points
 
 ### Open
-- design §6 OQ-1 — model gate; PHASE-01/EX-2 demonstrates it; on failure /consult and amend DEC-057 (weaker guarantee, user ruling)
-- RV-025 — concluded and disposed conducted; F-1/F-2 (BLOCKER, demonstrate) answered, transcribed into PHASE-01/EX-2 and EX-3; verify on RV-025 after the spike
-- Further review passes (2026-10-18, after RV-025 concluded): none before lock. Three Codex passes converged; the last rounds found only wording and one crash-window edge. What remains unproven is empirical, not textual: the model gate (F-1, OQ-1), pi-env failure typing and the wrapper's host write (F-2, F-17), steer placement mid-run and status() leaving scheduling paused. The first-phase spike is the next probe; a re-review is warranted only if the spike fails and DEC-057/DEC-055 are amended.
-- ASM-005 — oubliette SL-005 pins the door as Plan F §5 sketches (room adapter, door config, promotion verb wait on it)
-- QUE-005, QUE-006 — answered (DEC-051, DEC-055)
+- user rulings 2026-10-19 for PHASE-14: (1) EX-2 runs against the deployed room door — append a criterion; close CHR-016 after the closure run except the SL-006-lock re-check; DEC-065/§9 "slot is the live rung" wording → reconcile. (2) an agent calling patch_job_create's handler via emacsclient counts. (3) sloptower already archived by the user; needs temporary unarchive to push a README pointing at davidlee/Malebolge (user's outward act); keep the local checkout, delete the ~/dev/sloptower symlink and ~/.config/satan-patcher/policy.toml. (4) reject both PHASE-12 smoke jobs after the closure run; not evidence.
+- user ruling 2026-10-19: append PHASE-18 "Interactive daemon on the gateway provider" (design §5.1/§10 says both binaries use it; PHASE-17 wired only the runner). ~/notes jail migration to gatewayClient is handled by another agent, outside SL-023.
+- audit candidates: room config values are literals, not rendered from one source (§5.3); PHASE-09 STOP-1 gate `paused` reason and PHASE-10 R1 (room work inside rejoined run) depart from design wording; `resume` event kind unused; PHASE-13 points (repoPath optional, watch backoff, docs/patch stale)
+- prompt draft ~/satan-corpus/prompts/patch-agent.md uncommitted, awaiting user review (6 open points in PHASE-12 notes)
+- oubliette SL-006 lock: re-check sec-6 against DEC-065
+- `doctrine slice research 23` baseline drifted; not restamped
 
 ## PHASE-01 spike — offline half (2026-10-18, worker)
 
