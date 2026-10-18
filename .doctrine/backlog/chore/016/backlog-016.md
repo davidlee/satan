@@ -44,6 +44,8 @@ slot, so it covers these items live (PHASE-12 EX-6, EX-7, EX-10):
 - a changed host key fails `host_key`, never a pause — the runner half only,
   through a scratch instance with a tampered copy of `known_hosts`.
 
+Verified live on 2026-10-19: jobs pj-01M58KY5GCAV5RSCK8BN47TCDV (end to end, needs_review/complete) and pj-01M58KYQJ2AF6YXD2HYTX5KRM3 (stop/start reconnect, resumed and collected); non-interactive push/collect/probe ran as the runner user in both; the scratch changed-host-key instance failed as `host_key` with no waiting_room, real `known_hosts` unchanged. Evidence: SL-023 `notes.md`, PHASE-12 "Live evidence (VA-1, VA-2, VH-2) 2026-10-19".
+
 Still deferred here:
 
 - silence-limit drop on a frozen guest (pi-env 30 s `SILENCE_LIMIT_MS`) →

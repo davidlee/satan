@@ -1131,3 +1131,27 @@ One-line observations (no recommendations beyond these):
 - attrd's `workspaceDeps` still names `~/.emacs.d/`, a frozen corpus path
   (project governance note).
 - goad has no `research` jail; attrd has no `subagents` and no shared `mkJail`.
+
+### Live evidence (VA-1, VA-2, VH-2) 2026-10-19
+
+**VH-2 basis.** The user ran every human step; the coordinator relayed the results. The enable flip is home commit 0796c480 (`runner.nix` only), made by the coordinator on the user's "enable".
+
+**VA-1 (orchestrator-run).**
+
+- `satan-runner`: ActiveState=active/running, MainPID 3068325, started 10:05:45 AEDT.
+- ExecStart: nodejs-24.21.0 `node /home/david/dev/malebolge/src/runner-main.ts`.
+- Unit Environment holds `SATAN_RUNNER_CONFIG`, `XDG_STATE_HOME` and `PATH` only. `LoadCredential` is set (systemctl prints it as unprintable) and the process env has `CREDENTIALS_DIRECTORY`.
+- The gateway key string occurs 0 times in `ps -o args`, in `/proc/<pid>/environ` and in the unit's Environment.
+- The journal has 0 `refusing to start`. It shows `store …/runner.sqlite` and `control …/control.sock`.
+- Config has `enabled = true` (unparked; jobs scheduled).
+- `/run/user/1000/satan-runner` is 700 david; `control.sock` is 600 david.
+- `satan-patcher` is inactive.
+
+**VA-2.**
+
+- EX-6 smoke (`/tmp/runner-smoke.txt`): job pj-01M58KY5GCAV5RSCK8BN47TCDV reached needs_review, class complete. Collected into `/var/lib/capsule/collect/assistant/goad-walk.git` at ref `refs/capsule/assistant/heads/job/pj-01M58KY5GCAV5RSCK8BN47TCDV`, reviewedOid 669249f705c34cf9666e1f70c29769413f705c4e ("fix: add runner smoke marker file", 1 file +1). Not promoted.
+- EX-10a reconnect (`/tmp/runner-smoke-reconnect.txt`): job pj-01M58KYQJ2AF6YXD2HYTX5KRM3 went running -> waiting_room (submission unanswered, reason aborted) on `capsule assistant stop`. After start, requestId resume-pj-01M58KYQJ2AF6YXD2HYTX5KRM3-1 took it waiting_room -> running -> collected, reviewedOid 339fcf9177aa3e3a2832c6d5434fd3ee76a2304a -> needs_review complete.
+- EX-10b: push, collect and probe ran non-interactively as the runner user (both smokes, unit-run).
+- EX-10c (`/tmp/runner-host-key.txt`): the scratch instance failed from preparing with reason host_key ("The host key of assistant changed"), endReason error, no waiting_room. The real known_hosts sha256 (6c9d7ea1…8ec73) was unchanged before and after.
+
+**Verdict.** EX-6, EX-10 and VH-2 met. The runner is left running and enabled (user ruling 5). The prompt draft `~/satan-corpus/prompts/patch-agent.md` is still uncommitted, awaiting user review (the deployed runner reads it). The WAL read-only store read worked in practice (judgement call 7 resolved).
