@@ -85,6 +85,10 @@ Empty list when the job has produced no commits yet."
 ARGS plist (keyword keys): :directive :mode :repo :allowed_paths
 :base_ref :branch :worktree_path :source :context :checks :adapter.
 
+FENCED (SL-023 PHASE-11): after argument validation every call returns
+`(error . \"patch runner migration in progress ...\")'; the insert
+path below is unreachable until PHASE-13 deletes this handler.
+
 On successful row insert the handler emits a T7 `intervention.created'
 \(kind=patch_job, target_surface=<job_id>) via
 `satan-intervention-create' and surfaces the minted id alongside
@@ -112,6 +116,11 @@ the existing `:job_id' / `:state' / `:branch' / `:worktree_path' /
       (cons 'error "allowed_paths must be a list of strings"))
      ((null allowed)
       (cons 'error "allowed_paths must be non-empty"))
+     ;; SL-023 / DEC-063 step 1: unconditional fence for valid calls so the
+     ;; one-consumer invariant holds during cutover.  PHASE-13 removes this
+     ;; handler with the elisp patch store.
+     ((cons 'error
+            "patch runner migration in progress (SL-023 cutover): patch_job_create is fenced"))
      (t
       (let* ((now-iso (format-time-string "%Y-%m-%dT%H:%M:%S%z"))
              (job-id (satan-patch-store-job-id-new now-iso))

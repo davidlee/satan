@@ -13,6 +13,7 @@
 (require 'satan-memory-migrate)
 (require 'satan-tools-patch)
 (require 'satan-patch-adapter-pi)
+(require 'satan-patch-fixture)
 
 (defconst satan-patch-runner-test--db "satan_memory_test")
 
@@ -131,26 +132,10 @@ BEHAVIOR is one of:
   (satan-patch-adapter-register
    "fake" (satan-patch-runner-test--fake-adapter behavior)))
 
-(defconst satan-patch-runner-test--ctx
-  '(:id "20260523T120000-self-edit-mech-deadbe"
-    :mode-name "self-edit-mech"
-    :time-now "2026-05-23T12:00:00+1000"
-    :run-started-at "2026-05-23T12:00:00+1000"
-    :capabilities ()
-    :audit satan-patch-runner-test--stub-audit)
-  "Synthetic tool-ctx threaded into patch_job_create for runner ert.")
-
 (defun satan-patch-runner-test--enqueue (repo)
   "Insert a queued job pointing at REPO with adapter=fake.  Returns job-id."
-  (pcase (satan-tool/patch-job-create
-          (list :directive "fix it"
-                :mode "self-edit-mech"
-                :repo repo
-                :allowed_paths '("satan/" "test/")
-                :base_ref "main"
-                :adapter "fake"
-                :start nil)
-          satan-patch-runner-test--ctx)
+  (pcase (satan-patch-fixture-enqueue
+          repo :directive "fix it" :base_ref "main" :adapter "fake")
     (`(ok . ,info) (plist-get info :job_id))
     (other (ert-fail (format "enqueue: %S" other)))))
 
@@ -351,16 +336,13 @@ BEHAVIOR is one of:
             (call-process "git" nil nil nil "add" "satan/hello.el")
             (call-process "git" nil nil nil "commit" "-q" "-m" "seed"))
           (let* ((create
-                  (satan-tool/patch-job-create
-                   (list :directive
-                         "Replace the contents of satan/hello.el with the single line ';; replaced\\n'. Then commit."
-                         :mode "self-edit-mech"
-                         :repo repo
-                         :allowed_paths '("satan/")
-                         :base_ref "main"
-                         :adapter "pi"
-                         :start nil)
-                   satan-patch-runner-test--ctx))
+                  (satan-patch-fixture-enqueue
+                   repo
+                   :directive
+                   "Replace the contents of satan/hello.el with the single line ';; replaced\\n'. Then commit."
+                   :allowed_paths '("satan/")
+                   :base_ref "main"
+                   :adapter "pi"))
                  (job-id (plist-get (cdr create) :job_id)))
             (satan-patch-runner-tick)
             ;; wait up to 1800s for finish; in practice pi takes ~30-90s

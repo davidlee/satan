@@ -10,21 +10,9 @@
 (require 'satan-patch-store)
 (require 'satan-patch-worktree)
 (require 'satan-memory-migrate)
-(require 'satan-intervention)
+(require 'satan-patch-fixture)
 
 (defconst satan-tools-patch-test--db "satan_memory_test")
-
-(defconst satan-tools-patch-test--ctx
-  '(:id "20260523T120000-self-edit-mech-deadbe"
-    :mode-name "self-edit-mech"
-    :time-now "2026-05-23T12:00:00+1000"
-    :run-started-at "2026-05-23T12:00:00+1000"
-    :capabilities ()
-    :audit satan-tools-patch-test--stub-audit)
-  "Synthetic tool-ctx threaded into patch_job_create across tests.")
-
-(defvar satan-tools-patch-test--captured nil
-  "Per-test list of kwarg plists handed to `satan-intervention-create'.")
 
 (defun satan-tools-patch-test--reachable-p ()
   (pcase (satan-db-psql
@@ -50,9 +38,8 @@
   dir)
 
 (defmacro satan-tools-patch-test--with-fixture (var-repo &rest body)
-  "Stub Postgres-backed fixture; also stubs `satan-intervention-create'.
-Inside BODY the symbol `satan-tools-patch-test--captured' is a list of
-keyword-args plists handed to the stub."
+  "Postgres-backed fixture: truncated tables, temp git repo and worktree root.
+Binds VAR-REPO to the repo path for BODY."
   (declare (indent 1))
   `(progn
      (skip-unless (satan-tools-patch-test--reachable-p))
@@ -61,70 +48,32 @@ keyword-args plists handed to the stub."
      (let* ((,var-repo (make-temp-file "satan-patch-tools-repo-" t))
             (wt-root (make-temp-file "satan-patch-tools-wt-" t))
             (satan-patch-store-database satan-tools-patch-test--db)
-            (satan-patch-worktree-root wt-root)
-            (satan-tools-patch-test--captured '()))
-       (cl-letf (((symbol-function 'satan-intervention-create)
-                  (lambda (&rest args)
-                    (push args satan-tools-patch-test--captured)
-                    "iv-patch-stub-01")))
-         (unwind-protect
-             (progn
-               (satan-tools-patch-test--mkrepo ,var-repo)
-               ,@body)
-           (when (file-directory-p ,var-repo) (delete-directory ,var-repo t))
-           (when (file-directory-p wt-root) (delete-directory wt-root t)))))))
-
-(defun satan-tools-patch-test--create-job (repo &rest overrides)
-  "Call the patch_job_create handler against REPO and return the result.
-OVERRIDES are merged onto the default args plist.  :start defaults to
-nil so the runner is not kicked from Phase-1 tests."
-  (let ((args (append overrides
-                      (list :directive "fix the thing"
-                            :mode "self-edit-mech"
-                            :repo repo
-                            :allowed_paths '("satan/" "test/")
-                            :start nil))))
-    (satan-tool/patch-job-create args satan-tools-patch-test--ctx)))
+            (satan-patch-worktree-root wt-root))
+       (unwind-protect
+           (progn
+             (satan-tools-patch-test--mkrepo ,var-repo)
+             ,@body)
+         (when (file-directory-p ,var-repo) (delete-directory ,var-repo t))
+         (when (file-directory-p wt-root) (delete-directory wt-root t))))))
 
 ;; ---------------------------------------------------------------------
-;; create
+;; create (fenced)
 ;; ---------------------------------------------------------------------
 
-(ert-deftest satan-tools-patch/create-success ()
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tools-patch-test--create-job repo :base_ref "main")
-      (`(ok . ,info)
-       (should (string-prefix-p "patch_" (plist-get info :job_id)))
-       (should (equal (plist-get info :state) "queued"))
-       (should (string-prefix-p "satan/self-edit-mech/"
-                                (plist-get info :branch)))
-       (should (equal (plist-get info :adapter) "pi"))
-       (should (equal (plist-get info :intervention_id) "iv-patch-stub-01"))
-       ;; row is persisted
-       (pcase (satan-patch-store-get (plist-get info :job_id))
-         (`(ok . ,row)
-          (should (equal (plist-get row :directive) "fix the thing"))
-          (should (equal (plist-get row :allowed_paths_json)
-                         '("satan/" "test/"))))
-         (e (ert-fail (format "row missing: %S" e)))))
-      (err (ert-fail (format "create: %S" err))))))
-
-(ert-deftest satan-tools-patch/create-emits-intervention-args ()
-  "patch_job_create threads §3.3 defaults into `satan-intervention-create'."
-  (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tools-patch-test--create-job repo :base_ref "main")
-      (`(ok . ,info)
-       (let ((args (car satan-tools-patch-test--captured)))
-         (should args)
-         (should (equal "patch_job" (plist-get args :kind)))
-         (should (equal (plist-get info :job_id)
-                        (plist-get args :target-surface)))
-         (should (equal "medium"    (plist-get args :severity)))
-         (should (equal 120         (plist-get args :outcome-window-minutes)))
-         (should (equal "fix the thing" (plist-get args :message)))
-         (should (string-match-p "reviews or applies"
-                                 (plist-get args :expected-outcome)))))
-      (err (ert-fail (format "create: %S" err))))))
+(ert-deftest satan-tools-patch/create-refused-migration-in-progress ()
+  "Valid calls are refused during the SL-023 cutover; nothing is inserted."
+  (let ((repo (make-temp-file "satan-patch-fence-repo-" t)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'satan-patch-store-insert)
+                   (lambda (&rest _) (ert-fail "store insert reached"))))
+          (pcase (satan-tool/patch-job-create
+                  (list :directive "x" :mode "self-edit-mech"
+                        :repo repo :allowed_paths '("satan/") :start nil)
+                  nil)
+            (`(error . ,msg)
+             (should (string-match-p "patch runner migration in progress" msg)))
+            (other (ert-fail (format "expected refusal, got %S" other)))))
+      (delete-directory repo t))))
 
 (ert-deftest satan-tools-patch/create-rejects-missing-repo ()
   (skip-unless (satan-tools-patch-test--reachable-p))
@@ -162,7 +111,7 @@ nil so the runner is not kicked from Phase-1 tests."
 
 (ert-deftest satan-tools-patch/status-and-result-round-trip ()
   (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tools-patch-test--create-job repo :base_ref "main")
+    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
       (`(ok . ,info)
        (let ((job-id (plist-get info :job_id)))
          (pcase (satan-tool/patch-job-status (list :job_id job-id) nil)
@@ -188,7 +137,7 @@ nil so the runner is not kicked from Phase-1 tests."
 
 (ert-deftest satan-tools-patch/result-includes-review-commands ()
   (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tools-patch-test--create-job repo :base_ref "main")
+    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
       (`(ok . ,info)
        (let ((job-id (plist-get info :job_id)))
          (satan-patch-store-update-state
@@ -215,7 +164,7 @@ nil so the runner is not kicked from Phase-1 tests."
 
 (ert-deftest satan-tools-patch/cancel-queued ()
   (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tools-patch-test--create-job repo :base_ref "main")
+    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
       (`(ok . ,info)
        (let ((job-id (plist-get info :job_id)))
          (pcase (satan-tool/patch-job-cancel (list :job_id job-id) nil)
@@ -226,7 +175,7 @@ nil so the runner is not kicked from Phase-1 tests."
 
 (ert-deftest satan-tools-patch/cancel-refuses-terminal ()
   (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tools-patch-test--create-job repo :base_ref "main")
+    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
       (`(ok . ,info)
        (let ((job-id (plist-get info :job_id)))
          (satan-patch-store-update-state
@@ -243,7 +192,7 @@ nil so the runner is not kicked from Phase-1 tests."
 
 (ert-deftest satan-tools-patch/prepare-and-cleanup ()
   (satan-tools-patch-test--with-fixture repo
-    (pcase (satan-tools-patch-test--create-job repo :base_ref "main")
+    (pcase (satan-patch-fixture-enqueue repo :base_ref "main")
       (`(ok . ,info)
        (let ((job-id (plist-get info :job_id)))
          (pcase (satan-patch-prepare job-id)
