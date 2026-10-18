@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15108-3a44-7b92-83eb-95c8be3e7518"
+recorded_at = "2026-10-18T22:00:56.132133643Z"
+kind = "friction"
+summary = "Design-named gateway provider has no phase; surfaced only at deploy"
+detail = "SL-023 PHASE-12 planner: design §10 says malebolge src/models.ts gains the gateway-routed provider, but no plan phase built it; phases ran against a faux provider, so the gap appeared only at the deploy phase. Design's example prompt_file path also does not exist."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

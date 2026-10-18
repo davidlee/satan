@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15108-3a46-7ca3-8110-558782d26dc7"
+recorded_at = "2026-10-18T22:00:56.134153672Z"
+kind = "friction"
+summary = "Bash tool shell is nushell; heredocs/exit codes need bash -c"
+detail = "SL-023 PHASE-12 planner and worker: the Bash tool runs nu, so commands were wrapped in bash -c; grep --dereference-recursive over ~/flakes timed out at 2 min (used plain -r)."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
