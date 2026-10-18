@@ -18,6 +18,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'seq)
 (require 'subr-x)
 (require 'satan-custom)
 (require 'satan-jsonl)
@@ -44,6 +45,16 @@ socket."
 (defun satan-patch-rpc--unreachable (why)
   "The error for a runner that did not answer, saying WHY."
   (cons 'error (format "patch runner unreachable: %s" why)))
+
+(defun satan-patch-rpc--fault (err)
+  "ERR, a fault reaching the runner, as a short message.
+A connection's `file-error' carries the connection's whole argument
+list after its reason strings; keep the reasons and name the socket."
+  (if (memq 'file-error (get (car err) 'error-conditions))
+      (format "%s (%s)"
+              (string-join (seq-take-while #'stringp (cdr err)) ": ")
+              (or (satan-patch-rpc--socket-path) "no socket path"))
+    (error-message-string err)))
 
 (defun satan-patch-rpc-new-id ()
   "A fresh id: a requestId, or a submit's submissionId."
@@ -126,7 +137,7 @@ retried (a lost answer may hide a request that took effect)."
                 (accept-process-output proc (- deadline (float-time))))
               (satan-patch-rpc--answer request-id line (process-live-p proc)))
           (when proc (delete-process proc)))
-      (error (satan-patch-rpc--unreachable (error-message-string err))))))
+      (error (satan-patch-rpc--unreachable (satan-patch-rpc--fault err))))))
 
 (defun satan-patch-rpc--watch-filter (on-frame on-open close)
   "A watch connection's line handler.
@@ -169,7 +180,7 @@ after `delete-process' on PROCESS."
            ;; The caller hears of this failure from the return value alone.
            (set-process-sentinel proc #'ignore)
            (delete-process proc))
-         (satan-patch-rpc--unreachable (error-message-string err)))))))
+         (satan-patch-rpc--unreachable (satan-patch-rpc--fault err)))))))
 
 ;; ---------------------------------------------------------------------
 ;; the job as SATAN sees it
@@ -184,13 +195,26 @@ after `delete-process' on PROCESS."
     (:commits . :commits) (:diffstat . :diffstat))
   "Wire keys of a job summary or `result' body, and their projected names.")
 
-(defun satan-patch-rpc-project (job)
+(defconst satan-patch-rpc--client-fields
+  '((:announcedAt . :announced_at) (:repoPath . :repo_path))
+  "Wire keys only Emacs itself reads (the inbox and promotion).
+Kept from the model: the real repo path is runner config, and whether a
+notice was announced is the inbox's business.")
+
+(defun satan-patch-rpc-field (job key)
+  "JOB's value for KEY, or nil when it is absent, null or empty."
+  (let ((value (plist-get job key)))
+    (unless (or (eq value :null) (equal value "")) value)))
+
+(defun satan-patch-rpc-project (job &optional client)
   "JOB, a summary or `result' body, as snake_case for the model and the inbox.
 Only fields JOB carries appear.  Once the class is known, `:partial' says
 whether it is \"partial\" as t or `:false' (never nil, which would cross
-the wire as {}).  `result' usage becomes `:model_requests'."
+the wire as {}).  `result' usage becomes `:model_requests'.  CLIENT
+non-nil adds the fields only Emacs reads (`satan-patch-rpc--client-fields')."
   (append
-   (cl-loop for (wire . name) in satan-patch-rpc--job-fields
+   (cl-loop for (wire . name) in (append satan-patch-rpc--job-fields
+                                         (when client satan-patch-rpc--client-fields))
             when (plist-member job wire)
             append (list name (plist-get job wire)))
    (when-let* ((class (plist-get job :class)))

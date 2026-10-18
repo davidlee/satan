@@ -1,109 +1,208 @@
-;;; satan-patch-inbox-test.el --- ert for inbox handoff -*- lexical-binding: t; -*-
+;;; satan-patch-inbox-test.el --- the patch runner's watch, into the inbox -*- lexical-binding: t; -*-
+
+;; VT-2 (SL-023 PHASE-13): the inbox follows the runner's `watch'.
+;; Against the fake runner in satan-patch-fixture.el and a temp inbox
+;; file; never the live socket or the real inbox.
 
 (require 'ert)
 (require 'cl-lib)
 (require 'satan-patch-inbox)
+(require 'satan-patch-fixture)
 (require 'satan-tools-inbox)
 
-(defmacro satan-patch-inbox-test--with-tmp-inbox (var &rest body)
-  "Bind VAR to a fresh empty inbox file path; clean up after BODY."
+(defun satan-patch-inbox-test--job (id state &rest fields)
+  "A wire job summary for ID in STATE, with extra FIELDS."
+  (append (list :jobId id :state state :submissionId (concat "sub-" id)
+                :mode "fix" :repo "goad-walk" :baseRef "main"
+                :createdAt "2026-10-19T00:00:00Z"
+                :updatedAt "2026-10-19T00:05:00Z")
+          fields))
+
+(defun satan-patch-inbox-test--frame (job)
+  "A watch frame carrying JOB."
+  (list :event "job_changed" :job job))
+
+(defconst satan-patch-inbox-test--review
+  (satan-patch-inbox-test--job
+   "pj-R" "needs_review" :endReason "completed" :class "partial"
+   :reviewedOid "669249f7c0ffee"))
+
+(defconst satan-patch-inbox-test--failed
+  (satan-patch-inbox-test--job
+   "pj-F" "failed" :endReason "collected" :class "violation"
+   :failure (list :reason "path_violation" :message "outside allowed paths"
+                  :offending '("secret.txt" "etc/passwd"))))
+
+(defun satan-patch-inbox-test--runner (watches &optional acks)
+  "A handler: the Nth watch is answered by the Nth of WATCHES, the Nth
+ack by the Nth of ACKS (nil: ok).  The last answer of each repeats."
+  (lambda (request)
+    (pcase (plist-get request :op)
+      ("watch" (if (cdr watches) (pop watches) (car watches)))
+      ("ack" (if (cdr acks) (pop acks) (car acks)))
+      (op (satan-patch-fixture-refusal "invalid_request" op)))))
+
+(defun satan-patch-inbox-test--text ()
+  "The temp inbox's contents."
+  (if (file-exists-p satan-inbox-file)
+      (with-temp-buffer
+        (insert-file-contents satan-inbox-file)
+        (buffer-string))
+    ""))
+
+(defun satan-patch-inbox-test--entries (id)
+  "How many inbox entries name job ID."
+  (let ((text (satan-patch-inbox-test--text))
+        (key (format ":SATAN_PATCH_JOB: %s\n" id))
+        (count 0) (start 0))
+    (while (setq start (string-search key text start))
+      (setq count (1+ count) start (1+ start)))
+    count))
+
+(defmacro satan-patch-inbox-test--watching (handler &rest body)
+  "Run BODY with the inbox watching a fake runner serving HANDLER."
   (declare (indent 1))
-  `(let* ((,var (make-temp-file "satan-patch-inbox-" nil ".org"))
-          (satan-inbox-file ,var))
-     (unwind-protect (progn ,@body)
-       (when (file-exists-p ,var) (delete-file ,var)))))
+  `(let* ((dir (make-temp-file "satan-patch-inbox-" t))
+          (satan-inbox-file (expand-file-name "inbox.org" dir))
+          (satan-patch-inbox-enabled t)
+          (satan-patch-inbox-backoff-initial 0.05))
+     (unwind-protect
+         (satan-patch-fixture-with-runner ,handler
+           (unwind-protect
+               (progn (satan-patch-inbox-start) ,@body)
+             (satan-patch-inbox-stop)))
+       (delete-directory dir t))))
 
-(defun satan-patch-inbox-test--read (path)
-  (with-temp-buffer
-    (insert-file-contents path)
-    (buffer-string)))
+(ert-deftest satan-patch-inbox/needs_review-replayed-on-reconnect-lands-once ()
+  "The runner replays every needs_review job on each watch; the inbox
+reconnects after a drop and keeps one entry per job id."
+  (let ((review (satan-patch-inbox-test--frame satan-patch-inbox-test--review))
+        (marker (satan-patch-inbox-test--frame
+                 (satan-patch-inbox-test--job "pj-Z" "needs_review"))))
+    (satan-patch-inbox-test--watching
+        (satan-patch-inbox-test--runner
+         (list (list :frames (list review) :close t)
+               (list :frames (list review marker))))
+      ;; pj-Z follows pj-R's replay on the second connection.
+      (should (satan-patch-fixture-wait-until
+               (lambda () (= 1 (satan-patch-inbox-test--entries "pj-Z")))))
+      (should (= 2 (length (satan-patch-fixture-requests-for "watch"))))
+      (should (= 1 (satan-patch-inbox-test--entries "pj-R")))
+      (should-not (satan-patch-fixture-requests-for "ack")))))
 
-(defun satan-patch-inbox-test--row (overrides)
-  "Build a plausible terminal job ROW plist with OVERRIDES."
-  (let ((base (list :id "patch_test_001"
-                    :state "needs_review"
-                    :mode "self-edit-mech"
-                    :repo "/tmp/repo"
-                    :branch "satan/self-edit-mech/20260520T000000-x"
-                    :base_ref "main"
-                    :result_json
-                    (list :summary "rewrote the bit"
-                          :commits (list (list :sha "abc1234"
-                                               :subject "msg"))
-                          :diffstat (list :files_changed 1
-                                          :insertions 5
-                                          :deletions 2)
-                          :checks (list (list :name "ert" :status "passed"))
-                          :warnings '()
-                          :review_commands
-                          '("git -C /tmp/repo diff main...satan/x"
-                            "git -C /tmp/repo cherry-pick abc1234"))
-                    :error_json nil)))
-    (cl-loop for (k v) on overrides by #'cddr
-             do (setq base (plist-put base k v)))
-    base))
+(ert-deftest satan-patch-inbox/failed-notice-then-ack ()
+  "An unannounced failure becomes an urgent notice, then one ack."
+  (satan-patch-inbox-test--watching
+      (satan-patch-inbox-test--runner
+       (list (list :frames (list (satan-patch-inbox-test--frame
+                                  satan-patch-inbox-test--failed)))))
+    (should (satan-patch-fixture-wait-until
+             (lambda () (satan-patch-fixture-requests-for "ack"))))
+    (should (equal (plist-get (car (satan-patch-fixture-requests-for "ack"))
+                              :jobIds)
+                   '("pj-F")))
+    (should (= 1 (satan-patch-inbox-test--entries "pj-F")))
+    (let ((text (satan-patch-inbox-test--text)))
+      (should (string-match-p "Patch failed: fix goad-walk pj-F" text))
+      (should (string-match-p ":urgent:" text)))))
 
-;; ---------------------------------------------------------------------
-;; happy path: needs_review -> inbox item with review commands
-;; ---------------------------------------------------------------------
+(ert-deftest satan-patch-inbox/ack-refused-notice-not-duplicated-on-resend ()
+  "The runner resends an unacked failure; the notice stays single and
+the ack is tried again."
+  (let ((failed (satan-patch-inbox-test--frame satan-patch-inbox-test--failed)))
+    (satan-patch-inbox-test--watching
+        (satan-patch-inbox-test--runner
+         (list (list :frames (list failed) :close t)
+               (list :frames (list failed)))
+         (list (satan-patch-fixture-refusal "invalid_transition" "no")
+               nil))
+      (should (satan-patch-fixture-wait-until
+               (lambda () (= 2 (length (satan-patch-fixture-requests-for "ack"))))))
+      (should (= 1 (satan-patch-inbox-test--entries "pj-F"))))))
 
-(ert-deftest satan-patch-inbox/success-handoff ()
-  (satan-patch-inbox-test--with-tmp-inbox path
-    (let ((row (satan-patch-inbox-test--row nil)))
-      (satan-patch-inbox-handoff row)
-      (let ((text (satan-patch-inbox-test--read path)))
-        (should (string-match-p "Patch ready: self-edit-mech" text))
-        (should (string-match-p ":SATAN_PATCH_JOB: patch_test_001" text))
-        (should (string-match-p ":BRANCH: satan/self-edit-mech" text))
-        (should (string-match-p "cherry-pick abc1234" text))
-        (should (string-match-p "abc1234 msg" text))
-        ;; tags
-        (should (string-match-p ":unread:satan:" text))))))
+(ert-deftest satan-patch-inbox/ignores-announced-and-unsettled-jobs ()
+  "Only needs_review and unannounced failed/cancelled jobs reach the inbox."
+  (satan-patch-inbox-test--watching
+      (satan-patch-inbox-test--runner
+       (list (list :frames
+                   (mapcar #'satan-patch-inbox-test--frame
+                           (list (satan-patch-inbox-test--job "pj-Q" "running")
+                                 (satan-patch-inbox-test--job
+                                  "pj-A" "failed"
+                                  :announcedAt "2026-10-19T00:06:00Z")
+                                 (satan-patch-inbox-test--job "pj-P" "promoted")
+                                 satan-patch-inbox-test--review)))))
+    (should (satan-patch-fixture-wait-until
+             (lambda () (= 1 (satan-patch-inbox-test--entries "pj-R")))))
+    (dolist (id '("pj-Q" "pj-A" "pj-P"))
+      (should (= 0 (satan-patch-inbox-test--entries id))))
+    (should-not (satan-patch-fixture-requests-for "ack"))))
 
-;; ---------------------------------------------------------------------
-;; failure path: state=failed -> urgent tag
-;; ---------------------------------------------------------------------
+(ert-deftest satan-patch-inbox/renders-review-and-failure ()
+  "A review entry shows the reviewed oid, class and partial flag; a
+notice shows its failure reason, message and offending paths."
+  (satan-patch-inbox-test--watching
+      (satan-patch-inbox-test--runner
+       (list (list :frames
+                   (mapcar #'satan-patch-inbox-test--frame
+                           (list satan-patch-inbox-test--review
+                                 satan-patch-inbox-test--failed
+                                 (satan-patch-inbox-test--job
+                                  "pj-C" "cancelled" :endReason "cancelled"))))))
+    (should (satan-patch-fixture-wait-until
+             (lambda () (= 1 (satan-patch-inbox-test--entries "pj-C")))))
+    (let ((text (satan-patch-inbox-test--text)))
+      (dolist (expected '("Patch ready: fix goad-walk pj-R"
+                          ":REVIEWED_OID: 669249f7c0ffee"
+                          ":STATE: needs_review"
+                          ":REPO: goad-walk"
+                          "Reviewed oid: 669249f7c0ffee"
+                          "Class: partial"
+                          "Partial: yes"
+                          "Base: main"
+                          "Failure: path_violation outside allowed paths"
+                          "- secret.txt"
+                          "- etc/passwd"
+                          "Patch cancelled: fix goad-walk pj-C"
+                          "End reason: cancelled"))
+        (should (string-search expected text))))))
 
-(ert-deftest satan-patch-inbox/failure-is-urgent ()
-  (satan-patch-inbox-test--with-tmp-inbox path
-    (let ((row (satan-patch-inbox-test--row
-                (list :state "failed"
-                      :result_json nil
-                      :error_json (list :reason "allowlist_violation"
-                                        :offending_paths '("core/x.el"))))))
-      (satan-patch-inbox-handoff row)
-      (let ((text (satan-patch-inbox-test--read path)))
-        (should (string-match-p "Patch failed: self-edit-mech" text))
-        (should (string-match-p ":urgent:" text))
-        (should (string-match-p "Error: allowlist_violation" text))))))
+(ert-deftest satan-patch-inbox/unreachable-runner-is-retried ()
+  "A watch that cannot connect keeps retrying until the runner answers."
+  (satan-patch-inbox-test--watching
+      (satan-patch-inbox-test--runner
+       (list (list :frames (list (satan-patch-inbox-test--frame
+                                  satan-patch-inbox-test--review)))))
+    (should (satan-patch-fixture-wait-until
+             (lambda () (= 1 (satan-patch-inbox-test--entries "pj-R")))))
+    (satan-patch-inbox-stop)
+    (delete-file satan-inbox-file)
+    (let ((satan-patch-rpc-socket (expand-file-name "absent.sock" dir)))
+      (satan-patch-inbox-start))
+    (should (satan-patch-inbox-running-p))
+    (should (satan-patch-fixture-wait-until
+             (lambda () (= 1 (satan-patch-inbox-test--entries "pj-R")))))))
 
-;; ---------------------------------------------------------------------
-;; non-terminal states: do nothing
-;; ---------------------------------------------------------------------
+(ert-deftest satan-patch-inbox/stop-ends-the-watch-for-good ()
+  "After stop, a dropped connection is not reopened."
+  (satan-patch-inbox-test--watching
+      (satan-patch-inbox-test--runner (list (list :frames nil)))
+    (should (satan-patch-fixture-wait-until
+             (lambda () (satan-patch-fixture-requests-for "watch"))))
+    (satan-patch-inbox-stop)
+    (should-not (satan-patch-inbox-running-p))
+    (satan-patch-fixture-wait-until #'ignore 0.3)
+    (should (= 1 (length (satan-patch-fixture-requests-for "watch"))))))
 
-(ert-deftest satan-patch-inbox/queued-is-noop ()
-  (satan-patch-inbox-test--with-tmp-inbox path
-    (let ((row (satan-patch-inbox-test--row (list :state "queued"))))
-      (satan-patch-inbox-handoff row)
-      (should (or (not (file-exists-p path))
-                  (zerop (file-attribute-size (file-attributes path))))))))
-
-;; ---------------------------------------------------------------------
-;; hook is auto-installed
-;; ---------------------------------------------------------------------
-
-(ert-deftest satan-patch-inbox/hook-is-registered ()
-  (should (memq #'satan-patch-inbox-handoff
-                satan-patch-runner-hook)))
-
-;; ---------------------------------------------------------------------
-;; smoke: inbox-write helper rejects non-strings cleanly
-;; ---------------------------------------------------------------------
-
-(ert-deftest satan-patch-inbox/write-rejects-non-strings ()
-  (pcase (satan-tools-inbox-write :title nil :body "body")
-    (`(error . ,_) t)
-    (other (ert-fail (format "expected error, got %S" other)))))
+(ert-deftest satan-patch-inbox/start-is-a-no-op-when-disabled ()
+  (satan-patch-inbox-test--watching
+      (satan-patch-inbox-test--runner (list (list :frames nil)))
+    (should (satan-patch-fixture-wait-until
+             (lambda () (satan-patch-fixture-requests-for "watch"))))
+    (satan-patch-inbox-stop)
+    (let ((satan-patch-inbox-enabled nil))
+      (should-not (satan-patch-inbox-start)))
+    (should-not (satan-patch-inbox-running-p))))
 
 (provide 'satan-patch-inbox-test)
 ;;; satan-patch-inbox-test.el ends here

@@ -47,7 +47,11 @@
   (let ((satan-patch-rpc-socket
          (expand-file-name "absent.sock" (make-temp-file "satan-rpc-" t))))
     (pcase (satan-patch-rpc-call "status" (list :jobId "pj-1"))
-      (`(error . ,msg) (should (string-prefix-p "patch runner unreachable" msg)))
+      (`(error . ,msg)
+       (should (string-prefix-p "patch runner unreachable" msg))
+       ;; Names the socket, not the connection's arguments.
+       (should (string-search satan-patch-rpc-socket msg))
+       (should-not (string-search ":filter" msg)))
       (other (ert-fail (format "expected error, got %S" other))))))
 
 (ert-deftest satan-patch-rpc/silent-runner-times-out ()

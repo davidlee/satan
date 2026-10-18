@@ -1,0 +1,248 @@
+;;; satan-patch-promote-test.el --- promote/reject a reviewed patch job -*- lexical-binding: t; -*-
+
+;; VT-3 (SL-023 PHASE-13, DEC-061): promotion fetches the quarantine ref
+;; into refs/satan/incoming/<id>, requires it to equal the job's
+;; reviewed_oid, creates refs/heads/satan/patch/<id> only if absent,
+;; and reports the disposition.  Real git against temp repos (never the
+;; user's config) and the fake runner from satan-patch-fixture.el.
+
+(require 'ert)
+(require 'cl-lib)
+(require 'org)
+(require 'satan-patch-promote)
+(require 'satan-patch-fixture)
+
+(defconst satan-patch-promote-test--id "pj-T1")
+
+(defconst satan-patch-promote-test--quarantine-ref
+  (concat "refs/capsule/r/heads/job/" satan-patch-promote-test--id))
+
+(defconst satan-patch-promote-test--branch
+  (concat "refs/heads/satan/patch/" satan-patch-promote-test--id))
+
+(defconst satan-patch-promote-test--incoming
+  (concat "refs/satan/incoming/" satan-patch-promote-test--id))
+
+(defun satan-patch-promote-test--git (dir &rest args)
+  "Run git ARGS in DIR; its trimmed stdout.  Signals on a non-zero exit."
+  (with-temp-buffer
+    (let ((exit (apply #'call-process "git" nil (list t nil) nil "-C" dir args)))
+      (unless (eql exit 0)
+        (error "git %s in %s: exit %s" (string-join args " ") dir exit))
+      (string-trim (buffer-string)))))
+
+(defun satan-patch-promote-test--ref (dir ref)
+  "REF's oid in DIR, or nil when it does not exist."
+  (with-temp-buffer
+    (when (eql 0 (call-process "git" nil (list t nil) nil "-C" dir
+                               "rev-parse" "--verify" "--quiet" ref))
+      (string-trim (buffer-string)))))
+
+(defun satan-patch-promote-test--commit (dir message)
+  "Commit an edit in DIR with MESSAGE; the new oid."
+  (with-temp-file (expand-file-name "file.txt" dir) (insert message "\n"))
+  (satan-patch-promote-test--git dir "add" "file.txt")
+  (satan-patch-promote-test--git dir "commit" "--quiet" "-m" message)
+  (satan-patch-promote-test--git dir "rev-parse" "HEAD"))
+
+(defmacro satan-patch-promote-test--with-repos (spec &rest body)
+  "Run BODY with temp git repos, isolated from the user's git config.
+SPEC is (REPO QUARANTINE BASE JOB): the real repo at commit BASE, and a
+bare quarantine holding commit JOB at the job's quarantine ref."
+  (declare (indent 1))
+  (pcase-let ((`(,repo ,quarantine ,base ,job) spec))
+    `(let* ((root (make-temp-file "satan-promote-" t))
+            (process-environment
+             (append (list "GIT_CONFIG_GLOBAL=/dev/null" "GIT_CONFIG_NOSYSTEM=1"
+                           "GIT_AUTHOR_NAME=satan-test" "GIT_AUTHOR_EMAIL=t@example.invalid"
+                           "GIT_COMMITTER_NAME=satan-test"
+                           "GIT_COMMITTER_EMAIL=t@example.invalid")
+                     process-environment))
+            (,repo (expand-file-name "repo" root))
+            (,quarantine (expand-file-name "quarantine.git" root))
+            (worker (expand-file-name "worker" root)))
+       (unwind-protect
+           (progn
+             (make-directory ,repo)
+             (satan-patch-promote-test--git ,repo "init" "--quiet" "-b" "main")
+             (let* ((,base (satan-patch-promote-test--commit ,repo "base"))
+                    (,job (progn
+                            (satan-patch-promote-test--git
+                             root "init" "--quiet" "--bare" ,quarantine)
+                            (satan-patch-promote-test--git
+                             root "clone" "--quiet" ,repo worker)
+                            (prog1 (satan-patch-promote-test--commit worker "job")
+                              (satan-patch-promote-test--git
+                               worker "push" "--quiet" ,quarantine
+                               (concat "HEAD:" satan-patch-promote-test--quarantine-ref))))))
+               ,@body))
+         (delete-directory root t)))))
+
+(cl-defun satan-patch-promote-test--runner
+    (repo quarantine reviewed &key (state "needs_review") (repo-path repo) disposition)
+  "A fake runner whose job, in STATE, was reviewed at REVIEWED.
+Its result names QUARANTINE and REPO-PATH (default REPO; :absent omits
+it).  DISPOSITION answers report-disposition (default ok)."
+  (satan-patch-fixture-answering
+   `(("result" . (:jobId ,satan-patch-promote-test--id :state ,state
+                         :reviewedOid ,reviewed :quarantine ,quarantine
+                         :quarantineRef ,satan-patch-promote-test--quarantine-ref
+                         ,@(unless (eq repo-path :absent) (list :repoPath repo-path))))
+     ("report-disposition" . ,(or disposition '(:state "promoted"))))))
+
+(defun satan-patch-promote-test--promote ()
+  "Promote the test job; wait for and return the callback's result."
+  (let (result)
+    (satan-patch-promote-job satan-patch-promote-test--id
+                             (lambda (outcome) (setq result outcome)))
+    (satan-patch-fixture-wait-until (lambda () result) 10)))
+
+(defun satan-patch-promote-test--dispositions ()
+  "The report-disposition requests the fake runner received."
+  (satan-patch-fixture-requests-for "report-disposition"))
+
+(ert-deftest satan-patch-promote/creates-satan/patch/-branch-at-reviewed_oid ()
+  "Happy path, real git: the branch lands at reviewed_oid, the incoming
+ref is gone, and the disposition names the branch."
+  (satan-patch-promote-test--with-repos (repo quarantine _base job)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner repo quarantine job)
+      (should (equal (satan-patch-promote-test--promote) '(ok . "promoted")))
+      (should (equal (satan-patch-promote-test--ref
+                      repo satan-patch-promote-test--branch)
+                     job))
+      (should-not (satan-patch-promote-test--ref
+                   repo satan-patch-promote-test--incoming))
+      (let ((request (car (satan-patch-promote-test--dispositions))))
+        (should (equal (plist-get request :jobId) satan-patch-promote-test--id))
+        (should (equal (plist-get request :disposition) "promoted"))
+        (should (equal (plist-get request :branch)
+                       (concat "satan/patch/" satan-patch-promote-test--id)))))))
+
+(ert-deftest satan-patch-promote/quarantine-moved-from-reviewed_oid-is-refused ()
+  "The quarantine ref no longer holds reviewed_oid: nothing is created
+and nothing is reported."
+  (satan-patch-promote-test--with-repos (repo quarantine base _job)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner repo quarantine base)
+      (pcase (satan-patch-promote-test--promote)
+        (`(error . ,msg) (should (string-match-p "moved" msg)))
+        (other (ert-fail (format "expected refusal, got %S" other))))
+      (should-not (satan-patch-promote-test--ref
+                   repo satan-patch-promote-test--branch))
+      (should-not (satan-patch-promote-test--ref
+                   repo satan-patch-promote-test--incoming))
+      (should-not (satan-patch-promote-test--dispositions)))))
+
+(ert-deftest satan-patch-promote/existing-satan/patch/-branch-is-left-alone ()
+  "The branch exists already: it keeps its oid, the incoming ref is
+gone, nothing is reported."
+  (satan-patch-promote-test--with-repos (repo quarantine base job)
+    (satan-patch-promote-test--git
+     repo "update-ref" satan-patch-promote-test--branch base)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner repo quarantine job)
+      (pcase (satan-patch-promote-test--promote)
+        (`(error . ,msg) (should (string-match-p "exists" msg)))
+        (other (ert-fail (format "expected refusal, got %S" other))))
+      (should (equal (satan-patch-promote-test--ref
+                      repo satan-patch-promote-test--branch)
+                     base))
+      (should-not (satan-patch-promote-test--ref
+                   repo satan-patch-promote-test--incoming))
+      (should-not (satan-patch-promote-test--dispositions)))))
+
+(ert-deftest satan-patch-promote/failed-fetch-leaves-no-incoming-ref ()
+  "The quarantine ref is missing: the fetch fails and is reported."
+  (satan-patch-promote-test--with-repos (repo quarantine _base job)
+    (satan-patch-promote-test--git
+     quarantine "update-ref" "-d" satan-patch-promote-test--quarantine-ref)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner repo quarantine job)
+      (pcase (satan-patch-promote-test--promote)
+        (`(error . ,msg) (should (string-match-p "fetch" msg)))
+        (other (ert-fail (format "expected refusal, got %S" other))))
+      (should-not (satan-patch-promote-test--ref
+                   repo satan-patch-promote-test--incoming))
+      (should-not (satan-patch-promote-test--dispositions)))))
+
+(ert-deftest satan-patch-promote/receipt-mismatch-keeps-the-branch ()
+  "The runner refuses the receipt: the error reaches the user and the
+branch stays for them to inspect."
+  (satan-patch-promote-test--with-repos (repo quarantine _base job)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner
+         repo quarantine job
+         :disposition (satan-patch-fixture-refusal "receipt_mismatch" "no"))
+      (pcase (satan-patch-promote-test--promote)
+        (`(error . ,msg) (should (string-match-p "receipt_mismatch" msg)))
+        (other (ert-fail (format "expected refusal, got %S" other))))
+      (should (equal (satan-patch-promote-test--ref
+                      repo satan-patch-promote-test--branch)
+                     job)))))
+
+(ert-deftest satan-patch-promote/refuses-before-git-unless-reviewable ()
+  "A job not in needs_review, or a result without the real repo path,
+is refused before any git runs."
+  (satan-patch-promote-test--with-repos (repo quarantine _base job)
+    (dolist (case (list (list :state "rejected") (list :repo-path :absent)
+                        (list :repo-path :null)))
+      (satan-patch-fixture-with-runner
+          (apply #'satan-patch-promote-test--runner repo quarantine job case)
+        (should (eq 'error (car (satan-patch-promote-test--promote))))
+        (should-not (satan-patch-promote-test--ref
+                     repo satan-patch-promote-test--incoming))
+        (should (equal (mapcar (lambda (r) (plist-get r :op))
+                               (satan-patch-fixture-requests))
+                       '("result")))))))
+
+(ert-deftest satan-patch-promote/reject-reports-rejected-and-touches-no-refs ()
+  (satan-patch-promote-test--with-repos (repo quarantine _base job)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner
+         repo quarantine job :disposition '(:state "rejected"))
+      (should (equal (satan-patch-reject-job satan-patch-promote-test--id)
+                     '(ok . "rejected")))
+      (let ((request (car (satan-patch-promote-test--dispositions))))
+        (should (equal (plist-get request :disposition) "rejected"))
+        (should-not (plist-member request :branch)))
+      (should (equal (satan-patch-promote-test--git
+                      repo "for-each-ref" "refs/satan" "refs/heads/satan")
+                     "")))))
+
+(defmacro satan-patch-promote-test--in-entry (&rest body)
+  "Run BODY at an inbox entry for the test job, confirmations answered yes."
+  `(with-temp-buffer
+     (org-mode)
+     (insert "* Patch ready: fix goad-walk " satan-patch-promote-test--id "\n"
+             ":PROPERTIES:\n:SATAN_PATCH_JOB: " satan-patch-promote-test--id
+             "\n:STATE: needs_review\n:END:\nState: needs_review\n")
+     (goto-char (point-max))
+     (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) t)))
+       ,@body)))
+
+(ert-deftest satan-patch-promote/commands-record-the-outcome-on-the-entry ()
+  "The commands read the job at point and set the entry's STATE."
+  (satan-patch-promote-test--with-repos (repo quarantine _base job)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner repo quarantine job)
+      (satan-patch-promote-test--in-entry
+       (call-interactively #'satan-patch-promote)
+       (should (satan-patch-fixture-wait-until
+                (lambda () (equal (org-entry-get (point-min) "STATE") "promoted"))
+                10))))
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner
+         repo quarantine job :disposition '(:state "rejected"))
+      (satan-patch-promote-test--in-entry
+       (call-interactively #'satan-patch-reject)
+       (should (equal (org-entry-get (point-min) "STATE") "rejected"))))))
+
+(ert-deftest satan-patch-promote/commands-need-a-job-at-point ()
+  (with-temp-buffer
+    (org-mode)
+    (insert "* not a patch entry\n")
+    (should-error (call-interactively #'satan-patch-reject) :type 'user-error)))
+
+(provide 'satan-patch-promote-test)
+;;; satan-patch-promote-test.el ends here

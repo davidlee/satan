@@ -10,15 +10,24 @@
 ;;   PLIST           answer {requestId, ok:true, ...PLIST}; a PLIST that
 ;;                   sets :ok or :requestId overrides the default
 ;;                   (`satan-patch-fixture-refusal' builds an ok:false)
-;;   (:frames F ...) answer ok, then send each frame F (a watch)
+;;   (:frames FS)    answer ok, then send each frame in FS (a watch);
+;;                   with :close t, then drop the connection
 ;;   :hang           read the request, never answer
 ;;   :close          close the connection without a line
 ;;
 ;; Every request is recorded, in arrival order, for assertions.
+;;
+;; Hazard: the server shares the test's Emacs.  A client that closes
+;; before its request is answered makes the server write to a dead
+;; peer, which has killed the whole batch (rc 141, SIGPIPE; no ert
+;; summary).  An external peer closing early only signals an error.
+;; Wait for the request to be recorded (it is answered in the same
+;; turn) before closing the client.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'seq)
 (require 'satan-jsonl)
 (require 'satan-patch-rpc)
 
@@ -47,7 +56,9 @@
                          (list :requestId (plist-get request :requestId)))
                        (unless (plist-member body :ok) (list :ok t))))
        (dolist (frame frames)
-         (satan-jsonl-send client frame))))))
+         (satan-jsonl-send client frame))
+       (when (plist-get answer :close)
+         (delete-process client))))))
 
 (defun satan-patch-fixture--accept (handler clients)
   "A server `:log' function: serve each accepted client with HANDLER.
@@ -83,6 +94,21 @@ CLIENTS is a cons whose car collects the accepted connections."
   "Run BODY against a fake runner answering requests with HANDLER."
   (declare (indent 1))
   `(satan-patch-fixture-call-with-runner ,handler (lambda () ,@body)))
+
+(defun satan-patch-fixture-wait-until (predicate &optional seconds)
+  "Serve processes and timers until PREDICATE returns non-nil.
+Gives up after SECONDS (default 2); returns PREDICATE's last value."
+  (let ((deadline (+ (float-time) (or seconds 2)))
+        value)
+    (while (and (not (setq value (funcall predicate)))
+                (< (float-time) deadline))
+      (accept-process-output nil 0.02))
+    value))
+
+(defun satan-patch-fixture-requests-for (op)
+  "The recorded requests for OP, in arrival order."
+  (seq-filter (lambda (request) (equal (plist-get request :op) op))
+              (satan-patch-fixture-requests)))
 
 (defun satan-patch-fixture-answering (answers)
   "A handler answering each op by ANSWERS, an alist (OP . ANSWER).
