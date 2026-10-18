@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14ef5-c0ab-7a11-968e-a35ebfb011fc"
+recorded_at = "2026-10-18T12:21:30.923270751Z"
+kind = "friction"
+summary = "Runner tests: agent bash inherits user git config"
+detail = "SL-023 PHASE-07 B2: commits inside a faux run need GIT_CONFIG_GLOBAL=/dev/null and explicit identity; immediate-resolving injected sleep spins a scheduler drain forever on a never-leaving pending_collection job."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

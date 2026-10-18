@@ -349,3 +349,36 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - The door is now required at start even with `enabled = false` (I13 read strictly).
 - **PHASE-09 forward:** `settle` waits on the *initial* submission. A pause settles it `unanswered: aborted` and the resume is a new submission, so PHASE-09 must re-target the wait (and not read that `aborted` as a cancel — `RunControl` decides cancel, `endReasonOf` would say `error`).
 - **PHASE-15 forward:** `runJob` closes the job's connection in its `finally`, *before* `collectJob`. The post-collect clean needs a room shell after collection: extend the connection's life past `collectJob` (or open a second one); the seam is `runJob`'s `finally`.
+
+## PHASE-08 batch A (worker, opus)
+
+### Produced
+- malebolge (uncommitted on 281ee3f):
+  - `src/runner/model-gate.ts`: `REFUSALS` (fixed text, each ends "(out of budget)" so pi-ai's non-retryable pattern matches first) and `GateRefused { reason }`; `gatedModels(real, gate)` — an explicit object literal typed `Models` (no Proxy). Nine request members each admit then call the *same-named* real method: `stream`/`streamSimple`/`streamDeferred` via `lazyStream` (refusal = error event); `complete`/`completeSimple`/`fetchDeferred` resolve pi-ai's own setup-error message (`lazyStream(...).result()` of the rejection); `cancelDeferred` rejects `GateRefused`; `generateImages`/`classify` resolve pi-ai's `imageErrorResult`/`classifierErrorResult` (never reject). `maxTokens` = min(caller's, gate's) on the four chat entry points. `getProviders → []`, `getProvider → undefined` (OQ-B ruling). `createModelGate({ seated, jobs, now, usageOf })` with the sheet's binding order; `modelLimits` (AS-3; non-chat models get `maxOutputTokens 0`, see Learned); `spendOf` (Σ `models` + `tools` buckets, AS-2); `harnessUsage()` → `{ usageOf, bind }` (late-bound harness; unbound = unreadable, I10).
+  - `src/runner/store.ts`: `JobStore.admitModelRequest(id, now, judge)` + `RequestVerdict`: one transaction; admit → `model_requests + 1`, no event; refuse → one `ceiling` event per job (payload `{ reason, source: "gate", entryPoint }`), no count.
+  - `src/runner/ceiling-latch.ts`: first trip wins; `signal` + `reason()`.
+  - `src/runner/tenancy.ts`: `Tenant extends GuardedJob, GateJob` (`meter`); `seated()`.
+  - `src/runner/run.ts`: per-run `Stops { control, latch }`; tenant seated with `meter.refused = latch.trip`, `warnDue` no-op; `settleSubmission` waits on `AbortSignal.any([cancel, latch])`, then `conversation.abort` from the run loop; `toCollecting`: cancel wins, else the latch's reason is `end_reason` and `{ ceiling: reason }` joins the payload.
+  - `src/runner/start.ts`: gate built before `Harness.open`, catalog wrapped in `gatedModels`, `usage.bind(harness)` after open.
+  - Tests: `test/runner/model-gate.test.ts` rewritten (44: refusal text, 9-entry-point table over `test/runner/models-fixture.ts` — `createModels` + `createProvider` recording every provider method incl. images/classifiers — and the harness-level VT-1/VT-3 cases); `store.test.ts` (+3), `tenancy.test.ts` (+1), `ceiling-latch.test.ts` (2), `run.test.ts` (+2, EX-4 gate path; `runWorld` now wires the gate as start.ts does, `RunWorldOptions.ceilings` = submit ceilings, `usageOf` override), `runner-main.test.ts` (`result.usage.modelRequests = 1`). `test/runner/gate-fixture.ts` deleted.
+- `just check`: fmt clean, lint 0, tsc clean, 42 files / 910 tests, lines 98.22% (model-gate.ts 100% lines, run.ts 100%).
+
+### Learned
+- `capped(options)` cannot be typed against `ModelsApiStreamOptions<TApi>` for a free `TApi` without `as`; typing it at `StreamOptions` and calling `real.stream<Api>` / `real.complete<Api>` passes tsc. A non-generic member signature does not (the `Models` method type is not bivariant there).
+- The usage read `harness.snapshot(UsageDoc, conversationId, context)` from inside the generation task settles (no hang): `streamResponse` runs outside any `runtime.commit`.
+- A refused generation already ends the submission `unanswered: model_error`; the latch is what turns `end_reason` from `error` into `ceiling_exceeded`/`usage_unavailable`.
+- `NEW_JOB` carries submit ceilings (`model_requests: 5`), which override config layers; tests lower a ceiling through the submission, not `[defaults]`.
+- Non-chat models have no output limit: `maxOutputTokens = 0` keeps `shouldWarn`'s "under one request's allowance" from firing on every classify/image call (with ∞ it always would). AS-4 (cap < 1 refuses) applies only to the four capped entry points; deferred/images/classify are count-only.
+- `prefer-const` flags a `let` assigned once later; the late-bound harness is a `{ usageOf, bind }` object instead.
+
+### Deviations from the sheet
+- A store failure inside `admitModelRequest` is not caught: it surfaces as a request error (no provider call, no latch trip), so the run ends `end_reason = error`, not `usage_unavailable`. Judged more honest than relabelling a bug; flag if the orchestrator wants fail-closed relabelling.
+- `harnessUsage()` returns `{ usageOf, bind }` rather than closing over a `let harness` in start.ts (lint).
+- `RunWorldOptions.ceilings` sets submit ceilings (see Learned), not a policy override.
+- TDD order: for A1/A2 and the latch the implementation preceded the first test run; the tests were then mutation-checked (dropping AS-4; bypassing the gate on `cancelDeferred`) and each mutation failed them.
+
+### Open
+- **OQ-A consequence (escalated to the human):** per DEC-057 `cancelDeferred` is refused when the budget is exhausted — exactly when a ceiling abort runs. An already-admitted deferred request is then left running at the provider, possibly still billing. Latent: the runner never enables `settings.stream.deferred`.
+- The `cancelDeferred` harness test waits 200 ms after the first provider call for the poll checkpoint to commit before aborting (no public read of `LiveDoc`); stable over 5 runs, but timing-based.
+- `warnDue` is wired as a no-op; batch B consumes it (and must schedule the steer outside the gate's task).
+- No seated job → refusal `no_job` with no count, no event, no signal (AS-1); nothing ends the generation's run except the error result.

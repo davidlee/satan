@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14ef5-c0a8-70e0-874b-85fe2524dcdc"
+recorded_at = "2026-10-18T12:21:30.920892176Z"
+kind = "friction"
+summary = "PHASE-07 sheet design line refs went stale after design rev 56"
+detail = "Phase sheets cite design.md by line number; the rev 56 amendment shifted lines so planner switched to citing headings. Sheets should cite by heading."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
