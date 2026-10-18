@@ -7,17 +7,19 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 
 ## Overview
 
-Fourteen phases in four groups:
+Fifteen phases in four groups. PHASE-15 was appended after the design's
+room-adapter amendment (rev 56, DEC-065); it runs between PHASE-10 and the
+cutover, so ids no longer follow execution order:
 
 ```
 prove ─────────▶ gate ──▶ build the runner (in ~/dev/malebolge) ─────────────▶ cut over
 PHASE-01 spike   PHASE-02  03 pure core → 04 store → 05 socket → 06 git channel   11 fence
                  lint      → 07 run path → 08 ceilings → 09 pause → 10 recovery  12 deploy
-                                                                                 13 Emacs client
+                           → 15 room adapter + door kind                         13 Emacs client
                                                                                  14 retire Go, closure
 ```
 
-Phases 01–10 change `~/dev/malebolge` only (plus doctrine records here).
+Phases 01–10 and 15 change `~/dev/malebolge` only (plus doctrine records here).
 Phases 11–14 are the DEC-063 cutover, one deployment step each, and touch this
 repo, `~/flakes`, `~/.config/emacs` and `~/satan-corpus`.
 
@@ -40,6 +42,16 @@ repo, `~/flakes`, `~/.config/emacs` and `~/satan-corpus`.
   run path, and the three behaviours that complicate a run — ceilings, pause,
   recovery — each on a working run path. Recovery is last because its table
   spans every state the earlier phases create.
+- **Room adapter after recovery (PHASE-15).** DEC-065 builds the room
+  `GitChannel` adapter and `[door] kind` against oubliette SL-006 sec-6
+  fixtures, provisional until SL-006 locks. It follows PHASE-10 because its
+  trust failure is judged against PHASE-09's pause and its `preparing` checks
+  and post-collect clean extend PHASE-10's recovery rows. It precedes the
+  fence (PHASE-11 EN-2) so the cutover outage starts with a feature-complete
+  runner. Door-agnostic parts of the amendment sit in their natural phases:
+  the scheduler seat (PHASE-07 EX-8), restart gating on `enabled`, `parked_at`
+  and the post-admission `preparing` row (PHASE-10 EX-6..EX-8), the slot's
+  configured alias and seeded `known_hosts` at deploy (PHASE-12 EX-4).
 - **Cutover in DEC-063's order (11–14).** Fence, deploy, client, retire. The
   one-consumer invariant (I1) holds at every step; each step is checked
   against deployed state, not only green checks. PHASE-12 smoke-tests the
@@ -59,6 +71,10 @@ repo, `~/flakes`, `~/.config/emacs` and `~/satan-corpus`.
   amendment (user ruling already given: amend to the weaker guarantee).
   PHASE-01 EX-3 failing stops it for a DEC-055 rethink. PHASE-12 EN-2 (gateway
   credential) may block on `~/flakes` SL-011.
+- **Live room rung (CHR-016).** One job against a real room, reconnect after
+  a room stop, a changed host key refusing, non-interactive verbs as the
+  runner user. Waits on oubliette SL-006 shipping; backlog, not a phase and not
+  closure evidence (design §9). The slot stays the live rung for PHASE-12/14.
 - **Out of the phases.** Ledger rows (DEC-062) land at audit; the runner tech
   spec (DEC-064) at reconcile; issue closures at close. PHASE-14 gathers their
   evidence.

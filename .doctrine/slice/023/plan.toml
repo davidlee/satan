@@ -167,10 +167,12 @@ exit_criteria = [
   { id = "EX-5", text = "A settled run moves to `collecting` with `end_reason` set; cancel while running aborts then collects and ends `cancelled`." },
   { id = "EX-6", text = "The env seam is held to pi-env's `registerEnvConformance` with a local env." },
   { id = "EX-7", text = "Supersedes the narrower wording of EX-3 under amended DEC-055 (PHASE-01 user ruling; EVD-009): `src/runner/env.ts` passes a per-job `Connection` subclass as `RemoteExecutionEnvOptions.connection` when building the remote `ExecutionEnv`, so PHASE-09 recognition sits at the connection seam." },
+  { id = "EX-8", text = "Supersedes the narrower wording of EX-1 under DEC-065 (design rev 56, §5.4 Scheduling): a job holds the scheduler's one seat in every non-terminal state from `preparing` on — `waiting_room`, `collecting` and `pending_collection` included — so no other job is live in a clone being collected or cleaned." },
 ]
 verification = [
   { id = "VT-1", expects = "harness run path with faux provider + memory storage + local env: submit → needs_review; write outside allowlist blocked early, same change via bash caught at collection", test_file = "/home/david/dev/malebolge/test/runner/run.test.ts", keywords = ["needs_review", "blocked_tool", "requestId", "room_unavailable"], waived = false },
   { id = "VT-2", expects = "env seam conformance", test_file = "/home/david/dev/malebolge/test/runner/env.test.ts", keywords = ["registerEnvConformance"], waived = false },
+  { id = "VT-3", expects = "with job A in `collecting` or `pending_collection`, queued job B is not scheduled until A is terminal (EX-8, under DEC-065)", test_file = "/home/david/dev/malebolge/test/runner/scheduler.test.ts", keywords = ["pending_collection", "collecting", "seat"], waived = false },
 ]
 specs        = []
 requirements = []
@@ -232,9 +234,15 @@ exit_criteria = [
   { id = "EX-3", text = "Disabled restart runs phase A only and makes no progress-asking call; a recorded pause stays recorded; status reads the job as it was." },
   { id = "EX-4", text = "Each recovery-table row has a fault-injection test at its write boundary; no task is scheduled before phase A completes; no resume message is sent twice." },
   { id = "EX-5", text = "Reconcile behaviour ported from the Go runner's crash-reconcile tests as acceptance fixtures." },
+  { id = "EX-6", text = "Supersedes the narrower wording of EX-1 and EX-3 under DEC-065 (design rev 56, §5.4 Restart recovery): phase A work that reaches the room — a channel verb (refresh/push, collect, the probe) or an env command (checks, branch create, clean) — runs only when `enabled` (I14). Disabled, every such row does nothing: the job stays in its state and no wait bound is applied, so nothing times out while parked. Rows: `preparing` (both), `waiting_room`, `collecting`, `pending_collection`." },
+  { id = "EX-7", text = "Under DEC-065 (design rev 56): `jobs` gains `parked_at` (store migration). A disabled startup sets `parked_at = now` on each non-terminal job whose `parked_at` is null, in one transaction with a `parked` event; a later disabled restart leaves it as is. The first enabled startup, in phase A before any bound is judged, shifts `state_entered_at` (and, for `running`, `running_since`) forward by `now − parked_at` and clears `parked_at`, in one transaction with an `unparked` event; a crash either side re-bases exactly once." },
+  { id = "EX-8", text = "Under DEC-065 (design rev 56): the `preparing`, `base_oid` set row splits on the initial submission record (read-only view). No record → (enabled) ensure `job/<id>` at `base_oid` as before, then submit with `requestId` = job id. Record exists → no checks and no branch judgement (the agent may already have worked in the clone); record `running`, then `resume()` continues it." },
 ]
 verification = [
   { id = "VT-1", expects = "restart in every recovery-table state reaches the expected next state; disabled restart never starts the conversation", test_file = "/home/david/dev/malebolge/test/runner/recovery.test.ts", keywords = ["phase A", "phase B", "conversation_id", "enabled", "resume-"], waived = false },
+  { id = "VT-2", expects = "with enabled = false, restart with jobs in preparing, waiting_room, collecting and pending_collection runs no channel verb or env command and times none out (stubbed channel and env record no call) (EX-6, under DEC-065)", test_file = "/home/david/dev/malebolge/test/runner/recovery.test.ts", keywords = ["enabled", "preparing", "waiting_room", "collecting", "pending_collection"], waived = false },
+  { id = "VT-3", expects = "a pending_collection job parked longer than max_pending_collection, then re-enabled, keeps only its pre-park elapsed wait and retries collect; a crash after the unparked transaction does not re-base twice; a running job parked while disabled is re-armed with only pre-park active time charged (running_since shifted) (EX-7, under DEC-065)", test_file = "/home/david/dev/malebolge/test/runner/recovery.test.ts", keywords = ["parked_at", "unparked", "running_since", "max_pending_collection"], waived = false },
+  { id = "VT-4", expects = "fault injection after initial-prompt admission, before running is recorded: restart records running without re-judging job/<id>; with no submission record the branch is ensured and the prompt submitted with requestId = job id (EX-8, under DEC-065)", test_file = "/home/david/dev/malebolge/test/runner/recovery.test.ts", keywords = ["preparing", "requestId", "running", "submission"], waived = false },
 ]
 specs        = []
 requirements = []
@@ -245,6 +253,7 @@ name      = "Cutover step 1: fence"
 objective = "Fence both old consumers and the producer (DEC-063 step 1) so the one-consumer invariant holds before the runner deploys."
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-10 complete (runner feature-complete against faux provider and local env)." },
+  { id = "EN-2", text = "Supersedes EN-1's \"feature-complete\" under DEC-065 (design rev 56): PHASE-15 complete (room adapter, door kind, shared daemon command and trust failure built), so the fence's outage window starts only once the runner is feature-complete." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "satan: `patch_job_create` refuses with \"patch runner migration in progress\" (fence commit); ert covers it." },
@@ -265,11 +274,13 @@ objective = "Deploy the runner from M as a user unit with its config, state and 
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-11 complete." },
   { id = "EN-2", text = "A gateway key for a new client can be issued and delivered to the runner unit (~/flakes SL-011; DEC-049). If not, /consult before deploying." },
+  { id = "EN-3", text = "PHASE-15 complete." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "`~/flakes`: runner unit with `enabled` switch, config file, state dir (`$XDG_STATE_HOME/satan/runner/`) and runtime dir (`$XDG_RUNTIME_DIR/satan-runner/`); runner keypair and gateway credential wired (SL-011); `SATAN.md` updated." },
   { id = "EX-2", text = "Jail-profile tests assert `$XDG_RUNTIME_DIR/satan-runner` is bound into no jail (I4, REQ-016)." },
   { id = "EX-3", text = "Live smoke (env-gated, not in `just check`): one job submitted over the socket runs against the slot via the gateway, lands in quarantine, reaches `needs_review`; enabled only while no producer submits." },
+  { id = "EX-4", text = "Under DEC-065 (design rev 56): the deployed config is `[door] kind = \"slot\"` with every slot key configured, `host_key_alias` included (never derived, I13); the runner's slot `known_hosts` is seeded once out of band (pi-env `scanHostKey` + `acceptHostKey`) and that operator step is in `~/flakes/SATAN.md` (unseeded, the first daemon start is a trust failure); the runner unit runs as the oubliette module owner (CON-003)." },
 ]
 verification = [
   { id = "VA-1", expects = "deployed unit state, socket permissions, jail-profile test output and live smoke transcript recorded in notes" },
@@ -314,10 +325,45 @@ exit_criteria = [
   { id = "EX-1", text = "`~/flakes`: satan-patcher module and flake input removed; `~/dev/satan-patcher` archived; `satan-patch-runner-enabled` removed from `dl-satan.el`." },
   { id = "EX-2", text = "Closure run: one job promoted and one rejected from Emacs, both from `patch_job_create` against the slot through the gateway; deployed state shows exactly one consumer (the runner)." },
   { id = "EX-3", text = "Notes record the evidence the audit needs for ledger rows (DEC-062), issue closures (ISS-030, ISS-038, ISS-039, ISS-041, CHR-003) and IDE-007." },
+  { id = "EX-4", text = "Under DEC-065 (design rev 56, §9 closure evidence): notes record that the room adapter's fixture tests (PHASE-15) are green; the live room rung (CHR-016) is deferred until oubliette SL-006 ships and is not closure evidence for this slice." },
 ]
 verification = [
   { id = "VH-1", expects = "user promotes one job and rejects another from the Emacs inbox" },
   { id = "VA-1", expects = "deployed state (units, Emacs vars), runner job_events for both jobs and the real-repo branch recorded in notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-15"
+name      = "Room adapter and door kind against SL-006 fixtures"
+objective = "Build DEC-065 behind the existing ports: `[door] kind` selecting a slot or a room adapter, the room `GitChannel` adapter against oubliette SL-006 design sec-6 fixtures (provisional until SL-006 locks), one runner-owned daemon command for both kinds with strict host keys and a per-job trust failure, and the room's clone hygiene (check in `preparing`, clean after collect). The slot stays the live rung; the live room rung is CHR-016, not a gate."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete." },
+  { id = "EN-2", text = "PHASE-10 complete: the trust failure is judged against PHASE-09's pause (a running job with a trust failure never enters `waiting_room`, a plain lost failure still pauses); the `preparing`-check skip and the clean redo extend PHASE-10's recovery rows (PHASE-10/EX-6, EX-8)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`src/runner/config.ts`: `[door] kind` = `\"slot\"` | `\"room\"`; keys closed per kind in `[door]` and `[repo.*]` alike — a key of the other kind (`[repo.*].quarantine` or `room` under slot; `host` or `[door] quarantine` under room) or a missing key the kind needs refuses start. Room: `room`, `user`, `ssh_config`, `identity`, `known_hosts`, `host_key_alias`, `session_path` (required; no built-in fallback), `probe_timeout_s`; per repo `quarantine`, `transfer_timeout_s`. Values are configured, never derived (I13): the slot's `pi-env-<slot>` alias moves into `host_key_alias`." },
+  { id = "EX-2", text = "`src/runner/room.ts` room adapter (argv builders and exit mapping pure): `refresh` checks `refs/heads/<base_ref>` then `capsule <room> push <repo> <base_ref>`, stdout oid = `base_oid`; `collect` runs `capsule <room> collect <repo> job/<id>` and requires the stdout ref to be exactly `refs/capsule/<room>/heads/job/<id>` in the repo's `quarantine`; `reachable` is `capsule <room> ssh <user> true` exit 0. Exit 75 → `ChannelUnavailable` (no probe); 1 → `ChannelFailed` (auth and host key included; never a pause); 2 → `ChannelFailed` marked a refusal, audited — except push exit 2 re-checks the branch and an absent one is `base_ref_invalid`." },
+  { id = "EX-3", text = "Channel verb timeouts: push/collect bounded by the repo's `transfer_timeout_s`, the probe by `probe_timeout_s`. `src/runner/exec.ts` spawns each verb as leader of its own process group; on timeout it signals the group (`kill(-pgid)`, TERM then KILL after a grace) and awaits the leader's exit before reporting `ChannelUnavailable`; `execFile`'s own timeout is not used. A timeout is audited `channel_timeout`, apart from exit 75, and retried within `max_room_wait` / `max_pending_collection`." },
+  { id = "EX-4", text = "`src/runner/env.ts`: one runner-owned daemon `command` function for both kinds — `detectPlatform` (first start) and `deployDaemon` with the strict default, then `[ssh, ...sshArguments(target, true), <launch>]`; slot launch = the daemon path, room launch = `<session_path> <repo> -- <daemon path>` with `session_path` verbatim, the job's repo name, and the configured room name as ssh host. `JobConnection` (DEC-055) layers over it; `run.ts` connects per job (`connect(repo)`). The runner never writes `known_hosts`." },
+  { id = "EX-5", text = "Trust failure: the command function catches pi-env's `HostKeyUnknownError` / `HostKeyChangedError` by type and records a per-job trust failure before rethrowing; `JobConnection` consults it before treating a lost failure as a pause. In `preparing` → `failed(error)`, reason `host_key`; in `running` → abort, `end_reason = error`, then `collecting` (I12), never `waiting_room`; the same on every reconnect, restart redo included." },
+  { id = "EX-6", text = "`src/runner/prepare.ts`, room kind, through the env before the switch: `test -d <guest_path>/.git` (else `failed(error)`, `guest_path_invalid`); `git status --porcelain` empty, untracked counted and ignored not (else `failed(error)`, `dirty_clone`, paths audited). `preparing` never cleans. The checks run only before the initial prompt is admitted; a restart redo with a submission record skips them (PHASE-10/EX-8)." },
+  { id = "EX-7", text = "`src/runner/collect.ts`, room kind: after a successful collect of `job/<id>`, through the env, `git reset --hard` and `git clean -ffd` in `guest_path` (ignored files kept; untracked nested repos removed) — the only automatic clean. A failed collect leaves the tree untouched; a failed clean is audited and does not change the job's outcome; the clean is idempotent and redone by a restart in `collecting` (enabled only)." },
+  { id = "EX-8", text = "Env uses outside `running` (the `preparing` checks and switch, the clean) go through a `JobConnection` with a counting observer: a lost failure makes that step `ChannelUnavailable` and writes no `pause_requested` and no pause event; only the running job's tools use the pausing observer." },
+  { id = "EX-9", text = "`result` reports the quarantine of the job's door kind: the slot's `[door] quarantine`, or the room repo's `[repo.*].quarantine` with ref `refs/capsule/<room>/heads/job/<id>`." },
+  { id = "EX-10", text = "Supersedes PHASE-06/EX-3's boundary under DEC-065 (design rev 56, §8): nothing outside `room.ts`, `config.ts` and `env.ts`'s connection factory knows the door, and nothing outside `room.ts` and `config.ts` knows which kind; the structural door-word test is updated to that boundary." },
+  { id = "EX-11", text = "The room fixtures follow oubliette SL-006 design sec-6 and pin argv and exit codes, so a sec-6 change shows as a red test; notes record the SL-006 revision they follow and that the room adapter is re-checked at SL-006's lock (CHR-016)." },
+]
+verification = [
+  { id = "VT-1", expects = "room adapter on a stubbed capsule (SlotCli seam): exit 75 from push or collect → ChannelUnavailable with no probe; 1 → ChannelFailed; 2 → refusal; push exit 2 with base_ref gone → base_ref_invalid, present → refusal; refresh returns push's stdout oid; collect refuses any ref but refs/capsule/<room>/heads/job/<id>", test_file = "/home/david/dev/malebolge/test/runner/room.test.ts", keywords = ["ChannelUnavailable", "ChannelFailed", "refusal", "base_ref_invalid", "refs/capsule/"], waived = false },
+  { id = "VT-2", expects = "push/collect past transfer_timeout_s and the probe past probe_timeout_s (stub that never exits) are killed and map to ChannelUnavailable, audited channel_timeout, not as exit 75; in preparing the timeout retries within max_room_wait", test_file = "/home/david/dev/malebolge/test/runner/room.test.ts", keywords = ["transfer_timeout_s", "probe_timeout_s", "channel_timeout", "max_room_wait"], waived = false },
+  { id = "VT-3", expects = "a timed-out verb whose stub spawns a grandchild that keeps running: the whole process group is dead before the retry starts", test_file = "/home/david/dev/malebolge/test/runner/exec.test.ts", keywords = ["process group", "grandchild", "kill", "timeout"], waived = false },
+  { id = "VT-4", expects = "config: a room key under kind = slot (or host / [door] quarantine under kind = room), [repo.*].quarantine under slot, or a missing host_key_alias, session_path, transfer_timeout_s or probe_timeout_s refuses start; no alias is derived", test_file = "/home/david/dev/malebolge/test/runner/config.test.ts", keywords = ["kind", "host_key_alias", "session_path", "transfer_timeout_s", "probe_timeout_s"], waived = false },
+  { id = "VT-5", expects = "room daemon command is ssh <sshArguments(target, true)> <session_path> <repo> -- <daemon> with the job's repo, session_path verbatim and the room name as ssh host; slot command keeps the daemon-path launch; a lost failure through either still pauses (JobConnection outer)", test_file = "/home/david/dev/malebolge/test/runner/env.test.ts", keywords = ["sshArguments", "session_path", "JobConnection", "deployDaemon"], waived = false },
+  { id = "VT-6", expects = "stubbed command function throwing HostKeyChangedError / HostKeyUnknownError records a trust failure: preparing fails host_key; a running job aborts to collecting and never enters waiting_room; a plain lost failure still pauses", test_file = "/home/david/dev/malebolge/test/runner/pause.test.ts", keywords = ["HostKeyChangedError", "HostKeyUnknownError", "host_key", "waiting_room"], waived = false },
+  { id = "VT-7", expects = "room preparing: missing <guest_path>/.git → guest_path_invalid; dirty tree → dirty_clone, left as found; clean fresh (unborn) clone takes git switch -c job/<id> <oid>; restart after admission with the agent's files in the clone → no dirty_clone, records running (fault injection)", test_file = "/home/david/dev/malebolge/test/runner/prepare.test.ts", keywords = ["guest_path_invalid", "dirty_clone", "git switch", "running"], waived = false },
+  { id = "VT-8", expects = "after a successful room collect the clone is reset and cleaned (untracked nested repo removed, ignored files kept); a failed collect leaves it untouched; a crash between collect and clean → restart redoes the clean; a room stop during the clean writes no pause_requested and no pause event", test_file = "/home/david/dev/malebolge/test/runner/collect.test.ts", keywords = ["reset --hard", "clean -ffd", "ignored", "pause_requested"], waived = false },
 ]
 specs        = []
 requirements = []
