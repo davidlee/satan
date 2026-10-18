@@ -913,3 +913,14 @@ PHASE-15 relay item S1. Source and fixture header comments now cite it.
 - Lint caught `expect.stringMatching` in a `toMatchObject` as unsafe `any`
   assignment, and a default destructured parameter tipping `complexity` past 8
   in the fake; both reshaped.
+
+## PHASE-12 batch B (EX-2)
+
+Model: sonnet. Argument: additive negative assertions in two files that already have the helper pattern, plus a read-only sweep; no design judgement.
+
+**T-B1** `~/flakes/agents/jailed-agents-test.nix`: the `/run/user/1000` refute now loops spec/research/offline (was spec only). New loop after the gateway launches refutes `satan-runner` in 10 launchers (spec, research, offline, op-run inner, gw outer+inner, research gw inner, claude-pi gw inner, eca outer+inner), `test -f` first so the refute is not vacuous.
+Red: temporary `try-ro-bind` in `hostDoctrineOptions` (all profiles). `try-readwrite "/run/user/1000/satan-runner"` failed on the (extended) `/run/user/1000` refute; `try-readwrite "/xdg/satan-runner"` failed on the new satan-runner refute (`grep -Fq -- satan-runner .../jailed-zsh`). First attempt in `postgresOptions` stayed green: that option set is not in any test profile (not a bug; wrong place for the red). Reverted; green: `nix build path:/home/david/flakes/agents#checks.x86_64-linux.jailed-agents --no-link --no-write-lock-file` rc=0.
+
+**T-B2** `~/dev/satan/flake.nix`: new sibling check `runner-socket-unjailed` (`runnerSocketUnjailed`), iterating `lib.attrValues jailPkgs`, every `bin/*` launcher plus the inner it execs (`exec /nix/store/...-jailed-*`), asserting absence of `satan-runner` and ` /run/user/1000 ` (whole runtime dir as a bind arg; written literally). Broader `XDG_RUNTIME_DIR` / `/run/user` probes rejected: jailed-claude legitimately has `--bind-try /run/user/1000/satan/mcp/...` and `--setenv XDG_RUNTIME_DIR`. `justfile` `check-jails` gains the second `nix build` line (needed to run it). Red (temp raw bind in `satanJailOptions`, reverted): `--bind-try /run/user/1000/satan-runner /x` and `--bind-try /run/user/1000 /run/user/1000 --x` each failed with `jailed-satan-fake-harness must not contain ...`. Green: `just check-jails` rc=0; `just check` rc=0 (55 tests OK).
+
+**T-B3 sweep** (read-only): `satan-runner` appears in none of ~/satan-corpus, ~/dev/satan-attrd, ~/dev/goad, ~/notes, ~/.config/emacs; in ~/flakes only in `agents/jailed-agents-test.nix` (the new assertion). No `/run/user/1000"`, `/run/user/1000 ` or `"$XDG_RUNTIME_DIR"` bind/jail lines in any of the five. satan-attrd and goad flakes define jails (flake.nix mentions jail) but have no profile tests; not added (open question 3). Note: `grep --dereference-recursive` over all of ~/flakes timed out; used plain `-r` there.

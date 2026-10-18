@@ -351,6 +351,35 @@
 
             touch $out
           '';
+
+        # I4 (SL-023 REQ-016): the satan-runner control socket is bound into
+        # no jail, nor is the runtime dir that holds it. Iterates `jailPkgs`,
+        # so a new jail is covered without edits; each launcher is checked
+        # with the inner launcher it execs. Strings are written literally.
+        runnerSocketUnjailed = let
+          # The whole runtime dir as a bind argument (a bare path between
+          # spaces); sub-paths such as /run/user/1000/satan/mcp are fine.
+          absent = ["satan-runner" " /run/user/1000 "];
+        in
+          pkgs.runCommand "runner-socket-unjailed" {} ''
+            fail() {
+              echo "runner-socket-unjailed: $*" >&2
+              exit 1
+            }
+            scanned=0
+            for pkg in ${lib.concatStringsSep " " (lib.attrValues jailPkgs)}; do
+              for outer in "$pkg"/bin/*; do
+                inner=$(sed -n 's|^exec \(/nix/store/[^ ]*/bin/jailed-[^ ]*\) .*|\1|p' "$outer")
+                for launcher in "$outer" $inner; do
+                  test -f "$launcher" || fail "no launcher at $launcher"
+                  scanned=$((scanned + 1))
+                  ${lib.concatMapStringsSep "\n" (s: "if grep -Fq -- ${lib.escapeShellArg s} \"$launcher\"; then fail \"$launcher must not contain '${s}'\"; fi") absent}
+                done
+              done
+            done
+            test "$scanned" -gt 0 || fail "scanned no launchers"
+            touch $out
+          '';
       in {
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
@@ -374,6 +403,7 @@
 
         checks = lib.optionalAttrs isLinux {
           harness-jail-profile = harnessJailProfile;
+          runner-socket-unjailed = runnerSocketUnjailed;
         };
 
         devshells.default = {

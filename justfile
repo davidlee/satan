@@ -20,6 +20,7 @@ gate: check
 # Separate from `check`, which stays Nix-free.
 check-jails:
     nix build --no-link -L .#checks.x86_64-linux.harness-jail-profile
+    nix build --no-link -L .#checks.x86_64-linux.runner-socket-unjailed
 
 lint:
     #!/usr/bin/env bash
