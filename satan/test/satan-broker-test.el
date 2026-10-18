@@ -2050,6 +2050,43 @@ signal itself propagates, as in the inner sentinel (ISS-020)."
       (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf))
       (delete-directory dir t))))
 
+(defun satan-broker-test--run-wrap-sentinel (run-ctx dir)
+  "Run `satan-broker--wrap-sentinel' over RUN-CTX for a child that exited 1
+with stderr \"refused\"; return the broker audit events it recorded."
+  (let ((stderr-buf (generate-new-buffer " *satan-stderr-wrap-test*"))
+        (events nil))
+    (with-current-buffer stderr-buf (insert "refused\n"))
+    (unwind-protect
+        (cl-letf (((symbol-function 'process-status) (lambda (_) 'exit))
+                  ((symbol-function 'process-exit-status) (lambda (_) 1))
+                  ((symbol-function 'satan-audit-record)
+                   (lambda (_audit _dir event _payload) (push event events))))
+          (funcall (satan-broker--wrap-sentinel #'ignore run-ctx stderr-buf dir)
+                   nil "exited abnormally with code 1\n")
+          events)
+      (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
+
+(ert-deftest satan-broker/refusal-recorded-when-stderr-log-write-fails ()
+  "I4 holds when `stderr.log' cannot be written (the run dir is gone,
+ISS-044): the flush fails soft, so the refusal is still typed."
+  (let ((run-ctx (make-satan-run :id "rid" :status 'running :audit '(:audit t))))
+    (should (equal '(spawn-failed)
+                   (satan-broker-test--run-wrap-sentinel
+                    run-ctx "/nonexistent/satan-run-dir")))
+    (should (equal "spawn_failed" (satan-run-failure-reason run-ctx)))))
+
+(ert-deftest satan-broker/final-without-ready-is-not-a-refusal ()
+  "A child that delivered `final' produced a result, so its exit is no
+refusal even without `ready': no `spawn-failed', no failure reason."
+  (let ((dir (make-temp-file "satan-wrap-sentinel-" t))
+        (run-ctx (make-satan-run :id "rid" :status 'running :audit '(:audit t)
+                                 :final '(:type "final"))))
+    (unwind-protect
+        (progn
+          (should-not (satan-broker-test--run-wrap-sentinel run-ctx dir))
+          (should-not (satan-run-failure-reason run-ctx)))
+      (delete-directory dir t))))
+
 ;; ---------------------------------------------------------------------
 ;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9.  Do not prune with the bough
 ;; integration: this asserts the *preserved* content-agnostic substrate.

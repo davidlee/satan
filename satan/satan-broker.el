@@ -139,16 +139,17 @@ The three probe commits (attribute enqueue + watermark) and the ingest
 cursor advance to perceive's heads snapshot — what was perceived, not
 what is current (SL-022 DEC-041).  Each commit is called with its
 `:probe_snapshots' entry and soft-fails: a frontier write error cannot
-fail the run."
+fail the run.  Runs from the process filter, after the tick, so it is
+outside any tick trace."
   (let ((snaps (plist-get (satan-run-prepare run-ctx) :probe_snapshots)))
     (pcase-dolist
-        (`(,stage ,commit ,key)
-         '(("probes.commit.curiosity" satan-sensor-curiosity-probe-commit :curiosity)
-           ("probes.commit.content"   satan-sensor-content-probe-commit   :content)
-           ("probes.commit.wpm"       satan-sensor-wpm-probe-commit       :wpm)
-           ("spawn.ingest_cursor"     satan-ingest-cursor-advance         :ingest)))
+        (`(,commit ,key)
+         '((satan-sensor-curiosity-probe-commit :curiosity)
+           (satan-sensor-content-probe-commit   :content)
+           (satan-sensor-wpm-probe-commit       :wpm)
+           (satan-ingest-cursor-advance         :ingest)))
       (condition-case _err
-          (satan-trace-stage stage (funcall commit (plist-get snaps key)))
+          (funcall commit (plist-get snaps key))
         (error nil)))))
 
 (defun satan-broker--on-ready (run-ctx obj)
@@ -449,10 +450,12 @@ wins).  Leaves the status to `satan-broker--finalize'."
 
 (defun satan-broker--wrap-sentinel (inner run-ctx stderr-buf dir)
   "Return a sentinel that runs INNER after the stderr bookkeeping.
-It owns STDERR-BUF: flushes it to DIR's `stderr.log', records a launch
-refusal when the child ended un-`ready' with RUN-CTX still `running',
-then always runs INNER (finalize + flag clear) and kills the buffer —
-even when the refusal record signals; the signal propagates."
+It owns STDERR-BUF: flushes it to DIR's `stderr.log' (failing soft, so
+a missing DIR cannot cost the refusal), records a launch refusal when
+the child ended with neither `ready' nor `final' and RUN-CTX still
+`running', then always runs INNER (finalize + flag clear) and kills
+the buffer — even when the refusal record signals; the signal
+propagates."
   (lambda (p e)
     (let ((stderr (when (buffer-live-p stderr-buf)
                     (with-current-buffer stderr-buf
@@ -460,11 +463,15 @@ even when the refusal record signals; the signal propagates."
       (unwind-protect
           (progn
             (when stderr
-              (let ((coding-system-for-write 'utf-8))
-                (write-region stderr nil (expand-file-name "stderr.log" dir)
-                              nil 'silent)))
+              (condition-case err
+                  (let ((coding-system-for-write 'utf-8))
+                    (write-region stderr nil (expand-file-name "stderr.log" dir)
+                                  nil 'silent))
+                (error (message "satan-broker: stderr.log not written: %s"
+                                (error-message-string err)))))
             (when (and (memq (process-status p) '(exit signal))
                        (not (satan-run-ready run-ctx))
+                       (not (satan-run-final run-ctx))
                        (eq (satan-run-status run-ctx) 'running))
               (satan-broker--record-launch-refusal
                run-ctx (process-status p) (process-exit-status p) stderr)))

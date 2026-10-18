@@ -769,6 +769,10 @@ class ProviderFactoryTests(unittest.TestCase):
                     with self.assertRaisesRegex(RuntimeError, f"^{var} not set$"):
                         self._build(env)
 
+    def test_stray_satan_provider_is_ignored(self):
+        env = {**self.GATEWAY_ENV, "SATAN_PROVIDER": "openrouter"}
+        self._assert_gateway_provider(*self._build(env))
+
 
 if __name__ == "__main__":
     unittest.main()
