@@ -90,6 +90,20 @@ gap is tracked as QUE-001 for the SPEC-001 owner. ADR-002 (still `proposed`)
 would move the *policy* to `satan-attrd` as "the only periodic clock" — the
 pending transition this row will record if ADR-002 is accepted.
 
+**Provider-credential custody is not a SATAN authority item (SL-022,
+DEC-049).** RFC-018 D3 proposed a row 8 (provider credential custody,
+`emacs-client` → `auth-gateway`). It is not added. Since SL-022 no SATAN
+surface holds or resolves a provider key: the harness and jailed pi reach
+models only through the host LLM gateway, and each jail launcher passes its
+gateway client key to the child over a file descriptor. The keys and the
+gateway are host deployment (`~/flakes/SATAN.md`), so custody left SATAN's
+inventory rather than migrating to a new owner, and the legend gains no
+`auth-gateway` token. The enforcement sites RFC-018 cited
+(`satan-broker-provider-key-vars`, `satan-patch-adapter-pi-api-key-vars`)
+are deleted; `rg '_API_KEY|op://|op run|satan-credential' satan/ dev/ flake.nix`
+hits only the flake check's probe strings. Gateway key budgets are
+deployment insurance caps outside this ledger (DEC-043).
+
 ## Transition log
 
 Append-only; one line per owner change, newest last, grouped by row. **None yet**

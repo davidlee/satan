@@ -5,9 +5,9 @@ id = 43
 slug = "gateway-key-budgets-are-deployment-side-insurance-caps-outside-satan-policy"
 title = "Gateway key budgets are deployment-side insurance caps, outside SATAN policy"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

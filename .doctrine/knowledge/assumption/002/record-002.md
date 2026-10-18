@@ -24,3 +24,7 @@ from an escalated tick-pulse run or from motd (prompt policy), each time with
 expires after about 1–2 minutes, and `op` reports that as "authorization prompt
 dismissed", so a trip would be recorded as a `credential_unavailable` run, not
 as a hang.
+
+## Obsolete (2026-10-18, SL-022 / DEC-042)
+
+SATAN no longer reads 1Password: the credential surface is deleted and models are reached through the host LLM gateway. The watch this assumption armed is disarmed.

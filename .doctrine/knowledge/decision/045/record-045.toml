@@ -5,9 +5,9 @@ id = 45
 slug = "a-gateway-budget-exceeded-response-classifies-as-credits"
 title = "A gateway budget_exceeded response classifies as credits"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

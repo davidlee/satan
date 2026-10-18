@@ -9,7 +9,7 @@ kind = "tech"
 tags = ["harness", "jail", "deployment", "trust-boundary"]
 responsibilities = [
   "Fix the harness binary's provenance: one declared source per deployment, and the deploy loop that changes it",
-  "Define the spawn contract: what the broker hands the harness (env, cwd, run dir, credentials) and nothing else",
+  "Define the spawn contract: what the broker hands the harness (env, cwd, run dir) and nothing else",
   "Own the broker-harness wire protocol's requirements; docs/protocol.md stays the message catalogue",
   "Declare the harness jail profile in terms of named roots and ro/rw, with its forbidden binds",
   "Contextualise the harness run loop (turns, token tiers, termination, error class) without restating its records",

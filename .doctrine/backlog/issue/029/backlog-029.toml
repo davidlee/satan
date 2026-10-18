@@ -5,10 +5,10 @@ id = 29
 slug = "jail-env-keys-argv-budget"
 title = "Jail env leaks API keys to argv and drops the budget ceiling"
 kind = "issue"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-09-25"
-updated = "2026-09-25"
+updated = "2026-10-18"
 tags = ["jail", "satan", "security"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role

@@ -5,9 +5,9 @@ id = 44
 slug = "the-harness-talks-only-to-the-gateway-provider-selection-moves-into-the-model-alias"
 title = "The harness talks only to the gateway; provider selection moves into the model alias"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

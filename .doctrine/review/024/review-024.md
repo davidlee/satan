@@ -141,3 +141,60 @@ for one shared helper.
     forward into a new backlog item.
 - **F-8** REQ-016 and REQ-025 stay `pending`: criteria 1–3 belong to ISS-028.
   No status change.
+
+## Reconciliation Outcome
+
+User agreed to the full proposal in session, 2026-10-18 ("agreed").
+
+### Direct edits applied
+- design.md § A refused launch and invariant I4: the rule is now "ends with
+  neither `ready` nor `final`, and no `error`"; the stderr flush fails soft;
+  four predicate checks; diagram gains `final`-without-`ready` → `done`
+  (F-2, F-4).
+- design.md § Frontiers commit on `ready`: runs from the process filter after
+  the tick; the four tick-trace stages are retired; the filter-blocking note
+  (F-3).
+- design.md § Code impact: rows for `satan/satan.el`, the adapter test,
+  `docs/perceptual-design.md`, `docs/refactor/` (2 paths), `docs/review/**`.
+  Selector registry: `doctrine slice selector add 22 --intent design-target`
+  for the same six selectors; `slice conformance 22` reports no undeclared
+  code or doc path (F-7).
+- RFC-018: dated annotations under D3 (row 8 not added) and D5 (step 1 done
+  as the host gateway).
+- docs/governance.md: dropped "SPEC-003 still lists a key … until SL-022's
+  reconcile".
+- Knowledge: DEC-041..049 → accepted; DEC-041 choice gains the `final` and
+  soft-flush clauses; DEC-041 supersedes DEC-020; DEC-042 supersedes DEC-020,
+  DEC-021, DEC-022 and ASM-002; DEC-020/021/022 → superseded; ASM-002 →
+  obsolete (moot, not falsified), with a body note; QUE-001's gate list drops
+  `credential_*` (stays open).
+- Backlog: ISS-023 closed obsolete; ISS-029 resolved fixed. The satan-attrd
+  split already existed as ISS-043, so nothing new was minted.
+
+### REVs completed
+- REV-005 (`reconcile-sl-022`): done. Seven `modify` rows landed by hand:
+  - SPEC-003: spawn-contract key and model rows, base-env paragraph,
+    "Failure at spawn", overview/diagram/responsibilities (md + toml);
+  - REQ-020: restated as "one base: the editor's global environment";
+    criteria trimmed to the buffer-local rule; tag `credentials` dropped;
+  - REQ-022: gateway pair, no provider key;
+  - REQ-025: forwards and key by fd; criterion 4 names the gateway key; new
+    criterion 6 (nothing outside the declared forwards in the jail); gap list;
+  - SPEC-002: overview, Harness container row, Transports row
+    (harness / jailed pi → LLM gateway, data plane);
+  - REQ-016: tracked gaps ISS-028, ISS-043;
+  - ADR-017 authority-ledger standing note (DEC-049).
+
+  Covers F-8; rationale in `revision-005.md`. REQ-016 and REQ-025 stay
+  `pending`.
+
+### Correction to the brief
+- REQ-016 criterion 3 (keys on argv) is now held open by ISS-043, not
+  ISS-028; the rationale says so.
+
+### Withdrawn / tolerated
+- F-6 tolerated: the no-arg live-heads branch stays (PHASE-03 EX-3); the
+  rationale is in the disposition.
+- F-9: owned by flakes:IMP-037.
+
+Reconcile pass complete — handoff to /close.

@@ -1,4 +1,4 @@
-# REQ-020: The child environment has one base, shared with credential lookup
+# REQ-020: The child environment has one base: the editor's global environment
 
 ## Statement
 
@@ -10,4 +10,4 @@
 
 <!-- Why it must hold — the force behind it, not the implementation. -->
 
-SL-018 RV-013 N5: credential lookup must read exactly the environment the child receives, or a key can be resolved from one env and spawned with another. ISS-037 showed N5 needs one base, not the direnv merge that used to supply it. The scrub is SPEC-001 REQ-010 (fail closed) at this surface.
+ISS-037: the child env used to follow the calling buffer's direnv merge. One base, the editor's global env, makes the spawn contract independent of who starts the run. Since SL-022 the broker resolves no credential, so the SL-018 RV-013 N5 coupling (lookup env = child env) is gone, and excluding unresolved refs is the jail's job: it starts from `env -i` (REQ-025). The launcher process outside the jail still inherits the editor env until emacs:SL-015.

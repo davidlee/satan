@@ -126,6 +126,36 @@ intent = "design-target"
 selector = "satan/test/satan-ingest-cursor-test.el"
 intent = "design-target"
 
+[[selector]]
+selector = "satan/satan.el"
+intent = "design-target"
+note = "RV-024 F-7"
+
+[[selector]]
+selector = "satan/test/satan-patch-adapter-test.el"
+intent = "design-target"
+note = "RV-024 F-7"
+
+[[selector]]
+selector = "docs/perceptual-design.md"
+intent = "design-target"
+note = "RV-024 F-7"
+
+[[selector]]
+selector = "docs/refactor/T8-pi-adapter-keys.md"
+intent = "design-target"
+note = "RV-024 F-7"
+
+[[selector]]
+selector = "docs/refactor/plan.md"
+intent = "design-target"
+note = "RV-024 F-7"
+
+[[selector]]
+selector = "docs/review/**"
+intent = "design-target"
+note = "RV-024 F-7"
+
 [[relation]]
 label = "governed_by"
 target = "ADR-017"

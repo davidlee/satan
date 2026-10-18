@@ -319,8 +319,8 @@ Either way it prints a few lines to stderr and exits 1. Today such a child
 finalises as an untyped `failed`, and the reason lives only in
 `<run>/stderr.log`.
 
-The general rule is: **a child that dies before sending `ready`, without
-having sent an `error` message, is `spawn_failed`.** That covers a launcher
+The general rule is: **a child that ends having sent neither `ready` nor
+`final`, and no `error` message, is `spawn_failed`.** That covers a launcher
 refusal, and also these:
 
 - a bwrap or jail prelude failure;
@@ -330,14 +330,17 @@ refusal, and also these:
 None of these ran the model, so `spawn_failed` is the honest class for all of
 them. A harness that fails while initialising after it has started sends
 `error` first. `--on-error` then sets the status to `failed` with its own
-class, so this rule does not apply to it.
+class, so this rule does not apply to it. A child that sends `final`
+without `ready` has delivered a result, so it is not a refusal either
+(RV-024 F-4). Shipped harnesses always send `ready` first.
 
 ```mermaid
 stateDiagram-v2
   [*] --> spawned: make-process
   spawned --> ready: harness sends ready (frontiers commit)
   spawned --> failed: harness sends error before ready
-  spawned --> refused: dies before ready, no error sent
+  spawned --> refused: ends with neither ready nor final, no error sent
+  spawned --> done: final without ready (not a refusal)
   refused --> failed: reason spawn_failed + audit spawn-failed
   ready --> done: final received
   ready --> failed: error, or exit without final
@@ -353,13 +356,17 @@ Mechanism:
 - A new `satan-run` slot, `ready`, replaces `credential-refs`. The `"ready"`
   arm of `satan-broker--dispatch` sets it the first time, and commits the
   frontiers then. See "Frontiers commit on `ready`".
-- The sentinel wrapper in `--spawn` owns `stderr-buf`. Before it calls the
-  inner sentinel, it checks three things:
+- The sentinel wrapper in `--spawn` owns `stderr-buf`. It first flushes it
+  to `<run>/stderr.log`. The write fails soft (logged, not signalled), so a
+  missing run directory cannot cost the refusal (RV-024 F-2; the flush race
+  itself is ISS-044). Before it calls the inner sentinel, it checks four
+  things:
   - the process has ended;
   - the run is not `ready`;
+  - the run has no `final`;
   - the status is still `running`.
 
-  If all three hold, it calls
+  If all four hold, it calls
   `satan-broker--record-launch-refusal (run-ctx process-status code stderr)`.
 - That function:
   - appends the audit event `broker spawn-failed` with
@@ -396,8 +403,15 @@ A launcher refusal is a denial that happens after `--spawn`, so it would
 consume signals for a model that never ran.
 
 The commits therefore move into a new `satan-broker--commit-frontiers
-(run-ctx)`, called from the `"ready"` arm of `--dispatch`. Every commit
-writes what was **perceived**, not what is current:
+(run-ctx)`, called from the `"ready"` arm of `--dispatch`. It runs from the
+stdout process filter after the tick has returned, so it is outside any
+tick trace. The four tick-trace stages that used to wrap these commits
+(`probes.commit.curiosity`, `probes.commit.content`, `probes.commit.wpm`,
+`spawn.ingest_cursor`, from SL-011) are retired: there is no tick left to
+time them against (RV-024 F-3). A slow psql attribute enqueue now blocks the
+filter rather than the tick; the harness does not wait on stdin after
+`ready`, so this cannot deadlock. Every commit writes what was
+**perceived**, not what is current:
 
 - The probe commits already work this way: each commits the snapshot it took
   at perceive (`:probe_snapshots` on `prepare`).
@@ -557,8 +571,8 @@ switch. Keep that gap short.
 - **I3. Broker ceilings reach the jail** (REQ-016 criterion 4, REQ-025
   criterion 5). `SATAN_MAX_BUDGET_TOKENS` is forwarded, the flake check
   asserts it, and `runloop.py` reads it.
-- **I4. A child that dies before `ready` without an error message is a typed
-  `spawn_failed` run** with a `broker spawn-failed` audit event (SPEC-001
+- **I4. A child that ends with neither `ready` nor `final`, and without an
+  error message, is a typed `spawn_failed` run** with a `broker spawn-failed` audit event (SPEC-001
   REQ-003; SPEC-003 "Failure at spawn"). It is never an untyped `failed`.
 - **I5. Frontiers advance only for a child that reached `ready`.** That
   restores "no denied tick advances any frontier" for denials that happen
@@ -652,6 +666,7 @@ These are manual checks (VH, verified by a human):
 | `satan/harness/test_gptel_harness.py` | provider factory and classify tests; fixtures |
 | `satan/satan-broker.el` | remove key vars, acquisition and `cred` (`--spawn (mode prepare dir)`), credential policy, deferred/unavailable arms, eviction, scrub, `SATAN_PROVIDER`, `credential_deferred` transparency; add `ready` handling, `--record-launch-refusal`, `--stderr-tail`, `--commit-frontiers` (probe commits and cursor advance move to `ready`) |
 | `satan/satan-run.el` | slot `credential-refs` → `ready` |
+| `satan/satan.el` | drop `satan-run-attended` (its only consumer was the deleted credential policy) |
 | `satan/satan-context.el` | perceive snapshots ingest heads into `:probe_snapshots :ingest` |
 | `satan/satan-ingest-cursor.el` (+ tests) | `satan-ingest-cursor-heads`; `advance` takes an optional heads snapshot |
 | `satan/satan-mode.el` | profile without `:provider`; drop credential-key check and the morning/motd policy lines |
@@ -659,8 +674,11 @@ These are manual checks (VH, verified by a human):
 | `satan/satan-patch-runner.el` | drop credential gate, resolve, `--credential-warnings`, `--with-warnings` |
 | `satan/satan-credential.el`, `satan/test/satan-credential-test.el`, `satan/test/satan-credential-fixture.el` | deleted |
 | `dev/satan-test.el` | drop credential require, binding, scrub |
-| `satan/test/satan-broker-test.el`, `satan-patch-runner-test.el`, `satan-mode-test.el` | per "Key test cases" |
+| `satan/test/satan-broker-test.el`, `satan-patch-runner-test.el`, `satan-mode-test.el`, `satan-patch-adapter-test.el` | per "Key test cases"; the pi adapter's child-env test lives in `satan-patch-adapter-test.el` |
 | `docs/governance.md` (§ key resolution, providers, jails), `docs/patch/handover.md`, `docs/patch/plan.md`, `docs/architecture.md` | gateway story |
+| `docs/perceptual-design.md` | CONSUME diagram: frontiers commit on the first `ready`; ingest heads snapshotted at perceive |
+| `docs/refactor/T8-pi-adapter-keys.md`, `docs/refactor/plan.md` | T8 `abandoned`: the key list it would externalise is deleted |
+| `docs/review/**` | historical banners: credential and provider-key findings are obsolete |
 | `~/.config/emacs/apps/dl-satan.el`, `lisp/dl-secret.el`, `lisp/test/dl-secret-test.el` | drop `satan-credential-function`, `my/satan-credential` and its tests (emacs verification VT-26) |
 | `~/flakes/features/satan/patcher.nix`, `~/flakes/flake.lock`, `~/flakes/SATAN.md` | drop key refs; re-lock `satan agents`; secrets and known-gaps text |
 | `~/.config/satan-patcher/policy.toml` (untracked) | defaults → `llm-gateway` / `deepseek-flash`; remove the `cheap+code` tag |

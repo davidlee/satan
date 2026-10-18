@@ -5,9 +5,9 @@ id = 48
 slug = "sl-022-cross-repo-order-satan-first-emacs-with-it-flakes-last"
 title = "SL-022 cross-repo order: satan first, emacs with it, flakes last"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

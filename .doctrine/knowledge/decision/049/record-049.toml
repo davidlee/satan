@@ -5,9 +5,9 @@ id = 49
 slug = "provider-credential-custody-leaves-satans-authority-inventory"
 title = "Provider-credential custody leaves SATAN's authority inventory"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

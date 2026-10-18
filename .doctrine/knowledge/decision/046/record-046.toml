@@ -5,9 +5,9 @@ id = 46
 slug = "the-harness-jail-profile-is-asserted-by-a-flake-check-over-the-built-launcher"
 title = "The harness jail profile is asserted by a flake check over the built launcher"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

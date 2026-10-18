@@ -5,7 +5,7 @@
 ## Overview
 
 The harness is the untrusted half of every broker-spawned SATAN run: a jailed
-Python process (`satan/harness/`) that talks to the model provider and to the
+Python process (`satan/harness/`) that talks to the host LLM gateway and to the
 broker, and to nothing else. The broker (trusted, in Emacs) renders the prompt,
 chooses the tools, starts the harness, executes every tool call and records the
 outcome. The harness turns model output into protocol messages.
@@ -28,8 +28,8 @@ coverage is reconciled, not inferred here.
 │ Broker (Emacs)       ├──────────────────────►│ Harness (Python)     │
 │ renders bundle.json  │  run dir (ro inputs)  │ reads bundle +       │
 │ + manifest.json      │                       │ manifest, env        │
-│ executes tool calls  │◄──── JSONL stdout ────┤                      ├──► model
-│ records the run      ├──── JSONL stdin  ────►│                      │    provider
+│ executes tool calls  │◄──── JSONL stdout ────┤                      ├──► LLM
+│ records the run      ├──── JSONL stdin  ────►│                      │    gateway
 └──────────────────────┘                       └──────────────────────┘
 ```
 
@@ -43,7 +43,7 @@ Mirrors the structured list:
 
 1. **Provenance** — one declared binary per deployment, and the loop that
    changes it.
-2. **Spawn contract** — env, cwd, run dir and credentials; nothing else crosses.
+2. **Spawn contract** — env, cwd and run dir; nothing else crosses.
 3. **Wire protocol** — its requirements; `docs/protocol.md` remains the
    message catalogue.
 4. **Jail profile** — declared in named roots and ro/rw, with forbidden binds.
@@ -86,14 +86,15 @@ container's half of the answer.
 | cwd | the run directory | broker (REQ-021) |
 | base env | `(default-value 'process-environment)` | editor's global env (REQ-020) |
 | run identity | `SATAN_RUN_ID`, `SATAN_RUN_DIR`, `SATAN_BUNDLE` | broker |
-| model + budget | `SATAN_PROVIDER`, `SATAN_MODEL`, `SATAN_BUDGET_TOKENS`, `SATAN_MAX_BUDGET_TOKENS` | mode spec |
-| key | the provider's key var, resolved plaintext | credential acquisition |
+| model + budget | `SATAN_MODEL` (a gateway alias), `SATAN_BUDGET_TOKENS`, `SATAN_MAX_BUDGET_TOKENS` | mode spec |
+| key | none: the jail launcher supplies `LLM_GATEWAY_KEY` by fd, and sets `LLM_GATEWAY_URL` | jail launcher (host gateway client key) |
 | extra env | `:harness :env` | mode spec |
 | inputs | `bundle.json` (rendered prompt), `manifest.json` (tools, mode meta) | run dir (REQ-022) |
 
-The base env is computed once, at acquisition, and the key is looked up in that
-same env (SL-018 RV-013 N5). Unresolved credential references are scrubbed
-before spawn (SPEC-001 REQ-010). Inside the jail, the run dir appears at
+The broker resolves no key. The jail starts from an empty environment and
+receives only its declared forwards (REQ-025), so nothing else in the base env,
+an `op://` reference included, reaches the harness. The launcher process
+outside the jail still inherits the editor's env until emacs:SL-015. Inside the jail, the run dir appears at
 `/satan/run` and `SATAN_RUN_DIR` is rewritten to match.
 
 ### Wire protocol
@@ -165,9 +166,12 @@ enforces its own timeout and kills the child.
   requirement here closes one such ambient input.
 - **Revision skew.** Pinned harness, live-tree broker (RSK-016). Until REQ-023,
   a wire change can be half-deployed silently.
-- **Failure at spawn.** A missing bind source, missing key or bad binary kills
-  the run before `ready`; the broker records these as `spawn_failed` or a
-  credential outcome rather than losing the run.
+- **Failure at spawn.** A missing bind source, a refused gateway key, a down
+  gateway or a bad binary kills the run before `ready`. A child that ends with
+  neither `ready` nor `final`, and sent no `error`, is recorded as
+  `spawn_failed` with a `broker spawn-failed` audit event rather than lost.
+  Perception frontiers commit on the first `ready`, so such a run consumes no
+  signal (SL-022).
 
 ## Hypotheses
 

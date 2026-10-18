@@ -719,8 +719,7 @@ Owned by SPEC-003 (`doctrine spec show SPEC-003`): binary provenance and
 the deploy loop, the spawn contract (global base env, run-dir cwd,
 `SATAN_*` vars), and the jail profile by root. The broker passes no
 key: the jail launcher supplies the gateway pair (next section).
-SPEC-003 still lists a key in the spawn contract until SL-022's
-reconcile revises it. In one line: a bare
+In one line: a bare
 `:cmd` resolves on Emacs's global `exec-path` to the pinned
 `home.packages` install whichever buffer or timer starts the run
 (ISS-037); an absolute `:cmd` selects a dev build. Host paths for the

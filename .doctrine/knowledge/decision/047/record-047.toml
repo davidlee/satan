@@ -5,9 +5,9 @@ id = 47
 slug = "satan-jails-follow-the-sl-013-gateway-pattern-pi-key-for-pi-jails-satan-key-for-the-harness"
 title = "satan jails follow the SL-013 gateway pattern: pi key for pi jails, satan key for the harness"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-17"
-updated = "2026-10-17"
+updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)

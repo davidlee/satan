@@ -8,15 +8,18 @@
 ## Extension (2026-09-23, SL-018 / DEC-022): pre-spawn lifecycle gates
 
 The question covers every **pre-spawn lifecycle gate**, not only arrival
-policy. Four gates in `satan-broker-run` decide whether a scheduled run
+policy. Three gates in `satan-broker-run` decide whether a scheduled run
 spawns. Only `budget_denied` maps to a SPEC-001 REQ, and none has an
 authority-ledger row:
 
 - DEC-8 `session_blocked`: an interactive MCP session is open.
 - `budget_denied`: the daily token ceiling (covered by REQ-004, token and budget ceilings).
-- `credential_deferred` / `credential_unavailable` (SL-018, DEC-020/021/022):
-  no 1Password session, and the mode's policy defers, or the prompt failed.
 - `run_busy` (SL-018, DEC-023): a scheduled run arrives while a child is live.
+
+(2026-10-18, SL-022 / DEC-042: the `credential_deferred` /
+`credential_unavailable` gates were retired with the credential surface. A
+refused launch is now a `spawn_failed` run with a child, not a pre-spawn
+gate.)
 
 A future run-lifecycle invariant should state that each gate fails closed
 (SPEC-001 REQ-010) and records a no-child run with a typed reason, so that
