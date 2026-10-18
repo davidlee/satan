@@ -6,7 +6,7 @@ status = "active"
 title = "SATAN ingest cursor store"
 summary = "The ingest cursor is stored in the satan_memory DB; its location and access pattern."
 created = "2026-06-16"
-updated = "2026-06-16"
+updated = "2026-10-18"
 
 [scope]
 paths = []

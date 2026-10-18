@@ -536,8 +536,8 @@ Threads a minimal non-nil `:percept' onto PREPARE and persists
 `percept.json' under PDIR, exactly as the real perceive does for the
 identity/mirror invariants — but without the live evidence assembler
 (which reads sensors/git, out of scope for gate tests).  Also
-threads empty `:probe_snapshots' so the consume-side commit (only
-reached on the spawn path) has the key to read.  Reuse this in any
+threads empty `:probe_snapshots' so the frontier commit (only
+reached on a child's first `ready') has the keys to read.  Reuse this in any
 broker gate VT that asserts the percept/bundle artifacts."
   (let ((percept (list :run_id (plist-get prepare :run_id)
                        :time_now (plist-get prepare :time_now)
@@ -549,7 +549,9 @@ broker gate VT that asserts the percept/bundle artifacts."
                   (plist-put :evidence nil)
                   (plist-put :sensor_status nil)
                   (plist-put :probe_snapshots
-                             (list :curiosity nil :content nil :wpm nil)))))
+                             (list :curiosity nil :content nil :wpm nil
+                                   :ingest (list :focus nil :browser nil
+                                                 :content nil))))))
 
 (defun satan-broker-test--read-bundle (dir)
   "Parse `bundle.json' under DIR into a plist (or nil if absent)."
@@ -1159,7 +1161,11 @@ orchestration, not the builder internals."
                                 :time_now (plist-get prepare :time_now)
                                 :handles nil
                                 :evidence_window nil))
-         (satan-attribute-updates-enabled t))
+         (satan-attribute-updates-enabled t)
+         ;; The ingest heads are read from these: empty temps, never the
+         ;; live behaviour store.
+         (satan-tools-activity-dir (expand-file-name "activity" dir))
+         (satan-tools-content-dir (expand-file-name "content" dir)))
      (unwind-protect
          (cl-letf (((symbol-function 'satan-percept-build)
                     (lambda (&rest _) fixture-percept))
@@ -1185,6 +1191,11 @@ orchestration, not the builder internals."
              (should (file-readable-p (expand-file-name "percept.json" dir)))
              ;; … and the pure probe read-snapshots were threaded.
              (should (plist-member out :probe_snapshots))
+             ;; SL-022: the ingest heads are snapshotted here, for the
+             ;; commit on the run's first `ready'.  Every source named.
+             (should (equal '(:focus nil :browser nil :content nil)
+                            (plist-get (plist-get out :probe_snapshots)
+                                       :ingest)))
              (should (plist-get out :percept))))
        (delete-directory dir t))))
 
@@ -1496,9 +1507,10 @@ precedence — the Risks section's named regression)."
   "Evaluate BODY with `satan-broker--spawn''s side collaborators stubbed.
 ROOT is bound to a tmp `satan-runs-dir' and DIR to a run dir under it
 \(created).  Stubs the soft pre-spawn stages (observer, enrich, sensor
-alerts, probe commits, ingest cursor), env shaping and the
-`most-recent' symlink; the record path (manifest, audit, finalize)
-stays real.  Binds `satan-run--spawn-running',
+alerts), the frontier commits a child's `ready' makes (probe commits,
+ingest cursor — so a stub child never writes the live state root), env
+shaping and the `most-recent' symlink; the record path (manifest,
+audit, finalize) stays real.  Binds `satan-run--spawn-running',
 `satan-memory-store--current-run-id', a tmp `satan-hippocampus-dir' and
 a tmp `satan-tools-descriptions-dir' holding only `satan_final', so the
 real manifest build never reads the live corpus.  Deletes ROOT
@@ -1521,8 +1533,8 @@ afterwards, so a `.FAILED'-renamed DIR goes with it."
                        (lambda (prepare &rest _) prepare))
                       ((symbol-function 'satan-sensor-alerts-check)
                        (lambda (&rest _) nil))
-                      ;; DR-010 §3: --spawn now calls the consume-side
-                      ;; -probe-commit variants (perceive took the reads).
+                      ;; SL-022: the frontier commits run on a child's
+                      ;; first `ready' (`satan-broker--commit-frontiers').
                       ((symbol-function 'satan-sensor-curiosity-probe-commit)
                        (lambda (&rest _) nil))
                       ((symbol-function 'satan-sensor-content-probe-commit)
@@ -1944,6 +1956,283 @@ finalises exactly once and kills the stderr buffer."
             (when proc (delete-process proc)))
           (let ((buf (get-buffer stderr-name)))
             (when buf (kill-buffer buf))))))))
+
+;; ── SL-022 PHASE-03: frontiers commit on the first `ready' (DEC-041) ─────
+
+(defmacro satan-broker-test--with-call-log (log fns &rest body)
+  "Evaluate BODY with each function in FNS replaced by a recorder.
+LOG is bound to the calls made, newest first, each as (FN . ARGS).
+Every recorder returns nil."
+  (declare (indent 2))
+  `(let ((,log nil))
+     (cl-letf ,(mapcar (lambda (fn)
+                         `((symbol-function ',fn)
+                           (lambda (&rest args)
+                             (push (cons ',fn args) ,log)
+                             nil)))
+                       fns)
+       ,@body)))
+
+(defun satan-broker-test--calls (log fn)
+  "The calls to FN in LOG (see `satan-broker-test--with-call-log'), oldest first."
+  (reverse (cl-remove-if-not (lambda (call) (eq fn (car call))) log)))
+
+(defconst satan-broker-test--frontier-effects
+  '(satan-attribute-enqueue
+    satan-sensor-curiosity-mark-inspected
+    satan-sensor-content-mark-inspected
+    satan-sensor-wpm--write-state
+    satan-ingest-cursor-advance)
+  "The writes a frontier commit makes: attribute enqueues and watermarks.")
+
+(defun satan-broker-test--frontier-writes (log)
+  "LOG's frontier writes (`satan-broker-test--frontier-effects'), oldest first."
+  (reverse (cl-remove-if-not
+            (lambda (call)
+              (memq (car call) satan-broker-test--frontier-effects))
+            log)))
+
+(defconst satan-broker-test--ingest-heads
+  '(:focus "2026-06-03T09:00:00+10:00"
+    :browser "2026-06-03T08:00:00+10:00"
+    :content "2026-06-02T23:00:00.000Z")
+  "An ingest heads snapshot, as perceive stores it.")
+
+(defun satan-broker-test--emitting-snapshots ()
+  "`:probe_snapshots' whose three probes each emit, plus the ingest heads."
+  (list :curiosity '(:emit t :payload (:probe curiosity) :high-water "HW-c")
+        :content '(:emit t :payload (:probe content) :high-water "HW-n")
+        :wpm '(:emit t :payload (:probe wpm)
+               :state "active" :emitted-at "2026-06-03T09:00:00+10:00")
+        :ingest satan-broker-test--ingest-heads))
+
+(ert-deftest satan-broker/second-ready-commits-no-frontier ()
+  "RV-023 F-18: only the first `ready' runs `satan-broker--commit-frontiers'.
+The first commits every probe snapshot (enqueue + watermark) and
+advances the ingest cursor to perceive's heads snapshot, not the live
+heads.  A second `ready' is audited and writes nothing.  The effects
+are spied, not the commit function, so a commit that ran twice would
+show as a double enqueue."
+  (let ((run-ctx (make-satan-run
+                  :id "rid" :status 'running :audit '(:audit t)
+                  :prepare (list :probe_snapshots
+                                 (satan-broker-test--emitting-snapshots))))
+        (ready '(:type "ready" :run_id "rid")))
+    (satan-broker-test--with-call-log log
+        (satan-audit-record
+         satan-attribute-enqueue
+         satan-sensor-curiosity-mark-inspected
+         satan-sensor-content-mark-inspected
+         satan-sensor-wpm--write-state
+         satan-ingest-cursor-advance)
+      (satan-broker--dispatch run-ctx ready)
+      (should (satan-run-ready run-ctx))
+      (let ((first (satan-broker-test--frontier-writes log)))
+        (should (= 3 (length (satan-broker-test--calls
+                              log 'satan-attribute-enqueue))))
+        (should (equal '(("HW-c")) (mapcar #'cdr (satan-broker-test--calls
+                                                  log 'satan-sensor-curiosity-mark-inspected))))
+        (should (equal '(("HW-n")) (mapcar #'cdr (satan-broker-test--calls
+                                                  log 'satan-sensor-content-mark-inspected))))
+        (should (= 1 (length (satan-broker-test--calls
+                              log 'satan-sensor-wpm--write-state))))
+        (should (equal (list (list satan-broker-test--ingest-heads))
+                       (mapcar #'cdr (satan-broker-test--calls
+                                      log 'satan-ingest-cursor-advance))))
+        (satan-broker--dispatch run-ctx ready)
+        (should (equal first (satan-broker-test--frontier-writes log))))
+      (should (equal '(ready ready)
+                     (mapcar (lambda (call) (nth 3 call))
+                             (satan-broker-test--calls
+                              log 'satan-audit-record)))))))
+
+;; ── SL-022 PHASE-03: a refused launch is `spawn_failed' (DEC-041) ─────────
+
+(ert-deftest satan-broker/stderr-tail-keeps-last-bytes ()
+  "`satan-broker--stderr-tail' returns the last MAX-BYTES bytes, or the
+whole text when it is shorter; nil or empty text is \"\"."
+  (should (equal "refused\n" (satan-broker--stderr-tail "refused\n" 2048)))
+  (should (equal "6789" (satan-broker--stderr-tail "0123456789" 4)))
+  (should (equal "" (satan-broker--stderr-tail nil 4)))
+  (should (equal "" (satan-broker--stderr-tail "" 4)))
+  (should (= 2048 satan-broker--stderr-tail-max-bytes)))
+
+(ert-deftest satan-broker/stderr-tail-cuts-on-a-character-boundary ()
+  "A multibyte tail drops whole characters, never half of one: a
+partial UTF-8 sequence would make the audit record's JSON unserialisable."
+  ;; "é" is two bytes in UTF-8: five of them are ten bytes.
+  (let ((tail (satan-broker--stderr-tail "ééééé" 5)))
+    (should (equal "éé" tail))
+    (should (<= (string-bytes tail) 5))
+    (should (json-serialize (list :stderr tail)))))
+
+(eval-and-compile                       ; read by a macro at expansion
+  (defconst satan-broker-test--frontier-commits
+    '(satan-sensor-curiosity-probe-commit
+      satan-sensor-content-probe-commit
+      satan-sensor-wpm-probe-commit
+      satan-ingest-cursor-advance)
+    "The four frontier commits `satan-broker--commit-frontiers' makes."))
+
+(defconst satan-broker-test--launcher-refusal
+  (concat
+   "echo 'jailed-satan-gptel-harness: gateway key /k is missing,"
+   " empty or unreadable.' >&2;"
+   " echo '  Issue one: llm-gateway issue satan-gptel-harness"
+   " --models a,b --budget 5 --out \"/k\"' >&2;"
+   " exit 1")
+  "A `sh -c' script printing the jail launcher's key refusal, then exit 1.
+The text mirrors `gatewayOuter' in flakes' `agents/jailed-agents.nix'.")
+
+(defun satan-broker-test--sh-mode (script &rest keys)
+  "A test mode whose harness runs SCRIPT under `sh -c', plus mode KEYS.
+Its context-fn returns a stub bundle, so the run's audit is complete."
+  (append (list :name "test"
+                :context-fn (lambda (&rest _) '(:bundle t))
+                :harness (list :cmd "sh" :args (list "-c" script)))
+          keys))
+
+(defun satan-broker-test--protocol-line (&rest obj)
+  "A `sh' command echoing OBJ as one JSON protocol line on stdout."
+  (format "echo %s" (shell-quote-argument (json-serialize obj))))
+
+(defun satan-broker-test--settle ()
+  "Wait until the live run's sentinel has finalised it (flag cleared).
+Fails the test after five seconds rather than hanging."
+  (let ((deadline (+ (float-time) 5)))
+    (while (and satan-run--spawn-running (< (float-time) deadline))
+      (accept-process-output nil 0.05))
+    (should-not satan-run--spawn-running)))
+
+(defmacro satan-broker-test--with-real-child (spec &rest body)
+  "Spawn a real child for MODE under DIR, wait for it, then run BODY.
+SPEC is (MODE DIR LOG ANNOUNCED).  The record path is real (audit,
+finalize, `.FAILED' rename; DIR comes from
+`satan-broker-test--with-spawn-collaborators').  LOG is bound to the
+frontier commits made (`satan-broker-test--with-call-log'), ANNOUNCED
+to the announcements recorded.  Optional SPEC element 5, a form, runs
+after the spawn returns and before the wait (to kill the child)."
+  (declare (indent 1))
+  (pcase-let ((`(,mode ,dir ,log ,announced ,after-spawn) spec))
+    `(satan-broker-test--with-call-log ,log
+         ,satan-broker-test--frontier-commits
+       (let ((,announced
+              (satan-announce-with-recorder
+                (satan-broker--spawn ,mode (satan-broker-test--spawn-prepare)
+                                     ,dir satan-broker-test--no-cred)
+                ,after-spawn
+                (satan-broker-test--settle)
+                satan-announce-recorded)))
+         ,@body))))
+
+(defun satan-broker-test--final-reason (dir)
+  "The `:reason' of DIR's `final.json'."
+  (plist-get (satan-broker-test--run-json dir "final.json") :reason))
+
+(ert-deftest satan-broker/refused-launch-is-spawn-failed ()
+  "I4: a child that prints the launcher's refusal and exits 1 before
+`ready' ends `failed' as `spawn_failed', with a `spawn-failed' event
+carrying the exit and its stderr.  I5: no frontier was committed."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (satan-broker-test--with-real-child
+        ((satan-broker-test--sh-mode satan-broker-test--launcher-refusal)
+         dir log announced)
+      (let* ((failed (concat dir ".FAILED"))
+             (event (satan-broker-test--broker-event failed "spawn-failed")))
+        (should (equal "failed" (satan-broker-test--run-status failed)))
+        (should (equal "spawn_failed" (satan-broker-test--final-reason failed)))
+        (should (equal "exit" (plist-get event :process-status)))
+        (should (equal 1 (plist-get event :code)))
+        (should (string-match-p
+                 "gateway key /k is missing, empty or unreadable\\.\n  Issue one: llm-gateway issue"
+                 (plist-get event :stderr)))
+        (should-not log)
+        (should (eq t (satan-audit-verify-run failed)))
+        (should (= 1 (length announced)))))))
+
+(ert-deftest satan-broker/error-before-ready-keeps-harness-class ()
+  "A child that sends `error' before `ready' keeps the harness's class:
+`--on-error' set the status, so the refusal rule does not apply."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (satan-broker-test--with-real-child
+        ((satan-broker-test--sh-mode
+          (concat (satan-broker-test--protocol-line
+                   :type "error" :error "{\"class\":\"auth\"}")
+                  "; exit 1"))
+         dir log _announced)
+      (let ((failed (concat dir ".FAILED")))
+        (should (equal "failed" (satan-broker-test--run-status failed)))
+        (should (equal "auth" (satan-broker-test--final-reason failed)))
+        (should-not (satan-broker-test--broker-event failed "spawn-failed"))
+        (should-not log)))))
+
+(ert-deftest satan-broker/ready-then-exit-is-plain-failure ()
+  "A child that sent `ready' then exits without `final' ran the model:
+a plain `failed', not `spawn_failed', with its frontiers committed once."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (satan-broker-test--with-real-child
+        ((satan-broker-test--sh-mode
+          (concat (satan-broker-test--protocol-line
+                   :type "ready" :run_id satan-broker-test--spawn-run-id)
+                  "; exit 1"))
+         dir log _announced)
+      (let ((failed (concat dir ".FAILED")))
+        (should (equal "failed" (satan-broker-test--run-status failed)))
+        (should-not (equal "spawn_failed"
+                           (satan-broker-test--final-reason failed)))
+        (should-not (satan-broker-test--broker-event failed "spawn-failed"))
+        (should (equal satan-broker-test--frontier-commits
+                       (reverse (mapcar #'car log))))))))
+
+(ert-deftest satan-broker/killed-before-ready-records-signal ()
+  "An external kill before `ready' is a refusal too, recorded as a signal."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (satan-broker-test--with-real-child
+        ('(:name "test" :harness (:cmd "sleep" :args ("30")))
+         dir log _announced
+         (delete-process (get-process (format "satan-%s"
+                                              satan-broker-test--spawn-run-id))))
+      (let ((failed (concat dir ".FAILED")))
+        (should (equal "spawn_failed" (satan-broker-test--final-reason failed)))
+        (should (equal "signal"
+                       (plist-get (satan-broker-test--broker-event
+                                   failed "spawn-failed")
+                                  :process-status)))
+        (should-not log)))))
+
+(ert-deftest satan-broker/timeout-is-not-a-refusal ()
+  "The timeout kills the child too, but sets `timed-out' first: R5."
+  (satan-broker-test--with-spawn-collaborators root dir
+    (satan-broker-test--with-real-child
+        ('(:name "test" :timeout-seconds 1
+           :harness (:cmd "sleep" :args ("30")))
+         dir log _announced)
+      (let ((failed (concat dir ".FAILED")))
+        (should (equal "timed-out" (satan-broker-test--run-status failed)))
+        (should-not (satan-broker-test--broker-event failed "spawn-failed"))
+        (should-not log)))))
+
+(ert-deftest satan-broker/sentinel-finalizes-when-refusal-record-signals ()
+  "R2: a signal while recording the refusal still runs the inner
+sentinel (finalize + flag clear) and kills the stderr buffer; the
+signal itself propagates, as in the inner sentinel (ISS-020)."
+  (let* ((dir (make-temp-file "satan-wrap-sentinel-" t))
+         (stderr-buf (generate-new-buffer " *satan-stderr-wrap-test*"))
+         (run-ctx (make-satan-run :id "rid" :status 'running
+                                  :audit '(:audit t)))
+         (inner 0)
+         (sentinel (satan-broker--wrap-sentinel
+                    (lambda (_p _e) (cl-incf inner)) run-ctx stderr-buf dir)))
+    (unwind-protect
+        (cl-letf (((symbol-function 'process-status) (lambda (_) 'exit))
+                  ((symbol-function 'process-exit-status) (lambda (_) 1))
+                  ((symbol-function 'satan-broker--stderr-tail)
+                   (lambda (&rest _) (error "tail boom"))))
+          (should-error (funcall sentinel nil "exited abnormally with code 1\n"))
+          (should (= 1 inner))
+          (should-not (buffer-live-p stderr-buf)))
+      (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf))
+      (delete-directory dir t))))
 
 ;; ---------------------------------------------------------------------
 ;; PRESERVED-BOUNDARY PIN — SL-002 §5.3 / §9.  Do not prune with the bough

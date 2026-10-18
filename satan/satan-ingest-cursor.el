@@ -161,17 +161,33 @@ nil ⇒ caller consumes from head (no frontier to advance)."
     (:content (satan-ingest-cursor--content-head))
     (_ nil)))
 
+(defun satan-ingest-cursor-heads ()
+  "Return every tracked source's head as `(:focus H :browser H :content H)'.
+A read only.  The plist names every source even when a head is nil, so
+a snapshot is never confused with \"no snapshot\" by
+`satan-ingest-cursor-advance'."
+  (mapcan (lambda (source) (list source (satan-ingest-cursor-head source)))
+          satan-ingest-cursor-sources))
+
 ;; --- Advance ---------------------------------------------------
 
-(defun satan-ingest-cursor-advance ()
+(defun satan-ingest-cursor-advance (&optional heads)
   "Advance every tracked source's cursor to its head (idempotent).
+HEADS is a `satan-ingest-cursor-heads' snapshot; when given, each
+source advances to the snapshot's head, never the live one (rows that
+landed since are left for the next run).  Without HEADS the live
+heads are read.
+
 For each source writes `max(current, head)' under the source's native
 comparator.  A nil/older head leaves the cursor untouched (an
 out-of-order row behind the frontier cannot regress it).  Returns the
-written plist.  Call ONLY on a successful consume run."
+written plist.  The broker calls it once per run, on the child's first
+`ready' (`satan-broker--commit-frontiers'), with perceive's snapshot."
   (let ((state (or (satan-ingest-cursor-read) '())))
     (dolist (source satan-ingest-cursor-sources)
-      (let ((head (satan-ingest-cursor-head source))
+      (let ((head (if heads
+                      (plist-get heads source)
+                    (satan-ingest-cursor-head source)))
             (current (plist-get state source)))
         (when (and head
                    (satan-ingest-cursor--less-p source current head))

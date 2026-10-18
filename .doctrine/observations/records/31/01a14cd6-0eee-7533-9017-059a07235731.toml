@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cd6-0eee-7533-9017-059a07235731"
+recorded_at = "2026-10-18T02:27:39.374476895Z"
+kind = "friction"
+summary = "just lint does not byte-compile; 'zero warnings' is a weak check"
+detail = "SL-022 PHASE-03 planner: just lint runs only a paren locator and luau-analyze. Worker byte-compiled touched files to scratch by hand and found one real error (defconst read by a macro at expansion)."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -81,3 +81,18 @@ fresh-as-of: 2026-10-18 · ready (plan authored, no phase started; design run lo
 - VH-3: satan-patcher restarted 12:52 active, no ExecStartPre. Job execution not exercised (ISS-038/039).
 - Observed: today's broker still runs `satan-credential` pre-spawn, so a 1Password prompt appears per run (tick-agent via satan-run); dismissing it fails the run (likely cause of the 08:16 motd / 09:16 morning failures). Expected until PHASE-05 removes the credential path.
 - QUE-004 answered by the flakes session (flakes:DEC-074); body now also cites flakes:SPEC-001 (LLM gateway spec).
+
+## PHASE-03 execution (refused launch typed; frontiers commit on `ready`)
+
+### Done
+- Refusal: a child that dies before `ready` without an `error`, with the run still `running`, ends `spawn_failed`; a `broker spawn-failed` audit event carries `(:process-status :code :stderr tail<=2KiB)`, then the normal failure path runs (`satan-broker--record-launch-refusal`, `--stderr-tail`).
+- Frontiers commit once, on the first `ready` (`satan-broker--on-ready` -> `--commit-frontiers`, guarded by the new `ready` run slot, set before the commit: RV-023 F-18), from perceive's snapshots. Ingest heads are snapshotted at perceive (`satan-ingest-cursor-heads`; `advance` takes HEADS, max(current, snapshot)).
+- Pre-spawn commits removed from `--spawn`; sentinel wrapper extracted as `--wrap-sentinel`, `unwind-protect` so finalize always runs (also fixes a latent strand when the stderr.log write fails).
+- CONSUME diagram fixed in `docs/perceptual-design.md`; memories `mem.fact.satan.ingest-cursor-store` and `mem.fact.satan.perceive-consume-seam` updated.
+- `credential-refs` slot kept; PHASE-05 EX-2 deletes it.
+
+### Learned
+- Stale `satan/*.elc` from a host compile give a false red on single-file batch runs unless `load-prefer-newer` is set (`dev/satan-test.el` handles it).
+- The stderr-pipe race (R1) did not appear in 80 runs incl. 8-way load; no drain added. Revisit if a production refusal shows empty `:stderr`.
+- Isolated `satan-broker-test.el` fails `run-emits-one-tick-row-outcome-spawned` (`credential_unavailable`): pre-existing at HEAD, credential-stub order dependence; gone with PHASE-05.
+- The test DB at 127.0.0.1:54322 was reachable despite podman being down: only 7 tests skip, not ~140.

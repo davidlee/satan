@@ -116,7 +116,10 @@ mutation (probe high-water marks, the per-source ingest cursor) and
 all effects (interventions, tokens, DB outcome writes) are
 consume-side. The attribute-charging probes are split read/commit: a
 pure read-snapshot at perceive, the charge + watermark advance at
-consume.
+consume. Since SL-022 the commit waits for the child's first `ready`
+(`satan-broker--commit-frontiers`), so a launch the jail refuses
+consumes nothing; the ingest cursor advances to the heads perceive
+snapshotted, not the live heads.
 
 > **Signal model unchanged here.** DE-010 lands the structural cut
 > only. `current_window` was then a present-tense live read; since
@@ -134,18 +137,22 @@ broker-run
       ↳ percept.build(evidence, ctx)   → handles + handle_sources (canon)
       ↳ percept.persist(percept.json)  → perception-of-record (only perceive write)
       ↳ probe read-snapshot (curiosity/content/wpm) → native high-water, frozen onto prepare
+      ↳ ingest-cursor.heads                → per-source heads, frozen onto prepare
       ↳ on error → no-child terminal close (shared --write-no-child-run), return
   ↳ if session-active  → write blocked bundle (MIRRORS :percept), return
   ↳ if budget-exceeded → write-denied bundle (MIRRORS :percept), return   ← ISSUE-001 fixed
   ↳ else CONSUME (effects + tokens):
       ↳ observer.process(run_ctx)          → outcome accrual, DB writes
-      ↳ probe commit                       → charge + advance watermark to snapshot high-water
       ↳ memory.resonate(cue_handles)       → top 0–3 matches (per S2 gate)
       ↳ motive.read                        → motive_text
       ↳ sensor_alerts.check                → maybe dispatch notify (via S6 tool path)
-      ↳ ingest-cursor.advance              → per-source frontier, success-only
       ↳ context-fn assembles bundle.json (capsule = perceive ∘ enrich)
       ↳ make-process (harness LLM)
+      ↳ child's first `ready` (once only)  → commit the frontiers:
+          ↳ probe commit                   → charge + advance watermark to snapshot high-water
+          ↳ ingest-cursor.advance(heads)   → per-source frontier to the perceive snapshot
+      ↳ child dies before `ready`, no `error` sent → spawn_failed
+          (broker spawn-failed event: exit/signal, code, stderr tail); nothing committed
 ```
 
 The canonicalizer already emits the right shapes

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cd6-0ee9-7ab3-a431-58000e06fe74"
+recorded_at = "2026-10-18T02:27:39.369379282Z"
+kind = "friction"
+summary = "Stale satan/*.elc gives false red on single-file batch test runs"
+detail = "SL-022 PHASE-03 worker: an ad-hoc 'emacs --batch -l <test>' loaded stale host-compiled .elc in satan/ and reported void-function until load-prefer-newer was set. dev/satan-test.el handles it; single-file runs do not."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

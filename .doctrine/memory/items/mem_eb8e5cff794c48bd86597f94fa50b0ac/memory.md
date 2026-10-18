@@ -2,7 +2,7 @@
 
 # SATAN perceive/consume broker seam
 
-The SATAN tick (`dl-satan-broker-run`) is cut into **perceive** and **consume**
+The SATAN tick (`satan-broker-run`) is cut into **perceive** and **consume**
 ([[DE-010]], landed 2026-06-10; ratified by [[ADR-001]]).
 
 ## Control flow (as built)
@@ -15,15 +15,22 @@ broker-run: prepare (alloc run_id, freeze time_now) → mkdir run-dir
   → else CONSUME (effects + tokens)
 ```
 
-- **Perceive** (`dl-satan-run-perceive`) = percept-build + persist `percept.json`
-  + probe **read-snapshot** (frozen onto `prepare :probe_snapshots`, internal,
+- **Perceive** (`satan-run-perceive`) = percept-build + persist `percept.json`
+  + probe **read-snapshot** + ingest-cursor heads (`satan-ingest-cursor-heads`,
+  under `:ingest`) (frozen onto `prepare :probe_snapshots`, internal,
   never serialized → bundle byte-stable). PURE: no LLM, no tool dispatch, no
   attribute enqueue, no consumption-state mutation. Runs **before both gates** —
   budget-denied no longer skips perception. Its ONLY write is `percept.json`.
-- **Consume** (`dl-satan-broker--spawn`) = observer + probe-commit + resonance +
-  motive + sensor-alerts + ingest-cursor advance + bundle + `make-process` (LLM).
+- **Consume** (`satan-broker--spawn`) = observer + resonance + motive +
+  sensor-alerts + bundle + `make-process` (LLM). The **frontier commits**
+  (probe-commit ×3 + ingest-cursor advance to the perceive snapshot) run on the
+  child's **first `ready`** (`satan-broker--commit-frontiers`, once-only
+  guard = `satan-run-ready` slot; SL-022 PHASE-03, I5). A child that dies
+  before `ready` without sending `error` is `spawn_failed` (broker
+  `spawn-failed` event with `:process-status`/`:code`/`:stderr` tail) and
+  commits nothing.
 - `assemble-context = enrich∘perceive`; `-probe = commit∘read`. Single percept
-  builder (`dl-satan-percept-build`).
+  builder (`satan-percept-build`).
 
 ## No-child terminal paths (`--write-no-child-run STATUS REASON`)
 
@@ -45,7 +52,7 @@ outcomes (`satan-run-outcome-streak`), and `session_blocked` /
 
 ## Related
 
-- [[mem.fact.satan.ingest-cursor-store]] — the consume-side frontier this advances.
+- [[mem.fact.satan.ingest-cursor-store]] — the frontier the first `ready` advances.
 - [[mem.pattern.satan.sensor-watermark-format]] — probe watermark = native ts.
 - Signal model UNCHANGED (perception still reads present-tense live state; not yet
   replayable → IMPR-013).

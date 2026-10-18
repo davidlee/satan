@@ -145,6 +145,35 @@ when `:error' is not JSON at all."
     (setf (satan-run-failure-reason run-ctx) (satan-broker--error-class obj)))
   (setf (satan-run-status run-ctx) 'failed))
 
+(defun satan-broker--commit-frontiers (run-ctx)
+  "Commit RUN-CTX's perception frontiers from the snapshots perceive took.
+The three probe commits (attribute enqueue + watermark) and the ingest
+cursor advance to perceive's heads snapshot — what was perceived, not
+what is current (SL-022 DEC-041).  Each commit is called with its
+`:probe_snapshots' entry and soft-fails: a frontier write error cannot
+fail the run."
+  (let ((snaps (plist-get (satan-run-prepare run-ctx) :probe_snapshots)))
+    (pcase-dolist
+        (`(,stage ,commit ,key)
+         '(("probes.commit.curiosity" satan-sensor-curiosity-probe-commit :curiosity)
+           ("probes.commit.content"   satan-sensor-content-probe-commit   :content)
+           ("probes.commit.wpm"       satan-sensor-wpm-probe-commit       :wpm)
+           ("spawn.ingest_cursor"     satan-ingest-cursor-advance         :ingest)))
+      (condition-case _err
+          (satan-trace-stage stage (funcall commit (plist-get snaps key)))
+        (error nil)))))
+
+(defun satan-broker--on-ready (run-ctx obj)
+  "Audit the child's `ready'; the first one commits the frontiers.
+I5: frontiers advance only for a child that reached `ready'.  The slot
+is set before the commit, so a later `ready' — from a misbehaving
+harness, or after a commit that threw — never commits twice (RV-023
+F-18)."
+  (satan-audit-record (satan-run-audit run-ctx) 'in 'ready obj)
+  (unless (satan-run-ready run-ctx)
+    (setf (satan-run-ready run-ctx) t)
+    (satan-broker--commit-frontiers run-ctx)))
+
 (defun satan-broker--dispatch (run-ctx obj)
   (let ((err (satan-protocol-validate 'in obj)))
     (cond
@@ -157,7 +186,7 @@ when `:error' is not JSON at all."
       (setf (satan-run-status run-ctx) 'invalid-protocol))
      (t
       (pcase (plist-get obj :type)
-        ("ready"     (satan-audit-record (satan-run-audit run-ctx) 'in 'ready obj))
+        ("ready"     (satan-broker--on-ready run-ctx obj))
         ("log"       (satan-broker--on-log run-ctx obj))
         ("tool_call" (satan-broker--on-tool-call run-ctx obj))
         ("final"     (satan-broker--on-final run-ctx obj))
@@ -470,6 +499,60 @@ is not worth failing finalize over."
             (satan-broker--finalize run-ctx))
         (setq satan-run--spawn-running nil)))))
 
+(defconst satan-broker--stderr-tail-max-bytes 2048
+  "The most of a refused child's stderr its `spawn-failed' event keeps.")
+
+(defun satan-broker--stderr-tail (text max-bytes)
+  "Return the end of TEXT that fits in MAX-BYTES bytes; \"\" for nil.
+Cuts on a character boundary, never inside a multibyte character: a
+partial UTF-8 sequence would make the audit record unserialisable."
+  (let* ((text (or text ""))
+         ;; A character is at least one byte, so the fit starts no earlier.
+         (start (max 0 (- (length text) max-bytes))))
+    (while (> (string-bytes (substring text start)) max-bytes)
+      (setq start (1+ start)))
+    (substring text start)))
+
+(defun satan-broker--record-launch-refusal (run-ctx process-status code stderr)
+  "Record that RUN-CTX's child died before `ready' without an `error'.
+SL-022 I4: the launcher refused it (or the jail prelude failed, or it
+was killed), so no model ran — the run is `spawn_failed'.  Appends
+`broker spawn-failed' with PROCESS-STATUS (`exit'/`signal'), the exit
+CODE and the tail of STDERR, and sets the failure reason (first write
+wins).  Leaves the status to `satan-broker--finalize'."
+  (satan-audit-record
+   (satan-run-audit run-ctx) 'broker 'spawn-failed
+   (list :process-status (symbol-name process-status)
+         :code code
+         :stderr (satan-broker--stderr-tail
+                  stderr satan-broker--stderr-tail-max-bytes)))
+  (unless (satan-run-failure-reason run-ctx)
+    (setf (satan-run-failure-reason run-ctx) "spawn_failed")))
+
+(defun satan-broker--wrap-sentinel (inner run-ctx stderr-buf dir)
+  "Return a sentinel that runs INNER after the stderr bookkeeping.
+It owns STDERR-BUF: flushes it to DIR's `stderr.log', records a launch
+refusal when the child ended un-`ready' with RUN-CTX still `running',
+then always runs INNER (finalize + flag clear) and kills the buffer —
+even when the refusal record signals; the signal propagates."
+  (lambda (p e)
+    (let ((stderr (when (buffer-live-p stderr-buf)
+                    (with-current-buffer stderr-buf
+                      (buffer-substring-no-properties (point-min) (point-max))))))
+      (unwind-protect
+          (progn
+            (when stderr
+              (let ((coding-system-for-write 'utf-8))
+                (write-region stderr nil (expand-file-name "stderr.log" dir)
+                              nil 'silent)))
+            (when (and (memq (process-status p) '(exit signal))
+                       (not (satan-run-ready run-ctx))
+                       (eq (satan-run-status run-ctx) 'running))
+              (satan-broker--record-launch-refusal
+               run-ctx (process-status p) (process-exit-status p) stderr)))
+        (funcall inner p e)
+        (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf))))))
+
 (defun satan-broker--build-manifest (mode run-id)
   "Return the manifest plist for MODE and RUN-ID.
 Joins mechanical metadata (tools, capabilities, jail) with the
@@ -776,7 +859,9 @@ An error before the child exists is recorded, not raised: the run
 ends `failed' with reason `spawn_failed' (see
 `satan-broker--record-spawn-failure') and the run-id is returned.
 An error after `make-process' is re-signalled; the child's sentinel
-owns that run's finalisation and its stderr buffer."
+owns that run's finalisation and its stderr buffer.  A child that dies
+before `ready' without sending `error' also ends `spawn_failed' (see
+`satan-broker--wrap-sentinel'); its frontiers commit only on `ready'."
   ;; DEC-8: set the mutual-exclusion flag so the MCP server refuses new
   ;; sessions while this scheduled run is live.  Cleared by the child
   ;; sentinel on exit (`satan-broker--make-sentinel') and by this
@@ -882,43 +967,11 @@ owns that run's finalisation and its stderr buffer."
                              sensor-status
                              :tool-ctx (satan-run-tool-ctx run-ctx)))
                         (error nil)))
-           ;; DR-010 §3 — consume-side probe COMMIT.  The pure read-
-           ;; snapshots were taken upstream by `satan-run-perceive'
-           ;; (unconditionally, before the gates) and threaded onto
-           ;; PREPARE under `:probe_snapshots'.  Committing only here
-           ;; means a budget-denied / session-blocked tick perceives but
-           ;; never advances any watermark — no sensor signal is lost.
-           (probe-snapshots (plist-get prepare :probe_snapshots))
-           (_curiosity-signal
-            (condition-case _err
-                (satan-trace-stage "probes.commit.curiosity"
-                  (satan-sensor-curiosity-probe-commit
-                   (plist-get probe-snapshots :curiosity)))
-              (error nil)))
-           (_content-signal
-            (condition-case _err
-                (satan-trace-stage "probes.commit.content"
-                  (satan-sensor-content-probe-commit
-                   (plist-get probe-snapshots :content)))
-              (error nil)))
-           (_wpm-signal
-            (condition-case _err
-                (satan-trace-stage "probes.commit.wpm"
-                  (satan-sensor-wpm-probe-commit
-                   (plist-get probe-snapshots :wpm)))
-              (error nil)))
-           ;; DR-010 §3 (DEC-cursor-per-source-intra-day) — consume-side
-           ;; ingest-cursor advance.  Reached only on a SUCCESSFUL spawn:
-           ;; the perceive path and every `--write-no-child-run' denial
-           ;; caller (budget-denied, session-blocked, perceive-failed)
-           ;; return upstream in `satan-broker-run' and never enter
-           ;; `--spawn', so no denied tick advances any frontier.  Soft-
-           ;; fails so a cursor write error cannot fail the tick.
-           (_ingest-cursor
-            (condition-case _err
-                (satan-trace-stage "spawn.ingest_cursor"
-                  (satan-ingest-cursor-advance))
-              (error nil)))
+           ;; The perception frontiers (probe watermarks, ingest cursor)
+           ;; are NOT committed here: a child the launcher refuses would
+           ;; consume signals for a model that never ran.  They commit on
+           ;; the child's first `ready' (`satan-broker--commit-frontiers';
+           ;; SL-022 I5).  Only the steps that feed the bundle run pre-spawn.
            (prepare (setf (satan-run-prepare run-ctx)
                           (plist-put prepare :pre_spawn pre-spawn)))
            (_pre-spawn-completed
@@ -979,17 +1032,8 @@ owns that run's finalisation and its stderr buffer."
         ;; error below leaks nothing and the handler must not kill the
         ;; buffer — that would break the live child's stderr pipe.
         (set-process-sentinel
-         proc
-         (let ((existing (process-sentinel proc)))
-           (lambda (p e)
-             (when (buffer-live-p stderr-buf)
-               (let ((coding-system-for-write 'utf-8))
-                 (with-current-buffer stderr-buf
-                   (write-region (point-min) (point-max)
-                                 (expand-file-name "stderr.log" dir)
-                                 nil 'silent))))
-             (funcall existing p e)
-             (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf)))))
+         proc (satan-broker--wrap-sentinel
+               (process-sentinel proc) run-ctx stderr-buf dir))
         (let ((to (plist-get mode :timeout-seconds)))
           (when (and (integerp to) (> to 0))
             (setf (satan-run-timeout-timer run-ctx)

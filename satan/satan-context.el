@@ -17,6 +17,7 @@
 (require 'satan-sensor-curiosity)
 (require 'satan-sensor-content)
 (require 'satan-sensor-wpm)
+(require 'satan-ingest-cursor)
 (require 'satan-attribute-render)
 (require 'satan-trace)
 
@@ -31,10 +32,11 @@ sensing keys onto PREPARE.  No resonance/motive — those are consume-side
 concerns (see `satan-run-enrich') that only matter once a model runs.
 Pure apart from the `percept.json' write under DIR.
 
-Also takes the three probe read-snapshots (DR-010 §3 read/commit split):
-pure reads only — no enqueue, no watermark advance, no state write.  The
-snapshots are threaded onto PREPARE under `:probe_snapshots' for the
-consume-side commit in `satan-broker--spawn'.  This is internal
+Also takes the three probe read-snapshots and the ingest-cursor heads
+\(DR-010 §3 read/commit split): pure reads only — no enqueue, no
+watermark advance, no state write.  The snapshots are threaded onto
+PREPARE under `:probe_snapshots' for the commit on the child's first
+`ready' (`satan-broker--commit-frontiers', SL-022 DEC-041).  This is internal
 plumbing only — the context-fn never serializes it, so `bundle.json'
 stays byte-stable (the MCP boot path takes harmless pure reads).
 
@@ -42,7 +44,8 @@ Threaded keys (set by this function on PREPARE):
   :evidence         — evidence_window from percept.
   :percept          — plist from satan-percept-build.
   :sensor_status    — sensor_status from evidence_window.
-  :probe_snapshots  — (:curiosity SNAP :content SNAP :wpm SNAP)."
+  :probe_snapshots  — (:curiosity SNAP :content SNAP :wpm SNAP
+                       :ingest (:focus H :browser H :content H))."
   (let* ((percept (satan-percept-build prepare mode))
          (_persisted (satan-trace-stage "perceive.persist"
                        (satan-percept-persist dir percept)))
@@ -59,7 +62,9 @@ Threaded keys (set by this function on PREPARE):
                             :run-id run-id :ts ts))
                 :wpm (satan-trace-stage "probes.read.wpm"
                        (satan-sensor-wpm-probe-read
-                        :run-id run-id :ts ts)))))
+                        :run-id run-id :ts ts))
+                :ingest (satan-trace-stage "probes.read.ingest"
+                          (satan-ingest-cursor-heads)))))
     (plist-put
      (plist-put
       (plist-put

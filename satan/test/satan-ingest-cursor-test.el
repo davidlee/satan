@@ -227,6 +227,82 @@ local-offset row is selected, not discarded by string< (which would rank Z lower
         (should (equal "2026-06-10T08:30:00+10:00" (plist-get state :browser)))
         (should (equal "2026-06-10T04:00:00.000Z"  (plist-get state :content)))))))
 
+;; --- Heads snapshot (SL-022 DEC-041: frontiers commit on ready) -----
+;;
+;; Perceive takes `satan-ingest-cursor-heads'; the run's first `ready'
+;; hands that snapshot to `satan-ingest-cursor-advance', so rows that
+;; land during the launch are not skipped unseen.
+
+(defun satan-ingest-cursor-test--seed-sources (focus browser content)
+  "Seed today's focus and browser segments and articles.jsonl, one row each."
+  (satan-ingest-cursor-test--write-segment
+   satan-tools-activity-dir "focus"
+   (list (satan-ingest-cursor-test--seg focus)))
+  (satan-ingest-cursor-test--write-browser-and-content
+   satan-tools-activity-dir satan-tools-content-dir browser content))
+
+(ert-deftest satan-ingest-cursor/heads-returns-native-head-per-source ()
+  "`satan-ingest-cursor-heads' returns each source's head, verbatim."
+  (satan-ingest-cursor-test--with-env
+    (satan-ingest-cursor-test--seed-sources
+     "2026-06-10T09:45:00+10:00" "2026-06-10T09:20:00+10:00"
+     "2026-06-10T05:00:00.000Z")
+    (should (equal '(:focus "2026-06-10T09:45:00+10:00"
+                     :browser "2026-06-10T09:20:00+10:00"
+                     :content "2026-06-10T05:00:00.000Z")
+                   (satan-ingest-cursor-heads)))))
+
+(ert-deftest satan-ingest-cursor/heads-without-sources-is-full-nil-plist ()
+  "With no source files the snapshot still names every source, as nil.
+A nil snapshot would read as \"no argument\" to the advance."
+  (satan-ingest-cursor-test--with-env
+    (should (equal '(:focus nil :browser nil :content nil)
+                   (satan-ingest-cursor-heads)))))
+
+(ert-deftest satan-ingest-cursor/advance-to-snapshot-ignores-newer-live-heads ()
+  "Advancing to a heads snapshot writes the snapshot, not the live heads."
+  (satan-ingest-cursor-test--with-env
+    (satan-ingest-cursor-test--seed-sources
+     "2026-06-10T09:45:00+10:00" "2026-06-10T09:20:00+10:00"
+     "2026-06-10T05:00:00.000Z")
+    (let ((snapshot (satan-ingest-cursor-heads)))
+      ;; Rows land after the snapshot (during the launch).
+      (satan-ingest-cursor-test--seed-sources
+       "2026-06-10T10:45:00+10:00" "2026-06-10T10:20:00+10:00"
+       "2026-06-10T06:00:00.000Z")
+      (satan-ingest-cursor-advance snapshot)
+      (should (equal snapshot (satan-ingest-cursor-read))))))
+
+(ert-deftest satan-ingest-cursor/advance-to-older-snapshot-does-not-regress ()
+  "A snapshot older than the cursor leaves the cursor where it is."
+  (satan-ingest-cursor-test--with-env
+    (let ((cursor '(:focus "2026-06-10T10:00:00+10:00"
+                    :browser "2026-06-10T09:30:00+10:00"
+                    :content "2026-06-10T06:00:00.000Z")))
+      (satan-ingest-cursor-test--seed-cursor
+       satan-ingest-cursor-state-file cursor)
+      (satan-ingest-cursor-advance
+       '(:focus "2026-06-10T09:00:00+10:00"
+         :browser "2026-06-10T08:00:00+10:00"
+         :content "2026-06-10T04:00:00.000Z"))
+      (should (equal cursor (satan-ingest-cursor-read))))))
+
+(ert-deftest satan-ingest-cursor/advance-snapshot-nil-source-left-untouched ()
+  "A source the snapshot saw no head for keeps its cursor; no live fallback."
+  (satan-ingest-cursor-test--with-env
+    (satan-ingest-cursor-test--seed-cursor
+     satan-ingest-cursor-state-file
+     '(:focus "2026-06-10T08:00:00+10:00"))
+    (satan-ingest-cursor-test--seed-sources
+     "2026-06-10T09:45:00+10:00" "2026-06-10T09:20:00+10:00"
+     "2026-06-10T05:00:00.000Z")
+    (satan-ingest-cursor-advance
+     '(:focus nil :browser nil :content "2026-06-10T05:00:00.000Z"))
+    (let ((state (satan-ingest-cursor-read)))
+      (should (equal "2026-06-10T08:00:00+10:00" (plist-get state :focus)))
+      (should-not (plist-get state :browser))
+      (should (equal "2026-06-10T05:00:00.000Z" (plist-get state :content))))))
+
 ;; --- VT-backlog-depth tests ------------------------------------
 
 (ert-deftest satan-ingest-cursor/backlog-depth-known-cursor ()

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cd6-0ef5-7072-85f8-d2ba2492cb1c"
+recorded_at = "2026-10-18T02:27:39.381434797Z"
+kind = "friction"
+summary = "Phase sheet assumed ~140 DB tests skip; DB reachable, only 7 skip"
+detail = "SL-022 PHASE-03: the test DB at 127.0.0.1:54322 was up although podman socket/just db-start fail; memory mem.fact.satan.green-is-not-green's skip count did not hold on this host."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

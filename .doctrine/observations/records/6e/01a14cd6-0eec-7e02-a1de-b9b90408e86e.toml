@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14cd6-0eec-7e02-a1de-b9b90408e86e"
+recorded_at = "2026-10-18T02:27:39.37214262Z"
+kind = "friction"
+summary = "Phase sheet asks worker to write notes.md, worker contract forbids .doctrine writes"
+detail = "SL-022 PHASE-03: the planner's sheet told the capsule-worker to append notes.md and fill the sheet's Decisions; the worker contract keeps .doctrine/ with the orchestrator, which holds no Edit/Write. Orchestrator appended notes.md via shell heredoc. Planner should route notes to the orchestrator hand-back."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
