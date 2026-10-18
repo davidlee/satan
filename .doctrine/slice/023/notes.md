@@ -924,3 +924,125 @@ Red: temporary `try-ro-bind` in `hostDoctrineOptions` (all profiles). `try-readw
 **T-B2** `~/dev/satan/flake.nix`: new sibling check `runner-socket-unjailed` (`runnerSocketUnjailed`), iterating `lib.attrValues jailPkgs`, every `bin/*` launcher plus the inner it execs (`exec /nix/store/...-jailed-*`), asserting absence of `satan-runner` and ` /run/user/1000 ` (whole runtime dir as a bind arg; written literally). Broader `XDG_RUNTIME_DIR` / `/run/user` probes rejected: jailed-claude legitimately has `--bind-try /run/user/1000/satan/mcp/...` and `--setenv XDG_RUNTIME_DIR`. `justfile` `check-jails` gains the second `nix build` line (needed to run it). Red (temp raw bind in `satanJailOptions`, reverted): `--bind-try /run/user/1000/satan-runner /x` and `--bind-try /run/user/1000 /run/user/1000 --x` each failed with `jailed-satan-fake-harness must not contain ...`. Green: `just check-jails` rc=0; `just check` rc=0 (55 tests OK).
 
 **T-B3 sweep** (read-only): `satan-runner` appears in none of ~/satan-corpus, ~/dev/satan-attrd, ~/dev/goad, ~/notes, ~/.config/emacs; in ~/flakes only in `agents/jailed-agents-test.nix` (the new assertion). No `/run/user/1000"`, `/run/user/1000 ` or `"$XDG_RUNTIME_DIR"` bind/jail lines in any of the five. satan-attrd and goad flakes define jails (flake.nix mentions jail) but have no profile tests; not added (open question 3). Note: `grep --dereference-recursive` over all of ~/flakes timed out; used plain `-r` there.
+
+## PHASE-17
+
+- malebolge `ef470b8`; `just check` green, 1186 tests, lint 0; worker model
+  sonnet; EX-1..5 and VT-1..4 met.
+- Catalog fixture `test/gateway-catalog.json` hand-written from
+  `agents/gateway.nix`'s `deepseek-flash` pi block at flakes HEAD
+  `add489ed`, plus cost `{0.3, 1.2, 0.006, 0}` (the sheet had cited
+  `28c0cf53`).
+- Audit items: (1) daemon (`src/daemon-main.ts`) not wired to the gateway
+  provider (E2; design §5.1/§10 say both binaries); (2) zero cost accepted
+  when present; (3) `thinkingLevelMap`/`compat` passed through,
+  shape-checked only; (4) the runner catalog is gateway-only (the built-ins
+  + coding-agent store default is gone from the runner); (5)
+  `requiredEnv`/`Env` moved to `src/runner/errors.ts`.
+- Fact: pi-ai 1.3.0 `createProvider` + `openAICompletionsApi()` sends `POST
+  <baseUrl>/chat/completions` with `Authorization: Bearer <key>`.
+
+## PHASE-12 (re-plan, room)
+
+### Batch A (worker, opus)
+
+Model: opus. Argument (orchestrator): wires a secret (`LoadCredential=`) into a
+user unit, refactors the shared `piGatewayConfig`, sets a price feeding the
+DEC-057 cost ceiling, and writes host-key / trust-boundary scripts; mistakes are
+silent and security-relevant, and home-manager is unfamiliar ground.
+
+Bases: malebolge `ef470b8`, satan `b0a37a1`, home `28c0cf53`, fleet `b3011a7`.
+
+**E1 re-read (read-only):** `/srv/fleet` HEAD `b3011a7`, tree clean;
+`targetNames` lists `goad-walk`; `rooms.assistant.repos.targets = targetNames`.
+The removal the planner saw is gone. goad-walk stays the smoke repo.
+
+**T-A1 `piGatewayConfig` moved** to `~/flakes/agents/pi-gateway.nix`
+(`{lib}: url: models: …`, body and comment verbatim); `jailed-agents.nix`
+imports it and still re-exports it. Guard: jailed-agents check out path
+`bj2ph1qj…-jailed-agents-policy-tests` before and after: identical
+derivation, so no behaviour change.
+
+**T-A2 cost** on `models.deepseek-flash.pi`: `{input 0.3, output 1.2,
+cacheRead 0.006, cacheWrite 0}` USD/Mtok. Sources agree: (a) pi-ai 1.3.0
+`dist/providers/data/deepseek.json` id `deepseek-flash`; (b) LiteLLM 1.102.1
+`model_prices_and_context_window_backup.json` `deepseek/deepseek-flash`
+(3e-7, 1.2e-6, 6e-9, 0 per token); the gateway unit sets
+`LITELLM_LOCAL_MODEL_COST_MAP=True`, so (b) is what it bills. No other model
+has a `pi` block. No test pins the JSON (`expectedPiModels` derives from
+`gatewayData`); check rc=0, new out path (models file changed, intended F7).
+
+**T-A3 `features/satan/runner.nix`** + registry (`features/satan.nix`),
+`feature.satan.runner.enable = mkDefault true` (`features/profiles/personal-linux.nix`),
+`features-test.nix` wants `satan.runner#homeManager` (red with the profile
+line removed: `features-test.nix failed`, rc=1; green restored, rc=0),
+README feature-tree line. Judgement calls:
+- **Absolute paths in the unit, not `%h`.** EX-8 names the absolute path;
+  A2 wants one rule. Also found: `systemd-run --user -p
+  LoadCredential=x:%h/…` is refused ("Credential source is invalid") and `-E
+  X=%S` is passed literally: transient properties expand no specifiers. The
+  host-key script therefore passes absolute paths.
+- **`StateDirectory=satan/runner` + `StateDirectoryMode=0700`** over
+  `ExecStartPre install -d`: declarative; `man systemd.exec` gives
+  `$XDG_STATE_HOME` as the user root, and the user manager sets no
+  `XDG_STATE_HOME` (`systemctl --user show-environment`), so `%S` =
+  `~/.local/state`, matching the explicit `XDG_STATE_HOME`. M's own `mkdir`
+  would make it 0755.
+- `[mode.fix]` rendered (empty): submit refuses an unconfigured mode
+  (`protocol.ts` `knownMode`), and the smoke submits `fix`.
+- `[maxima]` design §5.3 example, `cost_usd = 0.50`; `transfer_timeout_s =
+  600` (A4, orchestrator-accepted).
+- **E4 gap:** the fleet exposes no room data (outputs: devShells,
+  nixosConfigurations, nixosModules, packages; home-manager is standalone, no
+  osConfig). Room/repo values are literals, commented with their fleet source.
+  Design §5.3's one-source claim is unmet: /audit item.
+- `nodejs_24` = 24.21.0 at `~/flakes`' pin (`--inputs-from .`); the built
+  unit's node is `nodejs-24.21.0`.
+
+**T-A4 verify (no switch):**
+1. `just home-build` rc=0.
+2. `result/home-files/.config/systemd/user/satan-runner.service`: ExecStart
+   `/nix/store/…-nodejs-24.21.0/bin/node /home/david/dev/malebolge/src/runner-main.ts`;
+   Environment = config path, XDG_STATE_HOME, PATH (no key);
+   `LoadCredential=satan-runner:/home/david/.config/llm-gateway/keys/satan-runner`;
+   RuntimeDirectory/StateDirectory 0700; StartLimit* in `[Unit]`;
+   `default.target.wants` link present. `systemd-analyze --user verify` rc=0
+   (one unrelated warning from `~/.config/environment.d/10-home-manager.conf`).
+   Catalog `…-satan-runner-gateway.json`: one provider, `deepseek-flash`
+   with cost.
+3. M's real parser, parked start, scratch dirs, **temporary config copy with
+   `prompt_file` → a scratch file** (Batch B's draft not on disk yet):
+   store/control lines logged, no refusal, ran to `timeout` (rc 124); runtime
+   dir 700. Unmodified rendered config: `refusing to start: prompt_file
+   …/patch-agent.md: ENOENT`, rc=1, as expected until Batch B.
+4. `just gate` rc=0 (features, factories, host-meta, workarounds,
+   llm-gateway, jailed-agents, treefmt). `flake.lock` untouched (user's dirt,
+   mtime before this batch). statix W20 on `personal-linux.nix` pre-exists at
+   HEAD; treefmt passes.
+
+**T-A5 `~/flakes/SATAN.md`:** Units row, Storage rows, Secrets paragraph,
+Jails paragraph (which tests assert the socket/credentials dirs are unbound;
+none names `credentials` itself, covered by the whole-dir refute), new
+`## satan-runner` section: Switches (the one-line enable), Room values,
+Host keys, `dirty_clone` remedy, Watching `clean_failed` (sqlite query),
+Live checks, First deploy steps 0-10 with agent checks.
+
+**T-A6/T-A7 malebolge:** `test/runner/live-smoke.ts`, `live-host-key.ts`,
+shared `live-fixture.ts` (+ `live-fixture.test.ts`, 17 tests; outside the
+sheet's file list: the scripts' testable parts, one copy for both),
+`justfile` recipes `smoke-runner *args`, `smoke-runner-host-key`. Red: test
+file before module (no tests ran), then `answered`/`deployedPaths` (3
+failing); green. Follow is `status` polling every 2 s (watch frames carry no
+events). Job events are read from the store with `node:sqlite` `readOnly`.
+The host-key verdict reads the scratch store's `transition` events: failed
+from `preparing`, reason `host_key`, no `waiting_room`. Tamper changes one
+base64 character 10 from the end of the alias line's key (the type prefix
+untouched). Only the refusal paths were run (no `SATAN_RUNNER_LIVE`: refuse;
+with it, the host-key script stops at the missing deployed config).
+`just check` rc=0: 47 files, 1203 tests, coverage lines 97.93%, lint 0.
+
+### Friction (Batch A)
+- `systemd-run` properties expand no specifiers, unlike unit files; a
+  planning probe with a literal path could not show it.
+- The `~/flakes` gate output is dominated by lock-diff noise from the dev
+  overrides; rc is the only reliable signal.
