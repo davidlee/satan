@@ -1,0 +1,309 @@
+id    = 24
+slug  = "sl-022-reconciliation-audit-satan-on-the-llm-gateway-phase-0108"
+title = "SL-022 reconciliation audit: SATAN on the LLM gateway (PHASE-01..08)"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-022 PHASE-01..08 (60c89d5..9b44a21, fixes 2243b41) against the locked design (invariants I1–I6, § Code impact, § Error classes, § Harness, § Elisp patch runner, § A refused launch, § Frontiers commit on ready, § Governance follow-through) and plan.toml EN/EX/VT. Evidence: slice conformance (27 undeclared, 0 undelivered), I1/I6 sweeps, just check / check-jails / check gate / verify-vt at 2243b41 all green, an independent code read of broker refusal + frontier paths, harness, patch runner/adapter and governance.md, and PHASE-07/08 live VH evidence in notes.md. 9 findings, all verified: 5 fixed in 2243b41, 1 tolerated, 2 routed to the reconciliation brief, 1 owned by flakes:IMP-037.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-022"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Expected PHASE-01 VT-1/EX-1 coverage (stray SATAN_PROVIDER ignored) to survive; observed PHASE-05 deleted the test, VT-1 now FAILs"
+detail = """
+plan.toml PHASE-01 EX-1: "a stray SATAN_PROVIDER is ignored"; VT-1 keywords include SATAN_PROVIDER in satan/harness/test_gptel_harness.py.
+0d13c7d (PHASE-05) deleted test_stray_legacy_provider_vars_are_ignored because the PHASE-05 VA-1 sweep (`_API_KEY|op://|op run|satan-credential`) hit it (it also set an *_API_KEY var).
+`doctrine slice verify-vt 22` at 9b44a21: PHASE-01 VT-1 ✗ FAIL — keyword `SATAN_PROVIDER` absent.
+The behaviour is untested now. A test that sets only SATAN_PROVIDER satisfies both phases.
+"""
+disposition = "fix-now"
+response = """
+Restored as test_stray_satan_provider_is_ignored (2243b41): sets only SATAN_PROVIDER, so it satisfies PHASE-01 EX-1/VT-1 without tripping the PHASE-05 I1 sweep (no *_API_KEY). verify-vt: PHASE-01 VT-1 PASS.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Restored as test_stray_satan_provider_is_ignored (2243b41): sets only SATAN_PROVIDER, so it satisfies PHASE-01 EX-1/VT-1 without tripping the PHASE-05 I1 sweep (no *_API_KEY). verify-vt: PHASE-01 VT-1 PASS.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected I4 to type every un-ready death spawn_failed; observed a failing stderr.log write skips the refusal record (untyped failed)"
+detail = """
+satan/satan-broker.el satan-broker--wrap-sentinel (~:450-474): inside the unwind-protect body, write-region to stderr.log runs first; the refusal predicate and satan-broker--record-launch-refusal run after it. If write-region signals (missing run dir — ISS-044's observed "Opening output file … stderr.log" error), the body aborts; the unwind form finalizes with failure-reason nil: no `broker spawn-failed` event, run closes untyped `failed`. Design I4: "It is never an untyped failed." ISS-044 is thereby more than a test flake when it hits a refused child.
+"""
+disposition = "fix-now"
+response = """
+2243b41: wrap-sentinel's stderr.log write is wrapped in condition-case and logged via `message`, so the refusal predicate always runs. Red→green test satan-broker/refusal-recorded-when-stderr-log-write-fails (run dir /nonexistent → spawn-failed recorded, failure_reason spawn_failed). ISS-044 body updated: the race now costs only stderr.log, not I4.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+2243b41: wrap-sentinel's stderr.log write is wrapped in condition-case and logged via `message`, so the refusal predicate always runs. Red→green test satan-broker/refusal-recorded-when-stderr-log-write-fails (run dir /nonexistent → spawn-failed recorded, failure_reason spawn_failed). ISS-044 body updated: the race now costs only stderr.log, not I4.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected frontier-commit tick-trace stages to keep recording; observed satan-trace-stage is a passthrough in --commit-frontiers (dead wrappers)"
+detail = """
+satan-broker--commit-frontiers (satan/satan-broker.el ~:143-152) wraps each commit in satan-trace-stage ("probes.commit.curiosity/content/wpm", "spawn.ingest_cursor"). It now runs from the stdout process filter on `ready`, after satan-trace-with-tick's dynamic extent has exited; satan-trace--current is nil there (satan-trace.el:15-20, 122-133), so the macro records nothing. Before SL-022 these stages ran inside the tick (git show 60c89d5:satan/satan-broker.el ~:894-919) and were traced. Not covered by the design; tick-trace rows silently lost four stages.
+"""
+disposition = "fix-now"
+response = """
+2243b41: dropped the satan-trace-stage wrappers from --commit-frontiers. The commits run after the tick, from the process filter, so no tick trace exists to record them and a stage there would be meaningless as tick latency. No reader of the stage names exists (rg). Docstring now says it runs outside any tick trace. Mirror in design at reconcile (see brief).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+2243b41: dropped the satan-trace-stage wrappers from --commit-frontiers. The commits run after the tick, from the process filter, so no tick trace exists to record them and a stage there would be meaningless as tick latency. No reader of the stage names exists (rg). Docstring now says it runs outside any tick trace. Mirror in design at reconcile (see brief).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "Expected refusal typing only for children that never produced a result; observed final-without-ready then exit yields a done run with failure_reason spawn_failed"
+detail = """
+Refusal predicate in satan-broker--wrap-sentinel tests process ended, (not ready), status running — not final. A child that emits `final` without `ready` and exits gets a spawn-failed audit event and failure_reason spawn_failed, while --finalize still sets status done (final present). Shipped harnesses always emit ready first (runloop.py ~:228; flake fake harness), so unreachable today; incoherent record if it ever happens.
+"""
+disposition = "fix-now"
+response = """
+2243b41: refusal predicate also requires (not (satan-run-final run-ctx)). Red→green test satan-broker/final-without-ready-is-not-a-refusal.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+2243b41: refusal predicate also requires (not (satan-run-final run-ctx)). Red→green test satan-broker/final-without-ready-is-not-a-refusal.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "Expected providers docstring to say who supplies each var; observed it says the launcher supplies all three"
+detail = """
+satan/harness/providers/__init__.py:4-9: "The jail launcher supplies all three variables: SATAN_MODEL, LLM_GATEWAY_URL, LLM_GATEWAY_KEY". SATAN_MODEL is set by the broker (satan-broker.el ~:852) and only forwarded by the jail (flake.nix:220). __main__.py:11-17 states it correctly; the two docstrings disagree.
+"""
+disposition = "fix-now"
+response = """
+2243b41: providers/__init__.py docstring now says SATAN_MODEL is set by the broker and forwarded by the jail; URL and key come from the launcher. Agrees with __main__.py.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+2243b41: providers/__init__.py docstring now says SATAN_MODEL is set by the broker and forwarded by the jail; URL and key come from the launcher. Agrees with __main__.py.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "Expected ingest advance to require the perceived snapshot; observed the no-arg live-heads fallback remains with no production caller"
+detail = """
+satan-ingest-cursor-advance (satan/satan-ingest-cursor.el ~:174-196) keeps its no-argument live-heads branch; the only production caller is --commit-frontiers, which passes (plist-get snaps :ingest). If :ingest were ever absent, nil silently falls back to live heads, defeating "commit what was perceived" (I5). plan.toml PHASE-03 EX-3 explicitly requires the no-arg behaviour be kept.
+"""
+disposition = "tolerated"
+response = """
+plan.toml PHASE-03 EX-3 explicitly requires `satan-ingest-cursor-advance` to keep read-head behaviour without an argument (immutable criterion), and the design kept it for other callers. perceive always stores :ingest under :probe_snapshots (satan-context.el), so the nil fallback is unreachable from the broker today. Making `heads` required would change a plan criterion — not worth a plan escalation for an unreachable path.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+plan.toml PHASE-03 EX-3 explicitly requires `satan-ingest-cursor-advance` to keep read-head behaviour without an argument (immutable criterion), and the design kept it for other callers. perceive always stores :ingest under :probe_snapshots (satan-context.el), so the nil fallback is unreachable from the broker today. Making `heads` required would change a plan criterion — not worth a plan escalation for an unreachable path.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Expected design § Code impact to list every touched path; observed five undeclared paths (slice conformance)"
+detail = """
+`doctrine slice conformance 22` undeclared (non-.doctrine): satan/satan.el (satan-run-attended deleted, PHASE-05 — only consumer was the deleted credential policy; no callers in satan/, dev/, docs/, ~/.config/emacs, satan/bin/satan-run), satan/test/satan-patch-adapter-test.el (holds the pi child-env VT; no pi-specific test file), docs/perceptual-design.md (CONSUME diagram, moved from PHASE-06 to 03), docs/refactor/{T8-pi-adapter-keys,plan}.md, docs/review/* (historical banners). All legitimate consequences; none is a behaviour change. Design §8 and the selector registry don't name them.
+"""
+disposition = "design-wrong"
+response = """
+All five paths are legitimate consequences, no behaviour change. Reconcile: add them to the slice selector registry (`doctrine slice selector add`, design-target) so conformance goes clean, and mirror in design.md § Code impact. See RV-024 Reconciliation Brief.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+All five paths are legitimate consequences, no behaviour change. Reconcile: add them to the slice selector registry (`doctrine slice selector add`, design-target) so conformance goes clean, and mirror in design.md § Code impact. See RV-024 Reconciliation Brief.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "Expected governing text to match the gateway model; observed SPEC-003, SPEC-002, ADR-017 ledger/RFC-018 and knowledge records still describe provider-key custody"
+detail = """
+design § Governance follow-through enumerates the stale governing text, to be changed at reconcile:
+- SPEC-003: spawn-contract key row, model+budget row (SATAN_PROVIDER), REQ-020 premise, REQ-022, REQ-025 wording, "Failure at spawn" concern (spawn_failed + frontiers on ready). docs/governance.md now notes SPEC-003 still lists a key (PHASE-06).
+- SPEC-002: overview credential backend, Transports harness/pi → gateway, REQ-016 rationale gap list.
+- ADR-017 authority ledger note (provider-credential custody left for the host gateway, DEC-049); RFC-018 D3/D5 step 1 annotation.
+- Knowledge: DEC-020/021/022 superseded by DEC-041/042; ASM-002 retired; ISS-023 closed moot; QUE-001 loses credential_* gates.
+- ISS-029 closes for ~/dev/satan; satan-attrd/flake.nix:66 forward split to a new backlog item.
+- REQ-016/REQ-025 stay pending (criteria 1–3 belong to ISS-028).
+"""
+disposition = "design-wrong"
+response = """
+Governing text is stale exactly as design § Governance follow-through predicted. Routed to reconcile: SPEC-003 and SPEC-002 via REV; ADR-017 ledger note + RFC-018 annotation; knowledge records (DEC-020/021/022 superseded, ASM-002, ISS-023, QUE-001); ISS-029 close + split; REQ-016/025 stay pending. Entries in RV-024 Reconciliation Brief.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Governing text is stale exactly as design § Governance follow-through predicted. Routed to reconcile: SPEC-003 and SPEC-002 via REV; ADR-017 ledger note + RFC-018 annotation; knowledge records (DEC-020/021/022 superseded, ASM-002, ISS-023, QUE-001); ISS-029 close + split; REQ-016/025 stay pending. Entries in RV-024 Reconciliation Brief.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "Expected the launcher refusal hint to name the issued alias; observed it suggests 'llm-gateway issue satan-gptel-harness' for keys/satan"
+detail = '''
+PHASE-08 VH-3 audit stderr: "Issue one: llm-gateway issue satan-gptel-harness --models <a,b> --budget <usd> --out \"…/keys/satan\"". The issued alias is `satan` (keyFile basename); the hint uses the jail name. Cosmetic; generated by the jail library in ~/flakes/agents (jailed-agents.nix gateway key check), not by this repo.
+'''
+disposition = "follow-up"
+response = "Owned by flakes:IMP-037 (gateway launcher hint names jail not client), minted at SL-022 design. ISS-045 filed in error and closed duplicate. After the flakes fix, re-lock agents here and update satan-broker-test--launcher-refusal if the text changes."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Filed ISS-045 (owner: ~/flakes/agents gateway key check; re-lock agents here after; update the broker test's refusal fixture if the text changes).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Route was a duplicate: flakes:IMP-037 already tracks this (SL-022 notes Harvest)."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Owned by flakes:IMP-037 (gateway launcher hint names jail not client), minted at SL-022 design. ISS-045 filed in error and closed duplicate. After the flakes fix, re-lock agents here and update satan-broker-test--launcher-refusal if the text changes."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -1,0 +1,46 @@
+memory_uid = "mem_01a14d23585e7d72b4d674bf3c62d37e"
+memory_key = "mem.pattern.nix.text-probe-flake-check-silent-pass"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Nix text-probe flake checks pass silently unless built to fail"
+summary = "runCommand probes over a built launcher: ! grep never trips set -e, empty extraction passes every must_not, shared probe lists hide dropped forwards — guard each, then prove it with a negative control"
+created = "2026-10-18"
+updated = "2026-10-18"
+
+[scope]
+paths = ["flake.nix"]
+globs = []
+commands = []
+tags = ["nix", "flake-check"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "d5371aa9377fc248ff2d569d9b9967e66aa37590"
+ref_name = "refs/heads/main"
+checkout_state_id = "014727228a3cffde70986f8f7227c27288590377aa9671a6ecd0856df2c4c69b"
+base_commit = "2243b41987bd8ad8283c02fb921b529d132c0f33"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-022"
+
