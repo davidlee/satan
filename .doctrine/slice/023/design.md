@@ -36,12 +36,15 @@ commits into the real repo as a branch. Both old runners are deleted, and the
 
 **Boundary.** Inside this design: the runner, its control socket and store, the
 Emacs client changes, the cutover, and the authority-ledger changes. Outside it:
-the room, its door (ssh ingress) and git channel (oubliette, its SL-005); the
-LLM gateway, its keys and budgets (`~/flakes` SL-011). Where the runner touches
-the door — the room adapter, door configuration, the room's land verb — this
-design defines a port and builds against an oubliette capsule *slot* standing in
-for the room, on ASM-005 (`doctrine show ASM-005`: the door will be pinned as
-oubliette's Plan F §5 sketches it). It does not design oubliette's side.
+the room and its door (ssh ingress; oubliette SL-005), the room's git channel
+and `session` launcher (oubliette SL-006); the LLM gateway, its keys and budgets
+(`~/flakes` SL-011). Where the runner touches the door — git channel, door
+configuration, execution environment — this design defines a port with two
+adapters: a *slot* adapter (an oubliette capsule slot standing in for the room;
+the live rung until SL-006 ships) and a *room* adapter built now against
+fixtures of oubliette SL-006's interface (§5.2). It does not design oubliette's
+side. There is no land verb (oubliette DEC-040): promotion is Emacs's plain
+fetch of the quarantine ref.
 
 <!-- doctrine:section sec-10 -->
 # 2. Current State
@@ -115,6 +118,8 @@ recovered and committed.
 | SPEC-003 OQ-3 | This slice decides the surviving runner and its spec (DEC-064). |
 | DEC-043, DEC-049 | Gateway budgets are not SATAN ceilings. Provider-credential custody is not a ledger item. |
 | oubliette DEC-031 | Room stops are routine and must be cheap; persistent state survives them. |
+| oubliette DEC-040, DEC-047 | No land verb: promotion is a plain fetch of the quarantine ref. One `known_hosts` per room under alias `room-<room>`, first contact `accept-new` over the host-local door socket. |
+| CON-003, CON-004 | The runner runs as the oubliette module owner (door socket `0600`); the room user carrying the runner's key is declared `{ uid; keys; }`, uid 1000-29999. |
 
 Checked and ruled out: ADR-001 (perception/cognition), ADR-002 (proposed, not
 binding), RFC-017/RFC-018 (open — evidence), REQ-019..025 (harness-only).
@@ -135,9 +140,10 @@ binding), RFC-017/RFC-018 (open — evidence), REQ-019..025 (harness-only).
   authoritative path allowlist.
 - The room has no egress and no credentials; the model call must happen on the
   host.
-- Oubliette's door and room git channel are not designed yet (SL-005). A slot
-  offers the same shape: ssh as an agent user through a relay, host-side collect
-  into a bare quarantine.
+- Oubliette's door is pinned (SL-005, ASM-005 validated); its room git channel
+  and `session` launcher are designed in SL-006, which is neither locked nor
+  shipped. A slot offers the same shape — ssh as an agent user through a relay,
+  host-side collect into a bare quarantine — and stays the live rung meanwhile.
 
 <!-- doctrine:section sec-12 -->
 # 4. Guiding Principles
@@ -159,9 +165,9 @@ binding), RFC-017/RFC-018 (open — evidence), REQ-019..025 (harness-only).
    model turns on failing tool calls.
 6. **Fail closed.** An unreachable runner fails the Emacs tools; an unreadable
    usage figure denies the next request; a disabled runner schedules nothing.
-7. **Ports where the door is unknown.** Everything that depends on oubliette's
-   unpinned room verbs sits behind a port with a slot-backed adapter, so SL-005
-   swaps an adapter, not a design.
+7. **Ports at the door.** Everything that depends on oubliette's verbs sits
+   behind one port with a slot and a room adapter; `[door] kind` picks one.
+   SL-006 shipping changes config, not design.
 8. **Port logic, not code.** The policy ladder, prompt composition, allowlist
    semantics and classification move from the old runners as behaviour, pinned
    by their old tests turned acceptance fixtures.
@@ -184,13 +190,13 @@ flowchart LR
     harness["pi-durable Harness<br/>one conversation per job"]
     guard["guard extension<br/>hooks: pause, early path check"]
     gate["model gate<br/>ceilings at provider boundary"]
-    envw["env wrapper<br/>room-down detection"]
+    envw["JobConnection<br/>room-down detection"]
     chan["git-channel port"]
     classify["collect + classify"]
     db[("runner.sqlite<br/>job_* tables + pi_* tables")]
   end
   gw["LLM gateway<br/>(~/flakes)"]
-  subgraph oub["oubliette (room; slot stands in)"]
+  subgraph oub["oubliette (room; slot until SL-006 ships)"]
     door["door: agent user<br/>+ relay socket"]
     clone["repo clones<br/>job/&lt;id&gt; branches"]
     quar[("quarantine<br/>bare repo per repo")]
@@ -223,7 +229,8 @@ Non-obvious edges:
   interactive daemon; per-job model choice comes from the policy ladder.
 - **Tools reach the room only through pi-env.** pi-env runs a small daemon in
   the guest over ssh as the agent user, through the door's relay socket
-  (`ProxyCommand` in a runner-owned ssh config, as EVD-005 proved on a slot).
+  (`ProxyCommand` in a runner-owned ssh config, as EVD-005 proved on a slot);
+  in a room it is started under the job's repo's `session` launcher (§5.2).
   The guest sees tool arguments only; prompt, transcript and model output stay
   on the host.
 - **The runner reads the real repos and never writes them.** Reads: resolve and
@@ -238,7 +245,7 @@ Non-obvious edges:
 |---|---|
 | Emacs | producer tool (argument schema for the model), inbox notice, promote/reject command and its git fetch |
 | Patch runner | queue, scheduling, job state and its schema, RPC validation, policy ladder, prompt composition, harness hosting, ceilings, pause/resume, collection, classification, job audit, its kill switch |
-| Oubliette | room, door, refresh push and quarantine fetch verbs, graceful stop; later a land verb |
+| Oubliette | room, door, `session` launcher, `push`/`collect` verbs and the quarantine, the room's `known_hosts`; stop (orderly guest reboot via the stop key; in-flight work cut). No land verb (its DEC-040). |
 | Gateway | model routing, provider keys, deployment budgets |
 
 **Module layout in `~/dev/malebolge`.** A second binary beside the interactive
@@ -250,7 +257,7 @@ disable switch (POL-001: one binary per extraction).
 | `src/ndjson.ts`, `src/unix-socket.ts` | shared framing and listen/connect (existing) | — |
 | `src/models.ts` | shared model catalog; gains the gateway-routed provider both binaries use | — |
 | `src/runner-main.ts` | entry: load config, open store, open harness, start scheduler and socket | no |
-| `src/runner/config.ts` | parse runner config: maxima, repos, mode/tag policy, prompt path, door settings | yes |
+| `src/runner/config.ts` | parse runner config: maxima, repos, mode/tag policy, prompt path, door settings (slot or room kind) | yes |
 | `src/runner/protocol.ts` | full schema parse of every control operation | yes |
 | `src/runner/store.ts` | SQLite file, shared adapter, job schema and migrations, job queries | no |
 | `src/runner/jobs.ts` | state machine: allowed transitions and the recovery table | yes |
@@ -258,9 +265,9 @@ disable switch (POL-001: one binary per extraction).
 | `src/runner/prompt.ts` | prompt composition | yes |
 | `src/runner/ceilings.ts` | budget arithmetic: remaining allowance, warning threshold, cap | yes |
 | `src/runner/model-gate.ts` | `Models` view wrapping `streamSimple` and `completeSimple`: attempt counter, ceiling denial, output cap | no (thin over `ceilings.ts`) |
-| `src/runner/env.ts` | per-job wrapper over pi-env's `ExecutionEnv`: builds it from door config, catches typed connection failures, records `pause_requested` durably | no |
+| `src/runner/env.ts` | per-job pi-env `ExecutionEnv` over a `JobConnection` (DEC-055: observes the typed lost failure, records `pause_requested` durably) layered on the door's daemon connection — slot: pi-env's `sshConnection`; room: the `session` launch command (§5.2) | no |
 | `src/runner/guard.ts` | pi-durable extension: `afterTool` pause trigger (reads `pause_requested`), `beforeTool` early path check | no (thin over pure parts) |
-| `src/runner/room.ts` | git-channel port, reachability probe; slot adapter | no |
+| `src/runner/room.ts` | git-channel port, reachability probe; slot adapter and room adapter (argv builders and exit-code mapping pure) | no |
 | `src/runner/classify.ts` | path allowlist match, ancestry result, class from end reason | yes |
 | `src/runner/scheduler.ts` | FIFO, one in flight, wake on submit, deadline timer | no |
 | `src/runner/control.ts` | serve operations and the watch stream | no |
@@ -314,7 +321,8 @@ repo.
 ### Job contract (DEC-059)
 
 - `repo` names an entry in runner config (real repo path, guest clone path,
-  default branch) — a name, not a path. Unknown repo → `invalid_request`.
+  default branch) — a name, not a path, equal to the oubliette target name.
+  Unknown repo → `invalid_request`.
 - `baseRef` must be a branch of the real repo: `git check-ref-format --branch`
   and `refs/heads/<baseRef>` exists. Omitted → the repo entry's default branch.
   `HEAD`, tags and oids are refused (`base_ref_invalid`). The producer no longer
@@ -364,19 +372,147 @@ interface GitChannel {
 ```
 
 Errors are typed: `ChannelUnavailable` (room down — retry later) vs
-`ChannelFailed` (anything else). The slot adapter maps these onto oubliette's
-slot provision/collect verbs; the room adapter replaces it when SL-005 pins the
-room verbs. The job branch `job/<id>` is created at `base_oid` in the guest
-clone through the execution environment during `preparing`. Only `job/<id>` is
-collected; uncommitted work never travels.
+`ChannelFailed` (anything else). Two adapters, chosen by `[door] kind`; nothing
+outside `room.ts` and `config.ts` knows which. The job branch `job/<id>` is
+created at `base_oid` in the guest clone through the execution environment
+during `preparing`. Only `job/<id>` is collected; uncommitted work never
+travels.
+
+**Slot adapter** (live rung until SL-006 ships). `capsule <slot>
+provision`/`collect`/`ssh true`; `capsule` exits 1 for every failure, so a
+failed verb is typed by probing afterwards. Refresh first switches the guest
+clone back to `work` (`returnToWork`: slot-only — `provision` refuses off
+`work`). Collect fetches every guest head; only `job/<id>` is read.
+
+**Room adapter** — against the interface in oubliette SL-006 design sec-6,
+*provisional until SL-006 locks*; built and tested on fixtures now, live when
+SL-006 ships. `<room>` and `<repo>` are config: the door's room name and the
+`[repo.*]` key, which must equal the oubliette target name.
+
+| Port member | Room adapter |
+|---|---|
+| `refresh` | check `base_ref` still exists in the real repo; `capsule <room> push <repo> <base_ref>` → oid on stdout, which is `base_oid` (exactly what the guest received; push resolves the branch in the target's host checkout, the same checkout as `[repo.*].path`); the guest-side steps follow in `preparing` (§5.4) |
+| `collect` | `capsule <room> collect <repo> job/<id>` → `refs/capsule/<room>/heads/job/<id>` in the repo's `quarantine` (`/var/lib/capsule/collect/<room>/<repo>.git`); ref and oid read from stdout, the ref required to be exactly that name |
+| `reachable` | `capsule <room> ssh <user> true` exits 0 |
+| errors | exit 75, or no exit within the verb's timeout (`push`/`collect`: the repo's `transfer_timeout_s`; probe: `probe_timeout_s`) → `ChannelUnavailable` (room down, guest frozen, or a hung prompt; no probe needed; a timeout is audited as `channel_timeout`, distinct from exit 75; retried within `max_room_wait` / `max_pending_collection`); 1 → `ChannelFailed`, including authentication and a changed host key (a trust failure, not downtime — never retried as a pause); 2 → `ChannelFailed` marked a refusal (a runner bug: argv or config), audited as such — except that exit 2 from `push` first re-checks `refs/heads/<base_ref>` in the real repo, and an absent branch is `base_ref_invalid` (deleted between the runner's check and push's own resolve) |
+
+**Killing a verb.** Each verb is spawned as the leader of its own process group
+(`capsule` → `capsule-room-git` → git → ssh → socat). On its timeout the
+runner signals the whole group (`kill(-pgid)`: TERM, then KILL after a grace)
+and awaits the leader's exit before reporting `ChannelUnavailable`, so no
+orphaned git still holds a quarantine or guest ref lock when the retry runs.
+`execFile`'s own timeout signals only the direct child and is not used.
+
+`push` never touches the guest worktree (it writes `refs/host/<branch>`), so
+the runner owns clone hygiene, in two places:
+
+- **Clean after collect.** After a successful `collect` of `job/<id>`, the
+  runner runs, through the env, `git reset --hard` and `git clean -ffd` in
+  `guest_path` (ignored files, e.g. build caches, are kept; `-ff` also removes
+  untracked nested repos). This is the only automatic clean anywhere. The job's commits
+  are already in quarantine, so only uncollectable residue is discarded. A
+  clean that fails (room down, crash) leaves the tree dirty for the check below.
+  Safe only because the job still holds the scheduler's one seat while
+  `collecting` or `pending_collection` (§5.4 Scheduling): no other job can be
+  live in that clone.
+- **Check in `preparing`, never clean.** Through the env: (1) `test -d
+  <guest_path>/.git` — the configured `guest_path` is the target's `guestPath`;
+  (2) clean-tree check, `git status --porcelain` empty (untracked counted,
+  ignored not); (3) `git switch -c job/<id> <base_oid>`. A still-dirty tree
+  fails closed: `failed(error)`, reason `dirty_clone`, paths audited.
+  `preparing` discards nothing, so it can never destroy work that was not
+  collected. A fresh room clone is `git init` on an unborn branch with no
+  commits; step 3 works there once `push` delivered the oid. The checks run
+  only before the initial prompt is admitted: on a restart redo whose
+  submission record exists, the agent may already have worked in the clone, so
+  the redo skips them and records `running` (§5.4 recovery).
+- **Env uses outside `running`** (the `preparing` checks and switch, the clean)
+  go through a `JobConnection` with a *counting* observer: a lost failure makes
+  that step `ChannelUnavailable` and never writes `pause_requested` or a pause
+  event. Only the running job's tools use the pausing observer.
+- **Operator remediation** of a `dirty_clone` (every later job on that repo
+  fails until it is resolved): inspect and clean by hand through `capsule
+  <room> ssh <user> -- git -C <guest_path> status` / `reset --hard` / `clean
+  -ffd`. A `clean-clone <repo>` control-socket operation, invoked from Emacs,
+  is deferred to the backlog.
 
 ### Execution environment
 
-pi-env's remote `ExecutionEnv`, one per job, wrapped by `src/runner/env.ts`
-(room-down detection, §5.4), built from door settings in runner config: ssh config file with the relay `ProxyCommand`, the runner's keypair,
-its own `known_hosts`, and the repo's guest clone as `cwd`. Door values are the
-slot recipe until SL-005 pins them (inq-14, deferred on ASM-005;
-`mem.pattern.satan.pi-env-oubliette-gateway`).
+pi-env's `RemoteExecutionEnv`, one per job, `cwd` = the repo's `guest_path`,
+over two layered `Connection`s, both per job (`connect(repo)`):
+
+- **outer: `JobConnection`** (DEC-055) — a subclass delegating `info()`,
+  `session()`, `request()`; recognises the typed lost failure and records
+  `pause_requested` before rethrowing (§5.4). Indifferent to how the daemon
+  starts.
+- **inner: the daemon connection**, one runner-owned `command` function for
+  both kinds: at each start it runs `detectPlatform(target)` (first time) and
+  `deployDaemon(target, remote)`, then returns `[ssh, ...sshArguments(target,
+  true), <launch>]`; pi-env appends `serve --token <hex>`. Slot launch: the
+  daemon path (pi-env's `sshConnection` recipe). Room launch: `<session_path>
+  <repo> -- <daemon path>`. `session` (oubliette SL-006) is invoked by its
+  absolute path, the configured `session_path` (documented value
+  `/run/current-system/sw/bin/session`; I13), because non-interactive ssh does
+  not inherit the login `PATH`. It puts
+  that repo's tool set on `PATH`, `cd`s to its `guestPath` and
+  `exec`s the daemon, so every tool command inherits the repo's tools. `<repo>`
+  is the job's `RepoConfig` name. All three helpers are exported by pi-env
+  1.3.0 (`dist/index.d.ts`, from `ssh.ts`); the room command is
+  `sshConnection`'s own recipe with the launch word replaced.
+
+The ssh target comes from door config: `user`, `identity`, `known_hosts`,
+`host_key_alias`, `ssh_config` (§5.3), and a host. Room door values (oubliette
+SL-006 sec-6): `ssh_config` holds `ProxyCommand socat -
+UNIX-CONNECT:/run/capsule-room/<room>/ssh.sock` and `ServerAliveCountMax`;
+login user = the room's `repos.user`; `known_hosts` =
+`/var/lib/capsule/room/<room>/known_hosts` (oubliette's file; the runner only
+reads it); alias `room-<room>`. The room needs no guest address: the socat
+`ProxyCommand` and `HostKeyAlias` bypass `HostName`, so the runner passes the
+configured room name as the placeholder ssh host; `host` is a slot-only key.
+
+Frozen guest: pi-env's `Connection` pings the daemon every 5 s and tears the
+session down after 30 s of silence (`SILENCE_LIMIT_MS`), a typed lost failure
+→ pause; that fires first and is what the live rung tests. ssh's keepalive is a
+backstop only: `sshArguments` fixes `ServerAliveInterval=15` on the command
+line, so only `ServerAliveCountMax` (door `ssh_config`) is ours, and at ssh's
+default of 3 it fires at 45 s. The channel verbs are bounded by
+their timeouts instead (§5.2 errors).
+
+**Host keys — the one statement.** The runner's ssh is strict: its daemon
+command calls `sshArguments(target, true)` (`StrictHostKeyChecking=yes`;
+pi-env's `strictHostKeys` parameter, `false` meaning `accept-new`), and
+`detectPlatform`/`deployDaemon` use the same strict default. The runner never
+writes oubliette's `known_hosts`. Keys are learned only by oubliette: the room
+adapter's first step is `capsule <room> push` in `refresh`, whose program uses
+`accept-new` (oubliette DEC-047: TOFU over a host-local socket into a VM this
+host booted), and it precedes the first env command. A daemon start that
+finds the key unknown or changed fails strict; that is a trust failure, not
+downtime. `detectPlatform`/`deployDaemon` throw it typed
+(`HostKeyUnknownError`/`HostKeyChangedError`), but `Connection` rewraps any
+command-function rejection as `RemoteError{spawn_error, lost: true}`, erasing
+the type. So the runner's command function catches the two typed errors and
+records a per-job trust failure (by type, before rethrowing); `JobConnection`
+consults it before treating a lost failure as a pause. With a trust failure on
+record: in `preparing` → `failed(error)`, reason `host_key`; in `running` → abort,
+`end_reason = error`, then `collecting` (I12) — never `waiting_room`. The same
+holds on every reconnect, restart redo included. A changed key is refused by
+oubliette's verbs too (exit 1). Slot keys: oubliette's slot transport checks
+no keys and records none, so the runner's slot `known_hosts` is seeded once
+out of band (pi-env `scanHostKey` + `acceptHostKey`, operator step in
+`~/flakes/SATAN.md`); unseeded, the first start is a trust failure. The runner runs as the oubliette
+module owner (CON-003: door socket `0600`).
+
+**Identities.** satan has its own dedicated ssh key, the runner's `[door]
+identity`; the runner's pi-env daemon ssh uses it. The capsule channel verbs,
+run as the module owner, authenticate with that user's default identity
+(oubliette's room verbs take no identity option). The room user's declaration
+`{ uid; keys; }` lists both keys (CON-004) — a deployment fact for
+`~/flakes/SATAN.md`. The verbs run ssh without `BatchMode`; a prompt that hangs
+is bounded by the verb's timeout and reads as `ChannelUnavailable`. The live
+room rung checks that push, collect and the probe run non-interactively as the
+runner user. pi-env deploys its daemon under the agent's home, which
+must be writable and executable (ASM-005's open caveat; checked at the live
+room rung).
 
 ### Tools offered to the model
 
@@ -442,9 +578,10 @@ CREATE TABLE jobs (
   policy          TEXT,                      -- resolved ladder output, JSON
   base_oid        TEXT,                      -- set at refresh
   end_reason      TEXT,                      -- completed|ceiling_exceeded|usage_unavailable|cancelled|room_unavailable|error
-  pause_requested INTEGER NOT NULL DEFAULT 0, -- written by the env wrapper
+  pause_requested INTEGER NOT NULL DEFAULT 0, -- written by the JobConnection
   pause_count     INTEGER NOT NULL DEFAULT 0, -- waiting episodes; names resume messages
   state_entered_at TEXT NOT NULL,           -- set on every transition; bounds waits
+  parked_at       TEXT,                      -- first disabled startup that parked this job; null when not parked
   running_since   TEXT,                      -- start of the current running segment
   active_ms       INTEGER NOT NULL DEFAULT 0, -- closed running segments
   model_requests  INTEGER NOT NULL DEFAULT 0, -- provider attempts, counted by the model gate
@@ -484,7 +621,7 @@ and the recovery table (§5.4) covers each gap:
   admitted; only then is `running` recorded.
 - **Warning**: the `job_events` warning row is the receipt of an admitted
   `warn-<job id>` steer; placement is read from its submission record.
-- **Pause**: the env wrapper records `pause_requested` before the hook runs
+- **Pause**: the `JobConnection` records `pause_requested` before the hook runs
   and before the abort; `pause_count` is incremented with `waiting_room`.
 
 ### What is audited
@@ -520,18 +657,44 @@ model = "gateway/deepseek-flash"
 [mode.fix]
 [tag."lint"]
 
-[repo.satan]
+[repo.satan]                   # key = the oubliette target name
 path = "~/dev/satan"
-guest_path = "/work/repos/satan"
+guest_path = "/work/satan"     # the target's guestPath, /work/<target>
 default_branch = "main"
+quarantine = "/var/lib/capsule/collect/assistant/satan.git"   # room kind only
+transfer_timeout_s = 600       # room kind: bound on this repo's push/collect; sized for a first full push
 
-[door]                         # slot recipe until SL-005 (ASM-005)
-ssh_config = "…"
-identity = "…"
-known_hosts = "…"
+[door]
+kind = "room"                  # "slot" | "room"
+room = "assistant"             # room kind: capsule argv; also the placeholder ssh host
+user = "agent"                 # the room's repos.user
+ssh_config = "…"               # ProxyCommand socat … ssh.sock; ServerAliveCountMax
+identity = "…"                 # the runner's private key
+known_hosts = "/var/lib/capsule/room/assistant/known_hosts"   # oubliette's; read only
+host_key_alias = "room-assistant"
+session_path = "/run/current-system/sw/bin/session"   # room kind; required, documented value
+probe_timeout_s = 15           # room kind: bound on `capsule <room> ssh <user> true`
+# slot kind instead: slot, quarantine (the slot's), profile, host (guest address); returnToWork applies
 ```
 
-Values are illustrative; the shape is the contract.
+Values are illustrative; the shape is the contract. Keys are closed per kind,
+in `[door]` and in `[repo.*]` alike: a key of the other kind (e.g.
+`[repo.*].quarantine` or `room` under `kind = "slot"`, `host` or `[door]
+quarantine` under `kind = "room"`), or a missing key the kind needs, refuses
+start. Values
+are never derived (I13): the alias is configured, not built from `room`
+(today's slot adapter derives `pi-env-<slot>`; it moves to config too), and
+each room repo names its own quarantine. `session_path` is required: the value
+shown is the documented one, not a built-in fallback. `transfer_timeout_s`
+(per repo) bounds that repo's `push` and `collect` and must cover a first full
+push into a fresh `git init` clone; `probe_timeout_s` bounds the probe. On
+expiry the verb's process group is killed, it is treated as exit 75, and the
+audit records `channel_timeout` (§5.2). `guest_path` must equal the target's
+`guestPath`; the runner holds a copy because `~/flakes` renders this file from
+the same oubliette target attrset as the room (one source, at Nix eval), and
+the `preparing` check (§5.2) backstops it. The check runs before the first
+command in that repo, not at startup: a room down at startup is routine
+(oubliette DEC-031).
 
 ### Leaving Postgres
 
@@ -568,9 +731,9 @@ stateDiagram-v2
   queued --> preparing: scheduled (one in flight)
   queued --> cancelled: cancel
   preparing --> running: base_oid, job branch, initial prompt admitted
-  preparing --> failed: refresh failed / base gone / room_unavailable
+  preparing --> failed: refresh failed / base gone / room_unavailable / host_key / guest_path_invalid / dirty_clone
   preparing --> cancelled: cancel
-  running --> waiting_room: typed env failure (env wrapper → afterTool)
+  running --> waiting_room: typed env failure (JobConnection → afterTool)
   waiting_room --> running: room reachable → resume message
   running --> collecting: completed / ceiling / cancel / error
   waiting_room --> pending_collection: max_room_wait / cancel
@@ -625,6 +788,7 @@ sequenceDiagram
   R->>R: resolve policy → job.policy (preparing)
   R->>G: refresh(repo, base_ref)
   G-->>R: base_oid
+  R->>Rm: (room) test -d guest_path/.git; clean-tree check, never clean (via env exec)
   R->>Rm: git switch -c job/<id> base_oid (via env exec)
   R->>H: configure(model, tools, cwd, instructions) + submit prompt (requestId = job id)
   H-->>R: admitted
@@ -636,6 +800,7 @@ sequenceDiagram
   H-->>R: run settled (completed)
   R->>G: collect(repo, job)
   G-->>R: quarantine ref + oid
+  R->>Rm: (room) git reset --hard; git clean -ffd (via env exec)
   R->>R: ancestry + allowlist over all commits → class, reviewed_oid
   R-->>E: watch: needs_review
 ```
@@ -704,7 +869,7 @@ Placement of a steer mid-run is confirmed in the pause spike.
 
 ```mermaid
 sequenceDiagram
-  participant Env as Env wrapper (pi-env)
+  participant Env as JobConnection (pi-env)
   participant H as Harness
   participant Gd as Guard (afterTool)
   participant R as Runner
@@ -727,15 +892,23 @@ sequenceDiagram
 - Recognition is by **type**, never by text, and happens at the environment
   boundary: pi-durable catches tool and environment exceptions and hands
   `afterTool` an ordinary error result, so a typed pi-env failure would arrive
-  there as text only. The runner wraps pi-env's `ExecutionEnv` per job
-  (`src/runner/env.ts`); the wrapper catches the typed failure before
-  pi-durable converts it, records `pause_requested = 1` durably (with its
-  event) and rethrows. The mark is durable before the hook runs, so a crash
-  anywhere after it leaves a recorded pause for recovery. Which typed
-  failure pi-env raises on a real room stop is proven first, by a spike
-  stopping a slot mid-call (`capsule f stop`); EVD-005 covered a killed daemon,
-  not a VM stop.
-- The same spike confirms that the env wrapper's host write runs outside any
+  there as text only. pi-env's `ExecutionEnv` itself erases the type for
+  `exec` (EVD-009), so amended DEC-055 moved recognition from the pre-amendment
+  "env wrapper" over `ExecutionEnv` to the per-job `JobConnection` (§5.2,
+  `src/runner/env.ts`): it sees the typed
+  failure before pi-env and pi-durable convert it, records `pause_requested =
+  1` durably (with its event; idempotent — one stop raises more than one lost
+  failure) and rethrows. The mark is durable before the hook runs, so a crash
+  anywhere after it leaves a recorded pause for recovery. The PHASE-01 spike
+  stopped a slot mid-call (`capsule f stop`, EVD-010); EVD-005 covered a killed
+  daemon, not a VM stop.
+- A room stop is the same mechanism as that slot stop: an orderly guest reboot
+  via the stop key (`systemctl stop microvm@…` → capsule-halt), cutting
+  in-flight work. EVD-010 therefore stands for rooms and DEC-055 needs no new
+  evidence; the live room rung adds one test — a reconnect after a room stop
+  (pause, `capsule <room> start`, resume through a fresh `session`-launched
+  daemon).
+- The same spike confirms that the `JobConnection`'s host write runs outside any
   pi transaction on the shared adapter: a host call on the adapter from inside
   a pi transaction never settles (pi-durable README, SQLite adapters). The
   `afterTool` hook only reads. There is no in-memory fallback.
@@ -753,7 +926,10 @@ sequenceDiagram
 1. `collect` fetches `job/<id>` into quarantine. `ChannelUnavailable` →
    `pending_collection`, retried when `reachable()`; bounded by
    `max_pending_collection`, then `failed(collection_abandoned)`, audited.
-2. Record `reviewed_oid` = collected oid (immutable from here).
+2. Record `reviewed_oid` = collected oid (immutable from here). Room: then
+   clean the clone (`git reset --hard`, `git clean -ffd`; §5.2). Idempotent, so
+   a restart in `collecting` redoes it; a failed clean is audited, does not
+   change the job's outcome, and the next `preparing` refuses the dirty tree.
 3. Check ancestry: `reviewed_oid` descends from `base_oid`.
 4. Check every path changed across `base_oid..reviewed_oid` (all commits, not
    only the tip diff) against `allowed_paths`.
@@ -798,8 +974,11 @@ it to equal `reviewed_oid`, rather than fetching by oid, which a repo may refuse
 (`uploadpack.allowReachableSHA1InWant`); the plan verifies the exact form
 against the quarantine. The branch is then created by compare-and-swap against
 an absent ref, so Emacs never moves or deletes a branch it did not create. Merging the branch is the user's own git act. Rejection skips the fetch and
-reports `rejected`. When SL-005 provides a room land verb, Emacs calls it in
-place of the plain fetch; the receipt check is unchanged. Re-sending
+reports `rejected`. There is no land verb, ever (oubliette DEC-040): the
+quarantine is the slot's `[door] quarantine` or the room repo's
+`[repo.*].quarantine` (room:
+`/var/lib/capsule/collect/<room>/<repo>.git`, ref
+`refs/capsule/<room>/heads/job/<id>`), reported by `result`. Re-sending
 `needs_review` on every watch connect means a missed notice is never lost.
 
 ### Restart recovery (DEC-054)
@@ -821,7 +1000,20 @@ job's one harness act, if any (column 3), then calls `resume()`.
 
 With `enabled = false` the runner runs phase A only and makes no call that asks
 for progress: in-flight jobs stay parked where they were, and a recorded pause stays
-recorded. `status`, `list` and `result` read the job tables only.
+recorded. `status`, `list` and `result` read the job tables only. **Rule for
+every row:** phase A work that reaches the room — a channel verb (`push`,
+`collect`, the probe) or an env command (checks, branch create, clean) — runs
+only when `enabled` (I14). Disabled, such a row does nothing: the job stays in
+its state and no wait bound is applied, so nothing times out while parked.
+Parked time is not charged as wait: a disabled startup sets `parked_at = now`
+on each non-terminal job whose `parked_at` is null (one transaction, with a
+`parked` event; a later disabled restart leaves it as is). The first enabled
+startup, in phase A before any bound is judged, shifts `state_entered_at`
+(and, for a `running` job, `running_since`, so parked time is not charged to
+active wall-clock) forward by `now − parked_at` and clears `parked_at`, in one transaction with
+an `unparked` event. Both writes are host-only and atomic, so a crash either
+side of them re-bases exactly once.
+Rows marked *(enabled)* below are gated this way.
 
 Each row is exercised by fault injection at its write boundary.
 
@@ -829,16 +1021,17 @@ Each row is exercised by fault injection at its write boundary.
 |---|---|---|
 | `queued`, `conversation_id` null | — | create the conversation, record it |
 | `queued` | left for the scheduler | — |
-| `preparing`, no `base_oid` | redo refresh (room down → retry within `max_room_wait`), record `base_oid` | — |
-| `preparing`, `base_oid` set | ensure `job/<id>` exists at `base_oid` (create if absent; at another oid → `failed(error)`) | submit the initial prompt with `requestId` = job id (returns the existing submission if admitted); then `running` |
+| `preparing`, no `base_oid` | *(enabled)* redo refresh (room down → retry within `max_room_wait`), record `base_oid` | — |
+| `preparing`, `base_oid` set, no initial submission record (read-only view) | *(enabled)* room: the `preparing` checks; ensure `job/<id>` exists at `base_oid` (create if absent; at another oid → `failed(error)`) | submit the initial prompt with `requestId` = job id; then `running` |
+| `preparing`, `base_oid` set, initial submission record exists | — (no checks: the agent may already have worked in the clone; nothing is judged against its branch) | record `running`; `resume()` continues it |
 | `running`, `pause_requested = 1` | — | abort; then `waiting_room` |
 | `running`, conversation settled (read-only view), no transition recorded | apply the transition the settled outcome implies (→ `collecting`) | — |
 | `running` | re-arm the deadline from `active_ms` + (now − `running_since`) | `resume()` continues it; an interrupted unsafe tool reaches the model as `interrupted` |
 | `running`, warning threshold passed, no warning receipt | — | resubmit the warning (`warn-<job id>`; returns the existing submission if admitted), then write the receipt with its `submissionId` |
 | `waiting_room`, warning threshold passed and no placed warning on record (no receipt, or its submission record has no `entry`) | — | the resume message carries the warning text |
-| `waiting_room` | resume probing; bound from `state_entered_at` | on reachable: submit the resume message (`requestId` = `resume-<job id>-<pause_count>`) |
-| `collecting` | redo collect (idempotent fetch) and classification (pure) | — |
-| `pending_collection` | resume retrying; bound from `state_entered_at` | — |
+| `waiting_room` | *(enabled)* resume probing; bound from `state_entered_at` | on reachable: submit the resume message (`requestId` = `resume-<job id>-<pause_count>`) |
+| `collecting` | *(enabled)* redo collect (idempotent fetch), classification (pure) and, room, the clean (idempotent) | — |
+| `pending_collection` | *(enabled)* resume retrying; bound from `state_entered_at` | — |
 | `needs_review`, terminal | — | — |
 
 Replay concerns runner crashes only. `read` reruns after a crash; `write`,
@@ -847,8 +1040,10 @@ Replay concerns runner crashes only. `read` reruns after a crash; `write`,
 ### Scheduling (DEC-056)
 
 One job in flight across all repos, FIFO by `created_at`. `submit` wakes the
-scheduler; there is no tick and no `pg_notify`. A job in `waiting_room` holds
-the slot (one room). The runner's `enabled = false` (or unit stopped) is the
+scheduler; there is no tick and no `pg_notify`. A job holds the one seat in
+every non-terminal state from `preparing` on, `waiting_room`, `collecting` and
+`pending_collection` included (one room). Clean-after-collect relies on this:
+no other job can be live in the clone being cleaned. The runner's `enabled = false` (or unit stopped) is the
 kill switch: the runner refuses `submit` with `runner_disabled`, schedules
 nothing, and makes no harness call that asks for progress (above); status and result stay readable.
 
@@ -901,7 +1096,9 @@ silently.
   change it records.
 - **I12 Terminal only on a known collection outcome** for any job that reached
   `running`.
-- **I13 No fallback paths.** Missing prompt file or config refuses start.
+- **I13 No fallback paths.** Missing prompt file or config refuses start. Door
+  and repo values (quarantine, `known_hosts`, host-key alias, `guest_path`)
+  are configured, never derived.
 - **I14 Disabled means parked.** With `enabled = false` the runner never calls
   `harness.resume()`, submit or wait; no job advances.
 - **I15 Host state before harness acts.** Startup settles every job's host
@@ -915,12 +1112,15 @@ silently.
 
 ### Assumptions
 
-- **ASM-005** — oubliette SL-005 pins the door as Plan F §5 sketches (agent
-  user, runner key in the room declaration, unix-socket relay, writable
-  executable home). Room adapter, door config and the land verb wait on it; the
-  slot stands in.
-- pi-env raises a *typed* failure on a room stop, catchable in the runner's env
-  wrapper, whose host write runs outside a pi transaction; a steer is placed
+- **ASM-005** (validated from oubliette SL-005's relay) — the door is as Plan
+  F §5 sketched: agent user, runner key in the room declaration, unix-socket
+  relay. Open caveat: the agent home is writable and executable (pi-env deploys
+  its daemon there); checked at the live room rung.
+- **The room interface is oubliette SL-006 design sec-6** — provisional until
+  SL-006 locks; the room adapter is built against fixtures of it, and the slot
+  remains the live rung until SL-006 ships.
+- pi-env raises a *typed* failure on a room stop, catchable in the runner's
+  `JobConnection`, whose host write runs outside a pi transaction; a steer is placed
   before the next model request; a `Models` view wrapping `streamSimple` and
   `completeSimple` gates every provider call (all proven by the first-phase spike; DEC-055,
   DEC-057).
@@ -942,6 +1142,19 @@ silently.
 | Emacs absent when a job fails | notice resent on next watch connect until acked |
 | `baseRef` deleted between submit and refresh | `preparing → failed(base_ref_invalid)` |
 | `job/<id>` already exists in the guest at another oid | `failed(error)`; never force-moved |
+| Room clone still dirty at `preparing` (the clean after the previous collect failed or never ran) | `failed(error)`, `dirty_clone`, paths audited; `preparing` discards nothing |
+| Daemon start finds the host key unknown (runner's `known_hosts` or `host_key_alias` config drifted from oubliette's, or a `forget-host-key` raced; a successful `push` has already learned it) or changed (room rebuilt mid-job) | typed `HostKey*Error` in the command function → per-job trust failure; `preparing` → `failed(error)`, `host_key`; `running` → abort, `end_reason = error`, collect — never `waiting_room`, never retried |
+| Restart after the initial prompt was admitted, before `running` was recorded | redo skips the `preparing` checks, records `running`; the agent's own uncommitted work is not judged `dirty_clone` |
+| Room stops between collect and clean | the clean's lost failure is counted, not a pause; the job keeps its outcome; next `preparing` refuses the residue or the restart redo cleans |
+| `base_ref` deleted after the runner's check, before push resolves it | push exits 2; the re-check finds no branch → `failed(base_ref_invalid)`, not a runner-bug refusal |
+| Verb killed on its timeout | the whole process group dies before the retry; no orphan holds a ref lock |
+| Configured `guest_path` has no `.git` in the room | `failed(error)`, `guest_path_invalid`; config drifted from the target's `guestPath` |
+| Room channel verb exits 1 on auth or a changed host key | `ChannelFailed` → `failed(error)` (preparing) or class `error` (collecting); never treated as room down |
+| Room channel verb exits 2 | `ChannelFailed`, audited as a refusal (runner bug) |
+| Guest freezes with tap and relay up | daemon connection: pi-env's 30 s silence limit drops it (ssh keepalive is a later backstop) → typed lost → pause; channel verbs: their timeout → `ChannelUnavailable`, retried within `max_room_wait` |
+| Room channel verb exceeds its timeout (incl. an ssh prompt waiting for input) | group killed; `ChannelUnavailable`, as exit 75; audited `channel_timeout` |
+| First push into a fresh clone sends the full history | bounded by the repo's `transfer_timeout_s`, sized for it, not by the short probe timeout |
+| `dirty_clone` wedges a repo (abandoned collection, failed clean) | every later job on it fails until the operator cleans via `capsule <room> ssh`; no automatic clean outside post-collect |
 | Agent commits on another branch | not collected; may yield `no_changes` |
 | Agent leaves uncommitted work | not collected (the warning tells it to commit) |
 | Agent rewrites history below `base_oid` | ancestry fails → `path_violation`, not promotable |
@@ -957,15 +1170,39 @@ silently.
 <!-- doctrine:section sec-5 -->
 # 6. Open Questions & Unknowns
 
-Deferred by the inquiry:
+Resolved by this amendment (was deferred on ASM-005, inq-14): door
+configuration and the room git-channel adapter, against oubliette SL-006 sec-6
+(§5.2, §5.3); the land verb does not exist (oubliette DEC-040). Also resolved
+by the user's rulings:
 
-- **Door configuration** (inq-14, deferred on ASM-005): runner keypair, relay
-  socket path, `known_hosts`, per-repo guest `cwd`. Runner config values pinned
-  by oubliette SL-005; the slot recipe stands in. The runner's dedicated
-  keypair and its public half's hand-off to the room declaration are
-  deployment facts for `~/flakes/SATAN.md`.
-- **Room git-channel adapter and land verb** — wait on SL-005 (DEC-060,
-  DEC-061).
+- **OQ-2 Dirty room clone** — the runner cleans its own clone after a
+  successful collect (`git reset --hard`, `git clean -ffd`; ignored caches
+  kept); `preparing` only checks and fails closed `dirty_clone`; a wedged repo
+  is cleaned by hand via `capsule <room> ssh` (§5.2, §5.4). A `clean-clone
+  <repo>` control-socket operation (from Emacs) is deferred to the backlog.
+- **OQ-3 Channel verb timeout** — per-repo `transfer_timeout_s` for
+  `push`/`collect`, short `probe_timeout_s` for the probe; expiry is
+  `ChannelUnavailable`, as exit 75, audited separately as `channel_timeout`,
+  retried within `max_room_wait` (§5.2, §5.3).
+- **Verb identity** (RV-026 F-4) — the verbs use the module owner's default
+  key; the room user lists it and satan's key (§5.2 Identities).
+
+Remaining:
+
+- **SL-006 lock drift.** The room adapter tracks SL-006 sec-6 until it locks;
+  a change there re-opens §5.2's room rows, not the port. Oubliette is fixing
+  two sec-6 wordings this design already follows (the `guest_path` check is in
+  `preparing`; clone hygiene is the runner's). A third is not yet relayed: sec-5
+  says every door to a room, "satan's runner" named, uses `accept-new`; this
+  design keeps the runner strict (user ruling) and lets only oubliette's verbs
+  learn keys. To relay to oubliette so sec-5 is amended before SL-006 locks.
+  Nice-to-have for oubliette, not a dependency: an identity option and
+  `BatchMode` for the room verbs.
+- **Deployment facts** for `~/flakes/SATAN.md`: satan's dedicated keypair and
+  the module owner's default key, both public halves in the room user's `{
+  uid; keys; }` (CON-004), the runner
+  unit as the oubliette module owner (CON-003), runner config rendered from the
+  oubliette target attrset.
 
 Open, gated by the first-phase spike:
 
@@ -979,7 +1216,7 @@ Open, gated by the first-phase spike:
   *uncapped* request, enforced by aborting at the first turn boundary after
   exhaustion, with the deadline timer unchanged.
 - **Spike confirmations** (same phase): pi-env's typed failure on a real room
-  stop, caught by the env wrapper; the wrapper's host write running outside a
+  stop, caught by the `JobConnection`; its host write running outside a
   pi transaction; a steer placed before the next model request; compaction
   (`completeSimple`) passing the gate; `Harness.submission(id).status()` on a
   paused harness leaving scheduling paused.
@@ -1009,7 +1246,8 @@ This table is an index.
 | DEC-058 | Same-uid UDS never bound into a jail; NDJSON; full schema validation; watch resends review and unacked failure notices; no promotion op. | Token file adds nothing a reachable socket lacks. |
 | DEC-059 | `base_ref` is a real-repo branch validated by the runner; slimmed room-model states. | Producer resolves `base_ref` (dual enforcement). |
 | DEC-060 | Git-channel port; collect every ended job; classify from quarantine; commit check authoritative. | Per-call allowlist only (`bash` bypasses it). |
-| DEC-061 | Approval and enactment in Emacs; land `satan/patch/<id>`; runner verifies a receipt. | Runner enacts promotion on an RPC (socket would reach real repos). |
+| DEC-061 | Approval and enactment in Emacs by a plain fetch of the quarantine ref (no land verb); land `satan/patch/<id>`; runner verifies a receipt. | Runner enacts promotion on an RPC (socket would reach real repos). |
+| DEC-0NN *(proposed)* | Room adapter and room door kind behind the existing ports, built now against SL-006 sec-6 fixtures; strict runner host keys (oubliette learns them); `session` by configured absolute path; per-repo transfer and probe timeouts → unavailable; clean clone (`-ffd`) after collect only, check-only in preparing; slot stays the live rung until SL-006 ships. | Wait for SL-006 to ship before building (serialises two repos' work). |
 | DEC-062 | Ledger: new lifecycle and allowlist rows; rows 4, 5, 6 split; token `patch-runner`. | Keep token `satan-patcher` (names a retired repo). |
 | DEC-063 | Cutover: fence, deploy, client cutover with table drop, remove Go; one consumer throughout. | Keep a fallback runner (half-extraction). |
 | DEC-064 | Runner tech spec under SPEC-002, written at reconcile. | Spec before implementation (ahead of evidence). |
@@ -1023,10 +1261,13 @@ fit and process-private state; POL-001's IMP-006 destination).
 | Risk | Mitigation |
 |---|---|
 | pi-durable / pi-env are experimental and change without notice. | Exact version pins in one place (malebolge's `package.json`), shared by both binaries; upgrades are deliberate and gated by the harness tests and the env conformance suite. |
-| Door-touching parts designed against a sketch (ASM-005). | Port + slot adapter; door values are config; nothing outside `room.ts` and config knows the door. Validate ASM-005 against SL-005's locked design before building the room adapter. |
-| A real room stop surfaces differently from a killed daemon, or pi-durable erases the error type. | The pause spike is the plan's first phase; recognition is by type at the env wrapper, before pi-durable converts it; never by text. |
+| Room adapter built against an unlocked design (SL-006 sec-6). | One port, two adapters; door values are config; nothing outside `room.ts`, `env.ts`'s connection factory and config knows the door. Fixture tests pin argv and exit-code mapping, so a sec-6 change shows as a red test. Re-check against SL-006 at its lock, before the live room rung. |
+| Runner config drifts from the room (`guest_path`, repo name, quarantine). | Rendered by `~/flakes` from the same oubliette target attrset; the `preparing` `guest_path` check and the push oid gate the first command. |
+| A frozen guest hangs ssh. | Daemon connection: pi-env's 30 s silence limit turns it into a typed lost failure → pause (ssh keepalive, of which only `ServerAliveCountMax` is ours, is a backstop). Channel verbs: per-repo transfer / probe timeouts, killing the process group → `ChannelUnavailable`. |
+| Cleaning the clone destroys uncollected work. | Only after a successful collect; `preparing` never cleans. |
+| A real room stop surfaces differently from a killed daemon, or pi-durable erases the error type. | The pause spike is the plan's first phase; recognition is by type at the `JobConnection`, before pi-durable converts it; never by text. |
 | The model gate cannot sit in every provider call's path (OQ-1). | Demonstrated in the first spike; on failure amend DEC-057 to the weaker guarantee; the deadline timer remains regardless. |
-| The env wrapper's host write runs inside a pi transaction and deadlocks. | Confirmed by the pause spike before pause is built on it; the hook only reads. |
+| The `JobConnection`'s host write runs inside a pi transaction and deadlocks. | Confirmed by the pause spike before pause is built on it; the hook only reads. |
 | Half-extraction during cutover (two consumers enabled today, ISS-039). | Fence consumers and producer first; verify deployed state at each step; the drop migration refuses non-terminal rows (DEC-063). |
 | Restart between a pi commit and a host write leaves them disagreeing. | Recovery table rows for each gap, each exercised by fault injection. |
 | The runner socket becomes reachable from a jail (RSK-018, ISS-028). | Own runtime directory; jail-profile tests assert its absence (REQ-016). |
@@ -1061,7 +1302,9 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
 | Socket | every op, schema refusal, watch replay | real UDS in a temp dir |
 | Acceptance fixtures | behaviour ported from the deleted ert tests and the Go policy/classify/reconcile tests (POL-001) | per the layer they exercise |
 | Elisp client | RPC tools, watch-driven inbox, promote/reject | ert against a fake socket server |
+| Room adapter | argv for `push`/`collect`/`ssh true`; exit 75/1/2 and timeout mapping; stdout oid and ref parsing; the `session` daemon command; clean-after-collect; trust-failure record from typed host-key errors; config per door kind | stubbed `capsule` (`SlotCli` seam, incl. one that never exits), a stubbed command function, local env; pure where possible |
 | Live smoke | one job end to end against a slot through the gateway | env-gated; not in `just check` |
+| Live room rung | one job end to end against a room; reconnect after a room stop; silence-limit drop on a frozen guest; a changed host key on reconnect fails as `host_key`, not a pause; agent home writable; push, collect and probe run non-interactively as the runner user (module owner's default key) | deferred until oubliette SL-006 ships; env-gated |
 
 ### Key test cases
 
@@ -1075,7 +1318,7 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
 - *a history rewrite below `base_oid` fails ancestry.*
 - *`write` outside the allowlist is blocked early; the same change via `bash`
   is caught at collection.*
-- *a typed env failure, caught by the env wrapper, pauses the job before another
+- *a typed env failure, caught by the `JobConnection`, pauses the job before another
   model request; a tool error with the same text does not.*
 - *waiting time does not count toward the wall-clock ceiling.*
 - *the deadline aborts an in-flight long `bash`.*
@@ -1097,7 +1340,7 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
 - *a compaction summary with the budget exhausted reaches no provider.*
 - *a crash after the resume message is admitted resubmits the same id; one
   resume message reaches the transcript.*
-- *a crash after the env wrapper records the pause, before the hook runs,
+- *a crash after the `JobConnection` records the pause, before the hook runs,
   recovers to `waiting_room`.*
 - *a pause withdrawing an unplaced warning: the resume message carries it.*
 - *a placed warning compacted out of the active view still reads as placed
@@ -1123,6 +1366,15 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
   the first submission uses `requestId` = job id.*
 - *with `enabled = false` and a job `running`, restart never starts the
   conversation; status reads it as `running`.*
+- *with `enabled = false`, restart with jobs in `preparing`, `waiting_room`,
+  `collecting` and `pending_collection` runs no channel verb or env command and
+  times none out* (stubbed channel and env record no call).
+- *a job in `pending_collection` parked for longer than
+  `max_pending_collection`, then re-enabled, keeps only its pre-park elapsed
+  wait and retries collect; a crash after the `unparked` transaction does not
+  re-base it twice.*
+- *a `running` job parked while disabled is re-armed on re-enable with only
+  its pre-park active time charged (`running_since` shifted).*
 - *watch connect resends unacked `failed`/`cancelled` jobs; after `ack` they
   are not resent.*
 - *cancel while `preparing` ends `cancelled` without collection.*
@@ -1134,6 +1386,45 @@ same bar. In this repo, `just check` (ert) covers the elisp client.
 - *with `enabled = false`, submit is refused and nothing schedules.*
 - *Emacs tools fail with an error when the socket is absent.*
 - *jail profiles do not bind `$XDG_RUNTIME_DIR/satan-runner`* (in `~/flakes`).
+- *room adapter: exit 75 from `push` or `collect` is `ChannelUnavailable` with
+  no probe; 1 (incl. auth / host key) is `ChannelFailed`; 2 is a refusal.*
+- *room `refresh` returns push's stdout oid; `collect` refuses a ref other than
+  `refs/capsule/<room>/heads/job/<id>`.*
+- *the room daemon command is `ssh <sshArguments> session <repo> -- <daemon>`
+  with the job's repo; a lost failure through it still pauses (JobConnection
+  outer).*
+- *`preparing` in a room: missing `<guest_path>/.git` fails
+  `guest_path_invalid`; a dirty tree fails `dirty_clone` and is left as found;
+  a clean fresh clone takes `git switch -c job/<id> <oid>`.*
+- *after a successful room collect the clone is reset and cleaned, ignored
+  files kept; a failed collect leaves the tree untouched.*
+- *a room `push`/`collect` past the repo's `transfer_timeout_s`, or the probe
+  past `probe_timeout_s`, is killed and maps to `ChannelUnavailable`, audited
+  `channel_timeout` (not as exit 75); in `preparing` it retries within
+  `max_room_wait`.*
+- *the post-collect clean removes an untracked nested repo (`-ffd`) and keeps
+  ignored files.*
+- *the room daemon command uses `sshArguments(target, true)`, `session_path`
+  verbatim and the room name as ssh host.*
+- *a command function throwing `HostKeyChangedError`/`HostKeyUnknownError`
+  records a trust failure: `preparing` fails `host_key`; a running job aborts to
+  `collecting` and never enters `waiting_room`; a plain lost failure still
+  pauses.*
+- *restart in `preparing` with the initial submission admitted and the agent's
+  files in the clone: no `dirty_clone`; the job records `running`* (fault
+  injection at that boundary).
+- *a crash between collect and clean: restart redoes the clean; a room stop in
+  the clean writes no `pause_requested` and no pause event.*
+- *with job A in `pending_collection`, job B is not scheduled.*
+- *push exit 2 with `base_ref` gone fails `base_ref_invalid`; with it present,
+  a refusal.*
+- *a timed-out verb whose stub spawns a grandchild that keeps running: the
+  grandchild is dead before the retry starts.*
+- *config: a room door key under `kind = "slot"` (or the reverse, e.g. `host`
+  under `kind = "room"`), or a missing `host_key_alias`, `session_path` or
+  `transfer_timeout_s`/`probe_timeout_s`, refuses start; so does `[repo.*].quarantine` under
+  `kind = "slot"`.* (The door ssh config's `ServerAliveCountMax` is a
+  `~/flakes` rendering, checked there.)
 
 ### Closure evidence
 
@@ -1141,7 +1432,9 @@ A job from `patch_job_create` runs end to end against the slot, lands in
 quarantine, is classified, and is promoted and rejected from Emacs; exactly one
 consumer is enabled (deployed state checked); the ledger shows every changed
 owner with transition lines; ISS-030, ISS-038, ISS-039, ISS-041 and CHR-003
-are closed by supersession; IDE-007 is resolved into this slice.
+are closed by supersession; IDE-007 is resolved into this slice. The room
+adapter's fixture tests are green; the live room rung is not closure evidence
+for this slice while SL-006 is unshipped.
 
 <!-- doctrine:section sec-9 -->
 # 10. Code Impact & Governance Follow-through
@@ -1165,8 +1458,8 @@ are closed by supersession; IDE-007 is resolved into this slice.
 
 | Repo / path | Change |
 |---|---|
-| `~/dev/malebolge` | IMP-041 lint move first; then the runner binary (`src/runner-main.ts`, `src/runner/*`, `test/runner/*`); `src/models.ts` gains the gateway-routed provider; `pi-env` pinned beside `pi-durable`; `package.json` `bin` gains the runner; `just check` covers both binaries |
-| `~/flakes` | runner unit (with its `enabled` switch, config file, state and runtime dirs); `satan-patcher` module and flake input removed; jail-profile tests assert `$XDG_RUNTIME_DIR/satan-runner` absent; runner keypair + gateway credential wiring; `SATAN.md` updated |
+| `~/dev/malebolge` | IMP-041 lint move first; then the runner binary (`src/runner-main.ts`, `src/runner/*`, `test/runner/*`); `src/models.ts` gains the gateway-routed provider; `pi-env` pinned beside `pi-durable`; `package.json` `bin` gains the runner; `just check` covers both binaries. Amendment: `config.ts` `[door] kind` with closed per-kind keys, `host_key_alias`, `room`, `session_path`, `probe_timeout_s`, `[repo.*].quarantine` and `transfer_timeout_s`; `room.ts` room adapter beside the slot adapter, `roomConnection` reads the alias; `exec.ts` process-group spawn and group kill on timeout; `env.ts` room daemon `Connection` (strict `sshArguments`, `session_path` launch, room name as ssh host); `run.ts` `connect(repo)`; `prepare.ts` `guest_path` and clean-tree checks, skipped on a redo after admission; trust-failure record in the command function; `collect.ts` clean after collect |
+| `~/flakes` | runner unit as the oubliette module owner (CON-003), with its `enabled` switch, config file, state and runtime dirs; runner config (repos, `guest_path`, quarantine, door) rendered from the oubliette target/room attrsets; door ssh config (`ProxyCommand`, `ServerAliveCountMax`); satan's dedicated public key and the module owner's default public key in the room user's `{ uid; keys; }` (CON-004); `satan-patcher` module and flake input removed; jail-profile tests assert `$XDG_RUNTIME_DIR/satan-runner` absent; runner keypair + gateway credential wiring; `SATAN.md` updated |
 | `~/.config/emacs/apps/dl-satan.el` | `satan-patch-runner-enabled` set nil (fence), then removed |
 | `~/dev/satan-patcher` | archived, with migration 0006 |
 | `~/satan-corpus/tools/patch_job_{create,status,result,cancel}.md` | rewritten for the new contract: `repo` is a config name, not a path; `base_ref` a branch, default the repo's; no `checks`, `adapter`, `branch` or `worktree_path`; create returns `job_id`, `state` and `intervention_id` (or `intervention_error` when the intervention create failed; the job still exists); result carries class, `reviewed_oid` and a partial flag; review is promote/reject in Emacs, not cherry-pick. Committed with `just commit` in the corpus repo. |
@@ -1180,4 +1473,9 @@ are closed by supersession; IDE-007 is resolved into this slice.
 - Close ISS-030, ISS-038, ISS-039, ISS-041, CHR-003 by supersession; resolve
   IDE-007 into this slice.
 - REV-006 already applied (ADR-018 amendment, POL-001 IMP-006 destination).
+- Oubliette ISS-021 (no `/work` volume) is closed by oubliette SL-006, not here.
+- Deferred to the backlog: a `clean-clone <repo>` control-socket operation,
+  invoked from Emacs, for a wedged `dirty_clone` (today: manual remedy, §5.2).
+- DEC-060 and DEC-061 choice text amended for the room adapter and no land
+  verb; a new decision records the room adapter and door kind (§7).
 

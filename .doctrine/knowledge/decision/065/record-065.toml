@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 65
+slug = "sl023-room-adapter-door-kind"
+title = "SL-023 room adapter and door kind behind the existing ports, built against oubliette SL-006 fixtures"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-18"
+updated = "2026-10-18"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Oubliette SL-006 sec-6 defines the room's push/collect/session interface (oubliette DEC-045/047/049/050/051 accepted); SL-006 is neither locked nor shipped. Oubliette DEC-040: no land verb. The user chose option A (2026-10-18): build the room adapter now against fixtures; the slot stays the live rung."
+choice = "[door] kind selects slot or room. The room adapter implements GitChannel per SL-006 sec-6: capsule <room> push <repo> <branch> → base_oid; collect <repo> job/<id> → refs/capsule/<room>/heads/job/<id> in /var/lib/capsule/collect/<room>/<repo>.git; exit 75 or a timeout → ChannelUnavailable, 1 → ChannelFailed (incl. auth, host key), 2 → refusal. Push/collect are bounded by a per-repo transfer_timeout_s and the probe by probe_timeout_s; each verb runs in its own process group, killed whole on timeout; timeouts are audited apart from exit 75. The room daemon is a pi-env Connection whose command is sshArguments(target, true) + <session_path> <repo> -- <daemon>, the room name as ssh host; JobConnection (DEC-055) layers over it. Host keys: runner ssh is strict and never writes oubliette's known_hosts; keys are learned by oubliette's push (accept-new, oubliette DEC-047); the runner's command function turns pi-env's typed host-key errors into a per-job trust failure, which fails the job, never pauses it. Identities: the daemon uses satan's own key; capsule verbs use the module owner's default key; the room user lists both. Clone hygiene: after a successful collect the runner runs git reset --hard and git clean -ffd (ignored files kept); preparing checks guest_path and a clean tree only before the initial prompt is admitted, and fails closed (guest_path_invalid, dirty_clone); it never cleans; a wedged clone is cleaned manually (clean-clone op: IMP-042). Door and repo values (alias, quarantine, guest_path, session_path) are configured, never derived (I13), rendered by ~/flakes from the oubliette attrsets. Restart work that reaches the room runs only when enabled; time parked while disabled is re-based off wait bounds and active wall-clock (parked_at). The slot stays the live rung until SL-006 ships."
+alternatives = ["Wait for SL-006 to ship", "Finish on the slot and build the room door in a follow-on", "Derive alias/quarantine/guest_path from the room name", "Runner accept-new host keys", "Clean the clone in preparing", "One channel timeout"]
+rationale = "Builds in parallel with SL-006 without building the door twice; fixture tests turn any sec-6 change red; strict runner ssh keeps one key learner; cleaning only after collect cannot destroy uncollected work; config follows one Nix source."
+consequences = ["Live room rung deferred to SL-006 shipping", "Re-check against SL-006 at its lock", "New failure reasons host_key / guest_path_invalid / dirty_clone", "jobs gains parked_at", "RV-026 conducted"]
+decided_by = "user"
+decided_on = "2026-10-18"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-023"

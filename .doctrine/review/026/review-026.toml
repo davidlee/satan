@@ -1,0 +1,448 @@
+id    = 26
+slug  = "design-review-of-sl-023"
+title = "design review of SL-023"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Adversarial pass over the uncommitted SL-023 design.md amendment (room adapter and door kind, no land verb, strict host keys, clean-after-collect, channel timeouts, session launch, I13). Checked against oubliette SL-006 sec-3..6, malebolge src/runner and pi-env 1.3.0 dist. 14 findings raised; all fixed and verified."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "All 14 findings verified; F-1..F-4 routed demonstrate; user disposed the pass conducted 2026-10-18."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-023"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "A changed host key mid-job is handled as downtime, not a trust failure"
+detail = "design.md:397,456-469,1084 say a changed key is a trust failure, never retried as a pause, and :465 says pi-env gives only ssh's text. Code facts: the room command function calls detectPlatform/deployDaemon, which throw typed HostKeyChangedError/HostKeyUnknownError (pi-env dist/ssh.js runSsh). pi-env Connection.#start then wraps any command-function rejection as RemoteError{code:spawn_error, lost:true} (dist/connection.js:193-200). JobConnection pauses on isConnectionLost (malebolge src/runner/env.ts #observe), and prepare.ts roomShell counts the same loss as ChannelUnavailable. Scenario: a room is rebuilt mid-job with a new host key. The daemon reconnect fails strict, so the job pauses (waiting_room). reachable() is 'capsule ssh true', non-zero for any ssh failure, so it stays false. After max_room_wait the job goes to pending_collection, whose retry is gated on reachable(), and after max_pending_collection it ends collection_abandoned. It is never reported as a host-key failure. Same path for a restart in preparing with base_oid set (no re-push): the lookup passes on the old key, the env spawn_error counts as ChannelUnavailable, and the job ends room_unavailable. Fix: the runner-owned command function catches HostKey*Error and rethrows a non-lost typed error (or JobConnection excludes it). Then add recovery rows for running/waiting_room/preparing-with-base_oid, and a §9 test for a changed key on reconnect."
+disposition = "fix-now"
+response = "Fixed in §5.2 Host keys: typed HostKey*Error → per-job trust failure, never waiting_room. Demonstrated by the §9 changed-key tests (PHASE-15) and the live room rung."
+route = "demonstrate"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: Connection.#start rewraps command-function rejections as RemoteError{spawn_error, lost:true} (connection.js ~193-200); detectPlatform/deployDaemon throw typed HostKey*Error. Fix (§5.2 Host keys): runner-owned command function for both kinds catches the typed errors and records a per-job trust failure that JobConnection consults before pausing; preparing → failed(host_key), running → abort, end_reason=error, collect, never waiting_room; on every reconnect incl. restart. Read-only ssh-keygen lookup dropped as redundant. Edge case + §9 tests + live-rung changed-key test added."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "§5.2 Host keys :481-503 + edge row :1132 + §9 :1384-1388: typed HostKey*Error caught in the runner-owned command function, consulted by JobConnection; preparing fails host_key, running aborts to collecting; no stale host_key_unknown text left."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route for the lock gate; the fix stands as verified."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Fixed in §5.2 Host keys: typed HostKey*Error → per-job trust failure, never waiting_room. Demonstrated by the §9 changed-key tests (PHASE-15) and the live room rung."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix previously verified; route demonstrate attached."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "channel_timeout kill leaves the capsule process tree running; retries race in the quarantine"
+detail = "design.md:397,642-643,1087 say that on expiry 'the verb is killed', treated as exit 75 and retried. :1353 plans this as an 'exec.ts timeout option'. malebolge src/runner/exec.ts uses execFile, and Node's timeout signals only the direct child. The tree is capsule (room branch execs capsule-room-git, bash) -> git push/fetch -> ssh -> socat (oubliette SL-006 sec-4/sec-5). Killing the top process orphans the git fetch, which can still update refs/capsule/<room>/heads/job/<id> in the bare quarantine. Scenario: the guest is slow, collect times out, and the job goes to pending_collection. reachable() then succeeds and a second collect fetches into the same repo while the orphan holds the ref lock. git fails 'cannot lock ref', exit 1, ChannelFailed, so a good job ends class error. A push orphan likewise races the retried push. Fix: spawn the verb in its own process group, kill the group (-pid), await exit before retrying, and say so in §5.2. §9:1218 'a stub that never exits' should also spawn a grandchild that keeps running."
+disposition = "fix-now"
+response = "Fixed: each channel verb in its own process group, TERM→KILL the group and await exit before retry. Demonstrated by the §9 grandchild-stub timeout test (PHASE-15)."
+route = "demonstrate"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: execFile timeout signals only the direct child. Fix (§5.2 'Killing a verb'): each verb spawned as its own process-group leader; on channel_timeout TERM then KILL to -pgid, await leader exit before ChannelUnavailable; execFile timeout not used. §9 stub spawns a surviving grandchild; code impact updated."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "§5.2 'Killing a verb' :399-404: process-group spawn, TERM then KILL to -pgid, await exit; execFile timeout not used; code impact :1438 updated."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route for the lock gate; the fix stands as verified."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Fixed: each channel verb in its own process group, TERM→KILL the group and await exit before retry. Demonstrated by the §9 grandchild-stub timeout test (PHASE-15)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix previously verified; route demonstrate attached."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "Restart in preparing after prompt admission: new clean-tree check ends a job that ran, without collecting"
+detail = "design.md:407-414 add the checks test -d, clean tree (porcelain empty), then switch. Recovery row :964 ('preparing, base_oid set': ensure job/<id>, then submit the initial prompt, which returns the existing submission if it was admitted) does not say whether the checks rerun on the redo. §5.4:579-580 keeps the job in preparing until the prompt is admitted, and submit starts pi-durable's scheduler, so tool calls can run before the 'running' tx. Scenario: a crash after admission, once the agent has written files, before running is recorded. On restart the redo's clean-tree check finds the agent's own uncommitted work and fails dirty_clone, so preparing goes to failed. A job that ran in the room ends terminal without collecting, which violates I12 and §5.4:704-707. Its residue then fails the next job dirty_clone too. (The pre-existing 'job/<id> at another oid -> failed(error)' arm has the same I12 hole once the agent has committed.) Fix: on a redo where the submission record exists, skip the checks and go to running/collecting, or route these failures through collecting. Add a row-level fault-injection case in §9."
+disposition = "fix-now"
+response = "Fixed in §5.4 recovery: preparing checks run only before initial prompt admission; a restart redo with a submission record skips them. Demonstrated by the §9 restart-in-preparing test."
+route = "demonstrate"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified. Fix: preparing checks run only before the initial prompt is admitted; recovery table split: 'preparing, base_oid set, initial submission record exists' skips checks and the job/<id> oid judgement, records running (I12 holds). Preparing still never cleans (ruling intact). Edge case + fault-injection test added."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "§5.2 :424-427 and recovery rows :1011-1012 split on the initial submission record; the redo skips the checks and the oid judgement; I12 holds."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route for the lock gate; the fix stands as verified."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Fixed in §5.4 recovery: preparing checks run only before initial prompt admission; a restart redo with a submission record skips them. Demonstrated by the §9 restart-in-preparing test."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix previously verified; route demonstrate attached."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "Channel verbs and the reachable probe do not authenticate with the runner's configured identity"
+detail = "design.md:430-441,470 and CON-004 put one key, the runner's [door] identity (:625), in the room user's { uid; keys; }. §10:1354 wires one keypair. Only the pi-env daemon uses that identity (sshArguments IdentityFile). capsule-room-git takes no identity (SL-006 sec-4 argv). 'capsule <room> ssh' builds ssh_argv=(ssh -o HostKeyAlias=...) in human mode with the invoking user's default identity/agent and no BatchMode (oubliette host/cli.nix:828-835, 1854-1880). Scenario: the runner unit runs as the module owner (CON-003) without a default ~/.ssh key listed in the room user's keys. Every push exits 1, so every job fails channel_failed. reachable() stays false, so every pause ends room_unavailable and then collection_abandoned. Without BatchMode, an ssh that wants a passphrase or password can block until channel_timeout and read as ChannelUnavailable. Fix: say which identity the capsule verbs use and require both public keys (or a single shared default identity) in the deployment facts. Add a live-rung check."
+disposition = "fix-now"
+response = "Fixed per user ruling: satan's own key for the daemon, module owner's default key for capsule verbs, both in the room user's keys; prompts bounded by timeout. Demonstrated at the live room rung (non-interactive push/collect/probe as the runner user)."
+route = "demonstrate"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "User ruling: satan's dedicated key ([door] identity) is used by the runner's pi-env daemon ssh; capsule verbs, run as the module owner (CON-003), use that user's default identity; the room user's keys list both (CON-004, SATAN.md deployment fact). Verbs lack BatchMode: a hung prompt is bounded by the verb timeout → ChannelUnavailable. Live room rung checks push/collect/probe run non-interactively as the runner user. Identity + BatchMode for room verbs listed as an oubliette nice-to-have, not a dependency (§5.2 Identities, §6, §9, §10)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "§5.2 Identities :505-513 implements the ruling: dedicated key for the daemon, the module owner's default key for the verbs, both in keys; BatchMode gap bounded by timeout; live-rung check :1293."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route for the lock gate; the fix stands as verified."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Fixed per user ruling: satan's own key for the daemon, module owner's default key for capsule verbs, both in the room user's keys; prompts bounded by timeout. Demonstrated at the live room rung (non-interactive push/collect/probe as the runner user)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix previously verified; route demonstrate attached."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Seat rule omits pending_collection, which clean-after-collect's safety depends on"
+detail = "design.md:981-982 (Scheduling) say 'A job in waiting_room holds the slot'. They do not mention pending_collection. Risk row :1183 claims clean-after-collect is safe because it runs 'only after a successful collect'. That is safe only if no other job can be live in the same clone. Scenario under the written rule: job A is in pending_collection and the seat is free, so job B prepares on the same repo, its tree clean, and runs on job/B. A's collect then succeeds and A's clean (:402-406, :883) runs git reset --hard and git clean -fd in B's live worktree, destroying B's uncommitted work mid-run. The code holds the seat (malebolge src/runner/scheduler.ts:3-4,19-24 IN_FLIGHT includes pending_collection). Fix: state it in §5.4 Scheduling as the invariant the clean relies on, and add a §9 case."
+disposition = "fix-now"
+response = "Verified (scheduler.ts IN_FLIGHT includes pending_collection). Fix: §5.4 Scheduling states the seat is held in every non-terminal state from preparing on, incl. collecting and pending_collection, as the invariant clean-after-collect relies on; §5.2 clean bullet cites it; §9 case added."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified (scheduler.ts IN_FLIGHT includes pending_collection). Fix: §5.4 Scheduling states the seat is held in every non-terminal state from preparing on, incl. collecting and pending_collection, as the invariant clean-after-collect relies on; §5.2 clean bullet cites it; §9 case added."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "§5.4 Scheduling :1029-1032 holds the seat through collecting/pending_collection; §5.2 :415-417 cites it."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Clean-after-collect: room write under recovery phase A and pausing observer unspecified"
+detail = "design.md:883-886 make the clean idempotent and redone on restart in collecting, but recovery row :971 ('collecting: redo collect and classification') does not list it. Phase A is 'host only' and runs even with enabled=false (:944-955, I14 'no job advances'), yet the clean writes the room. :415-418 says the JobConnection records pause_requested on any typed lost failure, and the clean (and the preparing checks) run 'through the env'. Code's prepare.ts uses a separate counting observer, which the design never states. Scenario: the room stops just after a successful collect. If the clean uses the job's pausing JobConnection, it writes pause_requested=1 plus a 'pause' event on a job in collecting, a false audit record and a stale flag. Fix: name the observer for the non-running env uses (losses counted, no pause), add the clean to row :971 with its phase and its enabled=false behaviour, and add fault injection for a crash between collect and clean in §9."
+disposition = "fix-now"
+response = "Contest accepted. §5.4 recovery now states one rule for every row: phase A work that reaches the room (push, collect, probe, preparing checks, branch create, clean) runs only when enabled (I14); disabled, the row does nothing, the job keeps its state and no wait bound is applied. Rows marked (enabled): preparing no base_oid (refresh push), preparing base_oid set without submission (checks/branch), waiting_room (probing), collecting, pending_collection. §9 test added: disabled restart in each of those states makes no channel/env call and times nothing out."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fix: §5.2 names the counting observer for env uses outside running (preparing checks/switch, clean): lost → ChannelUnavailable, no pause_requested or pause event. Recovery row 'collecting' now includes the idempotent clean and runs only when enabled (I14). §9: crash between collect and clean; room stop in the clean writes no pause."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The counting observer (:419-422) and the collecting row (:1022) are fixed. But the fix's own rule, that steps reaching the room run only when enabled (I14), is applied to collecting and not to pending_collection. Row :1023 ('pending_collection: resume retrying', Phase A, no enabled gate) runs the same retry: collect, then per :927-931 the room clean (git reset --hard / clean -ffd). Scenario: enabled=false, a job in pending_collection, the room returns. Phase A collects and cleans the clone, so a disabled runner writes the room and moves a job, contradicting I14 and the new collecting row. Fix: gate row :1023's retries on enabled, like collecting. Also check 'preparing, no base_oid: redo refresh' (:1010), whose push writes refs/host in the guest from Phase A."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Contest accepted. §5.4 recovery now states one rule for every row: phase A work that reaches the room (push, collect, probe, preparing checks, branch create, clean) runs only when enabled (I14); disabled, the row does nothing, the job keeps its state and no wait bound is applied. Rows marked (enabled): preparing no base_oid (refresh push), preparing base_oid set without submission (checks/branch), waiting_room (probing), collecting, pending_collection. §9 test added: disabled restart in each of those states makes no channel/env call and times nothing out."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Rule :1001-1007 gates every room-reaching Phase A step on enabled; rows :1014,1015,1023,1024,1025 are marked (enabled)."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "dirty_clone can wedge a repo permanently with no remediation path"
+detail = "design.md:402-414,1081. The clean runs only after a successful collect, so a job ending collection_abandoned, a failed clean, or the restart case leaves residue. Every later job on that repo then fails dirty_clone in preparing, with a failed notice each, until a human acts, and no verb or documented step says how. Also, git clean -fd does not remove untracked nested git repositories (that needs -ff). An agent that clones or inits a sub-repo leaves '?? dir/' in porcelain forever, wedging every later job after a successful collect. Fix: document the operator remediation (e.g. capsule <room> ssh <user> then git -C <guest_path> reset/clean), decide -ffd, and add a §9 case for a nested repo."
+disposition = "fix-now"
+response = "User ruling option (a) + -ffd: post-collect clean is git reset --hard + git clean -ffd (removes untracked nested repos, keeps ignored files) and is the only automatic clean; a wedged dirty_clone is remedied by hand via capsule <room> ssh (documented in §5.2); a clean-clone <repo> control-socket op from Emacs is deferred to the backlog (§6, §10). Edge case and nested-repo §9 test added."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "User ruling option (a) + -ffd: post-collect clean is git reset --hard + git clean -ffd (removes untracked nested repos, keeps ignored files) and is the only automatic clean; a wedged dirty_clone is remedied by hand via capsule <room> ssh (documented in §5.2); a clean-clone <repo> control-socket op from Emacs is deferred to the backlog (§6, §10). Edge case and nested-repo §9 test added."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "git clean -ffd at :410/:929/:1165; operator remedy :433-437; clean-clone op deferred to backlog; nested-repo test :1382."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Host-key flow: slot kind uncovered; host_key_unknown cause misstated"
+detail = "design.md:456-469 is 'the one statement' on host keys, yet it covers only the room. The slot adapter is strict too (malebolge env.ts roomDaemon -> sshConnection, strict default; alias pi-env-<slot>, now to be configured, :640), while oubliette's slot transport is StrictHostKeyChecking=no and records nothing (host/guest-ssh.nix:3-16,48). So nothing learns slot keys, and slot is the live rung. On a slot with no key, the first env command's spawn_error (lost:true) counts as ChannelUnavailable in roomShell and the job ends room_unavailable after max_room_wait. Recovery row :1082 gives the cause as 'push never reached the guest'. That cannot be the cause: a failed push means the lookup is never reached, and a successful push already wrote the key (accept-new, same file and alias). host_key_unknown really means the runner's known_hosts or alias config has drifted from oubliette's, or a forget-host-key raced. Fix: state slot key provisioning (or its manual step) and correct the row's cause."
+disposition = "fix-now"
+response = "Fix: host-key statement now covers slot: oubliette's slot transport checks/records no keys, so the runner's slot known_hosts is seeded once out of band (pi-env scanHostKey+acceptHostKey, SATAN.md operator step); unseeded start is a trust failure. host_key edge-case cause corrected to config/alias drift or a forget-host-key race; a successful push has already learned the key."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fix: host-key statement now covers slot: oubliette's slot transport checks/records no keys, so the runner's slot known_hosts is seeded once out of band (pi-env scanHostKey+acceptHostKey, SATAN.md operator step); unseeded start is a trust failure. host_key edge-case cause corrected to config/alias drift or a forget-host-key race; a successful push has already learned the key."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Slot keys seeded out of band (:500-502); row :1132's cause corrected."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "base_ref deleted between runner check and push reads as a runner-bug refusal"
+detail = "design.md:394 checks base_ref in the real repo, then calls push. SL-006 sec-4 step 1 re-resolves 'git rev-parse --verify <branch>^{commit}' in profile_path and exits 2 if it is absent. :397 maps 2 to 'ChannelFailed marked a refusal (a runner bug)', audited as such. Scenario: the user deletes the branch in the gap, push exits 2, and the job fails as a runner bug instead of :1079's base_ref_invalid. Fix: on exit 2 from push, re-check refs/heads/<base_ref> and map an absent one to base_ref_invalid. Add a §9 case."
+disposition = "fix-now"
+response = "Fix: exit 2 from push re-checks refs/heads/<base_ref>; absent → base_ref_invalid, else refusal. Edge case + §9 case."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fix: exit 2 from push re-checks refs/heads/<base_ref>; absent → base_ref_invalid, else refusal. Edge case + §9 case."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "errors row :397 and edge row :1135: push exit 2 re-checks refs/heads/<base_ref> → base_ref_invalid; §9 :1396."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Fixed channel_timeout makes a large first push or collect unrecoverable, misread as downtime"
+detail = "design.md:397,627,1087. One bound (example 120 s) covers every push, collect and 'ssh true', and expiry is ChannelUnavailable with a retry. A git transfer does not resume, so each retry starts from zero. Scenario: a fresh room clone is 'git init' with no commits (:412-414, SL-006 sec-3), so the first push sends the full history. If that takes longer than channel_timeout_s, every retry is killed and the job ends room_unavailable after max_room_wait. That repeats for every job and is reported as the room being down. Fix: give push and collect a separate (or per-repo) bound from the probe, or document the sizing rule, and audit timeouts distinctly from exit 75."
+disposition = "fix-now"
+response = "User ruling option (a): per-repo [repo.*].transfer_timeout_s bounds push/collect (sized for a first full push into a fresh clone); [door] probe_timeout_s bounds the probe; a timeout is audited as channel_timeout, distinct from exit 75, and still maps to ChannelUnavailable. Config shape, errors row, edge cases, §6, §9 tests, §10 updated."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "User ruling option (a): per-repo [repo.*].transfer_timeout_s bounds push/collect (sized for a first full push into a fresh clone); [door] probe_timeout_s bounds the probe; a timeout is audited as channel_timeout, distinct from exit 75, and still maps to ChannelUnavailable. Config shape, errors row, edge cases, §6, §9 tests, §10 updated."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Per-repo transfer_timeout_s and probe_timeout_s (:397, :664, :675, :687-691); timeout audited channel_timeout; closed-key test :1402."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "SL-006 sec-5 has the runner on accept-new; drift not surfaced"
+detail = "Oubliette SL-006 design sec-5 ('Host keys and the front end') says every door to a room uses accept-new, naming 'satan's runner (its known_hosts setting points here)'. design.md:456-469 (strict, by user ruling) contradicts it, and §6 'Remaining' :1117-1120 lists only two sec-6 wordings oubliette is fixing (guest_path check, clone hygiene). Two binding-to-be sources disagree, and the slice's drift list does not say so. If SL-006 locks as written, a consumer reading sec-5 expects the runner to self-learn keys. Fix: add the sec-5 wording to the drift list / relay."
+disposition = "fix-now"
+response = "Fix: §6 SL-006 drift list adds sec-5's 'satan's runner uses accept-new' as a third wording to relay; the runner stays strict per the user's ruling."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fix: §6 SL-006 drift list adds sec-5's 'satan's runner uses accept-new' as a third wording to relay; the runner stays strict per the user's ruling."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "§6 :1181-1184 lists the sec-5 accept-new drift for relay."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "nit"
+title = "Frozen-guest drop is pi-env's 30 s silence limit, not ssh keepalive"
+detail = "design.md:449-454,1086,1185,1226 credit the drop on a frozen guest to ssh ServerAliveInterval=15 x ServerAliveCountMax. pi-env's Connection pings every 5 s and tears the session down after 30 s of silence (dist/connection.js:11-13 PING_INTERVAL_MS/SILENCE_LIMIT_MS, ~224-227), so it fires first (ssh's default count of 3 gives 45 s). The outcome is the same (typed lost, so a pause), but the live-rung test 'keepalive drop' would be checking the wrong mechanism, and ServerAliveCountMax is not load-bearing. Fix: correct the attribution."
+disposition = "fix-now"
+response = "Verified: connection.js PING_INTERVAL_MS 5000, SILENCE_LIMIT_MS 30000. Fix: frozen-guest drop attributed to pi-env's 30 s silence limit; ssh keepalive (only ServerAliveCountMax ours) a 45 s backstop; edge case, risk and live-rung test wording corrected."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: connection.js PING_INTERVAL_MS 5000, SILENCE_LIMIT_MS 30000. Fix: frozen-guest drop attributed to pi-env's 30 s silence limit; ssh keepalive (only ServerAliveCountMax ours) a 45 s backstop; edge case, risk and live-rung test wording corrected."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = ":473-479, :1140, :1252, :1293 now credit pi-env's 30 s SILENCE_LIMIT; ssh keepalive is a backstop."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "session_path 'default' vs 'required'; quarantine key location per kind"
+detail = "design.md:431 says '(session_path, default /run/current-system/sw/bin/session; never derived)', while :641-642 says 'session_path is required: the value shown is the documented one, not a built-in fallback'. Pick 'documented value'. :907-909 (Promotion) says 'the quarantine is [repo.*].quarantine', but :622 marks that key room-kind only and :628 puts the slot's quarantine under [door]. The closed-keys rule (:638-639) covers [door] keys but not [repo.*].quarantine under kind=slot. Fix: one wording for each, and extend the closed-key rule and its §9 test (:1316-1319) to repo keys."
+disposition = "fix-now"
+response = "Fix: session_path one wording ('required, documented value'); promotion names both quarantine locations per kind; closed-keys rule covers [repo.*] keys too, with its §9 config test extended."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fix: session_path one wording ('required, documented value'); promotion names both quarantine locations per kind; closed-keys rule covers [repo.*] keys too, with its §9 config test extended."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "session_path is the 'documented value' (:454, :674, :686); Promotion :977-978 names both kinds' quarantine; closed-key rule :679-682 covers [repo.*]."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "minor"
+title = "Parked time still counts against the wait bounds once the runner is re-enabled"
+detail = "design.md:1005-1006 say that while disabled 'no wait bound is applied, so nothing times out while parked'. But the gated rows are still bounded 'from state_entered_at' (:1013 preparing via max_room_wait, :1023 waiting_room, :1025 pending_collection), and parking does not change state_entered_at. Scenario: a job sits in pending_collection, the runner is disabled for a day, then re-enabled. Elapsed time is already past max_pending_collection, so the job fails collection_abandoned (or room_unavailable for preparing/waiting_room) at once, possibly before or without a single retry, even though the room is up. Parked time is charged as wait. Fix: re-base the bound on enable (restamp, or subtract parked time), or require one attempt before the bound is judged. Add a §9 case."
+disposition = "fix-now"
+response = "Fixed: jobs gain parked_at. A disabled startup stamps parked_at=now on non-terminal jobs where it is null (one tx + parked event; repeated disabled restarts keep the first stamp). The first enabled startup, in phase A before any bound is judged, shifts state_entered_at forward by now-parked_at and clears parked_at in one tx + unparked event, so parked time is never charged as wait and a crash on either side re-bases exactly once. §9 case: pending_collection parked past max_pending_collection retries on re-enable; no double re-base after a crash."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed: jobs gain parked_at. A disabled startup stamps parked_at=now on non-terminal jobs where it is null (one tx + parked event; repeated disabled restarts keep the first stamp). The first enabled startup, in phase A before any bound is judged, shifts state_entered_at forward by now-parked_at and clears parked_at in one tx + unparked event, so parked time is never charged as wait and a crash on either side re-bases exactly once. §9 case: pending_collection parked past max_pending_collection retries on re-enable; no double re-base after a crash."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "parked_at column :584; rule :1008-1014 (stamp once on disabled startup, re-base state_entered_at in phase A before any bound is judged, atomic with unparked event); §9 :1371-1374 covers no double re-base."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

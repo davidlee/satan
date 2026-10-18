@@ -11,11 +11,11 @@ updated = "2026-10-18"
 tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
-context = "ADR-017 §1: Emacs owns approval surfaces. Plan F §4: promotion is the human's step. DEC-058 keeps promotion off the runner socket. No room land verb exists yet."
-choice = "Emacs presents the inbox entry with reviewed_oid; the human approves or rejects there. On approval Emacs (async process, not the runner socket) fetches exactly reviewed_oid from the quarantine into the real repo as branch satan/patch/<id>, via oubliette's room land if SL-005 provides one, else a plain git fetch, and refuses if the fetched oid differs. Merging is the human's own git act. Emacs then reports the disposition; the runner records promoted only after verifying (read-only) that satan/patch/<id> in the real repo resolves to reviewed_oid. On each watch connect the runner sends the current needs_review set; inbox appends are idempotent by job id."
+context = "ADR-017 §1: Emacs owns approval surfaces. Plan F §4: promotion is the human's step. DEC-058 keeps promotion off the runner socket. Oubliette DEC-040: there is no land verb, ever."
+choice = "Emacs presents the inbox entry with reviewed_oid; the human approves or rejects there. On approval Emacs (async process, not the runner socket) fetches exactly reviewed_oid from the quarantine into the real repo as branch satan/patch/<id> by a plain git fetch of the quarantine ref (no land verb, oubliette DEC-040), and refuses if the fetched oid differs. Merging is the human's own git act. Emacs then reports the disposition; the runner records promoted only after verifying (read-only) that satan/patch/<id> in the real repo resolves to reviewed_oid. On each watch connect the runner sends the current needs_review set; inbox appends are idempotent by job id."
 alternatives = ["Runner enacts promotion on an RPC", "Promote by merging into the base branch"]
 rationale = "Approval and its enactment stay in the one human surface; nothing reachable over the runner socket writes the real repos."
-consequences = ["Exact verb depends on SL-005"]
+consequences = ["Depends on oubliette only for the quarantine path"]
 decided_by = "user"
 decided_on = "2026-10-18"
 

@@ -268,3 +268,29 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
   capsule f start
   ```
   Expect: `refs/capsule/f/heads/job/h1-test` present; collect exits 1 while stopped and the probe is non-zero. Also confirm the quarantine is readable by the runner's user (R4), and what `provision` does when guest HEAD is `job/h1-test` (Q4).
+
+## PHASE-07 batch A (worker, opus)
+
+### Produced
+- malebolge (uncommitted): `src/runner/durable-ids.ts` (`conversationText(id)`, the one place a `ConversationId` becomes row text; `conversationIdOf(session, text)` recovers the branded id from `tx.scanConversations` records, newest first, pages of 64, read-only commit); `src/runner/env.ts` (`JobConnection extends Connection`, promoted from the env-fixture spike's `ObservedConnection`, with `ConnectionObserver` / `LostFailure`; `jobEnv({ jobId, cwd, connection, observer })` → `RemoteExecutionEnv` id `pi-env:job-<id>`; `sshTarget(room)` → pi-env `SshTarget`; `roomDaemon(room)` = lazy `sshConnection`); `src/runner/tools.ts` (`JobTools`: CodingTools' read/write/edit/bash, `read` with `replay: "safe"`); `src/runner/guard.ts` (`jobGuard({ currentJob, jobs, now })` → extension `job-guard` with a `ToolTask` `beforeTool`; `repoPath(argument, root)`). `config.ts` `[door]` += `host`, `user` (OQ-2 approved); `room.ts` `RoomConnection` = `{ host, user, hostKeyAlias: "pi-env-<slot>", knownHosts, sshConfig?, identity? }`, `roomConnection` refuses (StartRefused) naming the missing keys (`slot`, `host`, `user`, `known_hosts`); door refusals share `lacking(keys)`. `control.ts` writes ids through `conversationText`. env-fixture keeps only the pause table spike; env-pause.test and room-stop-spike use the promoted class, env-pause builds its env through `jobEnv`.
+- Tests: `test/runner/{durable-ids,env,tools,guard}.test.ts`; env.test registers pi-durable's `registerEnvConformance` (with `listFiles`) over a local pi-env daemon through `jobEnv` (VT-2). 730 -> 799 tests; lines 97.82% -> 97.93%. 0 inline eslint-disable, no `as`.
+
+### Learned
+- §0 surfaces exist at pi-durable 1.3.0: `Harness extends Session`, `Session.commit` gives `tx.scanConversations(query, limit, cursor?)`, records type `id: ConversationId`, `Page = { items, next? }`. Observed cost on SQLite: 0.7 ms to find the oldest of 1000 conversations (16 pages), 0.3 ms for the newest.
+- STOP 4 cleared: `beforeTool` runs in the tool task's `call` phase before the intent `runtime.commit` (dist/harness/tool.js:61-86), not inside a storage transaction. guard.test runs the hook on a harness over the runner store's own SQLite file and its `appendEvent` settles (bounded by `within`).
+- A blocked call's tool result is `Tool call blocked: <block>` with harness error code `blocked`; a throw from `beforeTool` also blocks (its message becomes the text).
+- The replay field is `ToolRegistration.replay?: "safe" | "unsafe"` (default `unsafe`); recovery reruns only when both the stored intent and the current registration say `safe`. CodingTools' registrations are plain objects, so a spread copy is exact.
+- pi's file tools strip one leading `@` and turn unicode spaces into spaces before resolving (tools/path-utils.js); the remote env resolves `~` against the remote home and `file:` URLs. The guard mirrors the first two and fails closed (blocks) on `~` and `file:`.
+- pi-env `sshArguments` quotes paths: `UserKnownHostsFile="<path>"`, `IdentityFile="<path>"`; user goes as `-l`, host after `--`.
+- pi-ai's retryable classifier matches bare status digits (`429`, `500`, `502`…): a refusal echoing a model-chosen path containing them would match. Harmless for a tool result (the classifier reads assistant errors), but PHASE-08's gate text must never embed model-chosen text.
+
+### Deviations from the sheet
+- A3: the job's tool set is one extension holding copies of CodingTools' registrations with `read` marked `replay: "safe"`, not CodingTools plus a `wrapTool` extension. Same registration effect; one extension to select instead of two that must travel together. Tested by registration (`replay`), identity of everything else, and the tool list.
+- A4 port: `currentJob(conversationIdText) → GuardedJob | undefined` where `GuardedJob = Pick<Job, "id" | "allowedPaths"> & { root }` (root = the repo's guest path, the conversation's cwd), not `Job`: the guard needs the guest path to resolve absolute paths and has no config. A write/edit in a conversation no job owns is blocked, unaudited (no job to attach the event to). The `blocked_tool` payload is `{ tool, path, repoPath? }` (`path` as the model gave it; `repoPath` when resolvable).
+- A2: `jobEnv` takes an options object `{ jobId, cwd, connection, observer }`; the ssh builder is split into pure `sshTarget` (unit-tested via pi-env's own `sshArguments`) and `roomDaemon`.
+
+### Open (for batch B / audit)
+- `HarnessOptions.env` is called at each use, so batch B's env factory must keep one daemon connection per job (build `roomDaemon` once at prepare, close it at the job's end) rather than per call; `jobEnv` itself is cheap (a wrapper).
+- `RemoteExecutionEnv` id is per job (`pi-env:job-<id>`) as the sheet says, though every job sees the same room files; equal ids are what pi uses to share file namespaces.
+- Host key trust: `roomDaemon` needs the room's key already in `known_hosts` under `pi-env-<slot>` (pi-env `scanHostKey`/`acceptHostKey`); no runner verb does that yet — an operator step for PHASE-12/H-steps.
+- Settlement API (STOP 2) and pending_collection (OQ-1) untouched here.
