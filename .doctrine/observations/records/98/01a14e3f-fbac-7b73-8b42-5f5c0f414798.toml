@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a14e3f-fbac-7b73-8b42-5f5c0f414798"
+recorded_at = "2026-10-18T09:02:58.476799057Z"
+kind = "friction"
+summary = "Plan/design treat pi-durable conversation id as string; it is a branded number with no public constructor"
+detail = "SL-023 PHASE-05: jobs.conversation_id is TEXT, stored String(id); assertions are lint-banned, so reopening a conversation from the row needs a pi-durable lookup path. Also: no-unused-vars does not ignore rest siblings, blocking {op:_op,...rest} destructuring."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

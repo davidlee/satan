@@ -200,3 +200,31 @@ fresh-as-of: 2026-10-18 · design locked (run dr-01a14d77 rev 44); plan written,
 - `submitted` event payload is the `NewJob` as passed (validated request without `op`/`requestId`). Transition payload is `{ ...caller, from, to }` plus `endReason` when the patch sets it (cancel, A3).
 - `openRunnerStore` does not close the database when `migrate` refuses (runner start refuses and exits); revisit if a long-lived process ever retries opens.
 - I2 "no other process opens the file" is operational (PHASE-12 unit); in code `migrate` is called only by `openRunnerStore`.
+
+## PHASE-05 (worker, opus)
+
+### Produced
+- malebolge (uncommitted): `src/unix-socket.ts` `serveUnix` + `UnixServer` (generic half of the daemon's `serve`; `daemon.ts` now only `attach`/`act`, `Daemon = UnixServer`); `src/runner/git.ts` (`runGit` exec helper, read-only `RepoReader` = `checkBranchName` + `resolveBranch`, `checkBaseRef`); `src/runner/views.ts` (`summary`, `resultBody`, `jobChangedFrame`, `REPLAY_STATES`, `isReplayed`); `src/runner/control.ts` (`serveControl`, `ControlDeps`, `Conversations`/`harnessConversations`, `CancelJob` port; ops via a mapped `{ [K in Op]: Operation<K> }` table); `src/runner/start.ts` (`runnerPaths`, `startRunner`); `src/runner-main.ts` + `package.json` bin `satan-runner` + `just runner`. Store: `JobUpdate` widened with `conversationId`/`announcedAt`; `JobStore.observe` (after commit; a throwing listener is skipped); `cancel(id, now, payload?)`. `vocab.EVENT_KINDS` += `conversation`, `announced`. `rows.isoTime` exported (time codec encodes through it). `errors.StartRefused`. `config.modelsStorePath(home)` shared by daemon and runner.
+- Tests: `test/runner/{control,runner-main,git,views}.test.ts`, fixtures `control-fixture.ts` (NDJSON client), `git-fixture.ts` (isolated real git), `refusal-fixture.ts` (`codeOf`/`rejectionCode`, replacing five copies in policy/jobs/protocol/store/git tests). 600 -> 662 tests; lines 97.77% -> 97.69%. 0 inline eslint-disable.
+
+### Learned
+- pi-durable `ConversationId` is a branded **number**, not a string; `jobs.conversation_id` is TEXT, so the id is stored as `String(id)`. No public constructor turns text back into a `ConversationId` (and `as` is banned): PHASE-07 must find another way to reopen a job's conversation (a query by id, or a codec column change).
+- Watch needs more than subscribe-before-read: transitions observed while the replay set is being read must be held and sent after the replay, or a stale replayed state (`needs_review`) can follow a newer live one (`promoted`). Both properties are mutation-tested (`RacingStore` in control.test.ts).
+- An observer lives on one `JobStore` instance: the scheduler (PHASE-07) and control server must share the instance `openRunnerStore` returns, or watch misses the scheduler's transitions.
+- `git check-ref-format --branch` exits 128 on refusal; `rev-parse --verify --quiet` exits 1 on absence and 128 outside a repo. `@` is accepted by git but refused by the shape check (expected direction).
+- typescript-eslint `no-unused-vars` does not ignore rest siblings here: build `NewJob` field by field rather than `{ op: _op, ...rest }`.
+
+### Deviations from the sheet
+- `RepoReader` has no `branchExists`: existence is `resolveBranch(...) !== undefined` (one verb fewer, same `refs/heads/<b>^{commit}` read).
+- `controlSocketPath` lives in `start.ts` as `runnerPaths(env).socket` with the store and config paths (env resolution in one place).
+- `result` body also carries `jobId` and `state` (additive), so a client can tell an uncollected answer.
+- A refused promotion (`receipt_mismatch`) is audited: `disposition` event `{disposition, branch, outcome: "receipt_mismatch", message}`; a verified promotion stays a `transition` event carrying `{disposition, branch, verifiedOid}` as the sheet said.
+
+### Open (for /audit to reconcile)
+- ConversationId text round-trip (above) — PHASE-07 blocker-in-waiting.
+- Submit's conversation creation failing after the insert leaves a queued job with `conversation_id` null and drops the connection (S11); a resubmit returns that job. PHASE-07's recovery row for "queued, no conversation" must create it.
+- S11 as ruled: non-RunnerError → logged to stderr, no response, connection destroyed; tested with a throwing `RepoReader`.
+- `checkSubmit`'s default branch (config `default_branch`) is not shape-checked before reaching `git check-ref-format --branch`; git refuses option-like names itself (`-x` → 128), so it fails closed.
+- `ack` is per job (S10): all ids and states are checked before any write, but the writes are separate transactions.
+- R6: `lineSplitter` buffers unbounded per connection (same-uid only).
+- `openRunnerStore`/`Harness.open` failures in `startRunner` leave the database open; the process exits on refusal.
