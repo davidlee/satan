@@ -739,187 +739,187 @@ before `ready' without sending `error' also ends `spawn_failed' (see
         (stderr-buf nil)
         (run-ctx nil)
         (proc nil))
-  (condition-case err
-      (let* ((bundle-path (expand-file-name "bundle.json" dir))
-         (stdout-log (expand-file-name "stdout.log" dir)))
-    (setq stderr-buf (generate-new-buffer
-                      (format " *satan-stderr-%s*" run-id)))
-    (unless (file-directory-p dir) (make-directory dir t))
-    (satan-broker--update-most-recent run-id)
-    (setq satan-memory-store--current-run-id run-id)
-    (unless (file-directory-p satan-hippocampus-dir)
-      (make-directory satan-hippocampus-dir t))
-    ;; DR-010 §3 — consume-only spawn.  Perceive (percept.build +
-    ;; percept.persist, threading `:percept'/`:evidence'/`:sensor_status'
-    ;; onto PREPARE) ran UNCONDITIONALLY upstream in `satan-broker-run'
-    ;; before the session/budget gates.  This path runs only on consume,
-    ;; so it derives the model-facing enrichment (resonance + motive) via
-    ;; `satan-run-enrich' over the already-built percept rather than
-    ;; rebuilding it (single percept-builder invariant).
-    ;;
-    ;; Phase 2.1+2.2 — auto-resonance.  Derive a cue from the percept,
-    ;; apply the §S2 gate, call `memory_resonate' when admitted (via
-    ;; enrich).  Result attaches to PREPARE :resonance for the context-fn
-    ;; (A4).  Memory errors return a `memory-unreachable' status; the run
-    ;; proceeds without resonance rather than failing the tick.
-    ;;
-    ;; Phase 3.3 — motive file read (via enrich).  Pure parse of
-    ;; motives.org; result attaches to PREPARE :motive.  Missing file is a
-    ;; valid state — `satan-motive-read' returns an empty parse and the
-    ;; capsule renderer self-suppresses the block (§S3 silent omission).
-    ;;
-    ;; Phase 5.8 / T7 PR 5 — observer.process must run BEFORE the motive
-    ;; read so the in-tick motive snapshot sees freshly-incremented
-    ;; `:worked_count' and updated `:last_intervention_at' from prior-run
-    ;; interventions whose attribution window has matured.  PR 5 added
-    ;; the audit handle as a prerequisite (the observer now emits
-    ;; `intervention.outcome_classified' events into the current run's
-    ;; transcript), so the broker opens the handle here — manifest is
-    ;; built up-front, `bundle.json' is deferred until the context-fn
-    ;; has assembled it (see `satan-audit-attach-bundle' below).  The
-    ;; handle reaches the observer inside the run's tool-ctx (SL-017).
-    ;;
-    ;; Observer errors are caught so a stale bundle / postgres outage
-    ;; cannot fail the tick — the run proceeds without an observer pass
-    ;; when it does.
-    (let* ((manifest (satan-broker--build-manifest mode run-id))
-           (audit (satan-trace-stage "spawn.audit_open"
-                    (satan-audit-open dir manifest nil prepare)))
-           ;; SL-017 DEC-016 — the run struct exists from here on, so
-           ;; every pre-spawn consumer takes `satan-run-tool-ctx' of it
-           ;; (the one tool-ctx builder).  Each later rebind of PREPARE
-           ;; is written back to its slot in the same binding.
-           (_run-ctx (setq run-ctx (make-satan-run
-                     :id run-id
-                     :mode mode
-                     :start-time (plist-get prepare :start_time)
-                     :dir dir
-                     :bundle-path bundle-path
-                     :pending-tool-calls (make-hash-table :test 'equal)
-                     :tool-calls-done 0
-                     :applied-actions nil
-                     :staged-actions nil
-                     :rejected-actions nil
-                     :failed-actions nil
-                     :final nil
-                     :status 'running
-                     :audit audit
-                     :stdout-log-path stdout-log
-                     :prepare prepare)))
-           (observer (condition-case _err
-                         (satan-trace-stage "spawn.observer"
-                           (satan-observer-process
-                            (satan-run-tool-ctx run-ctx)))
-                       (error nil)))
-           (prepare (setf (satan-run-prepare run-ctx)
-                          (plist-put prepare :observer observer)))
-           ;; DR-010 §3: percept already built upstream by perceive; enrich
-           ;; derives resonance + motive over PREPARE's `:percept' (consume-
-           ;; only).  `:percept'/`:evidence'/`:sensor_status' are already set.
-           (prepare (setf (satan-run-prepare run-ctx)
-                          (satan-run-enrich prepare)))
-           (sensor-status (plist-get prepare :sensor_status))
-           ;; §S6 — sensor_alerts.check runs in the pre-spawn window
-           ;; alongside the rest of evidence assembly.  Returns the
-           ;; per-cause pre_spawn entries (fired or suppressed); Phase
-           ;; 4.4 threads them into the audit close so the run's
-           ;; `actions.json' carries the produced `pre_spawn' key.
-           (pre-spawn (condition-case _err
-                          (satan-trace-stage "spawn.sensor_alerts"
-                            (satan-sensor-alerts-check
-                             sensor-status
-                             :tool-ctx (satan-run-tool-ctx run-ctx)))
-                        (error nil)))
-           ;; The perception frontiers (probe watermarks, ingest cursor)
-           ;; are NOT committed here: a child the launcher refuses would
-           ;; consume signals for a model that never ran.  They commit on
-           ;; the child's first `ready' (`satan-broker--commit-frontiers';
-           ;; SL-022 I5).  Only the steps that feed the bundle run pre-spawn.
-           (prepare (setf (satan-run-prepare run-ctx)
-                          (plist-put prepare :pre_spawn pre-spawn)))
-           (_pre-spawn-completed
-            (setf (satan-run-pre-spawn-completed run-ctx) t)))
-    (let* ((bundle (satan-trace-stage "spawn.bundle"
-                     (funcall (or (plist-get mode :context-fn) #'ignore)
-                              mode prepare)))
-           (_attached (satan-audit-attach-bundle audit bundle)))
-      (let* ((cmd (plist-get (plist-get mode :harness) :cmd))
-             (args (plist-get (plist-get mode :harness) :args))
-             (model (plist-get mode :model))
-             (budget-tokens (plist-get mode :budget-tokens))
-             (max-budget-tokens (or (plist-get mode :max-budget-tokens) 1000000))
-             (satan-env (delq nil
-                              (list
-                               (when model
-                                 (format "SATAN_MODEL=%s" model))
-                               (when budget-tokens
-                                 (format "SATAN_BUDGET_TOKENS=%d" budget-tokens))
-                               (when max-budget-tokens
-                                 (format "SATAN_MAX_BUDGET_TOKENS=%d" max-budget-tokens)))))
-             ;; The child's base env is the default value, not the calling
-             ;; buffer's: a direnv buffer must not choose the harness binary
-             ;; or its jail (ISS-037).
-             (env (append (list (format "SATAN_RUN_ID=%s" run-id)
-                                (format "SATAN_RUN_DIR=%s" dir)
-                                (format "SATAN_BUNDLE=%s" bundle-path))
-                          satan-env
-                          (plist-get (plist-get mode :harness) :env)
-                          (default-value 'process-environment)))
-             (process-environment env)
-             ;; Global, like the base env above (ISS-037).
-             (exec-path (default-value 'exec-path))
-             ;; The jail binds the launcher's cwd rw; make it the run dir,
-             ;; never the calling buffer's directory (ISS-037).
-             (default-directory (file-name-as-directory dir)))
-        ;; `setq' INSIDE the stage: `proc' is non-nil the moment a
-        ;; child exists, even if the stage's own bookkeeping throws.
-        (satan-trace-stage "spawn.exec"
-          (setq proc
-                (make-process
-                 :name (format "satan-%s" run-id)
-                 :command (cons cmd args)
-                 :connection-type 'pipe
-                 :coding 'utf-8
-                 :noquery t
-                 :stderr stderr-buf
-                 :filter (satan-broker--make-filter run-ctx)
-                 :sentinel (satan-broker--make-sentinel run-ctx))))
-        (setf (satan-run-process run-ctx) proc)
-        ;; Wrap the sentinel first, before any other post-child wiring:
-        ;; from here the sentinel owns STDERR-BUF (flush + kill), so an
-        ;; error below leaks nothing and the handler must not kill the
-        ;; buffer — that would break the live child's stderr pipe.
-        (set-process-sentinel
-         proc (satan-broker--wrap-sentinel
-               (process-sentinel proc) run-ctx stderr-buf dir))
-        (let ((to (plist-get mode :timeout-seconds)))
-          (when (and (integerp to) (> to 0))
-            (setf (satan-run-timeout-timer run-ctx)
-                  (run-with-timer
-                   to nil
-                   (lambda ()
-                     (when (process-live-p proc)
-                       (satan-audit-record
-                        (satan-run-audit run-ctx) 'broker 'timeout
-                        (list :after-seconds to))
-                       (setf (satan-run-status run-ctx) 'timed-out)
-                       (delete-process proc)))))))
-        run-id))))
-    ;; The one pre-child handler (SL-017 I7).  DEC-8 (AUD-008 F-001): the
-    ;; flag must persist for the *live* run, not just the synchronous
-    ;; launch window.  make-process is async, so the only correct clear
-    ;; points are the child sentinel (normal/abnormal/killed exit — see
-    ;; `satan-broker--make-sentinel') and this handler, so a failed launch
-    ;; cannot leave the flag stuck.  Lock and buffer are handled BEFORE
-    ;; recording, so a record that itself throws still leaves neither.
-    (error
-     (setq satan-run--spawn-running nil)
-     (if proc
-         ;; The child exists: its sentinel finalises and kills STDERR-BUF.
-         (signal (car err) (cdr err))
-       (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf))
-       (satan-broker--record-spawn-failure mode prepare dir run-ctx err)
-       run-id)))))
+    (condition-case err
+        (let* ((bundle-path (expand-file-name "bundle.json" dir))
+               (stdout-log (expand-file-name "stdout.log" dir)))
+          (setq stderr-buf (generate-new-buffer
+                            (format " *satan-stderr-%s*" run-id)))
+          (unless (file-directory-p dir) (make-directory dir t))
+          (satan-broker--update-most-recent run-id)
+          (setq satan-memory-store--current-run-id run-id)
+          (unless (file-directory-p satan-hippocampus-dir)
+            (make-directory satan-hippocampus-dir t))
+          ;; DR-010 §3 — consume-only spawn.  Perceive (percept.build +
+          ;; percept.persist, threading `:percept'/`:evidence'/`:sensor_status'
+          ;; onto PREPARE) ran UNCONDITIONALLY upstream in `satan-broker-run'
+          ;; before the session/budget gates.  This path runs only on consume,
+          ;; so it derives the model-facing enrichment (resonance + motive) via
+          ;; `satan-run-enrich' over the already-built percept rather than
+          ;; rebuilding it (single percept-builder invariant).
+          ;;
+          ;; Phase 2.1+2.2 — auto-resonance.  Derive a cue from the percept,
+          ;; apply the §S2 gate, call `memory_resonate' when admitted (via
+          ;; enrich).  Result attaches to PREPARE :resonance for the context-fn
+          ;; (A4).  Memory errors return a `memory-unreachable' status; the run
+          ;; proceeds without resonance rather than failing the tick.
+          ;;
+          ;; Phase 3.3 — motive file read (via enrich).  Pure parse of
+          ;; motives.org; result attaches to PREPARE :motive.  Missing file is a
+          ;; valid state — `satan-motive-read' returns an empty parse and the
+          ;; capsule renderer self-suppresses the block (§S3 silent omission).
+          ;;
+          ;; Phase 5.8 / T7 PR 5 — observer.process must run BEFORE the motive
+          ;; read so the in-tick motive snapshot sees freshly-incremented
+          ;; `:worked_count' and updated `:last_intervention_at' from prior-run
+          ;; interventions whose attribution window has matured.  PR 5 added
+          ;; the audit handle as a prerequisite (the observer now emits
+          ;; `intervention.outcome_classified' events into the current run's
+          ;; transcript), so the broker opens the handle here — manifest is
+          ;; built up-front, `bundle.json' is deferred until the context-fn
+          ;; has assembled it (see `satan-audit-attach-bundle' below).  The
+          ;; handle reaches the observer inside the run's tool-ctx (SL-017).
+          ;;
+          ;; Observer errors are caught so a stale bundle / postgres outage
+          ;; cannot fail the tick — the run proceeds without an observer pass
+          ;; when it does.
+          (let* ((manifest (satan-broker--build-manifest mode run-id))
+                 (audit (satan-trace-stage "spawn.audit_open"
+                                           (satan-audit-open dir manifest nil prepare)))
+                 ;; SL-017 DEC-016 — the run struct exists from here on, so
+                 ;; every pre-spawn consumer takes `satan-run-tool-ctx' of it
+                 ;; (the one tool-ctx builder).  Each later rebind of PREPARE
+                 ;; is written back to its slot in the same binding.
+                 (_run-ctx (setq run-ctx (make-satan-run
+                                          :id run-id
+                                          :mode mode
+                                          :start-time (plist-get prepare :start_time)
+                                          :dir dir
+                                          :bundle-path bundle-path
+                                          :pending-tool-calls (make-hash-table :test 'equal)
+                                          :tool-calls-done 0
+                                          :applied-actions nil
+                                          :staged-actions nil
+                                          :rejected-actions nil
+                                          :failed-actions nil
+                                          :final nil
+                                          :status 'running
+                                          :audit audit
+                                          :stdout-log-path stdout-log
+                                          :prepare prepare)))
+                 (observer (condition-case _err
+                               (satan-trace-stage "spawn.observer"
+                                                  (satan-observer-process
+                                                   (satan-run-tool-ctx run-ctx)))
+                             (error nil)))
+                 (prepare (setf (satan-run-prepare run-ctx)
+                                (plist-put prepare :observer observer)))
+                 ;; DR-010 §3: percept already built upstream by perceive; enrich
+                 ;; derives resonance + motive over PREPARE's `:percept' (consume-
+                 ;; only).  `:percept'/`:evidence'/`:sensor_status' are already set.
+                 (prepare (setf (satan-run-prepare run-ctx)
+                                (satan-run-enrich prepare)))
+                 (sensor-status (plist-get prepare :sensor_status))
+                 ;; §S6 — sensor_alerts.check runs in the pre-spawn window
+                 ;; alongside the rest of evidence assembly.  Returns the
+                 ;; per-cause pre_spawn entries (fired or suppressed); Phase
+                 ;; 4.4 threads them into the audit close so the run's
+                 ;; `actions.json' carries the produced `pre_spawn' key.
+                 (pre-spawn (condition-case _err
+                                (satan-trace-stage "spawn.sensor_alerts"
+                                                   (satan-sensor-alerts-check
+                                                    sensor-status
+                                                    :tool-ctx (satan-run-tool-ctx run-ctx)))
+                              (error nil)))
+                 ;; The perception frontiers (probe watermarks, ingest cursor)
+                 ;; are NOT committed here: a child the launcher refuses would
+                 ;; consume signals for a model that never ran.  They commit on
+                 ;; the child's first `ready' (`satan-broker--commit-frontiers';
+                 ;; SL-022 I5).  Only the steps that feed the bundle run pre-spawn.
+                 (prepare (setf (satan-run-prepare run-ctx)
+                                (plist-put prepare :pre_spawn pre-spawn)))
+                 (_pre-spawn-completed
+                  (setf (satan-run-pre-spawn-completed run-ctx) t)))
+            (let* ((bundle (satan-trace-stage "spawn.bundle"
+                                              (funcall (or (plist-get mode :context-fn) #'ignore)
+                                                       mode prepare)))
+                   (_attached (satan-audit-attach-bundle audit bundle)))
+              (let* ((cmd (plist-get (plist-get mode :harness) :cmd))
+                     (args (plist-get (plist-get mode :harness) :args))
+                     (model (plist-get mode :model))
+                     (budget-tokens (plist-get mode :budget-tokens))
+                     (max-budget-tokens (or (plist-get mode :max-budget-tokens) 1000000))
+                     (satan-env (delq nil
+                                      (list
+                                       (when model
+                                         (format "SATAN_MODEL=%s" model))
+                                       (when budget-tokens
+                                         (format "SATAN_BUDGET_TOKENS=%d" budget-tokens))
+                                       (when max-budget-tokens
+                                         (format "SATAN_MAX_BUDGET_TOKENS=%d" max-budget-tokens)))))
+                     ;; The child's base env is the default value, not the calling
+                     ;; buffer's: a direnv buffer must not choose the harness binary
+                     ;; or its jail (ISS-037).
+                     (env (append (list (format "SATAN_RUN_ID=%s" run-id)
+                                        (format "SATAN_RUN_DIR=%s" dir)
+                                        (format "SATAN_BUNDLE=%s" bundle-path))
+                                  satan-env
+                                  (plist-get (plist-get mode :harness) :env)
+                                  (default-value 'process-environment)))
+                     (process-environment env)
+                     ;; Global, like the base env above (ISS-037).
+                     (exec-path (default-value 'exec-path))
+                     ;; The jail binds the launcher's cwd rw; make it the run dir,
+                     ;; never the calling buffer's directory (ISS-037).
+                     (default-directory (file-name-as-directory dir)))
+                ;; `setq' INSIDE the stage: `proc' is non-nil the moment a
+                ;; child exists, even if the stage's own bookkeeping throws.
+                (satan-trace-stage "spawn.exec"
+                                   (setq proc
+                                         (make-process
+                                          :name (format "satan-%s" run-id)
+                                          :command (cons cmd args)
+                                          :connection-type 'pipe
+                                          :coding 'utf-8
+                                          :noquery t
+                                          :stderr stderr-buf
+                                          :filter (satan-broker--make-filter run-ctx)
+                                          :sentinel (satan-broker--make-sentinel run-ctx))))
+                (setf (satan-run-process run-ctx) proc)
+                ;; Wrap the sentinel first, before any other post-child wiring:
+                ;; from here the sentinel owns STDERR-BUF (flush + kill), so an
+                ;; error below leaks nothing and the handler must not kill the
+                ;; buffer — that would break the live child's stderr pipe.
+                (set-process-sentinel
+                 proc (satan-broker--wrap-sentinel
+                       (process-sentinel proc) run-ctx stderr-buf dir))
+                (let ((to (plist-get mode :timeout-seconds)))
+                  (when (and (integerp to) (> to 0))
+                    (setf (satan-run-timeout-timer run-ctx)
+                          (run-with-timer
+                           to nil
+                           (lambda ()
+                             (when (process-live-p proc)
+                               (satan-audit-record
+                                (satan-run-audit run-ctx) 'broker 'timeout
+                                (list :after-seconds to))
+                               (setf (satan-run-status run-ctx) 'timed-out)
+                               (delete-process proc)))))))
+                run-id))))
+      ;; The one pre-child handler (SL-017 I7).  DEC-8 (AUD-008 F-001): the
+      ;; flag must persist for the *live* run, not just the synchronous
+      ;; launch window.  make-process is async, so the only correct clear
+      ;; points are the child sentinel (normal/abnormal/killed exit — see
+      ;; `satan-broker--make-sentinel') and this handler, so a failed launch
+      ;; cannot leave the flag stuck.  Lock and buffer are handled BEFORE
+      ;; recording, so a record that itself throws still leaves neither.
+      (error
+       (setq satan-run--spawn-running nil)
+       (if proc
+           ;; The child exists: its sentinel finalises and kills STDERR-BUF.
+           (signal (car err) (cdr err))
+         (when (buffer-live-p stderr-buf) (kill-buffer stderr-buf))
+         (satan-broker--record-spawn-failure mode prepare dir run-ctx err)
+         run-id)))))
 
 (defun satan-broker--record-spawn-failure (mode prepare dir run-ctx err)
   "Record a spawn that failed with ERR before any child existed.
