@@ -10,6 +10,12 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "GPT gpt-6-sol hostile pass over design.md rev 21 (/tmp/sl-025-design-review.md), 7 findings; all answered fix-now and integrated at run rev 28. User: 'review conducted, accepted' (2026-10-19)."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-025"
@@ -21,7 +27,8 @@ severity = "major"
 title = "§4.6 deploy premise false: runner is a store build, not the live tree"
 detail = "GPT gpt-6-sol review (/tmp/sl-025-design-review.md #1). design.md:364-365 says malebolge code deploys on restart (CHR-017). runner.nix uses inputs.malebolge.packages.runner; SATAN.md:170-177: an edit reaches the runner only at the next home-switch. New config against the old package, or new parser against old [mode.fix], refuses start. Fix: one home switch builds runner and config together; correct the premise."
 disposition = "fix-now"
-response = "Verified: runner.nix runs inputs.malebolge.packages.runner; SATAN.md § satan-runner; CHR-017 closed done. §4.6 rewritten: code and runner.nix deploy in one home switch from the committed checkout. Stale live-tree claim also removed from slice-025.md non-goals and notes.md."
+response = "Verified: runner.nix runs inputs.malebolge.packages.runner; SATAN.md § satan-runner; CHR-017 closed done. §4.6 rewritten: code and runner.nix deploy in one home switch from the committed checkout. Stale live-tree claim also removed from slice-025.md non-goals and notes.md. Route review: the fix is design text."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -32,6 +39,22 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Verified: runner.nix runs inputs.malebolge.packages.runner; SATAN.md § satan-runner; CHR-017 closed done. §4.6 rewritten: code and runner.nix deploy in one home switch from the committed checkout. Stale live-tree claim also removed from slice-025.md non-goals and notes.md."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "route set: fix lives in design text, verified by review"
+disposition = "fix-now"
+route = "review"
+response = "Integrated in design.md §4.6 (run rev 28); checkable by reading the revised section."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "restore the full response the route-only amend replaced"
+disposition = "fix-now"
+route = "review"
+response = "Verified: runner.nix runs inputs.malebolge.packages.runner; SATAN.md § satan-runner; CHR-017 closed done. §4.6 rewritten: code and runner.nix deploy in one home switch from the committed checkout. Stale live-tree claim also removed from slice-025.md non-goals and notes.md. Route review: the fix is design text."
 
 [[finding]]
 id = "F-2"
@@ -40,7 +63,8 @@ severity = "major"
 title = "§4.6 producer gap: runner drops fix before Emacs reloads"
 detail = "GPT #2. design.md:354-367; satan-tools-patch.el:24,51,132-133. Between runner restart and Emacs reload the live producer still offers and forwards fix, refused as unknown mode. Fix: quiesce producers over a coordinated cutover."
 disposition = "fix-now"
-response = "Verified (satan-tools-patch.el:24,133). §4.6: one-sitting cutover; prompts written to the corpus only after the restart (the corpus is read live), Emacs reloaded right after; ticks fire once at boot (SATAN.md:51), so no new sessions during the sitting closes the gap."
+response = "Verified (satan-tools-patch.el:24,133). §4.6: one-sitting cutover; prompts written to the corpus only after the restart (the corpus is read live), Emacs reloaded right after; ticks fire once at boot (SATAN.md:51), so no new sessions during the sitting closes the gap. Route review: the fix is design text."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -51,6 +75,22 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Verified (satan-tools-patch.el:24,133). §4.6: one-sitting cutover; prompts written to the corpus only after the restart (the corpus is read live), Emacs reloaded right after; ticks fire once at boot (SATAN.md:51), so no new sessions during the sitting closes the gap."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "route set: fix lives in design text, verified by review"
+disposition = "fix-now"
+route = "review"
+response = "Integrated in design.md §4.6 (run rev 28); checkable by reading the revised section."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "restore the full response the route-only amend replaced"
+disposition = "fix-now"
+route = "review"
+response = "Verified (satan-tools-patch.el:24,133). §4.6: one-sitting cutover; prompts written to the corpus only after the restart (the corpus is read live), Emacs reloaded right after; ticks fire once at boot (SATAN.md:51), so no new sessions during the sitting closes the gap. Route review: the fix is design text."
 
 [[finding]]
 id = "F-3"
@@ -59,7 +99,8 @@ severity = "major"
 title = "Dropping fix fails already-admitted queued/preparing jobs"
 detail = "GPT #3. run.ts:131-150 resolves policy at preparing from current config (policy.ts:83-85); rejoin.ts:185-209 does the same for a preparing job with no recorded policy. A queued fix job fails once mode.fix is gone. Fix: drain queued/preparing jobs before cutover, with an explicit check."
 disposition = "fix-now"
-response = "Verified run.ts:131-150, rejoin.ts:185-209. §4.6 adds a drain check (no queued/preparing jobs, store query) before the switch; §6 adds it as a VH row."
+response = "Verified run.ts:131-150, rejoin.ts:185-209. §4.6 adds a drain check (no queued/preparing jobs, store query) before the switch; §6 adds it as a VH row. Route review: the fix is design text."
+route = "review"
 
 [[finding.turn]]
 act = "raise"
@@ -70,6 +111,22 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "Verified run.ts:131-150, rejoin.ts:185-209. §4.6 adds a drain check (no queued/preparing jobs, store query) before the switch; §6 adds it as a VH row."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "route set: fix lives in design text, verified by review"
+disposition = "fix-now"
+route = "review"
+response = "Integrated in design.md §4.6 (run rev 28); checkable by reading the revised section."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "restore the full response the route-only amend replaced"
+disposition = "fix-now"
+route = "review"
+response = "Verified run.ts:131-150, rejoin.ts:185-209. §4.6 adds a drain check (no queued/preparing jobs, store query) before the switch; §6 adds it as a VH row. Route review: the fix is design text."
 
 [[finding]]
 id = "F-4"
