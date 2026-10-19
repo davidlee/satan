@@ -1,0 +1,174 @@
+# Implementation plan for SL-026 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# Code paths are in ~/dev/malebolge unless prefixed (satan/, satan-corpus/).
+# VT test_file paths outside this repo are absolute (SL-023's convention);
+# verify-vt fails them until the phase creates the file.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-026"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Shared project-context module"
+objective = "The pure source pipeline both agents share (design §4.1, §4.6): truncate.ts, xml.ts (escapeXml moved from skills.ts), project-context.ts — names, SourceReader, capSource, readChainDir, readSources, renderProjectContext, gitRootDirs, nodeSourceReader, projectContextExtension."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (run dr-01a152b2, rev 44); malebolge `just check` green at the phase's base commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Render order APPEND_SYSTEM → extra → chain (outermost first); first regular-file name per directory wins; 64 KiB cap on a character boundary with marker; leading BOM stripped; no sources → undefined; attribute values escaped." },
+  { id = "EX-2", text = "nodeSourceReader picks by fs.stat isFile and never opens a FIFO (AGENTS.md or .pi/APPEND_SYSTEM.md); gitRootDirs stops at .git (dir or file), [cwd] when none." },
+  { id = "EX-3", text = "skills.ts imports escapeXml from xml.ts; no second escaper. `just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "source pipeline over a fake SourceReader: order, pick, cap + marker, BOM, empty, escaping", test_file = "/home/david/dev/malebolge/test/project-context.test.ts", keywords = ["readSources", "readChainDir", "renderProjectContext", "capSource", "SOURCE_CAP_BYTES"], waived = false },
+  { id = "VT-2", expects = "temp dirs: gitRootDirs bounds; symlinked AGENTS.md read; FIFO named AGENTS.md and .pi/APPEND_SYSTEM.md skipped without opening (fails by timeout if opened)", test_file = "/home/david/dev/malebolge/test/project-context.test.ts", keywords = ["gitRootDirs", "nodeSourceReader", "mkfifo"], waived = false },
+  { id = "VT-3", expects = "capUtf8 cuts on a character boundary; truncateLine", test_file = "/home/david/dev/malebolge/test/truncate.test.ts", keywords = ["capUtf8", "truncateLine"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Room shell limits; existing preparing execs bounded"
+objective = "RoomShell gains optional ShellLimits (maxStdoutBytes → overflowed, maxStderrBytes, timeoutS) with the caller's abort always rethrown (design §4.2); checkRoomClone and ensureJobBranch pass PREPARE_LIMITS; cleanRoomClone passes none."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Over-cap stdout stops the process and returns the head with overflowed; stderr capped while streaming; timeout → ChannelFailed with cause timeout; caller abort → rethrown, never overflowed; callers without limits behave as before." },
+  { id = "EX-2", text = "checkRoomClone and ensureJobBranch pass PREPARE_LIMITS (60 s, 64 KiB stdout, 4 KiB stderr); a git status overflow is dirty_clone; a timeout fails preparing; cleanRoomClone unchanged." },
+  { id = "EX-3", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "over localConnection: overflow head + overflowed; stderr cap; timeout cause; a process blocked on a FIFO read stopped by the timeout; caller abort rethrown", test_file = "/home/david/dev/malebolge/test/runner/shell.test.ts", keywords = ["ShellLimits", "overflowed", "maxStdoutBytes", "timeoutS", "mkfifo"], waived = false },
+  { id = "VT-2", expects = "fake RoomShell: preparing execs carry PREPARE_LIMITS, cleanRoomClone none; status overflow → dirty_clone; timeout fails preparing", test_file = "/home/david/dev/malebolge/test/runner/prepare.test.ts", keywords = ["PREPARE_LIMITS"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Runner fetch: room SourceReader, doctrine step, classification"
+objective = "src/runner/project-context.ts fetchProjectContext (design §4.2-4.3): room SourceReader (stat -L, head -c) with fetch limits; doctrine step (test -d, check-ignore, prompt resolve with 60 s / 64 KiB+1 / 4 KiB, checkClone re-check → PrepareFailed dirty_clone); the ordered error classification; degradations as data. readyRoom takes a FinalStep<T> and returns { baseOid, value }."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Every §4.2 classification row behaves as specified, caller abort tested before the table (ChannelFailed cause aborted rethrown); ChannelUnavailable incl. a spawn_error cause is retried by readyRoom." },
+  { id = "EX-2", text = "Doctrine: absent, non-zero, timeout, not ignored, empty → degradation and the job continues; dirty or failed re-check → PrepareFailed dirty_clone with no clean called; overflow → truncated source." },
+  { id = "EX-3", text = "RV-033 F-1 probe criterion holds: with hostile head/stat/test/git (ignore args, lie, print unrequested names, stream without end, never exit) and FIFO/device context files (direct or via symlink into an ignored path), the fetch completes, degrades or fails within the sum of per-exec timeouts; per-exec host memory within its caps; only requested names kept from stat; with an honest stat a FIFO is never opened." },
+  { id = "EX-4", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "fake RoomShell: argv + limits per exec, every classification row, doctrine outcomes, re-check → dirty_clone, no clean, unrequested stat names ignored", test_file = "/home/david/dev/malebolge/test/runner/project-context.test.ts", keywords = ["fetchProjectContext", "boot_not_ignored", "dirty_clone", "spawn_error", "aborted"], waived = false },
+  { id = "VT-2", expects = "F-1 probe over localConnection: real FIFOs and fake endless / lying binaries first on PATH; bounded time and memory, outcome within the sum of per-exec timeouts", test_file = "/home/david/dev/malebolge/test/runner/project-context-probe.test.ts", keywords = ["fetchProjectContext", "mkfifo", "PATH"], waived = false },
+  { id = "VT-3", expects = "readyRoom with a FinalStep: value returned; a ChannelUnavailable inside the step retried and its data discarded", test_file = "/home/david/dev/malebolge/test/runner/prepare.test.ts", keywords = ["FinalStep"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Composition and admission"
+objective = "composePrompt gains projectInstructions (fourth input) between policy fragments and the job block, and `Working directory:` (design §4.4); admit passes fetchProjectContext and { ...job, cwd }, writes one context_degraded event per degradation after readyRoom; EVENT_KINDS += context_degraded."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Job block byte-identical whatever the context says; resolvePolicy has no context input (DEC-073); no sources → no block." },
+  { id = "EX-2", text = "A ChannelUnavailable after a degraded doctrine step, then success → exactly one context_degraded per degradation of the successful attempt." },
+  { id = "EX-3", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "composition order, job-block invariance, Working directory line, empty context", test_file = "/home/david/dev/malebolge/test/runner/prompt.test.ts", keywords = ["projectInstructions", "Working directory:"], waived = false },
+  { id = "VT-2", expects = "admit records degradations once, after the retry loop", test_file = "/home/david/dev/malebolge/test/runner/run.test.ts", keywords = ["context_degraded"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "grep tool"
+objective = "src/grep.ts grepTool + grepExtension over rg --json (design §4.5): parameters incl. noIgnore and clamps; bounded line splitter (MAX_MESSAGE_BYTES), parse-time truncation, stderr capped while streaming, stops at limit or 50 KB, caller abort throws; exit codes incl. 2-with-matches; bytes decoding; JobTools gains grepTool."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete (truncate.ts)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Output, notices, caps and exit-code handling as design §4.5; file path shown as basename." },
+  { id = "EX-2", text = "RV-033 F-2 probe criterion holds: for multi-GB single lines, binary data, many matches or submatches, and a hostile rg emitting unbounded or malformed stdout or unbounded stderr, the tool's peak host memory is bounded by MAX_MESSAGE_BYTES + 50 KB + 4 KiB + a constant and the result is at most 50 KB." },
+  { id = "EX-3", text = "JobTools has five tools; read and grep replay-safe. `just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "faux env: argv per parameter, clamps, chunk-split JSON, context, bytes, basename, limit and 50 KB stops as success, caller abort throws, exit 1/2", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["grepTool", "noIgnore", "limit reached", "No matches found"], waived = false },
+  { id = "VT-2", expects = "F-2 probe: multi-MB single line, limit 1000 × long lines, multi-MB stderr; splitter carry never above MAX_MESSAGE_BYTES (negative control: an uncapped splitter fails this test)", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["MAX_MESSAGE_BYTES", "stderr"], waived = false },
+  { id = "VT-3", expects = "one run over localConnection with the host's rg", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["localConnection"], waived = false },
+  { id = "VT-4", expects = "five tools; read and grep replay-safe", test_file = "/home/david/dev/malebolge/test/runner/tools.test.ts", keywords = ["grepTool"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Daemon wiring"
+objective = "daemon-main reads project context once at startup (nodeSourceReader, gitRootDirs) and installs [persona, projectContext, skills, cwd, CodingTools, grep, satan]; src/cwd.ts cwdExtension (design §4.6)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 and PHASE-05 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "project_context and cwd sections rendered; omitted context → no section; pi's order for a fresh conversation and for one already showing persona and skills." },
+  { id = "EX-2", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "openFauxHarness + systemPromptSections: sections, omission, order fresh and existing", test_file = "/home/david/dev/malebolge/test/daemon-sections.test.ts", keywords = ["project_context", "cwdExtension", "systemPromptSections"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Corpus, fleet, docs"
+objective = "satan-corpus prompts (patch-agent.md: grep, precedence paragraph, three bullets; interactive.txt: three bullets); malebolge flake dev-tools += doctrine; satan flake jailProbes.malebolge asserts rg; malebolge docs/internals.md (design §4.7)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04, PHASE-05 and PHASE-06 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Corpus prompts carry the grep tool, the precedence paragraph (repo instructions precede the job block; this prompt and the job block override repo workflow) and the three bullets; not in system/scaffold.txt." },
+  { id = "EX-2", text = "malebolge dev-tools provides doctrine; satan jailProbes.malebolge finds rg; `nix flake check` green in satan." },
+  { id = "EX-3", text = "docs/internals.md describes sections, sources and grep." },
+]
+verification = [
+  { id = "VT-1", expects = "jail probe asserts rg", test_file = "flake.nix", keywords = ["jailProbes", "ripgrep"], patterns = ["\\brg\\b"], waived = false },
+  { id = "VA-1", expects = "agent reads both corpus prompts and docs/internals.md against design §4.7 and confirms EX-1/EX-3" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "Live verification"
+objective = "Deploy and run the slice's VH with the user (design §6): one patch job on repo doctrine (base edge) that quotes a line from .pi/APPEND_SYSTEM.md, the doctrine boot and AGENTS.md, runs one grep in the room and commits a note."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete and deployed (runner, daemon, corpus)." },
+  { id = "EN-2", text = "SL-025's room targets deployed (its EX-4), with doctrine in the doctrine target's toolsPackage." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The transcript's first message carries all three sources; the quotes match; grep ran in the room; the job did not try the doctrine workflow (no slices, worktrees or .doctrine/ writes)." },
+]
+verification = [
+  { id = "VH-1", expects = "user and agent inspect the live job's transcript and commit against EX-1; fallback if EN-2 slips: a goad-walk job for grep alone, and the context half waits" },
+]
+specs        = []
+requirements = []
