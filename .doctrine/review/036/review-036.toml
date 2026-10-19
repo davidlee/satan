@@ -1,0 +1,240 @@
+id    = 36
+slug  = "code-review-review-of-sl-027"
+title = "code-review review of SL-027"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "reviewer"
+responder = "implementer"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Examined malebolge e2aaf98..87f48e3 (SL-027 PHASE-02, room-tier extraction: src/room/*, src/runner/{door,env,config,project-context,run,collect,start,pause,prepare}.ts, src/fields.ts, test/room/*, test/runner/*) against design §4.1, §4.3, §5, §6 and plan PHASE-02 EX-1..EX-5. Review pass by a general-purpose subagent (read-only, targeted vitest runs); orchestrator re-verified F-1, F-2 and F-6 evidence before raising. Fixes landed in malebolge b4616fc, d16bae9, 2ba8667; `just check` green, 1559 tests.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-027"
+phase = "PHASE-02"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "EX-10 should catch door-parser use spreading via imports; withoutSpecifiers hides it"
+detail = '''
+Expected: EX-10 (test/runner/room.test.ts, plan PHASE-02 EX-5) keeps door knowledge confined to its owners.
+Observed: `withoutSpecifiers` (room.test.ts:621) strips every `from "…"` specifier before DOOR_WORDS/KIND_WORDS run. The room/door.ts identifiers (readRoomDoor, RoomDoor, ROOM_DOOR_KEYS, roomConnectionOf) never match `\bdoor` (camelCase gives no word boundary) and KIND_WORDS was narrowed to `(slot|room)DoorConfig`, so `RoomDoor` no longer trips it. Reviewer verified: `import { readRoomDoor, type RoomDoor } from "../room/door.ts"; const d: RoomDoor = readRoomDoor(f, h);` → DOOR=false, KIND=false. The structure test lets every runner module import room/*. Also `switch (kind) { case "room": }` evades KIND_WORDS.
+Today only runner/config.ts and runner/door.ts import room/door.ts (grep), so nothing is leaking yet.
+Failure scenario: prepare.ts (or the PHASE-03 daemon) starts parsing the door via readRoomDoor; EX-10 stays green.
+Fix: structure-test edge rule — only runner/config.ts, runner/door.ts (and from PHASE-03 the daemon's config.ts) may import room/door.ts; add a `case "slot"|"room"` arm to KIND_WORDS with a control.
+'''
+disposition = "fix-now"
+response = """
+malebolge b4616fc. test/structure.test.ts: ROOM_DOOR_READERS (runner/config.ts, runner/door.ts) are the only modules that may import room/door.ts; control test rejects runner/prepare.ts and room/shell.ts importing it. KIND_WORDS gains a `case "slot"|"room"` arm with two controls. withoutSpecifiers kept: importing runner/door.ts's API is not door knowledge; the import edge is the structure test's job. PHASE-03's daemon config.ts must join ROOM_DOOR_READERS (notes § Design errata).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+malebolge b4616fc. test/structure.test.ts: ROOM_DOOR_READERS (runner/config.ts, runner/door.ts) are the only modules that may import room/door.ts; control test rejects runner/prepare.ts and room/shell.ts importing it. KIND_WORDS gains a `case "slot"|"room"` arm with two controls. withoutSpecifiers kept: importing runner/door.ts's API is not door knowledge; the import edge is the structure test's job. PHASE-03's daemon config.ts must join ROOM_DOOR_READERS (notes § Design errata).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "One ObservedConnection→RemoteExecutionEnv construction expected; two copies observed, PHASE-04 adds a third"
+detail = """
+Expected: one way to build an observed remote env (the no-nesting rule of design §4.3 / PHASE-04 EX-3 stated once).
+Observed: src/room/shell.ts:216-225 `roomShell` and src/runner/env.ts:23-29 `jobEnv` each do `new RemoteExecutionEnv({ connection: new ObservedConnection(conn, observer), id, cwd })`. At e2aaf98 roomShell called jobEnv; the tier split forced the copy. §4.3's daemon tool path builds the same shape again.
+Fix: `observedEnv(connection, observer, { id, cwd })` in src/room/connection.ts (or shell.ts); jobEnv and roomShell call it; its doc comment states the no-nesting rule.
+"""
+disposition = "fix-now"
+response = """
+malebolge d16bae9. observedEnv(connection, observer, { id, cwd }) in src/room/connection.ts, documenting the no-nesting rule (§4.3). jobEnv and roomShell both call it; new test "an observed env" in test/room/connection.test.ts (red first).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+malebolge d16bae9. observedEnv(connection, observer, { id, cwd }) in src/room/connection.ts, documenting the no-nesting rule (§4.3). jobEnv and roomShell both call it; new test "an observed env" in test/room/connection.test.ts (red first).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = 'ReadFailure (room tier) should hold room-reader reasons only; carries runner-only "exit"'
+detail = """
+Observed: src/room/source-reader.ts:22 `{ reason: "exit" | "error"; … }`. Sole producer of "exit" is src/runner/project-context.ts:58 (bootOf). Matches design §4.1 as written, so not non-conformance, but the daemon will see a reason it can never get.
+Fix: move `{ reason: "exit"; code; stderr }` into the runner's local failure type; record a §4.1 amendment at reconcile.
+"""
+disposition = "fix-now"
+response = """
+User chose "move now + erratum" (2026-10-20). malebolge 2ba8667: ReadFailure is missing|timeout|overflow|error; runner Failure gains { reason: "exit"; code: number; stderr: string }. §4.1 amendment recorded in notes § Design errata for reconcile.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+User chose "move now + erratum" (2026-10-20). malebolge 2ba8667: ReadFailure is missing|timeout|overflow|error; runner Failure gains { reason: "exit"; code: number; stderr: string }. §4.1 amendment recorded in notes § Design errata for reconcile.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "Door missing-key order expected unchanged; changed wider than phase sheet F4 states"
+detail = """
+Observed: old readDoor (e2aaf98) checked user, known_hosts, host_key_alias, room, ssh_config, identity, session_path. New: room, user, known_hosts, host_key_alias, identity, ssh_config, session_path. A door missing both `user` and `room` now names `room`. No test pins order (test/runner/config.test.ts:283,295 drop one key at a time). Operator error text only.
+Fix: none in code; widen F4's wording in the phase sheet / notes.
+"""
+disposition = "aligned"
+response = """
+No code change: only the error message for a door missing two or more keys changes. Phase sheet F4 widened with the full before/after order.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = """
+No code change: only the error message for a door missing two or more keys changes. Phase sheet F4 widened with the full before/after order.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "SHARED_DOOR_KEYS name/comment should describe the table; it is now slot-only and the room comment miscounts"
+detail = """
+Observed: src/runner/config.ts:90-98. SHARED_DOOR_KEYS is used by the slot kind only; the room entry is described as "the room door's and two more" but is `kind` plus three keys. onlyKeys sets are behaviourally unchanged.
+Fix: rename (e.g. SLOT_SSH_KEYS) or reword the comment.
+"""
+disposition = "fix-now"
+response = """
+malebolge 2ba8667: SHARED_DOOR_KEYS removed (slot-only since ROOM_DOOR_KEYS); slot list written out; the comment says a room's keys are `kind`, the room door's, and the two only the runner reads.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+malebolge 2ba8667: SHARED_DOOR_KEYS removed (slot-only since ROOM_DOOR_KEYS); slot list written out; the comment says a room's keys are `kind`, the room door's, and the two only the runner reads.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "Observer test helpers expected shared in the fixture; ignoreLost/observed() duplicated"
+detail = """
+Observed: test/room/connection.test.ts:24,116 and test/runner/env.test.ts:37,157 define identical `ignoreLost` and `observed()`.
+Fix: move both into test/room/connection-fixture.ts; PHASE-04's daemon-env tests will want them.
+"""
+disposition = "fix-now"
+response = """
+malebolge d16bae9: ignoreLost and recordingObserver (renamed from observed()) live in test/room/connection-fixture.ts; both test files import them.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+malebolge d16bae9: ignoreLost and recordingObserver (renamed from observed()) live in test/room/connection-fixture.ts; both test files import them.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Design §4.1 room API should list room/ exports; several unlisted"
+detail = """
+Observed unlisted exports: successStdout (room/shell.ts, used by checkRoomClone), answerable and Attempt (room/source-reader.ts), types ExecFacts, Collected, OutputCollector. Each has one consumer and none leaks runner policy. `Collected` in room/shell.ts collides in name with runner/door.ts's `Collected` ({quarantine, ref, oid}).
+Fix: amend §4.1 at reconcile; optionally rename the shell type to CollectedOutput.
+"""
+disposition = "design-wrong"
+response = """
+§4.1's API list is incomplete, not the code. Recorded in notes § Design errata (RV-036 F-7) for reconcile, including observedEnv and the pre-existing `Collected` name collision. No rename now: the collision predates SL-027 and both types are module-local in use.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+§4.1's API list is incomplete, not the code. Recorded in notes § Design errata (RV-036 F-7) for reconcile, including observedEnv and the pre-existing `Collected` name collision. No rename now: the collision predates SL-027 and both types are module-local in use.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
