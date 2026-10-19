@@ -1,0 +1,293 @@
+id    = 32
+slug  = "reconciliation-review-of-sl-025"
+title = "reconciliation review of SL-025"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-025"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = 'Design §4.2 refuses "*" as a list member only for allowed_paths; code refuses it for repos too'
+detail = """
+Expected (design §4.2 config-refusal bullets): `"*"` as a list member is refused for `allowed_paths` ("as a path it would name a file called `*`").
+Observed: M `src/runner/config.ts` `readScope` refuses a `"*"` member for both keys (`repos` and `allowed_paths`). plan.toml PHASE-01 EX-1 lists `"*" as a list member` without naming the key; the PHASE-01 planner (A1) and the orchestrator chose the general reading — it also stops a repo literally named `*` from turning `repos = ["*"]` into a valid scope.
+The code is the better rule; the design under-states it.
+"""
+disposition = "design-wrong"
+response = """
+The code's general rule is right: a "*" list member is a mistaken unbounded marker on either axis, and refusing it on `repos` keeps a repo literally named `*` from widening a scope. Reconcile: design.md §4.2 refusal bullets say the "*" member rule applies to both keys (Reconciliation Brief, per-slice).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The code's general rule is right: a "*" list member is a mistaken unbounded marker on either axis, and refusing it on `repos` keeps a repo literally named `*` from widening a scope. Reconcile: design.md §4.2 refusal bullets say the "*" member rule applies to both keys (Reconciliation Brief, per-slice).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Fleet lock goes beyond §4.4: satan follows the fleet goad, goad bumped, satan pinned at 5eee5c8"
+detail = """
+Expected (design §4.4): inputs `satan` (nixpkgs, doctrine follow) and `satan-corpus` (nixpkgs follows); §7 "Second satan pin" — the fleet's satan pin may differ from ~/flakes'.
+Observed (F): f23f469 per §4.4; then, with the user (2026-10-19): 0a8c82d re-locked satan at 5eee5c8 after the user pushed satan; 8e3cba2 added `satan.inputs.goad.follows = "goad"` and bumped the fleet's goad a64e310 → 04147ca (satan's own pin, goad origin/main) so the follows did not downgrade satan's goad. Lock back to 313 nodes; root changes vs f23f469: goad, satan only; `just check` and `roomImages` eval green.
+Side effect not in the design: rooms goad and goad-walk get the 2 newer goad commits at the next room rebuild.
+"""
+disposition = "design-wrong"
+response = """
+The follows and the goad bump were taken with the user's go (2026-10-19) to keep one goad in the room closure without downgrading satan's goad. Reconcile: design.md §4.4 table records `goad` follows the fleet's, and §7 "Second satan pin" notes the fleet's goad now tracks satan's goad (Reconciliation Brief, per-slice).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The follows and the goad bump were taken with the user's go (2026-10-19) to keep one goad in the room closure without downgrading satan's goad. Reconcile: design.md §4.4 table records `goad` follows the fleet's, and §7 "Second satan pin" notes the fleet's goad now tracks satan's goad (Reconciliation Brief, per-slice).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "self-edit-mech prompt rewrite goes beyond §4.5: stale just-check guidance replaced"
+detail = """
+Expected (design §4.5): self-edit-mech.txt — drop `mode` and `checks`; repo "satan".
+Observed (C b2bae94): also replaced the `checks` paragraph's claims, which were stale against this repo's justfile — `just check` "refuses to run without SATAN_DB_HOST" (the justfile now exports it) and "exits 0 whatever happens" (`_require-test-dbs` exits 1 on an unreachable DB; the ert batch fails non-zero). New text: the directive tells the agent to run `just check` and report ran/expected/unexpected/skipped; `SATAN_TEST_ALLOW_NO_DB=1` only when the test DBs are unreachable, and the report must say the DB suites were skipped.
+"""
+disposition = "design-wrong"
+response = """
+Dropping `checks` removed the only place the lane told the agent how to verify; carrying the stale claims forward into the new directive guidance would have been wrong. Reconcile: design.md §4.5 self-edit-mech row records the directive's check guidance (Reconciliation Brief, per-slice).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Dropping `checks` removed the only place the lane told the agent how to verify; carrying the stale claims forward into the new directive guidance would have been wrong. Reconcile: design.md §4.5 self-edit-mech row records the directive's check guidance (Reconciliation Brief, per-slice).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "mem.fact.satan.patch-job-contract corrected (PHASE-02 EX-4) but left unverified"
+detail = """
+Expected (plan PHASE-02 EX-4; design §7 follow-through): the memory corrected.
+Observed: body rewritten in 36cd441 and accurate against the code (repo = runner name; mode stamped from ctx :mode-name; per-mode scope by withinModeScope; allowed_paths rules). `doctrine memory show` reports verification_state: unverified — `memory verify` refused the dirty tree during PHASE-02.
+"""
+disposition = "fix-now"
+response = """
+Verified during the audit: `doctrine memory verify mem.fact.satan.patch-job-contract --allow-dirty` → "Verified memory". The dirt was unrelated (RV-032 files, a concurrent session's untracked SL-026 paths); the memory's scoped paths (satan/satan-tools-patch.el, satan/satan-run.el) are clean. Body re-read against code first.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Verified during the audit: `doctrine memory verify mem.fact.satan.patch-job-contract --allow-dirty` → "Verified memory". The dirt was unrelated (RV-032 files, a concurrent session's untracked SL-026 paths); the memory's scoped paths (satan/satan-tools-patch.el, satan/satan-run.el) are clean. Body re-read against code first.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Conformance: memory item edited by PHASE-02 is undeclared (no design-target selector)"
+detail = """
+`doctrine slice conformance 25` → undeclared (4): .doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/memory.{md,toml}, .doctrine/observations/records/82/01a152aa-….toml, .doctrine/slice/025/notes.md. Conformant (2): satan-tools-patch.el, its test. Undelivered 0.
+The memory item edit is designed work (§7 follow-through, PHASE-02 EX-4) with no design-target selector. notes.md and the observation record are slice bookkeeping, not design targets.
+(PHASE-05 had no row; recorded as an empty range 18a5a7b..18a5a7b during this audit — it changed no source in this repo.)
+"""
+disposition = "design-wrong"
+response = """
+The memory item is designed work (§7, PHASE-02 EX-4). Reconcile through the selector registry: `doctrine slice selector add 25 design-target .doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/` (load-bearing), mirrored in design.md §5. notes.md and the observation record are slice bookkeeping and stay undeclared by intent — no selector, since a design-target on notes.md would make every slice's notes "delivered work".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The memory item is designed work (§7, PHASE-02 EX-4). Reconcile through the selector registry: `doctrine slice selector add 25 design-target .doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/` (load-bearing), mirrored in design.md §5. notes.md and the observation record are slice bookkeeping and stay undeclared by intent — no selector, since a design-target on notes.md would make every slice's notes "delivered work".
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "major"
+title = "Deployed runner and config are not reproducible from pushed/locked state"
+detail = """
+Expected (H SATAN.md § satan-runner, "Deploy a change: commit, push, `just update-local`, `just home-switch`, restart"): the deployed build is the locked revision.
+Observed: the live runner (wxhqgy5v…-satan-runner-0.0.0) was built by `just home-switch`'s dev-checkout override from the local M checkout. M main is 3 commits ahead of origin (226b27c unpushed). H's flake.lock still pins malebolge 4f478c4 (pre-SL-025); H 338beea1 (runner.nix) is unpushed; H flake.lock carries the user's uncommitted `nix flake update fleet`.
+Failure scenario: any build from the lock (no ~/dev/malebolge override, or a fresh clone) pairs the old runner parser with the new runner.nix — the old `readLayer(…, ["prompt"])` refuses the `repos`/`allowed_paths` keys, so satan-runner refuses to start (I13). Likewise a lock-based system switch would take the fleet pin the user switched with only if the lock is committed.
+"""
+disposition = "fix-now"
+response = """
+Needs the user's outward acts, before /close:
+1. push M (`git -C ~/dev/malebolge push`);
+2. in H: commit flake.lock (the fleet update), `just update-local` (re-locks malebolge to its pushed main), commit the lock, push H.
+Then re-check: H flake.lock malebolge rev == M origin/main containing 226b27c; `just home-build` yields the same satan-runner store path as the running unit (wxhqgy5v…), so no restart is needed.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Needs the user's outward acts, before /close:
+1. push M (`git -C ~/dev/malebolge push`);
+2. in H: commit flake.lock (the fleet update), `just update-local` (re-locks malebolge to its pushed main), commit the lock, push H.
+Then re-check: H flake.lock malebolge rev == M origin/main containing 226b27c; `just home-build` yields the same satan-runner store path as the running unit (wxhqgy5v…), so no restart is needed.
+"""
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Tick prompt cites a classifier that no longer exists (dl-satan-patch-classify)"
+detail = """
+C prompts/tick/agent.txt:65 — "The classifier `dl-satan-patch-classify` is a hint only — the call is yours." No such function exists: `grep -rn 'satan-patch-classify' ~/dev/satan/satan/*.el` → nothing (the dl- prefix was dropped in SL-012, and no patch classifier survives). SL-025 edited this file (b2bae94) and left the stale reference.
+"""
+disposition = "fix-now"
+response = """
+Fixed in C a9eb3c1: the sentence now reads "Whether a directive is patch-shaped is your call." — same intent, no dead identifier.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in C a9eb3c1: the sentence now reads "Whether a directive is patch-shaped is your call." — same intent, no dead identifier.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Governance not yet updated for mode scope: SPEC-004 job contract, ADR-017 ledger rows 1 and 9"
+detail = """
+Expected (design §7 follow-through): SPEC-004's job contract and ADR-017 authority-ledger rows 1 and 9 (Enforced at) change by REV at SL-025 reconcile, after SL-023's REV-007 applies. REV-007 is done/approved.
+Observed: SPEC-004 § Job contract says nothing of `mode` (stamped by the client) or per-mode `repos`/`allowed_paths` scope; ledger row 9 lists submit enforcement as only `normaliseAllowedEntry`; row 1 does not note that `patch_job_create`'s mode is ctx-stamped, not a model argument. DEC-068/DEC-069 are the only authority today.
+"""
+disposition = "design-wrong"
+response = """
+Governance follow-through planned by design §7, now unblocked (REV-007 done). Reconcile by REV: SPEC-004 § Job contract (mode stamped by the client; per-mode required scopes; submit-time refusal; admission is the snapshot) and ADR-017 authority-ledger rows 1 and 9 Enforced-at (Reconciliation Brief, governance/spec).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Governance follow-through planned by design §7, now unblocked (REV-007 done). Reconcile by REV: SPEC-004 § Job contract (mode stamped by the client; per-mode required scopes; submit-time refusal; admission is the snapshot) and ADR-017 authority-ledger rows 1 and 9 Enforced-at (Reconciliation Brief, governance/spec).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "Live lane jobs ran with a hand-built ctx: no intervention row, broker ctx join proven statically"
+detail = """
+PHASE-05 submitted the three lane jobs by `emacsclient` calling `satan-tool/patch-job-create` with ctx `(:mode-name <lane>)`. Each ok carried `intervention_error "tool-ctx missing :id/:mode-name/:time-now/:audit"` — expected for a synthetic ctx.
+So the live path through a real broker run (ctx from satan-run.el:345 `:mode-name (plist-get mode :name)`) was not exercised. Static evidence: mode names are the strings "self-edit-mech", "self-edit-mind" (satan-mode.el:141,164), "tick-agent" (satan-tick.el full-name from satan-tick-pool), "interactive" (satan-mcp.el:91); each matches a runner [mode.*]; each lane's :tools includes patch_job_create (satan-mode.el:150,173; satan-tick.el:129; MCP via satan-tools-available "interactive").
+"""
+disposition = "tolerated"
+response = """
+The §6 VH rows ask for jobs "through patch_job_create" — met: the handler, the stamping, the runner admission and the lanes all ran live. The only unexercised piece is the broker supplying :mode-name, a one-line ctx field (satan-run.el:345) whose values were checked statically against the runner's mode names and the lanes' tool allowlists. Starting a SATAN run during the cutover sitting was ruled out (PHASE-04 EN-2); the first scheduled tick-agent or self-edit run exercises it, and a mismatch would surface as an invalid_request refusal naming the mode — loud, not silent.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+The §6 VH rows ask for jobs "through patch_job_create" — met: the handler, the stamping, the runner admission and the lanes all ran live. The only unexercised piece is the broker supplying :mode-name, a one-line ctx field (satan-run.el:345) whose values were checked statically against the runner's mode names and the lanes' tool allowlists. Starting a SATAN run during the cutover sitting was ruled out (PHASE-04 EN-2); the first scheduled tick-agent or self-edit run exercises it, and a mismatch would surface as an invalid_request refusal naming the mode — loud, not silent.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
