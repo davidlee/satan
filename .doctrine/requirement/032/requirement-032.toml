@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 32
+slug = "restart-follows-a-written-recovery-table"
+title = "Restart follows a written recovery table"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "Every non-terminal job state has a written recovery row. After a restart, each job's host-side state is settled before any harness call that asks for progress, and only the one in-flight job gets a harness act. A disabled runner parks every job: it makes no harness call that asks for progress, runs no room work, and lets no wait bound expire."
+tags = ["recovery", "durability"]
+acceptance_criteria = ["Restart in each recovery-table state reaches the expected next state, each exercised by fault injection at its write boundary.", "No pi-durable task is scheduled before that job's host state is settled.", "A resume message or warning is never submitted twice (restart-stable request ids).", "With enabled = false, restart runs no channel verb or env command and times nothing out; parked time is charged neither to waits nor to active wall-clock."]

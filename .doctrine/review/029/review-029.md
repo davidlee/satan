@@ -179,3 +179,95 @@ from SL-024's own selectors.
   done` (F-20, user ruling).
 - Follow-ups owned elsewhere: CHR-019 (F-21), ISS-047 (F-23); already filed:
   IMP-042, IMP-043, CHR-017, CHR-018, ISS-046.
+
+## Reconciliation Outcome
+
+Reconcile pass 2026-10-19, run by a delegated agent without the user in the
+session: the per-slice edits below were not shown to the user before writing
+(the skill's confirmation step). They restate only what RV-029's verified
+dispositions and the user's recorded rulings already settled; review with
+`git show` on the reconcile commit.
+
+### Direct edits applied
+- Selector registry (F-1): `slice selector add 23 --intent design-target`
+  for `flake.nix`, `justfile`, `satan/satan-attribute.el`,
+  `satan/test/satan-attribute-listener-test.el`,
+  `satan/test/satan-memory-migrate-test.el`, `docs/INDEX.md`,
+  `docs/governance.md`. Delta registry: PHASE-11 `--commit 83b5362`
+  (`--force`: narrows 032f753..f002bf6, dropping only the notes commit),
+  PHASE-12 `--commit f17d33f` (`--force`, same reason), PHASE-13
+  `--start 87d8cfd^ --end 01dab54`. Correction to the brief: the registry
+  did not span to HEAD (`.doctrine/state/slice/023/boundaries.toml` already
+  carried end oids); the foreign `flake.lock` came from PHASE-09's recorded
+  range 3f8e88b..37913c2, which held only f0913bc. PHASE-09 landed no satan
+  code, so it is now the empty range 3f8e88b..3f8e88b. `slice conformance 23`:
+  no undeclared code path; the one undelivered selector is the ADR-017 ledger
+  (applied at audit, expected). The registry is gitignored local state.
+- design.md (F-4, F-5, F-8, F-9, F-10, F-11, F-12, F-16), each edit marked
+  "reconciled 2026-10-19" in place: §1 boundary and §3 forces (slot no longer
+  the live rung; same claim as F-5); §5.1 diagram label, principal-modules
+  note listing the rest, `model-gate.ts` row (eight gated entry points,
+  `cancelDeferred` uncounted, credentials refused), `store.ts` appends the
+  audit, `audit.ts` row dropped, `guard.ts` row (afterTool/afterTools); §5.2
+  `status`/`result`/`report-disposition` rows (`jobId`, `state`, `repoPath`,
+  `failure`, refused-promotion audit), internal `reviewed_oid_mismatch`,
+  policy ladder (mode/repo gone at `preparing` → `failed`; recorded policy
+  kept on restart), port (`collect → {quarantine, ref, oid}`,
+  `reachable(repo, jobId)`, `checkClone`/`cleanClone`), slot and room adapter
+  status (room live; re-checked, F-7), `session` base tools (relay below),
+  tools as registration copies (no `wrapTool`), Emacs mode enum and
+  `repoPath`; §5.3 DDL `ceilings`, `end_reason` and `failure` comments,
+  event-kind vocabulary, resume record, free-text reason set, runner config
+  as literals with backstops, ledger rows applied; §5.4 gate refusal reasons
+  and `ceiling_exceeded` precedence, room-down sequence and trigger-split
+  bullet, cancelled classification row, restart recovery as built (rejoin,
+  R2, R4, `stopping`); §5.5 I15 reworded, ASM-005 caveat, room-interface and
+  gate assumptions, `wrapTool` dropped; §6 SL-006 lock drift resolved,
+  deployment facts; §7 DEC-065 row, DEC-064 row; §8 two risk rows; §9 live
+  smoke / live room rung rows and Closure evidence per ruling (1), frozen-guest
+  line; §10 four selector rows, corpus "committed by path", governance
+  follow-through marked done. Locked design edited directly; not adopted (the
+  run refuses adopt when locked and directs exactly this at reconcile).
+- DEC-055, DEC-057, DEC-065 (F-5, F-8, F-9, F-16): not REV-targetable kinds
+  (REV accepts SPEC/PRD/REQ/ADR/POL/STD), so landed as in earlier reconciles:
+  `knowledge edit decision` on the choice (DEC-065 also rationale and
+  consequences) plus a dated revision note appended to each body.
+- `.doctrine/governance.md` (F-26): ledger owners are `emacs-client` except
+  rows 4b, 5b, 6b, 8, 9 (`patch-runner`, since SL-023). Boot snapshot
+  regenerated.
+
+### REVs completed
+- REV-007 (`reconcile-sl-023`): done. Four `modify` rows landed by hand:
+  SPEC-004 (new runner tech spec, `container` under SPEC-002, bound by
+  SPEC-001; REQ-026..REQ-033, all `pending`), SPEC-002 (container, confinement
+  and database rows, topology diagram and prose, transports, end-state,
+  hypothesis; `diagrams.py` and the three HTML diagrams regenerated), REQ-013
+  (migrator list), SPEC-003 (OQ-3 resolved, out-of-scope note). Covers F-25;
+  narrative in `revision-007.md`.
+
+### Relay (evidence, oubliette SL-007 notes:371)
+- `session` now supplies the room's base tools ahead of the caller's PATH.
+  Checked read-only: the runner launches `session` by absolute path
+  (`door.sessionPath`, `room.ts:476`; configured
+  `/run/current-system/sw/bin/session` in `~/flakes/features/satan/runner.nix`);
+  the runner sets no guest `PATH`; the unit's `PATH` (`/run/current-system/sw/bin`
+  plus git, openssh, socat, coreutils) serves host-side programs only
+  (`capsule`, git reads, ssh, the relay) and does not reach the guest. Nothing
+  is redundant, so no backlog item. Design §5.2 now states the base-tools
+  behaviour; DEC-065 says nothing about PATH.
+
+### Other
+- RV-027 concluded (zero findings; rev-63 pass waived in the design run).
+
+### Withdrawn / tolerated / follow-up
+- Tolerated with rationale in their dispositions: F-2, F-6, F-14, F-15, F-17,
+  F-18, F-22, F-24. Aligned: F-7, F-13. Fixed at audit: F-3, F-19.
+- Follow-ups owned elsewhere: F-20 → CHR-017, F-21 → CHR-019, F-23 → ISS-047.
+
+### For /close
+- CHR-017 (package malebolge as a flake input) is open; per the user's ruling
+  it must land, or the user must waive it, before `slice status 23 done`.
+- SPEC-004's prose and requirements were authored by an agent from the
+  reconciled design and have not been reviewed by the user.
+
+Reconcile pass complete — handoff to /close.

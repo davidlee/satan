@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 28
+slug = "work-returns-only-as-collected-git-judged-at-collection"
+title = "Work returns only as collected git, judged at collection"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "A job's work leaves the room only as the commits of its job branch, collected into a host-side quarantine. The authoritative path allowlist and ancestry checks run there, over every commit between the base and the collected tip; nothing that fails them is ever offered for promotion."
+tags = ["allowlist", "quarantine"]
+acceptance_criteria = ["A commit touching a path outside the allowlist fails the job as path_violation even when the tip diff is clean.", "A tip that does not descend from the job's base oid fails ancestry and is never promotable.", "Uncommitted work and other branches never travel.", "The reviewed oid, once recorded, never changes."]

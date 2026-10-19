@@ -10,6 +10,6 @@
 
 <!-- Why it must hold — the force behind it, not the implementation. -->
 
-Today `satan_memory` is migrated by the elisp runner (`schema_migrations`), satan-attrd (`_sqlx_migrations`) and satan-patcher's `just migrate`, with colliding numbers (RSK-015). Split schema ownership is split authority over the data every component shares. ADR-018 D1 resolves it structurally by absorbing attrd into the core repo.
+Today `satan_memory` is migrated by the elisp runner (`schema_migrations`) and satan-attrd (`_sqlx_migrations`), with colliding numbers (RSK-015). satan-patcher's `just migrate` (0006) retired with satan-patcher in SL-023, whose migration 0009 dropped the patch-job tables; the patch runner owns its own store (SPEC-004). Split schema ownership is split authority over the data every component shares. ADR-018 D1 resolves it structurally by absorbing attrd into the core repo.
 
 Tracked gaps: RSK-015.

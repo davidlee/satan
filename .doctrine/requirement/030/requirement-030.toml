@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 30
+slug = "per-job-ceilings-hold-at-the-provider-boundary-without-emacs"
+title = "Per-job ceilings hold at the provider boundary without Emacs"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "Every provider call a job makes passes a model gate in the runner, which counts it durably before sending, refuses it when a ceiling is exhausted or usage is unreadable, and caps its output to the remaining budget; deferred cancellation alone passes uncounted, and credential members are refused. A deadline timer independent of the gate bounds active wall-clock. Ceilings hold with Emacs absent."
+tags = ["ceilings", "model-gate"]
+acceptance_criteria = ["With the budget exhausted, a generation request, a retry, a compaction summary and a tool's runtime.models call each reach no provider.", "cancelDeferred reaches the provider with the budget exhausted and is not counted.", "Unreadable usage denies the next request.", "Spend exceeds a ceiling by at most one request, whose output the gate capped.", "The deadline aborts in-flight work, including a long model call or bash; time waiting for the room is not charged."]

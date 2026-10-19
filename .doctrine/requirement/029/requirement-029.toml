@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 29
+slug = "promotion-is-a-human-act-enacted-in-emacs-and-verified-by-the-runner"
+title = "Promotion is a human act enacted in Emacs and verified by the runner"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "Promotion is a human act enacted in Emacs: Emacs fetches the quarantine ref into a temporary ref, requires it to equal the reviewed oid, and creates the review branch by compare-and-swap against an absent ref. The runner records a job promoted only after reading that branch in the real repo and finding the reviewed oid."
+tags = ["promotion", "approval"]
+acceptance_criteria = ["Emacs refuses, touching nothing, when the fetched ref differs from the reviewed oid or the branch already exists.", "report-disposition promoted with a branch at another oid is refused receipt_mismatch and audited.", "Rejection performs no fetch.", "No land verb exists; merging the branch is the user's own git act."]

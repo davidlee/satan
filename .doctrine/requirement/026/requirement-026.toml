@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 26
+slug = "patch-jobs-have-one-consumer-and-one-state-owner"
+title = "Patch jobs have one consumer and one state owner"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "The patch runner is the only process that consumes, schedules or changes patch jobs. Job state, its audit and the agent conversations live in one runner-local SQLite file that only the runner opens, creates and migrates; no patch-job table exists in a shared database."
+tags = ["ownership", "schema"]
+acceptance_criteria = ["At every deployment step at most one patch-job consumer is enabled; after cutover it is the runner.", "No process other than the runner opens the runner's store; it is the store's only migrator.", "satan_memory holds no patch_job table.", "A state change and its audit row commit in one transaction; the audit table refuses UPDATE and DELETE."]

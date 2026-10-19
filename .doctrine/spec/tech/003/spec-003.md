@@ -33,8 +33,9 @@ coverage is reconciled, not inferred here.
 └──────────────────────┘                       └──────────────────────┘
 ```
 
-Out of scope: the patch adapter (`satan-patch-adapter-pi.el`, which spawns
-`jailed-pi`) belongs to the patch runner, not the harness — see OQ-3.
+Out of scope: patch jobs. They run in the patch runner (SPEC-004), which hosts
+its own agent conversations with tools in an oubliette room; the elisp patch
+adapter that spawned `jailed-pi` was deleted (SL-023) — see OQ-3.
 Interactive pi sessions reach the broker over MCP, not through this envelope.
 
 ## Responsibilities
@@ -210,9 +211,10 @@ enforces its own timeout and kills the child.
   purely, so production is unaffected; an explicit opt-out (ISS-037 option A)
   would enforce REQ-025's "no injected mounts" structurally rather than by
   build mode. Next time that library is touched.
-- **OQ-3 — Patch adapter coverage.** `satan-patch-adapter-pi` resolves
-  `jailed-pi` from the calling buffer's PATH (ISS-038), and two runners consume
-  `patch_jobs` (ISS-039). Which runner survives, and which spec governs it, is
-  decided there.
+- **OQ-3 — Patch adapter coverage.** *Resolved 2026-10-19 (SL-023, DEC-050,
+  DEC-064).* Neither old runner survives: the elisp runner (with
+  `satan-patch-adapter-pi`, ISS-038) and the Go `satan-patcher` (ISS-039) were
+  replaced by the malebolge patch runner, governed by SPEC-004. Patch jobs are
+  outside the harness.
 - **OQ-4 — Persisted home.** The harness shares the `specDev` persisted jail
   home with every interactive dev jail (ISS-028). Should it get its own?

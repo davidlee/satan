@@ -21,3 +21,7 @@ Revised 2026-10-18 at SL-023 PHASE-01 (user ruling, "DEC-057 - yes"): EVD-006 pr
 
 
 Revised 2026-10-19 (user: 'i'll take the recommendations'): cancelDeferred always passes uncounted, even when exhausted — refusing it leaves an admitted request billing; the gated view refuses getAuth/login/logout, conditional on pi-durable never calling them through the job's view (else escalate).
+
+
+
+Revised 2026-10-19 at SL-023 reconcile (RV-029 F-9, F-16): the gate's refusal reasons are ceiling_exceeded, usage_unavailable, no_job (no job seated to charge; fail closed), paused (the job's room-down pause is pending; PHASE-09 STOP-1 ruling 1, see DEC-055; refused without count, event or latch) and credentials (getAuth/login/logout). When a ceiling is exhausted and usage is unreadable at once, ceiling_exceeded is reported; unreadable usage still denies.

@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 31
+slug = "a-room-outage-pauses-a-job-without-spending"
+title = "A room outage pauses a job without spending"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "A typed lost-connection failure from the room pauses the running job before another model request: the job waits, unbilled and bounded, while a reachability probe watches the room, then resumes its conversation with one message. A trust failure (unknown or changed host key, refused authentication) never reads as an outage: it fails the job."
+tags = ["room", "pause"]
+acceptance_criteria = ["A typed environment failure pauses the job; a tool error with the same text does not.", "While the pause is pending the gate refuses requests without counting them.", "The wait is bounded by max_room_wait, after which the job is collected when the room returns.", "A changed host key fails the job and never enters the wait."]

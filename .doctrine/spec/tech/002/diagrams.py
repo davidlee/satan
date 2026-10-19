@@ -177,7 +177,7 @@ def page(path, slug, eyebrow, title, sub, d, w, h, desc, cards):
 def context(out):
   d = D()
   d.zone(240, 32, 480, 116, "BWRAP JAILS · UNTRUSTED", boundary=True)
-  d.zone(792, 32, 208, 456, "POSTGRES-COUPLED")
+  d.zone(792, 32, 208, 296, "POSTGRES-COUPLED")
   d.zone(216, 368, 528, 120, "FILE-COUPLED")
 
   # stub: systemd timers -> broker
@@ -191,8 +191,8 @@ def context(out):
   d.path("M 720,264 H 816", "default", "PSQL", (768, 244))
   # attrd <-> postgres (inbox tables + NOTIFY)
   d.path("M 896,128 V 224", "default", "INBOX · NOTIFY", (904 + text_w("INBOX · NOTIFY") / 2, 170))
-  # patcher claims patch_jobs
-  d.path("M 896,400 V 304", "dashed", "PATCH_JOBS", (904 + text_w("PATCH_JOBS") / 2, 346))
+  # Emacs <-> patch runner control socket (SL-023)
+  d.path("M 816,432 H 768 Q 760,432 760,424 V 296 Q 760,288 752,288 H 720", "link", "RPC · UDS", (768 + text_w("RPC · UDS") / 2, 360))
   # file-coupled peers
   d.path("M 312,400 V 304", "default", "FILES · RO", (320 + text_w("FILES · RO") / 2, 346))
   d.path("M 480,304 V 400", "default", "R/W", (488 + text_w("R/W") / 2, 346))
@@ -204,31 +204,34 @@ def context(out):
          "~/dev/satan · policy · tools · audit · MCP server")
   d.node(816, 224, 160, 80, "store", "DB", "Postgres", "satan_memory")
   d.node(816, 64, 160, 64, "backend", "RUST", "satan-attrd", "attributes · decay")
-  d.node(816, 400, 160, 64, "optional", "GO", "satan-patcher", "patch_jobs · dormant")
+  d.node(816, 400, 160, 64, "backend", "TS", "satan-runner", "malebolge · own sqlite")
   d.node(240, 400, 144, 64, "backend", "PY", "panopticon", "~/.local/state/behaviour")
   d.node(408, 400, 144, 64, "store", "FS", "Text roots", "notes · ~/satan-corpus · state")
   d.node(576, 400, 144, 64, "backend", "RUST", "goad", "ask shell · goad.sock")
   d.legend_items(528, [("focal", "Focal: current authority"), ("backend", "Process"), ("store", "Store"),
-                       ("optional", "Dormant"), ("boundary", "Trust boundary"),
-                       ("default", "Spawn / read / write"), ("link", "RPC"), ("dashed", "Queue claim")])
-  page(out, "satan-context", "SATAN · system context · current state (2026-09)",
+                       ("boundary", "Trust boundary"),
+                       ("default", "Spawn / read / write"), ("link", "RPC")])
+  page(out, "satan-context", "SATAN · system context · current state (2026-10)",
        "SATAN as it runs today",
-       "One Emacs daemon hosts the broker and every authority item. Peers couple to it through two "
-       "buses: Postgres tables with NOTIFY, and plain files.",
+       "One Emacs daemon hosts the broker and the authority items not yet migrated. Peers couple to it "
+       "through Postgres tables with NOTIFY, plain files, and the patch runner's control socket.",
        d, 1024, 580,
        "System context showing the Emacs-hosted satan broker spawning a jailed harness, serving MCP to "
-       "interactive pi, and coupling to satan-attrd and satan-patcher through Postgres and to panopticon, "
+       "interactive pi, coupling to satan-attrd through Postgres, to the satan-runner patch runner over "
+       "a Unix-socket RPC, and to panopticon, "
        "goad and the text roots through files.",
        [card("Reading it", [
           "The <b>broker</b> is the only component that enacts actions; jailed agents propose over JSONL or MCP.",
           "<b>Postgres</b> doubles as an RPC bus: <code>satan_outcome_inbox</code>, <code>satan_audit_inbox</code>, "
-          "<code>patch_jobs</code> + <code>pg_notify</code>. The broker LISTENs via <code>satan-attrd notify-stream</code>.",
+          "<code>pg_notify</code>. The broker LISTENs via <code>satan-attrd notify-stream</code>.",
+          "The <b>patch runner</b> (SPEC-004) owns its jobs in its own SQLite store and runs them in an oubliette "
+          "room; Emacs submits, watches and promotes over its control socket.",
           "Files: panopticon writes <code>behaviour/</code>; goad reads <code>state/goad/queue.json</code> and "
           "writes <code>~/satan-corpus/goad/data/</code>; the model-facing corpus is <code>~/satan-corpus</code>."]),
         card("Known gaps (SPEC-002 NF-003, NF-004)", [
           "Jails that serve MCP also bind the Emacs server socket: arbitrary elisp, bypassing the protocol.",
           "The harness inherits the Emacs cwd (<code>~</code>), and the jail binds <code>$PWD</code> read-write (probable; verify).",
-          "The tick timer fires once per boot; the patcher has never completed a job."])])
+          "The tick timer fires once per boot."])])
 
 
 # ---------------------------------------------------------------- composition (flake graph)
@@ -263,7 +266,7 @@ def composition(out):
          "NixOS + home-manager: systemd units, packages, postgres, jail library", badge="1 in")
   d.node(64, 184, 160, 56, "backend", "TREE", "~/dev/satan", "elisp + bin/ (live)", badge="2 in")
   d.node(248, 184, 160, 56, "backend", "PIN", "satan @ github", "harness binary", badge="1 in")
-  d.node(432, 184, 160, 56, "backend", "PATH", "3 path: inputs", "attrd · panopticon · patcher", badge="1 in")
+  d.node(432, 184, 160, 56, "backend", "PATH", "2 path: inputs", "attrd · panopticon", badge="1 in")
   d.node(616, 184, 160, 56, "backend", "GIT", "goad", "git+file · no follows", badge="1 in")
   d.node(800, 184, 160, 56, "external", "PIN", "oubliette", "microvm host module", badge="1 in")
   d.node(432, 304, 160, 56, "store", "LIB", "jail library", "~/flakes/agents · bwrap", badge="4 in")
@@ -275,7 +278,7 @@ def composition(out):
        "~/flakes is the de facto composition root. It pins the harness from GitHub while systemd "
        "runs scripts and Emacs loads elisp from the live working tree.",
        d, 1024, 452,
-       "Dependency graph showing ~/flakes consuming satan, attrd, panopticon, satan-patcher, goad and "
+       "Dependency graph showing ~/flakes consuming satan, attrd, panopticon, goad and "
        "oubliette as flake inputs, all converging on the shared jail library, with a cycle from satan back "
        "to the nix-config repo.",
        [card("Reading it", [
@@ -313,12 +316,12 @@ def end_state(out):
          ["policy + registry (read-only artifact) · runs · attributes", "one repo · Cargo workspace · owns migrations"])
   d.node(40, 224, 144, 80, "input", "CLIENT", "Emacs", ["approval surfaces", "org / denote handlers"])
   d.node(816, 400, 160, 64, "store", "DB", "Postgres", "state store, not a bus")
-  d.node(816, 224, 160, 80, "optional", "PROPOSED", "patch runner", "→ oubliette capsule")
+  d.node(816, 224, 160, 80, "backend", "TS", "patch runner", ["malebolge · own store", "tools in an oubliette room"])
   d.node(240, 400, 144, 64, "backend", "PY", "panopticon", "append-only logs")
   d.node(408, 400, 144, 64, "store", "FS", "Text roots", "notes · ~/satan-corpus · state")
   d.node(576, 400, 144, 64, "backend", "RUST", "goad", "ask shell")
   d.legend_items(528, [("focal", "Owner of policy + registry"), ("backend", "Process"), ("input", "Client"),
-                       ("store", "Store"), ("optional", "Proposed, undecided"), ("boundary", "Trust boundary"),
+                       ("store", "Store"), ("boundary", "Trust boundary"),
                        ("link", "Control plane (RPC)"), ("default", "Data plane")])
   page(out, "satan-end-state", "SATAN · target end-state · ADR-017 / ADR-018",
        "Emacs as a client",
@@ -333,10 +336,11 @@ def end_state(out):
           "ADR-018 D2: the mode/tool/capability/budget table leaves <code>satan-mode.el</code> and becomes a "
           "read-only artifact every surface reads.",
           "ADR-018 D3: inbox tables + <code>pg_notify</code> + <code>notify-stream</code> retire in favour of UDS RPC.",
-          "ADR-018 D4 order: rehearse in elisp → policy + registry → handlers by substrate → run execution last."]),
+          "ADR-018 D4 order: rehearse in elisp → policy + registry → handlers by substrate → run execution last.",
+          "Patch runner (done, SL-023; SPEC-004): TypeScript in malebolge by workload fit, its own store, "
+          "tools in an oubliette room, UDS RPC to Emacs."]),
         card("Not decided here", [
           "Process count and binary split of the core (ADR-018 OQ-1).",
-          "The patch runner's home: satan-patcher is Go and outside the core repo; oubliette is its proposed jail.",
           "Where MCP is served once Emacs no longer holds the registry."])])
 
 

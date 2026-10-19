@@ -1,0 +1,87 @@
+schema = "doctrine.spec.tech"
+version = 1
+
+id = 4
+slug = "patch-runner"
+title = "Patch runner"
+status = "draft"
+kind = "tech"
+tags = ["patch-jobs", "runner", "room", "trust-boundary", "ceilings"]
+responsibilities = [
+  "Be the only consumer of patch jobs and the only owner of their state, schema and audit, in one runner-local store",
+  "Define the control socket: who may reach it, its framing, full-schema validation, and the operations Emacs uses (no operation writes a real repo)",
+  "Run each job as one durable agent conversation on the host, its tools executed in the room, and hold its ceilings, pause/resume and kill switch with Emacs absent",
+  "Return work only as git: collect the job branch into a host quarantine, judge it there (ancestry, path allowlist), and offer it for a human promotion enacted in Emacs",
+  "Recover from a restart by a written per-state recovery table, never by guessing",
+  "Keep everything door-specific behind one git-channel port with slot and room adapters chosen by config",
+]
+category = "runtime"
+c4_level = "container"
+parent = "SPEC-002"
+
+# No product spec (PRD) exists; the why lives in SPEC-002, ADR-017 and SL-023
+# (DEC-050..DEC-065). descends_from = <none>
+
+# category — OPEN domain vocabulary (a taxonomy that drifts by design). Add as:
+#   category = "cli"
+# c4_level — closed C4 set: context | container | component | code. Add as:
+#   c4_level = "container"
+# descends_from — the product capability (PRD-NNN) this spec realises; tech-only,
+#   single-valued, validated against the product specs. Add as:
+#   descends_from = "PRD-001"
+# parent — single decomposition parent (SPEC-NNN or PRD-NNN); subtype-aware, single-valued, the
+#   tree must stay acyclic. Add as:
+#   parent = "SPEC-002"
+# [[source]] — code anchors this spec governs (tech-only, repeatable). Add as:
+#   [[source]]
+#   language = "rust"
+#   identifier = "doctrine/cli"
+#   module = "doctrine::cli"   # optional
+
+# The runner: a second binary in ~/dev/malebolge (TypeScript, Node), DEC-051.
+[[source]]
+language = "typescript"
+identifier = "malebolge/src/runner"
+module = "runner"
+
+[[source]]
+language = "typescript"
+identifier = "malebolge/src/runner-main.ts"
+
+# Emacs client: the RPC, the model-facing tools, the inbox and promotion.
+[[source]]
+language = "elisp"
+identifier = "satan/satan-patch-rpc.el"
+module = "satan-patch-rpc"
+
+[[source]]
+language = "elisp"
+identifier = "satan/satan-tools-patch.el"
+module = "satan-tools-patch"
+
+[[source]]
+language = "elisp"
+identifier = "satan/satan-patch-inbox.el"
+module = "satan-patch-inbox"
+
+[[source]]
+language = "elisp"
+identifier = "satan/satan-patch-promote.el"
+module = "satan-patch-promote"
+
+# Deployment: the satan-runner user unit and its rendered config.
+[[source]]
+language = "nix"
+identifier = "flakes/features/satan/runner.nix"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"
+
+[[relation]]
+label = "governed_by"
+target = "POL-001"

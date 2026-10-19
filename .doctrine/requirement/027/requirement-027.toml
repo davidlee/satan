@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 27
+slug = "the-control-socket-is-unjailed-validated-and-never-writes-a-real-repo"
+title = "The control socket is unjailed, validated and never writes a real repo"
+status = "pending"
+kind = "functional"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "The runner's control socket is a same-uid unix socket in a runtime directory of its own that no jail profile binds. Every operation is parsed against its full schema, unknown keys refused, before it has any effect. No operation reachable over the socket writes a real repo."
+tags = ["socket", "trust-boundary"]
+acceptance_criteria = ["The socket and its directory are mode 0600 / 0700 and absent from every jail profile, asserted by the profiles' tests.", "A request with an unknown key, a wrong type or a missing field is answered invalid_request and changes nothing.", "There is no promote operation; report-disposition only reads the real repo.", "A disabled runner refuses submit with runner_disabled; status and result stay readable."]

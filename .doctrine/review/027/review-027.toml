@@ -8,6 +8,16 @@ title = "design review of SL-023"
 facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "raiser"
 responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+No pass was conducted on this ledger. It was opened for SL-023's rev-63 design review (room probe = the job's collect; DEC-057 cancelDeferred/getAuth rulings), and that review was recorded as waived in the design run when the design re-locked at rev 63 (commit 15662ba). Zero findings were raised. Concluded at SL-023 reconcile (2026-10-19) to close the ledger; the design as implemented was examined by the conformance audit RV-029, whose design-wrong findings were reconciled into design.md in this pass.
+"""
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-023"

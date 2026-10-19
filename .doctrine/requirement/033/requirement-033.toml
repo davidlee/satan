@@ -1,0 +1,16 @@
+schema = "doctrine.requirement"
+version = 1
+
+id = 33
+slug = "everything-door-specific-sits-behind-one-port-chosen-by-config"
+title = "Everything door-specific sits behind one port chosen by config"
+status = "pending"
+kind = "quality"
+
+# description — the requirement statement (structured, queryable; `show` renders
+# it as the statement line — the storage rule forbids deriving it from prose).
+# Rationale and extended discussion stay in the sister `.md`. Add as:
+#   description = "…"
+description = "Everything that depends on the door — the git channel's verbs, reachability, clone hygiene and how the in-room daemon is launched — sits behind one port with a slot and a room adapter, selected by the runner config's door kind. Door and repo values are configured, never derived, and a key of the wrong kind refuses start."
+tags = ["port", "configuration"]
+acceptance_criteria = ["Only the port's adapters, the connection factory and config know the door kind.", "Adapter fixture tests pin argv, stdout parsing and the exit-code mapping, so an oubliette interface change shows as a red test.", "A missing key the kind needs, or a key of the other kind, refuses start.", "No door value (quarantine, known_hosts, host-key alias, guest path, session path) is built from another."]

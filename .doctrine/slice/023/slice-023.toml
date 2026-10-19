@@ -42,6 +42,34 @@ intent = "design-target"
 selector = "satan/satan-db.el"
 intent = "design-target"
 
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-attribute.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-attribute-listener-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-memory-migrate-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/INDEX.md"
+intent = "design-target"
+
+[[selector]]
+selector = "docs/governance.md"
+intent = "design-target"
+
 [[relation]]
 label = "governed_by"
 target = "POL-001"

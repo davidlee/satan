@@ -58,7 +58,7 @@ cutover (two consumers live, ISS-039).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · audit (RV-029 concluded) · satan 0affb18+audit, malebolge 8c93902
+fresh-as-of: 2026-10-19 · reconcile (RV-029 outcome, REV-007 done, RV-027 concluded) · satan 0affb18+audit, malebolge 8c93902
 
 ### Produced
 - design amended and re-locked twice: rev 56 (room adapter, RV-026) — 5bbc0fc; rev 63 (probe = job collect; DEC-057 gate rulings) — 15662ba
@@ -75,11 +75,10 @@ fresh-as-of: 2026-10-19 · audit (RV-029 concluded) · satan 0affb18+audit, male
 - EVD-006..010 — PHASE-01 spike evidence
 
 ### Open
-- RV-029 Reconciliation Brief — reconcile owes design.md edits, DEC-055/057/065 revision notes, DEC-064 runner spec + SPEC-002/SPEC-003, governance.md ledger line
+- RV-029 brief reconciled 2026-10-19 (see RV-029 `## Reconciliation Outcome`); SPEC-004 + REQ-026..033 via REV-007 await the user's read
 - CHR-017 — user ruling: must land before SL-023 closes (runner runs malebolge's live tree)
 - ISS-046 — producer lanes other than fix/goad-walk refused
 - prompt `~/satan-corpus/prompts/patch-agent.md` swept into corpus 21b64ea by the daily commit; PHASE-12 batch B's 6 review points unconfirmed by the user
-- RV-027 — active with no findings (rev-63 pass recorded waived); conclude at reconcile/close
 
 ## PHASE-01 spike — offline half (2026-10-18, worker)
 
@@ -1316,3 +1315,28 @@ disposable; lifted here):
 - **Ledger:** the first authority migration in this repo; anchors are malebolge
   symbols, verified at `8c93902`.
 
+
+## Reconcile (2026-10-19)
+
+Outcome recorded in RV-029 (`## Reconciliation Outcome`); REV-007 done
+(SPEC-004 new; SPEC-002, REQ-013, SPEC-003). Delegated pass, no user in the
+session: design edits not confirmed by the user beforehand.
+
+### Evidence: oubliette SL-007 relay
+- Relay (oubliette `.doctrine/slice/007/notes.md:371`, evidence): `session`
+  supplies the room's base tools (`git bash coreutils-full which` + declared
+  extras, `/etc/room/base/bin`), behind the repo's `tools/bin`, ahead of the
+  caller's PATH; keep calling it by absolute path.
+- Checked: malebolge `src/runner/room.ts:476` launches `door.sessionPath`
+  (absolute; `~/flakes/features/satan/runner.nix` `session_path`); the runner
+  sets no guest PATH; the unit's `PATH=` is for host programs (capsule, git,
+  ssh, socat, coreutils) and never reaches the guest. No simplification owed;
+  no backlog item. Design §5.2 states the new base-tools behaviour.
+
+### Friction
+- `doctrine slice record-delta --commit` refuses to narrow an existing range
+  without `--force`; the brief's premise (ranges span to HEAD) was wrong — the
+  foreign commit sat in PHASE-09's recorded range.
+- REV cannot target DEC records; DEC revision notes go through `knowledge edit`.
+- `revision new` / `spec new` try a remote reservation fetch (denied) and fall
+  back to local ids.

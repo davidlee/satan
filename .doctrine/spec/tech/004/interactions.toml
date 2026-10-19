@@ -1,0 +1,10 @@
+[[edge]]
+target = "SPEC-001"
+type = "bound-by"
+notes = "The runner is an enacting surface: its socket validates full schema (REQ-001), owns patch-job audit (REQ-003), per-job ceilings (REQ-004), its kill switch (REQ-005) and fails closed (REQ-010); ledger rows 4b, 5b, 6b, 8, 9."
+# Interactions — outbound spec -> spec edges (tech specs only).
+# Seeded empty; authored via `doctrine spec interactions add`:
+#   [[edge]]
+#   target = "SPEC-002"       # canonical FK into .doctrine/spec/tech/NNN
+#   type = "uses"             # free-text edge kind (calls / extends / uses / …)
+#   notes = "…"               # optional
