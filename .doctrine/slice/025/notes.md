@@ -69,3 +69,13 @@ F `8e3cba2` adds `satan.inputs.goad.follows = "goad"` and bumps F's goad `a64e31
 without the bump the follows would downgrade satan's goad by 2 commits). Lock back to 313 nodes; root changes vs `f23f469`: goad, satan only.
 Correction to the charter hand-back: ~/flakes reads F via `git+ssh` (GitHub), not git+file — F must be pushed and `nix flake update fleet` run in H.
 EX-4/VH-1: user switched H, rebooted room assistant, confirmed `/work/satan`, `/work/satan-corpus`, goad-walk clone + quarantine intact (2026-10-19). PHASE-03 completed.
+
+## PHASE-04 — cutover (driver, with user, 2026-10-19)
+
+- EX-1 / VA-1: H `338beea1` — `features/satan/runner.nix` (`roomRepo` helper, 15 repos: doctrine `edge`, nix-config at `~`; modes self-edit-mech, self-edit-mind, tick-agent computed via `lib.subtractLists`, interactive `"*"`; `mode.fix` dropped; header comment) and `SATAN.md` (§ Modes and their scope; smoke is `interactive`). `just home-build` ok; rendered config.toml: 4 modes with §4.3 scopes, 15 repos, `enabled = true`, no mode.fix.
+- EX-2 / VH-1: drain query before the switch: jobs `promoted|1`, `rejected|3`; queued/preparing 0.
+- EX-3 / VH-2: user `just home-switch` + restart 18:15:46; unit active; ExecStart store build `wxhqgy5v…-satan-runner-0.0.0` contains `withinModeScope`; live config.toml has the 4 `[mode.*]`; no `refusing to start`.
+- EX-4: C `b2bae94` (after the restart) — the three lane prompts drop `mode`/`checks`, `repo` is a runner name, each states its mode's scope and the `invalid_request` refusal; `tools/patch_job_create.md` drops `mode`, says the job runs under the caller's mode. Beyond §4.5: self-edit-mech's checks advice was stale (`SATAN_DB_HOST` prefix, "exits 0 whatever happens") — replaced by "tell the agent to run `just check`, report counts; `SATAN_TEST_ALLOW_NO_DB=1` only if the test DBs are unreachable, and say so".
+- User filled the new room clones `/work/satan`, `/work/satan-corpus` by `capsule assistant push` per `/srv/fleet/PROVISION.md`.
+- H `flake.lock` (user's `nix flake update fleet`) left uncommitted for the user.
+- EX-5 / VH-3: user restarted Emacs; `satan-tools-patch.elc` 18:17 (newer than .el); `satan-tools-patch-modes` unbound; live `patch_job_create` `:args-schema` keys: directive repo allowed_paths base_ref tags source context — no mode.
