@@ -2,9 +2,7 @@
 
 **Scheduled Agent for Textual Attention and Notes**
 
-![SATAN](./satan.png)
-
-Blessed is the GNU.
+![SATAN](./gnu3.png)
 
 SATAN is an experiment in a personal agent with memory, motives, and something
 to notice. It reads my notes and recent activity, asks inconvenient questions,
