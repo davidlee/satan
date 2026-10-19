@@ -66,6 +66,11 @@ Both reverted by editing the file back (byte-compared against a pre-control copy
 
 Pending human acts: EX-4 (delete the malebolge handover doc), VH-1 (live run).
 
+### PHASE-03 human acts (2026-10-19)
+
+- VH-1: user ran the jailed daemon and attached; asked "which skills have you got?", SATAN named `goad-backend` with its description and the store path `/nix/store/vx4wawpgk49phj98rlzcpwqqx48xkbrm-goad-kit/kit/skills/goad-backend/SKILL.md`. Steps e/f (trivial backend + goad-check) waived by the user: "I've established it to my satisfaction".
+- EX-4: user agreed ("delete away"); `~/dev/malebolge/docs/handover-skills-extension.md` deleted (was untracked, so no M commit).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-19 · ready · b616a58

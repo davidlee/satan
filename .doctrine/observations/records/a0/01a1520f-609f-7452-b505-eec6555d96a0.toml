@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1520f-609f-7452-b505-eec6555d96a0"
+recorded_at = "2026-10-19T02:48:21.919514494Z"
+kind = "friction"
+summary = "Charter/sheet working-tree descriptions went stale"
+detail = "SL-024 charter and PHASE-01 sheet described dirty user files in malebolge (biome.json, docs/internals.md, justfile, .gitignore) that had since been committed (1a77b06, 011bfaf). Cost one blocked worker round on PHASE-01 (along with the lint baseline). Workers should re-derive git status at T0 rather than trust prose."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

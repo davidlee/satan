@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1520f-609c-7fe2-9c5a-dc7f6a98f5d6"
+recorded_at = "2026-10-19T02:48:21.916736837Z"
+kind = "friction"
+summary = "Unix socket path limit breaks smoke recipes rooted in the session scratchpad"
+detail = "SL-024 PHASE-02 smoke: MALEBOLGE_SOCKET under the long Claude scratchpad path failed with listen EINVAL (sun_path ~108 bytes). Worker used mktemp -d /tmp/ms-XXXX for the socket only. Phase-sheet smoke recipes should keep socket paths short."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

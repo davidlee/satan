@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1520f-6096-7992-90f7-922d6638f79f"
+recorded_at = "2026-10-19T02:48:21.91098077Z"
+kind = "friction"
+summary = "doctrine install vendored .pi/*.ts broke a type-aware eslint gate"
+detail = "In malebolge, doctrine install (1a77b06) added .pi/extensions/doctrine/*.ts outside tsconfig; eslint projectService failed to parse them and 'just check' went red before SL-024 PHASE-01. Fixed by ignoring .pi in eslint.config.js (malebolge 3f5b506). Installers dropping TS into client repos should expect lint/tsconfig gates."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

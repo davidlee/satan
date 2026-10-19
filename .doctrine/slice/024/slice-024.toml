@@ -1,7 +1,7 @@
 id = 24
 slug = "malebolge-agent-skills"
 title = "malebolge: advertise Agent Skills in the system prompt"
-status = "plan"
+status = "ready"
 created = "2026-10-19"
 updated = "2026-10-19"
 tags = []
