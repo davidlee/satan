@@ -30,6 +30,24 @@ Both probes are VT rows in sec-6, so implementation exercises them.
 
 2026-10-19: the user approved plan.toml (reply "yes" to "Approve plan.toml?"). Execution chartered to a capsule orchestrator, PHASE-01..03.
 
+### PHASE-02 smoke (EX-5)
+
+2026-10-19, M working tree on top of 9eb1123 (PHASE-02 delta uncommitted at the time). Scratch `XDG_STATE_HOME` and `MALEBOLGE_SOCKET` (short `/tmp/ms-*` path: the session-scratchpad socket path exceeded the unix socket limit, `listen EINVAL`), `timeout -s TERM 15 node src/daemon-main.ts`, both runs exit 124 (expected). Scratch state removed afterwards.
+
+Run 1, `MALEBOLGE_SKILLS=~/dev/goad/kit/skills/goad-backend`:
+
+    malebolge: gateway/deepseek-flash · 37 SATAN tools · 1 skills
+    malebolge: session <scratch>/state/satan/durable/session.sqlite
+    malebolge: attach  /tmp/ms-XXXX/d.sock
+
+Run 2, same plus `:/nonexistent/skill`:
+
+    malebolge: skill /nonexistent/skill: ENOENT: no such file or directory, open '/nonexistent/skill/SKILL.md'
+    malebolge: gateway/deepseek-flash · 37 SATAN tools · 1 skills
+    malebolge: attach  /tmp/ms-XXXX/d.sock
+
+The bad entry is skipped and logged; the daemon still starts. `session.sqlite` appeared under the scratch state dir only.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-19 · ready · b616a58
