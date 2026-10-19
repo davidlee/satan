@@ -222,7 +222,7 @@ existing-conversation case, which shows exactly pi-durable's remove-all/re-add-a
 pair as derived from `planSections`.
 
 Findings: `harness.close` closes MemoryStorage, so the reopen case uses temp sqlite.
-`systemPromptSections` returns entries newest first (doc comment says oldest);
+`systemPromptSections` returns entries newest first (the fixture stated no order; RV-034 F-11 documents it, malebolge 55f4a68);
 test reverses it. `just check` green, 1516 tests, lines 98.24%. Delta uncommitted
 in malebolge. Phase status not flipped.
 
@@ -283,3 +283,19 @@ Side findings: ISS-049 (no git author identity in room clones);
 deepseek-flash miscounted its grep matches (model, not mechanism);
 ISS-048 (bun DNS in the room; not needed here). The probe job is to be
 rejected, not promoted.
+
+## 2026-10-19 PHASE-07 T1 — landed
+
+The corpus prompt edits blocked above landed as satan-corpus `9868f4c`
+(two files, staged by path), made by the seat on the user's explicit
+authorisation; the user completed PHASE-07. VA-1: both prompts and
+malebolge `docs/internals.md` read against design §4.7 — conform.
+
+## 2026-10-19 Audit (RV-034)
+
+Fix-now items F-9..F-12 landed as malebolge `55f4a68`: internals.md
+degradation list matches `bootOf`; tests for grep limit-with-context,
+`gitRootDirs` without a git root, hostile git in `ensureJobBranch` (P16)
+and in `git check-ignore` (P14); fixture order documented; the fetch's
+re-check goes through `GitChannel.checkClone`. `just check` green, 1523
+tests.
