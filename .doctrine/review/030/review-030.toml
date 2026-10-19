@@ -1,0 +1,179 @@
+id    = 30
+slug  = "reconciliation-review-of-sl-024"
+title = "reconciliation review of SL-024"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-024 as landed (M 3f5b506..b5a08ff, satan f677f55): src/skills.ts read against design §4 and pi 1.3.0 source; wiring against §4 Config/Wiring; §5 Code Impact completeness; M just check and satan lint (dev shell) run; slice conformance and verify-vt read (M half unattributable, substituted by direct evidence); PHASE-02 smoke, PHASE-03 negative controls and the user's VH-1 report reviewed; phase sheets swept for risks.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-024"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "design §5 Code Impact lists every touched path; observed three undeclared M paths"
+detail = """
+Expected: design §5 (Code Impact) names every malebolge path the slice changes (selectors cannot fence M, so §5 is the only declaration).
+Observed: three M paths changed but absent from §5:
+- eslint.config.js (3f5b506): `.pi` added to ignores; `doctrine install` (1a77b06) put .pi/extensions/doctrine/*.ts outside tsconfig, so type-aware lint (projectService) failed before PHASE-01. Necessary baseline fix, outside design.
+- test/harness-fixture.ts, test/persona.test.ts (9eb1123): new shared helper `systemPromptSections`, persona tests refactored onto it.
+All justified; the design simply does not record them.
+"""
+disposition = "design-wrong"
+response = """
+The code is right; the design's Code Impact table is incomplete. Reconcile by direct edit of design.md §5: add eslint.config.js (`.pi` lint ignore, a baseline fix forced by doctrine install's vendored TS), test/harness-fixture.ts (shared `systemPromptSections` helper) and test/persona.test.ts (moved onto it). No selector change: M paths cannot be fenced by this repo's selectors. See RV-030 Reconciliation Brief.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The code is right; the design's Code Impact table is incomplete. Reconcile by direct edit of design.md §5: add eslint.config.js (`.pi` lint ignore, a baseline fix forced by doctrine install's vendored TS), test/harness-fixture.ts (shared `systemPromptSections` helper) and test/persona.test.ts (moved onto it). No selector change: M paths cannot be fenced by this repo's selectors. See RV-030 Reconciliation Brief.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "PHASE-03 VH-1 fully exercised; observed steps e/f waived by the user"
+detail = """
+Expected: VH-1 — SATAN names goad-backend; asked for a trivial backend it reads SKILL.md first; the backend passes goad-check.
+Observed: user confirmed SATAN lists goad-backend with description and store path /nix/store/vx4wawpgk49phj98rlzcpwqqx48xkbrm-goad-kit/kit/skills/goad-backend/SKILL.md. The backend-authoring and goad-check steps were skipped: user, 2026-10-19, "I'm gonna skip e/f; I've established it to my satisfaction". Recorded in notes.md (3f49a39).
+"""
+disposition = "tolerated"
+response = """
+The user is the sole owner of a VH criterion and explicitly waived steps e/f on 2026-10-19 after the listing check. The parts waived exercise goad-backend's own content (goad's concern), not this slice's mechanism; the slice's mechanism (skill parsed, listed, located at the store path) is what the user confirmed live.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+The user is the sole owner of a VH criterion and explicitly waived steps e/f on 2026-10-19 after the listing check. The parts waived exercise goad-backend's own content (goad's concern), not this slice's mechanism; the slice's mechanism (skill parsed, listed, located at the store path) is what the user confirmed live.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = "conformance clean; observed notes.md undeclared in PHASE-03 delta"
+detail = """
+Expected: `slice conformance 24` reports no undeclared paths.
+Observed: undeclared `.doctrine/slice/024/notes.md` — PHASE-03's single commit f677f55 carries both flake.nix and the PHASE-03 notes entry, so the recorded delta includes a slice record. Not source; no design surface involved.
+"""
+disposition = "tolerated"
+response = """
+The undeclared path is the slice's own notes record, committed with the one-commit PHASE-03 delta. It is not source and touches no design surface; splitting history to cleanse the registry would cost more than it tells.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+The undeclared path is the slice's own notes record, committed with the one-commit PHASE-03 delta. It is not source and touches no design surface; splitting history to cleanse the registry would cost more than it tells.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "mechanical evidence covers all phases; observed PHASE-01/02 invisible to conformance and verify-vt"
+detail = """
+Expected: conformance and verify-vt attribute every phase's delta and VT.
+Observed: PHASE-01/02 landed in ~/dev/malebolge (separate repo). No source-delta rows for them; verify-vt reports VT-1..4 (PHASE-01) and VT-1 (PHASE-02) UNATTRIBUTABLE. Anticipated by plan.toml header and design §5. Substitute evidence in this audit: M `just check` green at b5a08ff (97.98% lines, gate 85%), test/skills.test.ts contains every VT keyword (unclosed, folded, whitespace-only, &amp;, symlink, collides, openTestHarness), src/skills.ts read against design §4 rules 1-6, Duplicates and Rendering, and against pi 1.3.0 frontmatter.ts / skills.ts:420-455 — faithful.
+"""
+disposition = "tolerated"
+response = """
+Structural to a slice whose records live in satan and code in malebolge; declared in advance (plan.toml header, design §5). The audit substituted direct evidence (gate run, keyword presence, line-by-line read against design and pi source), recorded in the finding. No defect to remediate.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Structural to a slice whose records live in satan and code in malebolge; declared in advance (plan.toml header, design §5). The audit substituted direct evidence (gate run, keyword presence, line-by-line read against design and pi source), recorded in the finding. No defect to remediate.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "jailProbes strings written literally (flake.nix convention); observed MALEBOLGE_SKILLS probe interpolates goadSkill"
+detail = """
+Expected: jailProbes entries are literal strings, so a probe cannot drift with the binding it checks (convention at flake.nix:344, :451; memory trap 3 cited by the PHASE-03 sheet R1).
+Observed: `"--setenv MALEBOLGE_SKILLS ${goadSkill}"` (f677f55) derives the probe from the binding under test. Design §4 Deployment prescribed exactly this. Mitigations verified by PHASE-03 negative controls: dropping the set-env fails the probe (the entry stands alone), and a wrong goadSkill value fails the separate `test -r ${goadSkill}/SKILL.md`. A literal store path would break on every `nix flake update goad`; a literal `/nix/store/` prefix is hash-free but weaker.
+"""
+disposition = "tolerated"
+response = """
+The literal rule exists to stop a probe passing while checking nothing. Here a literal would pin a store hash that moves on every goad update, and the two failure modes the rule guards against are each covered by a check that does not share the interpolation's blind spot (negative controls C1/C2 in notes). The departure is commented at the probe site. Accepted.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+The literal rule exists to stop a probe passing while checking nothing. Here a literal would pin a store hash that moves on every goad update, and the two failure modes the rule guards against are each covered by a check that does not share the interpolation's blind spot (negative controls C1/C2 in notes). The departure is commented at the probe site. Accepted.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

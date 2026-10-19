@@ -73,18 +73,21 @@ Pending human acts: EX-4 (delete the malebolge handover doc), VH-1 (live run).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · ready · b616a58
+fresh-as-of: 2026-10-19 · audit · 3f49a39
 
 ### Produced
 
-- Scope, research, locked design (run dr-01a151c7), plan + 3 phase sheets (commit b616a58). No code yet.
-- RV-028 — GPT design review; F-1..F-3 integrated into design §4/6/7.
+- PHASE-01..03 done — skills module (M 9eb1123), daemon wiring (M b5a08ff), jailed deployment (satan f677f55); lint baseline fix (M 3f5b506).
+- RV-030 — conformance audit; 5 findings terminal; brief: design.md §5 rows (F-1).
+- RV-028 — design review; F-1..F-3 honoured in code.
+- Observations (3) — doctrine-install TS vs type-aware lint; Unix socket path limit in smoke recipes; stale tree descriptions in sheets.
 
 ### Learned
 
-- Nothing new for memory; handover-era nix facts superseded by CHR-018 (recorded in slice-024.md Context).
+- Nothing new for memory: the `.pi` lint ignore is recorded in M's eslint.config.js; friction went to observations.
 
 ### Open
 
-- RV-028 — raiser verification of F-1..F-3 answers outstanding (minor; not a lock blocker).
-- DEC-066 — yaml parser; DEC-067 — read once at startup (both shape PHASE-01/02).
+- RV-028 — raiser verification of F-1..F-3 outstanding (minor).
+- RV-030 F-5 — MALEBOLGE_SKILLS probe interpolates its binding (accepted departure from the literal-probe rule).
+- DEC-066 — yaml parser; DEC-067 — read once at startup (both as implemented).
