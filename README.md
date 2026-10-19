@@ -31,7 +31,7 @@ assembles them into a working environment.
 | [**Malebolge**](https://github.com/davidlee/malebolge) | Hosts durable agent conversations using pi-durable. Ships the interactive daemon and the separate **`satan-runner`** patch-job daemon, each with its own SQLite store. |
 | [**Oubliette**](https://github.com/davidlee/oubliette) | Provides microVM capsules and persistent rooms. The patch runner's coding tools execute in a room; committed work returns through a host-controlled Git channel into quarantine. |
 | [**satan-attrd**](https://github.com/davidlee/satan-attrd) | Rust daemon maintaining behavioural attributes, their event history, and decay in Postgres. Consumes outcome and other supported signals; the broker reads the resulting attribute context. |
-| [**goad**](https://github.com/davidlee/goad) | Gives SATAN a desktop surface for asking questions and collecting answers. Its SATAN-specific backend lives in the corpus. |
+| [**goad**](https://github.com/davidlee/goad) | A desktop surface for intervention and interrogation: nudges, questions, and answers that can help test SATAN's hypotheses about what is happening. Its SATAN-specific backend lives in the corpus. |
 
 The persona has its own home, too: `~/satan-corpus` contains prompts, framing,
 tool descriptions, motives, and the hippocampus. Keeping this separate lets
@@ -50,6 +50,13 @@ interventions can become memory traces. Classified outcomes feed the attribute
 layer, so later context can reflect an intervention that worked, was ignored,
 or was contradicted. Activity is evidence to interpret; window focus alone
 does not establish what someone understood or accomplished.
+
+Goad lets SATAN ask about the gap between observation and interpretation. A
+long stretch of browsing might be research, avoidance, or a break. A question
+such as “Are you looking for something specific, or stuck choosing what to do?”
+can supply evidence for or against that interpretation, as well as prompt a
+change of direction. This is the intended loop: form a hypothesis, ask or
+intervene, then revise it in light of the answer and subsequent activity.
 
 ```text
  notes + corpus + memory       Panopticon activity
@@ -82,6 +89,21 @@ as morning and tick runs launch a bounded subprocess harness. Malebolge holds
 an ongoing conversation that clients can attach to and leave without owning
 its lifetime; it reaches SATAN's tools over the Emacs MCP socket.
 
+The harness ecosystem includes:
+
+- [**gptel**](https://github.com/karthink/gptel) — the Emacs-native chat and
+  tool-use interface in the editor configuration. SATAN's scheduled subprocess
+  is still named `satan-gptel-harness`, though its current implementation is a
+  Python chat-completions loop speaking SATAN's JSONL protocol.
+- [**pi**](https://pi.dev/) — the interactive coding-agent harness; a SATAN
+  extension connects it to the broker's tools over MCP.
+- [**pi-durable**](https://github.com/earendil-works/pi/tree/main/packages/durable)
+  — the durable harness library beneath Malebolge's interactive daemon and
+  patch runner, allowing conversations and jobs to survive their clients.
+
+The harness supplies the model/tool loop; SATAN supplies the personal context,
+memory, motives, and capability policy around it.
+
 **The host LiteLLM gateway brokers credentials and model access.** Provider
 keys stay with the gateway. SATAN's harness and Malebolge use gateway client
 credentials with model allowlists and spending limits, rather than receiving
@@ -105,6 +127,14 @@ not directly edit the real checkout. See [Malebolge's patch-job
 guide](https://github.com/davidlee/malebolge#patch-jobs) for the workflow.
 
 ## Memory, temperament, and authority
+
+There is a family resemblance to an **LLM Tamagotchi**: a persistent persona,
+visible attributes, and a little creature whose state changes over time. The
+comparison is useful, but the care loop points outward. Hunger is pressure
+toward contact and progress in the user's world; Curiosity is pressure to seek
+evidence; Doubt should temper certainty; Metamorphosis is pressure to propose
+self-change. The experiment is whether those variables help an agent attend,
+question, and intervene usefully. Keeping its meters satisfied is not the goal.
 
 The attributes are named Curiosity, Hunger, Suspicion, Doubt, Cruelty, Shame,
 Brooding, and Metamorphosis. They are explicit control variables supplied as
