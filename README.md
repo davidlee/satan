@@ -136,6 +136,8 @@ Ownership of the text is similarly explicit:
 Panopticon owns its separate activity store under `~/.local/state/behaviour`.
 Postgres holds SATAN's structured memory, interventions, and attributes.
 
+![fortuna](./gnu1.jpg)
+
 ## Where this is going
 
 The direction is an agent whose lifetime is independent of its editor clients,
