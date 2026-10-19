@@ -1,0 +1,42 @@
+memory_uid = "mem_01a152acf3467802beea42544e8e021a"
+memory_key = "mem.pattern.doctrine.cross-corpus-id-collision"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Doctrine ids collide across corpora: qualify foreign ids with their repo"
+summary = "DEC-052 in oubliette is room base tools; DEC-052 in satan is the SL-023 SQLite store. Cite a foreign corpus's id as 'oubliette DEC-052'."
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "citation"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "66562eaa24a63eeea08c8f6d873777f3d25c5408"
+ref_name = "refs/heads/main"
+checkout_state_id = "9b1afeae777000429c69d9f93453141b1e7c7612ef969572b63b7b1352cf71b4"
+base_commit = "8256d4a65b060ebed5b1f2e5eaaf0d536b43a591"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+

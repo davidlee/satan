@@ -1,0 +1,42 @@
+memory_uid = "mem_01a152acf3647471a8ed66c3b52b2872"
+memory_key = "mem.pattern.satan.research-jail-snapshot"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "jailed-pi-research cannot see sibling repos: give it a read-only snapshot"
+summary = "The research jail binds its launch dir, ~/satan-corpus and the satan flake's workspaceDeps only; for code in ~/dev/malebolge, ~/.local/src/pi or ~/dev/oubliette, copy the needed files into a scratch dir and launch from there."
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "research", "jail"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "66562eaa24a63eeea08c8f6d873777f3d25c5408"
+ref_name = "refs/heads/main"
+checkout_state_id = "c5f7e08cad9e48686bfe6b3f6e80306d0c6f1c56ee004cb9cdab54dd99ff3980"
+base_commit = "8256d4a65b060ebed5b1f2e5eaaf0d536b43a591"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+
