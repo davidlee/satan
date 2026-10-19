@@ -71,7 +71,7 @@
           socat
           bun
           python3 # `just test`: satan/harness unittest
-          ripgrep # content_read search scope (and its tests)
+          ripgrep # content_read search scope (and its tests); malebolge daemon's grep tool
 
           coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           luau # noctalia/ plugin tests + lint
@@ -374,6 +374,9 @@
               # The store hash forces interpolation; the SKILL.md test in
               # malebolgeJailProfile guards the value.
               "--setenv MALEBOLGE_SKILLS ${goadSkill}"
+              # The daemon's grep tool (SL-026) execs rg: it must be on the
+              # jail PATH. The store hash forces interpolation, as above.
+              "${pkgs.ripgrep}/bin"
             ];
             absent = ["op run" "-api-keys.env" "API_KEY" "LLM_GATEWAY_KEY"];
           };
