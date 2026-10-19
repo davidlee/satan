@@ -1,0 +1,25 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 11
+slug = "pi-env-two-clients-room-path"
+title = "pi-env: two concurrent clients on one room user are independent; non-login ssh PATH has the room base"
+record_kind = "evidence"
+status = "captured"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+datum = "2026-10-20, pi-env 1.3.0 against oubliette room assistant (user agent) through the door (ssh ProxyCommand socat UNIX-CONNECT:/run/capsule-room/assistant/ssh.sock), runner idle. Scratch script using malebolge src/runner/env.ts daemonConnection with the runner's [door] values and a direct launch ([daemon], no session): (1) two DaemonConnections, each env.exec bash -c 'sleep 3; ...' concurrently: both exit 0 at 3294 ms — truly concurrent; (2) closing connection A 500 ms into B's 3 s exec: B exits 0 at 6300 ms, unaffected; (3) B reusable afterwards; a fresh connection A2 starts and execs (start cost ~0.2-0.3 s). Separately, a plain non-login ssh command as agent has PATH=/run/wrappers/bin:...:/run/current-system/sw/bin, and rg, git, ls resolve from /run/current-system/sw/bin (the room base is on systemPackages, oubliette vm/room.nix:122), cwd /home/agent; ~/.pi/mobile/tools holds one pi-env-<hash> daemon. Not tested: pi-env daemon-side (Rust) locking under load; a running patch job concurrent with a daemon session."
+provenance = "experiment"
+confidence = "high"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
