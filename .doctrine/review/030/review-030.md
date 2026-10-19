@@ -41,3 +41,16 @@ Not this ledger: RV-028 F-1..F-3 (the design review) still await raiser verifica
 
 ### Governance/spec (REV)
 - None. SL-024 has no spec or ADR targets (plan.toml `[specs]` and `[requirements]` empty); DEC-066/DEC-067 hold as implemented.
+
+## Reconciliation Outcome
+
+### Direct edits applied
+- design.md §5 Code Impact: added `eslint.config.js`, `test/harness-fixture.ts`, `test/persona.test.ts` rows → matches what landed (finding F-1). User agreement: `/reconcile + /close` invoked on the brief as presented, 2026-10-19.
+
+### REVs completed
+- None needed: the brief carries no governance/spec items.
+
+### Withdrawn / tolerated
+- F-2 (VH-1 steps e/f waived by the user), F-3 (notes.md in the PHASE-03 delta), F-4 (M half invisible to conformance/verify-vt), F-5 (interpolated jail probe): tolerated; rationale in each disposition.
+
+Reconcile pass complete — handoff to /close.
