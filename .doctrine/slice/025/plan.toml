@@ -1,0 +1,136 @@
+# Implementation plan for SL-025 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# Paths: M = /home/david/dev/malebolge, F = /srv/fleet, H = ~/flakes,
+# C = ~/satan-corpus, this repo = ~/dev/satan. VT test_file paths outside this
+# repo are absolute; verify-vt reports them UNATTRIBUTABLE (this repo's git
+# cannot see their commits) — expected.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-025"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "runner mode scope"
+objective = "In M, give every [mode.<m>] required `repos` and `allowed_paths` scopes and refuse a submit outside them (design §4.2, DEC-069). Code and tests only; deployed in PHASE-04."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-025 design locked (run dr-01a15234, rev 35)." },
+  { id = "EN-2", text = "`just check` in M green before the change." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "config.ts: `Scope`, `ModeConfig extends PolicyLayer`, `readScope`, `readMode`; repos parsed before modes; `RunnerConfig.modes: ReadonlyMap<string, ModeConfig>`. Config refuses every malformed scope listed in design §4.2 (missing key, empty list, non-string member, non-\"*\" string, \"*\" as a list member, unknown repo, an allowed_paths member normaliseAllowedEntry refuses)." },
+  { id = "EX-2", text = "protocol.ts: `knownMode` replaced by `withinModeScope`, first in SUBMIT_CHECKS and run before the repo lookup; refusals are invalid_request and name what the mode allows; containment is `disallowedPaths` (no new matcher)." },
+  { id = "EX-3", text = "Scope stays outside the policy ladder: policy.ts unchanged in behaviour; tag and repo tables still refuse the scope keys." },
+  { id = "EX-4", text = "Fixtures follow (design §5): [mode.fix] in config-fixture.ts takes \"*\" scopes; policy.test.ts's appended [mode.deep] tables carry both keys; smokeSubmit and its test use mode `interactive`." },
+  { id = "EX-5", text = "`just check` in M green: format, lint (zero warnings), typecheck, tests. Committed in M." },
+]
+verification = [
+  { id = "VT-1", expects = "config parse: list and \"*\" scopes accepted; each malformed scope refused with a message naming mode.<m> and the key", test_file = "/home/david/dev/malebolge/test/runner/config.test.ts", keywords = ["allowed_paths", "repos", "\"*\"", "unknown repo"], waived = false },
+  { id = "VT-2", expects = "admission: §4.2 containment table, repo outside the mode, unknown repo under a scoped mode lists the allowed repos, \"*\" admits anything, unknown mode still refused", test_file = "/home/david/dev/malebolge/test/runner/protocol.test.ts", keywords = ["does not allow repo", "does not allow paths", "it allows"], waived = false },
+  { id = "VT-3", expects = "a replayed submissionId returns its existing job after the mode's scope narrows (no re-admission)", test_file = "/home/david/dev/malebolge/test/runner/control.test.ts", keywords = ["submissionId", "scope narrowed"], waived = false },
+  { id = "VT-4", expects = "an admitted job run under a config that narrowed its mode reaches preparing with its policy recorded", test_file = "/home/david/dev/malebolge/test/runner/run.test.ts", keywords = ["scope narrowed", "preparing"], waived = false },
+  { id = "VT-5", expects = "a held job rejoins after a restart whose config narrowed its mode's scope", test_file = "/home/david/dev/malebolge/test/runner/recovery.test.ts", keywords = ["scope narrowed"], waived = false },
+  { id = "VT-6", expects = "the smoke submits as interactive", test_file = "/home/david/dev/malebolge/test/runner/live-fixture.test.ts", keywords = ["interactive"], waived = false },
+  { id = "VA-1", expects = "M's `just check` output green, zero lint warnings (recorded in notes)" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Emacs stamps the acting mode"
+objective = "In this repo, patch_job_create takes its mode from the tool ctx :mode-name and refuses without one; `mode` leaves the schema; satan-tools-patch-modes is deleted (design §4.1, DEC-068). Correct the stale memory mem.fact.satan.patch-job-contract. Loaded by Emacs in PHASE-04."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-025 design locked." },
+  { id = "EN-2", text = "`just check` green in this repo before the change." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-tools-patch.el: defcustom gone; schema keys are directive, repo, allowed_paths, base_ref, tags, source, context; --submit-fields takes mode as a parameter; handler errors without :mode-name and sends nothing." },
+  { id = "EX-2", text = "The vacuous schema test is replaced by stamping and no-ctx tests." },
+  { id = "EX-3", text = "No reference to satan-tools-patch-modes remains in this repo or ~/.config/emacs (grep, with a positive control)." },
+  { id = "EX-4", text = "mem.fact.satan.patch-job-contract corrected: repo is a runner config name; mode is the acting run mode, stamped by Emacs; per-mode scope enforced by the runner at submit." },
+  { id = "EX-5", text = "`just check` green (lint zero warnings, tests). Committed by path." },
+]
+verification = [
+  { id = "VT-1", expects = "the submit carries the ctx :mode-name whatever the args say; the schema has no mode key", test_file = "satan/test/satan-tools-patch-test.el", keywords = [":mode-name", "satan-patch-fixture-requests"], waived = false },
+  { id = "VT-2", expects = "no ctx, or a ctx without :mode-name: error naming the acting run mode, no request sent", test_file = "satan/test/satan-tools-patch-test.el", keywords = ["acting run mode"], waived = false },
+  { id = "VA-1", expects = "grep for satan-tools-patch-modes returns nothing in this repo and ~/.config/emacs; the same grep for satan-tools-patch--submit-fields finds its definition (positive control)" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "room holds satan and satan-corpus"
+objective = "In F, add targets satan and satan-corpus to room assistant (design §4.4); the user rebuilds and reboots the room before the runner names them."
+entrance_criteria = [
+  { id = "EN-1", text = "`just check` green in F before the change." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "F flake.nix: inputs satan (github:davidlee/satan; nixpkgs and doctrine follow) and satan-corpus (git+ssh://git@github.com/davidlee/satan-corpus; nixpkgs follows); both in targetNames; flake.lock updated." },
+  { id = "EX-2", text = "targets/satan.nix (toolsPackage dev-tools) and targets/satan-corpus.nix (toolsPackage null) in targets/malebolge.nix's shape, each with its host path." },
+  { id = "EX-3", text = "`just check` green in F. Committed." },
+  { id = "EX-4", text = "User has rebuilt the room image (system switch in H) and rebooted room assistant." },
+]
+verification = [
+  { id = "VA-1", expects = "F's `just check` output green (recorded in notes)" },
+  { id = "VH-1", expects = "after the reboot the room holds /work/satan and /work/satan-corpus, and goad-walk's clone and quarantine are intact" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "cutover"
+objective = "Deploy runner code, runner config, prompts and Emacs together in one sitting (design §4.3, §4.5, §4.6): author runner.nix and SATAN.md, drain, switch, restart, land the prompts, reload Emacs."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 and PHASE-02 committed; PHASE-03 room rebuilt (PHASE-03/VH-1)." },
+  { id = "EN-2", text = "No SATAN session will be started during the sitting." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "H runner.nix: roomRepo helper, 15 repo entries per design §4.3 (doctrine edge, nix-config at home), modes self-edit-mech, self-edit-mind, tick-agent (computed: all repos but satan and satan-corpus), interactive (\"*\"); mode.fix removed; header comment current. SATAN.md § satan-runner: interactive smoke, the modes and their scope. `just home-build` in H succeeds and the rendered config.toml has the 4 modes and 15 repos." },
+  { id = "EX-2", text = "Drain: the runner store has no job queued or preparing, checked immediately before the switch." },
+  { id = "EX-3", text = "User: home switch (builds runner from the committed M checkout with runner.nix), satan-runner restarted, journal shows no `refusing to start`." },
+  { id = "EX-4", text = "C: prompts/self-edit-mech.txt, prompts/self-edit-mind.txt, prompts/tick/agent.txt and tools/patch_job_create.md per design §4.5, written after the restart and committed by path." },
+  { id = "EX-5", text = "User: Emacs reloaded; patch_job_create's schema has no mode." },
+]
+verification = [
+  { id = "VA-1", expects = "rendered config.toml inspected: 4 modes with scopes per §4.3, 15 repos, no mode.fix" },
+  { id = "VH-1", expects = "drain query returns 0 before the switch" },
+  { id = "VH-2", expects = "systemctl --user status satan-runner active; no refusing to start in the journal" },
+  { id = "VH-3", expects = "after reload, the live Emacs's patch_job_create schema lacks mode" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "live verification"
+objective = "Prove each lane end to end and one live refusal (slice closure intent; design §6 VH rows)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Via patch_job_create, one job per lane reaches needs_review: self-edit-mech on satan, self-edit-mind on satan-corpus, tick-agent on another room repo. Job ids recorded in notes." },
+  { id = "EX-2", text = "One live submit outside its mode's repos or paths is refused invalid_request, the message naming what the mode allows." },
+  { id = "EX-3", text = "SATAN_RUNNER_LIVE=1 just smoke-runner in M passes as interactive on goad-walk." },
+]
+verification = [
+  { id = "VH-1", expects = "three lane jobs at needs_review, run with the user" },
+  { id = "VH-2", expects = "one live refusal, run with the user" },
+  { id = "VH-3", expects = "live smoke passes" },
+]
+specs        = []
+requirements = []
