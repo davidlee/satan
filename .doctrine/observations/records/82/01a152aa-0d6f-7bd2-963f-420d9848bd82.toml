@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a152aa-0d6f-7bd2-963f-420d9848bd82"
+recorded_at = "2026-10-19T05:37:18.70367703Z"
+kind = "friction"
+summary = "satan just check flaked once in satan-broker spawn test"
+detail = "SL-025 PHASE-02 verify: first just check exited 255 after test 210/1309 with 'satan-broker: stderr.log not written: Opening output file: No such file or directory, /tmp/satan-spawn-*/run/stderr.log' then 'error in process sentinel: Wrong type argument: satan-audit-handle, (:audit t)'. Immediate rerun green (1309 ran, 0 unexpected). Looks like a process sentinel firing after the test's temp dir/audit fixture was torn down — a sentinel leaking across ert tests aborts the whole batch."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
