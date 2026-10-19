@@ -132,7 +132,7 @@ exit_criteria = [
   { id = "EX-2", text = "`just check` green." },
 ]
 verification = [
-  { id = "VT-1", expects = "openFauxHarness + systemPromptSections: sections, omission, order fresh and existing", test_file = "/home/david/dev/malebolge/test/daemon-sections.test.ts", keywords = ["project_context", "cwdExtension", "systemPromptSections"], waived = false },
+  { id = "VT-1", expects = "openTestHarness + systemPromptSections (test/harness-fixture.ts; design §6 calls it openFauxHarness): sections, omission, order fresh and existing", test_file = "/home/david/dev/malebolge/test/daemon-sections.test.ts", keywords = ["project_context", "cwdExtension", "systemPromptSections"], waived = false },
 ]
 specs        = []
 requirements = []
@@ -150,7 +150,7 @@ exit_criteria = [
   { id = "EX-3", text = "docs/internals.md describes sections, sources and grep." },
 ]
 verification = [
-  { id = "VT-1", expects = "jail probe asserts rg", test_file = "flake.nix", keywords = ["jailProbes", "ripgrep"], patterns = ["\\brg\\b"], waived = false },
+  { id = "VT-1", expects = "jailProbes.malebolge asserts the launcher carries ripgrep (a text probe over the built launcher, DEC-046)", test_file = "flake.nix", keywords = ["pkgs.ripgrep"], waived = false },
   { id = "VA-1", expects = "agent reads both corpus prompts and docs/internals.md against design §4.7 and confirms EX-1/EX-3" },
 ]
 specs        = []

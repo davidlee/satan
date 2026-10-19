@@ -48,6 +48,14 @@ PHASE-01 shared module ─┬─► PHASE-02 shell limits ─► PHASE-03 runner
 - **PHASE-03 is the largest phase** (reader, doctrine step, classification,
   `readyRoom` reshape). Split it at phase-plan time if the sheet exceeds one
   sitting: `readyRoom` FinalStep + room reader, then the doctrine step.
+- **Parallelism**: PHASE-05 needs only PHASE-01, so it may run beside
+  PHASE-02..04.
+- **Fixture name**: design §6 says `openFauxHarness`; the fixture is
+  `openTestHarness` in `test/harness-fixture.ts` (with
+  `systemPromptSections`). A naming slip, not a design change.
+- **Jail probe shape**: `jailProbes` are literal text checks over built
+  launchers (DEC-046), so PHASE-07 asserts a launcher string carrying
+  `pkgs.ripgrep`'s store path; the exact string is settled at phase-plan.
 - **Unknown to settle in PHASE-03's phase-plan**: how the probe test puts fake
   binaries first on PATH under `localConnection()` (pi-env local exec env).
 - Cross-repo: PHASE-07 edits `~/satan-corpus` (commit with `just commit`
