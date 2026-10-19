@@ -174,6 +174,9 @@ malebolge (`~/dev/malebolge`, its own repo, so selectors cannot fence it):
 | `src/daemon-main.ts` | load, wire, log count |
 | `package.json`, `package-lock.json` | `yaml` runtime dependency |
 | `README.md`, `docs/internals.md` | env var and extension list |
+| `eslint.config.js` | ignore `.pi` (doctrine-vendored extensions sit outside tsconfig; type-aware lint baseline fix) |
+| `test/harness-fixture.ts` | shared `systemPromptSections` helper |
+| `test/persona.test.ts` | moved onto that helper |
 
 satan (this repo): `flake.nix` (`malebolgeJailOptions`, `jailProbes.malebolge`).
 
