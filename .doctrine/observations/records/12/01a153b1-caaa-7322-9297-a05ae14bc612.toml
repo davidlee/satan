@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a153b1-caaa-7322-9297-a05ae14bc612"
+recorded_at = "2026-10-19T10:25:23.114194527Z"
+kind = "friction"
+summary = "Auto-mode classifier denied a sanctioned satan-corpus prompt edit as 'Instruction Poisoning'"
+detail = "SL-026 PHASE-07 T1: capsule-worker's python-heredoc edit of ~/satan-corpus/prompts/patch-agent.md and interactive.txt (adding a precedence paragraph whose wording says the prompt overrides repo workflow) was denied. Likely false positive on override wording or cross-repo write. Orchestrator did not route around it; T1 escalated to the user."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

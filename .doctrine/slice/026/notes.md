@@ -225,3 +225,37 @@ Findings: `harness.close` closes MemoryStorage, so the reopen case uses temp sql
 `systemPromptSections` returns entries newest first (doc comment says oldest);
 test reverses it. `just check` green, 1516 tests, lines 98.24%. Delta uncommitted
 in malebolge. Phase status not flipped.
+
+## 2026-10-19 PHASE-07 — Corpus, fleet, docs
+
+Done (all uncommitted; orchestrator commits): malebolge `flake.nix` +
+`flake.lock` (doctrine input), `docs/internals.md` (components diagram,
+Sections, Project context (sources), grep notes); satan `flake.nix`
+(probe + comment). **Corpus T1 NOT done**: the worker's one Bash call to edit
+`~/satan-corpus/prompts/patch-agent.md` and `interactive.txt` was denied by
+the auto-mode classifier, and the denial bars retrying the outcome by another
+tool. Left for the orchestrator/user (EX-1 open).
+
+Decisions: corpus commit must stage the two prompt files by path, never
+`just commit` (orchestrator ruling). doctrine input in malebolge has a system
+guard (`doctrine.packages ? ${system}`), no `follows`: doctrine publishes only
+x86_64-linux and aarch64-darwin, malebolge also lists aarch64-linux. The
+guard sits in `devToolPkgs`, so `dev-tools` and the devshell both carry it.
+
+Ripgrep reconciliation: no package added. `ripgrep` is already in the jail
+PATH twice (devToolPkgs, and the jail library base profile), and the room
+supplies `rg` from its base. The satan probe `${pkgs.ripgrep}/bin` asserts
+availability, not which list supplies it; removing it from `devToolPkgs`
+would not turn the probe red.
+
+Evidence: `nix flake lock` in malebolge added only the doctrine node and its
+transitive inputs (flake.lock: sole removal is the root's inputs line).
+`nix build .#dev-tools` has `bin/doctrine`. malebolge `just check` exit 0 and
+`nix flake check` green; satan `nix flake check` green. VT-1 negative control:
+probe changed to `${pkgs.ripgrep}/binX` -> `malebolge-jail-profile` failed
+with "launcher must contain '/nix/store/...-ripgrep-15.2.0/binX'"; reverted,
+green again. No elisp touched, so satan `just check` not run.
+
+Docs describe what is implemented: runner chain is clone-root only, via one
+`stat -L` (PHASE-03 D-1); daemon wiring includes `daemon-extensions.ts`
+(PHASE-06 D-1). Neither pending decision reworked.

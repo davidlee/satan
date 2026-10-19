@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a153b1-cab0-7e23-9671-28eea7d453bc"
+recorded_at = "2026-10-19T10:25:23.120032397Z"
+kind = "friction"
+summary = "Phase sheet pointed at 'doctrine show SL-026' for design §4.7; design prose is under 'doctrine design show'"
+detail = "Worker in SL-026 PHASE-07 had to find design §4.7 via doctrine design show SL-026."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a153b1-cab2-76e0-90fa-67014f3b8a8f"
+recorded_at = "2026-10-19T10:25:23.122714965Z"
+kind = "friction"
+summary = "satan jailProbes comment says probes are 'written literally' but store-path probes must interpolate"
+detail = "SL-026 PHASE-07 VT-1 probe ${pkgs.ripgrep}/bin interpolates, like the goad skill probe; the comment is stale. Also the probe cannot tell devToolPkgs ripgrep from the jail base profile ripgrep."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

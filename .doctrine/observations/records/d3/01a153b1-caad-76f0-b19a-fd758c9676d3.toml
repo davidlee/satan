@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a153b1-caad-76f0-b19a-fd758c9676d3"
+recorded_at = "2026-10-19T10:25:23.117148548Z"
+kind = "friction"
+summary = "Corpus 'just commit' sweeps unrelated runtime writes, contradicting charter's commit-convention instruction"
+detail = "~/satan-corpus just commit runs git reset; git add . under a date-only message (mem.fact.satan.corpus-just-commit-sweeps). SL-026 PHASE-07 ruled stage-by-path instead."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
