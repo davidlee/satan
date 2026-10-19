@@ -1,0 +1,42 @@
+memory_uid = "mem_01a156928ece7a20a009eb835af45beb"
+memory_key = "mem.fact.pi-env.daemon-argv-and-room-faults"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi-env daemon argv tail and lost-room error shape"
+summary = "pi-env appends serve --token after the launch words; a lost room reaches grep as a thrown env error, not spawn_error"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi-env", "malebolge", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "904d46d7d9cef30c332d6d41d7f18c58ac4bc918"
+ref_name = "refs/heads/main"
+checkout_state_id = "83fb983ff5f94edcf61b946bddc3ca19f538c4ea9215dd8bb572593ecfbcaf24"
+base_commit = "f5f9568d19005a529ee0f89932823da7bd3255f3"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
