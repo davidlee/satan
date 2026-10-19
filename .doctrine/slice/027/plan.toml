@@ -1,0 +1,161 @@
+# Implementation plan for SL-027 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# Code paths are in ~/dev/malebolge unless prefixed (satan/, satan-corpus/,
+# notes/). VT test_file paths outside this repo are absolute (SL-023's
+# convention); verify-vt fails them until the phase creates the file.
+# RV-035's routed findings (F-1, F-3, F-4, F-9 control; F-2 demonstrate) are
+# transcribed from the ledger into the criteria that cite them.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-027"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Root moves and the import allowlist"
+objective = "The runner stops importing daemon modules (design §4.1 root moves): parseModel, ModelRef, DEFAULT_MODEL move from src/config.ts to src/models.ts; registryOf moves from src/session.ts to a new src/registry.ts. test/structure.test.ts asserts the three-sided import allowlist over src/, file by file. Behaviour unchanged."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (run dr-01a15431, rev 49); malebolge `just check` green at the phase's base commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "src/runner/* imports neither src/config.ts nor src/session.ts; model-gate.ts, run.ts, start.ts and test/harness-fixture.ts import from models.ts / registry.ts. No re-export shim left behind." },
+  { id = "EX-2", text = "test/structure.test.ts asserts §4.1's three rules file by file over src/: (a) nothing outside src/runner/ imports src/runner/* except src/runner-main.ts; (b) src/runner/* imports only src/runner/*, src/room/* and the eleven named root modules (context, fields, grep, json, message-of, models, ndjson, project-context, registry, truncate, unix-socket); (c) src/room/* imports only src/room/* and context, fields, json, project-context, truncate (plus packages). Rule (c) holds vacuously until PHASE-02 creates src/room/." },
+  { id = "EX-3", text = "RV-035 F-9 (control): the allowlist checker, fed a fixture source string in which a src/runner/ module imports a root module outside its allowlist (`../daemon-env.ts`, and a root module not yet listed), reports a violation; the test asserts that rejection, so a denylist or wildcard implementation fails it." },
+  { id = "EX-4", text = "`just check` green; runner suite passes with import-path edits only." },
+]
+verification = [
+  { id = "VT-1", expects = "three allowlist rules hold over src/; runner-main.ts entry-point exception; fixture probe imports (../daemon-env.ts, an unlisted root module) rejected (RV-035 F-9)", test_file = "/home/david/dev/malebolge/test/structure.test.ts", keywords = ["src/runner", "src/room", "runner-main.ts", "daemon-env"], waived = false },
+  { id = "VT-2", expects = "registryOf lives in its own root module and the runner imports it from there", test_file = "/home/david/dev/malebolge/src/registry.ts", keywords = ["export function registryOf"], waived = false },
+  { id = "VT-3", expects = "parseModel / ModelRef / DEFAULT_MODEL live beside GATEWAY_PROVIDER", test_file = "/home/david/dev/malebolge/src/models.ts", keywords = ["parseModel", "ModelRef", "DEFAULT_MODEL", "GATEWAY_PROVIDER"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "src/room/: the shared room session"
+objective = "Extract the room tier per design §4.1 / DEC-074, behaviour-neutral for the runner: src/room/{connection,shell,source-reader,door}.ts with the module header invariants; JobConnection renamed ObservedConnection (no reword yet); roomShell(connection, { id, cwd }); roomSourceReader takes a failure callback (ReadFailure); directLaunch; readRoomDoor / ROOM_DOOR_KEYS / roomConnectionOf; expandHome to src/fields.ts. runner/room.ts renamed runner/door.ts; runner/shell.ts deleted; moved tests move to test/room/."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Every symbol §4.1 / §5 lists as moved lives in src/room/ and nowhere else (no runner re-export); src/runner/shell.ts is gone; src/runner/room.ts is src/runner/door.ts. src/room/connection.ts carries the module header (three invariants) that the other three files reference." },
+  { id = "EX-2", text = "SPEC-004 NF-001: the runner suite passes with only import-path edits and the roomShell(connection, { id, cwd }) call shape (run.ts, collect.ts, room-fixture.ts, shell/prepare/collect tests); moved tests pass in test/room/ with assertions unchanged." },
+  { id = "EX-3", text = "readRoomDoor reads the five ROOM_DOOR_KEYS with `~` expanded in path keys, names a missing key, ignores keys it does not own; runner readDoor (room kind) composes it and the runner's [door] fixtures parse to the same config as before. daemonLaunch uses directLaunch for a slot." },
+  { id = "EX-4", text = "roomSourceReader reports read failures through its callback as ReadFailure and rethrows what the classification does not answer for (caller abort, ChannelUnavailable, ChannelFailed host_key, non-channel errors); runner Degradation = { source } & (ReadFailure | boot_not_ignored | empty); fetchProjectContext outcomes unchanged." },
+  { id = "EX-5", text = "EX-10 (test/runner/room.test.ts) revised per §4.1: door named only in runner/config.ts, runner/door.ts, room/door.ts, room/connection.ts (and, from PHASE-03, the daemon's config.ts); kind only in runner/config.ts and runner/door.ts; the kind regex narrowed so a quoted profile literal \"room\" does not trip it." },
+  { id = "EX-6", text = "structure.test.ts rule (c) now non-vacuous and green; `just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "door parser: five keys, ~ expansion, missing key named, foreign keys ignored, runner fixtures parse unchanged", test_file = "/home/david/dev/malebolge/test/room/door.test.ts", keywords = ["readRoomDoor", "ROOM_DOOR_KEYS", "roomConnectionOf"], waived = false },
+  { id = "VT-2", expects = "moved shell tests over localConnection, new call shape", test_file = "/home/david/dev/malebolge/test/room/shell.test.ts", keywords = ["roomShell", "ShellLimits", "overflowed"], waived = false },
+  { id = "VT-3", expects = "moved connection tests: ObservedConnection reports loss vs trust failure from its immediate DaemonConnection; directLaunch argv has no `session`", test_file = "/home/david/dev/malebolge/test/room/connection.test.ts", keywords = ["ObservedConnection", "daemonConnection", "directLaunch", "trustFailure"], waived = false },
+  { id = "VT-4", expects = "EX-10 owners and narrowed kind regex", test_file = "/home/david/dev/malebolge/test/runner/room.test.ts", keywords = ["EX-10", "room/door.ts", "room/connection.ts", "runner/door.ts"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Execution profile, door file, persona env files"
+objective = "Daemon configuration per design §4.2 / §4.8 (DEC-077, DEC-078): Profile and Execution in src/config.ts; MALEBOLGE_PROFILE / MALEBOLGE_DOOR / MALEBOLGE_SSH_CONFIG / MALEBOLGE_GATEWAY_SOCKET; door file parse (ROOM_DOOR_KEYS + home); store and socket under durable/<profile>/ with the mismatch refusal; daemonSocket defaulting to room for attach only. personaFiles(corpusRoot, profile) appends prompts/env/<profile>.txt; satan-corpus gains prompts/env/room.txt and pi.txt (interactive.txt's execution-environment paragraph moves out); notes/justfile build-system-prompt appends pi.txt."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete." },
+  { id = "EN-2", text = "Sequencing (user, 2026-10-20: push flakes first): ~/flakes pushed with flakes:SL-015 PHASE-05 (03dc0f0a) on origin, and `nix flake lock --update-input agents` run and committed in ~/dev/satan, so PHASE-05 can follow this phase and PHASE-04 without waiting. From this phase's malebolge commit until PHASE-05 lands, the old jailed-malebolge (no MALEBOLGE_PROFILE) refuses startup: the live jail runs the malebolge checkout." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "resolveConfig: absent or unknown MALEBOLGE_PROFILE → error; room without MALEBOLGE_DOOR or MALEBOLGE_SSH_CONFIG → error; host with MALEBOLGE_DOOR → error; door file with an unknown key → error (onlyKeys over ROOM_DOOR_KEYS + home, then readRoomDoor); Execution carries room connection, home and gateway socket." },
+  { id = "EX-2", text = "storagePath = <state>/satan/durable/<profile>/session.sqlite; daemonSocket = $MALEBOLGE_SOCKET or <runtime>/satan/durable/<profile>/durable.sock; a store or socket whose parent directory is named for another profile is refused; attach-main's daemonSocket defaults to room, the daemon never defaults." },
+  { id = "EX-3", text = "personaFiles(root, profile) ends with prompts/env/<profile>.txt; a missing env file refuses startup naming the path. satan-corpus prompts/env/room.txt states room assistant, user satan, cwd the home, /work clones read-only (clone into your home), changes reach the user only as a proposed patch job, no web access; prompts/env/pi.txt carries today's wording; interactive.txt no longer states an execution environment. Corpus committed with `just commit`." },
+  { id = "EX-4", text = "notes/justfile build-system-prompt appends prompts/env/pi.txt; the built .pi/SYSTEM.md carries the pi wording (one-line diff to the user's repo, shown to the user before commit)." },
+  { id = "EX-5", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "profile config: absent/unknown profile, missing door/ssh_config, host with door, unknown door key, durable/<profile>/ paths, cross-profile MALEBOLGE_SOCKET refused, attach default room", test_file = "/home/david/dev/malebolge/test/config.test.ts", keywords = ["MALEBOLGE_PROFILE", "MALEBOLGE_DOOR", "MALEBOLGE_SSH_CONFIG", "durable/room", "daemonSocket"], waived = false },
+  { id = "VT-2", expects = "personaFiles appends the profile's env file; missing env file refuses, naming the path", test_file = "/home/david/dev/malebolge/test/persona.test.ts", keywords = ["personaFiles", "prompts/env/room.txt"], waived = false },
+  { id = "VA-1", expects = "satan-corpus diff read against §4.8: room.txt and pi.txt each true of their harness; no environment claim left in interactive.txt" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "The daemon's environment in the room"
+objective = "Design §4.3–§4.5 (DEC-079, DEC-080, DEC-081): openSession takes the env hook (SessionOptions.env); src/daemon-env.ts builds host (NodeExecutionEnv, node reader) or room (one lazy DaemonConnection via directLaunch, tool path through ObservedConnection with the daemon's reword, RemoteExecutionEnv id pi-env:daemon-room, cwd state.cwd ?? home); readContext reads project context from the home through roomSourceReader over roomShell on the bare DaemonConnection; ObservedConnection gains reword; grep's spawn_error text becomes neutral; daemon-main checks the gateway socket, wires daemonEnv, closes it on stop, logs the profile. docs/internals.md and README.md updated."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "session.ts no longer imports NodeExecutionEnv; daemonEnv is the one place a profile becomes an environment. Room: one connection reused across calls, launched with directLaunch (argv has no `session`); cwd = home; close() closes it." },
+  { id = "EX-2", text = "Fault wording at the seam (§4.4): lost with no trust failure → `room unavailable: <msg>`; lost with trustFailure() set → `room host key untrusted: <msg>`, never unavailable, logged every time; any other failure → pi-env's message unchanged; without reword the error is rethrown unchanged (the runner's case). One bash and one grep call through a lost connection each return a tool error and the session takes the next call." },
+  { id = "EX-3", text = "RV-035 F-4 (control): readContext through a real DaemonConnection whose start fails host-key checking (fake DaemonHelpers) logs `room host key untrusted` and never `room unavailable`. The test is run first against the incorrect candidate — the startup read through a nested ObservedConnection — and observed to fail before the correct wiring (bare DaemonConnection to roomShell) makes it pass. The rule `ObservedConnection always wraps a DaemonConnection directly` is stated in the code where both are built." },
+  { id = "EX-4", text = "Startup context (DEC-080): read from the home only, every exec carrying FETCH_LIMITS / HEAD_LIMITS; ChannelUnavailable and ChannelFailed host_key → [] and a log line, daemon continues; cwd section reads the room home." },
+  { id = "EX-5", text = "Missing MALEBOLGE_GATEWAY_SOCKET path → startup refused with `gateway socket missing: <path> (llm-gateway client listener)`. grep's spawn_error reads `rg could not run: <message>`." },
+  { id = "EX-6", text = "docs/internals.md and README.md describe the room tier, profiles, door file, socket paths. `just check` green; structure.test.ts green (daemon-env.ts outside the runner's allowlist)." },
+]
+verification = [
+  { id = "VT-1", expects = "host → NodeExecutionEnv at launch dir; room → RemoteExecutionEnv cwd=home over one reused connection, directLaunch argv asserted", test_file = "/home/david/dev/malebolge/test/daemon-env.test.ts", keywords = ["daemonEnv", "directLaunch", "RemoteExecutionEnv", "pi-env:daemon-room"], waived = false },
+  { id = "VT-2", expects = "reword: unavailable vs host key untrusted vs passthrough; bash and grep through a lost connection return tool errors and the session continues", test_file = "/home/david/dev/malebolge/test/daemon-env.test.ts", keywords = ["room unavailable", "room host key untrusted", "reword"], waived = false },
+  { id = "VT-3", expects = "RV-035 F-4: readContext over a real DaemonConnection failing host-key start logs untrusted, never unavailable; fake RoomShell: home-only reads with limits, ChannelUnavailable → []", test_file = "/home/david/dev/malebolge/test/daemon-env.test.ts", keywords = ["readContext", "HostKeyFailure", "FETCH_LIMITS", "HEAD_LIMITS"], waived = false },
+  { id = "VT-4", expects = "gateway socket missing refuses startup with the named message (the check is a function daemon-main calls, tested beside daemonEnv)", test_file = "/home/david/dev/malebolge/test/daemon-env.test.ts", keywords = ["gateway socket missing"], waived = false },
+  { id = "VT-5", expects = "grep spawn_error neutral wording", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["rg could not run"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "The room-profile jail"
+objective = "satan/flake.nix per design §4.6–§4.7 (DEC-075, DEC-076): jailed-malebolge becomes the room profile (offline, mountLaunchDir false, workspaceDepsFromEnv false, persistedHome malebolge, the four MALEBOLGE_* variables, rendered ssh_config with store-path socat, ro door dir / known hosts / identity / door file / mcp / tree / corpus / key / catalog, rw durable/room state and runtime, launcher mkdir -p of both); goad grants and devToolPkgs removed; jailProbes.malebolge rewritten literally; a just recipe checks the impure-devshell launcher. Operator move of durable/session.sqlite to durable/host/."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete." },
+  { id = "EN-2", text = "satan flake.lock's agents input includes flakes:SL-015's gatewaySocketOptions, mountLaunchDir, workspaceDepsFromEnv, persistedHome and the door-file / identity facts (PHASE-03 EN-2 done); names in §4.6 checked against the landed flakes code and drift recorded in notes.md." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "RV-035 F-1 (control): a just recipe over the jailed-malebolge built from the impure devshell, with JAIL_WORKSPACE_DEPS set to include the notes dir, asserts no `/workspace/` bind at all. It is run first against the current launcher — which binds /workspace/notes read-write — and observed to reject it, before the room-profile change makes it pass." },
+  { id = "EX-2", text = "malebolge-jail-profile asserts present (§6): MALEBOLGE_PROFILE room, MALEBOLGE_DOOR, MALEBOLGE_SSH_CONFIG, MALEBOLGE_GATEWAY_SOCKET; ro binds of door dir, known hosts, identity, door file, gateway client socket dir, /run/user/1000/satan/mcp, malebolge tree, corpus, key, catalog; persisted home `malebolge`; rw durable/room (state and runtime); openssh and socat; the offline netns flag. Absent: /workspace/, whole-dir rw /run/user/1000/satan, satan-corpus/goad, MALEBOLGE_SKILLS, goad packages, durable/host, op run, LLM_GATEWAY_KEY, agent-offline. Probes written literally." },
+  { id = "EX-3", text = "`nix flake check` and `just check-jails` green including runner-socket-unjailed (the impure-launcher recipe of EX-1 joins check-jails); `just check` green in satan." },
+  { id = "EX-4", text = "With user assent, ~/.local/state/satan/durable/session.sqlite (and its sidecars) moved to durable/host/; nothing left at the old path." },
+]
+verification = [
+  { id = "VT-1", expects = "malebolge-jail-profile present/absent probe strings (RV-035 F-1 absences included)", test_file = "/home/david/dev/satan/flake.nix", keywords = ["malebolge-jail-profile", "MALEBOLGE_PROFILE", "MALEBOLGE_GATEWAY_SOCKET", "workspaceDepsFromEnv", "persistedHome"], waived = false },
+  { id = "VT-2", expects = "impure-devshell launcher recipe rejects any /workspace/ bind (RV-035 F-1)", test_file = "/home/david/dev/satan/justfile", keywords = ["jailed-malebolge", "JAIL_WORKSPACE_DEPS", "/workspace/"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Live verification and the egress closure gate"
+objective = "Design §6 VA / VH against the deployed room profile, and the SATAN MCP egress audit that gates closure. Results recorded in notes.md."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete." },
+  { id = "EN-2", text = "Deployed: flakes:SL-015 (gateway client socket, door file, vm-mode identity key); oubliette IMP-023 (repos.readers, readers' group, 0750 clones); /srv/fleet rooms.assistant.users.satan and repos.readers = [\"satan\"]. Room assistant started (`capsule assistant start`, operator)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Negative probes inside the jail: no route out (curl to an external host fails, network unreachable); ~/notes and the launch dir absent; durable/host/ and another profile's socket dir absent; goad.sock absent; writing /run/capsule-room/assistant/ fails (EROFS); the HM door file (store symlink) reads inside the jail." },
+  { id = "EX-2", text = "RV-035 F-2 (demonstrate): live, as room user satan, `git clone /work/<repo>` succeeds and a write into /work/<repo> fails with permission denied — both while a patch job runs and again after it completes. A daemon session concurrent with that patch job: both complete; the job's clone is untouched by satan. Directory listings are not the bar." },
+  { id = "EX-3", text = "In the room, rg and git resolve for satan (DEC-081)." },
+  { id = "EX-4", text = "RV-035 F-3 (control), closure gate: the interactive mode's SATAN tool set is listed and each tool classified for whether it can carry data off the host (notification to an external service, web or HTTP fetch, mail, external sync, anything that shells out). The classification criteria are stated before the sweep and would mark the incorrect candidate — a tool that posts a notification off-host or fetches a URL — as blocking. No tool in the set can carry data off the host; a tool that can blocks closure until it leaves the room profile's set or the user amends CON-005 — never recorded as an accepted residual." },
+]
+verification = [
+  { id = "VA-1", expects = "EX-1 negative probes run inside the live jail; outputs in notes.md" },
+  { id = "VA-2", expects = "EX-2 / RV-035 F-2 clone-and-denied-write as satan, during and after a patch job; concurrent session and job both complete" },
+  { id = "VA-3", expects = "EX-3 rg and git resolvable for satan in the room" },
+  { id = "VA-4", expects = "EX-4 / RV-035 F-3 egress audit table in notes.md; zero off-host-capable tools" },
+  { id = "VH-1", expects = "human, room started: interactive session where `bash pwd` reports /home/satan; a written file lands in the room (seen from a capsule assistant shell), not on the host; ~/notes unchanged (git status); satan_boot_context answers; with the room stopped a tool call answers `room unavailable` and the session goes on" },
+]
+specs        = []
+requirements = []
