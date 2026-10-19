@@ -1180,3 +1180,14 @@ One-line observations (no recommendations beyond these):
 - Runner runs the live tree: its next restart loads the refactored loader (behaviour unchanged; PHASE-17 tests pinned).
 - Pending (VA-1): user issues key `malebolge`, `just home-switch`, runs `just daemon` + `just attach` on the host; agent checks key absent from `/proc/<pid>/{environ,cmdline}`.
 - Known break: jailed `just hello-durable` (`~/notes`, `gateway = null`) will not start until the other agent's jail migration binds the key file and catalog read-only and sets the two env vars. `gatewayClient` passes `LLM_GATEWAY_KEY` as env, which this daemon does not read (file-only custody).
+
+### PHASE-18 VA-1 (orchestrator-run, 2026-10-19)
+
+- Prereqs (seat-verified): key `~/.config/llm-gateway/keys/malebolge` mode 600 david; `~/.config/malebolge/gateway-models.json` -> `/nix/store/s3fjiq8q…-home-manager-files/.config/malebolge/gateway-models.json` (H2 applied).
+- Host run: `cd ~/dev/malebolge && setsid nohup just daemon` (user's justfile: `satan-mcp-start` -> `/run/user/1000/satan/mcp/mcp.sock`, then `node src/daemon-main.ts`). Stderr: `malebolge: gateway/deepseek-flash · 37 SATAN tools`, session `~/.local/state/satan/durable/session.sqlite`, attach `/run/user/1000/satan/durable.sock`.
+- Key custody (pid 3596604, compared by `grep -cF` without printing): key text occurs 0 times in `/proc/<pid>/environ` and 0 times in `/proc/<pid>/cmdline` (cmdline is `node src/daemon-main.ts`). The process env does carry `DEEPSEEK_API_KEY`, inherited from the launching shell; the daemon no longer reads it (the gateway provider is the only one registered).
+- One message via `node src/attach-main.ts` (stdin held open 75 s, then `/quit`): attach replayed the durable history, then the model answered `pong`. Since `gateway` is the only provider and the key file is `keys/malebolge`, the gateway accepted that key.
+- Stop: SIGTERM -> exit, `durable.sock` removed, log ends `satan-mcp connection closed; reconnecting on next SATAN tool call` (no `stop failed`).
+- Not agent-runnable: `llm-gateway list` needs sudo (re-execs as the `llm-gateway` user, DEC-050; DB `/var/lib/llm-gateway/keys.db`). User check pending: `llm-gateway list` shows `malebolge` spend > 0.
+- Side effect: the ping and `pong` are now turns in SATAN's real durable session (the host daemon has no scratch session).
+- Verdict: VA-1 met agent-side; the spend row is corroboration, owed by the user.
