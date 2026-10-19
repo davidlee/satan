@@ -58,7 +58,7 @@ cutover (two consumers live, ISS-039).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · reconcile (RV-029 outcome, REV-007 done, RV-027 concluded) · satan 0affb18+audit, malebolge 8c93902
+fresh-as-of: 2026-10-19 · close · satan 546c5c4, malebolge 13500bd, ~/flakes 097e5733
 
 ### Produced
 - design amended and re-locked twice: rev 56 (room adapter, RV-026) — 5bbc0fc; rev 63 (probe = job collect; DEC-057 gate rulings) — 15662ba
@@ -66,7 +66,9 @@ fresh-as-of: 2026-10-19 · reconcile (RV-029 outcome, REV-007 done, RV-027 concl
 - runner live as `satan-runner` (room `assistant`, repo goad-walk); PHASE-12 smokes and closure run (P promoted, R rejected); one consumer deployed
 - audit RV-029: 26 findings (8 design-wrong items in the Reconciliation Brief, 3 governance/spec groups); ADR-017 ledger rows 4b/5b/6b/8/9 → `patch-runner` with transition lines (DEC-062); closed ISS-030, ISS-038, ISS-039, ISS-041, CHR-003, IDE-007, IMP-006
 - minted: ISS-047 — rejoin wedges the seat when a held job's repo leaves config; CHR-019 — code/comment/doc residue
-- earlier follow-ups: IMP-042, IMP-043, CHR-016 (closed), CHR-017, CHR-018, ISS-046
+- reconcile 672ee58: design, DEC-055/057/065 notes, REV-007 (SPEC-004 + REQ-026..033, SPEC-002, REQ-013, SPEC-003), governance.md ledger line
+- CHR-017 — satan-runner runs malebolge's pinned build (malebolge 13500bd, ~/flakes 097e5733, satan 546c5c4); deployed 2026-10-19
+- follow-ups: IMP-042, IMP-043, CHR-018, CHR-019, ISS-046, ISS-047
 
 ### Learned
 - mem.fact.pi-env.type-survives-only-at-connection — where runner failures stay typed in pi-env/pi-durable 1.3.0
@@ -75,8 +77,7 @@ fresh-as-of: 2026-10-19 · reconcile (RV-029 outcome, REV-007 done, RV-027 concl
 - EVD-006..010 — PHASE-01 spike evidence
 
 ### Open
-- RV-029 brief reconciled 2026-10-19 (see RV-029 `## Reconciliation Outcome`); SPEC-004 + REQ-026..033 via REV-007 await the user's read
-- CHR-017 — user ruling: must land before SL-023 closes (runner runs malebolge's live tree)
+- REV-007 — reconcile governance, approved by the user 2026-10-19 ("approve governance"); the ratification is not yet stated in `revision-007.md` (user-owned edit)
 - ISS-046 — producer lanes other than fix/goad-walk refused
 - prompt `~/satan-corpus/prompts/patch-agent.md` swept into corpus 21b64ea by the daily commit; PHASE-12 batch B's 6 review points unconfirmed by the user
 
@@ -1340,3 +1341,31 @@ session: design edits not confirmed by the user beforehand.
 - REV cannot target DEC records; DEC revision notes go through `knowledge edit`.
 - `revision new` / `spec new` try a remote reservation fetch (denied) and fall
   back to local ids.
+
+## Close (2026-10-19)
+
+Pre-check: rollup 18/18; RV-029 `done · await=none` with `## Reconciliation
+Outcome`; RV-027 concluded; REV-007 done; `doctrine check gate` green
+(1303/1307, 4 skipped). Not dispatched (no `dispatch/023` journal), so no
+integrate step. Originating IDE-007 already closed (promoted).
+
+### CHR-017 deploy evidence (user deploy, seat-verified 2026-10-19)
+The user's close condition. Verified on the host after the user's deploy:
+- `satan-runner` unit active; `ExecStart=/nix/store/7p0swjym…-satan-runner-0.0.0/bin/satan-runner`
+  (a store path, not the live malebolge tree); `WorkingDirectory=$HOME`.
+- Journal clean: store and control lines only.
+- Control socket mode 700 (dir) / 600 (socket), owner david; `list` RPC returns ok.
+- `~/flakes/flake.lock` root input `malebolge` locked at 13500bd (lock commit
+  bf864b9d, the user's).
+
+### Governance
+The user said "approve governance" (2026-10-19) of the reconcile changes
+(REV-007: SPEC-004 + REQ-026..033, SPEC-002, REQ-013, SPEC-003; DEC revision
+notes; governance.md ledger line). This close does not record that act in
+`revision-007.md` (its text still says the user has not reviewed SPEC-004);
+the edit is left to the user.
+
+### Harvest judgement
+Nothing new to route: Learned memories recorded during phases; follow-ups
+already minted (CHR-019, ISS-046, ISS-047, IMP-042, IMP-043); no new open
+DEC/QUE/ASM/CON. Consciously closed with no further harvest.
