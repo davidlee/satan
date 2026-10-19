@@ -1,7 +1,7 @@
 id = 27
 slug = "malebolge-vm-mode"
 title = "malebolge daemon vm mode: coding tools in the room"
-status = "design"
+status = "plan"
 created = "2026-10-19"
 updated = "2026-10-19"
 tags = []
@@ -12,27 +12,27 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "src/runner/env.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/runner/room.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/session.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/daemon-main.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/config.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
@@ -57,7 +57,139 @@ note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "flake.nix"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "src/room/**"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/door.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/shell.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/project-context.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/config.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/fields.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon-env.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/persona.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/grep.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/structure.test.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/room/**"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/runner/room.test.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "docs/internals.md"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = ".doctrine/adr/017/authority-ledger.md"
+intent = "design-target"
+
+[[selector]]
+selector = ".doctrine/spec/tech/002/**"
+intent = "design-target"
+
+[[selector]]
+selector = ".doctrine/spec/tech/004/**"
+intent = "design-target"
+
+[[selector]]
+selector = "prompts/interactive.txt"
+intent = "design-target"
+note = "cross-repo: paths are in ~/satan-corpus"
+
+[[selector]]
+selector = "prompts/env/**"
+intent = "design-target"
+note = "cross-repo: paths are in ~/satan-corpus"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+note = "cross-repo: path is in ~/notes"
+
+[[selector]]
+selector = "README.md"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/models.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/registry.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/model-gate.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/run.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/start.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/harness-fixture.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/collect.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[relation]]
 label = "governed_by"

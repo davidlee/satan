@@ -22,7 +22,7 @@ the host; SATAN MCP tools are unchanged (fixed mode `interactive`).
  after:  malebolge daemon (host)
            ├── SATAN MCP tools ── Emacs (unchanged, mode "interactive")
            └── read/write/edit/bash/grep ── pi-env ── room `assistant`
-                                                      cwd /home/agent
+                                                      cwd /home/satan
 ```
 
 Related state: SL-026 delivered RFC-019 D7 (project context, cwd, grep). Its
@@ -39,17 +39,19 @@ project-context pipeline already takes an injected `SourceReader`
    second implementation; the runner's behaviour is unchanged.
 2. **Daemon env in the room.** `src/session.ts` stops returning
    `NodeExecutionEnv`; the daemon's coding tools (read, write, edit, bash,
-   grep) execute in room `assistant`, cwd `/home/agent`. Loss of the room is
+   grep) execute in room `assistant`, cwd the vm-mode user's home (from the
+   door file, DEC-077). Loss of the room is
    a tool error the session survives, not a daemon crash.
 3. **Project context and cwd from the room.** The daemon's startup
    project-context read uses a room `SourceReader` (D7's constraint: context
    is read in the environment). The cwd section names the room path.
 4. **D3 by permissions, not convention (DEC-075).** vm mode runs as its own
-   room user (e.g. `satan`: own key, own home); `/work` clones stay owned by
+   room user (`satan`: own key, own home); `/work` clones stay owned by
    `agent`, readable, not writable. vm mode clones what it needs into its
-   home; its work reaches the host only as a patch job. Stated in
-   `~/satan-corpus/prompts/interactive.txt`; `dirty_clone` stays as the
-   runner's own check.
+   home; its work reaches the host only as a patch job. Stated in the room
+   profile's own persona env file (`~/satan-corpus/prompts/env/room.txt`),
+   not in `interactive.txt`, which `jailed-pi` shares; `dirty_clone` stays as
+   the runner's own check.
 5. **Host reach removed.** `jailed-malebolge` (`flake.nix`) loses host coding
    reach: no rw launch-dir bind, no host network beyond what reaching the
    room and the gateway needs, `devToolPkgs` dropped if nothing host-side
@@ -93,7 +95,8 @@ project-context pipeline already takes an injected `SourceReader`
   `src/daemon-extensions.ts`; runner callers of `env.ts`.
 - `~/dev/satan/flake.nix` (`jailed-malebolge`, `malebolgeJailOptions`, jail
   probes).
-- `~/satan-corpus/prompts/interactive.txt` (D3 convention).
+- `~/satan-corpus/prompts/interactive.txt`, `prompts/env/{room,pi}.txt`
+  (D3 convention, per-profile persona env file); `src/persona.ts`.
 - `~/notes/justfile` `hello-durable` (launch dir, if still relevant).
 - `/srv/fleet/flake.nix` `rooms.assistant.users` (the vm-mode room user).
 - Cross-repo prerequisite, `~/flakes` slice: gateway client listener,
@@ -137,7 +140,7 @@ project-context pipeline already takes an injected `SourceReader`
 - Flake checks: jail probes assert no launch-dir rw bind and no
   `/workspace/notes` (CHR-020's check); runner-socket-unjailed still passes.
 - VH (by human): a live interactive session where `bash pwd` reports
-  `/home/agent`, a file written lands in the room, `~/notes` is unchanged, and
+  `/home/satan`, a file written lands in the room, `~/notes` is unchanged, and
   SATAN MCP tools still answer.
 
 ## Summary

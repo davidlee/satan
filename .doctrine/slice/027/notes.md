@@ -66,21 +66,42 @@ interactive SATAN MCP tool set for any tool that carries data off-host (Emacs
 has network) — the residual named in DEC-075, flakes:DEC-077's "host sockets
 are channels" note.
 
+## Further review passes (2026-10-20, after RV-035 verify, rev 28)
+
+RV-035 (GPT, full adversarial pass) is concluded in substance: F-1..F-7 verified.
+Edits since that pass: §4.6/§4.8/§5 fold flakes:SL-015 PHASE-05 (F-1/F-6 settings);
+§7/§4.9 record the user's acceptance of R1–R7 and T4; DEC-074/075/077/079 amended
+to match. None of these adds a mechanism the pass did not see.
+
+A further pass would probe only:
+- the amended DECs against design §4 (wording drift, not new choices);
+- §4.6's sketch against flakes:SL-015 PHASE-05's final names — done: committed
+  03dc0f0a with the names as sketched.
+
+Proposal: no further full pass before lock; the PHASE-05 name check is a
+reconcile-time item (or a one-line design edit if names shift before plan).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · design drafting (run dr-01a15431 rev 14) · f57fe55
+fresh-as-of: 2026-10-20 · design LOCKED (run dr-01a15431 rev 49), slice status plan · commit "doctrine(SL-027): design locked; RV-035 concluded; harvest"
 
 ### Produced
 - CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
-- DEC-074..DEC-082 (design decisions; DEC-075/077 amended per flakes:SL-015 handback)
+- DEC-074..DEC-082; amended 2026-10-20: DEC-074 (R1, root moves, allowlist test), DEC-075 (R6/R7, PHASE-05), DEC-077 (R2/R5), DEC-079 (R3)
 - research/research.md (+ raw/governance.md, raw/code-map.md, raw/flakes-gateway.md)
-- cross-repo: oubliette IMP-022 (room-client bundle, 9127afe); flakes:SL-015 prerequisite (flakes agent)
+- design.md (7 sections, all user-reviewed), design-target selectors
+- RV-035 concluded: F-1..F-14 verified (F-1..F-7 GPT pass; F-8..F-13 RFC-001 comparison; F-14 GPT verify); disposed conducted
+- ISS-050 (daemon coding-tool audit gap, from RV-035 F-5)
+- cross-repo: oubliette IMP-022 (9127afe); oubliette IMP-023 (repo readers, RV-035 F-2); flakes:SL-015 incl. PHASE-05 (03dc0f0a)
 
 ### Learned
 - mem.fact.jail.unix-socket-ro-bind — connect through ro bind; listen needs rw; bind dirs
-- advice weighed: malebolge RFC-001 (module tier), GPT second opinion (scratch, not persisted; adopted points in DEC-075/078/079)
+- mem.pattern.doctrine.design-run-defects §7–§8 — section attestation also records design-accepted; lock refuses unrouted severe findings
+- advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- flakes:SL-015 must land before the room profile ships (DEC-075)
-- fleet `rooms.assistant.users` vm-mode user + key (DEC-075)
-- design.md not yet drafted; selectors (design-target) not yet recorded
+- /plan next. Plan must read RV-035's instrument-routed findings (F-1, F-3, F-4, F-9 control; F-2 demonstrate): their criteria live on the ledger (`doctrine review show RV-035`)
+- sequencing (design §7 risk): ~/flakes push (PHASE-05 unpushed; SL-015 PHASE-04 + audit open) + `nix flake lock --update-input agents` in ~/dev/satan before the jail phase
+- VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
+- closure gate: SATAN MCP egress audit (design §6 VA)
+- reconcile-time: §4.9 revisions (ADR-017 ledger 3b, SPEC-002, SPEC-004, malebolge IMP-002/RV-001 F-4 note, DEC-072, IMP-037)

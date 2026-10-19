@@ -1,0 +1,526 @@
+id    = 35
+slug  = "design-review-of-sl-027"
+title = "design review of SL-027"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = 'SL-027 design review pass. F-1..F-7: GPT adversarial pass over the whole design (security, correctness against the malebolge/pi-env/pi-durable code, the decisions, coupling, failure modes), verified by GPT 2026-10-20. F-8..F-13: comparison of design §4.1 with malebolge RFC-001 (user-requested), verified by GPT. F-14: found by that verify. All 14 findings verified. No further pass is needed (notes.md "Further review passes").'
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "SL-027 design review pass, concluded again after routing the severe findings. F-1..F-7: GPT adversarial pass over the whole design; F-8..F-13: comparison with malebolge RFC-001; F-14: found by the verify. All 14 verified. Routes: F-1, F-3, F-4, F-9 control; F-2 demonstrate; F-5, F-6 refresh; F-8, F-10 review."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-027"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "§4.6, §6: the jail can still gain a writable host workspace."
+detail = """
+Reviewer: GPT (gpt-6-sol), adversarial pass 2026-10-20.
+
+1. **F-1 — blocker — §4.6, §6: the jail can still gain a writable host workspace.**  
+   **Claim:** `workspaceDeps = []` and `mountLaunchDir = false` remove host coding writes. **Verified:** `makeJailedAgent` also reads `JAIL_WORKSPACE_DEPS` during impure evaluation and adds each path with `--bind`, which is read-write ([jailed-agents.nix](/home/david/flakes/agents/jailed-agents.nix:496), [jailed-agents.nix](/home/david/flakes/agents/jailed-agents.nix:538)); the proposed call leaves that mechanism enabled ([design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:496)). **Inference:** an impure build with that variable set can ship a room-profile launcher with a writable host repo, violating the declared profile. **Repair:** make dynamic workspace binds impossible for this consumer in the flakes prerequisite, and test the rendered launcher under an impure evaluation with `JAIL_WORKSPACE_DEPS` set."""
+disposition = "fix-now"
+response = "Fixed as before (design 4.6, flakes:SL-015 PHASE-05 workspaceDepsFromEnv set false). Control: the incorrect candidate is the jailed-malebolge launcher built from the impure devshell with JAIL_WORKSPACE_DEPS set to include the notes dir, which binds /workspace/notes read-write. The section 6 check (the just recipe over the built launcher: no /workspace/ bind at all) must reject that candidate, observed before the fix is applied."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: jailed-agents.nix merges JAIL_WORKSPACE_DEPS (getEnv, impure) into rw /workspace binds; satan .envrc exports it incl. ~/notes and the impure devshell includes jailPkgs, so the devshell's jailed-malebolge binds ~/notes rw today. Integrated §4.6/§4.7/§6: flakes switch requested via flakes:SL-015 (room profile does not ship without it); probe forbids any /workspace/ bind, checked on the launcher from the impure devshell."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify 2026-10-20 found the design repair right but the prerequisite unsecured. flakes:SL-015 has since accepted it (user's decision) as PHASE-05: `workspaceDepsFromEnv ? true`, set false for jailed-malebolge (§4.6 sketch). The shipping gate and the impure-launcher probe stay in §4.6/§6. Names are provisional until PHASE-05 commits."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route: these findings predate the severe-finding route rule, and the lock gate requires one. The fix is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed as before (design 4.6, flakes:SL-015 PHASE-05 workspaceDepsFromEnv set false). Control: the incorrect candidate is the jailed-malebolge launcher built from the impure devshell with JAIL_WORKSPACE_DEPS set to include the notes dir, which binds /workspace/notes read-write. The section 6 check (the just recipe over the built launcher: no /workspace/ bind at all) must reject that candidate, observed before the fix is applied."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified after re-dispose with a route; fix unchanged and verified 2026-10-20 (GPT verify, flakes:SL-015 PHASE-05 03dc0f0a)."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "blocker"
+title = "§1, §4.8, §6: `satan` cannot read the `/work` clones as designed."
+detail = """
+Reviewer: GPT (gpt-6-sol), adversarial pass 2026-10-20.
+
+2. **F-2 — blocker — §1, §4.8, §6: `satan` cannot read the `/work` clones as designed.**  
+   **Claim:** the new user can clone from `/work` while permissions prevent writes. **Verified:** the room seeder creates each clone directory `0700`, owned by `room.repos.user`, currently `agent` ([room.nix](/home/david/dev/oubliette/vm/room.nix:164), [fleet flake](/srv/fleet/flake.nix:154)); the design requires `satan` to read those clones ([design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:541)). **Inference:** a distinct `satan` user receives `EACCES` before `git clone` can read a repo. **Repair:** specify and deploy a read-only access mechanism for the clone trees, including files created by later runner jobs, while denying write and traversal into unrelated `agent` state. Gate on a live clone and a denied write as `satan`."""
+disposition = "fix-now"
+response = "Fixed as before (oubliette IMP-023 readers group, section 4.8, 6 entry condition). Demonstrate: live, as room user satan, git clone /work/<repo> succeeds and a write into /work/<repo> fails with permission denied, both during a patch job and after it completes (section 6 VA). Directory listings are not the bar."
+route = "demonstrate"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: room-seed makes each clone 0700 for repos.user (oubliette vm/room.nix:164-172). User chose repair (a), read access in oubliette (2026-10-20). Captured as oubliette IMP-023 (repos.readers, readers' group with declared gid, 0750 clone dirs, safe.directory); design §4.8 names it a prerequisite, §6 VA/VH entry and clone/denied-write checks updated; §7 Q2 removed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify pass 2026-10-20: verified as conditional repair (§4.8 IMP-023 reader group, §6 entry condition). Inference noted: the live probe should include reading a clone after a patch job has run."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route: these findings predate the severe-finding route rule, and the lock gate requires one. The fix is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Fixed as before (oubliette IMP-023 readers group, section 4.8, 6 entry condition). Demonstrate: live, as room user satan, git clone /work/<repo> succeeds and a write into /work/<repo> fails with permission denied, both during a patch job and after it completes (section 6 VA). Directory listings are not the bar."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified after re-dispose with a route; fix unchanged and verified 2026-10-20 (GPT verify, flakes:SL-015 PHASE-05 03dc0f0a)."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "blocker"
+title = "§4.6, §6: CON-005’s egress boundary is deferred to an audit that may accept leaks."
+detail = """
+Reviewer: GPT (gpt-6-sol), adversarial pass 2026-10-20.
+
+3. **F-3 — blocker — §4.6, §6: CON-005’s egress boundary is deferred to an audit that may accept leaks.**  
+   **Claim:** the room profile has no egress beyond the bounded gateway. **Verified:** the daemon exposes every tool listed by the interactive MCP server ([satan-tools.ts](/home/david/dev/malebolge/src/satan-tools.ts:101)); that server forms a union of registered tools ([satan-mcp.el](/home/david/dev/satan/satan/satan-mcp.el:66)). The proposed closure gate permits an off-host-capable tool to be recorded as an “accepted residual” ([design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:689)), while CON-005 requires no egress with the room attached (`doctrine show CON-005`). **Inference:** the network namespace cannot constrain what a host MCP handler subsequently sends, and an audit note cannot enforce the profile as the tool set changes. **Repair:** establish a room-profile MCP allowlist or another enforced channel boundary before closure; enumerate and test the allowed calls. If the intended rule permits a specific return channel, obtain an explicit amendment to CON-005 rather than treating it as a residual."""
+disposition = "fix-now"
+response = "Fixed as before (the section 6 closure gate; the dynamic-union residual is accepted by the user). Control: the incorrect candidate is an interactive-mode SATAN tool that can carry data off the host, for example one that posts a notification to an external service or fetches a URL. The egress audit must classify that tool as blocking closure, not record it as a residual."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Partly integrated. Code sweep found no off-host tool in the current interactive set (notify is desktop-local; patch talks to the local runner) — the audit still runs. The gate is tightened: an off-host-capable tool blocks closure until removed from the room profile's set or CON-005 is amended by the user; no 'accepted residual' (§4.6, §6). Keeping the set egress-free over time (an enforced allowlist) touches the RSK-019 non-goal: raised to the user as §7 Q1; finding stays open on that."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify pass 2026-10-20: partially — the closure gate now rejects an off-host-capable tool in the audited interactive set; the set is a dynamic union, so later additions are unenforced. That remainder is the residual the user accepted on 2026-10-20 (design §7, Accepted residuals), so it is accepted."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route: these findings predate the severe-finding route rule, and the lock gate requires one. The fix is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed as before (the section 6 closure gate; the dynamic-union residual is accepted by the user). Control: the incorrect candidate is an interactive-mode SATAN tool that can carry data off the host, for example one that posts a notification to an external service or fetches a URL. The egress audit must classify that tool as blocking closure, not record it as a residual."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified after re-dispose with a route; fix unchanged and verified 2026-10-20 (GPT verify, flakes:SL-015 PHASE-05 03dc0f0a)."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "§4.1, §4.3–4.5: startup context loses host-key fault classification."
+detail = """
+Reviewer: GPT (gpt-6-sol), adversarial pass 2026-10-20.
+
+4. **F-4 — major — §4.1, §4.3–4.5: startup context loses host-key fault classification.**  
+   **Claim:** one observed connection supplies both tool wording and a room shell that distinguishes untrusted keys from downtime. **Verified:** §4.3 wraps `DaemonConnection` once, then §4.5 passes that wrapper to `roomShell` ([design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:397), [design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:458)). Today `roomShell` constructs a second observing connection ([shell.ts](/home/david/dev/malebolge/src/runner/shell.ts:122)); its trust distinction relies on its *immediate inner* connection being `DaemonConnection` ([env.ts](/home/david/dev/malebolge/src/runner/env.ts:116)). **Inference:** under the proposed mechanical move, the outer observer sees an `ObservedConnection`, records a loss, and startup logs “room unavailable” for a host-key refusal. **Repair:** define a single observation owner for the shell path, or pass the underlying trust record explicitly. Test a real failed start through `readContext`, not only a fake `RoomShell`. R1’s shared class is reasonable, but this wiring must be resolved with its departure from DEC-074."""
+disposition = "fix-now"
+response = "Fixed as before (section 4.3: the startup read passes the bare DaemonConnection to roomShell; ObservedConnection never wraps another ObservedConnection). Control: the incorrect candidate is the startup read through a nested ObservedConnection, which reports a host-key refusal as a loss. The section 6 VT, a real DaemonConnection whose start fails host-key checking, must log room host key untrusted and never room unavailable, and must reject that candidate."
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: trust check reads trustFailure() from the immediate inner (env.ts JobConnection #lost). Integrated §4.3/§4.5: the startup read passes the bare DaemonConnection to roomShell; rule stated that ObservedConnection always wraps a DaemonConnection directly. §6 VT: real failed host-key start through readContext logs untrusted."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify pass 2026-10-20: verified — bare DaemonConnection passed to roomShell preserves the immediate-inner trust check (malebolge src/runner/env.ts:116); failed-start test added."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route: these findings predate the severe-finding route rule, and the lock gate requires one. The fix is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed as before (section 4.3: the startup read passes the bare DaemonConnection to roomShell; ObservedConnection never wraps another ObservedConnection). Control: the incorrect candidate is the startup read through a nested ObservedConnection, which reports a host-key refusal as a loss. The section 6 VT, a real DaemonConnection whose start fails host-key checking, must log room host key untrusted and never room unavailable, and must reject that candidate."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified after re-dispose with a route; fix unchanged and verified 2026-10-20 (GPT verify, flakes:SL-015 PHASE-05 03dc0f0a)."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "§7 T3: transcript persistence is asserted to satisfy audit without an audit contract."
+detail = """
+Reviewer: GPT (gpt-6-sol), adversarial pass 2026-10-20.
+
+5. **F-5 — major — §7 T3: transcript persistence is asserted to satisfy audit without an audit contract.**  
+   **Claim:** no audit change is needed because coding actions appear in the pi-durable transcript ([design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:734)). **Verified:** coding tools run directly as pi-durable extensions ([daemon-extensions.ts](/home/david/dev/malebolge/src/daemon-extensions.ts:22)); Emacs’s `satan-audit-record` covers calls that pass through MCP dispatch ([satan-mcp.el](/home/david/dev/satan/satan/satan-mcp.el:289)). The authority ledger’s run-action audit row remains with `emacs-client` ([authority-ledger.md](/home/david/dev/satan/.doctrine/adr/017/authority-ledger.md:61)). **Inference:** transcript storage may be useful evidence, but the design has not shown append-only action audit, its owner, or coverage of room coding calls under ADR-017 §2–3. **Repair:** specify the required action records and append-only guarantee, identify the single owner and ledger disposition, and verify coding calls and failures. “Host actions work this way today” does not settle T3."""
+disposition = "follow-up"
+response = "Refresh: the design record overstated it, and the code is right (coding tools are pi-durable extensions and reach no append-only audit). Design section 7 T3 was edited to withdraw the claim; swept: section 1 and section 4.9 make no audit-satisfaction claim, and ISS-050 owns the gap."
+route = "refresh"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Verified: coding tools are pi-durable extensions and bypass satan-audit-record (MCP dispatch only). Pre-existing gap, moved not created by SL-027. User accepted deferral 2026-10-20: ISS-050. Design §7 T3 no longer claims the transcript satisfies row 4a."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify pass 2026-10-20: follow-up acceptable — §7 T3 withdraws the audit-satisfaction claim; ISS-050 records the pre-existing gap."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route: these findings predate the severe-finding route rule, and the lock gate requires one. The fix is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+route = "refresh"
+response = "Refresh: the design record overstated it, and the code is right (coding tools are pi-durable extensions and reach no append-only audit). Design section 7 T3 was edited to withdraw the claim; swept: section 1 and section 4.9 make no audit-satisfaction claim, and ISS-050 owns the gap."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified after re-dispose with a route; fix unchanged and verified 2026-10-20 (GPT verify, flakes:SL-015 PHASE-05 03dc0f0a)."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "§4.6–4.7: the host-write inventory omits the persisted jail home."
+detail = """
+Reviewer: GPT (gpt-6-sol), adversarial pass 2026-10-20.
+
+6. **F-6 — major — §4.6–4.7: the host-write inventory omits the persisted jail home.**  
+   **Claim:** the only remaining writable host paths are the room store and attach socket ([design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:17), [design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:525)). **Verified:** the `offline` profile includes `persist-home "agent-offline"` ([jailed-agents.nix](/home/david/flakes/agents/jailed-agents.nix:192)); the jail library itself describes that home as writable ([jailed-agents.nix](/home/david/flakes/agents/jailed-agents.nix:285)). **Inference:** even if malebolge does not intentionally store data there, a compromised daemon can write that persistent host-backed home, and another offline consumer may share it. **Repair:** inventory its host backing path and consumers; give malebolge a dedicated home or ephemeral home if the claim must be literal. Add a negative probe for access to other consumers’ persisted homes."""
+disposition = "fix-now"
+response = "Refresh: the jail is right (profile offline persists a writable home), and the inventory lagged it. Edited design 4.6 and 4.7 (now its own home, persistedHome malebolge, flakes:SL-015 PHASE-05); swept section 1 (host-write list) and section 6 (probes assert the home is malebolge and agent-offline is absent)."
+route = "refresh"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: offline = persist-home agent-offline (host-backed, rw); no other offline consumer today. Integrated §1 (claim corrected), §4.6 and §4.7 inventory row; per-consumer persisted home requested from flakes:SL-015."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """GPT verify 2026-10-20 found the inventory repair right but the prerequisite unsecured. flakes:SL-015 has since accepted it (user's decision) as PHASE-05: `persistedHome ? null`; satan sets "malebolge" (§4.6 sketch). Names are provisional until PHASE-05 commits."""
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened only to attach a route: these findings predate the severe-finding route rule, and the lock gate requires one. The fix is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = "Refresh: the jail is right (profile offline persists a writable home), and the inventory lagged it. Edited design 4.6 and 4.7 (now its own home, persistedHome malebolge, flakes:SL-015 PHASE-05); swept section 1 (host-write list) and section 6 (probes assert the home is malebolge and agent-offline is absent)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified after re-dispose with a route; fix unchanged and verified 2026-10-20 (GPT verify, flakes:SL-015 PHASE-05 03dc0f0a)."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "§4.4, §7 R6: a socket’s existence does not prove gateway reachability."
+detail = """
+Reviewer: GPT (gpt-6-sol), adversarial pass 2026-10-20.
+
+7. **F-7 — minor — §4.4, §7 R6: a socket’s existence does not prove gateway reachability.**  
+   **Claim:** checking `MALEBOLGE_GATEWAY_SOCKET` on disk refuses startup when the gateway is unreachable ([design.md](/home/david/dev/satan/.doctrine/slice/027/design.md:448)). **Verified:** the specified check is path presence, while the in-jail forwarder may accept local connections and then fail its Unix-socket connection (flakes handback, §“What `jailed-malebolge` must do”). **Inference:** a stale socket, permission failure, or listener failure after the check still produces the opaque failure R6 aims to avoid. **Repair:** call this a *missing-socket* check, or perform a bounded connect/readiness probe and handle later gateway loss separately.
+
+**Sound on source inspection:** R2’s configured room home avoids requiring `info().home` while the room is down ([connection.ts](/home/david/.local/src/pi/packages/env/src/connection.ts:36)); R3’s error rewording is viable because `RemoteError` takes a fields object and pi-env copies its message into file and execution errors ([connection.ts](/home/david/.local/src/pi/packages/env/src/connection.ts:21), [errors.ts](/home/david/.local/src/pi/packages/env/src/errors.ts:9), [remote-env.ts](/home/david/.local/src/pi/packages/env/src/remote-env.ts:928)). The per-call environment hook and lazy retry claims match the inspected code ([harness.ts](/home/david/.local/src/pi/packages/durable/src/harness/harness.ts:255), [connection.ts](/home/david/.local/src/pi/packages/env/src/connection.ts:268)). R4’s persona split, R5’s attach default, R7’s named settings, and T4’s separation of room files from host roots are coherent as proposals; the blockers above prevent treating the design as closed. No build, deployment, or live jail probe was run in this read-only review."""
+disposition = "fix-now"
+response = "Agreed: presence is not reachability. Renamed to a missing-socket check with message 'gateway socket missing'; later failures surface as the provider's connection error (§4.4, §6, §7 R6)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Agreed: presence is not reachability. Renamed to a missing-socket check with message 'gateway socket missing'; later failures surface as the provider's connection error (§4.4, §6, §7 R6)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify pass 2026-10-20: verified — §4.4, §6, §7 consistently describe a missing-socket check; later connection failures are left to the provider."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "§4.1: the structural test bars src/runner/ from importing session, which src/runner/start.ts imports today"
+detail = "Raised by Claude in a comparison of design §4.1 with malebolge RFC-001, requested by the user on 2026-10-20. §4.1 says no module in src/runner/ imports daemon*, session, protocol, …. But malebolge src/runner/start.ts:26 imports registryOf from ../session.ts, and §5 moves nothing. The design inherited this from RFC-001, which lists session as daemon-private in §1 and as part of the runner's contract in its census. As specified, the test fails on the current code, or someone will quietly weaken it during implementation."
+disposition = "fix-now"
+route = "review"
+response = "§4.1 now moves registryOf from src/session.ts to a new src/registry.ts (user's preference, 2026-10-20; openSession's only caller is daemon-main.ts, so session.ts becomes daemon-only). The runner allowlist names registry, not session. §5 lists the import-site edits (runner/start.ts, test/harness-fixture.ts)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "§4.1 now moves registryOf from src/session.ts to a new src/registry.ts (user's preference, 2026-10-20; openSession's only caller is daemon-main.ts, so session.ts becomes daemon-only). The runner allowlist names registry, not session. §5 lists the import-site edits (runner/start.ts, test/harness-fixture.ts)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify 2026-10-20: verified — import sites runner/start.ts:26 and test/harness-fixture.ts:26 are both named in §5; no cycle."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "major"
+title = "§4.1: the runner side of the structural test is a denylist, though the text calls it an allowlist"
+detail = '§4.1 calls the test an "explicit, file-by-file allowlist" but specifies the runner side as a list of modules it may not import (daemon*, session, protocol, render, attach*, persona, skills, cwd, satan-tools, Config/resolveConfig). Any new root module is therefore allowed by default, which RFC-001 §1 warns against ("a wildcard allowlist stops being a boundary"). The Config/resolveConfig bar is also symbol-level, inside a config.ts the runner does import (parseModel), so a file-level check cannot express it.'
+disposition = "fix-now"
+route = "control"
+response = "Fixed as before (section 4.1: three allowlist rules, file-level, with the runner-main.ts entry-point exception). Control: the incorrect candidate is a src/runner/ module importing a root module outside its allowlist, for example ../daemon-env.ts or a new root module not yet listed. test/structure.test.ts must reject it; section 6 states this as the fixture-source negative probe."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "§4.1's structural test is now three allowlist rules. Nothing outside src/runner/ imports it. src/runner/ imports only runner/*, room/* and eleven named root modules (today's edges, less config and session). src/room/ imports only room/* and six named root modules. All checks are file-level, with no symbol-level bars. §6 adds a negative probe (an import outside an allowlist fails the test)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = 'GPT verify 2026-10-20 found it partially resolved: the runner list matched the code, but (a) runner-main.ts:5 imports runner modules and would fail the "nothing outside" rule, and (b) message-of was superfluous in the room list. Both were fixed in §4.1 at design rev 37: an entry-point exception, and message-of removed (no messageOf use in the code moving to room/). Verified on that basis.'
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened to re-route from review to control: the finding doubts that the structural test would detect a boundary breach. The fix is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Fixed as before (section 4.1: three allowlist rules, file-level, with the runner-main.ts entry-point exception). Control: the incorrect candidate is a src/runner/ module importing a root module outside its allowlist, for example ../daemon-env.ts or a new root module not yet listed. test/structure.test.ts must reject it; section 6 states this as the fixture-source negative probe."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified after re-route; fix unchanged (GPT verify 2026-10-20, with the two residuals fixed at design rev 37)."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "major"
+title = "§4.2/§5: src/config.ts grows daemon-only profile and door parsing while the runner keeps importing parseModel from it"
+detail = "RFC-001 §3 puts the config split (malebolge RV-001 F-4) on SL-027's critical path. The design adds Profile, Execution and door-file parsing to src/config.ts, while the runner imports parseModel from it (src/runner/model-gate.ts:36, src/runner/run.ts:44). That widens the runner's dependency on a daemon-only module, the reverse of the RFC's advice. The design does not mention it."
+disposition = "fix-now"
+route = "review"
+response = 'parseModel, ModelRef and DEFAULT_MODEL move from src/config.ts to src/models.ts, beside GATEWAY_PROVIDER (§4.1 "Root moves", §5). The runner stops importing config.ts, so the daemon-only growth in §4.2 no longer reaches it. The rest of the two-config.ts split stays with malebolge IMP-002 (§3, §4.9).'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = 'parseModel, ModelRef and DEFAULT_MODEL move from src/config.ts to src/models.ts, beside GATEWAY_PROVIDER (§4.1 "Root moves", §5). The runner stops importing config.ts, so the daemon-only growth in §4.2 no longer reaches it. The rest of the two-config.ts split stays with malebolge IMP-002 (§3, §4.9).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify 2026-10-20: verified — no cycle; runner sites model-gate.ts:36 and run.ts:44 are both in §5; config tests cover the model via resolveConfig."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "§3: the account of RFC-001 lists two departures; there are more, and the persisted-home fact is stale"
+detail = "§3 says RFC-001 was adopted with two departures (shared door parser; daemonLaunch stays). The design also moves JobConnection as ObservedConnection (R1), keeps DOCTRINE_LIMITS in the runner, and defers src/lib/ to IMP-002 (which the RFC allows). The same §3 block says profile offline persists home agent-offline, which jailed-malebolge now overrides with persistedHome (flakes:SL-015 PHASE-05)."
+disposition = "fix-now"
+response = "§3's RFC-001 entry now lists what was adopted, every departure (shared door parser; daemonLaunch/roomConnection stay with client-neutral directLaunch/roomConnectionOf; ObservedConnection; DOCTRINE_LIMITS) and what is deferred to IMP-002. The persisted-home fact is replaced with a pointer to PHASE-05 (03dc0f0a)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "§3's RFC-001 entry now lists what was adopted, every departure (shared door parser; daemonLaunch/roomConnection stay with client-neutral directLaunch/roomConnectionOf; ObservedConnection; DOCTRINE_LIMITS) and what is deferred to IMP-002. The persisted-home fact is replaced with a pointer to PHASE-05 (03dc0f0a)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify 2026-10-20: verified for the design text."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "§4.9: no follow-up for malebolge IMP-002 / RV-001 F-4; run.ts left out of the slice only by implication"
+detail = """RFC-001's follow-ups ask that IMP-002 and RV-001 F-4's disposition reflect SL-027. §4.9 drafts revisions for the satan side only. After SL-027, IMP-002 should record what was delivered (src/room/, the structural test, the parseModel/registryOf moves) and what remains (src/lib/, the rest of the config split, the run.ts re-cut). RFC-001 §5's "do not bundle run.ts" is honoured but never stated."""
+disposition = "fix-now"
+response = "§4.9 adds a reconcile-time cross-repo note for malebolge IMP-002 / RV-001 F-4: what SL-027 delivered, and what IMP-002 keeps, with run.ts explicitly not bundled (RFC-001 §5). §3 states the non-bundling too."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "§4.9 adds a reconcile-time cross-repo note for malebolge IMP-002 / RV-001 F-4: what SL-027 delivered, and what IMP-002 keeps, with run.ts explicitly not bundled (RFC-001 §5). §3 states the non-bundling too."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify 2026-10-20: verified for the design text; the IMP-002 note itself is a reconcile-time item."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "§4.1: two files named door.ts with different meanings"
+detail = "runner/door.ts holds the transfer, the door kind and the slot; room/door.ts holds the room's connection keys. RFC-001 calls a name that means two things naming debt."
+disposition = "tolerated"
+response = 'Kept: DEC-077 names the artefact the "door file", and room/door.ts parses exactly that table. The directories disambiguate (room/ is the session, runner/ the transfer). Rename it if the IMP-002 tier work revisits naming.'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = 'Kept: DEC-077 names the artefact the "door file", and room/door.ts parses exactly that table. The directories disambiguate (room/ is the session, runner/ the transfer). Rename it if the IMP-002 tier work revisits naming.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT verify 2026-10-20: no objection to tolerating it; the directories give the two names distinct contexts."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "minor"
+title = "§5–§6: the roomShell signature change has unlisted call sites; §6 promised import-path edits only"
+detail = 'Raised by GPT (verify pass, 2026-10-20). §5 changes roomShell from (connection, jobId, cwd) to (connection, { id, cwd }). The call sites src/runner/run.ts:353 and src/runner/collect.ts:177, and the tests test/runner/room-fixture.ts:558, shell.test.ts:48, prepare.test.ts:79/553 and collect.test.ts:65, all use three arguments. §6 says the runner suite passes "with only import-path edits".'
+disposition = "fix-now"
+response = "Design rev 37: §5 lists all six call sites with the shape change, and §6 now says the runner suite needs import-path edits plus the roomShell call shape, with assertions unchanged. collect.ts added to the slice selectors."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design rev 37: §5 lists all six call sites with the shape change, and §6 now says the runner suite needs import-path edits plus the roomShell call shape, with assertions unchanged. collect.ts added to the slice selectors."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against GPT's evidence: `grep -rn 'roomShell(' src test` lists exactly the six sites now in §5."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -134,3 +134,27 @@ pass already landed on a sibling RV, conclude the run-bound one and dispose it
 `conducted`, naming the sibling ledgers in `acceptance.basis` (keeper's
 ruling, SL-017 2026-09-23). Note `review new` roles: `--as` accepts only
 `raiser`/`responder`; `--raiser adversary` is just a label.
+
+## 7. Human section attestation also records `design-accepted` (0.46.7, SL-027, 2026-10-20)
+
+A section review is recorded as `declare: [{"subject":"att-sec-N","attests":"sec-N","reviewer":"human"}]`
+plus a top-level `acceptance`. The run **also** logs `act_recorded cpa-design-accepted`
+and shows it as current: the user's acceptance of the whole design, which they did
+not give. Neither alternative works: `checkpoint_act: {"act":"section-reviewed"}` is
+refused ("its rule binds to per-section coverage and the act carries none"), and
+there is no verb to withdraw an act.
+
+**Workaround:** the act binds the revision, so the next `adopt` or `apply` that
+changes content invalidates it (`act_invalidated`). Say "section review only; not
+design acceptance" in the basis. Tell the user it was recorded, and confirm it is
+stale (`design show --format json` → `acts[].current`) before treating it as void.
+The real lock re-records it and supersedes it.
+
+## 8. The lock refuses severe findings without a route, even verified ones
+
+`reviewing → locked` with `conducted` is refused if any `blocker`/`major` finding on
+the pass RV has no `route`, including ones raised before the route rule existed.
+Verified findings cannot be amended. Each one needs `review reopen`, then
+`review dispose --route …`, then `review verify`, then `review conclude` again,
+then the `review-disposed` act re-recorded (the reopen cleared the concluded
+marker). **Workaround:** give every severe finding a route when disposing it.
