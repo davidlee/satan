@@ -1,0 +1,28 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 5
+slug = "malebolge-execution-profiles"
+title = "Malebolge execution profiles: egress never with the room attached"
+record_kind = "constraint"
+status = "active"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = ["jail", "malebolge", "network", "room"]
+
+[facet]                         # every field typed; seeded empty (captured later)
+statement = "Malebolge's interactive daemon runs under one execution profile per conversation, enforced host-side by its jail (oubliette RFC-001 P3). Room profile: coding tools in room assistant, no egress. Egress profile (future): network egress, NEVER with the room attached (oubliette RFC-001 P1), writes limited to its own memories, never resumes a conversation that held room content. Host profile (interactive only): coding tools in a chosen host directory / jail configuration. Patch jobs are room-only. Designs must keep the egress and host profiles possible and egress/room mutually exclusive by construction."
+source = "operator"
+applies_to = ["malebolge", "SL-027", "RFC-019"]
+waiver_reason = ""
+waived_by     = ""
+waived_on     = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)

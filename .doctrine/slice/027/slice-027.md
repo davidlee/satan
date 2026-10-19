@@ -52,7 +52,17 @@ project-context pipeline already takes an injected `SourceReader`
    reach: no rw launch-dir bind, no host network beyond what reaching the
    room and the gateway needs, `devToolPkgs` dropped if nothing host-side
    uses them. Resolves CHR-020.
-6. **OQ-4 deprecation inventory, as far as this jail.** Every host capability
+6. **Execution profile is a per-run choice (CON-005).** The daemon selects
+   its environment at startup; this slice builds the room profile only, but
+   the seam must admit two later profiles without redesign: **egress**
+   (network, e.g. web search; never with the room attached; writes only its
+   own memories) and **host** (interactive only; coding tools in a chosen host
+   directory / jail configuration). Egress and room stay mutually exclusive by
+   construction, not by convention. Per oubliette RFC-001 P3, a profile is a
+   host jail (launcher, binds, network), not a daemon flag; a durable
+   conversation is bound to one profile for life (oubliette RV-021 F-1: no
+   return channel from room content to an egress session).
+7. **OQ-4 deprecation inventory, as far as this jail.** Every host capability
    the jail grants today gets a disposition: the goad backend writes
    (`~/satan-corpus/goad` rw, `goadPkgs`, `MALEBOLGE_SKILLS` goad skill), the
    corpus read bind, the durable state dir, the satan runtime dir. Each one is
@@ -64,8 +74,9 @@ project-context pipeline already takes an injected `SourceReader`
   RSK-019).
 - Merging daemon and runner into one process (OQ-1: stay two).
 - Renaming mode `interactive` (OQ-6: keep).
-- A host-side web tool (OQ-5), unless design shows vm mode is unusable
-  without one.
+- Building the egress or host profiles (CON-005); only the seam for them.
+- A host-side web tool for the room profile (OQ-5); web access is the
+  egress profile's job, later.
 - Moving SATAN tools out of Emacs (D6, OQ-8); the state-read tool (D2/D4).
 - Retiring pi's `jailed-pi` / `~/notes/.pi/extensions/satan.ts` profile;
   that waits on the OQ-9 evals.
@@ -98,6 +109,9 @@ project-context pipeline already takes an injected `SourceReader`
 - **Q4: goad.** The goad backend writes `~/satan-corpus/goad` from the host
   jail today. Does it keep that bind (a host write not via a coding tool), move
   behind an MCP tool, or run in the room?
+- **Q5: profile binding.** Where a conversation records its profile, and what
+  refuses resuming it under another (session store keyed per profile, or a
+  stamped field checked at resume).
 - **A1:** pi-env's `RemoteExecutionEnv` serves the daemon's interactive
   latency adequately (it already serves jobs).
 - **Risk:** losing host network removes web access from interactive SATAN's
