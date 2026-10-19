@@ -35,3 +35,19 @@ M = `/home/david/dev/malebolge`, base `13500bd`, uncommitted delta (orchestrator
 48 test files / 1276 tests passed (was 1246), lines 98% (2210/2255; gate 85%), exit 0.
 `policy.ts` unchanged (`git diff --stat` empty); `grep knownMode src test` empty.
 A1 applied: `"*"` as a list member is refused on both `repos` and `allowed_paths`.
+
+## PHASE-02 — Emacs stamps the acting mode (VA-1)
+
+This repo, HEAD `74ae9af`, uncommitted delta (orchestrator commits):
+`satan/satan-tools-patch.el`, `satan/test/satan-tools-patch-test.el`, memory items dir.
+`just check` (plain), 2026-10-19: ert 1309 ran, 1305 as expected, 0 unexpected,
+4 skipped (same four as PHASE-01 baseline); luau ok; python harness 55 OK; exit 0.
+Byte-compile of `satan-tools-patch.el` (temp .elc): no warnings after fixing one docstring width.
+EX-3 read as tracked code outside `.doctrine/` (history citations stay):
+- `git grep -n satan-tools-patch-modes -- . ':!.doctrine'` -> empty (rc 1)
+- control `git grep -n 'defun satan-tools-patch--submit-fields' -- satan` -> `satan/satan-tools-patch.el:43`
+- `grep -rIn satan-tools-patch-modes ~/.config/emacs --exclude-dir=.git` -> empty (rc 1)
+- control `grep -n 'use-package satan' ~/.config/emacs/apps/dl-satan.el` -> `15:  (use-package satan`
+Memory corrected: `mem.fact.satan.patch-job-contract` (new title: "patch_job_create: repo is a runner
+name, mode is the acting run mode, scope is the runner's"); not verified: dirty tree.
+Paths changed by `memory edit`: `.doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/{memory.md,memory.toml}` only (no index).
