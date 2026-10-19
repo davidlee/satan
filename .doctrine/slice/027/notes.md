@@ -119,7 +119,7 @@ correct facts.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-02 completed + RV-036 done, slice status started · malebolge 2ba8667
+fresh-as-of: 2026-10-20 · PHASE-03 completed, slice status started · malebolge ea52a13
 
 ### Produced
 - CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
@@ -132,6 +132,7 @@ fresh-as-of: 2026-10-20 · PHASE-02 completed + RV-036 done, slice status starte
 - PHASE-01: malebolge 4236f61 (src/registry.ts, models.ts moves, test/structure.test.ts); build fixes 0e48704 (vitest include test/), 941b980 (biome !!**/.direnv)
 - PHASE-02: malebolge 8e4eb90 (room/connection.ts, ObservedConnection), a813663 (room/shell.ts), ef47b73 (room/source-reader.ts), 5f6bfef (room/door.ts, runner/door.ts, EX-10), 87f48e3; `jobEnvId` keeps env ids; 1557 tests
 - RV-036 (PHASE-02 code review, 2026-10-20): done, 7 findings (2 minor, 5 nit). Fixes in malebolge b4616fc, d16bae9, 2ba8667; `just check` green, 1559 tests. `observedEnv` is the one observed-env builder (PHASE-04 reuses it); `ROOM_DOOR_READERS` in test/structure.test.ts pins who imports room/door.ts.
+- PHASE-03: malebolge 6f52fd2, ea52a13 (src/config.ts Profile/Execution/door file/durable/<profile>, attachSocket, personaFiles(root, profile), parseToml+within → fields.ts); satan-corpus cd01d33 (prompts/env/{room,pi}.txt); ~/notes c226e3a; satan 4023494 (agents lock, EN-2)
 - vm-mode key ~/.ssh/malebolge-vm.key (public half in § Design errata)
 - cross-repo: oubliette IMP-022 (9127afe); oubliette IMP-023 (repo readers, RV-035 F-2); flakes:SL-015 incl. PHASE-05 (03dc0f0a)
 
@@ -143,14 +144,14 @@ fresh-as-of: 2026-10-20 · PHASE-02 completed + RV-036 done, slice status starte
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- PHASE-02 done (malebolge 87f48e3). Next: PHASE-03 EN-2 first (re-lock `agents` in ~/dev/satan + `just check-jails`), then /phase-plan PHASE-03. PHASE-02 code review done (RV-036)
+- PHASE-03 done (malebolge ea52a13). Next: /phase-plan PHASE-04 (daemon env; reuse `observedEnv`). jailed-malebolge refuses startup until PHASE-05 (no MALEBOLGE_PROFILE). Operator move `durable/session.sqlite` → `durable/host/` not done (nothing reads host yet)
 - PHASE-02 deviations for audit: EX-10 matcher strips import specifiers (importers of runner/door.ts tripped DOOR_WORDS; the import edge is now pinned by the structure test, RV-036 F-1); run.ts reads `code` via `"code" in` (Degradation union); runner DOOR_KEYS.room derives from ROOM_DOOR_KEYS, so a room door missing ssh_config and identity now names identity first; design §4.1's host-key "re-exports" did not exist
 - user decision 2026-10-20: push ~/flakes first — PHASE-03 EN-2 (old jail refuses startup from PHASE-03 until PHASE-05); pushing ~/flakes is outward-facing: ask before doing it
 - VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
 - closure gate: SATAN MCP egress audit (design §6 VA)
 - reconcile-time: design errata (notes § Design errata) + DEC-075 amendment
 - flakes:SL-016 delivered (2026-10-20, flakes-15 handoff): door file live at `/home/david/.config/malebolge/door.toml` (HM symlink; use this literal, never a store path) for `malebolgeDoorFile`; content matches ROOM_DOOR_KEYS + home, host_key_alias `room-assistant`. flakes DEC-079: the key list is a cross-repo contract pinned in flakes `checks.<system>.satan-room` (features/satan/room-test.nix) — changing ROOM_DOOR_KEYS means telling flakes. ssh_config `%h` must stay `assistant` (HostKeyAlias does the known_hosts lookup). Suggestion for PHASE-05: launcher checks the identity key exists before starting (missing key fails at connect, not render).
-- safe.directory decision (relayed from the user via flakes-15, 2026-10-20; confirm): never safe.directory; satan reads with `git clone --no-local /work/<repo>`; in-place git in /work failing "dubious ownership" is intended. PHASE-03 room.txt and PHASE-06 EX-2 use `--no-local`.
+- safe.directory: never (user confirmed 2026-10-20). satan reads with `git clone --no-local /work/<repo>` (room.txt says so); PHASE-06 EX-2 uses `--no-local`.
 - oubliette IMP-023 resolved (oubliette 3c44a37, live checks passed 2026-10-20): satan can clone /work, cannot write; in-place git refused (no safe.directory). satan reads agent's clones via `git clone --no-local`. Decision: see safe.directory line above.
 - fleet: rooms.assistant.users.satan (uid, key above) + repos.readers = ["satan"] — oubliette/fleet side
 - reconcile-time: §4.9 revisions (ADR-017 ledger 3b, SPEC-002, SPEC-004, malebolge IMP-002/RV-001 F-4 note, DEC-072, IMP-037)
