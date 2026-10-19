@@ -27,3 +27,11 @@ fresh-as-of: 2026-10-19 · ready (plan materialised, PHASE-01 next) · b86b698
 - SPEC-004 + ADR-017 ledger rows 1, 9 — via a REV at SL-025 reconcile, after SL-023's REV-007
 - ISS-028 — harness jail reach-around for self-edit-mech; risk only
 - ISS-046 — closes at SL-025 close
+
+## PHASE-01 — runner mode scope (VA-1)
+
+M = `/home/david/dev/malebolge`, base `13500bd`, uncommitted delta (orchestrator commits).
+`just check` in M, 2026-10-19: format clean, `eslint . --max-warnings 0` zero warnings,
+48 test files / 1276 tests passed (was 1246), lines 98% (2210/2255; gate 85%), exit 0.
+`policy.ts` unchanged (`git diff --stat` empty); `grep knownMode src test` empty.
+A1 applied: `"*"` as a list member is refused on both `repos` and `allowed_paths`.
