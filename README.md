@@ -35,6 +35,8 @@ The persona has its own home, too: `~/satan-corpus` contains prompts, framing,
 tool descriptions, motives, and the hippocampus. Keeping this separate lets
 SATAN propose changes to how it thinks independently of changes to its mechanism.
 
+![gnu](./gnu2.jpg)
+
 ## From observation to action
 
 Panopticon supplies evidence of where attention went: applications, pages,
