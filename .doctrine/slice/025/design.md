@@ -195,9 +195,10 @@ unbounded. Config refuses (startup fails, I13):
 - an empty list, a non-string member, or a string other than `"*"`;
 - a `repos` member that is not a `[repo.*]` key;
 - an `allowed_paths` member that `normaliseAllowedEntry` refuses (empty,
-  absolute, `..`, surrounding whitespace), or a member equal to `"*"` — a list
-  holding `"*"` is almost certainly a mistaken unbounded marker, and as a path
-  it would name a file called `*`.
+  absolute, `..`, surrounding whitespace);
+- a member equal to `"*"` in either list — a list holding `"*"` is almost
+  certainly a mistaken unbounded marker. As a path it would name a file
+  called `*`; as a repo it would let a repo named `*` widen the scope.
 
 **Types** (`src/runner/config.ts`):
 
@@ -348,8 +349,12 @@ and a flake input of the same name (the fleet pairs them by name):
 
 | target | input | `toolsPackage` |
 |---|---|---|
-| `satan` | `github:davidlee/satan`; `nixpkgs` and `doctrine` follow the fleet's | `"dev-tools"` (satan's `packages.dev-tools`) |
+| `satan` | `github:davidlee/satan`; `nixpkgs`, `doctrine` and `goad` follow the fleet's | `"dev-tools"` (satan's `packages.dev-tools`) |
 | `satan-corpus` | `git+ssh://git@github.com/davidlee/satan-corpus` (private); `nixpkgs` follows | `null` — the room base already has git, bash and coreutils (oubliette `vm/room.nix:7-9`) |
+
+The fleet's `goad` was moved to satan's own pin (`04147ca`) before `goad`
+followed it, so satan's goad was not downgraded. The `goad` and `goad-walk`
+rooms take that bump at their next rebuild.
 
 Both target files copy `targets/malebolge.nix`'s shape (placeholder `sizes`,
 every absent field spelled as a value), with their own `path`.
@@ -358,7 +363,7 @@ every absent field spelled as a value), with their own `path`.
 
 | file | change |
 |---|---|
-| `prompts/self-edit-mech.txt` | drop `mode` and `checks`; `repo: "satan"` (a name) |
+| `prompts/self-edit-mech.txt` | drop `mode` and `checks`; `repo: "satan"` (a name); the directive carries the checks: the agent runs `just check` and reports ran/expected/unexpected/skipped, using `SATAN_TEST_ALLOW_NO_DB=1` only when the test DBs are unreachable and saying so (the old `SATAN_DB_HOST` prefix and "exits 0" claims were stale) |
 | `prompts/self-edit-mind.txt` | drop `mode` and `checks`; `repo: "satan-corpus"` |
 | `prompts/tick/agent.txt` | drop `mode: tick-agent`; `repo` is a runner repo name; an `invalid_request` names the repos the mode allows |
 | `tools/patch_job_create.md` | drop the `mode` parameter; say the job runs under the caller's run mode and the runner refuses repos or paths outside it |
@@ -417,6 +422,7 @@ satan (this repo; the only one selectors can fence):
 |---|---|
 | `satan/satan-tools-patch.el` | delete `satan-tools-patch-modes`; `mode` leaves the `patch_job_create` schema; handler stamps `:mode-name`, refuses without it; `--submit-fields` takes `mode` |
 | `satan/test/satan-tools-patch-test.el` | replace the vacuous schema test (it compared the enum with itself) with stamping and no-ctx tests; schema keys lose `mode` |
+| `.doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/` | `mem.fact.satan.patch-job-contract` corrected (§7 follow-through) |
 
 malebolge (`~/dev/malebolge`, own repo):
 
@@ -487,6 +493,8 @@ corpus's `just commit` sweeps all dirty state.
 - **Second `satan` pin.** The fleet's `satan` input (the room's tool set) and
   `~/flakes`'s (the runtime) can be at different revisions. Only the room's
   tools drift, not behaviour; `doctrine` follows the fleet, so it keeps one pin.
+  `goad` also follows the fleet's, so the fleet's goad must not lag satan's
+  pin. Re-lock both together.
 - **Live Emacs keeps the old schema** until reloaded (§4.6).
 - **Room rebuild.** Adding targets is expected to keep existing clones and
   quarantines (§2); confirm after the reboot that `goad-walk`'s clone is

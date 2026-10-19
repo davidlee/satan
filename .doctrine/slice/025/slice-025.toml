@@ -22,6 +22,11 @@ intent = "scope-relevant"
 selector = "satan/test/satan-tools-patch-test.el"
 intent = "design-target"
 
+[[selector]]
+selector = ".doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/**"
+intent = "design-target"
+note = "RV-032 F-5: mem.fact.satan.patch-job-contract corrected (PHASE-02 EX-4)"
+
 [[relation]]
 label = "governed_by"
 target = "POL-001"
