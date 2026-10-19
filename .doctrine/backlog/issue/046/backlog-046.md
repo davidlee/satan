@@ -61,8 +61,35 @@ runner refuses an unknown repo or mode with `invalid_request` (layer 2).
      `prompts/self-edit-mind.txt`, `prompts/tick/agent.txt` (`tools/patch_job_create.md`
      already says "name, not a path"). Model-facing text: user reviews.
 
+## Mode scope binding (user, 2026-10-19: in scope here)
+
+Today mode and repo are independent ladder layers (`src/runner/policy.ts`):
+`[mode.<m>]` and `[repo.<r>]` each set model, thinking level, ceilings and a
+prompt fragment, and nothing ties one to the other. The lane → repo binding
+lives only in corpus prompts, and `allowed_paths` is whatever the model
+submits. So a `self-edit-mind` job may submit `repo: "satan"`,
+`allowed_paths: ["satan/"]` and be admitted. Review-before-promote and the
+egress-less room bound the harm; the lane stops being a scope boundary.
+
+Proposal (sketch, to settle in design):
+
+- `[mode.<m>]` gains optional `repos = [...]` (absent: any configured repo)
+  and optional `allowed_paths = [...]` (absent: no bound).
+- At submit, the runner refuses (`invalid_request`) a repo outside the mode's
+  `repos`, or any submitted path not contained in the mode's `allowed_paths`
+  (a prefix entry contains entries under it; an exact entry contains only
+  itself). Containment check is pure, beside `classify.ts`'s path matching.
+- Intended config: `self-edit-mech` → `repos = ["satan"]`,
+  `allowed_paths = ["satan/"]`; `self-edit-mind` → `repos = ["satan-corpus"]`,
+  `allowed_paths = ["prompts/", "system/", "tools/"]`; `tick-agent` unbound.
+
+This changes the job contract in SL-023's locked design (§5.2 Job contract,
+DEC-059) and adds runner code (`config.ts`, submit admission), so ISS-046 is
+slice-sized: route it through `/slice`, not off the backlog.
+
 ## Done when
 
 One job per lane (`self-edit-mech` on `satan`, `self-edit-mind` on
 `satan-corpus`, `tick-agent` on another repo) reaches `needs_review` through
-`patch_job_create`.
+`patch_job_create`, and a submit outside its mode's repos or paths is
+refused.
