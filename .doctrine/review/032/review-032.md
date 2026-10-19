@@ -126,3 +126,23 @@ SATAN run (mode m) ──ctx :mode-name m──▶ patch_job_create ──submit
   - row 1 *Enforced at* notes that `patch_job_create`'s mode is stamped from
     the tool ctx (`satan-tools-patch.el`, DEC-068), not schema-validated
     model input.
+
+## Reconciliation Outcome
+
+### Direct edits applied (user agreed 2026-10-19)
+- design.md §4.2: the `"*"` list-member refusal applies to `repos` and `allowed_paths` both (F-1).
+- design.md §4.4: `satan` input also follows the fleet's `goad`; goad bump note. §7 "Second satan pin": re-lock goad with satan (F-2).
+- design.md §4.5: self-edit-mech row records the directive's check guidance (F-3).
+- Selector registry: `design-target .doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/**` (load-bearing); design.md §5 row mirrors it (F-5). Conformance now: 4 conformant, 0 undelivered, 2 undeclared (notes.md and the observation record, bookkeeping by intent).
+- Commit ea8d6b1.
+
+### REVs completed
+- REV-009 (`reconcile-sl-025`): done, approved by the user. SPEC-004 § Job contract gains mode stamping and per-mode scope; ADR-017 authority-ledger rows 1 and 9 *Enforced at* updated. Covers F-8. Rationale in revision-009.md.
+
+### Fixed during audit
+- F-4 (memory verified), F-6 (user pushed M and H; lock reproduces the running build), F-7 (C a9eb3c1).
+
+### Tolerated
+- F-9: broker ctx join proven statically; rationale in the finding disposition.
+
+Reconcile pass complete — handoff to /close.

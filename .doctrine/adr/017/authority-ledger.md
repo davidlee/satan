@@ -47,7 +47,7 @@ old site is deleted (the cutover proof, REQ-009 / NF-001).
 
 | # | Authority item | Owner | Governs | Enforced at | Since |
 |---|---|---|---|---|---|
-| 1 | Action schema validation | `emacs-client` | REQ-001 | `satan-tool-validate-args` (satan-tools.el:132) | ADR-017 |
+| 1 | Action schema validation | `emacs-client` | REQ-001 | `satan-tool-validate-args` (satan-tools.el:132); `patch_job_create`'s `mode` is not schema-validated model input — stamped from the tool ctx `:mode-name` (`satan-tools-patch.el`, DEC-068) | ADR-017 |
 | 2 | Mode/tool allowlist | `emacs-client` | REQ-002, REQ-006 | mode-spec `:tools` via `satan-mode-register`; consistency `satan-mode-check-tool-references` (satan-mode.el) | ADR-017 |
 | 3 | Capability / jail profiles | `emacs-client` | REQ-002 | `satan-profiles` defcustom / `satan-mode--apply-profile` (satan-mode.el) | ADR-017 |
 | 4a | Append-only audit → run actions ⚠ | `emacs-client` | REQ-003 | `satan-audit-record` (satan-audit.el:95) | ADR-017 |
@@ -58,7 +58,7 @@ old site is deleted (the cutover proof, REQ-009 / NF-001).
 | 6b | Kill / disable switches → the runner's `enabled` | `patch-runner` | REQ-005 | runner config `enabled` (`config.ts`); `submit` refused `runner_disabled` (`control.ts`); disabled start parks (`recoverHost`, `recover.ts`) | SL-023 |
 | 7 | Arrival policy (gating) † | `emacs-client` | ADR-002 † | `satan-tick-quiet-p` / `satan-tick-pick` (satan-tick.el) | ADR-017 |
 | 8 | Patch-job lifecycle / queue consumer | `patch-runner` | REQ-001, ADR-018 D3 ‡ | `parseRequest` / `checkSubmit` (`protocol.ts`), `serveControl` (`control.ts`), `createScheduler` (`scheduler.ts`), `JobStore.transition` (`store.ts`) | SL-023 |
-| 9 | Per-job path allowlist | `patch-runner` | REQ-002 | authoritative at collection: `classify` / `disallowedPaths` (`classify.ts`) over every commit; early: `jobGuard` `beforeTool` (`guard.ts`); submit: `normaliseAllowedEntry` | SL-023 |
+| 9 | Per-job path allowlist | `patch-runner` | REQ-002 | authoritative at collection: `classify` / `disallowedPaths` (`classify.ts`) over every commit; early: `jobGuard` `beforeTool` (`guard.ts`); submit: `normaliseAllowedEntry`, and mode scope `withinModeScope` (`protocol.ts`, DEC-069) | SL-023 |
 
 Rows track *duties*, not *delivery mechanisms*: REQ-006 (policy as a read-only
 artifact) and REQ-007 (control-plane RPC) are not rows — they surface inside a

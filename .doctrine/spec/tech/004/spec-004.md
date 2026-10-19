@@ -98,6 +98,18 @@ thinking level, ceilings) resolves from runner config — defaults, mode, tag,
 repo, then submit fields — clamped to configured maxima; a submit value above
 a maximum is refused. The repo itself authors no policy.
 
+`mode` names a runner-config mode. The client sets it from the acting run
+mode: the Emacs client stamps the tool context's `:mode-name`, and it is never
+a model argument (DEC-068). Each `[mode.<m>]` requires `repos` and
+`allowed_paths`, each a non-empty list or `"*"` (unbounded). Submit refuses,
+`invalid_request`, a `repo` outside the mode's `repos` or an `allowedPaths`
+entry not covered by the mode's `allowed_paths` (the collection matcher,
+`disallowedPaths`), naming what the mode allows; the check runs before the
+repo lookup. Admission is the scope snapshot: narrowing a mode affects new
+submits only — replay, `preparing` and rejoin never re-check it. Scope sits
+outside the policy ladder: no tag, repo or submit field sets or widens it
+(DEC-069).
+
 ### States
 
 ```text
