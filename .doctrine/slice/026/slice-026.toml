@@ -1,7 +1,7 @@
 id = 26
 slug = "malebolge-coding-layer"
 title = "malebolge coding layer: project context, cwd, ripgrep grep"
-status = "design"
+status = "plan"
 created = "2026-10-19"
 updated = "2026-10-19"
 tags = []
@@ -69,6 +69,16 @@ note = "cross-repo: paths are in ~/dev/malebolge"
 selector = ".doctrine/spec/tech/004/**"
 intent = "scope-relevant"
 
+[[selector]]
+selector = ".doctrine/spec/tech/004/*"
+intent = "design-target"
+note = "SPEC-004 REV (design §4.7). Code targets are in ~/dev/malebolge and ~/satan-corpus (design §5); selectors are repo-local, so they are listed there, not here."
+
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+note = "jailProbes.malebolge asserts rg (design §4.7, RV-033 F-10)"
+
 [[relation]]
 label = "governed_by"
 target = "ADR-017"
@@ -81,6 +91,12 @@ target = "POL-001"
 label = "references"
 role = "concerns"
 target = "CHR-020"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "SPEC-004 revision this slice applies at reconcile"
+target = "REV-008"
 
 [[relation]]
 label = "related"

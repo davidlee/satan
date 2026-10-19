@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 70
+slug = "sl026-runner-context-in-input"
+title = "Patch-job project context is composed into the job's first input message"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The runner has no system prompt sections: composePrompt's output is the conversation's first input message (malebolge src/runner/run.ts:348-354). The runner never compacts. SPEC-004 requires composition to be pure."
+choice = "composePrompt gains the prefetched project context as a fourth input and places it in the first input message. The durable conversation is its store: no job-row field, fixed for the job's life, survives restart."
+alternatives = ["A runner system section rendered from a new job-row field", "A durable document beside the conversation"]
+rationale = "Least code, no store migration, composition stays pure; user-role placement matches project context being instruction, not policy. The system-section alternative's gains (placement weight, a small prompt-cache benefit) do not outweigh a migration and a per-request job lookup."
+consequences = ["A mid-job edit of AGENTS.md by the agent does not change its prompt", "The daemon still renders the same text as a constant system section (one shared renderer)"]
+decided_by = "user (accepted agent recommendation A, 2026-10-19)"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-026"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 72
+slug = "sl026-project-context-sources"
+title = "Malebolge project-context sources: pi's AGENTS chain to the git root, .pi/APPEND_SYSTEM.md, doctrine boot; 64 KiB each"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "pi 1.3.0 (coding-agent resource-loader.ts:184-274, 1213-1238): per directory the first regular file (symlinks followed) of AGENTS.override.md, AGENTS.md, AGENTS.MD, CLAUDE.md, CLAUDE.MD, walked cwd to /, ancestors first, plus a global file; .pi/SYSTEM.md replaces the prompt, .pi/APPEND_SYSTEM.md appends; no size cap."
+choice = "Sources, shared by daemon and runner: (1) pi's five-name chain, first readable regular file per directory, symlinks followed, from cwd up to the nearest git root inclusive (cwd only if none), ancestors first; (2) .pi/APPEND_SYSTEM.md at cwd; (3) doctrine boot per DEC-071 (runner, when .doctrine/ exists). No global files; .pi/SYSTEM.md never read. Each source capped at 64 KiB with a marker line; no total cap."
+alternatives = ["pi's walk to / (would read room-owned dirs, and ~/CLAUDE.md via the daemon's home)", "Drop the CLAUDE.* fallbacks", "A total cap across sources"]
+rationale = "Follow pi's defaults except where the repo boundary matters: the repo is the unit of instruction, so the walk stops at its root; the room is untrusted, so each source is capped. SYSTEM.md would let a repo replace the persona (DEC-056, SPEC-004 'the repo authors no policy')."
+consequences = ["Runner: cwd is the clone root, so the chain reads one directory", "Daemon at ~/notes finds nothing today (CHR-020 independent)", "One truncation helper serves project context and grep"]
+decided_by = "user (five names, APPEND_SYSTEM, git-root walk, 64 KiB per source; 2026-10-19)"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-026"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 73
+slug = "sl026-context-is-instruction-not-policy"
+title = "Repo-authored project context is instruction to the model, not runner policy"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SPEC-004 §Job contract: 'The repo itself authors no policy'; SL-023 design §5.2: 'the runner reads nothing policy-bearing from the repo itself'. SL-026 composes repo-authored text into each patch job's first input message (DEC-070, DEC-071, DEC-072)."
+choice = "Every DEC-072 source, doctrine boot included, is text for the model only. It cannot set or change the job's repo, base, allowed paths, mode, model, thinking level, ceilings or collection judgement; those come only from runner config and the submit via the policy ladder. It is composed before the job block. Nothing read from the clone reaches policy resolution; collection judges every commit against the allowlist regardless of what the context says."
+alternatives = ["Treat AGENTS.md as runner configuration (e.g. allowed paths or model hints)", "Omit repo context from patch jobs"]
+rationale = "Keeps the trust boundary where SPEC-004 puts it: the room and repo are untrusted; policy is host-side. Repo instructions still help the model work in the repo's idiom."
+consequences = ["VT: policy resolution takes no context input (by type); composePrompt renders the job block identically whatever the context says", "SPEC-004 REV records the sentence in §Job contract", "A hostile AGENTS.md can mislead the model, never widen what collection accepts"]
+decided_by = "user (accepted agent proposal, 2026-10-19)"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-026"

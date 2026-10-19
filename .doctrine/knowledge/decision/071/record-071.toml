@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 71
+slug = "sl026-doctrine-boot-in-room"
+title = "Patch jobs in doctrine repos get doctrine's boot from doctrine run in the room"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Most target repos use doctrine. Their AGENTS.md/CLAUDE.md @-import the gitignored .doctrine/state/boot.md, absent in a room clone. pi's doctrine extension (pi.on before_agent_start) is raw-pi API, does not load in pi-durable, and loading repo-authored code into the host runner would execute untrusted code outside the trust boundary. Oubliette rooms have no per-repo setup step (contract-target.md:346-351). doctrine boot / prompt resolve run offline from the checkout plus the binary."
+choice = "During preparing, when the clone has .doctrine/ and git check-ignore confirms .doctrine/state/boot.md is ignored, the runner runs 'doctrine prompt resolve --role orchestrator' in the clone through the room shell (session PATH, so the repo's own toolsPackage supplies doctrine), with a timeout (60 s) and an in-room output cap (stdout 64 KiB + 1 byte, then abort and keep the head with the DEC-072 marker; stderr 4 KiB). Its stdout is a project-context source composed per DEC-070, rendered before the AGENTS chain. Degraded, never fatal (log + context_degraded job event + omit): spawn_error (binary absent; pi-env reports ENOENT as spawn_error, not exit 127), non-zero exit, timeout, boot.md not ignored. Room lost is retried as room readiness; a host-key failure fails preparing. Implemented in malebolge's own project-context module, never loaded from the repo. No memory sync."
+alternatives = ["Oubliette room setup step (rooms honour refresh or a new key); runner reads boot.md", "Host doctrine against a host worktree at the base commit", "A doctrine-owned pi-durable extension installed from a pinned package"]
+rationale = "Smallest per-job-fresh mechanism; keeps RFC-019 D7 (context comes from the room); each repo pins its doctrine version; no oubliette change; no repo code on the host."
+consequences = ["Each doctrine target repo's toolsPackage must include doctrine (malebolge's dev-tools does not today); RoomShell gains optional per-call output cap and timeout; prompt resolve writes the ignored .doctrine/state/boot.md in the clone; it survives cleanRoomClone and is regenerated per job; Role orchestrator (user 2026-10-19: orchestrator is the general role and worker the special case); the corpus patch-agent prompt states that the job block and corpus override repo workflow (no skills/slices/worktrees; the directive stands in for user assent)"]
+decided_by = "user (option A, role orchestrator, no memory sync; 2026-10-19)"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-026"

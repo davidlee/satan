@@ -24,32 +24,53 @@ env module has no second consumer until vm mode.
 
 ## Scope & Objectives
 
-1. **Project context, read once.** Discover `AGENTS.md` / `CLAUDE.md` from the
-   conversation's cwd upward (pi's names and order, ancestors first; no global
-   file), size-capped, and render it as a constant `project_context` section.
-   - Runner: fetched during `preparing`, through the room shell that already
-     runs there, from the job's clone; held with the job so prompt composition
-     stays a pure function of its inputs (SPEC-004 §Components).
-   - Daemon: fetched at session open from its env, as skills are (DEC-067).
-   - Never read per request: per-request remote reads cost round trips, can
-     mark a job paused (`env.ts:88-124`, `pause.ts:28-39`) and leave stale
-     text on failure (`pi-durable prompt.ts:36-43`).
-2. **`cwd` section** from the conversation's env cwd (constant per
-   conversation).
-3. **`grep` tool.** pi's parameter shape (pattern, path, glob, ignoreCase,
-   literal, context, limit); `rg --json` through `env.exec` with an argv, so
-   it runs in the room over pi-env; line scanning across chunks, exit 1 = no
-   matches, pi's caps (100 matches, 500-char lines, 50 KB). Read-only:
-   replay-safe, unguarded, like `read`.
-4. **Prompt guidance in the corpus, not malebolge.** At most a few bullets
-   (show paths clearly; set bash `timeout` on commands that may hang; prefer
-   `grep`) in the corpus persona and `prompts/patch-agent.md`. No default
-   `rules` text in malebolge (DEC-056).
-5. **Governance.** SPEC-004 revision: tools offered gain `grep` (replay-safe);
-   prompt composition gains the prefetched project context as an input. One
-   DEC: repo-authored project context is instruction to the model, not policy;
-   it cannot change scope, paths, ceilings or mode ("the repo itself authors
-   no policy", SPEC-004 §Job contract).
+Settled in design (run dr-01a152b2, 2026-10-19): DEC-070..DEC-073.
+
+1. **Project context, read once** (DEC-072). Sources in render order, each
+   capped at 64 KiB with a marker: `.pi/APPEND_SYSTEM.md` at cwd; for patch
+   jobs in a repo with `.doctrine/`, doctrine's boot (DEC-071); pi's
+   five-name chain (`AGENTS.override.md`, `AGENTS.md`, `AGENTS.MD`,
+   `CLAUDE.md`, `CLAUDE.MD`; first readable regular file per directory,
+   symlinks followed) from cwd up to the nearest git root, ancestors first.
+   No global files; never `.pi/SYSTEM.md`. One renderer, pi's format.
+   - Runner: read during `preparing`, the last step inside `readyRoom`'s retry
+     loop, from the clone's working tree through the room shell; composed into
+     the job's first input message before the job block (DEC-070), so the
+     conversation holds it. Doctrine boot: `doctrine prompt resolve --role
+     orchestrator` in the clone, from the repo's own tool set (DEC-071), only
+     when `git check-ignore` confirms `.doctrine/state/boot.md` is ignored;
+     60 s timeout and output caps enforced in the room (`RoomShell` gains
+     optional per-call limits). Binary missing, non-zero exit, timeout, empty
+     output or boot not ignored → `context_degraded` job event, omitted; room
+     lost is retried as readiness; a clone doctrine left dirty fails
+     `preparing` (`dirty_clone`; never cleaned). Every exec in `preparing`,
+     the existing `checkRoomClone` / `ensureJobBranch` git calls included, carries a timeout and output caps, since the repo's
+     tool set may supply the binaries; degradations are data, recorded once
+     by `admit`.
+   - Daemon: read once at startup with node fs; constant `project_context`
+     section; sections persona → project_context → skills → cwd.
+   - Never read per request (round trips, pause marks, stale text on failure).
+2. **`cwd`**: daemon section (path, tagged); runner job block gains
+   `Working directory:`.
+3. **`grep` tool.** pi's parameters plus an additive `noIgnore`
+   (`--no-ignore --glob '!.git'`); `rg --json` through `env.exec` with an
+   argv; `--context N` from rg itself; abort at the match limit or at 50 KB
+   of output; pi's output and caps (100 matches, 500-char lines, 50 KB),
+   with every host-side buffer bounded (rg `--json` ignores
+   `--max-columns`); exit 2 with matches keeps them. Read-only: replay-safe,
+   unguarded. In the runner's `JobTools` and as a `grep` extension in the
+   daemon.
+4. **Prompt guidance in the corpus, not malebolge.** `prompts/patch-agent.md`
+   (tool list gains `grep`; project instructions precede and never override
+   the job block; the job block and corpus override repo workflow — no
+   skills, slices or worktrees) and `prompts/interactive.txt`: show paths clearly; set bash
+   `timeout` on commands that may hang; prefer `grep`. Not `system/scaffold.txt`.
+5. **Governance.** DEC-073: repo-authored context is instruction, not policy.
+   SPEC-004 REV (drafted in design, applied at reconcile): composition gains
+   the project-context input; §Job contract gains DEC-073; tools offered gain
+   `grep` (replay-safe); audit vocabulary gains `context_degraded`.
+6. **Fleet.** malebolge's `dev-tools` gains `doctrine` (DEC-071); satan's
+   `jailProbes.malebolge` asserts `rg` (SPEC-002 NF-004).
 
 ## Non-Goals
 
@@ -61,52 +82,58 @@ env module has no second consumer until vm mode.
 - SATAN tools in patch jobs (RFC-019 OQ-2/OQ-3).
 - `find` / `ls` tools: bash with `fd` covers them; revisit after the eval.
 - The pi-vs-malebolge eval (RFC-019 OQ-9).
-- Fixing the daemon's `~/notes` cwd (CHR-020).
+- Fixing the daemon's `~/notes` cwd (CHR-020; independent, inq-7).
+- A general per-repo room setup step (IDE-012); doctrine in the daemon;
+  `doctrine memory sync` before boot.
+- Loading repo-authored extensions (raw pi or pi-durable) into the runner.
 
 ## Affected surface (coarse)
 
 `~/dev/malebolge`:
 
-- New: project-context discovery + section; `grep` tool.
-- `src/runner/prepare.ts`, `src/runner/shell.ts`: fetch project context at
-  `preparing`.
-- Job store (`src/runner/store.ts` and its rows): hold the fetched context.
-- `src/runner/prompt.ts` or a section beside it: render it.
-- `src/runner/tools.ts`, `src/runner/start.ts`, `src/runner/run.ts`: add
-  `grep`, select the extension.
-- `src/daemon-main.ts`, `src/session.ts`: daemon fetch at open; select.
-- `test/`, incl. `test/runner/tools.test.ts` (pins the four-tool set).
+- New: `src/project-context.ts` (sources, pick, cap, render),
+  `src/runner/project-context.ts` (room reader, doctrine step),
+  `src/grep.ts`, `src/truncate.ts`, `src/cwd.ts`, `src/xml.ts` (`escapeXml`
+  moved from `skills.ts`).
+- `src/runner/shell.ts`, `room.ts` (`ShellLimits`, `overflowed`).
+- `src/runner/prepare.ts` (`readyRoom` returns the context), `run.ts`
+  (`admit` passes it), `prompt.ts` (`composePrompt` input, working directory).
+- `src/runner/tools.ts` (`grep` in `JobTools`); `src/runner/vocab.ts`
+  (`context_degraded`).
+- `src/daemon-main.ts`: read once, `project_context` + `cwd` sections, `grep`.
+- `flake.nix`: `dev-tools` gains doctrine.
+- `test/`, incl. `test/runner/tools.test.ts` (four tools → five);
+  `docs/internals.md`.
 
-`~/satan-corpus`: persona and `prompts/patch-agent.md` guidance bullets.
+`~/satan-corpus`: `prompts/patch-agent.md`, `prompts/interactive.txt`.
 
-`~/dev/satan`: SPEC-004 revision; the new DEC.
+`~/dev/satan`: SPEC-004 revision; DEC-070..DEC-073; `flake.nix` (jail
+probe).
 
 ## Risks, assumptions, open questions
 
-- **Where context lives for a job.** A job-row field, or a durable document
-  beside the conversation; must survive restart and be fixed for the job's
-  life (a mid-job `AGENTS.md` edit by the agent does not change its prompt).
-- **Which files, how capped.** pi's names (`AGENTS.override.md`, `AGENTS.md`,
-  `AGENTS.MD`, `CLAUDE.md`, `CLAUDE.MD`; first per directory); walk stop
-  (repo root or `/`); a per-file and total cap (pi has none).
-- **Section order** against persona, skills (SL-024) and the job prompt.
-- **Daemon before CHR-020** discovers context from `~/notes`; acceptable, or
-  land CHR-020 first.
 - **pi-durable API churn** (experimental; malebolge pins 1.3.0).
-- **Assumption:** `rg` is on the PATH the in-room pi-env daemon inherits via
-  `session` (room base has `search` → `ripgrep fd`: `oubliette/vm/room.nix:50-56,
-  122`, `/srv/fleet/flake.nix:147`, oubliette DEC-052) — verify live.
+- **A hostile context file** can mislead the model, never widen what
+  collection accepts (DEC-073).
+- **ASM-006 validated** (live probe): `rg` at `/etc/room/base/bin/rg` under
+  `session`.
+- **VH depends on SL-025's room targets being deployed** (its EX-4).
 
 ## Verification / closure intent
 
-- VT: `grep` against an env (argv shape, `--json` across chunk boundaries,
-  caps and line truncation, no-match, rg error); project-context discovery
-  (nearest-last order, absent omitted, caps, read through the env); runner
-  prompt renders the stored context with no env reads at request time; daemon
-  renders `cwd` and context.
+- VT: `grep` against a faux env (argv incl. `noIgnore`, `--json` across chunk
+  boundaries, caps and line truncation, limit abort, no-match, rg error) and
+  one conformance run over `localConnection()`; source discovery (names,
+  symlinks, walk to git root, caps and marker, order); runner preparing reads
+  through the shell (doctrine present/absent/missing binary →
+  `context_degraded`; room down retried); `composePrompt` places context before
+  an unchanged job block and policy resolution takes no context (DEC-073);
+  daemon renders `project_context` and `cwd`.
 - VT: `just check` in malebolge (lint, format, typecheck, tests).
-- VH (live, with the user): one patch job on `goad-walk` whose prompt shows
-  the repo's `AGENTS.md` and whose `grep` runs in the room.
+- VH (live, with the user): one patch job on `doctrine` (base `edge`) that
+  quotes a line from `.pi/APPEND_SYSTEM.md`, `AGENTS.md` and the doctrine boot,
+  and runs one `grep` in the room. Entry: SL-025 room targets deployed.
+  Fallback: a goad-walk job for `grep` alone.
 
 ## Summary
 

@@ -1,0 +1,579 @@
+id    = 33
+slug  = "design-review-of-sl-026"
+title = "design review of SL-026"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Adversarial lane (independent Opus reviewer, three rounds, 2026-10-19) examined design.md sec-1..sec-7 against malebolge src, pi-durable 1.3.0, pi-env, pi coding-agent, oubliette room.nix, /srv/fleet and rg 15.2.0 behaviour: trust boundary, preparing bounds, doctrine step, grep host-side bounds, restart/replay, verification strength. 22 findings; 20 verified; F-1 and F-2 (major, probe) answered with adversary and criterion, to be verified when transcribed onto phase criteria at planning. User decided F-16 (no clean; fail dirty_clone) and F-17 (extend limits to preparing)."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-026"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "major"
+title = "Preparing-time repo reads are unbounded in time, and size-bounded only by a repo-supplied head"
+detail = "§4.2 ReadCapped runs bare `head -c 65537 -- path`; `test -d` and `git check-ignore` get no ShellLimits either. preparing has no deadline: readyRoom gets only control.signal (run.ts:336); the deadline is armed after submit (run.ts:358); roomWaitDeadline bounds retries, not one hung exec (prepare.ts:121). Every exec takes the repo toolsPackage PATH first (room.ts ~474), so head/test/git may be repo binaries. §7 calls head-on-a-device harmless, departing from DEC-072 'first readable regular file' unrecorded; §3 claims reads are 'bounded in size and time in the room' — false. Scenario A: AGENTS.md -> a FIFO under an ignored path kept by cleanRoomClone (no -x): head blocks forever, the single-tenant room seat wedges, every restart repeats it. Scenario B: a repo head that ignores -c streams without end into shell.ts's buffer on the host. Repair: ShellLimits on every fetch exec (timeout ~10 s, stdout cap+1, stderr 4 KiB); honour DEC-072's regular-file rule (e.g. find -L dir -maxdepth 1 -type f per directory) or record the departure; fix §3/§7."
+disposition = "fix-now"
+route = "probe"
+response = "Verified: readyRoom gets only control.signal (run.ts:336), the deadline is armed after submit, roomWaitDeadline bounds retries not one exec. Repaired in sec-3, sec-4.2, sec-7: every exec in preparing carries limits, the fetch execs (timeout 10 s, stderr 4 KiB, stdout 65537 for head, 4096 otherwise) and the existing checkRoomClone, ensureJobBranch and cleanRoomClone git calls (PREPARE_LIMITS, timeout 60 s; F-17). DEC-072's regular-file rule kept via one coreutils stat -L per directory (raw mode, never opens the file; find is not in the room floor), APPEND_SYSTEM included (F-19). Probe adversary: must hold against a repo whose tool set supplies hostile head, stat, test or git binaries (ignore arguments, lie, print unrequested names, stream without end, never exit) and a clone holding a FIFO or device under any context-file name, directly or via symlink into an ignored path; need not hold against a compromised oubliette daemon, room kernel or pi-env daemon. Criterion: for each variant, preparing completes, degrades or fails within the sum of the per-exec timeouts (10 s per fetch exec, 60 s for doctrine and each existing preparing git exec); host memory for each exec stays within its stdout and stderr caps; the reader keeps only names it requested from stat output; with an honest stat a FIFO-named source is never opened, and with a lying stat the open is bounded by head's 10 s timeout. Host phase constraint: the phase adding ShellLimits and the room SourceReader carries these as VT over localConnection with real FIFOs and a fake endless binary on PATH."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = "Verified: readyRoom gets only control.signal (run.ts:336), the deadline is armed after submit, and roomWaitDeadline bounds retries not one exec. Repaired in design sec-3, sec-4.2, sec-7: every fetch exec carries ShellLimits (timeoutS 10, stderr 4 KiB, stdout 65537 for head and 4096 otherwise); DEC-072's regular-file rule kept, implemented as one coreutils stat -L per directory (raw mode, never opens the file; find is not in the room floor git bash coreutils-full which); the §4.2 classification table covers every exec. Probe adversary: must hold against a repo whose tool set supplies hostile head/stat/test/git binaries (ignore arguments, stream without end, never exit) and against a clone holding a FIFO or device under any context-file name, including via symlink into an ignored path; need not hold against a compromised oubliette daemon, room kernel or pi-env daemon. Criterion: with each hostile variant, preparing completes or degrades within the per-exec timeout times the number of fetch execs, runner memory for the fetch stays within the stdout caps, and a FIFO-named AGENTS.md is never opened. Host phase constraint: the phase that adds ShellLimits and the room SourceReader must carry these as VT against localConnection with real FIFOs and a fake endless binary on PATH."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "re-check of the revision (adversarial lane, 2026-10-19)"
+disposition = "fix-now"
+route = "probe"
+response = "Verified: readyRoom gets only control.signal (run.ts:336), the deadline is armed after submit, roomWaitDeadline bounds retries not one exec. Repaired in sec-3, sec-4.2, sec-7: every exec in preparing carries limits, the fetch execs (timeout 10 s, stderr 4 KiB, stdout 65537 for head, 4096 otherwise) and the existing checkRoomClone, ensureJobBranch and cleanRoomClone git calls (PREPARE_LIMITS, timeout 60 s; F-17). DEC-072's regular-file rule kept via one coreutils stat -L per directory (raw mode, never opens the file; find is not in the room floor), APPEND_SYSTEM included (F-19). Probe adversary: must hold against a repo whose tool set supplies hostile head, stat, test or git binaries (ignore arguments, lie, print unrequested names, stream without end, never exit) and a clone holding a FIFO or device under any context-file name, directly or via symlink into an ignored path; need not hold against a compromised oubliette daemon, room kernel or pi-env daemon. Criterion: for each variant, preparing completes, degrades or fails within the sum of the per-exec timeouts (10 s per fetch exec, 60 s for doctrine and each existing preparing git exec); host memory for each exec stays within its stdout and stderr caps; the reader keeps only names it requested from stat output; with an honest stat a FIFO-named source is never opened, and with a lying stat the open is bounded by head's 10 s timeout. Host phase constraint: the phase adding ShellLimits and the room SourceReader carries these as VT over localConnection with real FIFOs and a fake endless binary on PATH."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "grep buffers room output on the host without bound"
+detail = "rg --json emits the whole matching line and ignores --max-columns (verified: 10 KB line gives same output with --max-columns 500; each submatch is listed too). The design's line splitter carry is unbounded, match/context text is truncated to 500 chars only at format time, limit is model-chosen, and the 50 KB cap applies only to the final string. Scenario: a 1 GB single-line file in the clone plus grep x makes the runner node process hold gigabytes; OOM takes every job with it. The daemon is exposed on the host the same way. Repair: truncate text at parse; bound the carry (past N MiB discard to newline, flag truncated); abort like the match limit once rendered output reaches 50 KB; clamp limit; VT with a multi-MB single line asserting bounded memory and output, and large limit x long lines."
+disposition = "fix-now"
+route = "probe"
+response = "Verified: rg --json ignores --max-columns. Repaired in sec-4.5 and sec-6: splitter carry capped at 1 MiB with discard-to-newline and a results-too-large notice; match and context text truncated at parse; malformed JSON lines skipped; stderr capped at 4 KiB as it streams; abort at limit or 50 KB rendered output, both success; limit clamped 1..1000, context 0..20; the same bounds in daemon and runner. Probe adversary: must hold against arbitrary file content in the search path (multi-GB single lines, binary data, very many short matches, many submatches per line) and a hostile rg on PATH emitting unbounded or malformed JSON on stdout or unbounded stderr; need not hold against the host filesystem itself being exhausted. Criterion: peak host memory held by the tool is bounded by MAX_MESSAGE_BYTES plus 50 KB output plus 4 KiB stderr plus a constant, and the result is at most 50 KB. Host phase constraint: the grep phase includes faux-env VT streaming a multi-MB single line, limit 1000 by long lines, and multi-MB stderr, asserting the splitter carry never exceeds the cap (negative control: a splitter without the cap must fail it)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = "Verified: rg --json ignores --max-columns (10 KB line, identical output). Repaired in design sec-4.5 and sec-6: line-splitter carry capped at 1 MiB with discard-to-newline and an oversized-message notice; match and context text truncated at parse; abort at limit or at 50 KB rendered output, both success; limit clamped 1..1000, context 0..20; same bounds in daemon and runner. Probe adversary: must hold against arbitrary file content in the search path, including multi-GB single lines, binary data, very many short matches, and a hostile rg on PATH that emits unbounded or malformed JSON; need not hold against the host filesystem itself being exhausted. Criterion: for each, peak host memory held by the tool is bounded by MAX_MESSAGE_BYTES plus the 50 KB output plus a constant, and the result is at most 50 KB. Host phase constraint: the grep phase must include a faux-env VT streaming a multi-MB single line and a limit 1000 by long-line case, asserting the splitter carry never exceeds the cap (negative control: a splitter without the cap must fail it)."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "re-check of the revision (adversarial lane, 2026-10-19)"
+disposition = "fix-now"
+route = "probe"
+response = "Verified: rg --json ignores --max-columns. Repaired in sec-4.5 and sec-6: splitter carry capped at 1 MiB with discard-to-newline and a results-too-large notice; match and context text truncated at parse; malformed JSON lines skipped; stderr capped at 4 KiB as it streams; abort at limit or 50 KB rendered output, both success; limit clamped 1..1000, context 0..20; the same bounds in daemon and runner. Probe adversary: must hold against arbitrary file content in the search path (multi-GB single lines, binary data, very many short matches, many submatches per line) and a hostile rg on PATH emitting unbounded or malformed JSON on stdout or unbounded stderr; need not hold against the host filesystem itself being exhausted. Criterion: peak host memory held by the tool is bounded by MAX_MESSAGE_BYTES plus 50 KB output plus 4 KiB stderr plus a constant, and the result is at most 50 KB. Host phase constraint: the grep phase includes faux-env VT streaming a multi-MB single line, limit 1000 by long lines, and multi-MB stderr, asserting the splitter carry never exceeds the cap (negative control: a splitter without the cap must fail it)."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Existing-conversation section order claim is wrong"
+detail = "planSections (pi-durable harness/prompt.js:100-108) removes all shown sections and re-adds them in desired order whenever an appending patch would leave a different order. So an existing daemon conversation ends up in pi's order, at the cost of one full section re-send (one prompt-cache bust) when project_context is present. 'Re-adding appends' describes replay only. Rewrite §3, §4.6, §7."
+disposition = "fix-now"
+route = "refresh"
+response = "Reviewer is right: planSections re-sends all sections in desired order (prompt.js:100-108). The record lagged: design sec-3, sec-4.6, sec-7 rewritten; sec-6 daemon test now asserts pi's order for an existing conversation too. No other record cites the old claim (slice scope did not)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = "Reviewer is right: planSections re-sends all sections in desired order (prompt.js:100-108). The record lagged: design sec-3, sec-4.6, sec-7 rewritten; sec-6 daemon test now asserts pi's order for an existing conversation too. No other record cites the old claim (slice scope did not)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Planned tests accept an implementation that treats every abort as success"
+detail = "§6 checks grep's limit abort is success and the shell's overflow returns the head, but not that a caller abort still fails: the tool must throw on call cancel, the shell must rethrow on job cancel. An implementation mapping every aborted result to success/overflowed passes every listed test, handing a cancelled call partial results or a cancelled job a partial boot. Add both negative cases."
+disposition = "fix-now"
+response = "Integrated in sec-4.2, sec-4.5, sec-6: caller abort rethrows in the shell and throws in grep even when the tool's own abort fired; tests added for both negative cases."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated in sec-4.2, sec-4.5, sec-6: caller abort rethrows in the shell and throws in grep even when the tool's own abort fired; tests added for both negative cases."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check; its remaining gap (caller abort reported as ChannelFailed aborted) closed by the ordering clause in sec-4.2 and the sec-6 case"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Doctrine-step error classification is underspecified"
+detail = "A room drop during connection start is a lost spawn_error that roomShell turns into ChannelUnavailable with a spawn_error cause (env.ts #observe, shell.ts:204); testing cause.code === spawn_error before the error type degrades to 'missing' instead of retrying. The §4.3 flowchart has no route for ChannelFailed codes unknown/callback_error, git check-ignore exit 128, or test -d codes other than 0/1. Repair: state precedence ChannelUnavailable, then host_key, then spawn_error, then timeout, then the rest (fail or degrade); add a fake-shell test throwing ChannelUnavailable with a spawn_error cause."
+disposition = "fix-now"
+response = "Integrated: sec-4.2 classification table, first match wins, ChannelUnavailable before any code; unknown codes and unnamed exit codes degrade with reason error; sec-4.3 flowchart routes every exit; sec-6 adds ChannelUnavailable with a spawn_error cause, retried."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: sec-4.2 classification table, first match wins, ChannelUnavailable before any code; unknown codes and unnamed exit codes degrade with reason error; sec-4.3 flowchart routes every exit; sec-6 adds ChannelUnavailable with a spawn_error cause, retried."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "context_degraded is written inside the readyRoom retry loop"
+detail = "A ChannelUnavailable after a degraded doctrine step reruns the fetch and writes the event again; a restart after submit but before running redoes the fetch and may record degraded while the transcript holds the boot. readyRoom ('nothing here touches the conversation', prepare.ts:1-5) would own content gathering and auditing. Repair: readyRoom takes a final step (shell, signal) => Promise<T> and returns {baseOid, value}; the fetch returns {sources, degraded[]} as data; admit records events once, after the loop."
+disposition = "fix-now"
+response = "Integrated as proposed: readyRoom takes FinalStep and returns baseOid plus value; fetchProjectContext returns sources and degraded as data; admit writes events once after readyRoom. The restart window between submit and running is stated in sec-4.2: events describe that attempt, the transcript is authoritative. Test added in sec-6."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated as proposed: readyRoom takes FinalStep and returns baseOid plus value; fetchProjectContext returns sources and degraded as data; admit writes events once after readyRoom. The restart window between submit and running is stated in sec-4.2: events describe that attempt, the transcript is authoritative. Test added in sec-6."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "mechanism verified by the adversarial re-check; the restart caveat it introduced is corrected under F-18"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "rg exit 2 discards real matches"
+detail = "rg exits 2 whenever any file errors, even after matching (verified with a permission-denied directory: matches printed, exit 2). The design's '>=2 is a tool error' copies pi; noIgnore searches in a room are likely to hit unreadable directories. Repair: exit 2 with at least one match returns the matches plus a capped stderr notice."
+disposition = "fix-now"
+response = "Verified (permission-denied dir: matches printed, exit 2). sec-4.5: exit 2 with at least one match returns them plus a capped stderr notice; sec-6 tests both exit-2 cases."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified (permission-denied dir: matches printed, exit 2). sec-4.5: exit 2 with at least one match returns them plus a capped stderr notice; sec-6 tests both exit-2 cases."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "The doctrine ignore guard checks one path, not doctrine's actual effect"
+detail = "Each repo pins its own doctrine. A version that writes any other non-ignored file lets the agent commit it, and a redo after restart fails dirty_clone (room.ts:402-418). Repair: after the doctrine step run git status --porcelain (reuse checkClone's parse); if anything shows, context_degraded with reason dirtied, handled explicitly."
+disposition = "fix-now"
+response = "Superseded by F-16 and the user's decision there (2026-10-19): no clean in preparing. After the doctrine step the existing checkClone runs again (limited); a dirty or failed check fails preparing with dirty_clone, so the agent can never commit doctrine's leftovers, and SL-023's never-clean rule stands. sec-4.3, sec-6, sec-7."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: after doctrine, git status --porcelain (checkClone's parse); non-empty degrades with dirtied, drops the boot and runs cleanRoomClone (reset --hard, clean -ffd) so neither commit nor redo is affected. sec-4.3 and sec-6."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "re-check of the revision (adversarial lane, 2026-10-19)"
+disposition = "fix-now"
+response = "Superseded by F-16 and the user's decision there (2026-10-19): no clean in preparing. After the doctrine step the existing checkClone runs again (limited); a dirty or failed check fails preparing with dirty_clone, so the agent can never commit doctrine's leftovers, and SL-023's never-clean rule stands. sec-4.3, sec-6, sec-7."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Two rg --json output cases are unspecified"
+detail = "rg uses {bytes: base64} instead of {text} for non-UTF-8 paths and lines (verified); reading .text crashes or drops them. 'Paths relative to the search path' is undefined when path is a file (pi falls back to basename after a stat, grep.ts:137-145). Clamping of non-positive or non-integer limit/context is unstated."
+disposition = "fix-now"
+response = "Verified bytes encoding. sec-4.5: bytes decoded as UTF-8 with replacement; path relative to its directory when path is a file; clamps stated. Tests in sec-6."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified bytes encoding. sec-4.5: bytes decoded as UTF-8 with replacement; path relative to its directory when path is a file; clamps stated. Tests in sec-6."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check; its nit (how a file path is known) closed: rg reports a file argument's path exactly as given (checked), shown as its basename"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Daemon jail probe missing from code impact"
+detail = "The daemon's grep needs rg in jailed-malebolge. It is present only via devToolPkgs (satan/flake.nix:74, comment ties it to content_read); jailProbes.malebolge does not assert it. SPEC-002 NF-004 / REQ-016 require a newly required binary in both closure and probe. Add a satan/flake.nix row (probe + comment)."
+disposition = "fix-now"
+response = "Integrated: sec-4.7 and sec-5 add satan flake.nix (jailProbes.malebolge asserts rg, comment names grep); sec-6 adds the probe check; flake.nix added as a design-target selector; slice scope item 6 updated."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated: sec-4.7 and sec-5 add satan flake.nix (jailProbes.malebolge asserts rg, comment names grep); sec-6 adds the probe check; flake.nix added as a design-target selector; slice scope item 6 updated."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "nit"
+title = "The unverified UTF-8-per-frame risk can be closed"
+detail = "pi-env's daemon decodes each stream with a StreamDecoder that holds back partial characters and strips a leading BOM (exec.rs:326,409, decode.rs), so the client's per-frame toString is safe. The daemon's host-side fs reader does not strip a BOM but pi does (stripBom), so room-read and host-read sources differ: strip it in readFileCapped."
+disposition = "fix-now"
+response = "Unverified-UTF-8 risk removed from sec-7; BOM stripped by the daemon reader (sec-4.1, sec-4.6), tested in sec-6."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Unverified-UTF-8 risk removed from sec-7; BOM stripped by the daemon reader (sec-4.1, sec-4.6), tested in sec-6."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "nit"
+title = "'pi's format' is overstated"
+detail = "pi does not escape the path attribute (system-prompt.ts:80-86) and renders APPEND_SYSTEM as a separate addendum, not a project_instructions item. Both harmless; name them as departures."
+disposition = "fix-now"
+response = "sec-4.1 now names both departures from pi's format."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-4.1 now names both departures from pi's format."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "Two citations are off"
+detail = "rejoin.ts:206-215 is not the dedupe; it is pi-durable harness/submissions.js:129-136. room.ts:471-478 is about 468-476."
+disposition = "fix-now"
+response = "Both citations corrected in sec-2."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Both citations corrected in sec-2."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check (citations confirmed)"
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "nit"
+title = "PromptJob.context already means something else"
+detail = "PromptJob.context exists (prompt.ts:16, rendered as '## Context'); adding projectContext/ContextSource beside it invites confusion, consider projectInstructions. Job has no cwd, so admit must build {...job, cwd: repo.guestPath}; state it."
+disposition = "fix-now"
+response = "composePrompt parameter renamed projectInstructions with the reason; admit passes job plus cwd, stated in sec-4.4."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "composePrompt parameter renamed projectInstructions with the reason; admit passes job plus cwd, stated in sec-4.4."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "nit"
+title = "Empty doctrine output is unhandled"
+detail = "Exit 0 with empty stdout renders an empty project_instructions block. Omit it, or degrade with reason empty."
+disposition = "fix-now"
+response = "Empty stdout degrades with reason empty and is omitted (sec-4.3 flowchart, Degradation reasons, sec-6)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Empty stdout degrades with reason empty and is omitted (sec-4.3 flowchart, Degradation reasons, sec-6)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial re-check"
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "minor"
+title = "Doctrine post-check cleans only when git status succeeds"
+detail = "Re-check of the F-8 repair: status overflow (4 KiB, about 60 paths), timeout or error fall to 'source omitted', never reaching dirtied, so the clone stays dirty: the agent can commit leftovers (path_violation) and a restart before admission fails dirty_clone with no later clean. cleanRoomClone itself runs unbounded. The clean also departs from SL-023 §5.2 'check in preparing, never clean' (prepare.ts:107-109) without record."
+disposition = "fix-now"
+response = "User decision 2026-10-19 (asked on F-16): do not clean in preparing; a doctrine that dirties the clone fails the job, since it does not happen under a correct setup. sec-4.3 now re-runs the existing checkClone (limited) after the doctrine step, whatever its outcome short of room lost or host key; dirty or failed is PrepareFailed dirty_clone; no departure from SL-023. The dirtied degradation reason is removed. sec-6 tests dirty, overflow and timeout of the re-check, and that no clean is called; sec-7 records the accepted risk (the repo is blocked until operator cleanup)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "User decision 2026-10-19 (asked on F-16): do not clean in preparing; a doctrine that dirties the clone fails the job, since it does not happen under a correct setup. sec-4.3 now re-runs the existing checkClone (limited) after the doctrine step, whatever its outcome short of room lost or host key; dirty or failed is PrepareFailed dirty_clone; no departure from SL-023. The dirtied degradation reason is removed. sec-6 tests dirty, overflow and timeout of the re-check, and that no clean is called; sec-7 records the accepted risk (the repo is blocked until operator cleanup)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+[[finding]]
+id = "F-17"
+status = "verified"
+severity = "major"
+title = "'Not a wedged room seat' overclaims: existing preparing execs are unbounded"
+detail = "sec-7 claims a hostile binary costs at most one timeout per exec, but checkRoomClone (room.ts:415) and ensureJobBranch (prepare.ts:68-83) run repo-supplied git with no timeout before the fetch, and preparing has no deadline (run.ts:336, 358). Repair: limits on those calls, or narrow the claim and F-1's adversary."
+disposition = "fix-now"
+route = "review"
+response = "User decision 2026-10-19 (asked on F-17): extend limits. sec-4.2 adds PREPARE_LIMITS (timeout 60 s, stdout 64 KiB, stderr 4 KiB) to checkRoomClone, ensureJobBranch and cleanRoomClone; failure rules unchanged (timeout fails preparing; status overflow is dirty_clone). sec-7 now states the bound as the sum of per-exec timeouts. Routed review, not probe: the probe for preparing's bounds is F-1's, whose adversary now covers every preparing exec (see F-1's amended response); no second probe on one mechanism."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "User decision 2026-10-19 (asked on F-17): extend limits. sec-4.2 adds PREPARE_LIMITS (timeout 60 s, stdout 64 KiB, stderr 4 KiB) to checkRoomClone, ensureJobBranch and cleanRoomClone; failure rules unchanged (timeout fails preparing; status overflow is dirty_clone). sec-7 now states the bound as the sum of per-exec timeouts. Routed review, not probe: the probe for preparing's bounds is F-1's, whose adversary now covers every preparing exec (see F-1's amended response); no second probe on one mechanism."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+[[finding]]
+id = "F-18"
+status = "verified"
+severity = "minor"
+title = "sec-4.2 restart sentence is wrong"
+detail = "An admitted job (initial submission recorded) is recovered by record_running with no checks and no admit (jobs.ts:315-328; rejoin.ts:105,170-171); admit is redone only without a submission. So the fetch never runs twice for one admitted prompt; the 'events describe that attempt' caveat is false (F-6's premise for that window was wrong)."
+disposition = "fix-now"
+response = "Verified at jobs.ts:315-328. sec-4.2 now says a restart after admission only records running, so the fetch runs at most once per admitted prompt; the caveat is removed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified at jobs.ts:315-328. sec-4.2 now says a restart after admission only records running, so the fetch runs at most once per admitted prompt; the caveat is removed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+[[finding]]
+id = "F-19"
+status = "verified"
+severity = "minor"
+title = ".pi/APPEND_SYSTEM.md is not checked for a regular file"
+detail = "The regular-file rule is stated only for the chain. In the daemon, nodeSourceReader.readCapped opening a FIFO at .pi/APPEND_SYSTEM.md blocks startup forever (Node open on a FIFO waits for a writer); in the room it costs a 10 s timeout."
+disposition = "fix-now"
+response = "sec-4.2: APPEND_SYSTEM goes through regularFiles(cwd/.pi, [APPEND_SYSTEM.md]) before readCapped in both readers; sec-6 FIFO tests cover it in both."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-4.2: APPEND_SYSTEM goes through regularFiles(cwd/.pi, [APPEND_SYSTEM.md]) before readCapped in both readers; sec-6 FIFO tests cover it in both."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+[[finding]]
+id = "F-20"
+status = "verified"
+severity = "nit"
+title = "Duplicated bullets after the classification table"
+detail = "The dirs and Doctrine-per-§4.3 bullets were repeated after the table, dangling after the caller-abort sentence."
+disposition = "fix-now"
+response = "Duplicate removed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Duplicate removed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+[[finding]]
+id = "F-21"
+status = "verified"
+severity = "nit"
+title = "Oversized-message notice can mislead"
+detail = "rg match messages list every submatch, so a short line with many hits (pattern . on a 20 KB minified line) can exceed 1 MiB and be reported as a line too long."
+disposition = "fix-now"
+response = "Notice now reads 'N results too large to show; narrow the pattern or path', with the reason stated in sec-4.5."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Notice now reads 'N results too large to show; narrow the pattern or path', with the reason stated in sec-4.5."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+[[finding]]
+id = "F-22"
+status = "verified"
+severity = "minor"
+title = "PREPARE_LIMITS on cleanRoomClone contradicts the outside-preparing rule"
+detail = """
+sec-4.2 says callers outside preparing pass no limits and behave as today, yet lists cleanRoomClone under PREPARE_LIMITS (also the sec-5 room.ts row). Since F-16 cleanRoomClone never runs in preparing, only after collect, so a 60 s timeout there is an out-of-scope behaviour change: a slow git clean on a large untracked tree would fail clean_failed and the next job dirty_clone. Repair: drop it from PREPARE_LIMITS, or keep it deliberately with a cleaning-sized timeout and a clean_failed test.
+"""
+disposition = "fix-now"
+response = """
+Dropped: cleanRoomClone keeps no limits (sec-4.2 states it runs only after collect; sec-5 room.ts row and sec-6 test updated; slice scope updated). The user's F-17 choice was about bounding preparing; the after-collect clean stays out of scope. Also from the same check: the re-check after doctrine now states timeout and overflow are dirty_clone (fail closed, no paths on timeout) and a room lost retries; sec-3's trust bullet now says every exec in preparing.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Dropped: cleanRoomClone keeps no limits (sec-4.2 states it runs only after collect; sec-5 room.ts row and sec-6 test updated; slice scope updated). The user's F-17 choice was about bounding preparing; the after-collect clean stays out of scope. Also from the same check: the re-check after doctrine now states timeout and overflow are dirty_clone (fail closed, no paths on timeout) and a room lost retries; sec-3's trust bullet now says every exec in preparing.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "verified by the adversarial third check (F-22 on its stated condition: dropped from PREPARE_LIMITS)"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

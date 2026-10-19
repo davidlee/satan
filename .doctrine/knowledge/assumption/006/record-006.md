@@ -27,3 +27,9 @@ Not verified: the PATH the launched daemon actually holds. Tests against
 
 Live: `capsule assistant ssh agent -- session <repo> -- command -v rg`, or a
 patch job whose `grep` call succeeds in the room (SL-026 VH).
+
+
+## Validation (2026-10-19)
+
+Live probe over the runner's ssh path (its `ssh_config`, `HostKeyAlias=room-assistant`, strict host keys) into room `assistant`:
+`session goad-walk -- sh -c 'command -v rg; rg --version; pwd'` → `/etc/room/base/bin/rg`, `ripgrep 15.2.0`, cwd `/work/goad-walk`. `PATH` = repo tools, then `/etc/room/base/bin`, then system paths.
