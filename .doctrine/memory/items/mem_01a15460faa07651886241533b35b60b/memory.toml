@@ -1,0 +1,42 @@
+memory_uid = "mem_01a15460faa07651886241533b35b60b"
+memory_key = "mem.fact.jail.unix-socket-ro-bind"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A jail connects to a host unix socket through a read-only bind; only listen needs rw"
+summary = "bwrap --ro-bind of a socket's directory permits connect(); bind()/listen fails EROFS; bind the directory, not the socket file"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "bwrap", "socket"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "94670c3a277ba0d005c1e139e571befe572d7672"
+ref_name = "refs/heads/main"
+checkout_state_id = "104874bbd367a1905bb994131eb125312f053c852d19a1c196d18f4883aa374e"
+base_commit = "f57fe5518a79b8f3814a48a27c2bd77639201010"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "none"
+weight = 0
+

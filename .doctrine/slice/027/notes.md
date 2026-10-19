@@ -65,3 +65,22 @@ backlogged (room-client bundle, 9127afe there). Verification gains: audit the
 interactive SATAN MCP tool set for any tool that carries data off-host (Emacs
 has network) — the residual named in DEC-075, flakes:DEC-077's "host sockets
 are channels" note.
+
+## Harvest
+<!-- single-copy: updated in place each harvest; ids only, never restated content -->
+fresh-as-of: 2026-10-20 · design drafting (run dr-01a15431 rev 14) · f57fe55
+
+### Produced
+- CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
+- DEC-074..DEC-082 (design decisions; DEC-075/077 amended per flakes:SL-015 handback)
+- research/research.md (+ raw/governance.md, raw/code-map.md, raw/flakes-gateway.md)
+- cross-repo: oubliette IMP-022 (room-client bundle, 9127afe); flakes:SL-015 prerequisite (flakes agent)
+
+### Learned
+- mem.fact.jail.unix-socket-ro-bind — connect through ro bind; listen needs rw; bind dirs
+- advice weighed: malebolge RFC-001 (module tier), GPT second opinion (scratch, not persisted; adopted points in DEC-075/078/079)
+
+### Open
+- flakes:SL-015 must land before the room profile ships (DEC-075)
+- fleet `rooms.assistant.users` vm-mode user + key (DEC-075)
+- design.md not yet drafted; selectors (design-target) not yet recorded
