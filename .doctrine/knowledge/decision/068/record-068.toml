@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 68
+slug = "patch-job-mode-is-acting-mode"
+title = "Patch job mode is the acting run mode, stamped by Emacs"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "patch_job_create took mode as a model-chosen argument, forwarded verbatim (satan-tools-patch.el:47-52), so any lane holding the tool could claim another lane's mode and scope. REQ-002 gates enaction by the acting mode's profile."
+choice = "Emacs sets the submit's mode from the tool ctx :mode-name; mode leaves the tool's argument schema and description; satan-tools-patch-modes is deleted. No ctx or no :mode-name: the tool returns an error and submits nothing. MCP sessions submit as interactive. The runner refuses modes it does not configure."
+alternatives = ["Keep mode a model-chosen label and document it (rejected: lane scope becomes decoration)", "Runner infers mode from caller identity (rejected: one socket, one uid; Emacs owns run identity)"]
+rationale = "Identity, not validation: the runner stays the sole enforcer of scope (REQ-009); Emacs supplies the fact it owns, the run mode (ledger rows 1-2). Removes one copy of the lane names."
+consequences = ["a direct emacsclient call to the handler is refused (no acting mode)", "fix becomes unreachable and is dropped", "the runner needs an interactive mode", "trust boundary: stamping isolates lanes for models reaching the runner through Emacs; it does not authenticate control-socket clients - same-uid processes are trusted by construction (socket 0600 and never bound into a jail - DEC-058)", "any MCP client submits as interactive (unbounded by user ruling - accepted risk recorded as an RSK)"]
+decided_by = "user"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-025"

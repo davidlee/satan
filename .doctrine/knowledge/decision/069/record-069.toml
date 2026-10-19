@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 69
+slug = "runner-mode-scope-at-submit"
+title = "Runner mode scope: repos and allowed_paths per mode, checked at submit only"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Mode and repo were independent policy layers; nothing bound a lane to its repo or paths (policy.ts). Extends DEC-059 (job contract); refines DEC-056 (ladder)."
+choice = '[mode.<m>] requires both repos and allowed_paths; each is a list or the explicit string "*" (unbounded). A list is non-empty; repos names must be [repo.*] keys and allowed_paths entries are normalised like submitted entries; a missing key, an empty list or an unknown repo name refuses config (I13, fail closed). Submit refuses invalid_request when repo is outside the mode repos or any allowedPaths entry is not covered by the mode allowed_paths, by the existing matcher (disallowedPaths); the message names what the mode allows. Scope is outside the policy ladder (no tag, repo or submit tier sets or widens it). Admission is the scope snapshot: not re-checked at preparing or on rejoin; narrowing config affects new submissions only; a replayed submissionId returns its existing job without re-admission (idempotent, creates nothing).'
+alternatives = ["Absent key means unbounded (rejected after GPT second opinion: a forgotten key silently grants breadth)", "Re-check at preparing and rejoin (rejected: ISS-047-style seat wedge; the recorded policy stands)", "A new entry-in-entry containment matcher (rejected: pathAllowed already gives the semantics)"]
+rationale = "A ledger row 9 duty with the same owner and requirement (REQ-002); one matcher across submit, guard and collection; collection stays authoritative (DEC-060)."
+consequences = ["ledger row 9 Enforced-at gains the submit check", "SPEC-004 job contract gains mode scope (REV after REV-007)"]
+decided_by = "user"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-025"

@@ -47,6 +47,18 @@ role = "concerns"
 descriptor = "the issue this slice resolves"
 target = "ISS-046"
 
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "self-edit-mech bypass risk"
+target = "ISS-028"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "accepted risk: unbounded interactive"
+target = "RSK-019"
+
 # STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
 # `[relationships]` axis. Slices carry no typed STRUCTURAL
 # relation axes — the `[relationships]` table above holds only the dep/seq payload

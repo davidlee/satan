@@ -37,10 +37,12 @@ binding).
    mode's `repos` or a path not contained in the mode's `allowed_paths`.
    Containment is pure, beside `classify.ts`'s path matching. Amends SL-023's
    job contract (design §5.2, DEC-059).
-4. **Producers.** `satan-tools-patch-modes` equals the runner's modes (mode
-   names match SATAN's lane names end to end, user ruling 2026-10-19); corpus
-   prompts `prompts/self-edit-mech.txt`, `prompts/self-edit-mind.txt`,
-   `prompts/tick/agent.txt` pass repo **names**.
+4. **Producers.** Emacs stamps `mode` from the run's acting mode (DEC-068);
+   `mode` leaves the tool schema and `satan-tools-patch-modes` is deleted;
+   MCP sessions submit as `interactive`; no run ctx → refused. Corpus prompts
+   `prompts/self-edit-mech.txt`, `prompts/self-edit-mind.txt`,
+   `prompts/tick/agent.txt` pass repo **names** and drop `mode`/`checks`.
+   Mode names match SATAN's lane names end to end; `fix` is dropped.
 
 ## Non-Goals
 
@@ -72,7 +74,11 @@ binding).
 
 ## Risks, assumptions, open questions
 
-- **Assumption:** each target's `default_branch` is `main`; verify per repo.
+- ~~Assumption: every default branch is `main`~~ — false for `doctrine`
+  (`edge`); research.
+- **Risk (ISS-028):** the harness jail binds `~/dev/satan` read-write, so
+  self-edit-mech can bypass the patch lane; mode scope is not a complete
+  boundary for that lane until ISS-028 closes.
 - **Risk:** `satan-tools-patch-modes` is read at load (the tool schema is
   built then); a live Emacs needs a reload after the change
   (mem: removing a SATAN tool breaks the live Emacs until modes are reloaded).
@@ -80,12 +86,9 @@ binding).
   by path.
 - **Risk:** a room rebuild may recreate volumes; confirm existing clones and
   quarantines survive adding targets.
-- **Open:** does `fix` stay as a mode, or go?
-- **Open:** containment semantics for an exact-file mode entry vs a prefix
-  submit (proposal: exact contains only itself; prefix contains anything under
-  it).
-- **Open:** where the lane → repo binding lives on the Emacs side — the
-  model still chooses `repo`; the runner is the authoritative check.
+- Settled in design: `fix` dropped (DEC-068); containment by the existing
+  matcher (DEC-069); the runner is the sole scope check, Emacs supplies
+  identity only (DEC-068).
 
 ## Verification / closure intent
 
