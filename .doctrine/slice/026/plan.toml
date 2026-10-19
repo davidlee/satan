@@ -62,19 +62,19 @@ requirements = []
 [[phase]]
 id        = "PHASE-03"
 name      = "Runner fetch: room SourceReader, doctrine step, classification"
-objective = "src/runner/project-context.ts fetchProjectContext (design §4.2-4.3): room SourceReader (stat -L, head -c) with fetch limits; doctrine step (test -d, check-ignore, prompt resolve with 60 s / 64 KiB+1 / 4 KiB, checkClone re-check → PrepareFailed dirty_clone); the ordered error classification; degradations as data. readyRoom takes a FinalStep<T> and returns { baseOid, value }."
+objective = "Test fixture first: a localConnection variant that starts the local pi-env daemon with a given PATH prefix (env-fixture.ts:27 takes no env today), for the F-1 probe. Then src/runner/project-context.ts fetchProjectContext (design §4.2-4.3): room SourceReader (stat -L, head -c) with fetch limits; doctrine step (test -d, check-ignore, prompt resolve with 60 s / 64 KiB+1 / 4 KiB, checkClone re-check → PrepareFailed dirty_clone); the ordered error classification; degradations as data. readyRoom takes a FinalStep<T> and returns { baseOid, value }."
 entrance_criteria = [
   { id = "EN-1", text = "PHASE-02 complete." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "Every §4.2 classification row behaves as specified, caller abort tested before the table (ChannelFailed cause aborted rethrown); ChannelUnavailable incl. a spawn_error cause is retried by readyRoom." },
   { id = "EX-2", text = "Doctrine: absent, non-zero, timeout, not ignored, empty → degradation and the job continues; dirty or failed re-check → PrepareFailed dirty_clone with no clean called; overflow → truncated source." },
-  { id = "EX-3", text = "RV-033 F-1 probe criterion holds: with hostile head/stat/test/git (ignore args, lie, print unrequested names, stream without end, never exit) and FIFO/device context files (direct or via symlink into an ignored path), the fetch completes, degrades or fails within the sum of per-exec timeouts; per-exec host memory within its caps; only requested names kept from stat; with an honest stat a FIFO is never opened." },
+  { id = "EX-3", text = "RV-033 F-1 probe criterion holds: with hostile head/stat/test/git (ignore args, lie, print unrequested names, stream without end, never exit) and FIFO/device context files (direct or via symlink into an ignored path), preparing (the existing checkRoomClone / ensureJobBranch execs included) completes, degrades or fails within the sum of per-exec timeouts (10 s per fetch exec, 60 s for doctrine and each existing preparing git exec); per-exec host memory within its caps; only requested names kept from stat; with an honest stat a FIFO is never opened, and with a lying stat the open is bounded by head's 10 s timeout." },
   { id = "EX-4", text = "`just check` green." },
 ]
 verification = [
   { id = "VT-1", expects = "fake RoomShell: argv + limits per exec, every classification row, doctrine outcomes, re-check → dirty_clone, no clean, unrequested stat names ignored", test_file = "/home/david/dev/malebolge/test/runner/project-context.test.ts", keywords = ["fetchProjectContext", "boot_not_ignored", "dirty_clone", "spawn_error", "aborted"], waived = false },
-  { id = "VT-2", expects = "F-1 probe over localConnection: real FIFOs and fake endless / lying binaries first on PATH; bounded time and memory, outcome within the sum of per-exec timeouts", test_file = "/home/david/dev/malebolge/test/runner/project-context-probe.test.ts", keywords = ["fetchProjectContext", "mkfifo", "PATH"], waived = false },
+  { id = "VT-2", expects = "F-1 probe over the PATH-prefixed localConnection variant, readyRoom with fetchProjectContext as its final step: real FIFO and device context files, direct and via symlink into an ignored path; fake binaries first on PATH that stream without end, never exit (distinct cases), lie (stat reports a FIFO as regular), print unrequested names; a hostile git that never exits during checkClone; each case asserts outcome within the sum of per-exec timeouts and bounded output", test_file = "/home/david/dev/malebolge/test/runner/project-context-probe.test.ts", keywords = ["fetchProjectContext", "readyRoom", "mkfifo", "/dev/zero", "checkClone"], waived = false },
   { id = "VT-3", expects = "readyRoom with a FinalStep: value returned; a ChannelUnavailable inside the step retried and its data discarded", test_file = "/home/david/dev/malebolge/test/runner/prepare.test.ts", keywords = ["FinalStep"], waived = false },
 ]
 specs        = []
@@ -113,7 +113,7 @@ exit_criteria = [
 ]
 verification = [
   { id = "VT-1", expects = "faux env: argv per parameter, clamps, chunk-split JSON, context, bytes, basename, limit and 50 KB stops as success, caller abort throws, exit 1/2", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["grepTool", "noIgnore", "limit reached", "No matches found"], waived = false },
-  { id = "VT-2", expects = "F-2 probe: multi-MB single line, limit 1000 × long lines, multi-MB stderr; splitter carry never above MAX_MESSAGE_BYTES (negative control: an uncapped splitter fails this test)", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["MAX_MESSAGE_BYTES", "stderr"], waived = false },
+  { id = "VT-2", expects = "F-2 probe: multi-MB single line, many submatches on a short line (message over 1 MiB without a long line), malformed JSON lines, limit 1000 × long lines, multi-MB stderr; each asserts the result is at most 50 KB; splitter carry never above MAX_MESSAGE_BYTES (negative control: an uncapped splitter fails this test)", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["MAX_MESSAGE_BYTES", "stderr", "submatches"], waived = false },
   { id = "VT-3", expects = "one run over localConnection with the host's rg", test_file = "/home/david/dev/malebolge/test/grep.test.ts", keywords = ["localConnection"], waived = false },
   { id = "VT-4", expects = "five tools; read and grep replay-safe", test_file = "/home/david/dev/malebolge/test/runner/tools.test.ts", keywords = ["grepTool"], waived = false },
 ]
@@ -132,7 +132,7 @@ exit_criteria = [
   { id = "EX-2", text = "`just check` green." },
 ]
 verification = [
-  { id = "VT-1", expects = "openTestHarness + systemPromptSections (test/harness-fixture.ts; design §6 calls it openFauxHarness): sections, omission, order fresh and existing", test_file = "/home/david/dev/malebolge/test/daemon-sections.test.ts", keywords = ["project_context", "cwdExtension", "systemPromptSections"], waived = false },
+  { id = "VT-1", expects = "openFauxHarness + systemPromptSections (test/harness-fixture.ts): sections, omission, order fresh and existing", test_file = "/home/david/dev/malebolge/test/daemon-sections.test.ts", keywords = ["project_context", "cwdExtension", "systemPromptSections"], waived = false },
 ]
 specs        = []
 requirements = []
