@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a151b9-c147-7a50-a81b-d82d93f50ff3"
+recorded_at = "2026-10-19T01:14:50.567642922Z"
+kind = "friction"
+summary = "backlog close verb not discoverable: no 'backlog status', no 'paths'"
+detail = "SL-023 PHASE-14 batch C worker looked for 'doctrine backlog status' and 'doctrine paths CHR-016' (the boot Commands table lists 'paths' in SPINE); neither worked. Close is 'doctrine backlog edit CHR-016 --status closed --resolution done'; body path found by ls under .doctrine/backlog/chore/."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
