@@ -10,6 +10,14 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-025 across five repos. Hand-read M 226b27c (config.ts, protocol.ts) against design §4.2; this repo 36cd441 against §4.1, plus the broker ctx :mode-name join and lane allowlists; H 338beea1 against §4.3 (rendered config inspected); F f23f469/0a8c82d/8e3cba2 against §4.4; C b2bae94 against §4.5; deployment against §4.6 and lock reproducibility (F-6). Gates re-run: M just check, satan just check, F just check — all green. VT keyword mandates grepped; VH evidence from notes § PHASE-04/05. slice conformance after recording PHASE-05's empty delta: 2 conformant, 0 undelivered, 4 undeclared (F-5).
+"""
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-025"
@@ -169,7 +177,7 @@ role = "raiser"
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Deployed runner and config are not reproducible from pushed/locked state"
 detail = """
@@ -198,6 +206,13 @@ Needs the user's outward acts, before /close:
 1. push M (`git -C ~/dev/malebolge push`);
 2. in H: commit flake.lock (the fleet update), `just update-local` (re-locks malebolge to its pushed main), commit the lock, push H.
 Then re-check: H flake.lock malebolge rev == M origin/main containing 226b27c; `just home-build` yields the same satan-runner store path as the running unit (wxhqgy5v…), so no restart is needed.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+User pushed M and H, re-locked. H flake.lock root.malebolge → node malebolge_2 at 9f990eb (M origin/main; contains 226b27c). `nix eval` of the satan-runner ExecStart from the lock (no --override-input) → /nix/store/wxhqgy5v…-satan-runner-0.0.0, identical to the running unit's: deploy reproducible from pushed, locked state; no restart needed.
 """
 
 [[finding]]
