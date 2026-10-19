@@ -2,7 +2,7 @@
 
 **Scheduled Agent for Textual Attention and Notes**
 
-![SATAN](./gnu3.png)
+![SATAN](./gnu3.jpg)
 
 SATAN is an experiment in a personal agent with memory, motives, and something
 to notice. It reads my notes and recent activity, asks inconvenient questions,
