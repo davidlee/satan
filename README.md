@@ -58,33 +58,9 @@ can supply evidence for or against that interpretation, as well as prompt a
 change of direction. This is the intended loop: form a hypothesis, ask or
 intervene, then revise it in light of the answer and subsequent activity.
 
-```text
- notes + corpus + memory       Panopticon activity
-              \                    /
-               v                  v
-                   SATAN broker (Emacs)
-                    /             \
-       scheduled/manual runs       MCP tools
-            jailed harness         Malebolge conversation
-                    \             /
-                questions, proposals, interventions
-                           |
-                    outcomes + memory
-                           |
-                      satan-attrd
-                           |
-                  later attribute context
+![system-map](./system-map.jpg)
 
- patch request -> satan-runner -> Oubliette room
-                                      |
-                                  commits
-                                      v
- real repo <- human promotion <- host quarantine
-
- model clients -> LiteLLM gateway (nix-config) -> providers
-```
-
-There are currently two ways of talking to models. Broker-driven modes such
+ There are currently two ways of talking to models. Broker-driven modes such
 as morning and tick runs launch a bounded subprocess harness. Malebolge holds
 an ongoing conversation that clients can attach to and leave without owning
 its lifetime; it reaches SATAN's tools over the Emacs MCP socket.
