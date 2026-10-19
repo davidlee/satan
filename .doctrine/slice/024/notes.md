@@ -48,6 +48,24 @@ Run 2, same plus `:/nonexistent/skill`:
 
 The bad entry is skipped and logged; the daemon still starts. `session.sqlite` appeared under the scratch state dir only.
 
+### PHASE-03 flake check (EX-2, EX-3, VA-1)
+
+2026-10-19, satan working tree (flake.nix uncommitted). goad-kit: `/nix/store/vx4wawpgk49phj98rlzcpwqqx48xkbrm-goad-kit`. Baseline before edit: `nix build --no-link .#checks.x86_64-linux.malebolge-jail-profile` green; `flake.nix`/`flake.lock` clean. Edit: `goadSkill` binding, `(set-env "MALEBOLGE_SKILLS" goadSkill)`, probe `--setenv MALEBOLGE_SKILLS ${goadSkill}`, `test -r ${goadSkill}/SKILL.md || fail ...`. Rebuilt launcher renders `--setenv MALEBOLGE_SKILLS /nix/store/vx4wawpgk49phj98rlzcpwqqx48xkbrm-goad-kit/kit/skills/goad-backend` (unquoted, as designed). `alejandra -c flake.nix` clean.
+
+C1, suffix changed to `goad-backend-WRONG` (the setenv probe still passes; the SKILL.md test catches it):
+
+    malebolge-jail-profile: no goad-backend skill at /nix/store/vx4wawpgk49phj98rlzcpwqqx48xkbrm-goad-kit/kit/skills/goad-backend-WRONG
+    error: builder for '…-malebolge-jail-profile.drv' failed with exit code 1
+
+C2, `(set-env "MALEBOLGE_SKILLS" goadSkill)` removed:
+
+    malebolge-jail-profile: launcher must contain '--setenv MALEBOLGE_SKILLS /nix/store/vx4wawpgk49phj98rlzcpwqqx48xkbrm-goad-kit/kit/skills/goad-backend'
+    error: builder for '…-malebolge-jail-profile.drv' failed with exit code 1
+
+Both reverted by editing the file back (byte-compared against a pre-control copy); `git diff flake.nix` shows only the four intended hunks (+11 lines). Final: the profile check green; `nix flake check` green ("running 3 flake checks", only the aarch64-darwin omission warning).
+
+Pending human acts: EX-4 (delete the malebolge handover doc), VH-1 (live run).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-19 · ready · b616a58

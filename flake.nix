@@ -241,6 +241,10 @@
         # goad backends as jpi does.
         goad = inputs.goad.packages.${system};
         goadPkgs = [goad.goad goad.goad-check goad.goad-emit goad.goad-kit];
+        # The goad kit's skill, from the pinned store path: `nix flake update
+        # goad` moves it. The jail can read it because goad-kit is in goadPkgs,
+        # and so in the runtime closure.
+        goadSkill = "${goad.goad-kit}/kit/skills/goad-backend";
         malebolgeJailOptions = with jailLib.combinators; [
           (try-fwd-env "XDG_RUNTIME_DIR")
           (try-fwd-env "SATAN_MCP_SOCKET")
@@ -255,6 +259,7 @@
           (readonly malebolgeCatalog)
           (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
           (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
+          (set-env "MALEBOLGE_SKILLS" goadSkill)
         ];
 
         jailPkgs = lib.optionalAttrs isLinux {
@@ -366,6 +371,9 @@
               "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge"
               "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json"
               "--bind /home/david/satan-corpus/goad /home/david/satan-corpus/goad"
+              # The store hash forces interpolation; the SKILL.md test in
+              # malebolgeJailProfile guards the value.
+              "--setenv MALEBOLGE_SKILLS ${goadSkill}"
             ];
             absent = ["op run" "-api-keys.env" "API_KEY" "LLM_GATEWAY_KEY"];
           };
@@ -428,6 +436,9 @@
           launcherCheck "malebolge-jail-profile" ''
             launcher=${jailPkgs.jailed-malebolge}/bin/jailed-malebolge
             test -f "$launcher" || fail "no launcher at $launcher"
+            # The package, not only the launcher text: a wrong suffix fails here
+            # instead of being logged and dropped at daemon start (RV-028 F-3).
+            test -r ${goadSkill}/SKILL.md || fail "no goad-backend skill at ${goadSkill}"
             # Absent first: a 1Password wrapper in place of the launcher
             # would otherwise fail as a missing bind.
             ${probe "must_not" "$launcher" "launcher" p.absent}
