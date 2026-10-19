@@ -160,6 +160,8 @@ current topology from the architectural destination.
 - [Malebolge](https://github.com/davidlee/malebolge) — interactive clients and the current patch runner.
 - [Oubliette](https://github.com/davidlee/oubliette) — rooms, confinement, and Git transfer.
 
+![trust](./trust.jpg)
+
 For development, enter the Nix devshell, then run:
 
 ```sh
