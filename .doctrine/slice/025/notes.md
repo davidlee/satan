@@ -51,3 +51,16 @@ EX-3 read as tracked code outside `.doctrine/` (history citations stay):
 Memory corrected: `mem.fact.satan.patch-job-contract` (new title: "patch_job_create: repo is a runner
 name, mode is the acting run mode, scope is the runner's"); not verified: dirty tree.
 Paths changed by `memory edit`: `.doctrine/memory/items/mem_01a0ae3334d77601b434d10108d73464/{memory.md,memory.toml}` only (no index).
+
+## PHASE-03 — room holds satan and satan-corpus (VA-1)
+
+F = `/srv/fleet`, base `f5fcecc`, uncommitted delta (orchestrator commits). EN-1: `just check` at base, exit 0.
+Staged (A5, not committed): `targets/satan.nix` (toolsPackage "dev-tools"), `targets/satan-corpus.nix` (toolsPackage null).
+Modified: `flake.nix` (+15: inputs satan [follows nixpkgs, doctrine], satan-corpus [git+ssh, follows nixpkgs]; targetNames appended), `flake.lock`.
+Lock (`nix flake lock`, BatchMode ssh, rc 0): root inputs `changed: []`, `added: ["satan","satan-corpus"]`.
+satan rev `cc26eeb53df8004ece5fcdfe7a7bc502ccc1b8c8` (origin/main pin, design §7); satan-corpus `git`, `ssh://git@github.com/davidlee/satan-corpus`, rev `21b64ead5be1ab6a8dc74ddf039bf85d6db6915e`.
+No path/file: sources (jq guard true). Follows: satan.nixpkgs=["nixpkgs"], satan.doctrine=["doctrine"], satan-corpus.nixpkgs=["nixpkgs"].
+Every pre-existing `locked` object survives unchanged (0 missing); the 84 deleted diff lines are node renumbering/reordering.
+Eval probe: `.#roomImages.drvPath` `4625lij9…` -> `s3s5lj3lr5y0qx132nvx6q219skgg5v0-capsule-room-images.drv`; `nix-store -qR | grep satan-dev-tools` -> `68jihp5lca7vnn8qwd0rnd54xpgb33yg-satan-dev-tools.drv`. toolsPackage=null accepted (S3 not hit). No build.
+`just check` in F: parse ok, alejandra clean, exit 0. `git status --short`: `M flake.lock`, `M flake.nix`, `A targets/satan-corpus.nix`, `A targets/satan.nix`.
+EX-4/VH-1 pending: user system switch in ~/flakes + room reboot.
