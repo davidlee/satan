@@ -12,11 +12,15 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "satan/satan-tools-patch.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "satan/test/satan-tools-patch*"
 intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-tools-patch-test.el"
+intent = "design-target"
 
 [[relation]]
 label = "governed_by"
