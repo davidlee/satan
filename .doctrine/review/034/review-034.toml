@@ -10,13 +10,21 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-026: design.md §3–§7, plan.toml EX/VT PHASE-01..08, DEC-070..073 and RV-033's probe obligations against malebolge 4ac55fe..fe7030a (+55f4a68), satan 53da640 and satan-corpus 9868f4c; malebolge just check, satan check gate, nix flake check (per notes), and the user-accepted live VH-1 job. 15 findings, no blocker: 8 design-wrong into the Reconciliation Brief, 5 fixed now, 2 tolerated.
+"""
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-026"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Expected §4.2 per-directory stat with dir as cwd; observed one stat -L per dir from the clone root over absolute paths (D-1)"
 detail = """
@@ -39,9 +47,14 @@ response = """
 Verified at project-context.ts:174-187. The code is the better mechanism: same exec count, never opens a file, and no false `missing` for repos without `.pi/`. Reconcile amends design §4.2 (Reconciliation Brief, per-slice). Subject to the user's ruling at /reconcile; if they reject it, this reopens as code work.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Expected §4.3 jobs.change for context_degraded; observed store appendEvent"
 detail = """
@@ -64,9 +77,14 @@ response = """
 appendEvent is correct: no job-row change exists to carry, and clean_failed (collect.ts:185) sets the precedent. Brief: design §4.3 names appendEvent.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Expected §4.2 'at most once per admitted prompt' for degradation events; observed events written before submit, so a crash re-writes them and a cancel before admission leaves events for an unadmitted job"
 detail = """
@@ -89,9 +107,14 @@ response = """
 Behaviour accepted: events describe what preparing observed, so at-least-once is a truthful audit and a pre-admission cancel recording them is harmless. Brief: §4.2 states at-most-once for the fetch, at-least-once for its context_degraded events, including the cancel window.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Expected §4.5 notice list and a 50 KB stop; observed an extra 500-char-truncation notice and a reservation stop at ~45 KB"
 detail = """
@@ -114,9 +137,14 @@ response = """
 Both choices are sound (pi parity; notices never truncated, output ≤50 KB). Brief: §4.5 lists the 500-char notice and the reservation stop.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Expected §5 code-impact table to list every new file/export; observed additions it omits"
 detail = """
@@ -139,9 +167,14 @@ response = """
 Additions are cohesive extractions (one splitter, one head keeper, one extension-order home). Brief: §5 table gains them.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Expected §4.7 'dev-tools gains doctrine'; observed a system-guarded doctrine input without follows, adding a second nixpkgs to malebolge's lock"
 detail = """
@@ -164,9 +197,14 @@ response = """
 The guard is required (doctrine publishes no aarch64-linux package); no follows matches satan's flake and avoids building doctrine against an untested nixpkgs. Brief: §4.7 records the guard, the no-follows choice and the lock growth.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Expected §4.2/§4.3 failure semantics as written; observed several fail-closed variants the design does not state"
 detail = """
@@ -189,9 +227,14 @@ response = """
 All four variants fail closed and never clean, consistent with D-5/D-9. Brief: §4.2/§4.3 state them (overflow on existing execs → ChannelFailed; non-channel re-check errors rethrown; guest_path_invalid from the re-check; Degradation.source may be a directory).
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Expected §4.6 cwd section to hold the path; observed untagged pi wording 'Current working directory: <path>'"
 detail = """
@@ -214,9 +257,14 @@ response = """
 pi's wording keeps parity with pi's own cwd section and is operational text, not persona. Brief: §4.6 records the exact wording; reconcile checks it against DEC-056 and raises if it conflicts.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Expected docs/internals.md to match the code; observed a wrong doctrine-degradation list"
 detail = """
@@ -239,9 +287,14 @@ response = """
 Fixed in malebolge 55f4a68: docs/internals.md degradation list now matches bootOf and the re-check's fail-the-job behaviour.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Expected §6/EX tests for three listed behaviours; observed them weak or absent"
 detail = """
@@ -264,9 +317,14 @@ response = """
 Fixed in malebolge 55f4a68: grep limit-with-context test (test/grep.test.ts ~244); full [root] assertion without a git root (test/project-context.test.ts ~228); real-shell probe P16 (hostile git in ensureJobBranch → channel_failed in scaled time) and P14 check-ignore cases (overflow/timeout → degraded, chain still read). just check green, 1523 tests.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Expected test comments to describe the fixture accurately; observed a false claim about systemPromptSections' doc comment"
 detail = """
@@ -289,9 +347,14 @@ response = """
 Fixed: fixture comment states newest-first (malebolge 55f4a68), the test's false claim removed; notes.md corrected (satan ef5cd28).
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-12"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Expected the runner fetch's re-check to go through the GitChannel seam; observed a direct checkRoomClone call"
 detail = """
@@ -314,9 +377,14 @@ response = """
 Fixed in malebolge 55f4a68: fetchProjectContext takes the channel's checkClone; run.ts passes deps.channel.checkClone; a red-first test asserts the channel fake is consulted twice.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-13"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Expected every untrusted read to be time-bounded; observed grep and the daemon reader without exec timeouts"
 detail = """
@@ -339,9 +407,14 @@ response = """
 Memory is bounded on every path. Runner grep is bounded in time by the job deadline (REQ-030, the wall-clock authority); daemon grep runs for an attended interactive user who can abort. The daemon reader's TOCTOU needs the user to swap a file in their own directory during start-up. console.error at start-up precedes the daemon logger's scope. Revisit if grep gains unattended daemon use.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-14"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Expected slice conformance and verify-vt to evidence the slice's code; observed both blind to cross-repo targets"
 detail = """
@@ -364,9 +437,14 @@ response = """
 A doctrine tool limitation (selectors and VT attribution are repo-local), not slice drift; recorded as an observation (satan 55f6999). This audit's evidence came from reading malebolge directly (VT mapping in the synthesis). The undelivered SPEC-004 selector is satisfied when reconcile applies the REV.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
+
 [[finding]]
 id = "F-15"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Expected notes.md to record PHASE-07 T1; observed it still says the corpus edit is blocked"
 detail = """
@@ -388,6 +466,11 @@ disposition = "fix-now"
 response = """
 Fixed in satan ef5cd28: notes.md records T1 landing (satan-corpus 9868f4c) and the audit fix-now set.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against evidence; design-wrong items have their Reconciliation Brief entry, fix-now items their commits (malebolge 55f4a68, satan ef5cd28)."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -1,7 +1,7 @@
 id = 26
 slug = "malebolge-coding-layer"
 title = "malebolge coding layer: project context, cwd, ripgrep grep"
-status = "ready"
+status = "reconcile"
 created = "2026-10-19"
 updated = "2026-10-19"
 tags = []

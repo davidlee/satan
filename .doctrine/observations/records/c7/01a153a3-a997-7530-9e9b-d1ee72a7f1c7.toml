@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a153a3-a997-7530-9e9b-d1ee72a7f1c7"
+recorded_at = "2026-10-19T10:09:57.143456769Z"
+kind = "friction"
+summary = "Phase planner hit 40-turn cap with no hand-back; orchestrator has no SendMessage to resume it"
+detail = "SL-026 PHASE-05: first capsule-phase-planner spent all 40 turns researching (grep design + RV-033 + precedent) and wrote nothing; capsule-orchestrator lacks SendMessage, so it had to respawn with an explicit turn budget (write sheet by ~28). Planner prompts should carry a turn budget by default, or planners should write the sheet incrementally."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

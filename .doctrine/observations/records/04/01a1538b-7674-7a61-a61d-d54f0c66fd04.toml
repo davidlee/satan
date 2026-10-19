@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1538b-7674-7a61-a61d-d54f0c66fd04"
+recorded_at = "2026-10-19T09:43:31.18882026Z"
+kind = "friction"
+summary = "Phase sheets live behind a symlink in .doctrine/slice/NNN/phases"
+detail = "git check-ignore fails 'beyond a symbolic link'; sheet edits do not appear in git status, so orchestrators can't tell from git whether a child filled Decisions/Findings."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1538b-7671-7032-8119-d6063ca24562"
+recorded_at = "2026-10-19T09:43:31.185362709Z"
+kind = "friction"
+summary = "Phase sheet asserted no_changes run class ends needs_review; it ends failed"
+detail = "SL-026 PHASE-04: planner sheet said a no_changes run was fine for the retry test; worker found it ends failed and used writeAndCommit()+answer(). Sheets should verify run-outcome claims against run-fixture."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

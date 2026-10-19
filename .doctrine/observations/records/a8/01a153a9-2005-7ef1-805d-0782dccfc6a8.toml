@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a153a9-2005-7ef1-805d-0782dccfc6a8"
+recorded_at = "2026-10-19T10:15:55.141465027Z"
+kind = "friction"
+summary = "test/harness-fixture.ts systemPromptSections doc says oldest-first but returns newest-first"
+detail = "SL-026 PHASE-06 worker reversed the result in daemon-sections.test.ts and left the fixture untouched (out of file set). Fix the comment or the order in malebolge."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
