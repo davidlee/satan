@@ -234,7 +234,8 @@ Sections, Project context (sources), grep notes); satan `flake.nix`
 (probe + comment). **Corpus T1 NOT done**: the worker's one Bash call to edit
 `~/satan-corpus/prompts/patch-agent.md` and `interactive.txt` was denied by
 the auto-mode classifier, and the denial bars retrying the outcome by another
-tool. Left for the orchestrator/user (EX-1 open).
+tool. Left for the orchestrator/user (EX-1 open). EDIT: eventually allowed, 
+used edited status, auto mode classifier oddly paranoid today.
 
 Decisions: corpus commit must stage the two prompt files by path, never
 `just commit` (orchestrator ruling). doctrine input in malebolge has a system
@@ -259,3 +260,26 @@ green again. No elisp touched, so satan `just check` not run.
 Docs describe what is implemented: runner chain is clone-root only, via one
 `stat -L` (PHASE-03 D-1); daemon wiring includes `daemon-extensions.ts`
 (PHASE-06 D-1). Neither pending decision reworked.
+
+## 2026-10-19 PHASE-08 — live verification (VH-1)
+
+Deployed (user: drain, home switch, runner restart; room clone clean at
+`refs/host/edge`). Probe job `pj-01M59WZMDH8063J8RA97TSBMVF`, mode
+`interactive`, repo `doctrine`, base `edge` (12a1944), allowed path
+`probe-sl-026.md`. Events: submitted → preparing → refreshed → running →
+collected (df73599) → needs_review, class `complete`; no `context_degraded`.
+
+EX-1, inspected by seat and accepted by the user ("agreed"):
+- first message: patch-agent prompt, then `<project_instructions>` for
+  `.pi/APPEND_SYSTEM.md`, `doctrine prompt resolve --role orchestrator`,
+  `AGENTS.md`, then the job block with `Working directory: /work/doctrine`;
+- quotes match edge `.pi/APPEND_SYSTEM.md:12`, `AGENTS.md:5` and the boot,
+  quoted from context (no read calls);
+- first tool call was `grep` in the room; 500-char notice present;
+- no doctrine workflow: tool calls were grep, write, git status/commit/show;
+  no `.doctrine/` writes.
+
+Side findings: ISS-049 (no git author identity in room clones);
+deepseek-flash miscounted its grep matches (model, not mechanism);
+ISS-048 (bun DNS in the room; not needed here). The probe job is to be
+rejected, not promoted.
