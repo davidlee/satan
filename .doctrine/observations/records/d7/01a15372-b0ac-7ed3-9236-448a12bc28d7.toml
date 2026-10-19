@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15372-b0ac-7ed3-9236-448a12bc28d7"
+recorded_at = "2026-10-19T09:16:27.69274233Z"
+kind = "friction"
+summary = "Fixture with optional param passed by reference gets called with args"
+detail = "SL-026 PHASE-03 A: localConnection(path?) passed as () => Connection into slots later called connect(repo) started the daemon with PATH=[object Object]; one site type-checked and passed via a spurious spawn_error, visible only as a coverage drop. Wrap fixtures with optional params in a lambda."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

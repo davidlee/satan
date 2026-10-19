@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1537d-835f-7aa0-9cb9-05d3118649d4"
+recorded_at = "2026-10-19T09:28:16.991353684Z"
+kind = "friction"
+summary = "pgrep -f pattern matches the harness's own command line"
+detail = "SL-026 PHASE-03: leak checks with pgrep -af 'sleep 30|...' self-match the Bash tool's eval line. Use pgrep -x <name> -a."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

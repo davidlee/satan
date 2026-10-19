@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1537d-8361-7680-9a6f-45a114af3630"
+recorded_at = "2026-10-19T09:28:16.994010693Z"
+kind = "friction"
+summary = "single-file vitest trips global coverage gate"
+detail = "malebolge: npx vitest run <file> fails the 85% global coverage threshold and buries results; iterate with --coverage.enabled=false."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

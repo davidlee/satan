@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1535b-428e-7ea3-9fd0-c6842384df6c"
+recorded_at = "2026-10-19T08:50:52.17487231Z"
+kind = "friction"
+summary = "pi-env local Connection close does not kill running children"
+detail = "SL-026 PHASE-02: failing FIFO tests (no timeout) left 'cat <fifo>' processes after connection close and temp-dir removal. Only the exec timeout reaps a blocked exec; a red test leaks processes."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

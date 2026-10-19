@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15372-b0af-7eb1-911d-5df0c32a3021"
+recorded_at = "2026-10-19T09:16:27.695622264Z"
+kind = "friction"
+summary = "Files rewritten on disk between worker edits"
+detail = "SL-026 PHASE-03 A worker: an editor/formatter rewrote malebolge files between edits, forcing re-reads; one edit silently failed until tsc."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

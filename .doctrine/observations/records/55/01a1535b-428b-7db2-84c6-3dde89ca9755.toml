@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1535b-428b-7db2-84c6-3dde89ca9755"
+recorded_at = "2026-10-19T08:50:52.171602914Z"
+kind = "friction"
+summary = "verify-vt cannot attribute cross-repo test files"
+detail = "SL-026 VT paths live in ~/dev/malebolge; slice verify-vt checks the satan repo diff, so every VT shows UNATTRIBUTABLE even after commit. Cross-repo slices get no attribution signal."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
