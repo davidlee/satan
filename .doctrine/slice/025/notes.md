@@ -64,3 +64,8 @@ Every pre-existing `locked` object survives unchanged (0 missing); the 84 delete
 Eval probe: `.#roomImages.drvPath` `4625lij9…` -> `s3s5lj3lr5y0qx132nvx6q219skgg5v0-capsule-room-images.drv`; `nix-store -qR | grep satan-dev-tools` -> `68jihp5lca7vnn8qwd0rnd54xpgb33yg-satan-dev-tools.drv`. toolsPackage=null accepted (S3 not hit). No build.
 `just check` in F: parse ok, alejandra clean, exit 0. `git status --short`: `M flake.lock`, `M flake.nix`, `A targets/satan-corpus.nix`, `A targets/satan.nix`.
 EX-4/VH-1 pending: user system switch in ~/flakes + room reboot.
+Committed F `f23f469`. Post-charter (driver, with user): satan pushed; F `0a8c82d` re-locked satan at `5eee5c8`;
+F `8e3cba2` adds `satan.inputs.goad.follows = "goad"` and bumps F's goad `a64e310` -> `04147ca` (satan's pin, goad origin/main;
+without the bump the follows would downgrade satan's goad by 2 commits). Lock back to 313 nodes; root changes vs `f23f469`: goad, satan only.
+Correction to the charter hand-back: ~/flakes reads F via `git+ssh` (GitHub), not git+file — F must be pushed and `nix flake update fleet` run in H.
+EX-4/VH-1: user switched H, rebooted room assistant, confirmed `/work/satan`, `/work/satan-corpus`, goad-walk clone + quarantine intact (2026-10-19). PHASE-03 completed.
