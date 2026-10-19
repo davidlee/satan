@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 66
+slug = "malebolge-parses-skillmd-frontmatter-with-the-yaml-package"
+title = "malebolge parses SKILL.md frontmatter with the yaml package"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-024: malebolge lists Agent Skills like pi does; SKILL.md frontmatter is YAML. malebolge's only parser dependency was smol-toml."
+choice = "Add `yaml` (2.9.x) as a runtime dependency and parse frontmatter with it, extracting it as pi's utils/frontmatter.ts does."
+alternatives = ["Hand-written flat-scalar reader that skips anything it does not understand"]
+rationale = "Same parser as pi, so jpi and malebolge accept and reject the same skill files; quoted, folded and block scalars work without bespoke code. The package is already in the lockfile transitively."
+consequences = ["One new runtime dependency", "Parse errors skip the skill with a stderr line, never fail the daemon"]
+decided_by = "user (accepted agent proposal, 2026-10-19)"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-024"

@@ -1,0 +1,32 @@
+id = 24
+slug = "malebolge-agent-skills"
+title = "malebolge: advertise Agent Skills in the system prompt"
+status = "plan"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+
+[[relation]]
+label = "related"
+target = "CHR-018"
+
+[[relation]]
+label = "related"
+target = "IMP-037"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

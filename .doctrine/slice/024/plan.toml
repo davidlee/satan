@@ -1,0 +1,88 @@
+# Implementation plan for SL-024 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# Paths: M = /home/david/dev/malebolge, this repo = ~/dev/satan.
+# VT test_file paths outside this repo are absolute; verify-vt reports them
+# UNATTRIBUTABLE (this repo's git cannot see malebolge commits) — expected.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-024"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "skills module: parse, load, render"
+objective = "Add M's src/skills.ts per design §4: pure parseSkill and renderSkills, IO loadSkills with pi 1.3.0's duplicate rules, and skillsExtension; add `yaml` as a runtime dependency (DEC-066). Not yet wired into the daemon."
+entrance_criteria = [
+  { id = "EN-1", text = "SL-024 design locked (run dr-01a151c7, rev 31)." },
+  { id = "EN-2", text = "`just check` in M green before the change." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`yaml` pinned exactly (no range) in M's package.json dependencies, lockfile updated." },
+  { id = "EX-2", text = "parseSkill follows design §4 rules 1-6, including RV-028 F-1: description accepted only when `description.trim() !== \"\"` (advertised untrimmed); name used only when a non-empty string, else basename(dir)." },
+  { id = "EX-3", text = "loadSkills follows design §4 Duplicates (RV-028 F-2): realpath-identical SKILL.md skipped silently; name collision keeps the first and logs the second with the winner's file; unreadable or invalid skills logged `skill <dir>: <reason>` and dropped; never throws." },
+  { id = "EX-4", text = "renderSkills reproduces pi 1.3.0 formatSkillsForPrompt (read variant) without its leading blank lines; XML-escapes name, description, location; omits hidden skills; returns undefined when no skill is visible. A comment names pi 1.3.0 as the wording's source." },
+  { id = "EX-5", text = "skillsExtension is one untagged section keyed `skills`; with no visible skills a turn's system prompt carries no `skills` section." },
+  { id = "EX-6", text = "`just check` in M green: format, lint (zero warnings), typecheck, tests with the coverage gate." },
+]
+verification = [
+  { id = "VT-1", expects = "parseSkill table: plain, quoted, folded, block, no frontmatter, unclosed, missing/non-string/empty/whitespace-only description, name missing/non-string/empty fallback, hidden, YAML error, non-mapping", test_file = "/home/david/dev/malebolge/test/skills.test.ts", keywords = ["parseSkill", "disable-model-invocation", "whitespace", "folded"], waived = false },
+  { id = "VT-2", expects = "renderSkills: exact pi text for a sample, escaping, hidden filtered, undefined when none visible", test_file = "/home/david/dev/malebolge/test/skills.test.ts", keywords = ["renderSkills", "<available_skills>", "&amp;"], waived = false },
+  { id = "VT-3", expects = "loadSkills over temp dirs: missing dir and bad skill logged and dropped, order kept, repeated and symlinked dirs listed once silently, name collision keeps first and logs", test_file = "/home/david/dev/malebolge/test/skills.test.ts", keywords = ["loadSkills", "symlink", "collides"], waived = false },
+  { id = "VT-4", expects = "through openTestHarness: the skills section reaches a turn's system prompt; none visible gives no skills key", test_file = "/home/david/dev/malebolge/test/skills.test.ts", keywords = ["skillsExtension", "openTestHarness"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "config and daemon wiring"
+objective = "Resolve MALEBOLGE_SKILLS into Config.skillDirs, load skills once at daemon startup (DEC-067) with the daemon's log, place skillsExtension after the persona section, and document the env var."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Config.skillDirs: MALEBOLGE_SKILLS split on ':' with empty segments dropped; unset or empty gives []." },
+  { id = "EX-2", text = "daemon-main.ts calls loadSkills(config.skillDirs, log) once, adds skillsExtension(skills) immediately after the persona extension, and reports the skill count in the existing startup log line." },
+  { id = "EX-3", text = "README.md and docs/internals.md name MALEBOLGE_SKILLS and the skills extension; the user's pre-existing uncommitted edits to docs/internals.md, biome.json and justfile are not altered or committed by this phase." },
+  { id = "EX-4", text = "`just check` in M green." },
+  { id = "EX-5", text = "Manual smoke: the daemon started with MALEBOLGE_SKILLS pointing at ~/dev/goad/kit/skills/goad-backend logs `1 skills`; with a bogus path appended it logs the skip and still starts. If the daemon cannot start in this environment (satan-mcp, gateway), record that and rely on VT-1/PHASE-01 VT-4." },
+]
+verification = [
+  { id = "VT-1", expects = "MALEBOLGE_SKILLS: unset, empty, 'a::b:' gives ['a','b']", test_file = "/home/david/dev/malebolge/test/config.test.ts", keywords = ["MALEBOLGE_SKILLS", "skillDirs"], waived = false },
+  { id = "VA-1", expects = "daemon-main.ts wiring and log line match EX-2 (read the diff); EX-5 smoke result recorded in notes" },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "deployment: jailed daemon sees goad-backend"
+objective = "Point jailed-malebolge at the pinned goad-backend skill via set-env, extend the malebolge jail-profile check to assert both the setenv and the skill's presence in goad-kit, then verify live with the user."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete and committed in M (the jail runs M's checkout)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan flake.nix: goadSkill = \"${goad.goad-kit}/kit/skills/goad-backend\"; (set-env \"MALEBOLGE_SKILLS\" goadSkill) in malebolgeJailOptions; jailProbes.malebolge.present carries the matching --setenv line." },
+  { id = "EX-2", text = "RV-028 F-3: malebolgeJailProfile fails unless `${goadSkill}/SKILL.md` is readable. Negative control: with a deliberately wrong suffix the check fails; result recorded in notes, then reverted." },
+  { id = "EX-3", text = "`nix build .#checks.x86_64-linux.malebolge-jail-profile` passes; `nix flake check` in this repo green, or any failure shown to predate this slice." },
+  { id = "EX-4", text = "~/dev/malebolge/docs/handover-skills-extension.md deleted (consumed), with the user's agreement." },
+]
+verification = [
+  { id = "VT-1", expects = "malebolge-jail-profile asserts the MALEBOLGE_SKILLS setenv and SKILL.md presence", test_file = "flake.nix", keywords = ["MALEBOLGE_SKILLS", "SKILL.md", "goadSkill"], waived = false },
+  { id = "VA-1", expects = "negative-control run of the profile check with a wrong suffix fails; recorded in notes" },
+  { id = "VH-1", expects = "user rebuilds, starts the jailed daemon, attaches: SATAN names goad-backend with its description; asked for a trivial backend in ~/satan-corpus/goad/<name>/ it reads the skill's SKILL.md first (visible in session entries) and the result passes `goad-check --config config.toml` with a scratch XDG_STATE_HOME" },
+]
+specs        = []
+requirements = []

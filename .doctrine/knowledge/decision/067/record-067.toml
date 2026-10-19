@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 67
+slug = "malebolge-reads-skills-once-at-daemon-startup"
+title = "malebolge reads skills once at daemon startup"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-024: personaExtension re-reads corpus files per request so edits land next turn. Skill paths are nix store paths."
+choice = "Read and parse every skill in daemon-main.ts at startup; the extension receives the parsed skills and renders a constant."
+alternatives = ["Re-read per request, as persona does"]
+rationale = "Store paths are immutable and change only on a rebuild, which restarts the daemon; per-request reads would re-read identical bytes and repeat skip warnings every turn."
+consequences = ["Editing a non-store skill directory needs a daemon restart"]
+decided_by = "user (accepted agent proposal, 2026-10-19)"
+decided_on = "2026-10-19"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-024"

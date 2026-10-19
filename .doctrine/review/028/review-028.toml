@@ -1,0 +1,101 @@
+id    = 28
+slug  = "design-review-of-sl-024"
+title = "design review of SL-024"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Reviewed the complete SL-024 design at run revision 24 against malebolge's current extension/config/session seams, pi 1.3.0 source plus a direct loader probe, satan's launcher/profile-check implementation, goad's kit source, SPEC-002 and DEC-066/067. Three minor findings; no blocker or major finding. Architecture is proportionate. Findings remain for the design responder; this review neither edits the design nor records human acceptance. No implementation gate, Nix build or live model session was run.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-024"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "minor"
+title = "Clarify blank-string semantics in the promised pi parsing rules"
+detail = """
+Expected: The commitment to pi 1.3.0 parsing rules should specify the predicates that determine whether a skill is advertised and under which name.
+Observed: design.md:91-92 says non-empty description and string name with basename fallback, but does not state that description.trim() must be non-empty or that an empty string name also falls back. A literal implementation using description.length and typeof name would differ from pi. The verification table at line 164 does not distinguish whitespace-only descriptions or an empty string name.
+Evidence: pi src/core/skills.ts uses description.trim() !== "" and frontmatterName || parentDirName. A direct execution of pi 1.3.0 loadSkills rejected description: "   " and advertised name: "" under its directory name.
+Consequence: A loader can pass the stated examples while advertising a useless description or blank name, violating the parity claim. This does not affect the current well-formed goad skill.
+Recommendation: Spell out both predicates and include these two boundary fixtures. Missing/non-string names should also explicitly select the directory fallback.
+"""
+disposition = "fix-now"
+response = "Integrated in design sec-4 rules 3-4: description.trim() !== '' (untrimmed text advertised); name used only when a non-empty string, else basename(dir). sec-6 adds whitespace-only description and missing/non-string/empty name fixtures. Verified against pi skills.ts:120 and :320-321."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated in design sec-4 rules 3-4: description.trim() !== '' (untrimmed text advertised); name used only when a non-empty string, else basename(dir). sec-6 adds whitespace-only description and missing/non-string/empty name fixtures. Verified against pi skills.ts:120 and :320-321."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "minor"
+title = "Specify duplicate-file and name-collision handling for multiple configured skills"
+detail = """
+Expected: A colon-separated multi-skill input should define which skill wins when names collide and whether repeated files appear more than once.
+Observed: design.md:70-71 and 120-121 define load-each-directory and split/drop-empty behavior; line 166 tests keeping good skills in order. Neither loader nor rendering specifies duplicate handling. Both hosts prompting the same way is an explicit force at lines 55-56.
+Evidence: pi 1.3.0 src/core/skills.ts:420 onward canonicalizes skill file paths, silently suppresses repeated files, and keeps the first skill on a name collision with a diagnostic. Executing its loader with two different directories named same plus a repeated path produced one same entry, one collision diagnostic and no repeated entry.
+Consequence: A conforming implementation of this draft can advertise two different locations under one skill name, or duplicate a skill, as more paths are configured. The initial single goad path is unaffected.
+Recommendation: Define ordered first-wins name handling and repeat-file handling, and test both; alternatively explicitly narrow the claimed pi compatibility and document the chosen differences.
+"""
+disposition = "fix-now"
+response = "Integrated in design sec-4 'Duplicates': realpath-identical SKILL.md skipped silently; name collision keeps first, logs the loser with the winner's file. sec-6 adds repeated, symlinked and colliding cases. Verified against pi skills.ts:420-455."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated in design sec-4 'Duplicates': realpath-identical SKILL.md skipped silently; name collision keeps first, logs the loser with the winner's file. sec-6 adds repeated, symlinked and colliding cases. Verified against pi skills.ts:420-455."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "minor"
+title = "Move the packaged skill-path assertion into automated deployment verification"
+detail = """
+Expected: The deployment verification should cheaply detect a wrong packaged skill location before asking a person to rebuild and run a model session.
+Observed: design.md:137-139 uses the same goadSkill expression to configure the launcher and assert its environment text. Lines 179-181 explicitly defer the store-layout assumption to the live VH check. A nonexistent suffix can therefore satisfy the automated profile check; loadSkills then logs and drops the only intended skill.
+Evidence: satan flake.nix's malebolgeJailProfile only searches launcher text. The goad source flake copies kit into goad-kit, and its current skill has bundled reference files; these are deterministic package facts. No live jail failure was observed in this review.
+Consequence: Automated checks remain green for a broken deployment path. The stated mandatory live check can catch it, so this is a verification improvement rather than an unhandled closure gap.
+Recommendation: Add a build-time readability assertion for goadSkill/SKILL.md (and a representative bundled reference). Exercise a deliberately wrong suffix as a negative control. Keep the human check for actual model selection, tool reads and backend behavior.
+"""
+disposition = "fix-now"
+response = "Integrated in design sec-4 Deployment: malebolgeJailProfile asserts test -r ${goadSkill}/SKILL.md; sec-6 records a one-off wrong-suffix negative control. Not adopted: asserting a bundled reference file, which couples satan's check to goad's internal layout; SKILL.md existence already catches a wrong suffix, and the live VH check exercises references."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Integrated in design sec-4 Deployment: malebolgeJailProfile asserts test -r ${goadSkill}/SKILL.md; sec-6 records a one-off wrong-suffix negative control. Not adopted: asserting a bundled reference file, which couples satan's check to goad's internal layout; SKILL.md existence already catches a wrong suffix, and the live VH check exercises references."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
