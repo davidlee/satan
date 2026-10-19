@@ -58,7 +58,7 @@ cutover (two consumers live, ISS-039).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · design locked rev 63 (run dr-01a14d77); PHASE-01..13, 15..17 completed; PHASE-14 blocked (human steps done except migrate check); PHASE-18 to be appended · 6a04180
+fresh-as-of: 2026-10-19 · design locked rev 63 (run dr-01a14d77); PHASE-01..18 completed except PHASE-14 (evidence complete, orchestrator flips) · 8c93902 (malebolge)
 
 ### Produced
 - design amended twice and re-locked: rev 56 (room adapter, RV-026 conducted, 14 findings) — 5bbc0fc; rev 63 (room probe = job collect; DEC-057 gate rulings; RV-027 waived) — 15662ba
@@ -68,6 +68,9 @@ fresh-as-of: 2026-10-19 · design locked rev 63 (run dr-01a14d77); PHASE-01..13,
 - backlog: IMP-042 (clean-clone op), CHR-016 (live room rung — mostly verified in PHASE-12), CHR-017 (package malebolge as flake input), ISS-046 (producer lanes refused after cutover)
 - runner live as `satan-runner` user unit, room `assistant`, repo goad-walk; three live smokes passed (PHASE-12 "Live evidence")
 - ASM-005 validated; CON-003, CON-004 (oubliette SL-005/006 relays) — fc0f92c
+- closure run: P pj-01M58TKGY59Y8C10ZTWJ8V1D46 promoted, R pj-01M58TKGYN2G6HPJ9DM5763XD8 rejected, both PHASE-12 smokes rejected (not evidence); evidence in "PHASE-14 batch B6 + C"
+- PHASE-18 appended and done (VA-1 met incl. spend row); H5 done (sloptower archived, symlink and policy.toml gone); CHR-016 closed per ruling (1)
+- flakes `605447d8`, emacs `e6cea06` (satan-patcher removed)
 
 ### Learned
 - pi-durable: no hook can deny a request → model gate is a Models view; pause abort needs the gate to refuse `paused` (PHASE-09 STOP-1)
@@ -77,11 +80,9 @@ fresh-as-of: 2026-10-19 · design locked rev 63 (run dr-01a14d77); PHASE-01..13,
 - agents cannot restart user units (permission classifier); planners hit 40-turn caps without save points
 
 ### Open
-- user rulings 2026-10-19 for PHASE-14: (1) EX-2 runs against the deployed room door — append a criterion; close CHR-016 after the closure run except the SL-006-lock re-check; DEC-065/§9 "slot is the live rung" wording → reconcile. (2) an agent calling patch_job_create's handler via emacsclient counts. (3) sloptower already archived by the user; needs temporary unarchive to push a README pointing at davidlee/Malebolge (user's outward act); keep the local checkout, delete the ~/dev/sloptower symlink and ~/.config/satan-patcher/policy.toml. (4) reject both PHASE-12 smoke jobs after the closure run; not evidence.
-- user ruling 2026-10-19: append PHASE-18 "Interactive daemon on the gateway provider" (design §5.1/§10 says both binaries use it; PHASE-17 wired only the runner). ~/notes jail migration to gatewayClient is handled by another agent, outside SL-023.
-- audit candidates: room config values are literals, not rendered from one source (§5.3); PHASE-09 STOP-1 gate `paused` reason and PHASE-10 R1 (room work inside rejoined run) depart from design wording; `resume` event kind unused; PHASE-13 points (repoPath optional, watch backoff, docs/patch stale)
+- audit candidates: DEC-065 / design §9 "slot is the live rung" wording and PHASE-14 EX-4 text stale against ruling (1); `satan-tool/patch-job-result` omits `repoPath` (raw RPC has it); sheet's intervention table name (`satan_interventions`); no intervention record for closure jobs (ruled); room config values are literals, not rendered from one source (§5.3); PHASE-09 STOP-1 gate `paused` reason and PHASE-10 R1 (room work inside rejoined run) depart from design wording; `resume` event kind unused; PHASE-13 points (repoPath optional, watch backoff, docs/patch stale)
 - prompt draft ~/satan-corpus/prompts/patch-agent.md uncommitted, awaiting user review (6 open points in PHASE-12 notes)
-- oubliette SL-006 lock: re-check sec-6 against DEC-065
+- oubliette SL-006 lock: re-check the room adapter / sec-6 against DEC-065 (CHR-016's remaining item, kept open by ruling (1))
 - `doctrine slice research 23` baseline drifted; not restamped
 
 ## PHASE-01 spike — offline half (2026-10-18, worker)
@@ -1188,9 +1189,14 @@ One-line observations (no recommendations beyond these):
 - Key custody (pid 3596604, compared by `grep -cF` without printing): key text occurs 0 times in `/proc/<pid>/environ` and 0 times in `/proc/<pid>/cmdline` (cmdline is `node src/daemon-main.ts`). The process env does carry `DEEPSEEK_API_KEY`, inherited from the launching shell; the daemon no longer reads it (the gateway provider is the only one registered).
 - One message via `node src/attach-main.ts` (stdin held open 75 s, then `/quit`): attach replayed the durable history, then the model answered `pong`. Since `gateway` is the only provider and the key file is `keys/malebolge`, the gateway accepted that key.
 - Stop: SIGTERM -> exit, `durable.sock` removed, log ends `satan-mcp connection closed; reconnecting on next SATAN tool call` (no `stop failed`).
-- Not agent-runnable: `llm-gateway list` needs sudo (re-execs as the `llm-gateway` user, DEC-050; DB `/var/lib/llm-gateway/keys.db`). User check pending: `llm-gateway list` shows `malebolge` spend > 0.
+- Spend corroboration: `llm-gateway list` needs sudo (re-execs as the `llm-gateway` user, DEC-050), so agents cannot run it. The user ran it and relayed this row (2026-10-19):
+```
+satan-runner    deepseek-flash  30.0000 0.0053  -
+malebolge       deepseek-flash  30.0000 0.0220  -
+```
+  `malebolge` spend is 0.0220 (> 0); `satan-runner` 0.0053.
 - Side effect: the ping and `pong` are now turns in SATAN's real durable session (the host daemon has no scratch session).
-- Verdict: VA-1 met agent-side; the spend row is corroboration, owed by the user.
+- Verdict: VA-1 met, including spend corroboration (user-relayed row above).
 
 ## PHASE-14 batch B (orchestrator-run, 2026-10-19): closure run to needs_review
 
@@ -1217,3 +1223,74 @@ One-line observations (no recommendations beyond these):
 **Pre-review state.** Live Emacs: `satan-patch-inbox-running-p` t, `satan-tools-patch-modes` ("fix"), `(featurep 'satan-patch-runner)` nil, `(boundp 'satan-patch-runner-enabled)` nil, `satan-patch-inbox-enabled` t, `satan-patch-rpc-socket` nil (default resolution). goad-walk: no `satan/*` branch, `refs/satan/incoming` empty, `main` = 6fe3a49.
 
 **Pending: B5 (VH-1, user), then B6 agent checks.** PHASE-14 stays in_progress.
+
+## PHASE-14 batch B6 + C (2026-10-19): VH-1, VA-1 evidence, EX ledger
+
+Model: sonnet worker (evidence assembly from the orchestrator's verified checks). Ids below are runner job ids; P = `pj-01M58TKGY59Y8C10ZTWJ8V1D46`, R = `pj-01M58TKGYN2G6HPJ9DM5763XD8`.
+
+### Human steps and commits
+- Batch A: `~` `605447d8` "feat(flakes): remove satan-patcher (SL-023 PHASE-14, DEC-063 step 4)"; `~/.config/emacs` `e6cea06` "chore(satan): drop satan-patch-runner-enabled; the elisp runner is gone (SL-023 PHASE-14)".
+- H1: runner restarted, MainPID 3347729, active since 10:53:47 AEDT. H2: Emacs restarted (`--fg-daemon` pid 3347959). H3/H4: see "PHASE-14 batch B" above.
+- H5 (user): `gh repo view davidlee/sloptower --json isArchived` -> true; remote main = local HEAD 4637fda "docs: archive banner; superseded by the malebolge patch-job runner (satan SL-023)" (README links davidlee/Malebolge); `~/dev/satan-patcher` clean, in sync; `~/dev/sloptower` symlink and `~/.config/satan-patcher/policy.toml` absent (ruling 3 done). Go migration 0006 retired with the archived repo; its columns dropped by satan 0009.
+
+### VH-1 (user, in the Emacs inbox via `satan-patch-promote` / `satan-patch-reject`)
+- P promoted; R rejected. Per ruling (4) both PHASE-12 smokes, `pj-01M58KY5GCAV5RSCK8BN47TCDV` and `pj-01M58KYQJ2AF6YXD2HYTX5KRM3`, rejected (not evidence).
+- Verdict: VH-1 met.
+
+### B6 / VA-1 evidence (orchestrator-run, all rc 0)
+- sqlite `jobs`: P `promoted`, R `rejected`, both smokes `rejected`.
+- `job_events` after needs_review: seq 40 `2026-10-19T01:06:41.764Z` P transition `{"disposition":"promoted","branch":"satan/patch/pj-01M58TKGY59Y8C10ZTWJ8V1D46","verifiedOid":"374309736f13ddede82e77bacb4afc2aa638a933","from":"needs_review","to":"promoted"}`; seq 41 `2026-10-19T01:07:05.137Z` R transition `{"disposition":"rejected","from":"needs_review","to":"rejected"}`. Each job has 10 events (P seq 22-40, R seq 26-41).
+- goad-walk: `rev-parse satan/patch/<P>` = 374309736f13ddede82e77bacb4afc2aa638a933 (= reviewed_oid = verifiedOid); `show --stat` parent 6fe3a49, only `CLOSURE-PROMOTE.md | 1 +`; `main` = 6fe3a49 unmoved (`main...origin/main` in sync); `refs/satan/incoming` empty; R's branch absent; the only satan head is P's.
+- Quarantine `/var/lib/capsule/collect/assistant/goad-walk.git`: `refs/capsule/assistant/heads/job/<P>` = 374309736f…; `<R>` = 203bf2380080efcec8b49c126a1a661380aa63a2 (left in quarantine).
+- `satan-tool/patch-job-result` P: `:state "promoted" :class "complete" :end_reason "completed" :reviewed_oid 374309… :base_oid 6fe3a49322154f66c65eb15974084ec753359bc9 :quarantine_ref refs/capsule/assistant/heads/job/<P> :diffstat (:files 1 :insertions 1 :deletions 0) :model_requests 5`. The tool plist does NOT carry repoPath; the raw RPC `(satan-patch-rpc-call "result" …)` does: `:repoPath "/home/david/dev/goad-walk"` (H1's M2, live). Audit item: the tool result surface omits the repo path.
+- Inbox `~/satan-corpus/inbox.org`: one entry per id (`SATAN_PATCH_JOB:` lines 85, 101, 53, 69); `:STATE:` promoted (P), rejected (R and both smokes).
+- One consumer (deployed): `satan-runner` active, MainPID 3347729, since 10:53:47 AEDT; `systemctl --user cat satan-patcher` "No files found"; `pgrep -x satan-patcher` rc 1; Emacs `(featurep 'satan-patch-runner)` nil, `(boundp 'satan-patch-runner-enabled)` nil, `satan-patch-inbox-enabled` t, `(satan-patch-inbox-running-p)` t, `satan-tools-patch-modes` ("fix"), `satan-patch-rpc-socket` nil (default resolution); `satan_memory` `pg_tables like 'patch_job%'` = 0.
+- Intervention: the table is `satan_interventions` (the sheet's `interventions` was wrong). Latest `kind='patch_job'` rows are 2026-10-14 / 10-01 Go-era jobs; none for P/R. **User ruling 2026-10-19 (binding):** "no intervention record, by construction of the ruled create path (handler called via emacsclient with nil tool-ctx)" is accepted as EX-2's intervention evidence.
+- Verdict: VA-1 met.
+
+### Batch C: EX-3 rows (evidence only; ledger edits and transition lines are audit's job, INV-3)
+
+Anchors are malebolge `src/runner/` at HEAD `8c93902` (the deployed tree).
+
+| Item | Where the authority / evidence now lives |
+|---|---|
+| DEC-062 row: job lifecycle / queue consumer | `satan-runner` is the sole consumer (one-consumer block above); lifecycle is `jobs` transitions in `store.ts` (every write in one transaction with its `job_events` row, `store.ts:185`); `scheduler.ts`; satan-patcher unit absent (H4), Go repo archived (H5) |
+| row: per-job path allowlist | validated at submit: `protocol.ts:125` (`normaliseAllowedEntry`, `classify.ts:19`) and `control.ts:86` `admit`; enforced in-run by `guard.ts:102` (`pathAllowed`); enforced at collection: `classify.ts:55` `disallowedPaths`, `classify.ts:95` -> `path_violation`, called from `collect.ts:232`. Live: P/R `offending []`, class `complete` (batch B) |
+| row 4: patch-job audit | `job_events` append-only (`store.ts:81-91`, UPDATE/DELETE triggers abort); rows in B6 above (seq 22-41); transcript is the job's pi-durable conversation (`conversations.ts`) |
+| row 5: per-job ceiling | request ceilings checked against maxima at submit (`protocol.ts:272` `ceilingsWithinMaxima`, `SUBMIT_CHECKS` `protocol.ts:276`); enforced in run (`ceilings.ts:84` `ceiling_exceeded`); config `~/.config/satan-runner/config.toml` `[maxima]`: `active_wall_clock_s = 3600`, `cost_usd = 0.5`, `model_requests = 200`, `tokens = 2000000`, `soft_threshold = 0.8`; closure policy event showed 200 req / $0.5 / 2M tok / 3600 s |
+| row 6: runner `enabled` | `config.ts:137`, `config.ts:388` (required boolean); submit refused with `runner_disabled` (`control.ts:114`); disabled startup parks, enabled un-parks (`start.ts:161`, `recover.ts:216`); config `enabled = true`. `satan-patch-runner-enabled` is gone: `(boundp …)` nil (B6), `dl-satan.el` edit `e6cea06` |
+| legend `satan-patcher` -> `patch-runner` | audit edit; evidence: satan-patcher removed (`605447d8`, H4, H5) |
+| ISS-030 (patcher never completed a job) | Superseded: satan-patcher removed (`605447d8`, H4); closure job P reached `needs_review` and `promoted` through the runner (B6) |
+| ISS-038 (elisp adapter resolved `jailed-pi` from caller PATH) | Superseded: `satan-patch-adapter-pi.el` deleted (satan `01dab54`); the runner runs pi in the room via its own unit PATH (PHASE-12 VA-1) |
+| ISS-039 (two `patch_jobs` consumers) | Superseded: one consumer (B6 block); `patch_jobs` dropped (H3, 0009 applied) |
+| ISS-041 (`--branch HEAD` clone failure) | Superseded: no `HEAD` default; the submit sends `baseRef` only when given, the runner falls back to `default_branch = "main"` (`protocol.ts:287`); P/R `base_oid` 6fe3a49 from `job_events` |
+| CHR-003 (retarget satan-patcher prompt default) | Superseded: module and repo retired; runner reads `~/satan-corpus/prompts/patch-agent.md` (config `prompt_file`) |
+| IDE-007 (owned microVM for proposals) | Resolved into SL-023: runner jobs run in oubliette room `assistant`, collected host-side into the quarantine, promoted from Emacs (B6 quarantine + branch rows); gateway-held keys (PHASE-12 VA-1, PHASE-18 VA-1 key custody) |
+| EX-4 / DEC-065 | `cd ~/dev/malebolge && just check` rc 0 at HEAD `8c93902`: 47 files, 1206 tests, coverage 97.81/93.91/98.2/97.96 (working tree dirty only in the user's `biome.json`, `justfile`, untouched). `test/runner/{room,exec,config,env,pause,prepare,collect}.test.ts` rerun alone: 7 files, 295 tests, green. SL-006 sec-6 revision followed (PHASE-16 batch B: oubliette `ad2dd7d`, collect prints `<oid>\t<ref>` in `ls-remote` order; closes PHASE-15 relay item S1) |
+| CHR-016 | Closed per user ruling (1); see below |
+
+### CHR-016 (user ruling 2026-10-19 (1))
+Closed with `doctrine backlog edit CHR-016 --status closed --resolution done`; body section appended. The closure run (P/R) plus PHASE-12 cover the live room rung. Waived by the ruling: silence limit, oubliette verbs' host-key refusal, agent home writable/exec. Still OPEN (audit item): the re-check of the room adapter at oubliette SL-006's lock (Harvest `### Open`).
+
+### PHASE-14 criteria ledger
+| Criterion | Status | Evidence |
+|---|---|---|
+| EN-1 (PHASE-13 deployed in Emacs) | met | H2 checks (batch B pre-review state); migration 0009 applied (H3) |
+| EX-1 (flakes, Go repo, dl-satan.el) | met | `605447d8`, `e6cea06`; H4 checks; H5 `isArchived` true, symlink and policy.toml gone |
+| EX-2 (closure run, one consumer) | met | P/R from `patch_job_create` handler via emacsclient (ruling 2), `needs_review` -> promoted/rejected; one-consumer block. Intervention: none, by construction of the ruled create path (nil tool-ctx), accepted by user ruling 2026-10-19. "Against the slot" superseded by EX-5 |
+| EX-3 (ledger + issue evidence) | met (evidence recorded; edits are audit's) | Batch C table |
+| EX-4 (PHASE-15 fixtures green; CHR-016 deferred) | met, CHR-016 clause superseded | fixtures green (row above); CHR-016 closed per ruling (1), not deferred |
+| EX-5 (appended: closure ran against the deployed door) | met | closure ran against room `assistant` (`[door] kind = "room"`), repo goad-walk |
+| VH-1 (user promotes one, rejects one) | met | VH-1 section |
+| VA-1 (deployed state, `job_events`, real-repo branch) | met | B6 section |
+
+### Reconcile items (for audit; locked design, DEC-065, plan.toml not edited)
+- DEC-065 and design §9 "the slot is the live rung" / "live room rung is not closure evidence" are stale against ruling (1) (the closure run and PHASE-12 are live room evidence).
+- PHASE-14 EX-4 text ("CHR-016 deferred") is stale against ruling (1); EX-2's "against the slot" is superseded by EX-5.
+- Sheet B6's intervention query named table `interventions`; the table is `satan_interventions`.
+- SATAN.md drift E5 (inputs row said `path:`) was fixed by row deletion in `605447d8`.
+
+### Friction
+- `llm-gateway list` needs sudo; agents cannot corroborate spend (user relayed).
+- `satan-tool/patch-job-result` omits `repoPath`; only the raw RPC carries it.
+- `patch_job_create` called with nil tool-ctx yields `:intervention_error` (sheet R3); no ctx exists outside a run.

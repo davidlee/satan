@@ -54,3 +54,12 @@ Still deferred here:
   live would mean editing the real `known_hosts`;
 - the agent home being writable and executable (ASM-005's open caveat);
 - the re-check of the room adapter at oubliette SL-006's lock.
+
+## Closed per SL-023 user ruling 2026-10-19 (1)
+
+The SL-023 closure run (jobs pj-01M58TKGY59Y8C10ZTWJ8V1D46 promoted,
+pj-01M58TKGYN2G6HPJ9DM5763XD8 rejected, both against room `assistant`) plus
+PHASE-12 cover the live room rung. The remaining items above (silence limit,
+oubliette verbs' host-key refusal, agent home writable/executable) are waived
+by the ruling. The re-check of the room adapter at oubliette SL-006's lock
+stays OPEN: it lives in SL-023 `notes.md` Harvest `### Open` (an audit item).
