@@ -50,7 +50,6 @@ binding).
 - Per-lane budgets, models or prompt fragments.
 - ISS-047 (rejoin wedges the seat when a repo leaves config) — though this
   slice adds repos, it removes none.
-- Packaging malebolge as a flake input — CHR-017 (SL-023).
 - Host-side checks; the `clean-clone` operation.
 
 ## Dependencies

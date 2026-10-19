@@ -23,4 +23,4 @@ fresh-as-of: 2026-10-19 · design/drafting (run rev 18) · 3017d99
 - mem.fact.satan.patch-job-contract — stale (absolute repo path, deleted worktree module); correct in the slice (inq-7)
 - SPEC-004 + ADR-017 ledger rows 1, 9 — via a REV at SL-025 reconcile, after SL-023's REV-007
 - ISS-028 — harness jail reach-around for self-edit-mech; risk only
-- CHR-017 — runner runs malebolge live tree; malebolge edits deploy on restart
+- runner is a store build (CHR-017 done): malebolge code and runner.nix deploy together at one home switch (design §4.6; research Thread 1 row is stale)

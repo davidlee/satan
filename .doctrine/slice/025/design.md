@@ -226,25 +226,50 @@ the ladder, so no tag, repo or submit tier can set or widen them.
 
 **Admission** (`src/runner/protocol.ts`). `knownMode` becomes
 `withinModeScope`, which resolves the mode (an unknown mode is still
-`unknown mode "…"`) and then checks both axes:
+`unknown mode "…"`) and then checks both axes. It runs **before** the repo is
+resolved, so a scoped mode answers a wrong or unknown repo name with the list
+of repos it allows (config guarantees every listed repo exists):
 
 ```ts
+import { disallowedPaths, normaliseAllowedEntry } from "./classify.ts";
+
+/** The submit's repo and paths lie inside its mode's scope (DEC-069). */
 function withinModeScope(request: SubmitRequest, config: RunnerConfig): void {
   const mode = configEntry(config.modes, "mode", request.mode);
+  const name = JSON.stringify(request.mode);
   if (mode.repos !== "*" && !mode.repos.includes(request.repo)) {
-    throw new RunnerError("invalid_request",
-      `mode ${q(request.mode)} does not allow repo ${q(request.repo)}; it allows ${list(mode.repos)}`);
+    throw new RunnerError(
+      "invalid_request",
+      `mode ${name} does not allow repo ${JSON.stringify(request.repo)}; ` +
+        `it allows: ${mode.repos.join(", ")}`,
+    );
   }
-  if (mode.allowedPaths === "*") return;
+  if (mode.allowedPaths === "*") {
+    return;
+  }
   const outside = disallowedPaths(request.allowedPaths, mode.allowedPaths);
   if (outside.length > 0) {
-    throw new RunnerError("invalid_request",
-      `mode ${q(request.mode)} does not allow paths ${list(outside)}; it allows ${list(mode.allowedPaths)}`);
+    throw new RunnerError(
+      "invalid_request",
+      `mode ${name} does not allow paths ${outside.join(", ")}; ` +
+        `it allows: ${mode.allowedPaths.join(", ")}`,
+    );
   }
 }
 
 const SUBMIT_CHECKS: readonly SubmitCheck[] = [withinModeScope, ceilingsWithinMaxima];
+
+export function checkSubmit(request: SubmitRequest, config: RunnerConfig) {
+  for (const check of SUBMIT_CHECKS) {
+    check(request, config);
+  }
+  const repo = configEntry(config.repos, "repo", request.repo); // after scope
+  return { ...request, baseRef: request.baseRef ?? repo.defaultBranch };
+}
 ```
+
+Under an unbounded mode (`interactive`) an unknown repo still gets the generic
+`unknown repo "…"`; repo discovery for that lane is IDE-011.
 
 **Containment** is the existing matcher applied to each submitted entry:
 `disallowedPaths(submitted, mode.allowedPaths)`. No new matcher.
@@ -260,8 +285,8 @@ const SUBMIT_CHECKS: readonly SubmitCheck[] = [withinModeScope, ceilingsWithinMa
 | `"*"` | anything `normaliseAllowedEntry` accepts | yes |
 
 The refusal message names what the mode allows. The tick prompt relies on it:
-a `tick-agent` model that picks a repo outside the mode learns the allowed set
-from the error.
+a `tick-agent` model that picks a repo outside the mode, or a name the runner
+does not know, learns the allowed set from the error.
 
 **Lifetime.** Admission is the scope snapshot. Scope is not re-checked at
 `preparing` or when the runner rejoins jobs after a restart; narrowing config
@@ -343,28 +368,45 @@ bound.
 
 ## 4.6 Order of work and deployment
 
-The runner refuses unknown config keys and a mode naming an unknown repo, so
-each step must land before the one that depends on it.
+Two facts shape the order. The runner is a store build
+(`inputs.malebolge.packages.<system>.runner`), so a malebolge change reaches it
+only at the next `just home-switch`, which builds from the `~/dev/malebolge`
+checkout's tracked files when present (`~/flakes/SATAN.md` § satan-runner,
+`bin/dev-checkouts`). And the runner reads the mode at `preparing` from the
+current config (`run.ts:131-150`; `rejoin.ts:185-209` for a held `preparing`
+job with no recorded policy), so a job still `queued` or `preparing` when
+`fix` disappears fails.
 
 ```mermaid
 flowchart TD
-  A[runner code: ModeConfig, readMode, withinModeScope, tests] --> C
-  B[fleet: satan, satan-corpus targets] --> B2[user: room rebuild + reboot]
-  B2 --> C[runner.nix: 15 repos, 4 modes]
-  C --> C2[user: home switch + satan-runner restart]
-  C2 --> D[Emacs stamping + corpus prompts]
-  D --> D2[user: reload Emacs]
-  D2 --> E[live verification, one job per lane]
+  A["author: malebolge code + tests, committed"] --> S
+  B["author: fleet targets satan, satan-corpus"] --> B2["user: room rebuild + reboot"]
+  B2 --> S
+  P["author: Emacs stamping, prompt edits drafted outside ~/satan-corpus"] --> S
+  subgraph S["cutover, one sitting"]
+    direction TB
+    S1["check: no job queued or preparing"] --> S2["user: home switch builds runner + runner.nix together, then restart satan-runner"]
+    S2 --> S3["write + commit corpus prompts, then user: reload Emacs"]
+  end
+  S --> E["live verification, one job per lane"]
 ```
 
-- The runner code goes first: new config keys before then would be refused by
-  the closed tables.
-- The room rebuild comes before the runner names the new repos: a push to a
-  repo the room does not hold exits 2.
-- The runner runs malebolge's live tree (CHR-017), so its code deploys on the
-  restart.
-- The Emacs schema is built when `satan-tools-patch.el` loads, so a live Emacs
-  needs a reload; until then it still offers the old `mode` argument.
+- **Runner code and config deploy in one home switch.** Separately, the old
+  parser would refuse the new keys, or the new parser the old `[mode.fix]`
+  without scope keys. The switch must build malebolge from the committed
+  checkout; the restart confirms it with no `refusing to start` in the journal.
+- **The room rebuild comes before that switch**: a push to a repo the room
+  does not hold exits 2.
+- **Drain before the switch.** `select count(*) from jobs where state in
+  ('queued', 'preparing')` in the runner store must be 0. Jobs further on carry
+  their recorded policy and are unaffected.
+- **Land the prompts and reload Emacs straight after the restart.** Until the
+  reload the loaded tool still offers and forwards `fix`, which the runner now
+  refuses; the corpus is read live from its working tree, so prompts written
+  there before the reload would omit
+  the `mode` the loaded schema requires. Ticks fire once at boot (`SATAN.md` §
+  units), so the gap is open only to sessions started during the sitting;
+  start none.
 
 <!-- doctrine:section sec-5 -->
 # 5. Code Impact
@@ -381,15 +423,18 @@ malebolge (`~/dev/malebolge`, own repo):
 | Path | Change |
 |---|---|
 | `src/runner/config.ts` | `Scope`, `ModeConfig`, `readScope`, `readMode`; repos read before modes; `RunnerConfig.modes: ModeConfig` |
-| `src/runner/protocol.ts` | `knownMode` → `withinModeScope` |
-| `test/runner/config-fixture.ts` | `[mode.fix]` gains `repos` and `allowed_paths` (`fix` stays a test-only name) |
+| `src/runner/protocol.ts` | `knownMode` → `withinModeScope`, run before the repo lookup; import `disallowedPaths` |
+| `test/runner/config-fixture.ts` | `[mode.fix]` gains `repos = "*"`, `allowed_paths = "*"`, so existing tests keep admitting (`fix` stays a test-only name) |
+| `test/runner/policy.test.ts` | the appended `[mode.deep]` tables (`:45`, `:52`) gain both scope keys |
 | `test/runner/config.test.ts` | scope parse and refusal cases |
 | `test/runner/protocol.test.ts` | admission cases |
 | `test/runner/control.test.ts` | a replayed `submissionId` returns its job without re-admission |
-| `test/runner/live-fixture.ts` | smoke submits as `interactive` (`fix` is no longer deployed) |
+| `test/runner/run.test.ts`, `test/runner/recovery.test.ts` | an admitted job runs, and a held job rejoins, after its mode's scope narrows |
+| `test/runner/live-fixture.ts`, `live-fixture.test.ts` | smoke submits as `interactive` (`fix` is no longer deployed); the test's expectation follows |
 
 `~/flakes`: `features/satan/runner.nix` — `roomRepo`, 15 repos, 4 modes;
-`mode.fix` removed; header comment updated.
+`mode.fix` removed; header comment updated. `SATAN.md` § satan-runner: the
+smoke is an `interactive` job; the modes and their scope.
 
 `/srv/fleet`: `flake.nix` (inputs `satan`, `satan-corpus`; `targetNames`),
 `targets/satan.nix`, `targets/satan-corpus.nix` (new).
@@ -415,10 +460,14 @@ corpus's `just commit` sweeps all dirty state.
 | Submit admits a repo in `repos` and paths covered by `allowed_paths` (table in §4.2); refuses `invalid_request` otherwise, the message naming what the mode allows; `"*"` admits any repo / path | VT | `test/runner/protocol.test.ts` |
 | Unknown mode is still refused `invalid_request` | VT | existing `protocol.test.ts:239` |
 | A replayed `submissionId` returns its existing job, even after the mode's scope narrows | VT | `test/runner/control.test.ts` |
+| A job admitted, then run under a config whose mode no longer allows its repo or paths, reaches `preparing` with its policy recorded | VT | `test/runner/run.test.ts` |
+| A held job rejoins after a restart whose config narrowed its mode's scope | VT | `test/runner/recovery.test.ts` |
+| A scoped mode refuses an unknown repo name with the list of repos it allows | VT | `test/runner/protocol.test.ts` |
 | malebolge gate: tests, lint, typecheck, format | VT | `just check` |
 | Emacs submits the ctx `:mode-name`, never a model argument; the schema has no `mode` | VT | `satan-tools-patch-test.el`, fixture runner records the request |
 | No ctx or no `:mode-name`: error, nothing sent to the runner | VT | `satan-tools-patch-test.el` (`satan-patch-fixture-requests` empty) |
 | satan gate | VT | `just check` |
+| Before the cutover, no job is `queued` or `preparing` | VH | user: the §4.6 store query returns 0 |
 | Runner starts on the deployed config (15 repos, 4 modes) | VH | user: `systemctl --user status satan-runner`, no `refusing to start` |
 | One job per lane reaches `needs_review` through `patch_job_create`: `self-edit-mech` on `satan`, `self-edit-mind` on `satan-corpus`, `tick-agent` on another room repo | VH | live, run with the user |
 | One live refusal: a submit outside its mode's repos or paths returns `invalid_request` | VH | live, run with the user |
