@@ -1,0 +1,76 @@
+id = 26
+slug = "malebolge-coding-layer"
+title = "malebolge coding layer: project context, cwd, coding rules, bash timeout, ripgrep grep"
+status = "design"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "src/runner/env.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/start.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon-main.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/persona.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/prompt.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/coding/**"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/**"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "POL-001"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "CHR-020"
+
+[[relation]]
+label = "related"
+target = "SL-024"
+
+[[relation]]
+label = "related"
+target = "RFC-019"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
