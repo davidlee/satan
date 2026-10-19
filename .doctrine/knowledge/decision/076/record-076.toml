@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 76
+slug = "daemon-jail-grants-removed-kept-narrowed-rfc-019-oq-4-for-jailed-malebolge"
+title = "Daemon jail grants: removed, kept, narrowed (RFC-019 OQ-4 for jailed-malebolge)"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "RFC-019 OQ-4 asks for a deprecation inventory before the host profile goes; research X4 shows the goad rw bind exists for SATAN to author goad backends."
+choice = "Removed: devToolPkgs (no host coding tools), goadPkgs, the goad skill (MALEBOLGE_SKILLS) and the rw ~/satan-corpus/goad bind; goad-backend authoring becomes patch jobs on satan-corpus (IMP-020); goad's own host service keeps writing its data. Kept: ~/satan-corpus read-only (persona), malebolge tree read-only (the daemon runs from it), gateway key and catalog. Narrowed: the whole rw /run/user/1000/satan (which also holds goad.sock) to read-only mcp/ plus the profile's rw attach-socket dir; the durable state dir to the profile's own."
+alternatives = ["Keep goad authoring on the host via a rw bind (host write by the agent)", "Move goad behind a new MCP tool now"]
+rationale = "No host write survives except the profile's own state and socket."
+consequences = ["IMP-037 progress notes become history at reconcile"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"

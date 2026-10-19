@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 82
+slug = "execution-profile-authority-ledger-row-3b-owned-by-satan-flake-spec-002-and-spec-004-revised"
+title = "Execution-profile authority: ledger row 3b owned by satan-flake; SPEC-002 and SPEC-004 revised"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ADR-017 §3: each authority item has one owner; row 3 (capability/jail profiles) names emacs-client with an Emacs anchor; malebolge's profile lives in ~/dev/satan/flake.nix launchers."
+choice = "Authority ledger gains row 3b 'malebolge execution profile', owner token satan-flake (launchers in ~/dev/satan/flake.nix), enforced at bwrap, with a transition line. SPEC-002 REV: the daemon is a room client (containers, transports, topology, end-state, NF-004 consumer class). SPEC-004 REV: src/room/ shared; the daemon is a concurrent room client outside the one job seat, as its own room user; runner contract unchanged. No ADR-018 amendment: the execution profile is launcher configuration, not core-owned mode policy (ADR-018 D2 untouched)."
+alternatives = ["Extend row 3 to the flake under emacs-client", "Amend ADR-018"]
+rationale = "Names the owner where the enforcement actually is."
+consequences = ["REVs drafted in design, applied at reconcile"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"

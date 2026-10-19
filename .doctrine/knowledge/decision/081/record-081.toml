@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 81
+slug = "vm-mode-launches-pi-env-directly-in-the-room-users-home-without-session"
+title = "vm mode launches pi-env directly in the room user's home, without session"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "oubliette session requires a repo; EVD-011: a non-login ssh command already has the room base (rg, git) on PATH."
+choice = "The daemon's Launch is the direct form ([daemon]) with cwd the room user's home. No oubliette change."
+alternatives = ["A pseudo-repo for session", "A Launch that sets PATH"]
+rationale = "The base is on systemPackages, so PATH needs no help."
+consequences = ["VA: live session shows rg and git resolvable"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"

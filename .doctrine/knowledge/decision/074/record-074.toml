@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 74
+slug = "malebolge-srcroom-the-room-session-module-shared-by-daemon-and-runner-cut-by-consumer"
+title = "malebolge src/room/: the room session module shared by daemon and runner, cut by consumer"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-027 needs the runner's pi-env connection for the daemon. malebolge RFC-001 (advice) proposes a src/room/ tier, a consumer cut and travelling invariants; EVD-011 shows two concurrent clients on one room are independent."
+choice = "New src/room/ holds what a room session needs whichever program holds it: RoomConnection, Launch and a direct launch, sshTarget, daemonCommand, DaemonConnection/daemonConnection, HostKeyFailure, LostFailure/ConnectionObserver shapes, RoomShell/ShellLimits/ShellOutput, ChannelUnavailable/ChannelFailed, the shell factory over a connection (not a job), roomSourceReader split from job admission, and a parser for a room door TOML table. src/runner/ keeps JobConnection, the pause observer, jobEnv, GitChannel and capsule verbs, the slot door, clone hygiene, daemonLaunch (session <repo>) and door-kind dispatch; the remainder of runner/room.ts is renamed runner/door.ts. Module header states its invariants: built from facts and never knows which client it serves; a host-key failure is a trust failure, never downtime; no pause, profile or tool-error policy inside. A two-sided structural import test: nothing outside src/runner/ imports src/runner/*, and src/runner/ imports no daemon-private module."
+alternatives = ["Daemon imports src/runner/* directly", "Door parsing per program (RFC-001 §3), duplicating the closed room-door key table", "A src/lib/ tier in the same change (deferred to malebolge IMP-002)"]
+rationale = "One implementation (POL-001) with a named boundary; the consumer test keeps both programs' policies out of the shared code."
+consequences = ["VT: runner suite green unchanged; structural import test", "malebolge IMP-002 keeps src/lib/ and the run.ts cut"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"

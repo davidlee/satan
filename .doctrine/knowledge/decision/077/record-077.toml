@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 77
+slug = "execution-profile-selected-by-the-launchers-malebolge-profile-enforced-by-the-jail-room-door-from-a"
+title = "Execution profile: selected by the launcher's MALEBOLGE_PROFILE, enforced by the jail; room door from a rendered file"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "CON-005: a profile is a host jail, not a daemon flag; research T1. The daemon must still know what to build."
+choice = "The launcher sets MALEBOLGE_PROFILE=room|host (egress later). The jail's binds and network enforce the profile; the variable only selects what the daemon builds. The room profile also gets MALEBOLGE_DOOR, a TOML file with the room-door keys (room, user, known_hosts, host_key_alias, ssh_config, identity), parsed by src/room/'s door parser, rendered by home-manager from one attrset beside the runner's [door]. The daemon's store and attach socket are derived from the profile: ~/.local/state/satan/durable/<profile>/session.sqlite and /run/user/1000/satan/durable/<profile>/durable.sock."
+alternatives = ["Infer the profile from the presence of a door", "Room literals in ~/dev/satan/flake.nix (hand-copied, cf. IMP-044)"]
+rationale = "A mismatched variable cannot join egress to the room: only the room jail is given the door and only it lacks network."
+consequences = ["Absent MALEBOLGE_PROFILE is a startup error, not a default"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"

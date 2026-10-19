@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 79
+slug = "daemon-in-room-profile-room-down-degrades-trust-failure-is-distinct-the-daemon-never-starts-the-room"
+title = "Daemon in room profile: room down degrades, trust failure is distinct, the daemon never starts the room"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Room assistant is not enabled at boot; the daemon builds an env per tool call; EVD-009: exec erases the lost type, only the connection seam keeps it."
+choice = "At startup, a room that cannot be reached means no project context section, logged; the daemon starts. The daemon never starts the room (capsule assistant start is the operator's). Per call, a lost connection reads 'room unavailable' and a host-key failure reads 'room host key untrusted' (logged), never conflated; both observed at the connection seam and injected into tools (grep's mapping injected, not grep taught about rooms)."
+alternatives = ["Block startup until the room is up", "Start the room from the daemon"]
+rationale = "Interactive use stays available; trust failures stay visible (malebolge RFC-001 §4 EX-5)."
+consequences = ["VT: grep and tool error mapping under lost and untrusted starts"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"

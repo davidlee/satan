@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 80
+slug = "daemon-project-context-is-read-through-its-environment-amends-dec-072s-daemon-half"
+title = "Daemon project context is read through its environment (amends DEC-072's daemon half)"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-026 DEC-072: context read once, in the environment; its daemon half read with node fs at startup."
+choice = "In the room profile the daemon reads project context once at startup through src/room/'s roomSourceReader, from its room home only (not a git repo: no root walk). The host profile keeps the node reader. One renderer, unchanged."
+alternatives = ["Walk ancestors in the room", "Drop project context in vm mode"]
+rationale = "Keeps DEC-072's single path; the env decides the reader."
+consequences = ["DEC-072 noted as amended for the daemon at reconcile"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"

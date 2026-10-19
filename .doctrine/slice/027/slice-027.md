@@ -44,10 +44,12 @@ project-context pipeline already takes an injected `SourceReader`
 3. **Project context and cwd from the room.** The daemon's startup
    project-context read uses a room `SourceReader` (D7's constraint: context
    is read in the environment). The cwd section names the room path.
-4. **D3 room convention.** vm mode works under `/home/agent`, cloning from
-   `/work/<repo>` when it needs a repo; it never edits a `/work` clone. Stated
-   in the interactive prompt (`~/satan-corpus/prompts/interactive.txt`);
-   `dirty_clone` remains the detector. No new enforcement.
+4. **D3 by permissions, not convention (DEC-075).** vm mode runs as its own
+   room user (e.g. `satan`: own key, own home); `/work` clones stay owned by
+   `agent`, readable, not writable. vm mode clones what it needs into its
+   home; its work reaches the host only as a patch job. Stated in
+   `~/satan-corpus/prompts/interactive.txt`; `dirty_clone` stays as the
+   runner's own check.
 5. **Host reach removed.** `jailed-malebolge` (`flake.nix`) loses host coding
    reach: no rw launch-dir bind, no host network beyond what reaching the
    room and the gateway needs, `devToolPkgs` dropped if nothing host-side
@@ -93,7 +95,10 @@ project-context pipeline already takes an injected `SourceReader`
   probes).
 - `~/satan-corpus/prompts/interactive.txt` (D3 convention).
 - `~/notes/justfile` `hello-durable` (launch dir, if still relevant).
-- Possibly `~/dev/oubliette` (room access for a second host client).
+- `/srv/fleet/flake.nix` `rooms.assistant.users` (the vm-mode room user).
+- Cross-repo prerequisite, `~/flakes` slice: gateway client listener,
+  `gatewayClient` socket mode, optional launch-dir bind, the daemon's door
+  file, the vm-mode room user's key.
 
 ## Risks, assumptions, open questions
 
@@ -140,6 +145,14 @@ project-context pipeline already takes an injected `SourceReader`
 One change: the interactive daemon's coding tools move from the host jail into
 room `assistant`, reusing the runner's pi-env connection, and the jail loses
 the host reach that made that unsafe.
+
+## Decisions (design run dr-01a15431, 2026-10-20)
+
+DEC-074 (src/room/ module), DEC-075 (room-profile jail, own room user,
+read-only client sockets), DEC-076 (jail grants), DEC-077 (profile selection,
+door file), DEC-078 (store per profile), DEC-079 (room down, trust failure),
+DEC-080 (project context through the env; amends DEC-072), DEC-081 (direct
+launch), DEC-082 (ledger row 3b, SPEC-002/004 REVs). Evidence EVD-011.
 
 ## Follow-Ups
 

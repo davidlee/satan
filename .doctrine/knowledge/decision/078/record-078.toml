@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 78
+slug = "a-conversation-is-bound-to-its-profile-by-its-store-one-store-per-profile-each-jail-binds-only-its"
+title = "A conversation is bound to its profile by its store: one store per profile, each jail binds only its own"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "CON-005 / oubliette RV-021 F-1: no return channel from room content to an egress session. pi-durable stores no profile per conversation; GPT second opinion: separate paths alone are not a check."
+choice = "Each profile's durable store and attach socket live under a directory named for the profile; each jail binds only its own. The daemon refuses to open a store or socket directory whose name differs from its MALEBOLGE_PROFILE. The existing store becomes the host profile's; the room profile starts fresh."
+alternatives = ["A profile field stamped on the conversation and checked at resume"]
+rationale = "Host-enforced (the other store is not in the jail), plus a cheap in-process refusal against a launcher misconfiguration."
+consequences = ["VA: negative probe inside each jail cannot reach another profile's store or socket", "VT: daemon refuses a mismatched store dir"]
+decided_by = "user (accepted agent proposals, 2026-10-19/20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-027"
