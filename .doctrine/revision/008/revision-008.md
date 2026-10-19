@@ -30,6 +30,8 @@ DEC-070, DEC-071, DEC-072, DEC-073.
 > ceilings or collection judgement. `preparing` reads it once, after the job
 > branch is made; it is composed before the job block in the first input
 > message.
+> A source the job ran without is recorded as a `context_degraded` job event,
+> at least once per admission.
 
 ### §Execution environment — tool sentence
 
@@ -42,3 +44,15 @@ DEC-070, DEC-071, DEC-072, DEC-073.
 
 `job_events` gains `context_degraded` (source, reason): a context source the
 job ran without.
+
+## Reconcile narrative
+
+Applied at SL-026 `/reconcile` (2026-10-19), user agreement on the brief.
+
+- [RV-034 brief, Governance/spec]: the four planned excerpts landed as
+  drafted at design; the code matches them (malebolge fe7030a + 55f4a68).
+- [RV-034 F-3]: `context_degraded` events are at-least-once per admission
+  (written before the recorded submit); the job-contract append says so.
+- [RV-034 F-1]: the room read mechanism (one `stat -L` per directory from the
+  clone root) is design-level detail and stays in SL-026 design §4.2; the
+  spec states only what `preparing` reads and when.

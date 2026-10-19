@@ -47,7 +47,7 @@ Host facts (unit, paths, keys, room name, config values) live in
 | Scheduler (`scheduler.ts`) | FIFO by creation, one job in flight across all repos, woken by submit; the deadline timer |
 | Store (`store.ts`) | the one SQLite file and adapter shared with pi-durable; job schema, migrations, the append-only `job_events` audit |
 | Job state machine (`jobs.ts`) | allowed transitions and the recovery table, as pure data |
-| Policy and prompt (`policy.ts`, `prompt.ts`) | the policy ladder, prompt composition (pure) |
+| Policy and prompt (`policy.ts`, `prompt.ts`) | the policy ladder; prompt composition, a pure function of (prompt text, resolved policy, job, project context) (DEC-070) |
 | Model gate (`model-gate.ts`, `ceilings.ts`) | per-job ceilings at the provider boundary |
 | Environment (`env.ts`, `guard.ts`) | per-job pi-env environment and connection; room-down recognition; early path check |
 | Git channel (`room.ts`) | the door port and its slot and room adapters |
@@ -110,6 +110,14 @@ submits only — replay, `preparing` and rejoin never re-check it. Scope sits
 outside the policy ladder: no tag, repo or submit field sets or widens it
 (DEC-069).
 
+Project context read from the job's clone (DEC-072 sources; doctrine's boot
+per DEC-071) is instruction to the model, not policy (DEC-073): it cannot
+set or change the repo, base, allowed paths, mode, model, thinking level,
+ceilings or collection judgement. `preparing` reads it once, after the job
+branch is made; it is composed before the job block in the first input
+message. A source the job ran without is recorded as a `context_degraded`
+job event, at least once per admission.
+
 ### States
 
 ```text
@@ -149,7 +157,8 @@ in-room daemon is launched by oubliette's `session` at its configured
 absolute path, which supplies the repo's and the room's tools; the runner sets
 no guest `PATH`. The runner's ssh checks host keys strictly and never writes
 oubliette's `known_hosts`; oubliette's own verbs learn keys. Tools offered:
-`read`, `write`, `edit`, `bash`; only `read` is replay-safe.
+`read`, `write`, `edit`, `bash`, `grep` (ripgrep in the room); `read` and
+`grep` are replay-safe.
 
 ## Concerns
 

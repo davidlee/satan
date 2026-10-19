@@ -104,3 +104,46 @@ and unfollowed at the cost of a second nixpkgs in malebolge's lock.
   grep; read and grep replay-safe), audit vocabulary (`context_degraded`,
   at-least-once). Applying it delivers the `.doctrine/spec/tech/004/*`
   selector (F-14).
+
+## Reconciliation Outcome
+
+User agreement: D-1 accepted ("yes /reconcile with D-1 accepted"); the full
+brief ("agreed"), 2026-10-19.
+
+### Direct edits applied (design.md)
+- §4.2 `regularFiles`: one `stat -L` per directory from the clone root over
+  absolute paths, with the reason (F-1).
+- §4.2: `context_degraded` events at-least-once; crash and pre-admission
+  cancel windows (F-3).
+- §4.2: existing-exec overflow → `ChannelFailed`; re-check through the
+  channel's `checkClone`, `guest_path_invalid`, non-channel errors rethrown;
+  `Degradation.source` may be a directory (F-7).
+- §4.3: `appendEvent`, not `jobs.change` (F-2).
+- §4.5: reservation stop near 45 KB; pi's 500-char notice (F-4).
+- §4.6: cwd section wording, untagged. DEC-056 checked: it governs runner
+  scheduling and prompt-file config, not section text; no conflict (F-8).
+- §4.7: doctrine input system guard, no `follows`, second nixpkgs (F-6).
+- §5: added files and exports (F-5, and F-12's `fetchProjectContext(repo,
+  checkClone)`).
+The design run is locked; doctrine directs reconcile edits to design.md
+directly (no adopt), so `design show` reports RV-033 as not covering the
+amended text — expected.
+
+### REVs completed
+- REV-008 (SPEC-004: project context, doctrine boot and grep in patch jobs):
+  approved, applied, done. Components row, job-contract append (with
+  `context_degraded` at-least-once), execution-environment tools. Narrative
+  in revision-008.md. `doctrine spec validate SPEC-004` clean.
+
+### Withdrawn / tolerated
+- F-13 (no exec timeout on grep / daemon reader TOCTOU): tolerated, rationale
+  in the disposition.
+- F-14 (conformance blind to cross-repo code): tolerated. The
+  `.doctrine/spec/tech/004/*` selector still reads undelivered: the registry
+  holds phase deltas only, and the SPEC-004 edit lands in the reconcile
+  commit, not a phase.
+
+### Fixed now (audit)
+- F-9..F-12 malebolge 55f4a68; F-11, F-15 satan ef5cd28.
+
+Reconcile pass complete — handoff to /close.

@@ -217,7 +217,7 @@ export async function readyRoom<T>(
 
 // src/runner/project-context.ts
 export interface Degradation {
-  source: string; // "doctrine" or a file path
+  source: string; // "doctrine", a file path, or a directory (a failed chain stat)
   reason: "boot_not_ignored" | "missing" | "exit" | "timeout" | "overflow" | "empty" | "error";
   code?: number | string; stderr?: string;
 }
@@ -232,13 +232,19 @@ rest of it. Nothing is stored: a restart before admission redoes
 `preparing` and reads again; a restart after admission (an initial
 submission recorded) only records `running`, with no checks and no `admit`
 (`jobs.ts:315-328`), and finds the context in the transcript (DEC-070). So
-the fetch runs at most once per admitted prompt.
+the fetch runs at most once per admitted prompt. Its `context_degraded`
+events are at-least-once: a crash between writing them and the recorded
+submit re-runs `admit` and writes them again, and a cancel before admission
+leaves them on a job that never ran (RV-034 F-3).
 
 **`src/runner/project-context.ts`** (new) adapts the room shell to the shared
 module:
 
-- `regularFiles(dir, names)` = one `stat -L --printf '%f %n\n' -- N1 N2 …`
-  per directory, run with that directory as cwd: `%f` is the raw mode in hex,
+- `regularFiles(dir, names)` = one `stat -L --printf '%f %n\n' -- <dir>/N1
+  <dir>/N2 …` per directory, run from the clone root over absolute paths, its
+  output matched by full path (a directory as cwd fails to start when the
+  directory is absent, e.g. no `.pi/`, which would read as `missing` and
+  degrade every ordinary job; RV-034 F-1): `%f` is the raw mode in hex,
   and a name is a regular file when `mode & 0xF000 == 0x8000`. `stat` reads
   the inode and never opens the file, so a FIFO cannot block it. Exit 0, or 1
   when some names are missing; the lines it printed are the answer either
@@ -280,7 +286,11 @@ They pass `PREPARE_LIMITS` (`timeoutS: 60`, `maxStdoutBytes: 65_536`,
 `maxStderrBytes: 4096`). Their failure rules are unchanged: a timeout is a
 `ChannelFailed` and fails `preparing`, as any non-room failure does today;
 a `git status` that overflows is a dirty clone (`dirty_clone`, paths
-truncated). The base refresh is already bounded (`capsule` verbs with
+truncated); an overflow on `test -d`, `git rev-parse` or `git switch` is a
+`ChannelFailed` (fail closed). The re-check after doctrine (§4.3) goes
+through the channel's `checkClone`; a failed `test -d <guest>/.git` there is
+`guest_path_invalid`, and an error that is not a channel error is rethrown
+(a defect, not a dirty clone); neither cleans (RV-034 F-7). The base refresh is already bounded (`capsule` verbs with
 `transfer_timeout_s`). With these, no exec in `preparing` is unbounded.
 `cleanRoomClone` runs only after collect and keeps no limits.
 
@@ -348,7 +358,8 @@ flowchart TD
   the §4.2 table tests the error type before the code.
 - **`context_degraded`** is a new `job_events` kind (`src/runner/vocab.ts`
   `EVENT_KINDS`, appended; the `kind` column has no CHECK constraint, so no
-  migration), written by `admit` with `jobs.change` like `refreshed`; its
+  migration), written by `admit` with the store's `appendEvent` (as
+`clean_failed`): no job-row change exists to carry (RV-034 F-2); its
   payload is a `Degradation` (§4.2), stderr ≤ 4 KiB. Also logged. The job
   runs on.
 - **Role** `orchestrator`: doctrine's general role (user, 2026-10-19).
@@ -418,7 +429,9 @@ ranges (truncated toward zero first).
   characters.
 - **Stops**: the tool aborts its own controller (combined with the call's
   signal) at `limit` matches (only `match` messages count) or once the
-  rendered output reaches 50 KB, and treats its own abort as success with
+  rendered output would leave no room under 50 KB for its notices (a
+  reservation: the stop comes near 45 KB of matches and a notice is never
+  cut; RV-034 F-4), and treats its own abort as success with
   pi's notice (`N matches limit reached. Use limit=2N for more, or refine
   pattern`, or the 50 KB notice). When the call's signal has aborted, the
   tool throws, even if its own abort also fired.
@@ -426,7 +439,8 @@ ranges (truncated toward zero first).
   for context; paths relative to the search path. When `path` names a file,
   rg reports that file's path exactly as given, and such a path is shown as
   its basename (pi's fallback, without a `stat`); each line at most 500
-  characters; the whole at most 50 KB. Oversized messages add a notice (`N
+  characters (pi's notice `Some lines truncated to 500 chars. Use read tool
+  to see full lines`); the whole at most 50 KB. Oversized messages add a notice (`N
   results too large to show; narrow the pattern or path`): a message lists
   every submatch, so a short line with many hits can exceed the cap too. rg merges overlapping context windows, so with
   `context` > 0 the output can differ from pi's per-match blocks.
@@ -461,8 +475,8 @@ const projectContext = renderProjectContext(
 - The daemon runs no doctrine.
 - Extensions: `[persona, projectContext, skills, cwd, CodingTools, grep,
   satan]`. `projectContextExtension(text)` renders a constant section
-  `project_context` (tagged); `cwdExtension(cwd)` a constant `cwd` section
-  holding the path. The order is pi's, for a fresh conversation and for the
+  `project_context` (tagged); `cwdExtension(cwd)` a constant, untagged `cwd`
+  section in pi's wording, `Current working directory: <path>` (RV-034 F-8). The order is pi's, for a fresh conversation and for the
   existing one alike: pi-durable re-sends all sections in the desired order
   once when a new key would otherwise land out of place (§3).
 - Today's daemon cwd `~/notes` is a git root with no context files: the
@@ -477,7 +491,10 @@ const projectContext = renderProjectContext(
   commit on the job branch); three bullets: show file paths clearly; set
   bash `timeout` on commands that may hang; prefer `grep` to `bash` + `rg`.
 - `~/satan-corpus/prompts/interactive.txt`: the same three bullets.
-- `~/dev/malebolge/flake.nix`: `dev-tools` gains `doctrine`.
+- `~/dev/malebolge/flake.nix`: `dev-tools` gains `doctrine`, as
+  `lib.optional (doctrine.packages ? system)` because doctrine publishes no
+  aarch64-linux package; no `follows` (as in satan's flake), so the lock
+  carries a second nixpkgs (RV-034 F-6).
 - `~/dev/satan/flake.nix`: `jailProbes.malebolge` asserts `rg`, and the
   `ripgrep` comment in `devToolPkgs` names the daemon's `grep` as a consumer
   (SPEC-002 NF-004: a required binary is in both the closure and the probe).
@@ -493,14 +510,16 @@ const projectContext = renderProjectContext(
 | path | change |
 |---|---|
 | `malebolge/src/project-context.ts` | new: names, cap, `SourceReader`, `capSource`, `readChainDir`, `readSources`, `renderProjectContext`, `gitRootDirs`, `nodeSourceReader`, `projectContextExtension` |
-| `malebolge/src/truncate.ts` | new: `capUtf8`, `truncateLine` |
+| `malebolge/src/truncate.ts` | new: `capUtf8`, `truncateLine`, `headKeeper`, `GREP_MAX_LINE_LENGTH` |
+| `malebolge/src/ndjson.ts` | `boundedLineSplitter`; `lineSplitter` is its uncapped case |
+| `malebolge/src/daemon-extensions.ts` | new: the daemon's extension order, pure |
 | `malebolge/src/xml.ts` | new: `escapeXml`, moved from `skills.ts` |
 | `malebolge/src/skills.ts` | import `escapeXml` |
 | `malebolge/src/cwd.ts` | new: `cwdExtension` |
-| `malebolge/src/grep.ts` | new: `grepTool`, `grepExtension` |
+| `malebolge/src/grep.ts` | new: `grepTool`, `grepExtension`; `spawn_error` → tool-error result |
 | `malebolge/src/daemon-main.ts` | read context once; install `projectContext`, `cwd`, `grep` |
-| `malebolge/src/runner/project-context.ts` | new: `fetchProjectContext` (room `SourceReader`, limits, doctrine step, clone re-check, classification) |
-| `malebolge/src/runner/shell.ts`, `room.ts` | `ShellLimits`, `overflowed`; `PREPARE_LIMITS` on `checkRoomClone` |
+| `malebolge/src/runner/project-context.ts` | new: `fetchProjectContext(repo, checkClone)` (room `SourceReader`, `FETCH_LIMITS`/`HEAD_LIMITS`/`DOCTRINE_LIMITS`, doctrine step, re-check through the channel, classification) |
+| `malebolge/src/runner/shell.ts`, `room.ts` | `ShellLimits`, `overflowed`, `settle`, `outputCollector`, `OVERFLOW_EXIT_CODE`; `PREPARE_LIMITS` on `checkRoomClone` |
 | `malebolge/src/runner/prepare.ts` | `readyRoom<T>` takes a `FinalStep<T>`, returns `{ baseOid, value }`; `PREPARE_LIMITS` on `ensureJobBranch` |
 | `malebolge/src/runner/run.ts` | `admit` passes the fetch step and `cwd`, writes `context_degraded` events once, passes sources to `composePrompt` |
 | `malebolge/src/runner/prompt.ts` | fourth input `projectInstructions`; `Working directory:` |

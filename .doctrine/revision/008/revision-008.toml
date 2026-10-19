@@ -1,8 +1,8 @@
 id      = 8
 slug    = "spec-004-project-context-doctrine-boot-and-grep-in-patch-jobs-sl-026"
 title   = "SPEC-004: project context, doctrine boot and grep in patch jobs (SL-026)"
-status  = "proposed"   # work lifecycle: proposed | started | done | abandoned
-approval = "none"      # SEPARATE axis, orthogonal to status: none | requested | approved | rejected
+status = "done"
+approval = "approved"
 updated = "2026-10-19"
 tags    = []
 
