@@ -1,7 +1,7 @@
 id = 25
 slug = "patch-lanes-end-to-end"
 title = "Patch lanes end to end: self-edit and tick jobs through the runner, scoped per mode"
-status = "ready"
+status = "audit"
 created = "2026-10-19"
 updated = "2026-10-19"
 tags = []
