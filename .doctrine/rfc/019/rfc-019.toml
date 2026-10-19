@@ -1,0 +1,40 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = 19
+slug = "malebolge-one-agent-room-habitat"
+title = "One malebolge agent: the room is SATAN's machine, the host is reached through SATAN's tools"
+status = "open"
+created = "2026-10-19"
+updated = "2026-10-19"
+tags = ["architecture", "durable", "habitat", "malebolge", "room", "tools"]
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+
+[[relation]]
+label = "related"
+target = "RFC-018"
+
+[[relation]]
+label = "related"
+target = "ADR-017"
+
+[[relation]]
+label = "related"
+target = "ADR-018"
+
+[[relation]]
+label = "related"
+target = "SL-023"
+
+[[relation]]
+label = "related"
+target = "SL-025"
+
+[[relation]]
+label = "related"
+target = "SPEC-002"
+
