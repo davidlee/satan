@@ -9,6 +9,9 @@
 ;;   patch_job_result   its outcome: class, reviewed commit, quarantine
 ;;   patch_job_cancel   cancel it, with a reason
 ;;
+;; A job's mode is the caller's run mode, stamped from the tool ctx, never
+;; a model argument (DEC-068); the runner alone enforces what the mode may do.
+;;
 ;; Review is promote/reject in Emacs (satan-patch-promote), not a tool.
 ;; Tool descriptions live under `satan-tools-descriptions-dir'/patch_job_<name>.md;
 ;; this file carries mechanism only: schema, validation, handler.
@@ -20,13 +23,6 @@
 (require 'satan-tools)
 (require 'satan-patch-rpc)
 (require 'satan-intervention)
-
-(defcustom satan-tools-patch-modes '("fix")
-  "Modes `patch_job_create' offers the model: the runner's configured modes.
-Mirrors the runner config's [mode.*] names; the runner refuses any other.
-Read when this file loads (the tool schema is built then)."
-  :type '(repeat string)
-  :group 'satan)
 
 (defconst satan-tools-patch--intervention-window-minutes 120
   "Default `outcome_window_minutes' for patch_job interventions.
@@ -44,11 +40,12 @@ See outcome-semantics §3.3.")
 ;; patch_job_create
 ;; ---------------------------------------------------------------------
 
-(defun satan-tools-patch--submit-fields (args)
-  "The `submit' request fields for create ARGS, under a fresh submissionId."
+(defun satan-tools-patch--submit-fields (args mode)
+  "The `submit' request fields for create ARGS in run MODE.
+Carries a fresh submissionId."
   (append
    (list :submissionId (satan-patch-rpc-new-id)
-         :mode (plist-get args :mode)
+         :mode mode
          :directive (plist-get args :directive)
          :repo (plist-get args :repo)
          :allowedPaths (vconcat (plist-get args :allowed_paths)))
@@ -76,20 +73,25 @@ intervention fails: the job exists either way, and must not be resubmitted."
 
 (defun satan-tool/patch-job-create (args ctx)
   "Handler for `patch_job_create'.
-ARGS plist: :directive :mode :repo (a runner config name) :allowed_paths,
-optional :base_ref :tags :source :context.  Submits once, under one
+ARGS plist: :directive :repo (a runner config name) :allowed_paths,
+optional :base_ref :tags :source :context.  The job's mode is CTX's
+`:mode-name' (DEC-068); without one nothing is sent.  Submits once, under one
 submissionId; never retried.  On the runner's ok, records a patch_job
 intervention targeting the job id and returns `(ok :job_id :state
 :intervention_id)', or `:intervention_error' in place of the id."
-  (if (seq-empty-p (plist-get args :allowed_paths))
-      (cons 'error "allowed_paths must be non-empty")
-    (pcase (satan-patch-rpc-call "submit" (satan-tools-patch--submit-fields args))
-      (`(ok . ,body)
-       (let ((job-id (plist-get body :jobId)))
-         (cons 'ok (append (list :job_id job-id :state (plist-get body :state))
-                           (satan-tools-patch--announce
-                            job-id (plist-get args :directive) ctx)))))
-      (err err))))
+  (let ((mode (plist-get ctx :mode-name)))
+    (cond
+     ((null mode) (cons 'error "patch_job_create needs an acting run mode"))
+     ((seq-empty-p (plist-get args :allowed_paths))
+      (cons 'error "allowed_paths must be non-empty"))
+     (t (pcase (satan-patch-rpc-call
+                "submit" (satan-tools-patch--submit-fields args mode))
+          (`(ok . ,body)
+           (let ((job-id (plist-get body :jobId)))
+             (cons 'ok (append (list :job_id job-id :state (plist-get body :state))
+                               (satan-tools-patch--announce
+                                job-id (plist-get args :directive) ctx)))))
+          (err err))))))
 
 ;; ---------------------------------------------------------------------
 ;; patch_job_status / patch_job_result / patch_job_cancel
@@ -129,8 +131,6 @@ intervention targeting the job id and returns `(ok :job_id :state
        :risk 'low
        :args-schema
        (list 'directive     (list :type 'string :required t)
-             'mode          (list :type 'string :required t
-                                  :enum satan-tools-patch-modes)
              'repo          (list :type 'string :required t)
              'allowed_paths (list :type 'array  :required t :items 'string)
              'base_ref      (list :type 'string)

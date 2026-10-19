@@ -3,13 +3,13 @@ memory_key = "mem.fact.satan.patch-job-contract"
 schema_version = 1
 memory_type = "fact"
 status = "active"
-title = "patch_job_create: allowed_paths is repo-relative; checks are the agent's, not the runner's"
-summary = "patch_job_create: allowed_paths is repo-relative (a ~/ entry matches nothing) and checks are run by the agent, not the runner"
+title = "patch_job_create: repo is a runner name, mode is the acting run mode, scope is the runner's"
+summary = "repo names a runner config entry; Emacs stamps mode from the tool ctx :mode-name (no ctx: refused); the runner enforces per-mode repos/allowed_paths at submit; allowed_paths is repo-relative"
 created = "2026-09-17"
-updated = "2026-09-25"
+updated = "2026-10-19"
 
 [scope]
-paths = ["satan/satan-patch-worktree.el", "satan/satan-tools-patch.el", "satan/satan-patch-prompt.el"]
+paths = ["satan/satan-tools-patch.el", "satan/satan-run.el"]
 globs = []
 commands = []
 tags = ["satan", "patch", "paths"]

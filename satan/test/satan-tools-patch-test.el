@@ -11,9 +11,13 @@
 (require 'satan-patch-fixture)
 
 (defconst satan-tools-patch-test--create-args
-  (list :directive "fix the flaky walk" :mode "fix" :repo "goad-walk"
+  (list :directive "fix the flaky walk" :repo "goad-walk"
         :allowed_paths '("src/" "test/"))
   "A valid `patch_job_create' call.")
+
+;; Test-local mode name; the runner, not Emacs, decides what it may do.
+(defconst satan-tools-patch-test--ctx '(:id "run-1" :mode-name "self-edit-mech")
+  "The tool ctx of a run in mode self-edit-mech.")
 
 (defconst satan-tools-patch-test--summary
   (list :jobId "pj-1" :state "needs_review" :submissionId "sat-1"
@@ -43,10 +47,14 @@ RESULT is the id to return, or `:signal' to signal a `user-error'."
                 (satan-tools-patch-test--intervention-stub ,result)))
        ,@body)))
 
-(defun satan-tools-patch-test--create (&rest overrides)
-  "Call `patch_job_create' with the valid args, OVERRIDES first."
+(defun satan-tools-patch-test--create-in (ctx &rest overrides)
+  "Call `patch_job_create' under tool CTX with the valid args, OVERRIDES first."
   (satan-tool/patch-job-create
-   (append overrides satan-tools-patch-test--create-args) '(:id "run-1")))
+   (append overrides satan-tools-patch-test--create-args) ctx))
+
+(defun satan-tools-patch-test--create (&rest overrides)
+  "Call `patch_job_create' in the ctx's run, with the valid args, OVERRIDES first."
+  (apply #'satan-tools-patch-test--create-in satan-tools-patch-test--ctx overrides))
 
 (defun satan-tools-patch-test--submitting (job-id)
   "A fake runner accepting a submit as JOB-ID, queued."
@@ -69,7 +77,7 @@ RESULT is the id to return, or `:signal' to signal a `user-error'."
           (should (equal (plist-get submit :op) "submit"))
           (should (string-prefix-p "sat-" (plist-get submit :submissionId)))
           (should (equal (plist-get submit :directive) "fix the flaky walk"))
-          (should (equal (plist-get submit :mode) "fix"))
+          (should (equal (plist-get submit :mode) "self-edit-mech"))
           (should (equal (plist-get submit :repo) "goad-walk"))
           (should (equal (plist-get submit :allowedPaths) '("src/" "test/")))
           (should-not (plist-member submit :baseRef))
@@ -134,14 +142,34 @@ RESULT is the id to return, or `:signal' to signal a `user-error'."
       (other (ert-fail (format "expected error, got %S" other))))
     (should-not (satan-patch-fixture-requests))))
 
-(ert-deftest satan-tools-patch/create-schema-offers-the-configured-modes ()
-  (let* ((schema (plist-get (satan-tool-lookup "patch_job_create") :args-schema))
-         (keys (cl-loop for (key) on schema by #'cddr collect key)))
-    (should (equal (plist-get (plist-get schema 'mode) :enum) satan-tools-patch-modes))
-    (should (equal keys '(directive mode repo allowed_paths base_ref tags source context)))
-    (should (satan-tool-validate-args (satan-tool-lookup "patch_job_create")
-                                      (list :directive "x" :mode "self-edit-mech"
-                                            :repo "r" :allowed_paths '("a"))))))
+(ert-deftest satan-tools-patch/create-stamps-the-ctx-mode-name-whatever-the-args-say ()
+  "The job's mode is the ctx `:mode-name'; a stale `:mode' argument is ignored."
+  (satan-patch-fixture-with-runner (satan-tools-patch-test--submitting "pj-7")
+    (satan-tools-patch-test--with-interventions "iv"
+      (satan-tools-patch-test--create :mode "fix")
+      (satan-tools-patch-test--create-in '(:id "run-2" :mode-name "tick-agent"))
+      (should (equal (mapcar (lambda (request) (plist-get request :mode))
+                             (satan-patch-fixture-requests))
+                     '("self-edit-mech" "tick-agent"))))))
+
+(ert-deftest satan-tools-patch/create-schema-has-no-mode ()
+  (let* ((tool (satan-tool-lookup "patch_job_create"))
+         (schema (plist-get tool :args-schema)))
+    (should (equal (cl-loop for (key) on schema by #'cddr collect key)
+                   '(directive repo allowed_paths base_ref tags source context)))
+    (should-not (plist-member schema 'mode))
+    (should-not (satan-tool-validate-args
+                 tool (list :directive "x" :repo "r" :allowed_paths '("a"))))))
+
+(ert-deftest satan-tools-patch/create-refuses-without-an-acting-run-mode-and-sends-nothing ()
+  (dolist (ctx '(nil (:id "run-1")))
+    (satan-patch-fixture-with-runner (satan-tools-patch-test--submitting "pj-7")
+      (satan-tools-patch-test--with-interventions "iv"
+        (pcase (satan-tools-patch-test--create-in ctx)
+          (`(error . ,msg) (should (string-match-p "acting run mode" msg)))
+          (other (ert-fail (format "ctx %S: expected error, got %S" ctx other))))
+        (should-not (satan-patch-fixture-requests))
+        (should-not satan-tools-patch-test--interventions)))))
 
 ;; ---------------------------------------------------------------------
 ;; patch_job_status / patch_job_result
