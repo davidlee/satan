@@ -105,7 +105,7 @@ correct facts.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-01 completed, slice status started · satan 002448b · malebolge 4236f61
+fresh-as-of: 2026-10-20 · PHASE-02 completed, slice status started · satan 9a9841c · malebolge 87f48e3
 
 ### Produced
 - CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
@@ -116,6 +116,7 @@ fresh-as-of: 2026-10-20 · PHASE-01 completed, slice status started · satan 002
 - ISS-050 (daemon coding-tool audit gap, from RV-035 F-5)
 - plan.toml/plan.md (PHASE-01..06); RV-035 routed findings transcribed (map in plan.md)
 - PHASE-01: malebolge 4236f61 (src/registry.ts, models.ts moves, test/structure.test.ts); build fixes 0e48704 (vitest include test/), 941b980 (biome !!**/.direnv)
+- PHASE-02: malebolge 8e4eb90 (room/connection.ts, ObservedConnection), a813663 (room/shell.ts), ef47b73 (room/source-reader.ts), 5f6bfef (room/door.ts, runner/door.ts, EX-10), 87f48e3; `jobEnvId` keeps env ids; 1557 tests
 - vm-mode key ~/.ssh/malebolge-vm.key (public half in § Design errata)
 - cross-repo: oubliette IMP-022 (9127afe); oubliette IMP-023 (repo readers, RV-035 F-2); flakes:SL-015 incl. PHASE-05 (03dc0f0a)
 
@@ -127,7 +128,8 @@ fresh-as-of: 2026-10-20 · PHASE-01 completed, slice status started · satan 002
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- PHASE-01 done (malebolge 4236f61). /phase-plan PHASE-02 next. RV-035 routed findings transcribed into plan criteria (map in plan.md)
+- PHASE-02 done (malebolge 87f48e3). Next: PHASE-03 EN-2 first (re-lock `agents` in ~/dev/satan + `just check-jails`), then /phase-plan PHASE-03. Per-phase /code-review of PHASE-02 offered to the user, not yet run
+- PHASE-02 deviations for audit: EX-10 matcher strips import specifiers (importers of runner/door.ts tripped DOOR_WORDS); run.ts reads `code` via `"code" in` (Degradation union); runner DOOR_KEYS.room derives from ROOM_DOOR_KEYS, so a room door missing ssh_config and identity now names identity first; design §4.1's host-key "re-exports" did not exist
 - user decision 2026-10-20: push ~/flakes first — PHASE-03 EN-2 (old jail refuses startup from PHASE-03 until PHASE-05); pushing ~/flakes is outward-facing: ask before doing it
 - VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
 - closure gate: SATAN MCP egress audit (design §6 VA)
