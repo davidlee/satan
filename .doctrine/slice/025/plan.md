@@ -47,3 +47,8 @@ PHASE-03 fleet: room targets ───┘     drain → switch → restart →
   whose work belongs in a non-SATAN room repo.
 - Commit SL-025 by path: another session has uncommitted doctrine edits. The
   corpus's `just commit` sweeps all dirty state; commit prompt files by path.
+- PHASE-04's drain is before the home switch, not merely before the restart:
+  the switch may restart the user unit itself.
+- PHASE-03's `nix flake lock` fetches the private `satan-corpus` over ssh, so
+  it needs the user's agent; the `satan` input pulls satan's own inputs into
+  the fleet lock (only `nixpkgs` and `doctrine` follow).
