@@ -52,8 +52,9 @@ project-context pipeline already takes an injected `SourceReader`
    reach: no rw launch-dir bind, no host network beyond what reaching the
    room and the gateway needs, `devToolPkgs` dropped if nothing host-side
    uses them. Resolves CHR-020.
-6. **Execution profile is a per-run choice (CON-005).** The daemon selects
-   its environment at startup; this slice builds the room profile only, but
+6. **Execution profile is a per-run choice (CON-005).** The launcher (jail)
+   selects the profile; the daemon only builds the environment that jail
+   permits. This slice builds the room profile only, but
    the seam must admit two later profiles without redesign: **egress**
    (network, e.g. web search; never with the room attached; writes only its
    own memories) and **host** (interactive only; coding tools in a chosen host
@@ -100,6 +101,12 @@ project-context pipeline already takes an injected `SourceReader`
   unit. What does the daemon need bound or forwarded (ssh key, known hosts,
   oubliette room connection data, network to the guest) to reach `assistant`,
   and does that weaken the jail elsewhere?
+  *Lead (research raw/flakes-gateway.md):* the door is a unix socket, so the
+  room needs no IP network; the gateway is the only TCP dependency. Room
+  profile jail = `--unshare-net` with exactly two bound sockets (room door,
+  gateway client) and an in-jail forwarder; needs a flakes-side second relay
+  listener (user-owned 0600 socket), revisiting flakes DEC-047's rejected
+  alternative. Cross-repo prerequisite: a flakes slice.
 - **Q2: two clients, one room.** The runner and the daemon would share room
   user `agent` and its pi-env daemon. Does pi-env tolerate two concurrent
   connections; does the runner's room readiness / clean step (`room.ts`,
