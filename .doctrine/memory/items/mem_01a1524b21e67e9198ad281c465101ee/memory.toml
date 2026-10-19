@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1524b21e67e9198ad281c465101ee"
+memory_key = "mem.fact.doctrine.governance-edges-invalidate-confirmation"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Linking a slice edge invalidates the design run's governance-confirmed act"
+summary = "Any doctrine link from the slice during a design run moves governance-edges; the user must re-confirm before the stage can advance"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "design"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "b8fd61fb66ea9772ea1fe5ce50db7294ba1168c5"
+ref_name = "refs/heads/main"
+checkout_state_id = "91e4993f3bef9386c64dc1922016e7e75e67506205ed7198a3a3e64f8074db49"
+base_commit = "568ac15c09716e1ba97d1d76bc6470cc6c9516fb"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+

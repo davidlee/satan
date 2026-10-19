@@ -1,0 +1,3 @@
+`governance-confirmed` is recorded over the slice's `governance-edges`. Any `doctrine link SL-NNN …` made afterwards (even a `references --role concerns` to an ISS or RSK) moves those edges, and `design show` reports `unmet governing-context-recorded … has moved`. The user must confirm again; the re-record shows as `act_invalidated` on the stale act but clears the gate.
+
+**How to apply:** finish the slice's relation links before asking the user for `governance-confirmed`, or batch the re-confirmation with the next user gate (e.g. `sufficiency-accepted`) instead of asking twice. Seen on SL-025, 2026-10-19 (three confirmations).
