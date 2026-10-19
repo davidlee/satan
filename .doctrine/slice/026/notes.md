@@ -77,3 +77,105 @@ and the two user decisions (F-16 no clean, fail `dirty_clone`; F-17 limits on
 all `preparing` execs) are integrated. Residual: an independent GPT design
 review was not run (codex MCP failed to connect this session).
 
+
+## PHASE-01 — shared project-context module (2026-10-19, malebolge 4ac55fe)
+
+Transcribed from the phase's progress notes (`phase-01.toml`).
+
+- `just check` green.
+- BOM stripped in `capSource` only: one strip point; `nodeSourceReader`'s
+  `readCapped` does not strip separately.
+- Empty sources are dropped in `readSources` (resolves the sheet's open
+  empty-file question: a readable but empty file renders no block; pi would
+  render an empty one).
+- The `project_context` section is tagged, per design §4.6.
+
+## PHASE-02 — room shell limits; preparing execs bounded (2026-10-19, malebolge 0c294ae)
+
+Transcribed from the phase's progress notes and commit body.
+
+- `just check` green.
+- `OVERFLOW_EXIT_CODE = -1` (`src/runner/shell.ts`): the exit code of an exec
+  the shell stopped for overflowing; meaningless, never branched on.
+- Outcome precedence is a pure `settle`: exit → host_key → lost → caller
+  abort → own abort (= `overflowed`) → else `ChannelFailed`. Loss stays ahead
+  of the new mappings; a caller abort beats the shell's own overflow abort.
+- Overflow on a non-status preparing exec (`test -d`, `rev-parse`,
+  `switch`) fails closed as `ChannelFailed` (`notOverflowed`, `room.ts`);
+  design §4.2 was silent on these. An overflowed `git status` is
+  `dirty_clone`, complete lines only.
+- `PREPARE_LIMITS` lives in `room.ts` beside `ShellLimits`.
+- Finding: pi-env's exec timeout reaps a process blocked opening a FIFO
+  (ENXIO probe).
+- Finding (orchestrator): closing a local pi-env `Connection` does not kill
+  its running children; a failing never-exit test leaks processes. Fakes use
+  `exec sleep 30`, not `sleep infinity`; check leaks with `pgrep -x`, not
+  `pgrep -f`. Candidate memory.
+- Friction: `doctrine slice verify-vt 26` shows every malebolge VT as
+  `UNATTRIBUTABLE` (it diffs the satan repo); expected for a cross-repo
+  slice (observation `01a1535b`).
+
+## PHASE-03 — runner fetch, doctrine step, classification (2026-10-19, malebolge a0efde5 Part A, 594a07f Part B)
+
+Transcribed from the phase's progress notes and commit bodies. Run as two
+worker passes (A: fixture, `readyRoom` `FinalStep`, room reader, probes
+P1-P11; B: doctrine step, probes P12-P15), one commit each.
+
+### Rulings
+- **D-1 — PENDING USER DECISION (design deviation, flag at reconcile).**
+  `regularFiles` runs one `stat -L --printf '%f %n\n'` from the clone root
+  over absolute paths, matched back by full path, instead of design §4.2's
+  "one `stat` per directory, with that directory as cwd". Reason: pi-env
+  refuses an exec whose cwd does not exist (`spawn_error`), so per-directory
+  cwd would degrade APPEND_SYSTEM (`missing`) on every repo without `.pi/`.
+  Same exec count; still never opens a file. Accepted by the orchestrator and
+  implemented; the user has not yet ruled. Design §4.2 needs amending at
+  reconcile if accepted.
+- D-7 accepted by the orchestrator: probe timeouts are time-scaled ×1/20 in
+  tests by a wrapper over the real `roomShell` that asserts the production
+  limits were requested; honest-binary FIFO cases run unscaled.
+- D-3, D-4, D-5, D-8, D-9 sheet defaults accepted, except: the clone
+  re-check rethrows a non-channel error (a bug) per D-5 rather than mapping
+  it to `dirty_clone` per D-9 — still fail closed, never cleans.
+- D-6: `admit` passes a no-op final step until PHASE-04 composes the result.
+
+### Decisions in the code
+- A-1: the test fixture's `readying.ready()` keeps returning the base oid;
+  `readyWith(step)` was added for the final-step variant.
+- A-2: the failure classifier takes the code from the `ExecutionError`
+  cause, else from the error's `reason`.
+- A whitespace-only (or whitespace-only overflowed) doctrine boot is `empty`.
+- In `Fetched.degraded`, the doctrine degradation precedes reader
+  degradations.
+
+### Findings
+- Probes while planning (local pi-env daemon): an exec with a nonexistent
+  cwd → `spawn_error` ("Working directory does not exist"); a missing argv
+  binary → `spawn_error`; `Connection({ command: ["env", "PATH=…",
+  localDaemon()] })` makes execs resolve from that PATH; `git status
+  --porcelain` lists no FIFOs; symlinks are tracked, so symlinked fixtures
+  are committed in the base repo. Candidate memories.
+- RV-033 F-1 raiser gaps covered: P4 (FIFO and `/dev/zero` symlink at
+  `.pi/APPEND_SYSTEM.md`), P10/P14 (hostile `test`), P1-P4 assert < 3 s and no
+  `head` argv.
+- Tests: 1404 after A, 1458 after B; `just check` green after each.
+- Friction: a single-file vitest run fails the global coverage gate; iterate
+  with `--coverage.enabled=false` (observation `01a1537d`). An editor or
+  formatter rewrote malebolge files between worker edits; one edit silently
+  failed until `tsc` (observation `01a15372`).
+
+## PHASE-04 (2026-10-19) — Composition and admission
+
+Malebolge delta uncommitted (base 594a07f). `composePrompt` takes
+`projectInstructions` as a required fourth input (rendered via
+`renderProjectContext`, between fragments and job block); `PromptJob.cwd` adds
+`Working directory:` after `Job branch:`. `EVENT_KINDS += context_degraded`.
+`admit` passes `fetchProjectContext(repo)` as `readyRoom`'s final step, writes
+one `context_degraded` per degradation via `appendEvent` (not `jobs.change`;
+`Change.update` is required, nothing on the row changes) plus a `deps.log`
+line, after the ready loop and before `openRun`. Prompt tests moved to
+`test/runner/prompt.test.ts`; run-fixture gained `allowLog` / `logs`.
+`just check` green, 1466 tests, lines 98.17%. verify-vt: PHASE-04 VT-1/2
+UNATTRIBUTABLE (expected); PHASE-05/06 missing-file FAILs expected.
+Accepted gap: a crash between the degradation writes and the submit redoes
+`admit` on restart and writes that attempt's degradations again.
