@@ -132,7 +132,7 @@ correct facts.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-04 completed, slice status started · malebolge 1c42811
+fresh-as-of: 2026-10-20 · PHASE-04 completed + RV-037 done, slice status started · malebolge 368f625
 
 ### Produced
 - CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
@@ -147,6 +147,7 @@ fresh-as-of: 2026-10-20 · PHASE-04 completed, slice status started · malebolge
 - RV-036 (PHASE-02 code review, 2026-10-20): done, 7 findings (2 minor, 5 nit). Fixes in malebolge b4616fc, d16bae9, 2ba8667; `just check` green, 1559 tests. `observedEnv` is the one observed-env builder (PHASE-04 reuses it); `ROOM_DOOR_READERS` in test/structure.test.ts pins who imports room/door.ts.
 - PHASE-03: malebolge 6f52fd2, ea52a13 (src/config.ts Profile/Execution/door file/durable/<profile>, attachSocket, personaFiles(root, profile), parseToml+within → fields.ts); satan-corpus cd01d33 (prompts/env/{room,pi}.txt); ~/notes c226e3a; satan 4023494 (agents lock, EN-2)
 - PHASE-04: malebolge 1c42811 (src/daemon-env.ts daemonEnv/readRoomContext/requireGatewaySocket; ObservedConnection reword; SessionOptions.env; grep `rg could not run`; Config.cwd removed; README + internals); 1598 tests
+- RV-037 (PHASE-04 code review, 2026-10-20, jailed-pi-research pass): done, 8 findings (4 minor, 4 nit), all fix-now in malebolge 368f625; `just check` green, 1600 tests. `observedEnv` now refuses a nested ObservedConnection.
 - vm-mode key ~/.ssh/malebolge-vm.key (public half in § Design errata)
 - cross-repo: oubliette IMP-022 (9127afe); oubliette IMP-023 (repo readers, RV-035 F-2); flakes:SL-015 incl. PHASE-05 (03dc0f0a)
 
@@ -158,7 +159,7 @@ fresh-as-of: 2026-10-20 · PHASE-04 completed, slice status started · malebolge
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- PHASE-04 done (malebolge 1c42811). Next: /phase-plan PHASE-05 (room-profile jail; EN-3 needs user's key + flakes:SL-016, both reported delivered). jailed-malebolge refuses startup until PHASE-05. Operator move `durable/session.sqlite` → `durable/host/` is PHASE-05 EX-4. daemon-main not smoke-run (no room / jail yet): first live start is PHASE-05/06
+- PHASE-04 done (malebolge 1c42811; RV-037 fixes 368f625). Next: /phase-plan PHASE-05 (room-profile jail; EN-3 needs user's key + flakes:SL-016, both reported delivered). jailed-malebolge refuses startup until PHASE-05. Operator move `durable/session.sqlite` → `durable/host/` is PHASE-05 EX-4. daemon-main not smoke-run (no room / jail yet): first live start is PHASE-05/06
 - PHASE-04 deviation for audit: `Config.cwd`/`toolsCwd` (PHASE-03 D3) removed; `DaemonEnv.cwd` is the one source
 - PHASE-02 deviations for audit: EX-10 matcher strips import specifiers (importers of runner/door.ts tripped DOOR_WORDS; the import edge is now pinned by the structure test, RV-036 F-1); run.ts reads `code` via `"code" in` (Degradation union); runner DOOR_KEYS.room derives from ROOM_DOOR_KEYS, so a room door missing ssh_config and identity now names identity first; design §4.1's host-key "re-exports" did not exist
 - user decision 2026-10-20: push ~/flakes first — PHASE-03 EN-2 (old jail refuses startup from PHASE-03 until PHASE-05); pushing ~/flakes is outward-facing: ask before doing it

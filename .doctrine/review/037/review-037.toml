@@ -1,0 +1,307 @@
+id    = 37
+slug  = "code-review-review-of-sl-027"
+title = "code-review review of SL-027"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "reviewer"
+responder = "implementer"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Per-phase code review of SL-027 PHASE-04, malebolge 1c42811 (daemon-env.ts, ObservedConnection reword, SessionOptions.env, daemon-main wiring, grep wording, Config.cwd removal, README/internals), against design §4.3–§4.5 and the brief's lines of attack. External pass by jailed-pi-research (read-only); every finding re-verified against the code before raise. Fixes in malebolge 368f625; `just check` green, 1600 tests.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-027"
+phase = "PHASE-04"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Expected startup to leave no room session behind when it never starts serving; observed a room connection started before catalog/model validation, with no `close` on any failure path"
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`src/daemon-main.ts:25-27` creates the environment and reads context (the first `env.exec`/`connection.info` is what starts ssh + the pi-env daemon) **before** `loadGatewayModels` (`:28`) and the unknown-model throw (`:30-32`), and before satan-mcp/`openSession`/`serve` (`:34-54`). `environment.close()` exists only inside `stop()` (`:70`), and `stop()` runs only from SIGINT/SIGTERM.
+
+```ts
+25| const environment = daemonEnv(config.execution, log);
+27| const projectContext = renderProjectContext(await environment.readContext());
+28| const models = await loadGatewayModels(config.gatewayCatalog, config.gatewayKeyFile);
+30| if (models.getModelOfType("chat", provider, modelId) === undefined) {
+31|   throw new Error(`unknown model ${provider}/${modelId}`);
+```
+
+Why it matters: with `MALEBOLGE_PROFILE=room` and an unknown model (or unreadable catalog, unreachable satan-mcp, `openSession`/`serve` failure), the daemon ssh'es in, verifies/deploys and starts pi-env, performs the whole startup context read, then throws. The connection is never closed; cleanup relies on the parent exiting and pi-env's "exits … when stdin ends" (`node_modules/@earendil-works/pi-env/docs/protocol.md:64-65`), so no lasting daemon — but it is wasted room work on an obvious local configuration error. Suggested fix: move `readContext()` after catalog/model validation (and ideally after `serve` is about to succeed), and/or wrap startup in `try { … } catch (error) { environment.close(); throw error; }`.
+"""
+disposition = "fix-now"
+response = "Fixed in malebolge 368f625: daemon-main checks the gateway socket, loads the catalog, validates the model and connects satan-mcp before daemonEnv is built and readContext reaches the room. A failure in openSession/serve after that still exits the process; pi-env exits when its stdin ends."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge 368f625: daemon-main checks the gateway socket, loads the catalog, validates the model and connects satan-mcp before daemonEnv is built and readContext reaches the room. A failure in openSession/serve after that still exits the process; pi-env exits when its stdin ends."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected a failed project-context read to log why it failed; observed only the coarse reason, dropping `code`/`stderr`"
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`src/daemon-env.ts:89-91`:
+
+```ts
+89| const reader = roomSourceReader(shell, new AbortController().signal, (source, failure) => {
+90|   log(`project context: ${source}: ${failure.reason}`);
+91| });
+```
+
+`ReadFailure` carries the detail (`src/room/source-reader.ts:20-22`: `{ reason: "error"; code?: number | string; stderr?: string }`), and the runner keeps it (`src/runner/project-context.ts:145-147` spreads `...failure` into `Degradation`). So an unreadable `AGENTS.md` (exit 2, stderr "denied") logs `project context: /home/satan: error` — indistinguishable from any other "error", and this log is the only startup record. The new test (`test/daemon-env.test.ts:290-296`) only asserts `startsWith("project context: /home/satan")`, so it cannot catch this. Suggested fix: log `failure.reason` plus `code`/`stderr` when present (or share one renderer with the runner).
+"""
+disposition = "fix-now"
+response = "Fixed in 368f625: describeFailure logs `error (exit N): <stderr>` when a code or stderr is known; the test asserts the exact line."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 368f625: describeFailure logs `error (exit N): <stderr>` when a code or stderr is known; the test asserts the exact line."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = """Expected the "an `ObservedConnection` always wraps a `DaemonConnection` directly" rule to be stated/enforced at both seam-construction sites; observed it only on `observedEnv`'s doc, while `roomShell` takes any `Connection`"""
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`src/room/shell.ts:210-213`:
+
+```ts
+210| export function roomShell(
+211|   connection: Connection,
+212|   { id, cwd }: { id: string; cwd: string },
+213| ): RoomShell {
+```
+
+and `src/room/connection.ts:152-158` silently classifies a non-`DaemonConnection` inner as downtime:
+
+```ts
+152| const trust = this.#inner instanceof DaemonConnection ? this.#inner.trustFailure() : undefined;
+153| if (trust === undefined) {
+154|   await this.#observer.lost(failure, error);
+155|   return "unavailable";
+```
+
+The rule lives in `observedEnv`'s doc (`connection.ts:170-176`) and as a call-site comment (`daemon-env.ts:131-132`). `roomShell` is the *other* place that builds the seam (via `observedEnv`), and has two production callers in the runner (`src/runner/run.ts:352`, `src/runner/collect.ts:178`); a future caller passing an already-observed connection reproduces exactly RV-035 F-4 (a host-key refusal worded "room unavailable"). Today's control test only covers the current wiring. Suggested fix: document the requirement on `roomShell`, and add a cheap guard in `observedEnv` (`if (connection instanceof ObservedConnection) throw …`) — both production sites funnel through it, and the existing fixtures (`FailingConnection`, `localConnection`, `RebuiltRoom`) are not `ObservedConnection`s, so no test breaks.
+"""
+disposition = "fix-now"
+response = "Fixed in 368f625: observedEnv throws when given an ObservedConnection (both production seams go through it); roomShell's doc states the rule. Test: test/room/connection.test.ts 'an observed env refuses a nested wrapper'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 368f625: observedEnv throws when given an ObservedConnection (both production seams go through it); roomShell's doc states the rule. Test: test/room/connection.test.ts 'an observed env refuses a nested wrapper'."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected the README's `MALEBOLGE_GATEWAY_SOCKET` row to match the profile-scoped check; observed an unconditional promise"
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`README.md:153`:
+
+```
+| `MALEBOLGE_GATEWAY_SOCKET` | the LLM gateway's client socket; start is refused if it is set and missing | none |
+```
+
+but the check is room-only (`src/daemon-env.ts:162-165`):
+
+```ts
+162| const socket = execution.profile === "room" ? execution.gatewaySocket : undefined;
+163| if (socket !== undefined && !exists(socket)) {
+```
+
+and `executionOf`'s host branch never carries the variable (`src/config.ts:116-121`), so a host-profile daemon starts happily with a set-and-missing socket, contrary to the row. The neighbouring rows do say "(room only)". Suggested fix: add "(room only)" to the row (internals.md's bullet is already under the room section).
+"""
+disposition = "fix-now"
+response = "Fixed in 368f625: README row says (room only)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 368f625: README row says (room only)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "Expected the *production* reword to be the one asserted to keep the error's type and fields; observed that property tested only against a test-local copy"
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`src/daemon-env.ts:52-54` (private):
+
+```ts
+52| /** The daemon's reword: the fault named, the error's type and fields kept. */
+53| const reword: Reword = (fault, error) =>
+54|   new RemoteError({ ...error.fields, message: faultText(fault, error.message) });
+```
+
+`test/room/connection.test.ts:217-219` defines its own identical-shape `reword` and asserts `isConnectionLost(error) === true` (`:229`). The daemon-env tests (`:199-228`) assert only message text through the tools, where the `RemoteError` has already been converted to `ExecutionError`/`FileError`. So an edit to the production `reword` that dropped `lost`/`code` from `fields` would fail no test, although §4.4/point 2 names that preservation. Suggested fix: export `reword` (or a `reworder(words)` factory) and assert fields/`isConnectionLost` directly.
+"""
+disposition = "fix-now"
+response = "Fixed in 368f625: test/daemon-env.test.ts asserts the production reword keeps the error a lost RemoteError (isConnectionLost) with the room-unavailable message, through the env's connection."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 368f625: test/daemon-env.test.ts asserts the production reword keeps the error a lost RemoteError (isConnectionLost) with the room-unavailable message, through the env's connection."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = 'Expected `DaemonEnv.env` to be `SessionOptions["env"]` as the design excerpt states; observed a re-declared structural type'
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`src/daemon-env.ts:33` `env: (state: { cwd?: string }) => ExecutionEnv;` duplicates `src/session.ts:27`. The design (§4.3) is explicit: `env: SessionOptions["env"]`. A future widening of the harness hook would still accept the narrower daemon type silently, so the two could drift while `daemon-main.ts:52` keeps type-checking. Suggested fix: a type-only import — `env: SessionOptions["env"]` (root→root; the structure test permits it).
+"""
+disposition = "fix-now"
+response = 'Fixed in 368f625: DaemonEnv.env is SessionOptions["env"] (type-only import).'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = 'Fixed in 368f625: DaemonEnv.env is SessionOptions["env"] (type-only import).'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = 'Expected "logged every call" to be asserted against calls; observed it asserted against `deployDaemon` invocations'
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`test/daemon-env.test.ts:224-226`:
+
+```ts
+224| expect(lines.filter((line) => line.startsWith("room host key untrusted: ")).length).toBe(
+225|   helpers.deployed.length,
+226| );
+```
+
+`helpers.deployed` counts pi-env's `deployDaemon` calls (one per start, `src/room/connection.ts:229-231`), an implementation detail of the start sequence; the behaviour named in the test title is "one untrusted log per tool call". This passes today only because starts == calls == deploys. It would drift if pi-env ever deployed twice per start, and it never checks the per-call mapping directly. Suggested fix: assert `toBe(results.length)` (two tool results → two logs), or `>= results.length` if extra starts are acceptable.
+"""
+disposition = "fix-now"
+response = "Fixed in 368f625: the untrusted-log count is asserted against the tool results."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 368f625: the untrusted-log count is asserted against the tool results."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "nit"
+title = "Expected README's architecture picture to agree with the new profiles section; observed it still says the interactive daemon's coding tools run in the host jail"
+detail = """
+Source: jailed-pi-research pass, verified by the raiser against 1c42811.
+
+`README.md:56` `├─ coding tools in the host jail` vs. the new §Execution profiles (`README.md:115-142`: room tools run in the room; the jailed launcher "refuses to start until it becomes the room profile"). Today the picture is at best pre-PHASE-05 and after PHASE-05 it is false. Suggested fix: update the picture when the launcher flips, or annotate it now.
+"""
+disposition = "fix-now"
+response = "Fixed in 368f625: README picture says the coding tools go to the room (pi-env) or the host."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 368f625: README picture says the coding tools go to the room (pi-env) or the host."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
