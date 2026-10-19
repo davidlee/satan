@@ -208,3 +208,20 @@ cap → Infinity) fails three VT-2 cases.
 Findings: rg ignores `.gitignore` outside a git repo (VT-3 `git init`s);
 embedded newlines in hostile `lines.text` are not sanitised (bounded).
 `just check` green, 1512 tests, lines 98.16%.
+
+## 2026-10-19 PHASE-06 — Daemon wiring
+
+`src/cwd.ts` `cwdExtension` (untagged `cwd`, `Current working directory: <path>`,
+D-2 ruling); `src/daemon-extensions.ts` `daemonExtensions(parts)` holds the
+ordered list [persona, projectContext, skills, cwd, CodingTools, grep, satan]
+(D-1; a plan addition beyond design §5, flag at reconcile); `daemon-main.ts`
+reads context once (`renderProjectContext(readSources(cwd, gitRootDirs, nodeSourceReader))`),
+and its startup log says whether project context was found.
+`test/daemon-sections.test.ts` (4 tests): fresh order, omission, and the
+existing-conversation case, which shows exactly pi-durable's remove-all/re-add-all
+pair as derived from `planSections`.
+
+Findings: `harness.close` closes MemoryStorage, so the reopen case uses temp sqlite.
+`systemPromptSections` returns entries newest first (doc comment says oldest);
+test reverses it. `just check` green, 1516 tests, lines 98.24%. Delta uncommitted
+in malebolge. Phase status not flipped.
