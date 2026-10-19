@@ -5,10 +5,10 @@ id = 17
 slug = "package-malebolge-as-a-flake-input-before-sl-023-closure"
 title = "Package malebolge as a flake input before SL-023 closure"
 kind = "chore"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "closed"
+resolution = "done"
 created = "2026-10-18"
-updated = "2026-10-18"
+updated = "2026-10-19"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

@@ -17,3 +17,18 @@ tree; update `~/flakes/SATAN.md` (unit source, pin).
 the tree does — an uncommitted edit or a branch switch is a deploy.
 
 **Must land before SL-023 closure.**
+
+## Resolution (2026-10-19)
+
+- malebolge `13500bd` — `flake.nix` `packages.runner`: `buildNpmPackage`,
+  production deps, no build step, installed under `lib/malebolge` (node
+  refuses to strip types under a `node_modules` path, so not the default
+  `lib/node_modules`); `bin/satan-runner` wraps `nodejs_24` on
+  `src/runner-main.ts`. `checks.runner-starts`: the built runner loads its
+  module graph and refuses to start for want of a config (exit 1).
+- ~/flakes `097e5733` — input `malebolge = github:davidlee/Malebolge`
+  (follows `nixpkgs-home`), listed in `bin/dev-checkouts`; the unit's
+  `ExecStart` is the package's `bin/satan-runner`, `WorkingDirectory`
+  dropped; `SATAN.md` documents the source and pin.
+- Deploy is the user's: push malebolge, `just update-local` (locks the
+  input), `just home-switch`, `systemctl --user restart satan-runner`.
