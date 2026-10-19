@@ -179,3 +179,32 @@ line, after the ready loop and before `openRun`. Prompt tests moved to
 UNATTRIBUTABLE (expected); PHASE-05/06 missing-file FAILs expected.
 Accepted gap: a crash between the degradation writes and the submit redoes
 `admit` on restart and writes that attempt's degradations again.
+
+## PHASE-05 (2026-10-19) — grep tool
+
+Malebolge delta uncommitted (base fb902de). New `src/grep.ts`: `grepArgv`,
+`contextLines`/`matchLimit` clamps, `grepCollector` (bounded splitter at
+`MAX_MESSAGE_BYTES` = 1 MiB, parse-time 500-char truncation, stderr
+`headKeeper` at 4 KiB, stops at limit or the 50 KB budget), `runGrep` (the
+testable seam over `Pick<ExecutionEnv,"cwd"|"exec">`), `grepTool`
+(`replay: "safe"`) and `grepExtension`. `src/ndjson.ts`:
+`boundedLineSplitter`; `lineSplitter` is now its `maxBytes: Infinity` case
+(index scan, no per-line re-slice). `src/truncate.ts`: `headKeeper`;
+`shell.ts outputCollector` rebuilt on two of them. `JobTools` = coding tools
++ `grepTool` (five; read and grep replay-safe).
+
+Decisions: 50 KB by reservation (lines stop at 50 KB − 5 KiB so notices
+always fit); notice order limit, 50 KB, pi's line-truncated, oversize,
+stderr; `REPLAY_SAFE` unchanged; `requireEnv` not public, inlined; abort via
+`withAbortSignal(own.signal, context)`. No flake touched (R1 rejected).
+
+EX-2 evidence: VT-2 asserts structurally through `grepCollector.stats()`
+(peak carry ≤ 1 MiB, kept ≤ 50 KB, stderr ≤ 4 KiB, result ≤ 50 KB) over lazy
+generators (64 MiB line, 200k submatches, binary/malformed, 1000 × 100 KB,
+8 MiB stderr, no-newline stream ended by caller abort). Negative control:
+the same probe over an uncapped splitter exceeds 1 MiB; mutation (collector
+cap → Infinity) fails three VT-2 cases.
+
+Findings: rg ignores `.gitignore` outside a git repo (VT-3 `git init`s);
+embedded newlines in hostile `lines.text` are not sanitised (bounded).
+`just check` green, 1512 tests, lines 98.16%.
