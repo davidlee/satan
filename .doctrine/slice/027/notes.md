@@ -122,11 +122,13 @@ fresh-as-of: 2026-10-20 · plan authored (PHASE-01..06), slice status ready · c
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- /phase-plan PHASE-01 next. RV-035 routed findings transcribed into plan criteria (map in plan.md)
+- PHASE-01 done (malebolge 4236f61). /phase-plan PHASE-02 next. RV-035 routed findings transcribed into plan criteria (map in plan.md)
 - user decision 2026-10-20: push ~/flakes first — PHASE-03 EN-2 (old jail refuses startup from PHASE-03 until PHASE-05); pushing ~/flakes is outward-facing: ask before doing it
 - VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
 - closure gate: SATAN MCP egress audit (design §6 VA)
 - reconcile-time: design errata (notes § Design errata) + DEC-075 amendment
-- oubliette IMP-023 resolved (oubliette 3c44a37, live checks passed 2026-10-20): satan can clone /work, cannot write; in-place git refused (no safe.directory). satan reads agent's clones via `git clone --no-local`. OPEN DECISION for SL-027: add a safe.directory exception for satan or not (trade-off and evidence in oubliette IMP-023's text). Bears on PHASE-03 EX-3 (room.txt clone instruction) and PHASE-06 EX-2 (clone wording). Decide before PHASE-03.
+- flakes:SL-016 delivered (2026-10-20, flakes-15 handoff): door file live at `/home/david/.config/malebolge/door.toml` (HM symlink; use this literal, never a store path) for `malebolgeDoorFile`; content matches ROOM_DOOR_KEYS + home, host_key_alias `room-assistant`. flakes DEC-079: the key list is a cross-repo contract pinned in flakes `checks.<system>.satan-room` (features/satan/room-test.nix) — changing ROOM_DOOR_KEYS means telling flakes. ssh_config `%h` must stay `assistant` (HostKeyAlias does the known_hosts lookup). Suggestion for PHASE-05: launcher checks the identity key exists before starting (missing key fails at connect, not render).
+- safe.directory decision (relayed from the user via flakes-15, 2026-10-20; confirm): never safe.directory; satan reads with `git clone --no-local /work/<repo>`; in-place git in /work failing "dubious ownership" is intended. PHASE-03 room.txt and PHASE-06 EX-2 use `--no-local`.
+- oubliette IMP-023 resolved (oubliette 3c44a37, live checks passed 2026-10-20): satan can clone /work, cannot write; in-place git refused (no safe.directory). satan reads agent's clones via `git clone --no-local`. Decision: see safe.directory line above.
 - fleet: rooms.assistant.users.satan (uid, key above) + repos.readers = ["satan"] — oubliette/fleet side
 - reconcile-time: §4.9 revisions (ADR-017 ledger 3b, SPEC-002, SPEC-004, malebolge IMP-002/RV-001 F-4 note, DEC-072, IMP-037)
