@@ -127,5 +127,6 @@ fresh-as-of: 2026-10-20 · plan authored (PHASE-01..06), slice status ready · c
 - VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
 - closure gate: SATAN MCP egress audit (design §6 VA)
 - reconcile-time: design errata (notes § Design errata) + DEC-075 amendment
+- oubliette IMP-023 resolved (oubliette 3c44a37, live checks passed 2026-10-20): satan can clone /work, cannot write; in-place git refused (no safe.directory). satan reads agent's clones via `git clone --no-local`. OPEN DECISION for SL-027: add a safe.directory exception for satan or not (trade-off and evidence in oubliette IMP-023's text). Bears on PHASE-03 EX-3 (room.txt clone instruction) and PHASE-06 EX-2 (clone wording). Decide before PHASE-03.
 - fleet: rooms.assistant.users.satan (uid, key above) + repos.readers = ["satan"] — oubliette/fleet side
 - reconcile-time: §4.9 revisions (ADR-017 ledger 3b, SPEC-002, SPEC-004, malebolge IMP-002/RV-001 F-4 note, DEC-072, IMP-037)
