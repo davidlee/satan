@@ -338,6 +338,7 @@ exit_criteria = [
   { id = "EX-2", text = "Closure run: one job promoted and one rejected from Emacs, both from `patch_job_create` against the slot through the gateway; deployed state shows exactly one consumer (the runner)." },
   { id = "EX-3", text = "Notes record the evidence the audit needs for ledger rows (DEC-062), issue closures (ISS-030, ISS-038, ISS-039, ISS-041, CHR-003) and IDE-007." },
   { id = "EX-4", text = "Under DEC-065 (design rev 56, §9 closure evidence): notes record that the room adapter's fixture tests (PHASE-15) are green; the live room rung (CHR-016) is deferred until oubliette SL-006 ships and is not closure evidence for this slice." },
+  { id = "EX-5", text = "Supersedes EX-2's \"against the slot\" (user ruling 2026-10-19 (1)): the closure run runs against the deployed room door (`[door] kind = \"room\"`, room `assistant`), the runner's live configuration since PHASE-12." },
 ]
 verification = [
   { id = "VH-1", expects = "user promotes one job and rejects another from the Emacs inbox" },
@@ -424,6 +425,31 @@ verification = [
   { id = "VT-2", expects = "key custody: after building the provider and making a request, the key is in no process.env value", test_file = "/home/david/dev/malebolge/test/models.test.ts", keywords = ["process.env", "ApiKeyAuth"], waived = false },
   { id = "VT-3", expects = "config: a missing [gateway] table, catalog or credential, or an unknown key in it, refuses start", test_file = "/home/david/dev/malebolge/test/runner/config.test.ts", keywords = ["gateway", "catalog", "credential"], waived = false },
   { id = "VT-4", expects = "start: CREDENTIALS_DIRECTORY unset, key file missing or empty, or catalog unreadable is StartRefused; with both present the runner starts and its catalog offers only provider gateway", test_file = "/home/david/dev/malebolge/test/runner/runner-main.test.ts", keywords = ["CREDENTIALS_DIRECTORY", "StartRefused", "gateway"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-18"
+name      = "Interactive daemon on the gateway provider"
+objective = "Design §5.1 and §10 route both malebolge binaries through the LLM gateway (user ruling 2026-10-19); PHASE-17 wired only the runner. Move the interactive daemon (`src/daemon-main.ts`) onto the same gateway provider, reusing `src/models.ts` (`parseGatewayCatalog`, `gatewayProvider`) and the loader in `src/runner/gateway.ts`; its key is read from a credential file, never from the environment or argv."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-17 complete (gateway provider and loader exist for the runner)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "One loader: the daemon and the runner build their `Models` through one shared gateway loader (moved out of `src/runner/` if that placement is wrong for a shared module); no parallel catalog parse, key read or provider construction. The daemon's `Models` hold the gateway provider alone; no built-in provider is reachable." },
+  { id = "EX-2", text = "Key custody, as PHASE-17 EX-2: the daemon reads its gateway key from a credential file (trailing newline trimmed) and holds it only in the provider's closure; the key's value is never in `process.env`, on any argv, or in a log or error message. Configuration may name the file's path, never carry the key." },
+  { id = "EX-3", text = "Daemon configuration (`src/config.ts`) resolves the catalog path and the key file path, with defaults that need no setup beyond `~/flakes`; the default model is `gateway/deepseek-flash`. A missing, unreadable or empty key file or a bad catalog stops the daemon at start with a message naming the path, before it connects to satan-mcp." },
+  { id = "EX-4", text = "Dead code removed: the coding agent's models-store path (`readModelsStore`, `createDaemonModels`, `withMissingModels`, `modelsStorePath`) goes if nothing else uses it; `MALEBOLGE_MODEL` still overrides the model." },
+  { id = "EX-5", text = "`~/flakes` (if the daemon's default catalog path needs it): the same catalog render the runner unit uses (`piGatewayConfig`, shared, never copied) is installed at a stable host path; the daemon's key is an issued gateway key under `~/.config/llm-gateway/keys/` (issuing a new key is the user's act). `SATAN.md` names the daemon's catalog and key." },
+  { id = "EX-6", text = "Out of scope: migrating the `~/notes` jail to `gatewayClient` is handled by another agent, outside SL-023." },
+  { id = "EX-7", text = "`just check` in M green; lint zero warnings; coverage ratchet holds." },
+]
+verification = [
+  { id = "VT-1", expects = "daemon models from the catalog fixture and a key file: only provider gateway; `gateway/deepseek-flash` resolves with the catalog baseUrl", test_file = "/home/david/dev/malebolge/test/models.test.ts", keywords = ["gateway", "daemon", "baseUrl"], waived = false },
+  { id = "VT-2", expects = "daemon config: catalog and key file paths resolve from defaults and overrides; the default model is gateway/deepseek-flash", test_file = "/home/david/dev/malebolge/test/config.test.ts", keywords = ["gateway", "catalog", "deepseek-flash"], waived = false },
+  { id = "VT-3", expects = "a missing or empty key file or a malformed catalog refuses start with the path named and the key in no message; after loading, the key is in no process.env value", test_file = "/home/david/dev/malebolge/test/models.test.ts", keywords = ["key", "process.env", "refuse"], waived = false },
+  { id = "VA-1", expects = "the user-run daemon starts against the deployed gateway and answers one turn; recorded in notes" },
 ]
 specs        = []
 requirements = []

@@ -7,7 +7,7 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 
 ## Overview
 
-Seventeen phases in four groups (PHASE-16 and PHASE-17 appended later; see
+Eighteen phases in four groups (PHASE-16, PHASE-17 and PHASE-18 appended later; see
 Sequencing). PHASE-15 was appended after the design's
 room-adapter amendment (rev 56, DEC-065); it runs between PHASE-10 and the
 cutover, so ids no longer follow execution order:
@@ -66,6 +66,12 @@ repo, `~/flakes`, `~/.config/emacs` and `~/satan-corpus`.
   not a slot (EX-6..EX-12 supersede EX-3/EX-4 and VH-1's slot wording), covers
   CHR-016's live items there, and runs from malebolge's live tree until
   CHR-017 packages it. Execution order: … 15 → 16 → 17 → 12 → 13 → 14.
+- **Rulings of 2026-10-19 (PHASE-18, PHASE-14 amended).** PHASE-18 moves the
+  interactive daemon onto the gateway provider PHASE-17 built for the runner
+  (design §5.1, §10 say both binaries use it), reusing its loader; the key comes
+  from a credential file. The `~/notes` jail's move to `gatewayClient` is
+  another agent's, outside SL-023. PHASE-14's closure run runs against the
+  deployed room door (EX-5). Execution order: … 12 → 13 → 18 → 14.
 
 ## Notes
 
