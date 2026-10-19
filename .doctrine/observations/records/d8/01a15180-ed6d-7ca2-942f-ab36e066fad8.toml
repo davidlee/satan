@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15180-ed6d-7ca2-942f-ab36e066fad8"
+recorded_at = "2026-10-19T00:12:46.31753971Z"
+kind = "friction"
+summary = "Capsule-driver charter said Bash runs nushell; it runs bash"
+detail = "SL-023 orchestrator: wrapping in bash -c with nested quotes failed twice; the Bash tool's shell is /run/current-system/sw/bin/bash 5.3. Charter text is stale."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

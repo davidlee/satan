@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a15180-ed6a-7821-93d7-f8317b28d49f"
+recorded_at = "2026-10-19T00:12:46.314288859Z"
+kind = "friction"
+summary = "No CLI verb appends a phase to plan.toml"
+detail = "SL-023 PHASE-18 and PHASE-14 EX-5 had to be appended by raw TOML editing (python) because doctrine slice plan only scaffolds; append-only ids are enforced only by discipline."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
