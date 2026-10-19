@@ -56,3 +56,12 @@ socket; rejected alternative now applies), oubliette RFC-001 P1/P3 + RV-021 F-1.
 - Same pinned pi-env in runner and daemon (no deploy churn in
   `~/.pi/mobile/tools`).
 - The daemon runs as the user, so door 0700 dir is reachable once bound.
+
+## flakes:SL-015 handback (2026-10-20)
+
+Adopted into DEC-075 / DEC-077 (user 'yes'): jail renders its own ssh_config
+(store-path socat in its closure); door file is data only; oubliette IMP-022
+backlogged (room-client bundle, 9127afe there). Verification gains: audit the
+interactive SATAN MCP tool set for any tool that carries data off-host (Emacs
+has network) — the residual named in DEC-075, flakes:DEC-077's "host sockets
+are channels" note.
