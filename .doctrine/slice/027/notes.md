@@ -105,7 +105,7 @@ correct facts.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · plan authored (PHASE-01..06), slice status ready · commit dbd783b
+fresh-as-of: 2026-10-20 · PHASE-01 completed, slice status started · satan 002448b · malebolge 4236f61
 
 ### Produced
 - CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
@@ -114,11 +114,16 @@ fresh-as-of: 2026-10-20 · plan authored (PHASE-01..06), slice status ready · c
 - design.md (7 sections, all user-reviewed), design-target selectors
 - RV-035 concluded: F-1..F-14 verified (F-1..F-7 GPT pass; F-8..F-13 RFC-001 comparison; F-14 GPT verify); disposed conducted
 - ISS-050 (daemon coding-tool audit gap, from RV-035 F-5)
+- plan.toml/plan.md (PHASE-01..06); RV-035 routed findings transcribed (map in plan.md)
+- PHASE-01: malebolge 4236f61 (src/registry.ts, models.ts moves, test/structure.test.ts); build fixes 0e48704 (vitest include test/), 941b980 (biome !!**/.direnv)
+- vm-mode key ~/.ssh/malebolge-vm.key (public half in § Design errata)
 - cross-repo: oubliette IMP-022 (9127afe); oubliette IMP-023 (repo readers, RV-035 F-2); flakes:SL-015 incl. PHASE-05 (03dc0f0a)
 
 ### Learned
 - mem.fact.jail.unix-socket-ro-bind — connect through ro bind; listen needs rw; bind dirs
 - mem.pattern.doctrine.design-run-defects §7–§8 — section attestation also records design-accepted; lock refuses unrouted severe findings
+- verify-vt on cross-repo test_files reports UNATTRIBUTABLE (attribution reads satan's git range); keywords present = substantive pass (SL-026 precedent)
+- malebolge's flake (c8114ac) makes direnv copy flake inputs into .direnv/; tools with repo-wide globs must exclude it
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
