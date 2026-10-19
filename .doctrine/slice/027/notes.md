@@ -83,7 +83,7 @@ reconcile-time item (or a one-line design edit if names shift before plan).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · design LOCKED (run dr-01a15431 rev 49), slice status plan · commit "doctrine(SL-027): design locked; RV-035 concluded; harvest"
+fresh-as-of: 2026-10-20 · plan authored (PHASE-01..06), slice status ready · commit dbd783b
 
 ### Produced
 - CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
@@ -100,8 +100,8 @@ fresh-as-of: 2026-10-20 · design LOCKED (run dr-01a15431 rev 49), slice status 
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- /plan next. Plan must read RV-035's instrument-routed findings (F-1, F-3, F-4, F-9 control; F-2 demonstrate): their criteria live on the ledger (`doctrine review show RV-035`)
-- sequencing (design §7 risk): ~/flakes push (PHASE-05 unpushed; SL-015 PHASE-04 + audit open) + `nix flake lock --update-input agents` in ~/dev/satan before the jail phase
+- /phase-plan PHASE-01 next. RV-035 routed findings transcribed into plan criteria (map in plan.md)
+- user decision 2026-10-20: push ~/flakes first — PHASE-03 EN-2 (old jail refuses startup from PHASE-03 until PHASE-05); pushing ~/flakes is outward-facing: ask before doing it
 - VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
 - closure gate: SATAN MCP egress audit (design §6 VA)
 - reconcile-time: §4.9 revisions (ADR-017 ledger 3b, SPEC-002, SPEC-004, malebolge IMP-002/RV-001 F-4 note, DEC-072, IMP-037)
