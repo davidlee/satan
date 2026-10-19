@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · audit (RV-032; F-6 awaits user push) · see git log
+fresh-as-of: 2026-10-19 · done (RV-032 concluded, REV-009 done)
 
 ### Produced
 - scope + research round (research/research.md, raw/{governance,code-map}.md; gitignored) — fceaf2c; baseline restamped after CHR-017 row correction — 2ac7137
@@ -29,11 +29,13 @@ fresh-as-of: 2026-10-19 · audit (RV-032; F-6 awaits user push) · see git log
 - new room clones are bare `git init`; fill with `capsule assistant push` (/srv/fleet/PROVISION.md)
 
 ### Open
-- RV-032 F-6 — user: push M, commit + `just update-local` + push H; then verify
-- RV-032 brief → /reconcile: design.md §4.2/§4.4/§4.5/§5, selector add (F-5), REV for SPEC-004 + ADR-017 rows 1, 9 (F-8)
 - ISS-028 — harness jail reach-around for self-edit-mech; risk only
-- ISS-046 — closes at SL-025 close
+- RSK-019 (accepted), IMP-044, IDE-011, ISS-047 — carried, unchanged
 - user: reject the 4 smoke jobs (ids in § PHASE-05)
+
+### Closed here
+- RV-032 done (9 findings); REV-009 done (SPEC-004 job contract, ADR-017 ledger rows 1, 9); ISS-046 resolved
+- mem.fact.flakes.switch-builds-dev-checkouts — recorded at close (RV-032 F-6)
 
 ## PHASE-01 — runner mode scope (VA-1)
 

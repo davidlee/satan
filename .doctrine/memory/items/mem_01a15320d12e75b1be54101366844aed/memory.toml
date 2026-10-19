@@ -1,0 +1,46 @@
+memory_uid = "mem_01a15320d12e75b1be54101366844aed"
+memory_key = "mem.fact.flakes.switch-builds-dev-checkouts"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "~/flakes switches build some inputs from local checkouts: a deploy can outrun its lock"
+summary = "just home-switch/system-switch override fleet, goad, malebolge, panopticon, satan-attrd with git+file: checkouts; push + update-local or the lock stays stale"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["flakes", "deploy", "runner"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "e656b64b090a3366e10395bec3f40121ac23437f"
+ref_name = "refs/heads/main"
+checkout_state_id = "0a802920f544853bf8b9241badccd15b2e743ef478ccb3732a639b0ab29a1c3b"
+base_commit = "f7f5b5c0301aede6898f2d0d50fdb3b2186b4652"
+verified_sha = "cce382bfd785b3a452cfb9416b8e2d1d7486d19231339f077e3f62f81e8c890a"
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "verified"
+reviewed = "2026-10-19"
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-032"
+
