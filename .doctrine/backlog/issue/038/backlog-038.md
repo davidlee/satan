@@ -16,3 +16,7 @@ Undecided: where `jailed-pi` should come from (pinned `home.packages`
 install, or retired in favour of `satan-patcher`, which is running as a
 user service). Resolve as part of the harness spec's provenance section
 before touching code.
+
+## Closed by SL-023 audit (RV-029 F-19, 2026-10-19)
+
+`satan-patch-adapter-pi.el` is deleted (satan 01dab54); the runner runs pi's tools in the oubliette room through pi-env under its own unit PATH (SL-023 PHASE-12/13).

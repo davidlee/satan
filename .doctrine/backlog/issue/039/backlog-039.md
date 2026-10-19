@@ -23,3 +23,7 @@ Found during the harness spec-coverage census (2026-10-14,
 Likely direction: retire one runner, probably the elisp one. Supersedes or
 absorbs ISS-038. Spec coverage for the patch runner is an open question for
 then; the SATAN harness spec deliberately leaves it out.
+
+## Closed by SL-023 audit (RV-029 F-19, 2026-10-19)
+
+One consumer: the elisp runner is deleted (01dab54), satan-patcher removed (605447d8), `patch_jobs` dropped by migration 0009; `satan-runner` is the only consumer, verified deployed (SL-023 PHASE-14 B6; audit RV-029).

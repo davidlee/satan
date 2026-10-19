@@ -6,7 +6,7 @@ status = "active"
 title = "SATAN orientation signpost"
 summary = "Overview and orientation guide for the SATAN subsystem."
 created = "2026-06-16"
-updated = "2026-09-25"
+updated = "2026-10-19"
 
 [scope]
 paths = []
@@ -31,7 +31,7 @@ normalizer = ""
 [review]
 verification_state = "unverified"
 reviewed = ""
-review_by = ""
+review_by = "2027-01-19"
 
 [trust]
 trust_level = "medium"

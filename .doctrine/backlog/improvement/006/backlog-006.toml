@@ -5,10 +5,10 @@ id = 6
 slug = "extract_patch_runner_to_satan_patcher_daemon"
 title = "Extract patch runner to satan-patcher daemon"
 kind = "improvement"
-status = "open"
-resolution = ""
+status = "closed"
+resolution = "done"
 created = "2026-05-30"
-updated = "2026-05-30"
+updated = "2026-10-19"
 tags = ["satan", "refactor", "extraction"]
 
 [relationships]

@@ -58,32 +58,28 @@ cutover (two consumers live, ISS-039).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · design locked rev 63 (run dr-01a14d77); PHASE-01..18 completed except PHASE-14 (evidence complete, orchestrator flips) · 8c93902 (malebolge)
+fresh-as-of: 2026-10-19 · audit (RV-029 concluded) · satan 0affb18+audit, malebolge 8c93902
 
 ### Produced
-- design amended twice and re-locked: rev 56 (room adapter, RV-026 conducted, 14 findings) — 5bbc0fc; rev 63 (room probe = job collect; DEC-057 gate rulings; RV-027 waived) — 15662ba
-- DEC-065 (room adapter + door kind); DEC-055, DEC-057, DEC-060, DEC-061 amended (revision notes in each body)
-- EVD-006..010 (PHASE-01 spike: gate, steer, pause, room stop)
-- PHASE-15/16/17 appended (room adapter; probe + gate rulings; gateway provider); criteria appended to PHASE-07/08/09/10/12/14
-- backlog: IMP-042 (clean-clone op), CHR-016 (live room rung — mostly verified in PHASE-12), CHR-017 (package malebolge as flake input), ISS-046 (producer lanes refused after cutover)
-- runner live as `satan-runner` user unit, room `assistant`, repo goad-walk; three live smokes passed (PHASE-12 "Live evidence")
-- ASM-005 validated; CON-003, CON-004 (oubliette SL-005/006 relays) — fc0f92c
-- closure run: P pj-01M58TKGY59Y8C10ZTWJ8V1D46 promoted, R pj-01M58TKGYN2G6HPJ9DM5763XD8 rejected, both PHASE-12 smokes rejected (not evidence); evidence in "PHASE-14 batch B6 + C"
-- PHASE-18 appended and done (VA-1 met incl. spend row); H5 done (sloptower archived, symlink and policy.toml gone); CHR-016 closed per ruling (1)
-- flakes `605447d8`, emacs `e6cea06` (satan-patcher removed)
+- design amended and re-locked twice: rev 56 (room adapter, RV-026) — 5bbc0fc; rev 63 (probe = job collect; DEC-057 gate rulings) — 15662ba
+- DEC-065; DEC-055, DEC-057, DEC-060, DEC-061 amended; EVD-006..010; ASM-005 validated; CON-003, CON-004
+- runner live as `satan-runner` (room `assistant`, repo goad-walk); PHASE-12 smokes and closure run (P promoted, R rejected); one consumer deployed
+- audit RV-029: 26 findings (8 design-wrong items in the Reconciliation Brief, 3 governance/spec groups); ADR-017 ledger rows 4b/5b/6b/8/9 → `patch-runner` with transition lines (DEC-062); closed ISS-030, ISS-038, ISS-039, ISS-041, CHR-003, IDE-007, IMP-006
+- minted: ISS-047 — rejoin wedges the seat when a held job's repo leaves config; CHR-019 — code/comment/doc residue
+- earlier follow-ups: IMP-042, IMP-043, CHR-016 (closed), CHR-017, CHR-018, ISS-046
 
 ### Learned
-- pi-durable: no hook can deny a request → model gate is a Models view; pause abort needs the gate to refuse `paused` (PHASE-09 STOP-1)
-- pi-env 1.3.0 erases the lost-connection type for exec at ExecutionEnv → JobConnection at the Connection seam (EVD-009/010)
-- `capsule <room> ssh … true` is the human door (exit 1 stopped / 255 key) — never a probe (oubliette RV-018)
-- node:sqlite deadlocks when db is used inside a transaction (EVD-008)
-- agents cannot restart user units (permission classifier); planners hit 40-turn caps without save points
+- mem.fact.pi-env.type-survives-only-at-connection — where runner failures stay typed in pi-env/pi-durable 1.3.0
+- mem.fact.git.fetch-auto-maintenance-races-temp-repo-cleanup — `maintenance.auto=false` for temp-repo tests
+- `capsule <room> ssh … true` is the human door, never a probe (oubliette RV-018); agents cannot restart user units
+- EVD-006..010 — PHASE-01 spike evidence
 
 ### Open
-- audit candidates: DEC-065 / design §9 "slot is the live rung" wording and PHASE-14 EX-4 text stale against ruling (1); `satan-tool/patch-job-result` omits `repoPath` (raw RPC has it); sheet's intervention table name (`satan_interventions`); no intervention record for closure jobs (ruled); room config values are literals, not rendered from one source (§5.3); PHASE-09 STOP-1 gate `paused` reason and PHASE-10 R1 (room work inside rejoined run) depart from design wording; `resume` event kind unused; PHASE-13 points (repoPath optional, watch backoff, docs/patch stale)
-- prompt draft ~/satan-corpus/prompts/patch-agent.md uncommitted, awaiting user review (6 open points in PHASE-12 notes)
-- oubliette SL-006 lock: re-check the room adapter / sec-6 against DEC-065 (CHR-016's remaining item, kept open by ruling (1))
-- `doctrine slice research 23` baseline drifted; not restamped
+- RV-029 Reconciliation Brief — reconcile owes design.md edits, DEC-055/057/065 revision notes, DEC-064 runner spec + SPEC-002/SPEC-003, governance.md ledger line
+- CHR-017 — user ruling: must land before SL-023 closes (runner runs malebolge's live tree)
+- ISS-046 — producer lanes other than fix/goad-walk refused
+- prompt `~/satan-corpus/prompts/patch-agent.md` swept into corpus 21b64ea by the daily commit; PHASE-12 batch B's 6 review points unconfirmed by the user
+- RV-027 — active with no findings (rev-63 pass recorded waived); conclude at reconcile/close
 
 ## PHASE-01 spike — offline half (2026-10-18, worker)
 
@@ -1294,3 +1290,29 @@ Closed with `doctrine backlog edit CHR-016 --status closed --resolution done`; b
 - `llm-gateway list` needs sudo; agents cannot corroborate spend (user relayed).
 - `satan-tool/patch-job-result` omits `repoPath`; only the raw RPC carries it.
 - `patch_job_create` called with nil tool-ctx yields `:intervention_error` (sheet R3); no ctx exists outside a run.
+
+## Audit (RV-029, 2026-10-19)
+
+Conformance self-audit; findings, Synthesis and Reconciliation Brief live in
+`doctrine review show RV-029 --full`. Phase-sheet sweep (the sheets are
+disposable; lifted here):
+
+- **Rulings that changed canon, held by the brief:** PHASE-09 STOP-1 ruling 1
+  (gate `paused` refusal); PHASE-10 R1–R4 (room work in the rejoin, no
+  `resume()` without a segment, R3 `warn-` record as threshold proof, row 7 on
+  disabled start); PHASE-13 E1 (`result.repoPath`), E2 (mode enum defcustom),
+  E3 (corpus commit by path); PHASE-16 OQ-1 (`reachable(repo, jobId)`), OQ-2
+  (a probe that cannot spawn is `ChannelFailed`); PHASE-14 rulings (1)–(5)
+  (closure on the deployed room; nil-ctx create path; sloptower archived; smokes
+  rejected; runner left enabled).
+- **Standing risks:** live-tree deploy (CHR-017); seat wedge on an
+  unrejoinable job (ISS-047); room config literals (RV-029 F-8); one raced model
+  request on a `host_key` abort (F-22, tolerated); shutdown can wait one backoff
+  delay (ISS-047).
+- **Check note:** malebolge `just check` fails at lint on untracked
+  `.pi/extensions/doctrine/*.ts` (not SL-023's; not in the tsconfig project).
+  Over the committed tree: eslint 0, tsc clean, 1206 tests, coverage
+  97.81/93.91/98.2/97.96.
+- **Ledger:** the first authority migration in this repo; anchors are malebolge
+  symbols, verified at `8c93902`.
+

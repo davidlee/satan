@@ -1,0 +1,54 @@
+memory_uid = "mem_01a151ff32577273aa08565a04e5ec92"
+memory_key = "mem.fact.pi-env.type-survives-only-at-connection"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi-env 1.3.0: error types survive only at the Connection seam; pi-durable hooks cannot deny requests"
+summary = "pi-env/pi-durable 1.3.0: a typed failure survives only inside a Connection subclass — exec's ExecutionEnv erases lost-connection, Connection rewraps command-function rejections (HostKey*Error) as spawn_error; no pi-durable hook can deny a model request"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi-env", "pi-durable", "malebolge"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "dc8cf0867a9eb0d863d61689d85e0a123e3f38b4"
+ref_name = "refs/heads/main"
+checkout_state_id = "98935b1b548318f32b137b86d2c9a8d63a4f266a1d349694a3cf383f39cf421b"
+base_commit = "1eb3a224979a662d8ae7954e39ba6d0444d378da"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-023"
+
+[[source]]
+kind = "knowledge"
+ref = "EVD-009"
+
+[[source]]
+kind = "knowledge"
+ref = "EVD-010"
+

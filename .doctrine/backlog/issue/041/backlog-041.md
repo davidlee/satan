@@ -27,3 +27,7 @@ This is the first wall in a stack. After it come the `jailed-pi` resolution
 failure and the review cherry-pick bug (both ISS-030). Settle the patcher's
 direction first (ISS-030, ISS-039: oubliette rebuild vs fixing in place); this
 fix is needed under either.
+
+## Closed by SL-023 audit (RV-029 F-19, 2026-10-19)
+
+The runner contract takes `baseRef` as a real-repo branch (check-ref-format + refs/heads); `HEAD` is refused and the producer sends none by default — the runner uses the repo's `default_branch` (DEC-059; closure jobs' base_oid 6fe3a49).

@@ -12,21 +12,24 @@ ADR-017 decision record (DEC-003). It is greppable by construction: the single
 (REQ-008) and "no dual enforcement" (REQ-009 / NF-001) checkable with `rg`, not
 tooling that does not yet exist.
 
-**Day one (2026-07-24): every item is owned by `emacs-client`.** No authority has
-migrated. The first transition will be D4.2 (policy/registry → `daemon-core`) per
-RFC-017; the worked example under *Transition log* shows the shape it will take.
+**Day one (2026-07-24): every item was owned by `emacs-client`.** The first
+migration was SL-023's (2026-10-19): the patch-job duties moved to
+`patch-runner` (rows 4b, 5b, 6b, 8, 9; DEC-062). Every other item is still
+`emacs-client`'s. The next planned transition is D4.2 (policy/registry →
+`daemon-core`) per RFC-017; the worked example under *Transition log* shows its
+shape.
 
 ## Owner legend
 
 Fixed vocabulary, keyed to the ADR-017 §1 / ADR-018 D1 topology. A token enters
-the legend when its component is first received as an owner; only `emacs-client`
-is in use today.
+the legend when its component is first received as an owner; `emacs-client` and
+`patch-runner` are in use today.
 
 | Token | Component |
 |---|---|
 | `emacs-client` | The permanent privileged Emacs client (ADR-017 §1) |
 | `daemon-core` | The single daemon repository / core (ADR-018 D1) |
-| `satan-patcher` | Patch runner daemon (IMP-006) |
+| `patch-runner` | Patch-job runner: the `satan-runner` binary in `~/dev/malebolge` (IMP-006, SL-023; was `satan-patcher`, the retired Go repo) |
 | `satan-memoryd` | Memory substrate daemon (IMP-007) |
 | `satan-audit` | Audit verifier CLI (IMP-008) |
 | `satan-attrd` | Attribute / arrival daemon (ADR-002) |
@@ -47,15 +50,30 @@ old site is deleted (the cutover proof, REQ-009 / NF-001).
 | 1 | Action schema validation | `emacs-client` | REQ-001 | `satan-tool-validate-args` (satan-tools.el:132) | ADR-017 |
 | 2 | Mode/tool allowlist | `emacs-client` | REQ-002, REQ-006 | mode-spec `:tools` via `satan-mode-register`; consistency `satan-mode-check-tool-references` (satan-mode.el) | ADR-017 |
 | 3 | Capability / jail profiles | `emacs-client` | REQ-002 | `satan-profiles` defcustom / `satan-mode--apply-profile` (satan-mode.el) | ADR-017 |
-| 4 | Append-only audit ⚠ | `emacs-client` | REQ-003 | `satan-audit-record` (satan-audit.el:95) | ADR-017 |
-| 5 | Token / budget ceiling | `emacs-client` | REQ-004 | `satan-budget-exceeded-p` (satan-budget.el:67) | ADR-017 |
-| 6 | Kill / disable switches | `emacs-client` | REQ-005 | `satan-*-enabled` defcustoms; broker halt | ADR-017 |
+| 4a | Append-only audit → run actions ⚠ | `emacs-client` | REQ-003 | `satan-audit-record` (satan-audit.el:95) | ADR-017 |
+| 4b | Append-only audit → patch-job actions | `patch-runner` | REQ-003 | `JobStore.appendEvent` / transition writes, `job_events` append-only triggers (malebolge `src/runner/store.ts`); the job's pi-durable transcript | SL-023 |
+| 5a | Token / budget ceiling → run budget | `emacs-client` | REQ-004 | `satan-budget-exceeded-p` (satan-budget.el:67) | ADR-017 |
+| 5b | Token / budget ceiling → per-job ceiling | `patch-runner` | REQ-004 | `createModelGate` / `gatedModels` (`model-gate.ts`), `exhausted` (`ceilings.ts`), `armCeilingTimers` (`deadline.ts`); maxima `checkSubmit` → `ceilingsWithinMaxima` (`protocol.ts`) | SL-023 |
+| 6a | Kill / disable switches → broker and client switches | `emacs-client` | REQ-005 | `satan-*-enabled` defcustoms; broker halt | ADR-017 |
+| 6b | Kill / disable switches → the runner's `enabled` | `patch-runner` | REQ-005 | runner config `enabled` (`config.ts`); `submit` refused `runner_disabled` (`control.ts`); disabled start parks (`recoverHost`, `recover.ts`) | SL-023 |
 | 7 | Arrival policy (gating) † | `emacs-client` | ADR-002 † | `satan-tick-quiet-p` / `satan-tick-pick` (satan-tick.el) | ADR-017 |
+| 8 | Patch-job lifecycle / queue consumer | `patch-runner` | REQ-001, ADR-018 D3 ‡ | `parseRequest` / `checkSubmit` (`protocol.ts`), `serveControl` (`control.ts`), `createScheduler` (`scheduler.ts`), `JobStore.transition` (`store.ts`) | SL-023 |
+| 9 | Per-job path allowlist | `patch-runner` | REQ-002 | authoritative at collection: `classify` / `disallowedPaths` (`classify.ts`) over every commit; early: `jobGuard` `beforeTool` (`guard.ts`); submit: `normaliseAllowedEntry` | SL-023 |
 
 Rows track *duties*, not *delivery mechanisms*: REQ-006 (policy as a read-only
 artifact) and REQ-007 (control-plane RPC) are not rows — they surface inside a
 row's `Enforced at` as it migrates. REQ-008 (single ownership on transition) is
 the ledger itself, not a row.
+
+`patch-runner` anchors are symbols in `~/dev/malebolge/src/runner/` (verified at
+malebolge `8c93902`, SL-023 audit RV-029). The Emacs tool's argument schema
+for `patch_job_*` stays under row 1 (model-facing); row 8's REQ-001 is the
+runner's own full-schema parse of every control-socket operation. Promotion is
+an approval surface owned by Emacs (ADR-017 §1), not a row; provider
+credentials stay out (DEC-049).
+
+**‡ Row 8 — no REQ covers lifecycle.** ADR-018 D3 stands in for who runs and
+moves a job (INV-2); the gap is QUE-001's, as for row 7.
 
 ### Standing notes
 
@@ -74,8 +92,8 @@ appends audit. **Failure announcements** (`satan-broker--announce-failure`)
 fire after `satan-audit-close` and the `.FAILED` rename; the run bundle
 (`status`, `final.json`, transcript, `crash-context`) is their record, and the
 pop decision is derived from it. **Listener death reports**
-(`satan-attribute-listener--report-death`,
-`satan-patch-listener--report-death`) happen outside any run, with no audit
+(`satan-attribute-listener--report-death`; the patch listener's
+was deleted with the elisp runner in SL-023) happen outside any run, with no audit
 handle; their `:journal` line is the only durable trace. Recording them would
 need a third audit writer, which this row forbids. Both emit only through
 `satan-announce`.
@@ -106,8 +124,8 @@ deployment insurance caps outside this ledger (DEC-043).
 
 ## Transition log
 
-Append-only; one line per owner change, newest last, grouped by row. **None yet**
-— every owner is the day-one `emacs-client`. A migration edits the row's `Owner`
+Append-only; one line per owner change, newest last, grouped by row. The
+first lines are SL-023's (below the worked example). A migration edits the row's `Owner`
 and `Enforced at` *and* appends its transition line in the **same change**
 (INV-3); a row whose owner moved without a line is malformed by construction. An
 item co-owned across a transition window is *not representable and must not be* —
@@ -135,6 +153,20 @@ The `<from> → <to>` shape is what the audit greps: `rg 'emacs-client → daemo
 authority-ledger.md` enumerates every moved item, and the paired "deleted" clause
 plus a zero-hit grep at the old site is the REQ-009 / NF-001 "no dual enforcement"
 proof.
+
+**SL-023 (2026-10-19).** Rows 4, 5 and 6 split by duty (4a/5a/6a stay
+`emacs-client`); rows 8 and 9 are new. Before SL-023 these duties sat with the
+elisp patch runner inside `emacs-client`, while the unlisted Go `satan-patcher`
+consumed the same queue (ISS-039) — the dual enforcement this ledger forbids.
+
+```
+row 4b ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; satan-patch-store event writes and patch_job_events deleted — 0009 applied, `rg -l satan-patch-store satan/` → 0; job_events append-only triggers + store.test green)
+row 5b ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; elisp runner timeout deleted with satan-patch-runner.el — `rg -l satan-patch-runner satan/` → 0; model-gate / ceilings-harness tests green)
+row 6b ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; satan-patch-runner-enabled deleted — `rg -l satan-patch-runner-enabled satan/ ~/.config/emacs` → 0; runner-main disabled-start tests green)
+row 8  ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; elisp runner/store/listener deleted, satan-patcher unit removed and repo archived, patch_jobs dropped — one consumer verified deployed; control/scheduler/store tests green)
+row 9  ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; satan-patch-worktree-path-allowed-p deleted — `rg -l` → 0; classify / guard / run tests green)
+legend ↳ 2026-10-19  satan-patcher → patch-runner  (SL-023 audit; token renamed, never an owner; DEC-062)
+```
 
 ## Maintaining this ledger
 

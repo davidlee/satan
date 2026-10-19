@@ -26,7 +26,7 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
    `governance.md` and `architecture.md` first.
 2. **Key docs**: `docs/memory/design.md` (substrate grammar + store),
    `docs/perceptual-design.md` (percept/resonance/sensors/motive),
-   `docs/patch/brief.md` (patch agent), `docs/attributes/` (attribute layer).
+   `docs/patch/brief.md` (patch agent; superseded by the malebolge runner, SL-023), `docs/attributes/` (attribute layer).
 3. **Policy**: [[POL-001]] — SATAN module extraction policy. Determines what
    stays in the broker and what gets extracted to daemons.
 
@@ -56,7 +56,7 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
 | Memory | `satan-memory.el`, `-store.el`, `-grammar.el`, `-canon.el`, `-evidence.el`, `-migrate.el` | Trace storage (psql), grammar, canonicalizer, evidence assembly, migrations |
 | Tools | `satan-tools.el`, `-tools-{org,hippocampus,inbox,memory,bough,patch,notes,docs,notify,sway,agenda,activity,vcs,motive,atsatan}.el` | Tool registry + 15 tool modules |
 | Perceptual | `satan-percept.el`, `-resonance.el`, `-motive.el`, `-sensor-{alerts,curiosity,wpm}.el` | Percept capsule, auto-resonance, motive file, sensor probes |
-| Patch | `satan-patch.el`, `-store.el`, `-worktree.el`, `-runner.el`, `-adapter.el`, `-adapter-pi.el`, `-prompt.el`, `-classify.el`, `-inbox.el`, `-listener.el` | Patch job store (psql), worktree management, runner, adapters |
+| Patch | `satan-patch.el`, `-rpc.el`, `-inbox.el`, `-promote.el` | Emacs client of the patch runner (`satan-runner`, `~/dev/malebolge`, SL-023): control-socket RPC, watch-driven inbox, promote/reject. The elisp runner and `patch_jobs` are gone |
 | Attributes | `satan-attribute.el`, `-listener.el`, `-render.el` | Broker→daemon outcome enqueue, LISTEN consumer, capsule render |
 | Observer | `satan-observer.el`, `-classify.el` | Outcome classification of prior interventions |
 | Intervention | `satan-intervention.el`, `-mark.el` | Intervention create/classify/lookup API + manual mark |
@@ -65,7 +65,7 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
 
 ## Key invariants
 
-- **The trust boundary is a protocol, not a process** (ADR-017, amending POL-001 2026-07-22). Safety is defined by invariants every surface must satisfy — schema-validated actions, allowlists, append-only audit, ceilings, kill switches. Each authority item has exactly one owner at a time (ADR-017 §3 ledger); today the Emacs client owns them all, and the broker is the current enforcement point, not the definition. Emacs keeps the human approval surfaces permanently.
+- **The trust boundary is a protocol, not a process** (ADR-017, amending POL-001 2026-07-22). Safety is defined by invariants every surface must satisfy — schema-validated actions, allowlists, append-only audit, ceilings, kill switches. Each authority item has exactly one owner at a time (ADR-017 §3 ledger); today the Emacs client owns all but the patch-job rows (4b/5b/6b/8/9, `patch-runner` since SL-023), and the broker is the current enforcement point, not the definition. Emacs keeps the human approval surfaces permanently.
 - **psql is the only DB interface**. ~10 files talk to postgres via `satan-db-*`; all via `call-process` to `psql`. No elisp PG libraries.
 - **Tools are registered at load time** via `satan-tool-register`. Mode→tool allowlists are on mode specs.
 - **The broker's spawn sequence** (in `satan-broker--spawn`) runs percept build → resonance → motive read → sensor alerts → curiosity/WPM probes → bundle assembly → process spawn. Order matters; it's a flat ~185-line `let*`.
@@ -78,12 +78,12 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
 
 ## DRY gotchas (post-extraction)
 
-- **psql `--query`** cloning across `memory-store`/`patch-store`/`attribute`/`memory-migrate` and the `--prep-value` / `slugify` clones ([[DE-003]]) travelled with the code, now under `satan-*` names. Canonical homes: `satan-jsonl-prepare` (prep), `satan-memory-canon--slugify` (slugify). Re-assess DE-003's `satan-db.el` extraction against the standalone package.
+- **psql `--query`** cloning across `memory-store`/`attribute`/`memory-migrate` (the `patch-store` clone left with the elisp runner) and the `--prep-value` / `slugify` clones ([[DE-003]]) travelled with the code, now under `satan-*` names. Canonical homes: `satan-jsonl-prepare` (prep), `satan-memory-canon--slugify` (slugify). Re-assess DE-003's `satan-db.el` extraction against the standalone package.
 
 ## Refactoring conventions
 
 - Rust is the target language for SATAN-orbit daemons (POL-001).
 - One binary per extraction; shared types in `satan-core` crate.
-- Every extraction gets a disable switch (cf. `satan-patch-runner-enabled`).
+- Every extraction gets a disable switch (cf. the patch runner's config `enabled`).
 - See [[POL-001]] for the earns-the-seat test: "does it use the editor as an editor?"
 - See [[mem.fact.satan.package-self-location-coupling]] for the self-location trap this extraction resolved.

@@ -77,3 +77,7 @@ promoting from quarantine.
 5. Cleanup on adoption: disable the `satan-patcher` unit and
    `satan-patch-runner-enabled`; close ISS-030, ISS-038, ISS-039 and CHR-003 as
    superseded; retire `~/dev/satan-patcher`.
+
+## Closed by SL-023 audit (RV-029 F-19, 2026-10-19)
+
+Resolved into SL-023: runner jobs run in oubliette room `assistant`, return as git collected into the host quarantine, and are promoted from Emacs; model keys stay with the gateway.

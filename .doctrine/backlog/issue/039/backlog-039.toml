@@ -5,10 +5,10 @@ id = 39
 slug = "patch-jobs-two-consumers"
 title = "Two patch_jobs consumers: elisp patch runner and satan-patcher both enabled, with different jailed-pi provenance"
 kind = "issue"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "closed"
+resolution = "fixed"
 created = "2026-10-14"
-updated = "2026-10-14"
+updated = "2026-10-19"
 tags = ["deployment", "patch", "satan"]
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

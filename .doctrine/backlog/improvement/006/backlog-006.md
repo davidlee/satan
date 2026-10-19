@@ -21,3 +21,7 @@ treat the Go as deployed reality.
 **Blocked / trigger:** act when surface area grows in the next refactor theme,
 or a recurring fit-bug appears (POL-001 §Verification). Disable switch already
 wired.
+
+## Closed by SL-023 audit (RV-029 F-19, 2026-10-19)
+
+The patch runner is extracted (SL-023): the `satan-runner` binary in ~/dev/malebolge (destination amended by REV-006 from the Go satan-patcher), with its own store, control socket and disable switch; the elisp runner modules are deleted.

@@ -5,10 +5,10 @@ id = 3
 slug = "patcher-corpus-path"
 title = "Retarget satan-patcher prompt default to the relocated corpus (SL-015 follow-up)"
 kind = "chore"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "closed"
+resolution = "obsolete"
 created = "2026-08-22"
-updated = "2026-08-22"
+updated = "2026-10-19"
 tags = ["deferred", "patcher", "paths", "satan"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role

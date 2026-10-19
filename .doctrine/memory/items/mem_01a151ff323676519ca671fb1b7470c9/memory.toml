@@ -1,0 +1,46 @@
+memory_uid = "mem_01a151ff323676519ca671fb1b7470c9"
+memory_key = "mem.fact.git.fetch-auto-maintenance-races-temp-repo-cleanup"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "git fetch's detached auto-maintenance races temp-repo cleanup in tests"
+summary = "git 2.55 fetch starts auto-maintenance detached; tests that rm a temp bare repo right after a fetch flake with ENOTEMPTY — set maintenance.auto=false in the test git env"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["git", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "dc8cf0867a9eb0d863d61689d85e0a123e3f38b4"
+ref_name = "refs/heads/main"
+checkout_state_id = "f5d00dcf4b8103387321bde69c425d7836cb37ea0bc56c0d0a929f070a38de4f"
+base_commit = "1eb3a224979a662d8ae7954e39ba6d0444d378da"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "low"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-023"
+

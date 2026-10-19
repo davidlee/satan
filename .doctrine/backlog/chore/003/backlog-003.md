@@ -24,3 +24,7 @@ Deferred at the user's direction (2026-08-22): the daemon is not in active use
 and may be replaced outright, which would make this work moot. Revisit when
 satan-patcher is next touched — or close as obsolete if it is replaced
 (see IMP-006, the patch-runner extraction that produced it).
+
+## Closed by SL-023 audit (RV-029 F-19, 2026-10-19)
+
+satan-patcher is retired; the runner reads its prompt from the explicit `prompt_file` in runner config (~/satan-corpus/prompts/patch-agent.md), no fallback (SL-023 DEC-056).

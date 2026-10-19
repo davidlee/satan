@@ -1,0 +1,885 @@
+id    = 29
+slug  = "sl-023-audit-conformance-patch-runner-for-the-oubliette-room"
+title = "SL-023 audit (conformance): patch runner for the oubliette room"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-023 (18 phases) against design.md locked rev 63, DEC-050..DEC-065, ADR-017 (§1, §3 ledger, §4), ADR-018 D1/D3/D5, POL-001, SPEC-001/002/003 and the user rulings of 2026-10-19. Examined: `doctrine slice conformance 23` (82 undeclared, 1 undelivered, 27 conformant); malebolge eslint/tsc/vitest+coverage over the committed tree (1206 tests green; `just check` lint red only on untracked .pi/), satan `just check` (1303/1307, 4 env skips), `doctrine check gate` rc 0, `just check-jails` rc 0, flakes jailed-agents rc 0; design §5.1–§10 against malebolge src/runner at 8c93902, satan patch client, flakes runner.nix; deployed state read-only (satan-runner active from the live tree, satan-patcher absent, 0 patch_job tables, runner.sqlite job states); oubliette SL-006 lock (done, ad2dd7d) against the room adapter; notes.md open items PHASE-02..18 and phase-sheet rulings; backlog items the design closes. 26 findings, all terminal; ledger rows applied (DEC-062) and seven backlog items closed in this pass; Synthesis and Reconciliation Brief written.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-023"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Conformance: SL-023 code paths undeclared; open-ended phase deltas absorb foreign commits"
+detail = """
+Expected: `doctrine slice conformance 23` reports no undeclared code/config paths — every path SL-023 edited is matched by a design-target selector (design §10 is its human mirror).
+Observed: undeclared (82). Non-doctrine entries:
+- SL-023's own edits, missing a selector: `flake.nix` and `justfile` (f17d33f, PHASE-12 EX-2: `runner-socket-unjailed` check + `check-jails` line, invariant I4); `satan/satan-attribute.el`, `satan/test/satan-attribute-listener-test.el` (01dab54, PHASE-13 C comment rewords); `satan/test/satan-memory-migrate-test.el` (01dab54, VT-4 for 0009); `docs/INDEX.md`, `docs/governance.md` (01dab54).
+- Foreign edits absorbed by open-ended phase deltas: `flake.lock` is touched only by f0913bc ("use the host's doctrine; relock agents") and 7848744 (CHR-018), and 7848744 also edits `flake.nix`/`justfile`. Every phase-NN.toml carries `code_start_oid` and no end, so the registry spans to HEAD and picks up commits made after PHASE-14 completed (238e1e7).
+Evidence: `git log --oneline 032f7535..238e1e7 -- flake.nix justfile satan/satan-attribute.el docs/…` → f17d33f, 01dab54; `git log -- flake.lock` → 7848744, f0913bc, d54da19.
+"""
+disposition = "design-wrong"
+response = """
+Design-target selectors (and design §10, their human mirror) missed SL-023's own edits; the registry also over-reaches because no phase carries an end oid. Reconciliation Brief (per-slice): `doctrine slice selector add 23 --intent design-target flake.nix justfile satan/satan-attribute.el satan/test/satan-attribute-listener-test.el satan/test/satan-memory-migrate-test.el docs/INDEX.md docs/governance.md` (load-bearing), mirrored in §10's "This repo" table; and bound the deltas to SL-023's satan code commits — `doctrine slice record-delta 23 PHASE-11 --commit 83b5362`, `… PHASE-12 --commit f17d33f`, `… PHASE-13 --start 87d8cfd^ --end 01dab54`; the other phases landed no satan code (malebolge / flakes / emacs only), so their rows must not span to HEAD — so f0913bc and 7848744 (CHR-018) drop out and `flake.lock` stops reading as undeclared.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Design-target selectors (and design §10, their human mirror) missed SL-023's own edits; the registry also over-reaches because phases carry no end oid. Reconciliation Brief (per-slice): `doctrine slice selector add 23 --intent design-target flake.nix justfile satan/satan-attribute.el satan/test/satan-attribute-listener-test.el satan/test/satan-memory-migrate-test.el docs/INDEX.md docs/governance.md` (load-bearing), mirrored in §10's "This repo" table; and bound the phase deltas with `doctrine slice record-delta 23 PHASE-NN --start <code_start_oid> --end <phase's last satan commit>` for the phases that landed satan commits (PHASE-11 032f753.., PHASE-12 ..f17d33f, PHASE-13 ..01dab54, PHASE-14/18 ..238e1e7), so f0913bc and 7848744 (CHR-018) drop out and `flake.lock` stops reading as undeclared.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "Correct the record-delta commits: the satan code commits are 83b5362 (PHASE-11), f17d33f (PHASE-12), 87d8cfd..01dab54 (PHASE-13); other phases landed no satan code."
+disposition = "design-wrong"
+response = """
+Design-target selectors (and design §10, their human mirror) missed SL-023's own edits; the registry also over-reaches because no phase carries an end oid. Reconciliation Brief (per-slice): `doctrine slice selector add 23 --intent design-target flake.nix justfile satan/satan-attribute.el satan/test/satan-attribute-listener-test.el satan/test/satan-memory-migrate-test.el docs/INDEX.md docs/governance.md` (load-bearing), mirrored in §10's "This repo" table; and bound the deltas to SL-023's satan code commits — `doctrine slice record-delta 23 PHASE-11 --commit 83b5362`, `… PHASE-12 --commit f17d33f`, `… PHASE-13 --start 87d8cfd^ --end 01dab54`; the other phases landed no satan code (malebolge / flakes / emacs only), so their rows must not span to HEAD — so f0913bc and 7848744 (CHR-018) drop out and `flake.lock` stops reading as undeclared.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "nit"
+title = "Conformance: 74 doctrine-record paths reported undeclared"
+detail = """
+Expected: undeclared paths are code the design did not declare.
+Observed: 74 of the 82 undeclared paths are doctrine records the slice minted or edited through the CLI as lifecycle by-products: backlog CHR-016/017/018, IMP-042; knowledge ASM-005, CON-003/004, DEC-055/057/060/061 (revision notes), DEC-065, EVD-006..009; 27 observation records; RV-025/026 ledgers; the slice's own design.md, notes.md, plan.md, plan.toml.
+These are not design targets (design §10 is the code impact table) and declaring `.doctrine/**` selectors would make the conformance algebra say nothing. No other slice in this repo declares them either (only `.doctrine/adr/017/**` ledger paths appear as selectors).
+"""
+disposition = "tolerated"
+response = """
+Tolerated: these are CLI-minted lifecycle records (DECs, EVDs, CONs, backlog, observations, RV ledgers, the slice's own docs), not code the design targets. Declaring `.doctrine/**` selectors would match everything and make the algebra uninformative; no slice here does it. The code-path half is F-1.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated: these are CLI-minted lifecycle records (DECs, EVDs, CONs, backlog, observations, RV ledgers, the slice's own docs), not code the design targets. Declaring `.doctrine/**` selectors would match everything and make the algebra uninformative; no slice here does it. The code-path half is F-1.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "DEC-062 ledger rows and transition lines not applied (ledger undelivered)"
+detail = """
+Expected (DEC-062, design §5.3 "Authority ledger (DEC-062), applied at audit", §10 governance follow-through, ledger "Maintaining this ledger — Migrate"): SL-023's audit edits `.doctrine/adr/017/authority-ledger.md` — new rows for patch-job lifecycle / queue consumer and per-job path allowlist (owner `patch-runner`); rows 4, 5, 6 split; legend token `satan-patcher` → `patch-runner`; each moved row with `Owner` + `Enforced at` and its transition line in the same change (INV-3).
+Observed: conformance lists the ledger as the one undelivered design-target selector; the ledger is unchanged (day-one: every row `emacs-client`, transition log "None yet", legend still names `satan-patcher`; row-4 standing note still cites the deleted `satan-patch-listener--report-death`).
+Old-site greps (for the "deleted" clauses): `rg -l` over satan/, ~/.config/emacs/{apps,lisp} for `satan-patch-runner-enabled`, `satan-patch-worktree-path-allowed-p`, `satan-patch-store`, `satan-patch-runner`, `satan-patch-listener` → 0 files each; `satan_memory` has 0 `patch_job%` tables; `satan-patcher` unit absent, `davidlee/sloptower` archived.
+"""
+disposition = "fix-now"
+response = """
+Applied in this audit (DEC-062 assigns it to audit; the ledger's own "Migrate" rule says the migrating slice's audit edits it): rows 4/5/6 split into 4a/4b, 5a/5b, 6a/6b; new rows 8 (patch-job lifecycle / queue consumer, REQ-001 + ADR-018 D3 ‡) and 9 (per-job path allowlist, REQ-002); owner `patch-runner` with malebolge symbol anchors; legend `satan-patcher` → `patch-runner`; five row transition lines plus the legend line with the old-site zero-hit greps (INV-3, same change); preamble, transition-log lead and the row-4 standing note (deleted patch listener) brought current. Conformance will still show the selector undelivered because the edit lands in the audit commit, not a phase delta — expected for "applied at audit".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Applied in this audit (DEC-062 assigns it to audit; the ledger's own "Migrate" rule says the migrating slice's audit edits it): rows 4/5/6 split into 4a/4b, 5a/5b, 6a/6b; new rows 8 (patch-job lifecycle / queue consumer, REQ-001 + ADR-018 D3 ‡) and 9 (per-job path allowlist, REQ-002); owner `patch-runner` with malebolge symbol anchors; legend `satan-patcher` → `patch-runner`; five row transition lines plus the legend line with the old-site zero-hit greps (INV-3, same change); preamble, transition-log lead and the row-4 standing note (deleted patch listener) brought current. Conformance will still show the selector undelivered because the edit lands in the audit commit, not a phase delta — expected for "applied at audit".
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Design §5.1/§5.2/§5.5 still describe the pre-amendment gate, wrapTool and an audit.ts module"
+detail = '''
+Expected: design.md agrees with the amended DEC-057 (gate on every entry point the job reaches; cancelDeferred passes; getAuth/login/logout refused) and with the implemented module set and tool registration.
+Observed (design rev 63):
+- §5.1 module table, `model-gate.ts` row: "`Models` view wrapping `streamSimple` and `completeSimple`" — the gate wraps nine request members (stream, streamSimple, streamDeferred, complete, completeSimple, fetchDeferred, classify, generateImages; cancelDeferred delegated uncounted) and refuses the three auth members (`src/runner/model-gate.ts` `ENTRY_POINTS`, `gatedModels`, `refuseCredentials`). §5.4 "The model gate" paragraph is already amended; the table row and §5.5 are not.
+- §5.5 Assumptions: "a `Models` view wrapping `streamSimple` and `completeSimple` gates every provider call (all proven by the first-phase spike)" — EVD-006 found the two ungated paths that DEC-057's 2026-10-18 revision added.
+- §5.1 lists `src/runner/audit.ts` "append `job_events`": no such module; `JobStore.appendEvent` / the transition writes in `store.ts` append it. The table also omits modules the runner is built from (run, prepare, collect, pause, recover, rejoin, tenancy, warning, deadline, ceiling-latch, shell, exec, git, views, rows, ids, durable-ids, conversations, ending, backoff, errors, vocab, gateway, tools).
+- §5.2 "Tools offered": "`read` is wrapped with `wrapTool` as `replay: \"safe\"`" — PHASE-07 A3 copies CodingTools' registrations into one extension with `read` marked `replay: "safe"` (`src/runner/tools.ts`); §5.5's API assumption list still names `wrapTool`.
+'''
+disposition = "design-wrong"
+response = """
+The DECs and the code are right; the design text is stale. Brief (per-slice, design.md): §5.1 `model-gate.ts` row → the gated entry points per DEC-057 (nine request members gated and counted, cancelDeferred uncounted pass-through, getAuth/login/logout refused); drop `src/runner/audit.ts` (auditing is `store.ts`) and list the modules the runner is built from, or state the table is the principal modules only; §5.2 "Tools offered" → registration copies with `read` `replay: "safe"` (not `wrapTool`); §5.5 assumptions → the widened gate per amended DEC-057, drop `wrapTool`.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The DECs and the code are right; the design text is stale. Brief (per-slice, design.md): §5.1 `model-gate.ts` row → the gated entry points per DEC-057 (nine request members gated and counted, cancelDeferred uncounted pass-through, getAuth/login/logout refused); drop `src/runner/audit.ts` (auditing is `store.ts`) and list the modules the runner is built from, or state the table is the principal modules only; §5.2 "Tools offered" → registration copies with `read` `replay: "safe"` (not `wrapTool`); §5.5 assumptions → the widened gate per amended DEC-057, drop `wrapTool`.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "Design §5.2/§5.5/§6/§7/§9 and DEC-065 say the slot is the live rung; closure ran on the deployed room"
+detail = """
+Expected: canon matches the user ruling of 2026-10-19 (1) and oubliette's state: the closure run ran against the deployed room door (`[door] kind = "room"`, room `assistant`, PHASE-14 EX-5) and PHASE-12 ran the live room rung; CHR-016 is closed; oubliette SL-006 is `done` (last design change ad2dd7d).
+Observed stale statements:
+- design §9 Closure evidence: "A job … runs end to end against the slot"; "the live room rung is not closure evidence for this slice while SL-006 is unshipped".
+- design §9 test layers: "Live smoke — one job end to end against a slot"; "Live room rung — deferred until oubliette SL-006 ships".
+- design §5.2: slot adapter "(live rung until SL-006 ships)"; room adapter "provisional until SL-006 locks; … live when SL-006 ships". §5.5 Assumptions: "the slot remains the live rung until SL-006 ships". §6 Remaining "SL-006 lock drift" (now locked; see the re-check finding) and the unrelayed sec-5 `accept-new` item (absorbed: SL-006 ad2dd7d says the runner's ssh is strict).
+- design §7 index row "DEC-0NN *(proposed)*" — the record is DEC-065, accepted; §10 "a new decision records the room adapter and door kind (§7)".
+- DEC-065 choice: "The slot stays the live rung until SL-006 ships"; consequences: "Live room rung deferred to SL-006 shipping", "Re-check against SL-006 at its lock".
+Evidence: notes.md "PHASE-14 batch B6 + C" (ruling (1), EX-5 met), "PHASE-12 … Live evidence"; `doctrine show SL-006` → done; oubliette `git log -- .doctrine/slice/006/design.md` → ad2dd7d newest.
+"""
+disposition = "design-wrong"
+response = """
+Canon is stale against the user's ruling (1) of 2026-10-19 and against oubliette (SL-006 done). Brief: per-slice design.md §5.2 (slot "live rung" / room "provisional … live when SL-006 ships"), §5.5 assumption, §6 remaining (SL-006 lock drift → re-checked, F-7; sec-5 relay absorbed by SL-006 ad2dd7d), §7 row "DEC-0NN (proposed)" → DEC-065, §9 test layers (live smoke / live room rung) and Closure evidence (closure ran against the deployed room door; PHASE-12 + closure run are the live room rung; waived items per ruling: silence-limit drop, oubliette verbs' host-key refusal, agent home writable), §10 governance line. Governance: DEC-065 revision note (choice "slot stays the live rung", consequences "Live room rung deferred…", "Re-check … at its lock") per ruling (1).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Canon is stale against the user's ruling (1) of 2026-10-19 and against oubliette (SL-006 done). Brief: per-slice design.md §5.2 (slot "live rung" / room "provisional … live when SL-006 ships"), §5.5 assumption, §6 remaining (SL-006 lock drift → re-checked, F-7; sec-5 relay absorbed by SL-006 ad2dd7d), §7 row "DEC-0NN (proposed)" → DEC-065, §9 test layers (live smoke / live room rung) and Closure evidence (closure ran against the deployed room door; PHASE-12 + closure run are the live room rung; waived items per ruling: silence-limit drop, oubliette verbs' host-key refusal, agent home writable), §10 governance line. Governance: DEC-065 revision note (choice "slot stays the live rung", consequences "Live room rung deferred…", "Re-check … at its lock") per ruling (1).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "PHASE-14 EX-2/EX-4 text stale against ruling (1)"
+detail = """
+Expected: PHASE-14 criteria text agrees with how the phase was closed.
+Observed: plan.toml PHASE-14 EX-4 says "CHR-016 deferred" (CHR-016 is closed per ruling (1)); EX-2 says the closure job runs "against the slot" (superseded by appended EX-5, closure against the deployed door). The notes' PHASE-14 criteria ledger records both as met with the supersession.
+"""
+disposition = "tolerated"
+response = """
+Tolerated: plan criteria are immutable-append (EX-4 and EX-2 are not a reconcile surface). The supersession is already recorded the sanctioned way — EX-5 appended to PHASE-14, and the notes' PHASE-14 criteria ledger marks EX-2 "superseded by EX-5" and EX-4's CHR-016 clause "superseded". The design-level truth is fixed by F-5.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated: plan criteria are immutable-append (EX-4 and EX-2 are not a reconcile surface). The supersession is already recorded the sanctioned way — EX-5 appended to PHASE-14, and the notes' PHASE-14 criteria ledger marks EX-2 "superseded by EX-5" and EX-4's CHR-016 clause "superseded". The design-level truth is fixed by F-5.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "SL-006 lock re-check (CHR-016 remainder): SL-006 is done; adapter matches its locked sec-4/5/6"
+detail = '''
+Expected (CHR-016 remaining item, design §6 "SL-006 lock drift", §8 risk 2): the room adapter is re-checked against oubliette SL-006 sec-4/5/6 once SL-006 locks; a change there re-opens §5.2's room rows.
+Observed: SL-006 is `done` (7/7 phases). Its design changed last at ad2dd7d. Diff 73ec574..ad2dd7d (the fixture baseline → lock): push prints `<oid>` alone; collect prints one `<oid>\t<ref>` line in ls-remote order; `reachable` is never `capsule <room> ssh <user> true` (RV-018 F-4); the runner's own ssh is strict (`yes`) on the room's known_hosts, the verbs `accept-new`; push resolves `refs/heads/<branch>` exactly; `session` base tools ride the caller's PATH until oubliette IMP-017; ISS-024 tmpfiles parent. Each runner-facing change is implemented: room.ts `refresh` requires a 40/64-hex stdout oid; `collect` compares stdout with `lsRemoteLine(landed)`; `reachable(repo, jobId)` = the job's collect (PHASE-16); `daemonCommand` uses `sshArguments(target, true)` (PHASE-15 B); the launch is `session_path` absolute. The remaining two have no runner surface.
+Residue: comments still say the adapter is provisional / re-check pending — `src/runner/room.ts:6,262`, `src/runner/config.ts:84` ("the live rung until SL-006 ships"), `test/runner/room-fixture.ts:20`, `test/runner/config-fixture.ts:60`.
+'''
+disposition = "aligned"
+response = '''
+Aligned: the CHR-016 remainder is discharged here. SL-006 is done and its design last changed at ad2dd7d; every runner-facing change since the fixture baseline 73ec574 is implemented (push oid alone and hex-checked; collect `<oid>\t<ref>` compared exactly; reachable = the job's collect; strict runner ssh; session by absolute path); the rest (IMP-017 PATH, ISS-024 tmpfiles, push resolving refs/heads exactly) has no runner surface. The stale "provisional / re-check pending" comments are code residue, filed as CHR-019 (F-21).
+'''
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = '''
+Aligned: the CHR-016 remainder is discharged here. SL-006 is done and its design last changed at ad2dd7d; every runner-facing change since the fixture baseline 73ec574 is implemented (push oid alone and hex-checked; collect `<oid>\t<ref>` compared exactly; reachable = the job's collect; strict runner ssh; session by absolute path); the rest (IMP-017 PATH, ISS-024 tmpfiles, push resolving refs/heads exactly) has no runner surface. The stale "provisional / re-check pending" comments are code residue, filed as CHR-019 (F-21).
+'''
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Room config values are literals, not rendered from the oubliette attrsets (design §5.3 one source)"
+detail = """
+Expected (design §5.3 Runner config; §8 risk "Runner config drifts from the room"; §6 deployment facts; DEC-065 "rendered by ~/flakes from the oubliette attrsets"): `~/flakes` renders the runner's room and repo values (`room`, `user`, `guest_path`, `quarantine`, `known_hosts`, alias) from the same oubliette target/room attrsets as the room — one source at Nix eval.
+Observed: `~/flakes/features/satan/runner.nix` writes them as literals, each commented with its fleet source (lines 47-87: "Literals: the fleet (/srv/fleet/flake.nix rooms.assistant, targets/<repo>.nix) exposes no …"). PHASE-12 batch A E4: the fleet flake's outputs are devShells, nixosConfigurations, nixosModules, packages; home-manager is standalone with no osConfig, so no room data is reachable. The backstops the design names still hold: the `preparing` `test -d <guest_path>/.git` check (`guest_path_invalid`) and the push oid gate; the live closure run used these values without drift.
+"""
+disposition = "design-wrong"
+response = """
+The one-source mechanism the design claims does not exist: the fleet flake exposes no room data to the standalone home-manager config, so the literals (each commented with its fleet source) are the honest build, and the design's backstops still hold (the `preparing` guest_path check and the push oid gate). Brief: per-slice design.md §5.3 runner-config paragraph, §6 deployment facts and §8 "Runner config drifts" row → literals commented with their fleet source, drift caught by the preparing check / push gate; governance: DEC-065 revision note ("rendered by ~/flakes from the oubliette attrsets" → literals until the fleet exposes room data). Making it one-source again is new work (a fleet output for room data), for reconcile to mint if wanted.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The one-source mechanism the design claims does not exist: the fleet flake exposes no room data to the standalone home-manager config, so the literals (each commented with its fleet source) are the honest build, and the design's backstops still hold (the `preparing` guest_path check and the push oid gate). Brief: per-slice design.md §5.3 runner-config paragraph, §6 deployment facts and §8 "Runner config drifts" row → literals commented with their fleet source, drift caught by the preparing check / push gate; governance: DEC-065 revision note ("rendered by ~/flakes from the oubliette attrsets" → literals until the fleet exposes room data). Making it one-source again is new work (a fleet output for room data), for reconcile to mint if wanted.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Pause trigger split afterTool/afterTools and gate refuses paused; DEC-055 and design §5.4 say afterTool triggers"
+detail = """
+Expected (DEC-055 choice; design §5.4 "Room down: pause and resume" sequence): an `afterTool` hook reads `pause_requested`, replaces the result and triggers the pause; the runner then aborts "before another model request". The gate's refusal list is DEC-057's.
+Observed (PHASE-09 batch A, STOP-1 ruling 1):
+- The trigger is split: `afterTool` replaces the result (`PAUSED_RESULT_TEXT`); the abort signal fires from `afterTools` (GenerationTask), because signalled from `afterTool` the abort lands before the tool task commits and the replaced result is lost (6/6 runs).
+- Even from `afterTools` a one-macrotask delay gave a second provider request every time, so the model gate gained a `paused` refusal: checked on the segment's in-memory signal and on the durable mark inside the gate's transaction (`Meter.pausePending`, store verdict `decline`: no count, no event, no latch). DEC-057's refusal reasons in code are now `ceiling_exceeded`, `usage_unavailable`, `no_job`, `paused`, `credentials` (`REFUSALS`).
+- `waiting_room` vs `collecting` is decided from the durable row after the segment settles, not from which signal woke the run; no `{pause}` payload field (the `waiting_room` transition carries the settlement).
+Evidence: notes.md "PHASE-09 batch A" Learned/Deviations; `src/runner/guard.ts` `afterTool`/`afterTools`; `src/runner/model-gate.ts` `REFUSALS.paused`; pause.test.ts STOP-1 race test.
+"""
+disposition = "design-wrong"
+response = """
+The implementation is the safer mechanism (PHASE-09 observed the abort discarding the replaced result from afterTool, and a second provider request under a one-macrotask delay), applied under STOP-1 ruling 1. Brief: per-slice design.md §5.4 room-down sequence and bullets (afterTool replaces; afterTools signals; the gate refuses `paused` on the in-memory signal and the durable mark, no count/event/latch; waiting_room vs collecting read from the durable row after settle) and §5.4 "The model gate" refusal reasons (add `paused`, `no_job`, `credentials`); governance: DEC-055 revision note (trigger split + gate refusal), DEC-057 revision note (refusal reasons beyond ceiling/usage).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The implementation is the safer mechanism (PHASE-09 observed the abort discarding the replaced result from afterTool, and a second provider request under a one-macrotask delay), applied under STOP-1 ruling 1. Brief: per-slice design.md §5.4 room-down sequence and bullets (afterTool replaces; afterTools signals; the gate refuses `paused` on the in-memory signal and the durable mark, no count/event/latch; waiting_room vs collecting read from the durable row after settle) and §5.4 "The model gate" refusal reasons (add `paused`, `no_job`, `credentials`); governance: DEC-055 revision note (trigger split + gate refusal), DEC-057 revision note (refusal reasons beyond ceiling/usage).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Restart recovery: room-touching phase-A work runs in the rejoined run (R1); design §5.4/I15 say startup"
+detail = """
+Expected (design §5.4 Restart recovery; I15): phase A at startup settles every job row — including the *(enabled)* rows that reach the room (redo refresh, preparing checks, probing, redo collect) — before phase B's one harness act and `resume()`.
+Observed (PHASE-10 rulings R1, R2, R4; batch B deviations):
+- Startup phase A does only room-free host work (park/unpark re-base, row 7 `to_collecting`) before the socket serves; room-touching phase-A actions and `rearm_deadline` run inside the rejoined run (`rejoin.ts`, seated by the scheduler once per process), after startup and before that job's phase-B act. Equivalent with one job in flight; no harness task is scheduled before phase A (EX-4 tests).
+- R2: no in-flight job → no `resume()`; also none for rows that end before a segment (row 4 `job_branch_moved`, row 11 waited out/cancelled, row 12 collecting).
+- R4: row 7 (settled running → `collecting`) runs on a disabled restart too; its payload gains `reason: "recovered"`.
+- New `RunDeps.stopping`: a run whose runner is shutting down rethrows instead of writing `settle_failed`/`failed`, so a stop leaves rows as a crash does (before this, `Session.close` failed every running job).
+I15's wording ("Startup settles every job's host state") is narrower than the code (startup + rejoin).
+"""
+disposition = "design-wrong"
+response = """
+Equivalent under one job in flight and tested (EX-4: nothing asks pi for progress before phase A). Brief: per-slice design.md §5.4 Restart recovery — startup phase A = room-free host work; room-touching (enabled) rows and rearm run in the rejoined run before its phase-B act; no resume() without an in-flight segment (R2); row 7 runs on a disabled start with payload reason `recovered` (R4); shutdown (`stopping`) leaves rows as a crash does — and §5.5 I15 reworded to "before any harness call that asks for progress, every row's host state is settled — at startup, or in its rejoin for the one in-flight job".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Equivalent under one job in flight and tested (EX-4: nothing asks pi for progress before phase A). Brief: per-slice design.md §5.4 Restart recovery — startup phase A = room-free host work; room-touching (enabled) rows and rearm run in the rejoined run before its phase-B act; no resume() without an in-flight segment (R2); row 7 runs on a disabled start with payload reason `recovered` (R4); shutdown (`stopping`) leaves rows as a crash does — and §5.5 I15 reworded to "before any harness call that asks for progress, every row's host state is settled — at startup, or in its rejoin for the one in-flight job".
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "Design §5.3 DDL and event kinds differ from the store (ceilings column, unused resume, six unlisted kinds)"
+detail = """
+Expected: design §5.3's DDL and `job_events.kind` list are the store's contract ("the shape is the contract").
+Observed:
+- `jobs.ceilings TEXT NOT NULL DEFAULT '{}'` (PHASE-04 OQ-A ruling (a), submit ceilings) is not in the §5.3 DDL; migration V2 adds `parked_at` (in the DDL already).
+- Event kinds in `src/runner/vocab.ts` `EVENT_KINDS`: the design lists `resume`, which nothing writes — the `waiting_room → running` transition (`{ requestId: resume-<id>-<n>, submissionId }`) is the resume's record (PHASE-09 B deviation), and a carried warning is a `warning` event with `trigger: "resume"`. Kinds written but unlisted: `conversation`, `announced`, `refreshed`, `parked`, `unparked`, `clean_failed`. `classified` is listed; the class rides the collecting/terminal transition.
+- `failure` reasons and payload reasons are free strings (`channel_timeout`, `channel_refusal`, `host_key`, `dirty_clone`, `guest_path_invalid`, `settle_failed`, `collection_abandoned`, `repo_not_configured`, `corrupt_job`, `check_failed`, `reviewed_oid_mismatch`), not a closed vocabulary; §5.3 names none of them.
+"""
+disposition = "design-wrong"
+response = """
+Brief: per-slice design.md §5.3 — add `ceilings TEXT NOT NULL DEFAULT '{}'` (submit ceilings, OQ-A) to the DDL; replace the `kind` comment with the store's vocabulary (submitted, transition, policy, blocked_tool, warning, ceiling, pause, collected, classified, disposition, conversation, announced, refreshed, parked, unparked, clean_failed), stating the resume's record is the `waiting_room → running` transition plus a `warning` receipt with trigger `resume`; list the failure/payload reasons as free text with the current set. Removing the unused `resume` kind from code is CHR-019.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Brief: per-slice design.md §5.3 — add `ceilings TEXT NOT NULL DEFAULT '{}'` (submit ceilings, OQ-A) to the DDL; replace the `kind` comment with the store's vocabulary (submitted, transition, policy, blocked_tool, warning, ceiling, pause, collected, classified, disposition, conversation, announced, refreshed, parked, unparked, clean_failed), stating the resume's record is the `waiting_room → running` transition plus a `warning` receipt with trigger `resume`; list the failure/payload reasons as free text with the current set. Removing the unused `resume` kind from code is CHR-019.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "Design §5.2 port and wire differ from the build (collect, reachable, hygiene members, repoPath, failure)"
+detail = """
+Expected: design §5.2 states the git-channel port and control-socket wire as built.
+Observed:
+- Port (design: `collect → { ref, oid }`, `reachable(job)`): `collect` returns `{ quarantine, ref, oid }`; `reachable(repo, jobId)` (PHASE-16 OQ-1 ruling (a); the slot ignores both); the port also carries `checkClone(shell, repo, signal)` and `cleanClone(shell, signal)` (PHASE-15 C; slot no-ops), which §5.2 describes as the runner's hygiene but not as port members.
+- Wire: `result` also carries `jobId`, `state` and `repoPath` (PHASE-13 ruling E1/M2: the configured real repo path, absent once the repo leaves config), and the job summary carries `failure` (M1); §5.2's `result` row says "class, baseOid, reviewedOid, quarantine path + ref, commits, diffstat, end reason, usage". Promotion (§5.4) depends on `repoPath`: §5.4 says Emacs writes the branch in the real repo but §5.2 gave it no path.
+- A refused promotion is audited as a `disposition` event `{disposition, branch, outcome: "receipt_mismatch"}` (PHASE-05).
+- `ERROR_CODES` gained `reviewed_oid_mismatch`, which never reaches the socket (PHASE-06).
+- §10 corpus row: "Committed with `just commit` in the corpus repo" — PHASE-13 E3 ruled commit by path (f56ba62), since the recipe sweeps unrelated dirt.
+- §5.2 Emacs side: the mode enum is a defcustom mirroring runner config (`satan-tools-patch-modes`, default `("fix")`, ruling E2); `repo` is a plain name the runner validates.
+"""
+disposition = "design-wrong"
+response = """
+Brief: per-slice design.md §5.2 — GitChannel `collect → { quarantine, ref, oid }`, `reachable(repo, jobId)`, plus `checkClone`/`cleanClone` (slot no-ops); control-socket `result` row adds `jobId`, `state`, `repoPath` (configured real path, absent once the repo leaves config) and the summary `failure`; refused promotion audited as a `disposition` event; Emacs-side mode enum from `satan-tools-patch-modes`; §10 corpus row "committed by path" instead of `just commit`. `reviewed_oid_mismatch` in ERROR_CODES is internal (not a wire code) — state or drop in CHR-019's sweep at the implementer's discretion.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Brief: per-slice design.md §5.2 — GitChannel `collect → { quarantine, ref, oid }`, `reachable(repo, jobId)`, plus `checkClone`/`cleanClone` (slot no-ops); control-socket `result` row adds `jobId`, `state`, `repoPath` (configured real path, absent once the repo leaves config) and the summary `failure`; refused promotion audited as a `disposition` event; Emacs-side mode enum from `satan-tools-patch-modes`; §10 corpus row "committed by path" instead of `just commit`. `reviewed_oid_mismatch` in ERROR_CODES is internal (not a wire code) — state or drop in CHR-019's sweep at the implementer's discretion.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "patch_job_result tool omits repoPath while the raw RPC carries it"
+detail = """
+Lead: `satan-tool/patch-job-result` omits `repoPath`, though the raw RPC carries it (PHASE-14 B6).
+Observed: deliberate. `satan/satan-patch-rpc.el` splits `satan-patch-rpc--job-fields` (projected for the model) from `satan-patch-rpc--client-fields` = `(:announcedAt :repoPath)`, docstring "Kept from the model: the real repo path is runner config". `satan-patch-promote.el` reads `:repo_path` through the client projection and requires it (line 34). PHASE-14 B6: the tool plist lacks it, the raw `result` RPC has `:repoPath "/home/david/dev/goad-walk"`, and the promotion of P wrote `satan/patch/<P>` in that repo.
+"""
+disposition = "aligned"
+response = """
+Aligned: by design the real repo path is client-only (`satan-patch-rpc--client-fields`), kept from the model, which never needs it; promotion reads and requires it and promoted P live. The wire addition itself is recorded under F-12.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = """
+Aligned: by design the real repo path is client-only (`satan-patch-rpc--client-fields`), kept from the model, which never needs it; promotion reads and requires it and promoted P live. The wire addition itself is recorded under F-12.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "minor"
+title = "Closure jobs P/R have no patch_job intervention row"
+detail = """
+Expected (design §5.2 Emacs side; §9 key test "patch_job_create returns intervention_id and creates a patch_job intervention for the runner's job id"): every job created through `patch_job_create` has a `patch_job` intervention row.
+Observed: the closure jobs P (pj-01M58TKGY59Y8C10ZTWJ8V1D46) and R (pj-01M58TKGYN2G6HPJ9DM5763XD8) have none in `satan_interventions`; the handler, called through emacsclient with a nil tool-ctx (PHASE-14 ruling 2), returned `:intervention_error "satan-intervention: tool-ctx missing :id/:mode-name/:time-now/:audit"` with `job_id` — the design's documented failure path. The broker/MCP path with a real ctx is covered by `satan-tools-patch-test.el`.
+"""
+disposition = "tolerated"
+response = """
+Tolerated per the user's binding ruling of 2026-10-19: "no intervention record, by construction of the ruled create path (handler called via emacsclient with nil tool-ctx)" is EX-2's intervention evidence. The handler took the design's documented failure path (ok + `job_id` + `intervention_error`); the ctx path is covered by ert. Not a defect.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated per the user's binding ruling of 2026-10-19: "no intervention record, by construction of the ruled create path (handler called via emacsclient with nil tool-ctx)" is EX-2's intervention evidence. The handler took the design's documented failure path (ok + `job_id` + `intervention_error`); the ctx path is covered by ert. Not a defect.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "nit"
+title = "PHASE-14 sheet queries table interventions; it is satan_interventions"
+detail = """
+Expected: phase-sheet commands name real tables.
+Observed: `.doctrine/slice/023/phases/phase-14.md:224` queries `interventions`; the table is `satan_interventions` (`to_regclass('public.interventions')` is null). The B6 evidence was taken against the right table.
+"""
+disposition = "tolerated"
+response = """
+Tolerated: the phase sheet is a disposable runtime artefact; the evidence (notes PHASE-14 B6) was taken against `satan_interventions` and records the correction. Nothing downstream reads the sheet's query.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated: the phase sheet is a disposable runtime artefact; the evidence (notes PHASE-14 B6) was taken against `satan_interventions` and records the correction. Nothing downstream reads the sheet's query.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "minor"
+title = "Classification, cancel and policy rules the code enacts are not stated in the design (PHASE-03 open items)"
+detail = """
+Expected: the design states the classification, cancel and policy rules the code enacts.
+Observed (PHASE-03 open items, each confirmed in code; design silent or only implied):
+- Cancelled job with clean commits: class `partial` (`classify.ts` table, `cancelled: "partial"`; state `cancelled` regardless). Design §5.4 table: "`end_reason = cancelled` | (class recorded) | `cancelled`".
+- `resolvePolicy` refuses (via `configEntry`) a mode or repo no longer in config at `preparing` → `failed` (config changed since submit) — a fail-closed reading of I13 the design does not state. A restarted run keeps the recorded policy (`recordedPolicy`, PHASE-10 AS-2).
+- `cancel` stamps `end_reason = cancelled` on `queued`/`preparing` too (`jobs.ts` `cancel`); §5.3's `end_reason` column implies it only after a run.
+- `exhausted`: `ceiling_exceeded` is reported before `usage_unavailable` when both hold (`ceilings.ts:82`); I10 still denies.
+"""
+disposition = "design-wrong"
+response = """
+Each behaviour is fail-closed and tested; the design should say it. Brief: per-slice design.md §5.4 classification table (`end_reason = cancelled`: class as the collected commits would give, `partial` when clean, state `cancelled`); §5.2 policy ladder (a mode/repo no longer in config refuses at `preparing` → `failed`; a restarted run keeps its recorded policy); §5.3 `end_reason` comment (cancel stamps `cancelled` on queued/preparing too); §5.4 ceilings (ceiling_exceeded reported before usage_unavailable when both hold).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Each behaviour is fail-closed and tested; the design should say it. Brief: per-slice design.md §5.4 classification table (`end_reason = cancelled`: class as the collected commits would give, `partial` when clean, state `cancelled`); §5.2 policy ladder (a mode/repo no longer in config refuses at `preparing` → `failed`; a restarted run keeps its recorded policy); §5.3 `end_reason` comment (cancel stamps `cancelled` on queued/preparing too); §5.4 ceilings (ceiling_exceeded reported before usage_unavailable when both hold).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-17"
+status = "verified"
+severity = "nit"
+title = "PHASE-02 behaviour edges in the interactive daemon"
+detail = """
+Expected: behaviour changes in malebolge's interactive daemon made while raising it to DEC-053's bar are judged and recorded.
+Observed (PHASE-02 notes "Behaviour edges"): `withMissingModels` adds only chat models to `getModels()`; `readModelsStore` returns `{}` for a non-object store and drops entries lacking string `id`/`provider`; `attach` throws "not an event" on a non-object line (was a TypeError); `daemon-main` logs and exits 1 on a failed signal-stop (was an unhandled rejection). No SL-023 canon governs the interactive daemon's edges. PHASE-18 since replaced the models-store built-in catalog with `loadGatewayModels` (malebolge 8c93902), so the first two edges no longer run in production. Each change is stricter (fail-closed) and has a test.
+"""
+disposition = "tolerated"
+response = """
+Tolerated: outside SL-023's runner canon; each edge is stricter and tested; the models-store paths were since replaced by the gateway loader (PHASE-18). No design surface to reconcile.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated: outside SL-023's runner canon; each edge is stricter and tested; the models-store paths were since replaced by the gateway loader (PHASE-18). No design surface to reconcile.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-18"
+status = "verified"
+severity = "nit"
+title = "Research baseline drifted, not restamped"
+detail = """
+Expected: `doctrine slice research 23` reports a current baseline, or the drift is judged.
+Observed: "Research baseline for SL-023 has drifted": `slice-023.md` changed; design.md, plan.md, plan.toml added — all authored after the pre-design research round, which is their purpose. research.md is gitignored pre-design evidence (notes "Pre-design research"); the locked design and DEC-050..065 supersede it. A `--restamp` would assert the research sections were refreshed, which they were not.
+"""
+disposition = "tolerated"
+response = """
+Tolerated: the drift is the design and plan being written, which research precedes by definition; research.md is superseded pre-design evidence. Restamping would falsely claim refreshed sections.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated: the drift is the design and plan being written, which research precedes by definition; research.md is superseded pre-design evidence. Restamping would falsely claim refreshed sections.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-19"
+status = "verified"
+severity = "major"
+title = "Backlog items the design closes by supersession are still open (ISS-030/038/039/041, CHR-003, IDE-007, IMP-006)"
+detail = """
+Expected (design §9 Closure evidence, §10 Governance follow-through): ISS-030, ISS-038, ISS-039, ISS-041 and CHR-003 closed by supersession; IDE-007 resolved into this slice. IMP-006 ("Extract patch runner to satan-patcher daemon"; destination amended by REV-006 to the malebolge runner) is the extraction SL-023 performed.
+Observed: all seven `open` in the backlog.
+Evidence per item (notes "PHASE-14 batch C" EX-3 rows; re-verified 2026-10-19): one consumer — `satan-runner` active, `systemctl --user cat satan-patcher` "No files found", `satan_memory` has 0 `patch_job%` tables; `davidlee/sloptower` (satan-patcher) archived; `satan-patch-adapter-pi.el` deleted (01dab54); no `HEAD` default — `baseRef` optional, the runner falls back to the repo's `default_branch`, P/R `base_oid` 6fe3a49; the runner reads `prompt_file` from config (no fallback); jobs ran in room `assistant`, collected into the quarantine and promoted from Emacs (P promoted, R rejected).
+"""
+disposition = "fix-now"
+response = """
+Done in this audit (design §9/§10 assign the closures to closure evidence; PHASE-14 EX-3 left the edits to audit): ISS-030 closed/obsolete, ISS-038 closed/obsolete, ISS-039 closed/fixed, ISS-041 closed/fixed, CHR-003 closed/obsolete, IDE-007 closed/promoted (into SL-023), IMP-006 closed/done (extraction delivered; destination per REV-006). Each body gained a "Closed by SL-023 audit (RV-029 F-19)" section citing the evidence. IDE-008 (interactive daemon on pi-env) is not resolved by SL-023 and stays open.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Done in this audit (design §9/§10 assign the closures to closure evidence; PHASE-14 EX-3 left the edits to audit): ISS-030 closed/obsolete, ISS-038 closed/obsolete, ISS-039 closed/fixed, ISS-041 closed/fixed, CHR-003 closed/obsolete, IDE-007 closed/promoted (into SL-023), IMP-006 closed/done (extraction delivered; destination per REV-006). Each body gained a "Closed by SL-023 audit (RV-029 F-19)" section citing the evidence. IDE-008 (interactive daemon on pi-env) is not resolved by SL-023 and stays open.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-20"
+status = "verified"
+severity = "major"
+title = "CHR-017 (must land before SL-023 closure) is open; the runner runs malebolge's live, dirty tree"
+detail = """
+Expected (CHR-017, from the PHASE-12 deploy-source user ruling 2026-10-19): "Must land before SL-023 closure" — malebolge packaged as a flake input so the `satan-runner` unit runs a pinned build.
+Observed: CHR-017 is `open`. The unit's ExecStart is `node /home/david/dev/malebolge/src/runner-main.ts` (`systemctl --user show satan-runner -p ExecStart`), the live working tree, which today is dirty with work outside SL-023 (`biome.json`, `justfile` modified; `.agents/`, `.codex/`, `.pi/`, `AGENTS.md`, `skills-lock.json` untracked). The untracked `.pi/extensions/doctrine/*.ts` already makes malebolge's `just check` fail at lint (3 parsing errors: not in the tsconfig project); with `--ignore-pattern '.pi/**'` lint is 0 and the suite green. A restart of the unit deploys whatever the tree holds.
+"""
+disposition = "follow-up"
+response = """
+Follow-up, owned by the existing CHR-017 (not re-filed). It is work, not a design or governance gap, so it does not block reconcile — but per the user's ruling it must land before SL-023 closes: /close must confirm CHR-017 resolved (or get the user's waiver) before `slice status 23 done`. Until then a unit restart deploys the dirty tree, including the untracked `.pi/` that already breaks malebolge's `just check` lint.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Follow-up, owned by the existing CHR-017 (not re-filed). It is work, not a design or governance gap, so it does not block reconcile — but per the user's ruling it must land before SL-023 closes: /close must confirm CHR-017 resolved (or get the user's waiver) before `slice status 23 done`. Until then a unit restart deploys the dirty tree, including the untracked `.pi/` that already breaks malebolge's `just check` lint.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-21"
+status = "verified"
+severity = "nit"
+title = "Stale SL-006-provisional comments, CeilingLatch name, unused resume kind, stale data-collection doc"
+detail = """
+Expected: no stale or misleading residue in shipped code and docs.
+Observed:
+- Comments that SL-006 is unshipped or the adapter provisional: `malebolge/src/runner/room.ts:6` ("provisional until SL-006 locks (re-checked then, CHR-016)"), `:262` ("(oubliette SL-006 design sec-6, provisional)"), `src/runner/config.ts:84` ("the live rung until SL-006 ships"), `test/runner/room-fixture.ts:20`, `test/runner/config-fixture.ts:60`.
+- `CeilingLatch` / `ceilingLatch` now carries `host_key` too (`LatchReason = Exhaustion | "host_key"`, PHASE-15 B); the name misstates it.
+- `vocab.ts` `EVENT_KINDS` keeps `resume`, which nothing writes (see the §5.3 finding).
+- `docs/data-collection.md:349` still gives PostgreSQL `satan_patch.patch_jobs` + a git worktree as the patch-job target; `docs/patch/*` is marked superseded in INDEX (fine).
+"""
+disposition = "follow-up"
+response = """
+Follow-up: CHR-019 (minted, linked to SL-023) — comment, naming and doc residue; no behaviour.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Follow-up: CHR-019 (minted, linked to SL-023) — comment, naming and doc residue; no behaviour.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-22"
+status = "verified"
+severity = "minor"
+title = "No gate refusal for a model request racing the host_key abort"
+detail = """
+Expected: once a trust failure (`host_key`) is on record the run aborts and no further model request is spent.
+Observed (PHASE-15 B Open): the pause has STOP-1's gate refusal (`pausePending`); the latch's `host_key` trip has none, so one model request racing the abort can still be admitted and counted. `latchedEnding` still sets `end_reason = error`, payload `reason: host_key`, and the job is collected and fails; the spend stays inside the per-job ceilings (it is a counted request). The design asks only for the abort, not a gate refusal.
+"""
+disposition = "tolerated"
+response = """
+Tolerated: the design requires the abort only; at most one counted request inside the per-job ceilings is spent, and the outcome (`end_reason = error`, `host_key`, collected, failed) is unchanged and tested. A gate refusal on `latch.reason() === "host_key"` is a cheap later tightening if wanted.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated: the design requires the abort only; at most one counted request inside the per-job ceilings is spent, and the outcome (`end_reason = error`, `host_key`, collected, failed) is unchanged and tested. A gate refusal on `latch.reason() === "host_key"` is a cheap later tightening if wanted.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-23"
+status = "verified"
+severity = "minor"
+title = "A held job whose repo left config wedges the one seat on rejoin; stop does not cut backoff sleeps"
+detail = """
+Expected: a held job always makes progress or ends; the one-seat scheduler is never wedged by one job.
+Observed (PHASE-10 B Open, confirmed in `rejoin.ts`/`scheduler.ts`): rejoining a non-`preparing` row (e.g. `running`, `waiting_room`) whose recorded policy or repo no longer resolves (repo removed from config while the job was in flight) throws; the scheduler logs it and rests; the job stays held and keeps the one seat (I1 seat rule, design §5.4 Scheduling) until the next restart, which throws again. Every later job, on every repo, waits. No test covers it. (A `preparing` row fails as `runJob` would.)
+Related, smaller: `awaitRoom`/`readyRoom` backoff sleeps and the post-collect clean do not take `RunDeps.stopping`, so a runner stop can wait up to one backoff delay (≤ 60 s); systemd's stop timeout bounds it and restart recovery resumes the row.
+"""
+disposition = "follow-up"
+response = """
+Follow-up: ISS-047 (minted, linked to SL-023) — choose the fail-closed end for an unrejoinable held job so the seat is released and audited, with tests per guard; the ≤ 60 s shutdown delay rides along. Code work, not a design gap (§5.4's seat rule and I12 already say what must hold).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Follow-up: ISS-047 (minted, linked to SL-023) — choose the fail-closed end for an unrejoinable held job so the seat is released and audited, with tests per guard; the ≤ 60 s shutdown delay rides along. Code work, not a design gap (§5.4's seat rule and I12 already say what must hold).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-24"
+status = "verified"
+severity = "nit"
+title = "Gateway catalog accepts zero cost; runner catalog gateway-only (PHASE-17 items)"
+detail = """
+Expected (DEC-057 cost ceiling): the cost ceiling has a non-zero price to measure against.
+Observed (PHASE-17 audit items): the gateway catalog loader accepts `cost` of zero (an all-zero `cost` would silently make `cost_usd` unreachable); `thinkingLevelMap`/`compat` pass through shape-checked only; the runner's catalog is gateway-only (the coding-agent built-ins are gone). Deployed state: `features/satan/runner.nix` renders `deepseek-flash` with cost {0.3, 1.2, 0.006, 0} USD/Mtok, cross-checked against pi-ai 1.3.0 data and LiteLLM's local cost map (PHASE-12 T-A2); `tokens` and `model_requests` ceilings bound spend independently of price; gateway key budgets are the deployment cap (DEC-043). Design §5.1 "`src/models.ts` … gains the gateway-routed provider both binaries use" is now true (PHASE-18 `loadGatewayModels`, daemon VA-1 with user-relayed spend row).
+"""
+disposition = "tolerated"
+response = """
+Tolerated: deployed cost is non-zero and cross-checked; tokens and model_requests ceilings bound spend whatever the price; gateway budgets are the deployment cap (DEC-043). Refusing a zero cost at load is a possible hardening, not a defect today. The design's "both binaries" provider claim is now met (PHASE-18).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tolerated: deployed cost is non-zero and cross-checked; tokens and model_requests ceilings bound spend whatever the price; gateway budgets are the deployment cap (DEC-043). Refusing a zero cost at load is a possible hardening, not a defect today. The design's "both binaries" provider claim is now met (PHASE-18).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-25"
+status = "verified"
+severity = "major"
+title = "DEC-064 runner tech spec absent; SPEC-002 still names satan-patcher and pg_notify coupling; SPEC-003 OQ-3 open"
+detail = """
+Expected (DEC-064; design §10 Governance follow-through): a runner tech spec under SPEC-002, authored at reconcile from the locked design; SPEC-002's container list and SPEC-003 OQ-3 updated with it.
+Observed: no runner spec exists. SPEC-002 still names the container "**Patch runner** (`satan-patcher` = sloptower) | `satan-patcher` (Go) | user service" (line 47), its diagram box "patcher", "attrd and the patch runner couple through inbox tables and `patch_jobs` with `pg_notify`" (77-78), the transport row "Postgres tables + `pg_notify` | broker ⇄ patch runner" (88), the shared database holding "patch jobs" (51), and satan-patcher's `just migrate` among `satan_memory`'s migrators (175). SPEC-003 OQ-3 ("which runner survives, and which spec governs it") is unanswered in the spec. Today the runner is the `satan-runner` user unit from `~/dev/malebolge` (`src/runner-main.ts`), its own SQLite store, an NDJSON UDS control socket (ADR-018 D3), no `pg_notify`.
+"""
+disposition = "design-wrong"
+response = """
+Governance/spec, owed at reconcile by DEC-064. Brief (REV): new runner tech spec under SPEC-002 from the locked design + this audit's corrections; SPEC-002 container row, diagram box, coupling prose, transport row, shared-database row and migrator list updated (runner = `satan-runner` unit from ~/dev/malebolge, own SQLite store, NDJSON UDS control socket, no pg_notify, satan-patcher retired); SPEC-003 OQ-3 resolved (the runner survives; its spec is the new one).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Governance/spec, owed at reconcile by DEC-064. Brief (REV): new runner tech spec under SPEC-002 from the locked design + this audit's corrections; SPEC-002 container row, diagram box, coupling prose, transport row, shared-database row and migrator list updated (runner = `satan-runner` unit from ~/dev/malebolge, own SQLite store, NDJSON UDS control socket, no pg_notify, satan-patcher retired); SPEC-003 OQ-3 resolved (the runner survives; its spec is the new one).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+[[finding]]
+id = "F-26"
+status = "verified"
+severity = "minor"
+title = "Project governance says every ledger item is owned by emacs-client"
+detail = """
+Expected: project governance states ledger ownership truthfully.
+Observed: `.doctrine/governance.md` (boot "Governance (project)") says the ADR-017 authority ledger has, "since 2026-07-24, every item owned by `emacs-client`". Once the DEC-062 rows land (this audit), `patch-runner` owns the patch-job lifecycle, path allowlist, patch-job audit, per-job ceiling and the runner's switch. The same day-one claim sits in the ledger's own preamble ("Day one … No authority has migrated").
+"""
+disposition = "design-wrong"
+response = """
+Brief (governance): `.doctrine/governance.md` "ADR-017's migration gate…" bullet → the ledger's owners are `emacs-client` except rows 4b/5b/6b/8/9 (`patch-runner`, since SL-023, 2026-10-19). The ledger's own preamble was fixed with F-3. Memory signpost text saying "today the Emacs client owns them all" is refreshed in the audit harvest.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Brief (governance): `.doctrine/governance.md` "ADR-017's migration gate…" bullet → the ledger's owners are `emacs-client` except rows 4b/5b/6b/8/9 (`patch-runner`, since SL-023, 2026-10-19). The ledger's own preamble was fixed with F-3. Memory signpost text saying "today the Emacs client owns them all" is refreshed in the audit harvest.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Disposition checked against the evidence; brief entry or backlog owner exists where the route needs one."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

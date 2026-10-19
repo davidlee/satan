@@ -1,9 +1,9 @@
 id = 23
 slug = "room-patch-runner"
 title = "Patch runner for the oubliette assistant room"
-status = "ready"
+status = "reconcile"
 created = "2026-10-18"
-updated = "2026-10-18"
+updated = "2026-10-19"
 tags = []
 
 [relationships]
