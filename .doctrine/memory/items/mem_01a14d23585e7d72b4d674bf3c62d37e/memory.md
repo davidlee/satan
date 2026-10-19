@@ -1,5 +1,5 @@
 A `pkgs.runCommand` check that greps a built launcher's text (e.g. satan's
-`harness-jail-profile`, `flake.nix` `harnessJailProbes`) can go green while
+`harness-jail-profile`, `flake.nix` `jailProbes`) can go green while
 asserting nothing. Four traps, each seen in SL-022 PHASE-02:
 
 1. **`! grep …` under `set -e` never fails** — bash exempts negated

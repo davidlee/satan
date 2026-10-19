@@ -15,6 +15,8 @@
     emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
+    # Not `follows`: goad builds with its own pinned toolchain.
+    goad.url = "github:davidlee/goad";
   };
 
   outputs = inputs @ {
@@ -221,6 +223,40 @@
             (try-fwd-env "SATAN_MAX_BUDGET_TOKENS")
           ]);
 
+        # Malebolge, SATAN's durable session daemon (IMP-037). Its coding tools
+        # work in the launch dir (`just hello-durable` in ~/notes); its own
+        # code is read-only, so those tools cannot rewrite the daemon. The jail
+        # home is not the host's: corpus and session store are bound in.
+        malebolgeRoot = "/home/david/dev/malebolge";
+        malebolgeDaemon = pkgs.writeShellScriptBin "malebolge" ''
+          exec ${lib.getExe pkgs.nodejs_latest} ${malebolgeRoot}/src/daemon-main.ts "$@"
+        '';
+        # The daemon reads its gateway key only from a file, never env or argv
+        # (SL-023 PHASE-18), so no `gateway`: gatewayClient would hand it
+        # LLM_GATEWAY_KEY by env, which it ignores. Bound read-only and named
+        # explicitly, since the jail home is not the host's.
+        malebolgeKeyFile = "/home/david/.config/llm-gateway/keys/malebolge";
+        malebolgeCatalog = "/home/david/.config/malebolge/gateway-models.json";
+        # goad's tools and kit (its skill), so the daemon can write SATAN's
+        # goad backends as jpi does.
+        goad = inputs.goad.packages.${system};
+        goadPkgs = [goad.goad goad.goad-check goad.goad-emit goad.goad-kit];
+        malebolgeJailOptions = with jailLib.combinators; [
+          (try-fwd-env "XDG_RUNTIME_DIR")
+          (try-fwd-env "SATAN_MCP_SOCKET")
+          # The daemon serves durable.sock here; mcp/ sits beneath it.
+          (readwrite "/run/user/1000/satan")
+          (readonly malebolgeRoot)
+          (readonly "/home/david/satan-corpus")
+          # After the read-only corpus bind, so it stays writable inside it.
+          (readwrite "/home/david/satan-corpus/goad")
+          (readwrite "/home/david/.local/state/satan/durable")
+          (readonly malebolgeKeyFile)
+          (readonly malebolgeCatalog)
+          (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
+          (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
+        ];
+
         jailPkgs = lib.optionalAttrs isLinux {
           jailed-pi = jailLib.makeJailedPi {
             profile = "specDev";
@@ -276,6 +312,17 @@
             gateway = satanGateway;
             workspaceDeps = [];
           };
+          jailed-malebolge = jailLib.makeJailedAgent {
+            name = "malebolge";
+            agent = malebolgeDaemon;
+            profile = "specDev";
+            extraPkgs = devToolPkgs ++ goadPkgs;
+            extraOptions = malebolgeJailOptions;
+            # No provider keys, so no 1Password wrapper: the key file is its only secret.
+            apiKeys = [];
+            useOpEnv = false;
+            workspaceDeps = [];
+          };
           jailed-shell = jailLib.makeJailedAgent {
             name = "shell";
             agent = pkgs.zsh;
@@ -288,38 +335,53 @@
           bubblewrap = pkgs.bubblewrap;
         };
 
-        # Every probe string of the `harness-jail-profile` check, and no
-        # other binding: the I1 closure sweep excludes this one by name.
-        # Written literally, never derived from `satanGptelJailOptions`, so
-        # dropping a forward there fails the check instead of moving it.
-        harnessJailProbes = {
-          outerAbsent = ["op run"];
-          innerPresent = [
-            "--args 22 22< <(printf"
-            "--setenv LLM_GATEWAY_KEY \"$(<"
-            "--setenv LLM_GATEWAY_URL"
-            "--setenv SATAN_MODEL \"\${SATAN_MODEL}\""
-            "--setenv SATAN_BUDGET_TOKENS \"\${SATAN_BUDGET_TOKENS}\""
-            "--setenv SATAN_MAX_BUDGET_TOKENS \"\${SATAN_MAX_BUDGET_TOKENS}\""
-          ];
-          innerAbsent = ["API_KEY" "SATAN_PROVIDER"];
-          # Absent once the `<(printf …)` substitutions are stripped: the
-          # key travels over `--args 22`, never on bwrap's argv.
-          argvAbsent = ["LLM_GATEWAY_KEY"];
+        # Every probe string of the launcher checks, and no other binding:
+        # the I1 closure sweep excludes this one by name. Written literally,
+        # never derived from the jails' option lists, so dropping a forward
+        # there fails a check instead of moving it.
+        jailProbes = {
+          harness = {
+            # The 1Password wrapper execs `"$op" run`, so the literal `op run`
+            # alone never matches it; its env file's name does.
+            outerAbsent = ["op run" "-api-keys.env"];
+            innerPresent = [
+              "--args 22 22< <(printf"
+              "--setenv LLM_GATEWAY_KEY \"$(<"
+              "--setenv LLM_GATEWAY_URL"
+              "--setenv SATAN_MODEL \"\${SATAN_MODEL}\""
+              "--setenv SATAN_BUDGET_TOKENS \"\${SATAN_BUDGET_TOKENS}\""
+              "--setenv SATAN_MAX_BUDGET_TOKENS \"\${SATAN_MAX_BUDGET_TOKENS}\""
+            ];
+            innerAbsent = ["API_KEY" "SATAN_PROVIDER"];
+            # Absent once the `<(printf …)` substitutions are stripped: the
+            # key travels over `--args 22`, never on bwrap's argv.
+            argvAbsent = ["LLM_GATEWAY_KEY"];
+          };
+          # The daemon's key custody (SL-023 PHASE-18): a read-only key file
+          # it is pointed at, no provider key, no gateway env.
+          malebolge = {
+            present = [
+              "--ro-bind /home/david/.config/llm-gateway/keys/malebolge /home/david/.config/llm-gateway/keys/malebolge"
+              "--ro-bind /home/david/.config/malebolge/gateway-models.json /home/david/.config/malebolge/gateway-models.json"
+              "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge"
+              "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json"
+              "--bind /home/david/satan-corpus/goad /home/david/satan-corpus/goad"
+            ];
+            absent = ["op run" "-api-keys.env" "API_KEY" "LLM_GATEWAY_KEY"];
+          };
         };
 
-        # The built harness launcher, as text (DEC-046). Pure: reads store
-        # files, launches nothing.
-        harnessJailProfile = let
-          probe = helper: file: label:
-            lib.concatMapStringsSep "\n"
-            (s: "${helper} ${lib.escapeShellArg label} \"${file}\" ${lib.escapeShellArg s}");
-          p = harnessJailProbes;
-        in
-          pkgs.runCommand "harness-jail-profile" {} ''
+        # A check over built launchers, as text (DEC-046). Pure: reads store
+        # files, launches nothing. `body` asserts with fail / must / must_not;
+        # `probe` renders one assertion per probe string.
+        probe = helper: file: label:
+          lib.concatMapStringsSep "\n"
+          (s: "${helper} ${lib.escapeShellArg label} \"${file}\" ${lib.escapeShellArg s}");
+        launcherCheck = name: body:
+          pkgs.runCommand name {} ''
             # `! cmd` never trips errexit, so every assertion is an `if`.
             fail() {
-              echo "harness-jail-profile: $*" >&2
+              echo "${name}: $*" >&2
               exit 1
             }
             # must / must_not <label> <file> <string>
@@ -330,6 +392,15 @@
               if grep -Fq -- "$3" "$2"; then fail "$1 must not contain '$3'"; fi
             }
 
+            ${body}
+
+            touch $out
+          '';
+
+        harnessJailProfile = let
+          p = jailProbes.harness;
+        in
+          launcherCheck "harness-jail-profile" ''
             name=satan-gptel-harness
             outer=${jailPkgs.satan-jailed-gptel-harness}/bin/jailed-$name
             test -f "$outer" || fail "no outer launcher at $outer"
@@ -348,8 +419,19 @@
             # after the key's name.
             sed 's/<(printf[^)]*)//g' "$inner" > "$TMPDIR/argv-only"
             ${probe "must_not" "$TMPDIR/argv-only" "inner argv" p.argvAbsent}
+          '';
 
-            touch $out
+        # No gateway wrapper here: the bwrap launcher is the only one.
+        malebolgeJailProfile = let
+          p = jailProbes.malebolge;
+        in
+          launcherCheck "malebolge-jail-profile" ''
+            launcher=${jailPkgs.jailed-malebolge}/bin/jailed-malebolge
+            test -f "$launcher" || fail "no launcher at $launcher"
+            # Absent first: a 1Password wrapper in place of the launcher
+            # would otherwise fail as a missing bind.
+            ${probe "must_not" "$launcher" "launcher" p.absent}
+            ${probe "must" "$launcher" "launcher" p.present}
           '';
 
         # I4 (SL-023 REQ-016): the satan-runner control socket is bound into
@@ -403,6 +485,7 @@
 
         checks = lib.optionalAttrs isLinux {
           harness-jail-profile = harnessJailProfile;
+          malebolge-jail-profile = malebolgeJailProfile;
           runner-socket-unjailed = runnerSocketUnjailed;
         };
 
