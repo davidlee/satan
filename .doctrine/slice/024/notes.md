@@ -28,18 +28,18 @@ Both probes are VT rows in sec-6, so implementation exercises them.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · reviewing · 0affb18
+fresh-as-of: 2026-10-19 · ready · b616a58
 
 ### Produced
 
-- RV-028 — critical reading of the complete design and local reference implementations.
+- Scope, research, locked design (run dr-01a151c7), plan + 3 phase sheets (commit b616a58). No code yet.
+- RV-028 — GPT design review; F-1..F-3 integrated into design §4/6/7.
 
 ### Learned
 
-No additional reusable memory harvested; review evidence belongs to RV-028.
+- Nothing new for memory; handover-era nix facts superseded by CHR-018 (recorded in slice-024.md Context).
 
 ### Open
 
-- RV-028 — design-review findings for responder adjudication.
-- DEC-066 — existing parser choice.
-- DEC-067 — existing startup-read choice.
+- RV-028 — raiser verification of F-1..F-3 answers outstanding (minor; not a lock blocker).
+- DEC-066 — yaml parser; DEC-067 — read once at startup (both shape PHASE-01/02).
