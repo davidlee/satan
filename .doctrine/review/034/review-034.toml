@@ -1,0 +1,393 @@
+id    = 34
+slug  = "reconciliation-review-of-sl-026"
+title = "reconciliation review of SL-026"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-026"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "major"
+title = "Expected §4.2 per-directory stat with dir as cwd; observed one stat -L per dir from the clone root over absolute paths (D-1)"
+detail = """
+malebolge src/runner/project-context.ts:174-187. Two execs as designed, never opens a file, but the cwd/path shape differs. Rationale (PHASE-03 notes D-1): a per-directory cwd fails to start when `.pi/` is absent, which the design classifies `missing` and so degrades every ordinary job. User decision pending; design §4.2 must be amended to match.
+"""
+disposition = "design-wrong"
+response = """
+Verified at project-context.ts:174-187. The code is the better mechanism: same exec count, never opens a file, and no false `missing` for repos without `.pi/`. Reconcile amends design §4.2 (Reconciliation Brief, per-slice). Subject to the user's ruling at /reconcile; if they reject it, this reopens as code work.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Verified at project-context.ts:174-187. The code is the better mechanism: same exec count, never opens a file, and no false `missing` for repos without `.pi/`. Reconcile amends design §4.2 (Reconciliation Brief, per-slice). Subject to the user's ruling at /reconcile; if they reject it, this reopens as code work.
+"""
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "minor"
+title = "Expected §4.3 jobs.change for context_degraded; observed store appendEvent"
+detail = """
+run.ts recordDegradations uses appendEvent; Change.update is required and nothing on the job row changes. Precedent: collect.ts:185 clean_failed uses appendEvent. Design text drift.
+"""
+disposition = "design-wrong"
+response = """
+appendEvent is correct: no job-row change exists to carry, and clean_failed (collect.ts:185) sets the precedent. Brief: design §4.3 names appendEvent.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+appendEvent is correct: no job-row change exists to carry, and clean_failed (collect.ts:185) sets the precedent. Brief: design §4.3 names appendEvent.
+"""
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "minor"
+title = "Expected §4.2 'at most once per admitted prompt' for degradation events; observed events written before submit, so a crash re-writes them and a cancel before admission leaves events for an unadmitted job"
+detail = """
+admit in run.ts writes context_degraded events after fetchProjectContext and before configure/submit. EX-2 covers only the in-process retry. The fetch is at most once per admitted prompt; the audit events are at-least-once. Accepted by the PHASE-04 orchestrator, untested. Needs design wording.
+"""
+disposition = "design-wrong"
+response = """
+Behaviour accepted: events describe what preparing observed, so at-least-once is a truthful audit and a pre-admission cancel recording them is harmless. Brief: §4.2 states at-most-once for the fetch, at-least-once for its context_degraded events, including the cancel window.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Behaviour accepted: events describe what preparing observed, so at-least-once is a truthful audit and a pre-admission cancel recording them is harmless. Brief: §4.2 states at-most-once for the fetch, at-least-once for its context_degraded events, including the cancel window.
+"""
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "nit"
+title = "Expected §4.5 notice list and a 50 KB stop; observed an extra 500-char-truncation notice and a reservation stop at ~45 KB"
+detail = """
+grep.ts:28, :201-205, :279. The 500-char notice matches pi. The 50 KB cap is enforced by reserving notice room, so the 'limit reached' notice fires near 45 KB of matched lines; the output never exceeds 50 KB and notices are never cut. Design text drift.
+"""
+disposition = "design-wrong"
+response = """
+Both choices are sound (pi parity; notices never truncated, output ≤50 KB). Brief: §4.5 lists the 500-char notice and the reservation stop.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Both choices are sound (pi parity; notices never truncated, output ≤50 KB). Brief: §4.5 lists the 500-char notice and the reservation stop.
+"""
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "nit"
+title = "Expected §5 code-impact table to list every new file/export; observed additions it omits"
+detail = """
+src/daemon-extensions.ts (extension order); ndjson.ts boundedLineSplitter (lineSplitter rebuilt on it); truncate.ts headKeeper, GREP_MAX_LINE_LENGTH; shell.ts settle, outputCollector, OVERFLOW_EXIT_CODE; FETCH_LIMITS, HEAD_LIMITS, DOCTRINE_LIMITS; grep maps spawn_error to a tool-error result. All DRY/cohesive; §5 is stale.
+"""
+disposition = "design-wrong"
+response = """
+Additions are cohesive extractions (one splitter, one head keeper, one extension-order home). Brief: §5 table gains them.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Additions are cohesive extractions (one splitter, one head keeper, one extension-order home). Brief: §5 table gains them.
+"""
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "minor"
+title = "Expected §4.7 'dev-tools gains doctrine'; observed a system-guarded doctrine input without follows, adding a second nixpkgs to malebolge's lock"
+detail = """
+malebolge fe7030a: lib.optional (doctrine.packages ? system) because doctrine publishes only x86_64-linux and aarch64-darwin; no inputs.nixpkgs.follows, matching satan's flake; flake.lock +~386 lines. Closure-size and lock-churn consequence unrecorded in the design.
+"""
+disposition = "design-wrong"
+response = """
+The guard is required (doctrine publishes no aarch64-linux package); no follows matches satan's flake and avoids building doctrine against an untested nixpkgs. Brief: §4.7 records the guard, the no-follows choice and the lock growth.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The guard is required (doctrine publishes no aarch64-linux package); no follows matches satan's flake and avoids building doctrine against an untested nixpkgs. Brief: §4.7 records the guard, the no-follows choice and the lock growth.
+"""
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "minor"
+title = "Expected §4.2/§4.3 failure semantics as written; observed several fail-closed variants the design does not state"
+detail = """
+(a) overflow on existing preparing execs (test -d, rev-parse, switch) becomes ChannelFailed via notOverflowed (room.ts); (b) recheckClone rethrows non-channel errors instead of dirty_clone (project-context.ts:239, D-5/D-9); (c) a failed `test -d <guest>/.git` in the re-check is guest_path_invalid, not dirty_clone; (d) Degradation.source can be a directory (chain stat failure, project-context.ts:177), not only doctrine or a file path. All fail closed and never clean; the design text is incomplete.
+"""
+disposition = "design-wrong"
+response = """
+All four variants fail closed and never clean, consistent with D-5/D-9. Brief: §4.2/§4.3 state them (overflow on existing execs → ChannelFailed; non-channel re-check errors rethrown; guest_path_invalid from the re-check; Degradation.source may be a directory).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+All four variants fail closed and never clean, consistent with D-5/D-9. Brief: §4.2/§4.3 state them (overflow on existing execs → ChannelFailed; non-channel re-check errors rethrown; guest_path_invalid from the re-check; Degradation.source may be a directory).
+"""
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "nit"
+title = "Expected §4.6 cwd section to hold the path; observed untagged pi wording 'Current working directory: <path>'"
+detail = """
+src/cwd.ts; PHASE-06 D-2. Check against DEC-056 (no default prompt text in malebolge) at reconcile and record the wording in §4.6.
+"""
+disposition = "design-wrong"
+response = """
+pi's wording keeps parity with pi's own cwd section and is operational text, not persona. Brief: §4.6 records the exact wording; reconcile checks it against DEC-056 and raises if it conflicts.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+pi's wording keeps parity with pi's own cwd section and is operational text, not persona. Brief: §4.6 records the exact wording; reconcile checks it against DEC-056 and raises if it conflicts.
+"""
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "minor"
+title = "Expected docs/internals.md to match the code; observed a wrong doctrine-degradation list"
+detail = """
+malebolge docs/internals.md:86-88 lists 'overflowed output' as a doctrine degradation, contradicting 'overflow truncating' two lines up and bootOf (project-context.ts:214); it also says any failure degrades, but a dirty re-check fails the job with dirty_clone.
+"""
+disposition = "fix-now"
+response = """
+Fixed in malebolge 55f4a68: docs/internals.md degradation list now matches bootOf and the re-check's fail-the-job behaviour.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in malebolge 55f4a68: docs/internals.md degradation list now matches bootOf and the re-check's fail-the-job behaviour.
+"""
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "minor"
+title = "Expected §6/EX tests for three listed behaviours; observed them weak or absent"
+detail = """
+(a) §6 grep 'limit counts matches only': test/grep.test.ts:233 has no context lines, so it cannot tell. (b) §6 gitRootDirs 'no git root → [cwd]': test/project-context.test.ts:216 asserts only dirs.at(-1). (c) PHASE-03 EX-3 names ensureJobBranch and git check-ignore among hostile binaries; only fake-shell tests cover them (prepare.test.ts:633, project-context.test.ts:659), no real-shell probe case.
+"""
+disposition = "fix-now"
+response = """
+Fixed in malebolge 55f4a68: grep limit-with-context test (test/grep.test.ts ~244); full [root] assertion without a git root (test/project-context.test.ts ~228); real-shell probe P16 (hostile git in ensureJobBranch → channel_failed in scaled time) and P14 check-ignore cases (overflow/timeout → degraded, chain still read). just check green, 1523 tests.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in malebolge 55f4a68: grep limit-with-context test (test/grep.test.ts ~244); full [root] assertion without a git root (test/project-context.test.ts ~228); real-shell probe P16 (hostile git in ensureJobBranch → channel_failed in scaled time) and P14 check-ignore cases (overflow/timeout → degraded, chain still read). just check green, 1523 tests.
+"""
+
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "nit"
+title = "Expected test comments to describe the fixture accurately; observed a false claim about systemPromptSections' doc comment"
+detail = """
+test/daemon-sections.test.ts:118 says entries come newest-first 'despite its doc comment'; test/harness-fixture.ts:127 states no order. notes.md repeats the claim. The fixture should state its order and the test comment should drop the claim.
+"""
+disposition = "fix-now"
+response = """
+Fixed: fixture comment states newest-first (malebolge 55f4a68), the test's false claim removed; notes.md corrected (satan ef5cd28).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: fixture comment states newest-first (malebolge 55f4a68), the test's false claim removed; notes.md corrected (satan ef5cd28).
+"""
+
+[[finding]]
+id = "F-12"
+status = "answered"
+severity = "nit"
+title = "Expected the runner fetch's re-check to go through the GitChannel seam; observed a direct checkRoomClone call"
+detail = """
+project-context.ts:22,237 calls checkRoomClone directly, bypassing deps.channel.checkClone that readyRoom uses; readyRoom-level tests exercise the shell, not the channel fake. Coupling, not behaviour.
+"""
+disposition = "fix-now"
+response = """
+Fixed in malebolge 55f4a68: fetchProjectContext takes the channel's checkClone; run.ts passes deps.channel.checkClone; a red-first test asserts the channel fake is consulted twice.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in malebolge 55f4a68: fetchProjectContext takes the channel's checkClone; run.ts passes deps.channel.checkClone; a red-first test asserts the channel fake is consulted twice.
+"""
+
+[[finding]]
+id = "F-13"
+status = "answered"
+severity = "nit"
+title = "Expected every untrusted read to be time-bounded; observed grep and the daemon reader without exec timeouts"
+detail = """
+grep sets no exec timeout: a hostile room rg that never prints, or daemon grep on a FIFO path, waits for caller abort or the job deadline. nodeSourceReader stats then opens (TOCTOU: a swap to a FIFO blocks daemon start-up); it logs via console.error, not the malebolge logger. Memory stays bounded throughout.
+"""
+disposition = "tolerated"
+response = """
+Memory is bounded on every path. Runner grep is bounded in time by the job deadline (REQ-030, the wall-clock authority); daemon grep runs for an attended interactive user who can abort. The daemon reader's TOCTOU needs the user to swap a file in their own directory during start-up. console.error at start-up precedes the daemon logger's scope. Revisit if grep gains unattended daemon use.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Memory is bounded on every path. Runner grep is bounded in time by the job deadline (REQ-030, the wall-clock authority); daemon grep runs for an attended interactive user who can abort. The daemon reader's TOCTOU needs the user to swap a file in their own directory during start-up. console.error at start-up precedes the daemon logger's scope. Revisit if grep gains unattended daemon use.
+"""
+
+[[finding]]
+id = "F-14"
+status = "answered"
+severity = "minor"
+title = "Expected slice conformance and verify-vt to evidence the slice's code; observed both blind to cross-repo targets"
+detail = """
+Code lives in ~/dev/malebolge and ~/satan-corpus; conformance sees only satan's flake.nix and bookkeeping (undeclared: backlog/observation records, notes.md; undelivered: .doctrine/spec/tech/004/* pending the REV). verify-vt reports PHASE-01..07 UNATTRIBUTABLE. Evidence for this audit was gathered by reading malebolge directly. Observation already recorded (55f6999).
+"""
+disposition = "tolerated"
+response = """
+A doctrine tool limitation (selectors and VT attribution are repo-local), not slice drift; recorded as an observation (satan 55f6999). This audit's evidence came from reading malebolge directly (VT mapping in the synthesis). The undelivered SPEC-004 selector is satisfied when reconcile applies the REV.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+A doctrine tool limitation (selectors and VT attribution are repo-local), not slice drift; recorded as an observation (satan 55f6999). This audit's evidence came from reading malebolge directly (VT mapping in the synthesis). The undelivered SPEC-004 selector is satisfied when reconcile applies the REV.
+"""
+
+[[finding]]
+id = "F-15"
+status = "answered"
+severity = "nit"
+title = "Expected notes.md to record PHASE-07 T1; observed it still says the corpus edit is blocked"
+detail = """
+notes.md PHASE-07 entry says T1 not done; it landed as satan-corpus 9868f4c on explicit user authorisation, and PHASE-07 was completed by the user.
+"""
+disposition = "fix-now"
+response = """
+Fixed in satan ef5cd28: notes.md records T1 landing (satan-corpus 9868f4c) and the audit fix-now set.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in satan ef5cd28: notes.md records T1 landing (satan-corpus 9868f4c) and the audit fix-now set.
+"""
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
