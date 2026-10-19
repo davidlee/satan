@@ -1172,3 +1172,11 @@ One-line observations (no recommendations beyond these):
 - Runner redeploy needed for M1/M2 (`failure` on summary, `repoPath` on result) to be live.
 - Corpus commit by path (above); apply migration 0009 to `satan_memory`.
 - Then start the inbox watch and confirm the two goad-walk `needs_review` jobs land once each; PHASE-14 does closure promote/reject and the `dl-satan.el` / flake `satan-patcher` removal.
+
+## PHASE-18 (2026-10-19): interactive daemon on the gateway provider
+
+- Code: malebolge `8c93902` (one loader `loadGatewayModels(catalogPath, keyPath)` in `src/models.ts`; `src/runner/gateway.ts` is a `CREDENTIALS_DIRECTORY` + `StartRefused` adapter over it; `src/message-of.ts` shared; models-store built-in catalog code deleted; daemon config `gatewayCatalog` / `gatewayKeyFile`, env overrides `MALEBOLGE_GATEWAY_CATALOG` / `MALEBOLGE_GATEWAY_KEY_FILE`, defaults `~/.config/malebolge/gateway-models.json` / `~/.config/llm-gateway/keys/malebolge`; default model `gateway/deepseek-flash`). `just check` rc 0, 1206 tests, coverage 97.81/93.91/98.2/97.96.
+- flakes: `~` `58c908a2` (`features/satan/runner.nix` links the runner's catalog render to `~/.config/malebolge/gateway-models.json`; `SATAN.md` daemon catalog + key).
+- Runner runs the live tree: its next restart loads the refactored loader (behaviour unchanged; PHASE-17 tests pinned).
+- Pending (VA-1): user issues key `malebolge`, `just home-switch`, runs `just daemon` + `just attach` on the host; agent checks key absent from `/proc/<pid>/{environ,cmdline}`.
+- Known break: jailed `just hello-durable` (`~/notes`, `gateway = null`) will not start until the other agent's jail migration binds the key file and catalog read-only and sets the two env vars. `gatewayClient` passes `LLM_GATEWAY_KEY` as env, which this daemon does not read (file-only custody).
