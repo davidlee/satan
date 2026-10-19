@@ -1,6 +1,6 @@
 id = 26
 slug = "malebolge-coding-layer"
-title = "malebolge coding layer: project context, cwd, coding rules, bash timeout, ripgrep grep"
+title = "malebolge coding layer: project context, cwd, ripgrep grep"
 status = "design"
 created = "2026-10-19"
 updated = "2026-10-19"
@@ -11,22 +11,12 @@ needs = []                      # slice→work hard prerequisite
 after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
-selector = "src/runner/env.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
-
-[[selector]]
 selector = "src/runner/start.ts"
 intent = "scope-relevant"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/daemon-main.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
-
-[[selector]]
-selector = "src/persona.ts"
 intent = "scope-relevant"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
@@ -44,6 +34,40 @@ note = "cross-repo: paths are in ~/dev/malebolge"
 selector = "test/**"
 intent = "scope-relevant"
 note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/prepare.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/shell.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/store.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/tools.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/run.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/session.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = ".doctrine/spec/tech/004/**"
+intent = "scope-relevant"
 
 [[relation]]
 label = "governed_by"
