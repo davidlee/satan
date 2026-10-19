@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a151ab-078b-7901-945d-2f1da787cc61"
+recorded_at = "2026-10-19T00:58:45.515030494Z"
+kind = "friction"
+summary = "PHASE-18 VA-1 spend check (llm-gateway list) needs sudo; agent cannot verify"
+detail = "llm-gateway list re-execs as the llm-gateway user via sudo (DEC-050); keys.db is /var/lib/llm-gateway. Phase sheets that assign 'llm-gateway list shows spend > 0' to the agent can't be met agent-side; the check must be a human step."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

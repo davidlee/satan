@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a151ab-0790-74b3-a133-1ff8f89d15d1"
+recorded_at = "2026-10-19T00:58:45.520606927Z"
+kind = "friction"
+summary = "Auto-mode classifier denied a read-only emacsclient query of satan-patch-promote-branch"
+detail = "During PHASE-14 batch B, a read-only call (grep inbox headings + (satan-patch-promote-branch id)) was denied as an 'unrequested commit'. The name-based heuristic blocks harmless reads of promote helpers; orchestrators should avoid calling promote-named functions."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

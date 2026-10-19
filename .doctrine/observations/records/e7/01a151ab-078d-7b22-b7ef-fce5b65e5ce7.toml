@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a151ab-078d-7b22-b7ef-fce5b65e5ce7"
+recorded_at = "2026-10-19T00:58:45.518018843Z"
+kind = "friction"
+summary = "patch_job_create outside a run has no tool-ctx, so closure jobs carry no intervention"
+detail = "SL-023 PHASE-14 B2: satan-tool/patch-job-create called via emacsclient with nil ctx returns :intervention_error (ctx-required wants :id/:mode-name/:time-now/:audit). The only ctx builder outside a run (satan-run-manual-tool-ctx) reopens an existing run's audit, which would be false provenance. EX-2's intervention evidence row cannot be produced by the ruled create path."
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"
