@@ -1,0 +1,42 @@
+memory_uid = "mem_01a15291eefd71b2867e290818c0d313"
+memory_key = "mem.fact.doctrine.review-amend-replaces-response"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "review amend replaces the finding's response"
+summary = "Setting a route via review amend requires --response, which overwrites the prior response; carry the full text forward"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine review amend"]
+tags = ["doctrine", "review"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "f8049d9e96f46fe85ca40fefa03b112edc7ecae4"
+tree = "a067c5f649eeef908618e9b19e3f3c476db36568"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "f8049d9e96f46fe85ca40fefa03b112edc7ecae4"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
