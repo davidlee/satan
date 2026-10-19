@@ -79,7 +79,7 @@ fresh-as-of: 2026-10-19 · close · satan 546c5c4, malebolge 13500bd, ~/flakes 0
 ### Open
 - REV-007 — reconcile governance, approved by the user 2026-10-19 ("approve governance"); the ratification is not yet stated in `revision-007.md` (user-owned edit)
 - ISS-046 — producer lanes other than fix/goad-walk refused
-- prompt `~/satan-corpus/prompts/patch-agent.md` swept into corpus 21b64ea by the daily commit; PHASE-12 batch B's 6 review points unconfirmed by the user
+- ~~prompt review~~ resolved 2026-10-19: user confirmed the PHASE-12 batch B departures; PATH line updated for oubliette SL-007 base tools (satan-corpus 54da6b9)
 
 ## PHASE-01 spike — offline half (2026-10-18, worker)
 
