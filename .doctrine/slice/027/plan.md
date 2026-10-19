@@ -92,6 +92,15 @@ be seen rejecting it before the fix makes it pass.
   symbol §4.1 / §5 names resolves where the design says. One wording drift:
   §4.1 says the structural test "replaces the one-way check", but no such
   check exists in the tree; `structure.test.ts` is new (as §5 says).
+- PHASE-04's pi-durable / pi-env surfaces checked in the installed packages:
+  pi-durable's `env` hook is already what `session.ts` passes;
+  `RemoteError(fields)` is constructible; a lost connection is a `RemoteError`
+  with `fields.lost` (`isConnectionLost`), so `Reword`'s type holds.
+- PHASE-02 is the largest phase. Its runtime sheet should order the moves one
+  module at a time (connection → shell → source-reader → door), each a green
+  step, rather than as one sweep.
+- The `agents` re-lock (PHASE-03 EN-2) also moves the other jails, so
+  `just check-jails` gates it before the startup-break window opens.
 - `doctrine slice research 27` reports drift only in the slice's own scope
   and design files, not in the code baseline.
 - Out of plan, at reconcile: design §4.9 revisions (ADR-017 ledger row 3b,
