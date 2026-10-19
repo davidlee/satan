@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1540a917a72e0992e3153fc6ebe99"
+memory_key = "mem.fact.malebolge.ripgrep-json-edges"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "rg --json ignores --max-columns; exit 2 can carry matches"
+summary = "rg --json ignores --max-columns and emits whole lines; exits 2 after matches on any file error"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["malebolge", "grep"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "d1f261048be56496053352e6a8ab086319a0a967"
+ref_name = "refs/heads/main"
+checkout_state_id = "4ecc9847c3c43e973b7c8c7b46a38303a37d84b51c04ffaa8a455187cc0060f5"
+base_commit = "b0b08fe64ef1cfe00e4f77a6797b2e98e9f6cb7d"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-026"
+

@@ -6,27 +6,25 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-19 · ready (plan 8 phases, none started) · 8c5bcb3
+fresh-as-of: 2026-10-19 · close · b0b08fe
 
 ### Produced
-- scope + research round done; scope reshaped on research (commits d911161, 8256d4a), then rewritten against design decisions (slice-026.md, uncommitted)
-- RFC-019 D7 table corrected: pi-durable bash already has `timeout`
-- minted: CHR-020 (related, independent); DEC-070, DEC-071, DEC-072, DEC-073 (accepted, shape SL-026); IDE-012 (room setup step, deferred); REV-008 (SPEC-004 draft, apply at reconcile)
-- design.md locked (run dr-01a152b2 rev 44) after RV-033; selectors `.doctrine/spec/tech/004/*`, `flake.nix`
-- plan.toml / plan.md: PHASE-01..08 (commits 83018c0, 3179933, 8c5bcb3); phase sheets materialised
+- PHASE-01..08 done — malebolge 4ac55fe..fe7030a + 55f4a68 (audit fix-now); satan 53da640 (jail probe); satan-corpus 9868f4c (prompts); live probe job pj-01M59WZMDH8063J8RA97TSBMVF
+- RV-034 — audit, 15 findings; design.md amended at reconcile (b0b08fe)
+- REV-008 — SPEC-004 updated (project context, grep, context_degraded)
+- minted: ISS-048 — bun has no DNS in room assistant; ISS-049 — room clones have no git author identity; CHR-020 (related, independent); IDE-012 (room setup step, deferred)
 
 ### Learned
-- mem.pattern.doctrine.cross-corpus-id-collision — qualify foreign ids (oubliette DEC-052 ≠ satan DEC-052)
-- mem.pattern.satan.research-jail-snapshot — research jail sees no sibling repos; launch over a snapshot
-- doctrine verify checks in design runs need `doctrine` on PATH (else "no result produced"); not yet a memory
-- pi-env reports a missing argv binary as `spawn_error`, not exit 127 (design §4.3); candidate memory at harvest
-- rg `--json` ignores `--max-columns` and exits 2 after matches on any file error (RV-033 F-2, F-7); candidate memory
-- the oubliette room floor is `git bash coreutils-full which` — no `find` (design §4.2); candidate memory
-- cross-repo VT test_file paths are absolute (SL-023 convention); verify-vt FAILs until files exist
+- mem.fact.malebolge.pi-env-exec-edges — spawn_error, FIFO timeout, Connection close leaks children
+- mem.fact.malebolge.ripgrep-json-edges — rg --json ignores --max-columns; exit 2 can carry matches
+- mem.fact.oubliette.room-tooling — room floor, `session <repo> --`, job transcripts in runner.sqlite
+- mem.pattern.doctrine.cross-corpus-id-collision — qualify foreign ids
+- mem.pattern.satan.research-jail-snapshot — research jail sees no sibling repos
+- rejected as memory: capsule friction (planner turn budget, formatter rewrites, phase-sheet symlink, verify-vt cross-repo) — already doctrine observations (55f6999, c503b57)
 
 ### Open
-- ASM-006 — validated (live probe), closed
-- RV-033 F-1 (probe) answered: transcription onto PHASE-03 EX-3/VT-2 repaired after the raiser's check; raiser re-verify pending. F-2 verified.
+- DEC-070, DEC-071, DEC-072, DEC-073 — the slice's governing decisions, as amended by RV-034 (D-1 accepted)
+- RV-034 F-13 — grep has no exec timeout; revisit if grep gains unattended daemon use
 
 ## Design triage (2026-10-19, explore stage, run dr-01a152b2)
 

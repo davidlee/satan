@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1540a919479808a4b03b0702d8edb"
+memory_key = "mem.fact.oubliette.room-tooling"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Room assistant tooling: what is on PATH and how to inspect a job"
+summary = "Room assistant: base floor git/bash/coreutils/which (no find); repo tools via session <repo> -- cmd; nix develop fails (read-only store); no git identity; patch-job transcripts in runner.sqlite pi_entries"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["oubliette", "room"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "d1f261048be56496053352e6a8ab086319a0a967"
+ref_name = "refs/heads/main"
+checkout_state_id = "6e36d0ba1af2feef2c461f8a51d13f94d0b8b870692a1e32a31791ca63f433f0"
+base_commit = "b0b08fe64ef1cfe00e4f77a6797b2e98e9f6cb7d"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-026"
+

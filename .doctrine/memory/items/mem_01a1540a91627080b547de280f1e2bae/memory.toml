@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1540a91627080b547de280f1e2bae"
+memory_key = "mem.fact.malebolge.pi-env-exec-edges"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi-env exec edges: spawn_error, FIFO timeout, Connection close"
+summary = "pi-env exec: missing binary is spawn_error not 127; timeout kills an exec blocked opening a FIFO; closing a local Connection does not kill running children"
+created = "2026-10-19"
+updated = "2026-10-19"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["malebolge", "pi-env"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "d1f261048be56496053352e6a8ab086319a0a967"
+ref_name = "refs/heads/main"
+checkout_state_id = "a2dd5982087857b56c6cb75b22e87387aa01198f6d6bd3f9d0a07842bda7fdb9"
+base_commit = "b0b08fe64ef1cfe00e4f77a6797b2e98e9f6cb7d"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-026"
+
