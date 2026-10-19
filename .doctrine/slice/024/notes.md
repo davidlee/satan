@@ -26,6 +26,10 @@ duplicate rules against pi `skills.ts:120,320,420-455`, and the
 the three answers stays open on RV-028 and is not a lock blocker (all minor).
 Both probes are VT rows in sec-6, so implementation exercises them.
 
+## Plan approval
+
+2026-10-19: the user approved plan.toml (reply "yes" to "Approve plan.toml?"). Execution chartered to a capsule orchestrator, PHASE-01..03.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-19 · ready · b616a58
