@@ -1191,3 +1191,29 @@ One-line observations (no recommendations beyond these):
 - Not agent-runnable: `llm-gateway list` needs sudo (re-execs as the `llm-gateway` user, DEC-050; DB `/var/lib/llm-gateway/keys.db`). User check pending: `llm-gateway list` shows `malebolge` spend > 0.
 - Side effect: the ping and `pong` are now turns in SATAN's real durable session (the host daemon has no scratch session).
 - Verdict: VA-1 met agent-side; the spend row is corroboration, owed by the user.
+
+## PHASE-14 batch B (orchestrator-run, 2026-10-19): closure run to needs_review
+
+**Human block 1 agent checks (H3/H4), run 11:5x AEDT.**
+- H3: `schema_migrations` max 9; `pg_tables like 'patch_job%'` 0; `pg_proc patch_jobs_set_updated_at` 0 (all psql rc 0).
+- H4: `systemctl --user cat satan-patcher` "No files found"; `list-unit-files | grep -c satan-patcher` 0; `~/.config/systemd/user` has no patcher entry; `pgrep -x satan-patcher` rc 1; `~/.nix-profile/bin | grep -c satan-patcher` 0 (a loose `-i patcher` grep matches only `nerd-font-patcher` / `speech-dispatcher`); flake lock nodes have no `patcher`.
+- satan-runner: MainPID 3347729, active since 10:53:47 AEDT (the H1 restart, per journal). No later start, so the ~11:44 home-switch did not bounce it.
+
+**B1.** Runner config `enabled = true`, `[door] kind = "room"`, room `assistant`. Room up (`microvm@assistant` active/running; ssh relay answers). `~/dev/goad-walk` clean on `main` 6fe3a49, no `satan/*` branches. R4 pre-check: the quarantine `/var/lib/capsule/collect/assistant/goad-walk.git` is `drwxr-xr-x david users`; Emacs (`--fg-daemon` pid 3347959) runs as david; `git -C ~/dev/goad-walk ls-remote <quarantine>` rc 0 lists both closure refs. No ownership or `safe.directory` barrier is expected.
+
+**B2 (create path, ruling 2).** `emacsclient -e '(satan-tool/patch-job-create (list :directive … :mode "fix" :repo "goad-walk" :allowed_paths (list "CLOSURE-<X>.md")) nil)'` at 11:57:22 AEDT:
+- P = `pj-01M58TKGY59Y8C10ZTWJ8V1D46` (CLOSURE-PROMOTE.md), `queued`
+- R = `pj-01M58TKGYN2G6HPJ9DM5763XD8` (CLOSURE-REJECT.md), `queued`
+- Both return `:intervention_error "satan-intervention: tool-ctx missing :id/:mode-name/:time-now/:audit"` (sheet R3). Building a ctx would require reopening an unrelated run's audit (`satan-run-manual-tool-ctx`), which is false provenance, so nil was kept. Consequence: there is no `patch_job` intervention row for the closure jobs, and B6's intervention query will return the older rows or none.
+
+**B3.** Both `needs_review` within 15 s (job_events seq 22-39): submitted -> conversation -> policy (`gateway/deepseek-flash`, ceilings 200 req / $0.5 / 2M tok / 3600 s) -> preparing -> refreshed (base 6fe3a49) -> running -> collecting -> collected -> needs_review, class `complete`, flagged false, offending [].
+- P: reviewed_oid 374309736f13ddede82e77bacb4afc2aa638a933, 5 model requests, active 7.3 s. One commit "fix: add CLOSURE-PROMOTE.md for SL-023 closure run", parent 6fe3a49; only `CLOSURE-PROMOTE.md` (+1: "SL-023 closure run, promote.").
+- R: reviewed_oid 203bf2380080efcec8b49c126a1a661380aa63a2, 4 model requests, active 4.5 s. Commit "fix: add CLOSURE-REJECT.md", parent 6fe3a49; only `CLOSURE-REJECT.md` (+1).
+- R queued behind P (one job per repo), as the sheet predicted.
+- `satan-tool/patch-job-result` P returns class complete, `:quarantine_ref`, `:commits`, diffstat 1/+1/-0.
+
+**B4.** Inbox: each id has exactly one entry (`SATAN_PATCH_JOB:` count 1), `:STATE: needs_review` (inbox.org property lines 88 and 104). The PHASE-12 jobs still have one entry each.
+
+**Pre-review state.** Live Emacs: `satan-patch-inbox-running-p` t, `satan-tools-patch-modes` ("fix"), `(featurep 'satan-patch-runner)` nil, `(boundp 'satan-patch-runner-enabled)` nil, `satan-patch-inbox-enabled` t, `satan-patch-rpc-socket` nil (default resolution). goad-walk: no `satan/*` branch, `refs/satan/incoming` empty, `main` = 6fe3a49.
+
+**Pending: B5 (VH-1, user), then B6 agent checks.** PHASE-14 stays in_progress.
