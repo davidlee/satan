@@ -79,3 +79,14 @@ EX-4/VH-1: user switched H, rebooted room assistant, confirmed `/work/satan`, `/
 - User filled the new room clones `/work/satan`, `/work/satan-corpus` by `capsule assistant push` per `/srv/fleet/PROVISION.md`.
 - H `flake.lock` (user's `nix flake update fleet`) left uncommitted for the user.
 - EX-5 / VH-3: user restarted Emacs; `satan-tools-patch.elc` 18:17 (newer than .el); `satan-tools-patch-modes` unbound; live `patch_job_create` `:args-schema` keys: directive repo allowed_paths base_ref tags source context — no mode.
+
+## PHASE-05 — live verification (driver, user's go, 2026-10-19)
+
+Submitted by `emacsclient` calling `satan-tool/patch-job-create` with ctx `(:mode-name <lane>)` — the same handler and stamping SATAN uses. The synthetic ctx lacks `:id`/`:time-now`/`:audit`, so each ok carried `intervention_error` (no intervention row); expected for a hand call, not a defect.
+- EX-2 / VH-2 (first, nothing created): self-edit-mech, repo satan-corpus → `invalid_request: mode "self-edit-mech" does not allow repo "satan-corpus"; it allows: satan`.
+- EX-1 / VH-1, all `needs_review` by 18:24:
+  - `pj-01M59GQ2KV3SNWXZYZBK3DYFWS` self-edit-mech / satan — `f4b7fb0` `satan/SMOKE-SL025.md` +1
+  - `pj-01M59GQ2MV7KCMX98ATCYH1G94` self-edit-mind / satan-corpus — `f9f7d76` `prompts/SMOKE-SL025.md` +1
+  - `pj-01M59GQ2NEWNE0RRGG7PXEW2MC` tick-agent / goad-walk — `d8941a6` `SMOKE-SL025.md` +1
+- EX-3 / VH-3: `SATAN_RUNNER_LIVE=1 just smoke-runner` in M: `pj-01M59GR25QYKWWHZKKRD92EBZA`, mode `interactive`, goad-walk → `PASS: needs_review; left in quarantine`.
+- All four smoke jobs await the user's promote/reject (the three lane jobs should be rejected — smoke files only).
