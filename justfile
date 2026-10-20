@@ -57,6 +57,8 @@ test: _require-test-dbs
       -l satan-test -f satan-test-run-batch-and-exit
     for t in noctalia/*/test/*_test.luau; do luau "$t"; done
     (cd satan/harness && python3 -m unittest -q test_gptel_harness)
+    # pi harness tooling (TS, run by node's type stripping — no build step).
+    node --test pi/reduce/*.test.ts
 
 _require-test-dbs:
     #!/usr/bin/env bash
