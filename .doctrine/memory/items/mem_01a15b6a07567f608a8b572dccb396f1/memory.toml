@@ -1,0 +1,43 @@
+memory_uid = "mem_01a15b6a07567f608a8b572dccb396f1"
+memory_key = "mem.pattern.pi.claude-cli-overactivates-tools"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "pattern"
+status = "active"
+title = "pi-claude-cli 0.3.1 activates every registered tool on session_start"
+summary = "pi-claude-cli 0.3.1 activates every registered tool on session_start, overriding settings-based tool selection (defaultTools) — codemode/tool_search/grep/find/ls/powershell all appear active by default. An explicit CLI `--tools` allowlist still wins."
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi", "extension", "tool-activation", "footgun", "codemode"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "0193e7398bb4e89ea6bde40611eefbdca8f7e60e"
+ref_name = "refs/heads/main"
+checkout_state_id = "d383b725c9e0b524259ddc9326a768392e7f323bba7edd2eaf3f84826290339e"
+base_commit = "71d621b6f254ce850e9c46d55985b8ac0750e589"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+

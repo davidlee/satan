@@ -1,0 +1,43 @@
+memory_uid = "mem_01a15b5827c67b70add69ed95b62a08b"
+memory_key = "mem.pattern.flakes.agent-pin-bump-sequencing"
+schema_version = 1
+lifespan = "procedural"
+memory_type = "pattern"
+status = "active"
+title = "Agent-CLI pin bumps land via in-tree flakes/agents then `just home-switch`; a session restart proves nothing"
+summary = "Bumping an agent CLI (pi via llm-agents): bump the in-tree `flakes/agents` lock, then `just home-switch` — `tree_override` builds that copy, and consumer repos' pins are bypassed by `follows`. Until the switch the jail re-execs the old store path, so a session restart is a no-op."
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = ["**/flake.lock", "**/flake.nix"]
+commands = []
+tags = ["nix", "flakes", "agents", "pin-bump", "pi"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "a01ef2f760212fa294c3d43d6dde5cdaed375df7"
+ref_name = "refs/heads/main"
+checkout_state_id = "d805fd6f9b25a57fc545cbfadf727618d7031487df65844ad485d183f78cca7b"
+base_commit = "5e23a5aab0547c6978e8e1369c05ec11af29f7aa"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
