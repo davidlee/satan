@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1583cd9f77cf0b4b65b4655c5c4ab"
+memory_key = "mem.pattern.jail.flake-wrapped-execution"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Jail policy lives in the flake and is exposed as a wrapped form"
+summary = "Jail policy is project-specific: it belongs in the project's flake, which wraps execution and exposes a wrapped form (jailed-pi, jailed-claude). A tool or server should exec that wrapper and hold no bwrap argv of its own; a consumer that reimplements confinement is a second enforcement site (REQ-009)."
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "flakes", "convention"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "b2fb4233fa68789edde30b53dc7c875eb1bef869"
+tree = "50ec3c01093d9a900e98b47a741808361e7b9ec5"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "b2fb4233fa68789edde30b53dc7c875eb1bef869"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

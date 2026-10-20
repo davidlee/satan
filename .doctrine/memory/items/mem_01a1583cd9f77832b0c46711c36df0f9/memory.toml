@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1583cd9f77832b0c46711c36df0f9"
+memory_key = "mem.fact.jail.nesting-is-additive"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Nested jails are additive, never narrowing"
+summary = "An unjailed process inside a jail is jailed; a jailed process inside a jail gets the union of both jails. A nested jail can therefore never repair an outer profile's exposure, so the outer profile remains the containing guarantee and 'nested' never implies 'narrower'."
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "confinement"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "b2fb4233fa68789edde30b53dc7c875eb1bef869"
+tree = "50ec3c01093d9a900e98b47a741808361e7b9ec5"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "b2fb4233fa68789edde30b53dc7c875eb1bef869"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
