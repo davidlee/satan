@@ -1,0 +1,42 @@
+memory_uid = "mem_01a15814158276419c6466a90f2ab699"
+memory_key = "mem.fact.harness.pi-transport"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi one-shot transports: print, json, rpc"
+summary = "pi -p and --mode json self-exit and are interchangeable one-shots; --mode rpc shuts down on stdin EOF so it needs a fifo keeper, and every reap/poll/process-group contrivance exists only to fit a one-shot into RPC"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["harness", "pi"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "32806600e936177987f2fb32688ab5b99386d9a0"
+ref_name = "refs/heads/main"
+checkout_state_id = "67f7f4d206909ee68e8c20f81b9b703fb2c5de25846e24e9721359a6ad80b850"
+base_commit = "27835cfacf1934b7e547061fd104c9e4241d088c"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
