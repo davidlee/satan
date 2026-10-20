@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1583b8f227781b7b60b55956132fe"
+memory_key = "mem.pattern.satan.drive-jailed-pi-worker"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Driving jailed pi (deepseek-flash) as a chunked phase worker"
+summary = "jailed-pi -p --session-id <id> --append-system-prompt <brief> per chunk from the code repo; orchestrator runs biome + full check on the host and commits; separate reviewer session"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = ["jailed-pi"]
+tags = ["pi", "jail", "workflow", "malebolge"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "51474d2dcb05885d6a5a904b9fe3900820fd280d"
+ref_name = "refs/heads/main"
+checkout_state_id = "79f5701e2592298a4e8cb99dc5768f3da55d7cde69f34a001900d1397ad4668b"
+base_commit = "8af9d7770d9f67edb2e7d8e9d33f34cc202eaeb0"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "298fcd0"
+

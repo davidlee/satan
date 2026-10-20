@@ -1,0 +1,240 @@
+id    = 41
+slug  = "per-phase-code-review-of-sl-028-phase-02-satantools-handle-malebolge-3c2b0d4a810ddc"
+title = "Per-phase code review of SL-028 PHASE-02 (satanTools handle; malebolge 3c2b0d4..a810ddc)"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "reviewer-pi"
+responder = "orchestrator"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Three reviewer-pi rounds over malebolge 3c2b0d4..902c20d (src/satan-tools.ts, src/coalesce.ts, src/reconnecting-client.ts, tests), with node probes and bite checks against pre-fix commits; F-9 fix (298fcd0) verified by the orchestrator. 9 findings, all fix-now, all verified."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-028"
+phase = "PHASE-02"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "get() dereferences an undefined current after a concurrent reset/close"
+detail = "src/satan-tools.ts:111-127 (a810ddc): a caller suspended at 'await attempt.opening' resumes after reset()/discard() set current=undefined; the 'current === attempt' guard is false, and 'return current.opening' throws TypeError (tsc misses it: narrowing survives the closure mutation). Reproduced by the reviewer 3/3: concurrent SATAN tool call on a stalled connect + a timed-out refresh -> call rejects 'Cannot read properties of undefined (reading opening)'. Fix: return (current ??= begin()).opening after the replacement branch."
+disposition = "fix-now"
+response = "Fixed in malebolge 9b3b570: current ??= begin() before get()'s final return; test 'starts a fresh attempt for a caller whose attempt was discarded' (red on a810ddc with the TypeError). C6 additionally makes close() terminal so the fall-forward applies to reset() only."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge 9b3b570: current ??= begin() before get()'s final return; test 'starts a fresh attempt for a caller whose attempt was discarded' (red on a810ddc with the TypeError). C6 additionally makes close() terminal so the fall-forward applies to reset() only."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 2 (reviewer pi): probe c now rejects with the fresh attempt's ENOENT, no TypeError; HEAD's test fails against a810ddc."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Self-inflicted discards log as connection drops"
+detail = "src/satan-tools.ts:67-71: reset() on timeout and close() close a live client, firing onClose's 'satan-mcp connection closed; reconnecting' line. Reviewer probe: a wedged tools/list logs that line on every refresh beside the single 'unreachable' line the design asks for; PHASE-03's per-input refresh makes it unbounded. No test guards it. Fix: clear 'live' (retire) before closing a client we discard."
+disposition = "fix-now"
+response = "Fixed in 9b3b570: clients tracked in an inService WeakSet, retired before this handle closes them; tests 'logs one line for a wedged list, not a drop per refresh' and 'does not report the connection it closed itself' (red on a810ddc: 3 spurious lines + 1 from close)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 9b3b570: clients tracked in an inService WeakSet, retired before this handle closes them; tests 'logs one line for a wedged list, not a drop per refresh' and 'does not report the connection it closed itself' (red on a810ddc: 3 spurious lines + 1 from close)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 2: probe e logs one line over three wedged refreshes (was 3 drop lines + 1); both new tests fail against a810ddc."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = "Late-response test passes with reset() deleted"
+detail = "test/satan-tools.test.ts:226 'installs nothing when a hung tools/list answers after the deadline': passes with connection.reset() removed (reviewer probe d) — the cancelled request and destroyed-socket guard make the late answer unobservable; the real guard is the connections()===2 sibling at :185-196. Delete as redundant or make it assert the discarded connection ended (await hung.ended) before release()."
+disposition = "fix-now"
+response = "Fixed in 9b3b570: test deleted as redundant; the connections()===2 sibling and the F-1 test guard reset()."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 9b3b570: test deleted as redundant; the connections()===2 sibling and the F-1 test guard reset()."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 2: test deleted; with reset() removed, 'logs one line for a wedged list' fails on connections() (3 vs 1), so reset is guarded."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "A throwing registry.install escapes refresh; reconnect refresh is fire-and-forget"
+detail = "Raised by the orchestrator from the C4 worker's question (recorded under the raiser role). defineExtension/registry.install rejects e.g. duplicate tool names from satan-mcp; read() does not catch it, so refresh rejects. Via onReconnect ('() => void refresh()') that is an unhandled rejection (Node exits); via PHASE-03 beforeInput it would fail the input. Design §4.3: refresh installs tools: [] on any failure and never throws. Fix: treat an install failure as a failure (install empty, log once)."
+disposition = "fix-now"
+response = "Fixed in 9b3b570: install failures install the empty extension and log 'satan-mcp tools rejected: <message>' once per state; test 'installs nothing and reports once when satan-mcp lists a tool twice' covers a reconnect-triggered refresh in that state (no unhandled rejection)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 9b3b570: install failures install the empty extension and log 'satan-mcp tools rejected: <message>' once per state; test 'installs nothing and reports once when satan-mcp lists a tool twice' covers a reconnect-triggered refresh in that state (no unhandled rejection)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 2: probe h — duplicate listing resolves, tools [], one 'rejected' line; pi-durable validate/registry throw paths bounded (registry.js:29-42, 81-96). Residual subscriber-throw hazard raised as F-7."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "A never-connected attempt is replaced at once and announced as a reconnect"
+detail = "src/reconnecting-client.ts:131-135 (cfe7deb): the replacement branch does not tell a closed client from an attempt that never connected. Since 9b3b570 a failing first get() begins a second attempt immediately (probe g: 2 connects per refresh while absent; a810ddc: 1). The first-ever success after absence logs 'satan-mcp reconnected' and fires onReconnect (an extra tools/list) — pre-existing at a810ddc, contradicting 'the FIRST connection is not a reconnect'. Fix: announce only when a real client was replaced (attempt.client !== undefined); on a never-connected failure clear current and rethrow, so the next caller opens the single attempt."
+disposition = "fix-now"
+response = "Fixed in malebolge ae41194: a never-connected failure clears current (record) and rethrows; replacement announced only for a client that connected then closed. Tests 'tries one connection per refresh while satan-mcp hangs up', 'does not announce the first connection after an absence'. Follow-on regression raised as F-8."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge ae41194: a never-connected failure clears current (record) and rethrows; replacement announced only for a client that connected then closed. Tests 'tries one connection per refresh while satan-mcp hangs up', 'does not announce the first connection after an absence'. Follow-on regression raised as F-8."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 3: p3 one connect per absent refresh, first success unannounced, 1 tools/list; tests fail against cfe7deb."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "reconnected fires for a replacement closed on arrival after close()"
+detail = "src/reconnecting-client.ts:113-117,134: probe k — close() during a replacement connect, then release: logs 'satan-mcp reconnected' and runs a post-close refresh for a client closeAttempt retires and closes. Unguarded (no log assertion in the close test at test/satan-tools.test.ts:298-313). Fix: reconnected returns early unless !closed() and the client is connected."
+disposition = "fix-now"
+response = "Fixed: reconnected(client) returns unless the handle is open and the client connected; test 'does not announce a replacement that close() cuts short'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed: reconnected(client) returns unless the handle is open and the client connected; test 'does not announce a replacement that close() cuts short'."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 3: p4 no 'reconnected' after close; test fails against cfe7deb."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "refresh can reject when a registry subscriber throws"
+detail = "src/satan-tools.ts:155-168: the fallback install publishes to subscribers; a throwing subscriber rejects refresh (probe h). Only production subscriber is pi-durable's #kick (scheduler.js:986-993), which cannot throw. Fix: narrow the JSDoc ('a list pi-durable refuses cannot escape') or wrap the fallback."
+disposition = "fix-now"
+response = "Fixed (docs): install's JSDoc narrowed to 'a list pi-durable refuses cannot escape a refresh'; no code change."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed (docs): install's JSDoc narrowed to 'a list pi-durable refuses cannot escape a refresh'; no code change."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 3: JSDoc now accurate against validateExtension/RegistryState; behaviour unchanged by design."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "After a failed replacement, the recovery connect is not announced: no refresh on reconnect"
+detail = "Raised by the orchestrator reviewing C7 (recorded under the raiser role). src/reconnecting-client.ts record()/get(): satan-mcp restarts; a call while it is down hits the replacement branch, the replacement fails and record() clears current. When satan-mcp is back, the next get() begins a FRESH attempt (current undefined), which is never announced — onReconnect does not fire and the tool list stays the pre-restart set for the rest of the turn. a810ddc announced this path. Violates EX-6 (lost and recovered during a turn: the reconnect refreshes). Fix: announce any successful connect once the handle has had a connected client before (first-ever connect excluded), not only a direct replacement."
+disposition = "fix-now"
+response = "Fixed in malebolge 902c20d: loss-driven announcement — a drop the handle did not cause sets 'lost'; the next successful connect (direct replacement or a fresh attempt after a failed one) announces and fires onReconnect; own reset/close never arm it (worker's refinement of the orchestrator's 'any connect after the first' rule, which caused an unbounded announce->read chain on a wedged server). Test 'announces the connection that recovers satan-mcp after a lost client' (red on ae41194)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge 902c20d: loss-driven announcement — a drop the handle did not cause sets 'lost'; the next successful connect (direct replacement or a fresh attempt after a failed one) announces and fires onReconnect; own reset/close never arm it (worker's refinement of the orchestrator's 'any connect after the first' rule, which caused an unbounded announce->read chain on a wedged server). Test 'announces the connection that recovers satan-mcp after a lost client' (red on ae41194)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Round 3: p5 recovery after failed replacement installs the new set, one announcement; p6/p7 reset never arms, concurrent gets share one replacement; test fails only against ae41194."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "A stand-in discarded by our own timeout is still announced"
+detail = "src/reconnecting-client.ts:136-139 (902c20d): record() attaches reconnected to the attempt before discard's closeAttempt attaches drops.close, so reconnected sees the client still connected; probe p8 (loss, then a stand-in reset by a refresh deadline, then release) logs 'satan-mcp reconnected' for a client closed immediately after — an extra connect + read, and the comment 'closed on arrival' guard is dead for self-caused closes. Fix: mark the attempt abandoned in discard; reconnected skips an abandoned attempt (lost stays armed)."
+disposition = "fix-now"
+response = "Fixed in malebolge 298fcd0: discard() marks the attempt abandoned; reconnected(attempt) skips it and leaves lost armed; connectionState check removed (redundant). Test 'does not announce a stand-in that a timeout discarded' (red on 902c20d)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge 298fcd0: discard() marks the attempt abandoned; reconnected(attempt) skips it and leaves lost armed; connectionState check removed (redundant). Test 'does not announce a stand-in that a timeout discarded' (red on 902c20d)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified by the orchestrator on the raiser's behalf (no fourth reviewer round): the diff matches the suggested fix, the new test reproduces the p8 probe and was red on 902c20d, and just check is green (1634 tests)."
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

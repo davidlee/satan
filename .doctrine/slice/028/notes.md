@@ -6,21 +6,27 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-01 · malebolge 3a39d16
+fresh-as-of: 2026-10-20 · PHASE-02 · malebolge 298fcd0
 
 ### Produced
-- PHASE-01 done — instance lock, `lockPath`, `serveUnix` claim, runner on
-  `SocketInUse` (malebolge 7b9294a eslint base fix, 3a39d16); detail in
-  § PHASE-01 below
+- PHASE-01 done — instance lock, `lockPath`, `serveUnix` claim (malebolge
+  7b9294a, 3a39d16); § PHASE-01
+- PHASE-02 done — satanTools handle, coalesce, reconnecting-client
+  (malebolge 460b7c6..298fcd0, pi worker); § PHASE-02
+- RV-041 — PHASE-02 code review, 9 findings fixed
 
 ### Learned
 - mem.fact.malebolge.eslint-ignores-doctrine-state — typed eslint needs
   `.doctrine` ignored after `doctrine install`
+- mem.pattern.satan.drive-jailed-pi-worker — chunked jailed-pi worker +
+  reviewer sessions; jail gotchas (biome, runner tests, doctrine extension)
 
 ### Open
-- DEC-083..DEC-088 — design decisions binding PHASE-02..06
+- DEC-083..DEC-088 — design decisions binding PHASE-03..06
 - RSK-020 — two malebolge revisions in production; REV at reconcile
-- PHASE-03 must release the lock exactly once (non-idempotent `release`)
+- PHASE-03 must release the instance lock once (non-idempotent `release`)
+- malebolge doctrine pi extension calls a host store path absent in the jail
+  (doctrine boot fails inside jailed-pi) — doctrine install concern, unfiled
 
 ## Design triage (2026-10-20, exploring)
 
@@ -128,3 +134,42 @@ Evidence: `research/research.md` (C = code fact, G = governance, X = cross-threa
 - Sandbox quirk: `listen` under a missing directory reported EACCES, not
   ENOENT, in this session's sandbox; the test asserts `syscall: "listen"`.
 - Not run: no home-switch (runner shares `serveUnix`; see Plan notes).
+
+## PHASE-02 (2026-10-20, done) — malebolge 460b7c6..298fcd0
+
+Executed by jailed pi (deepseek-flash) in 9 chunks, one session (`satan-a`);
+orchestrator reviewed each, ran biome + `just check` on the host, committed per
+chunk. Per-phase review by a second pi session: RV-041 (9 findings, all
+fix-now, verified, concluded). Workflow: mem.pattern.satan.drive-jailed-pi-worker.
+
+Shape landed (PHASE-03 builds on it):
+- `src/satan-tools.ts`: `satanTools(socketPath, registry, log, { deadlineMs? })`
+  → `{ refresh, close }`. Refresh = `coalesce(read)`; read = get + listTools
+  under one `AbortSignal.timeout` (connect raced via `within`), install, or
+  install `[]` on unreachable / timeout (→ `reset()`) / pi-durable rejecting
+  the list (`satan-mcp tools rejected: …`). Logs once per state
+  (`n SATAN tools` | unreachable | rejected). `connectSatanTools` is the thin
+  adapter PHASE-03 deletes (its missing-extension throw is unreachable).
+- `src/coalesce.ts`: one run in flight, one shared follow-up; a caller resolves
+  after a run that started after its request.
+- `src/reconnecting-client.ts` (extracted in C5): lazy open; `reset()` abandons
+  (late client closed on arrival); `close()` is terminal (get() rejects
+  "satan-mcp client is closed"); one connect per failing get (no immediate
+  second attempt); `onReconnect` is loss-driven — a drop the handle did not
+  cause arms it, the next successful connect announces once; own
+  reset/close/abandoned attempts never announce (avoids an announce→read
+  chain on a wedged server).
+- Test kit: `fakeMcpServer(path, tools, { silent, hangUp })` with `release`,
+  `connections`, `requests`, `serve`, `ended`; `openFauxHarness({ registry })`.
+
+Plan-level deviations from design §4.3 (accepted): optional 4th param
+`{ deadlineMs }`; refresh cannot reject on a refused list but can if a
+registry subscriber throws (only production subscriber, pi-durable `#kick`,
+cannot; JSDoc says so); `close()` does not cancel an in-flight read (bounded
+by the deadline); a coalesced caller may wait up to two deadlines — PHASE-03's
+`beforeInput` inherits that bound (≤ 4 s at the 2 s default).
+
+verify-vt: PHASE-02 VTs report UNATTRIBUTABLE (test files are in malebolge,
+outside this repo's diff) — expected, as in SL-027
+(mem.pattern … reconcile-selectors-outside-phase-registry); evidence is the
+malebolge commits above.
