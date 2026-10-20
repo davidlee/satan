@@ -736,6 +736,89 @@ operator command each, not substituted.
   never tested. `audit_failed` with evidence intact is a pass on its own
   (fail-closed); a pre-spawn refusal is 77, since nothing was proven.
 
+### Operator run (host, 2026-10-21) — RED at step 1; run stopped
+
+Host `/home/david/dev/satan`, `nix` present (`/run/current-system/sw/bin/nix`),
+node v24.21.0, `~/.config/llm-gateway/keys/pi` present. HEAD `fa6f921` (an
+SL-030 commit on top of `de2a5b1`; no SL-029 code changed since `bba7d87`).
+Tree dirty only in SL-030's paths (`.doctrine/doctrine.toml`, `.gitignore`).
+
+**EX-3 / VA-1 — bind-set check: FAIL.** `just check-jails` → exit 1 at
+`pi-mcp-forms`. The other recipe members pass, run individually:
+`malebolge-unbound` 0, `harness-jail-profile` 0, `runner-socket-unjailed` 0,
+`malebolge-jail-profile` 0. The check stops at the first form, so the **write
+form was not evaluated**. Verbatim
+(`nix log /nix/store/f7jsk3al99pqnljqmr4q1fw0jq6pync9-pi-mcp-forms.drv`):
+
+```
+pi-mcp-forms: read: the bind set differs from root + active session directory + child_binds
+--- expected ---
+--bind $PI_MCP_ACTIVE_SESSION_DIR $PI_MCP_ACTIVE_SESSION_DIR
+--bind ~/.local/share/jail.nix/home/agent ~
+--ro-bind $PWD $PWD
+--ro-bind /nix/store/*-coreutils-9.11/bin/env /usr/bin/env
+--ro-bind /nix/store/*-pi-gateway-models.json ~/.pi/agent/models.json
+--ro-bind-try $(/nix/store/*-host-git-excludes-file) ~/.config/git/ignore
+--ro-bind-try ~/.local/share/doctrine/bin /run/doctrine-bin
+--- actual ---
+--bind $PI_MCP_ACTIVE_SESSION_DIR $PI_MCP_ACTIVE_SESSION_DIR
+--bind ~/.local/share/jail.nix/home/agent ~
+--ro-bind $(realpath /etc/localtime)
+--ro-bind $P $P)
+--ro-bind $PATH_TO_BIND $PATH_TO_BIND)
+--ro-bind $PWD $PWD
+--ro-bind /nix/store/*-bash-interactive-5.3p15/bin/sh /bin/sh
+--ro-bind /nix/store/*-coreutils-9.11/bin/env /usr/bin/env
+--ro-bind /nix/store/*-jail-write-text--etc-hostname /etc/hostname
+--ro-bind /nix/store/*-pi-gateway-models.json ~/.pi/agent/models.json
+--ro-bind ~/.local/share/jail.nix/group /etc/group
+--ro-bind ~/.local/share/jail.nix/passwd /etc/passwd
+--ro-bind-try $(/nix/store/*-host-git-excludes-file) ~/.config/git/ignore
+--ro-bind-try /run/systemd/resolve /run/systemd/resolve
+--ro-bind-try ~/.local/share/doctrine/bin /run/doctrine-bin
+--- only in the launcher (added?) ---
+--ro-bind $(realpath /etc/localtime)
+--ro-bind $P $P)
+--ro-bind $PATH_TO_BIND $PATH_TO_BIND)
+--ro-bind /nix/store/*-bash-interactive-5.3p15/bin/sh /bin/sh
+--ro-bind /nix/store/*-jail-write-text--etc-hostname /etc/hostname
+--ro-bind ~/.local/share/jail.nix/group /etc/group
+--ro-bind ~/.local/share/jail.nix/passwd /etc/passwd
+--ro-bind-try /run/systemd/resolve /run/systemd/resolve
+--- only in the expectation (dropped?) ---
+pi-mcp-forms: (a) read: the launcher's bind set is not root + session directory + child_binds
+```
+
+Nothing is dropped; eight words are added. Their source, read from the built
+launcher `/nix/store/c8xy573l6yzdvv2lg6c0c8rcjcvajmy5-jailed-pi-mcp-read/bin/jailed-pi-mcp-read`
+(evidence):
+
+- `$(realpath /etc/localtime)` — lines 21–25, a conditional timezone bind.
+- `$P $P)` — line 33, body of `bindNixStoreClosure` (binds every requisite of a
+  store path).
+- `$PATH_TO_BIND $PATH_TO_BIND)` — line 53, body of `bindRuntime`, called at
+  lines 72–78 on `/etc/hosts`, `/etc/nsswitch.conf`, `/etc/resolv.conf`,
+  `/etc/ssl`.
+- `/bin/sh`, `/etc/hostname`, `/etc/passwd`, `/etc/group`,
+  `/run/systemd/resolve` — jail.nix base / network combinators.
+
+Inference (not verified against jail.nix source): none of the eight is
+pi-mcp-profile-specific or a host home path; they are jail.nix base and network
+plumbing that the expectation (`jailProbes.pi-mcp`) does not enumerate. Two are
+shell-function bodies, matched by the check's textual extraction, whose real
+targets are runtime-determined (`bindRuntime`'s targets are `/etc/*`, and
+`bindNixStoreClosure` binds `/nix/store` paths) — the "outside the compared
+word-pairs by construction" claim in § Recorded limits above does not hold for
+the launcher as built. Whether this is a defect in the forms, in the probe's
+expectation, or in design sec-3's "root + session + child_binds" claim is a
+design decision, not settled here. Per the handover the expectation was **not**
+edited to match.
+
+**EX-7 / VA-3 (hostile fixture) and EX-5 / VA-2 (live smoke): not run.** Stopped
+at the first red per operator instruction. Nothing claimed.
+
+PHASE-09 stays `blocked`; no boundary row recorded; no blocker verified.
+
 ## Implementation and review (nine phases via capsule orchestrators)
 
 The slice was driven through five capsule-orchestrator charters plus three repair

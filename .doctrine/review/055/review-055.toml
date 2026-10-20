@@ -19,6 +19,11 @@ note = """
 Reconciliation audit of SL-029 at c01735f, eight of nine phases implemented. Examined all 80 EX, 55 VT and 3 VA rows of plan.toml (54 VT run green via `slice verify-vt 29`, one PHASE-09 row UNATTRIBUTABLE; EX rows read against the mechanism and its carrier test; all 3 VA rows unexecuted), the delivered pi/mcp surface module by module in its dependency order (server, spawn, gate, result, then policy/profiles/childview/session/evidence/paths and the form/text layer in flake.nix, bin/pi-mcp-hostile-audit and forms.test.ts), design sec-1..7 against the code including the three already-recorded divergence families (QUE-007, DEC-103, RV-053 F-16), the mechanical signals (`slice conformance 29`, `slice verify-vt 29`, `doctrine check gate` green, the bwrap-token source scan), the recorded phase boundaries, and the prior ledgers' open findings (RV-043 F-1, RV-053 F-3/F-15/F-16/F-17/F-18). Five findings raised: one blocker (PHASE-09's empirical criteria unexecuted and unbounded — left open, its disposition is a human decision between the operator run and a recorded waiver) and four minors, of which two are design-record omissions this pass adds to QUE-007 and F-16, one is the conformance signal's known tenant, and one is repaired in-pass.
 """
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Operator run 2026-10-21: just check-jails on a nix host; pi-mcp-forms red on the read form (F-6). Hostile fixture and live smoke not run. F-1 stays open."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
@@ -205,6 +210,25 @@ Verified against the file rather than the command's optimism: slice-029.toml now
 act = "verify"
 role = "raiser"
 note = "Verified against the file: slice-029.toml now reads status = audit."
+
+[[finding]]
+id = "F-6"
+status = "open"
+severity = "blocker"
+title = "PHASE-09 EX-3: the built read form's bind set carries eight jail.nix base binds the pi-mcp-forms expectation does not name, so the bind-set check is red"
+detail = """
+Operator run 2026-10-21 on a nix host (HEAD fa6f921; no SL-029 code changed since bba7d87). `just check-jails` exits 1 at `checks.x86_64-linux.pi-mcp-forms`, read form; the other four recipe members pass. The check stops at the first form, so the write form is unevaluated.
+
+Residue: nothing dropped; eight words only in the launcher — `$(realpath /etc/localtime)`, `$P $P)` (body of jail.nix `bindNixStoreClosure`), `$PATH_TO_BIND $PATH_TO_BIND)` (body of `bindRuntime`, called on /etc/hosts, /etc/nsswitch.conf, /etc/resolv.conf, /etc/ssl), `/bin/sh`, `/etc/hostname`, `/etc/passwd`, `/etc/group`, `/run/systemd/resolve`. Source lines in the built launcher /nix/store/c8xy573l6yzdvv2lg6c0c8rcjcvajmy5-jailed-pi-mcp-read/bin/jailed-pi-mcp-read.
+
+Inference, unverified: all eight are jail.nix base/network plumbing, not profile binds or host home paths, and the probe expectation does not enumerate them; notes.md § Recorded limits' claim that runtime-closure binds fall outside the compared word-pairs does not hold for the built launcher. Whether the defect is in the forms, the probe's expectation, or design sec-3's bind-set claim is undecided. The expectation was not edited.
+
+EX-7/VA-3 and EX-5/VA-2 were not run (stopped at first red). Verbatim block: notes.md § PHASE-09 evidence → Operator run (host, 2026-10-21).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
