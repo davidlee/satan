@@ -46,53 +46,59 @@ Jail policy lives in the flake and is exposed as a wrapped form; the server hold
 
 ## Per-call mode
 
-Two forms are declared, one per capability: read-only and read-write. Both bind, at minimum:
+Two forms are declared, one per capability. Each binds:
 
-- the launch dir as the root — `--ro-bind` for the read form, `--bind` for the write form. `mountLaunchDir` alone will not do: its true branch is a rw `--bind` (`jailed-agents.nix:193-198`), and a profile does not change it (`mem.fact.jail.profile-is-not-readonly`).
-- the session home and the run dir, via **raw args with run-time paths** (`--bind "$PI_MCP_SESSION_HOME" … --setenv …`), the shape `satan/flake.nix:161` already uses for `"$SATAN_RUN_DIR"` (`mem.fact.jail.runtime-path-bind`). This is what keeps sessions out of the target repo and off the per-run tmpfs.
-- `~/.pi` (pi writes session/settings state) and `--tmpfs /tmp`, per the existing generator.
+- the launch dir as the root — `--ro-bind` for read, `--bind` for write. `mountLaunchDir` alone will not do: its true branch is a rw `--bind` and a profile does not change it (`mem.fact.jail.profile-is-not-readonly`).
+- `~/.pi` (pi writes session and settings state there) and `--tmpfs /tmp`.
+- **the active session directory only** — `<PI_MCP_SESSION_HOME>/<session-id>/`, via raw args with run-time paths (`mem.fact.jail.runtime-path-bind`). Not the session home, and never the run directory: the child's writable set is exactly what it needs to continue its own conversation.
 
-The server selects the form by capability and executes it; it does not know or check what else the form binds. That limit is stated, not implied: the server authorises the root, the flake decides the rest of the reach.
+The server-owned evidence directory (events, stderr, transcript, status, audit) is bound into no child.
 
 ## Static mode
 
-`makeJailedAgent { agent = pi-mcp; profile = … }` with the launch jail as the whole confinement. The policy then restates what the jail already decided — `root`, `filesystem`, `agent`, `session_dir`, `run_dir` — and the server validates at start-up that the session and run dirs are writable (`bind-unavailable`) rather than discovering it mid-run. A policy that names wrapper forms *and* `agent` is `policy-invalid`, so the two postures cannot be half-configured.
+`makeJailedAgent { agent = pi-mcp; profile = … }`; the launch jail is the whole confinement. The policy restates what the jail decided — `root`, `filesystem`, `agent`, `session_home`, `run_dir`, `evidence_dir` — and the server validates at start-up that its own dirs are writable (`bind-unavailable`).
 
-The server cannot prove it is jailed. That claim belongs to a launcher check in the flake (`jailProbes` pattern), not to a runtime assertion.
+**The residual, stated:** in a single-uid jail the child shares the server's writable view, so it can reach the evidence the server writes. Static mode therefore (a) buffers evidence in memory and flushes it after the child exits, and (b) permits a single declared session, which is also the only session the child can reach. It does not claim per-child evidence isolation; per-call mode is the posture that provides it. A policy naming both wrapper forms and `agent` is `policy-invalid`.
+
+## Executable contract (both postures)
+
+The launcher has the executable baked in and forwards arguments to it: `<launcher> --mode json …`, with no executable word and no `--` (DEC-098 amendment). Static mode names `agent` and requires pi plus its provider configuration in the launch closure and `PATH`; a launcher probe asserts reachability, because the flake's `piInJail` is false when the agent is the server.
+
 <!-- doctrine:section sec-4 -->
-# Execution and the stream gate
+# Execution, the stream gate and termination
 
 ## Spawn
 
-```
-<wrapper form> [--] pi --mode json \
-  --model <profile model> --system-prompt <profile body> --tools <resolved set> \
-  --thinking <profile level> [--session-id <id> --session-dir <session dir>] \
-  --no-extensions --no-skills --no-themes --no-context-files --offline --approve
-```
+The child is spawned as a **process-group leader** (its own session), so the ladder can signal `-pid` without reaching the server or a concurrent call — the jail sets `no-new-session` (`jailed-agents.nix:184`), so no group exists unless the server creates it. cwd is the root; the prompt goes to the child's stdin through a pipe the server closes; stdout is captured by the server into its **own evidence directory** (a path no child can open); stderr goes to a separate file. Never `2>&1`: stdout is JSONL only.
 
-with the prompt on the child's **stdin** (a pipe the server closes), the child's cwd set to the root, stdout redirected straight to `events.jsonl`, and stderr to a separate file. Never `2>&1`: stdout is JSONL only, and merging diagnostics would count them as events.
+`--no-extensions` is load-bearing (ISS-052). `--tools` replaces the selection. Lifetimes are coupled — the child is never backgrounded — but the group is independent, and those are different things (DEC-096 amendment).
 
-`--no-extensions` is load-bearing (ISS-052). `--tools` replaces the selection, so the resolved set names every tool. In static mode the executable comes from the policy's `agent`, resolved from `PATH` inside the jail.
+## Gate
 
-## Reading and gating
+One reader parses each event (LF framing, no `readline`) and maintains a **single usage accumulator** fed by `message_end`, `compaction_end` and retry attempts; a compaction triggers a gate check. At every tick (each such event, plus an idle poll bounded to about a second) it evaluates:
 
-One reader consumes the child's stdout to files and parses each line (LF framing; no `readline`), counting usage from `message_end` and `compaction_end`. It checks the ceilings (requests, tokens, cost) at each assistant-message boundary and the wall clock via the backstop. Concurrently, the MCP loop reads its own stdin: a blocking result never blocks cancellation (DEC-096).
+- ceilings — requests, tokens, cost, against the clamped maxima;
+- the wall clock — the hard backstop;
+- the **switch** — `enabled` re-read at the tick, so a flip halts an in-flight run through the ladder, audited `abort(switch)`, with no driver cooperation (DEC-097 amendment);
+- usage sanity — absent or unpriced usage aborts as `accounting_unknown`; missing data is never headroom.
 
-**The gate is retrospective** (DEC-097). pi has no acknowledgement channel, so a crossing aborts the run; it does not prevent the next request. Overshoot is bounded by observation latency plus the spend of a request already in flight, and no tighter. Unreadable or unpriced usage aborts (fail closed).
+The gate is **retrospective**: it aborts a crossing, it does not prevent the next request, and there is no provider output cap (DEC-097; operator-accepted conformance concession). Overshoot is bounded by observation latency plus one in-flight request's spend. The same accumulator produces the returned status, so enforcement and reporting cannot disagree (DEC-093 amendment).
 
 ## Termination
 
-One ladder for every trigger — SIGTERM to the child's process group, 2 s grace, SIGKILL to the group, audit, return. The child is never detached: `jailed-pi` dies with its launching shell (`mem.fact.jail.background-launch-dies-with-shell`), so "detach and poll" yields a dead jail and no result.
+One ladder for every trigger: SIGTERM to the group, 2 s grace, SIGKILL to the group, then reap and drain the stream, then audit, then return. The result and the session-lock release happen only after cleanup. Concurrently the MCP loop reads its own stdin: a blocking result never blocks cancellation.
+
 <!-- doctrine:section sec-5 -->
 # Result contract
 
 ```json
 {
   "schema": "pi-agent-result/1",
-  "state": "completed" | "failed" | "incomplete" | "timeout" | "ceiling_exceeded" | "refused",
+  "state": "completed|failed|incomplete|timeout|cancelled|ceiling_exceeded|accounting_unknown|audit_failed|refused",
+  "termination": "stop|length|error|aborted|backstop|cancelled|switch|ceiling|accounting|audit|refused",
   "session": "<id>",
   "final": true,
+  "truncated": false,
   "result": "<answer>" | null,
   "transcript": "<markdown>",
   "status": { ...pi-run-status/1... } | null,
@@ -101,59 +107,82 @@ One ladder for every trigger — SIGTERM to the child's process group, 2 s grace
 }
 ```
 
-## Semantics
+## Answer semantics
 
-- `final` is true only when the run reached `agent_settled` with a stop reason, i.e. the text is an answer rather than the last thing the model happened to say before the run ended. `final: false` means the `result` is partial and `transcript` carries the evidence. This corrects the assumption that the reducer's last prose block is an answer (DEC-093).
-- `session` is always present: minted and returned when the caller did not pass one (DEC-099).
-- `transcript` is budgeted — and the budget is **soft**: mandatory sections (the final answer) can exceed it, by design and by test. The unbudgeted text is always at `artifacts.transcript`.
-- Outcome precedence, one verdict: server abort (`ceiling_exceeded`) > backstop (`timeout`) > reducer verdict (`failed` / `incomplete`) > child exit code. Exit 0 is not success (json mode exits 0 on a model error).
-- `refused` carries `status: null`, `artifacts: null`, `result: null` — nothing ran, and the audit records why.
+`result` is the **terminal assistant message** — the last assistant `message_end` with a terminal stop reason and no later assistant message — with all of its text blocks joined. `final` is true only for `stop`; `length` is `final: true, truncated: true`; `error`, `aborted`, `toolUse`, `deferred` and every server-caused stop give `final: false, result: null`. A backwards search for the last prose block is expressly not the rule (DEC-093 amendment).
+
+`session` is always present — minted and returned when the caller supplied none.
+
+`transcript` is budgeted and the budget is **soft**: mandatory sections can exceed it, by design and by test. The unbudgeted text is at `artifacts.transcript`.
+
+## Cause, state and precedence
+
+The table in DEC-093 is normative: each non-completed cause names its state, and every one carries `termination`. The **earliest** cause wins, and a cause discovered after the child has settled still decides — the run cannot claim success when the reason it stopped was audit or accounting failure. Exit 0 is never evidence of success (json mode exits 0 on a model error).
+
+`refused` carries `status`, `artifacts`, `result` all null and a `refusal { reason, detail }`: nothing ran.
 
 ## Artefacts
 
-Under `PI_MCP_RUN_DIR` (default `$XDG_STATE_HOME/pi-mcp/runs`), one directory per run: `events.jsonl`, `stderr.log`, `transcript.md`, `status.json`, `audit.jsonl`, plus a symlink-free `latest` pointer per session. Never inside the root: the dispatch path imports a worker's uncommitted delta, and a run directory there would land in it.
+One directory per run under `PI_MCP_RUN_DIR`, never inside the root and never bound into a child: `events.jsonl`, `stderr.log`, `transcript.md`, `status.json`, `audit.jsonl`. Pre-spawn refusals have no run directory and are recorded in the server-level `attempts.jsonl` (sec-6).
+
 <!-- doctrine:section sec-6 -->
 # Session and audit contracts
 
-## Sessions (DEC-099)
+## Sessions (DEC-099, amended)
 
-- Minted when absent and returned in the result; grammar `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`.
-- Bound on first use to (canonical root, filesystem capability). Resuming with a different root or capability is refused — a session is not a cross-call privilege channel.
-- Same-session concurrency is refused (`session-busy`), not queued: queuing hides ordering bugs and doubles spend behind the driver's back.
-- Storage is a shared, persistent session home outside the tree (`PI_MCP_SESSION_HOME`, default under the run dir), bound into the jail by the wrapper form. That is what lets a read-only run on a read-only root carry a conversation across runs, which no bare `jailed-pi` invocation can do.
+- Minted when absent and returned; grammar alnum at both ends, 1–64 characters — the grammar pi itself accepts.
+- Bound on first use to (canonical root, filesystem capability); resuming otherwise is refused.
+- Same-session concurrency is refused (`session-busy`), not queued.
+- The child sees **one** directory: `<PI_MCP_SESSION_HOME>/<session-id>/`. Binding and lock metadata are server-side, outside every bind. A session id is a bearer capability within the policy's trust domain and the design says so without pretending to authenticate callers.
+- In static mode the home is bound at launch, so the policy declares a single session, and the reachability of other sessions is stated as that posture's known limit.
 
-## Audit (DEC-094, amended)
+## Evidence (DEC-094, amended)
 
-`audit.jsonl`, one object per line, append-only in practice, single writer `pi-mcp`: `spawn`, `refuse`, `abort` (with usage at the gate), `timeout`, `exit`, each carrying the policy digest.
+Two sinks, both server-owned and outside every child bind:
 
-**Enacted actions** are covered by `events.jsonl` beside it — tool calls and results as pi reports them — and the design says so explicitly rather than claiming the control log is the whole audit (SPEC-001 REQ-003). The pair is the audit: control decisions in `audit.jsonl`, enacted actions in `events.jsonl`, both per-run and durable with the run directory.
+- `attempts.jsonl` — server-level, one line per attempt that spawned nothing: policy unavailable/invalid, disabled, profile, root, capability, ceiling, session refusals. Policy digest recorded when one was readable; no run directory required.
+- `<run>/audit.jsonl` — control decisions for a spawned run: `spawn`, `abort` (with usage at the gate and the cause), `timeout`, `exit`, `switch`, each with the policy digest.
 
-**Audit failure is a refusal.** If the audit record cannot be written before spawn, the call is refused. If appending fails mid-run, the run is terminated (the ladder) and the result carries `state: failed`. An unrecorded delegate does not run. `O_APPEND` + fsync is what the OS offers: the file is not immutable, and the design says so rather than claiming more.
+Enacted actions are covered by `<run>/events.jsonl` beside it. Control decisions and enacted actions together are the audit (SPEC-001 REQ-003); neither is claimed alone.
+
+**Failure policy.** If `attempts.jsonl` cannot be written, the refusal is returned in-band and on stderr and the server does not spawn. If a run's audit append fails before spawn, the call is refused `audit_failed`; mid-run, the run is aborted through the ladder and reported `audit_failed`. Static mode buffers evidence in memory and flushes after exit, so a co-resident child could still write the evidence directory: that is the posture's stated residual, not an assurance.
+
 <!-- doctrine:section sec-7 -->
 # Delivery, authority and verification
 
 ## Files
 
 ```
-pi/mcp/{main,server,policy,profiles,gate,result}.ts   server, entry, policy load, forms, gate, result assembly
-pi/mcp/profiles/*.md                                 tracked profile documents (capability + model + tools)
-pi/mcp/*.test.ts                                     node --test, offline
-bin/pi-mcp                                           shim → node pi/mcp/main.ts
-pi/reduce/reduce.ts                                  + Reduced.result (final/partial flag)
-flake.nix                                            two per-call wrapped forms; a pi-mcp derivation for static mode
-justfile                                             node --test pi/mcp/*.test.ts
+pi/mcp/*.ts                      server, policy load, profiles, wrapper forms, gate, accounting, result, stdio loop
+pi/mcp/profiles/*.md             tracked profile documents (filesystem capability + model + tools)
+pi/mcp/*.test.ts                 node --test, offline
+bin/pi-mcp                       shim → node pi/mcp/main.ts
+pi/reduce/reduce.ts              + result, final, terminalReason; one usage accumulator incl. compaction_end
+flake.nix                        two per-call wrapped forms; a pi-mcp derivation for static mode (pi in closure + PATH)
+justfile                         node --test pi/mcp/*.test.ts
 ```
+
+The reducer change is one accumulator and three fields: the server embeds its status verbatim, so a second accounting path would be a second truth (DEC-093 amendment).
 
 ## Authority (DEC-091)
 
-Five `pi-mcp` rows — request schema validation (1b), profile→tool allowlist (2b), delegate audit (4c), delegate ceilings (5c), delegate kill switch (6c) — and one `satan-flake` row for the execution profiles (3c). Ledger edits land at reconcile via REV, not here.
+Five `pi-mcp` rows — request schema validation (1b), profile→tool allowlist (2b), delegate audit (4c), delegate ceilings (5c, described as retrospective accounting with best-effort termination), delegate kill switch (6c, admission refusal *and* active halt) — and one `satan-flake` row for the execution profiles (3c). Ledger edits land at reconcile via REV.
 
 ## Verification
 
-- Offline tests with a stub wrapper and a stub `pi`, asserting: validation order and every refusal token; argv construction; capability→form selection; ceiling arithmetic and abort; the soft budget; result precedence; session minting, binding and busy refusal; audit-failure refusal; and that no bwrap token appears anywhere in `pi/mcp`.
-- One live smoke run per posture against deepseek-flash, recorded as evidence, not a gate.
-- Flake checks: each wrapped form's argv (the `jailProbes` pattern) and the static launcher; `just check` covers `just test`, which carries the new suite.
+Offline, with a stub launcher and a stub pi:
+
+- validation order and every refusal token; argv exactness (no executable word, no `--`); capability→form selection; that no bwrap token appears anywhere in `pi/mcp`;
+- accounting: compaction included, unknown/unpriced usage aborts, returned status equals the gate's inputs;
+- result: error+settled, textless terminal message, multi-block terminal message, stale planning prose, `length` truncation;
+- precendence: concurrent causes, and a failure after `agent_settled`;
+- evidence isolation: a hostile bash attempting truncate/unlink/replace of the audit from inside the child, in both postures — refusal-with-intact-evidence or a fail-closed `audit_failed`, never a clean success;
+- lifecycle: two concurrent calls plus a grandchild ignoring SIGTERM; cancel one, assert its subtree is gone after the grace, the other call and the server survive, and the session lock releases only after cleanup; a mid-run switch flip aborts;
+- sessions: minting and return, binding mismatches, busy refusal, grammar edges including a valid single character and trailing `.` `_` `-`.
+
+One live smoke run per posture against deepseek-flash, recorded as evidence, not a gate. Flake checks: each wrapped form's argv and the static launcher's closure (`jailProbes` pattern); `just check` carries the suite.
 
 ## Out of scope, not precluded
 
 A non-pi agent behind the same MCP (the operator's codex/GPT review use case); steering and follow-ups; job handles; retiring the shell wrappers; the RPC→json migration of the spawn scripts.
+

@@ -21,3 +21,29 @@ pi's `events.jsonl` is **not** the audit log: it is model output (tool calls, to
 - Audit durability is tied to the run dir, so `PI_MCP_RUN_DIR` is part of the authority surface: readable, append-only by convention, pruned only by ops.
 - An observer (satan or otherwise) can ingest `audit.jsonl` later without the server's participation; nothing in the design assumes it does.
 - Retention is deliberately out of scope: run dirs accumulate until something prunes them, and the design says so rather than pretending.
+
+
+## RV-043 F-1 and F-8: evidence the delegate cannot reach, and refusals that have a home
+
+F-1 defeated the original claim: the run directory was bound into the child, so
+the delegate held a writable handle to its own audit. `O_APPEND` and fsync
+protect a writer, not a path — a same-uid child can truncate, unlink or replace
+the file and the server's next append still succeeds (reproduced).
+
+Corrected model:
+
+- **Child-visible writable set**: the *active session directory only*
+  (`<PI_MCP_SESSION_HOME>/<session-id>/`). Not the session home, not the run dir,
+  not the evidence store.
+- **Server-owned evidence**: `events.jsonl`, `stderr.log`, `transcript.md`,
+  `status.json`, `audit.jsonl` live in a directory no child has a bind to.
+- **Static mode cannot do this** in a single-uid jail: the server's writable view
+  is the child's. There, evidence is buffered in memory and flushed after the
+  child exits, the policy may declare a single session, and the residual
+  (a co-resident child can write anything the server can) is stated in sec-3
+  rather than wished away.
+- **Refusals** (F-8) go to a server-level `attempts.jsonl` in the state directory:
+  no child, no run dir, and a policy digest recorded only when one was readable.
+  If that sink is unwritable the refusal is still returned in-band and on stderr,
+  and the no-child-without-logging rule holds. Recursion is excluded because the
+  attempt log never requires a run directory.

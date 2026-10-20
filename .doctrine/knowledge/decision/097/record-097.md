@@ -30,3 +30,28 @@ What the server actually does: count usage from the stream (`message_end`, `comp
 ## Consequence
 
 The ledger's row 5c (`pi-mcp` ceilings) must describe retrospective accounting with best-effort termination, not an enforcement gate. The audit records `abort(ceiling)` with the usage at the moment of the gate, and the overshoot is visible in the record rather than denied.
+
+
+## RV-043 F-4: conformance disposition (operator-accepted 2026-10-20)
+
+The concession below is not the author's: the operator accepted it explicitly
+after review, and it is the disposition F-4 required.
+
+- **Guaranteed**: a hard wall-clock cap; a check at every usage-bearing event
+  (`message_end`, `compaction_end`); abort on crossing; abort on unknown or
+  unpriced usage (fail closed — missing data is never headroom).
+- **Not guaranteed**: that a single provider response cannot overshoot, or that a
+  crossing prevents the request already in flight. Overshoot is bounded by
+  observation latency plus one in-flight request's spend, and by nothing else.
+- Ledger row 5c must therefore say *retrospective accounting with best-effort
+  termination*, not "ceilings enforced". A REV to SPEC-001 REQ-004 (or an
+  amendment naming the weaker property for non-SDK surfaces) is the revision
+  candidate to raise at reconcile. DEC-057 stays the model for an SDK path.
+
+## RV-043 F-3: the switch halts enactment
+
+`enabled` is re-read at each gate tick — the same tick that evaluates ceilings,
+bounded to about a second by event cadence plus an idle poll. A flip aborts the
+in-flight run through the shutdown ladder, audited as `abort(switch)`, and the
+next call is refused `disabled`. Admission refusal and active halt are two
+distinct behaviours with two distinct names; row 6c covers both.

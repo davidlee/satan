@@ -82,37 +82,54 @@ must place explicitly rather than inherit from a shell script.
 
 ## Risks, Assumptions, Open Questions
 
-- **Per-call `cwd` versus a launch-time jail.** A jail is fixed when the wrapper
-  starts, but `pi_agent` takes a `cwd`. Two shapes keep bwrap out of the server:
-  the flake exposes a per-call launcher that receives the root, or the server runs
-  inside one root fixed at launch and refuses a `cwd` outside it. Design chooses.
-- **Nested confinement is settled, and it is additive.** An unjailed process in a
-  jail is jailed; a jailed process in a jail gets the union of both. So a nested
-  jail can never repair an outer profile's exposure — if the driver is
-  `jailed-claude` with the eval socket bound, that still applies. The flake
-  profile, not the server, is where this is fixed.
-- **Authority placement.** ADR-017 §3 gives each authority item one owner
-  (allow-list, ceiling, audit append, kill switch, permission profile). Research
-  finds no "adds no authority" escape: the server needs new rows under a token
-  such as `pi-mcp`, and the execution profile stays with `satan-flake`.
+These are the live risks after RV-043. Historical claims the review defeated are
+superseded by the design, not deleted: the record that we were wrong is worth
+more than a clean page.
+
+- **Root versus posture.** Settled by DEC-089 and DEC-100: per-call mode takes a
+  root per call; static mode fixes one at launch and refuses a `cwd`
+  (`cwd-not-supported`). Nothing is undecided here.
+- **Nested confinement intersects authority.** A nested jail can narrow further
+  (an inner `--ro-bind`, a masked path) and can never widen; authority the mount
+  namespace does not govern — inherited fds, credentials, reachable sockets —
+  survives it. So a nested jail proves less than it looks like it proves, and the
+  outer profile remains the containing guarantee. *Superseded text:* an earlier
+  note in this slice said nesting was "additive, never narrowing"; that was a
+  transcription error, corrected in `mem.fact.jail.nesting-is-additive`.
+- **Ceilings are retrospective.** DEC-097 with the operator-accepted F-4
+  concession: a hard wall clock, checks at every usage-bearing event, abort on
+  crossing or on unknown usage, and **no provider output cap**. Overshoot is
+  bounded by observation latency plus one in-flight request. This is a recorded
+  conformance gap against SPEC-001 REQ-004, not an undecided question.
+- **Process groups.** The server creates each call's termination domain
+  (`setsid`); the jail sets `no-new-session`, so no group exists otherwise. Killing
+  `-pid` without that would be a no-op or would fell the server (DEC-096
+  amendment).
+- **Evidence isolation differs by posture.** Per-call mode can keep evidence out
+  of every child bind; static mode cannot, in a single-uid jail (DEC-094
+  amendment). The posture choice is therefore a security choice, not a
+  convenience.
+- **Authority placement.** ADR-017 §3: five `pi-mcp` rows plus one `satan-flake`
+  execution-profile row (DEC-091), with row 5c worded as retrospective accounting
+  and row 6c covering admission refusal *and* active halt.
 - **Driver registration.** How a driver declares a stdio server (project config
-  file vs `claude mcp add`) is a deployment question the design should answer once.
-- **Cost ceiling.** A delegate run spends money with no driver-visible cap: the
-  backstop is time, not tokens. Decide whether a token/cost ceiling is in scope.
+  vs `claude mcp add`) remains a deployment question the plan must answer once.
 
 ## Follow-Ups
 
 - Spawn-script transport migration (RPC → json) and the deletion of
   `lib/pi-reap.sh` plus `lib/pi-reap-test.sh` (that test is run by nothing and
   takes 94 s).
-- The wrapped-runner jail profile in `flakes/agents`, using the DEC-088 read-only
-  directory bind rather than `jailEnvOptions` (which rw-binds the editor eval
-  socket and reaches `~/notes`), plus its flake check.
 - The `pi-research` runner defect found while starting the research round: the
   `researcher` profile was absent from this repo, its model disagrees with
   `CLAUDE.md`, and outside the jail the `deepseek` provider key is invalid.
-- The harness jail machinery stays in `flakes/agents`; revisit only if the server
-  needs a profile of its own there.
+
+**Promoted to delivery (no longer a follow-up):** the wrapped forms. sec-3 and
+sec-7 make the read-only and read-write launchers, and the static-mode derivation
+that carries pi in its closure, part of this slice. They are declarations in
+`flake.nix` using the existing `makeJailedAgent` API and combinators, not work in
+the pinned `flakes/agents` input — an earlier note in this slice called them a
+cross-repo dependency, which was wrong.
 
 ## Explicitly out of scope, not precluded
 

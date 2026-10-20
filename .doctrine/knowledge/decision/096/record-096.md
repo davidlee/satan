@@ -19,3 +19,20 @@ The child is never backgrounded. `jailed-pi` dies when its launching shell exits
 ## Consequence
 
 Cancellation is a control decision and is audited (DEC-094). A cancelled run's partial transcript is returned, not discarded: the driver may resume it via the session id (inq-6).
+
+
+## RV-043 F-9: the termination domain is created, not assumed
+
+Every call is spawned as a **process-group leader** (its own session:
+`setsid`/`detached`). The ladder signals `-pid`, so it can never reach the server
+or a concurrent call — the failure mode the jail's `no-new-session` would
+otherwise guarantee (`jailed-agents.nix:184`). Reaping and stream drain complete
+before the result is returned and before the session lock is released.
+
+"Never detached" in this decision always meant *lifetime* coupling — no
+fire-and-forget, no backgrounding — not session isolation. Restated, because
+conflating the two is what left the ladder without a group to signal.
+
+Verification: two simultaneous calls plus a grandchild that ignores SIGTERM;
+cancel one and assert its subtree is gone after the grace, the other call and the
+server remain alive, and the session lock is released only after cleanup.

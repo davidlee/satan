@@ -36,3 +36,18 @@ carry a conversation forward, which no bare `jailed-pi` invocation can do.
 What is *not* optional: the bind must come from the flake form (raw arg plus
 `--setenv`), because the server does not assemble bwrap. That is a contract item
 on the per-call forms, recorded with the capability forms in DEC-098/DEC-100.
+
+
+## RV-043 F-10: the grammar pi actually accepts
+
+pi requires a session id to start **and** end with a letter or number
+(`docs/cli.md` §Sessions). The first grammar allowed trailing `.`, `_` and `-`,
+which pi then refused *after* the server had accepted the request. Corrected:
+alnum at both ends, 1–64 characters, single-character ids valid:
+
+```
+^[A-Za-z0-9]([A-Za-z0-9._-]{0,62}[A-Za-z0-9])?$
+```
+
+Tested on trailing period, underscore and hyphen (refused `session-invalid`
+before spawn) and on a valid one-character id.
