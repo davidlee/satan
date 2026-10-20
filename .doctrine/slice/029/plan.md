@@ -204,29 +204,34 @@ found them unanswered:
     has not allowlisted it gets `root-not-allowlisted`, not a quiet exemption.
     This keeps the root decision in the policy rather than in the caller.
 
-## Design gaps raised at plan review
+## Wire contract additions, settled at plan time (DEC-103)
 
-Three things the phasing work needs that the locked design does not name. They
-are **not** settled here: each changes the wire contract, so each needs a design
-act or an explicit decision to carry it as a reconcile-time revision.
+Three things the phasing work needs that the locked design does not name. The
+operator chose to settle them here and fold them back through a reconcile-time
+REV rather than reopen a design whose lock conditions are section attestations
+plus a review disposition plus design acceptance. `DEC-103` is the record; the
+plan cites its tokens.
 
-1. **A refusal token for a `tools` request outside the profile's set.** Design §2
-   says `tools` "may only narrow" and supplies no token for a widening attempt.
-   Proposed: `tools-not-allowed` (matching the `profile-not-allowed` family),
-   refused at validation before the session step.
-2. **A refusal token for malformed params.** §5 says a result is never a
-   JSON-RPC error and §2's token list has nothing for a bad params object, a
-   missing `prompt` or `profile`, or an unknown key. Proposed: `request-invalid`
-   with a `detail` naming the field.
-3. **The cancellation trigger.** `cancelled` is in both §5 enums and §4 says a
-   blocking result never blocks cancellation, but nothing names the wire
-   mechanism. Proposed: `notifications/cancelled{requestId}` aborts exactly that
-   call through the ladder (`state: cancelled`); stdin EOF stops admission,
-   aborts in-flight runs the same way, flushes the audit and exits, since a
-   client that closed stdin can receive nothing.
+1. **`tools-not-allowed`** — design §2 says `tools` "may only narrow" and supplies
+   no token for a widening attempt. A request naming a tool outside the profile's
+   snapshotted set is refused at validation, before the session step, with a detail
+   naming the offending tool (PHASE-03 EX-10). The effective set is the
+   intersection, and `--tools` receives the whole narrowed list because pi's flag
+   replaces the selection.
+2. **`request-invalid`** — §5 forbids JSON-RPC errors and §2's token list has
+   nothing for a bad params object, a missing `prompt` or `profile`, or an unknown
+   key. The refusal carries a detail naming the field and `session: null`
+   (PHASE-02 EX-2, PHASE-08 EX-3).
+3. **Cancellation** — `cancelled` is in both §5 enums and §4 says a blocking
+   result never blocks cancellation, but no mechanism was named.
+   `notifications/cancelled{requestId}` aborts exactly that call through the one
+   ladder and reports `state: cancelled`; an id naming no in-flight call is
+   ignored. stdin EOF is a different act: the client is gone, so admission stops,
+   in-flight runs are aborted the same way, the audit is flushed and the server
+   exits without attempting to deliver (PHASE-06 EX-10/EX-11).
 
-Carried as **reconcile-time REV candidates**, needing no design change if the
-operator prefers to keep the design untouched until then:
+Further **reconcile-time REV candidates**, recorded so an auditor reads them as
+accounted-for rather than as drift:
 
 - `final` is derived in the server, not the reducer — restating the reading above
   as a design-record correction.

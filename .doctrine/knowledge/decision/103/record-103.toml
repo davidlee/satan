@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 103
+slug = "pi-agent-wire-contract-additions"
+title = "pi-agent wire contract: the three additions the locked design left open"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The SL-029 design was locked at revision 80 before phasing. Three parts of the wire contract its sections require were left unnamed: a refusal token for a tools request that widens past the profile's set (sec-2 says tools may only narrow, and no token exists), a refusal token for malformed params (sec-5 forbids JSON-RPC errors but sec-2's token list has nothing for a bad params object, a missing prompt or an unknown key), and the cancellation trigger (cancelled is in both sec-5 enums and sec-4 says a blocking result never blocks cancellation, but no wire mechanism is named)."
+choice = "Add three things to the wire contract as stated: (1) a tools request naming a tool outside the profile's snapshotted set is refused tools-not-allowed at validation, before the session step; (2) malformed params — bad object, missing prompt or profile, unknown key — is refused request-invalid with a detail naming the field; (3) notifications/cancelled carrying requestId aborts exactly that call through the termination ladder and reports state cancelled, and stdin EOF stops admission, aborts in-flight runs the same way, flushes the audit and exits."
+alternatives = ["Amend the locked design now and re-attest", "reuse an existing token (profile-invalid for tools", " policy-invalid for params)", "leave cancellation to the driver's SIGTERM"]
+rationale = "The design is locked and its lock conditions are section attestations plus a review disposition plus design acceptance; reopening it for three tokens costs more than the divergence does, and a per-call stdio server has no way to distinguish a driver shutdown from a cancel except by naming one. Reusing profile-invalid for a call-level tools request would blame the wrong object, and policy-invalid for params likewise. SIGTERM alone cannot identify which call to cancel when two are in flight."
+consequences = ["The plan writes these tokens and this cancellation protocol into phase criteria", "the divergence from the locked design is an explicit reconcile-time REV candidate recorded in plan.md beside four others (server-side final", " the backstop residue in sec-5", " session null on a refusal", " pi-run-status/2)", "until the REV lands an auditor must read the design's token list and this record together"]
+decided_by = "operator"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-029"

@@ -603,3 +603,34 @@ to fire at every later reader.
 malformed-params token, cancellation trigger. Proposals are in plan.md § Design
 gaps raised at plan review; they change the wire contract, so they need a design
 act or an explicit decision to carry them as reconcile-time revisions.
+
+## Operator decision: the wire gaps are settled in DEC-103 (option B)
+
+Asked to choose between reopening the locked design (A) and carrying the three
+wire-contract additions as reconcile-time revisions (B), the operator replied
+"B." — so the earlier "Open for the operator: three design gaps" line in this
+file is closed, not stale.
+
+Recorded as **DEC-103** (`pi-agent-wire-contract-additions`, accepted, `shapes`
+SL-029), decided_by operator on 2026-10-20, with the facets filled: context,
+choice, alternatives (reopen-and-re-attest; reuse `profile-invalid` /
+`policy-invalid`; leave cancellation to SIGTERM), rationale and consequences. Its
+prose body carries the three clauses with their reasoning, and states plainly that
+until the REV lands at reconcile, the design's sec-2 token list *plus* DEC-103 are
+the contract — an audit reading only the design will report a divergence that is
+already accounted for.
+
+Why the alternatives lost, in one line each: reopening a locked design for three
+tokens costs more than the divergence does; `profile-invalid` would blame the
+policy's allowlist for a call's overreach, and `policy-invalid` would blame the
+policy for the request's shape; SIGTERM cannot say *which* call to cancel when two
+are in flight, and it cannot distinguish a driver shutdown from a cancel.
+
+Plan changes that follow: P2 EX-2 (`request-invalid`) and EX-1
+(`notifications/cancelled` accepted as a method); P3 EX-10 (`tools-not-allowed`,
+VT-7 keyword moved to the token); P6 EX-10/EX-11 (cancel one call; stdin EOF
+aborts in-flight, flushes, exits) and the P6 objective; P8 EX-3 (`request-invalid`
+as a refusal reason) and EX-9 naming the producers for `cancelled` and
+`ceiling_exceeded`. The four other reconcile-time candidates (`final` ownership,
+the `backstop` residue, `session: null`, `pi-run-status/2`) stay as plan.md lists
+them.
