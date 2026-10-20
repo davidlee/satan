@@ -74,3 +74,24 @@ the server's own state directory, outside every child bind:
 Verification is two independent server processes sharing one state root: exactly
 one of two simultaneous same-session calls may spawn, including a first-use race
 with conflicting root/capability; the loser is refused before side effects.
+
+
+## RV-046 F-3 (second contest): reclaim is an election, not an unlink
+
+Unlink-then-create loses races: two reclaimers can both unlink, and the second can
+delete the first's fresh lock, leaving both believing they own the session.
+
+Corrected: ownership comes from exactly one act — the `O_EXCL` create. A stale
+lock is removed from the path by **atomically renaming** it to a private name,
+where exactly one `rename` of that path can succeed. The winner then verifies the
+file it holds is the one it inspected (same device and inode), re-confirms the
+owner is dead, creates the successor with `O_EXCL`, and only then unlinks its own
+copy; every loser refuses `session-busy` rather than retrying. Owner identity is
+pid **plus kernel start time**, because a bare pid is reused. A reclaimer that dies
+mid-reclaim leaves the lock absent, so the next caller's `O_EXCL` create succeeds
+— double ownership is unreachable — and every reclaim is recorded in
+`attempts.jsonl`. Where liveness cannot be determined (no `/proc`), the answer is
+`session-busy`.
+
+The binding is written in the same critical section as the first-use lock, so two
+processes cannot record different (root, capability) bindings for one session.

@@ -308,3 +308,32 @@ Consequence for the pass binding: design.md moved 60 → 62, so RV-048's coverag
 stale again. That is expected and is not worth another round-trip; the sequence at
 freeze is: finish verification → `drafting` → `reviewing` (mints the next pass over
 final content) → raiser concludes it → `conducted` disposition → `locked`.
+
+## Third round: compaction window and reclaim election (design rev 64)
+
+Two contests, both upheld.
+
+**RV-043 F-6 — diagnostic `compaction_end`.** My table counted every
+`compaction_end`; the overflow-recovery diagnostic and the `status: "declined"`
+variants are emitted without any provider send. Fixed with state, not another
+row: an **attempt window** opened by `compaction_start` or
+`summarization_retry_attempt_start`, closed by `summarization_retry_scheduled` or
+`compaction_end`, clamped at zero; a `compaction_end` finding no window counts
+nothing. Assistant sends stay stateless (one `message_end` each). Six traces are
+now tests, the diagnostic=0 case among them. `tool_use`/`deferred` are mapped
+explicitly as usage-bearing-but-not-answers — the abort clause's word changed from
+"answer-bearing" to "usage-bearing" so the two vocabularies are named for what
+they classify.
+
+**RV-046 F-3 — reclaim race.** Unlink-then-create lets a second reclaimer delete
+the first's fresh lock. Replaced with an election: ownership only from the
+`O_EXCL` create, a stale lock removed by **atomic rename** (one winner by
+construction), then dev/ino verification, re-confirmed death, `O_EXCL` successor,
+unlink own copy; losers refuse `session-busy`; a reclaimer dying mid-reclaim
+leaves the lock absent so the next create wins. Owner identity is pid + kernel
+start time, and unknowable liveness is `session-busy`.
+
+Both are `demonstrate` routes and remain unverified: the assertions are in sec-7,
+the placement belongs to the phases. Raiser said the other repairs are explicit
+but their demonstrate routes stay pending phase criteria — no further prose
+verification is expected of this seat.

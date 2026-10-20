@@ -27,6 +27,11 @@ act = "conclude"
 role = "raiser"
 note = "Raiser reassessment against SL-029 revision 56 and the latest responder amendments. Verified F-5, F-11 and F-12 at design level: terminal-message settlement/exit conditions, swept delivery scope, provisional-success commit and ordered failure causes. F-1, F-7 and F-9 remain answered and unverified because their demonstrate obligations require phase criteria that do not yet exist; the revised disjointness and criterion-placement commitments were read, not mistaken for completed probes. Contested F-6 with directly inspected pi 0.99.1 embedded source and in-memory stubbed control-flow probes showing three counted requests for two sends in assistant and compaction retries. No real model requests occurred. This pass does not reinterpret the instrument verification protocol or record user acceptance. New live-profile authority and wire-vocabulary residuals are on RV-046, not duplicate charges on the old ledger."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Revision-62 raiser continuation: reviewed the latest F-6 response and DEC-097's subsequently recorded operator acceptances, which were respected. The former assistant/compaction retry double counts are repaired, but F-6 is contested again because an actual installed pi 0.99.1 _checkCompaction diagnostic emits compaction_end with zero new sends, contradicting the unconditional counter/exact-send claim; the wire toolUse value also still needs an explicit mapping from the design's tool_use. The zero-send case was reproduced using the extracted method with controlled state and stubbed sends, with no model/network activity. F-1/F-7/F-9 remain answered pending their demonstrate obligations becoming phase criteria; no premature verify act was made. No design/code changes or user acts."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
@@ -288,20 +293,21 @@ detail = "Expected: the returned status and audit support the ceiling verdict wi
 disposition = "fix-now"
 route = "demonstrate"
 response = """
-Correct, and the contest is upheld: I verified both pushbacks against the installed binary myself and both of mine were wrong. Evidence from `/nix/store/d3689api2w432k5zqya9i3vx1536hdl6-pi-0.99.1/libexec/pi/pi`:
+Upheld again, and both halves are right.
 
-1. `case "done": case "error":` in the agent loop emits `message_end` for the final message on **both** paths (offset ~91737800), and `handleRunFailure` emits `message_start` / `message_end` / `turn_end` / `agent_end` for a thrown failure (~91759400). So a failed assistant send has its own `message_end`. My claim that "a failed send emits only its retry record" was simply false.
-2. `_prepareRetry` emits `auto_retry_start` *after* that `message_end` (~92577000), so counting both double-counts one send. Your two-sends-three-requests trace is what the table would produce.
-3. `retryAssistantCall` (~86084000) fires `onRetryScheduled` for a failed send, `onRetryAttemptStart` before the next send, `onRetryFinished` at the end — so `summarization_retry_attempt_start` and the later `compaction_end` describe the same send. Same double-count, second path.
-4. `EMPTY_USAGE` is `{input:0, output:0, cacheRead:0, cacheWrite:0, totalTokens:0, cost:{…, total:0}}` (~91761400): a **zero placeholder**, including `cost.total`. So "cost.total absent → abort" would have accepted a false zero for every failed send — a fresh instance of the silent-zero defect this finding started with, in a place my previous table would have introduced it.
+**The diagnostic `compaction_end`.** Verified: `_runAutoCompaction` sets `started`, emits `compaction_start` only after preparation succeeds, and guards its failure-path `compaction_end` on that same flag — but the overflow-recovery path emits a `compaction_end` ("context overflow recovery failed after one compact-and-retry attempt") from outside any such window, and the durable-drive path emits `status: "declined"` ones. My rule counted every `compaction_end`, so each of those added a request that never happened.
 
-Corrected mapping (design revision 60, sec-4; DEC-097 appended, superseding the earlier table): **one counting record per provider send**. `message_end` for an assistant send (any stop reason), `compaction_end` for a summarization send, `summarization_retry_scheduled` for a failed summarization attempt that never reaches its own `compaction_end` — and the retry/scheduling records are markers, not sends. Your two traces become the negative controls in sec-7: error+stop = 2 requests, scheduled+`compaction_end` = 2 requests. `requests` is now exact for this run's own sends rather than a lower bound; the lower-bound language remains only for what the stream cannot see at all.
+Fixed by giving the summarization side the state your memory note said it needed, rather than another row:
 
-**Placeholder usage.** A failure message is counted as a request and contributes no tokens or cost, and is disclosed as `requests_unmeasured`. You are right that this is weaker than the F-4 abort clause the operator accepted, so it is **not** granted here: DEC-097 now records it as a named revision candidate awaiting the operator's decision, with the strict alternative spelled out (abort on every failure message, which makes every provider error and every retry fatal as `accounting_unknown`). I will put that choice to the operator rather than assume it.
+- assistant sends stay stateless — one `message_end` per send (verified: the agent loop's `done`/`error` paths and `handleRunFailure` each emit exactly one);
+- `compaction_start` and `summarization_retry_attempt_start` **open** an attempt window; `summarization_retry_scheduled` (+1 unmeasured) and `compaction_end` (+1, priced when `result.usage` is present) **close** one;
+- a `compaction_end` finding no open window counts **nothing**, and the window is clamped at zero so a diagnostic cannot drive it negative.
 
-**Scope.** Your "even a lower bound" point generalises into the disclosure now in sec-4 and DEC-097: the accumulator bounds this run's own sends, and a nested `pi` or a direct gateway call is outside attribution by construction (bash and the launch environment are granted), with IDE-015 as the mechanism for that boundary. That is RV-046 F-4's substance, disposed separately.
+Traces are the tests now: success 1, fail-then-success 2, two fails + success 3, all-fail chain 3, error-then-stop 2, and the overflow diagnostic **0** — the last being your case as a negative control. Two residuals are stated in sec-4: a summarization declined *after* its window opened would overcount by one (only reachable via a `session_before_compact` extension handler, and the server runs `--no-extensions`), and a failure emitting neither usage nor a scheduling record would undercount by one — under-reporting requests, never tokens or cost.
 
-The phase-placement constraint is unchanged and still stands: the mapping is an obligation on the phase's exit criteria, with your two traces as its negative controls, and this ledger entry remains unverified until that phase exists.
+**`tool_use`.** Mapped explicitly as its own paragraph, because one record carries two classifications that were being read into each other: a `message_end` with stop reason `tool_use` or `deferred` is a **counted request with priced usage that must validate**, and it is **not an answer** — `final: false`, `result: null`. A message that issued a tool call paid for it; it did not answer. The abort clause's wording moved from "answer-bearing" to "usage-bearing" so the two vocabularies are named for what they classify.
+
+DEC-097 carries the corrected rule and the residuals. Design revision 64.
 """
 
 [[finding.turn]]
@@ -408,6 +414,34 @@ Corrected mapping (design revision 60, sec-4; DEC-097 appended, superseding the 
 **Scope.** Your "even a lower bound" point generalises into the disclosure now in sec-4 and DEC-097: the accumulator bounds this run's own sends, and a nested `pi` or a direct gateway call is outside attribution by construction (bash and the launch environment are granted), with IDE-015 as the mechanism for that boundary. That is RV-046 F-4's substance, disposed separately.
 
 The phase-placement constraint is unchanged and still stands: the mapping is an obligation on the phase's exit criteria, with your two traces as its negative controls, and this ledger entry remains unverified until that phase exists.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The responder's source correction and the two former negative controls are now right: removing auto_retry_start/summarization_retry_attempt_start fixes those double counts. I also read DEC-097's subsequently recorded operator acceptance of unmeasured failures and nested-spend limits; those concessions are no longer grounds for this contest. The new claim 'one record per provider send / requests exact for this run' is nevertheless still false. Installed pi 0.99.1 AgentSession._checkCompaction emits compaction_end(reason=overflow, result absent, errorMessage='Context overflow recovery failed after one compact-and-retry attempt...') when _overflowRecoveryAttempted is already true, then returns without a new _runAutoCompaction or provider request (embedded source near byte 92,554,884). I executed that extracted method with controlled state and stubbed sends: ZERO new provider sends, ONE compaction_end; revision-62's unconditional compaction_end row adds ONE request. More generally compaction_end is a lifecycle/failure event, not proof of a send. Reconcile it with actual attempt evidence or narrow the claimed unit; add this zero-send diagnostic trace beside the two corrected retry traces in the criterion. Additionally, the table matches literal stopReason 'tool_use', whereas pi's documented and implemented wire value is 'toolUse'; without an explicit normalisation those ordinary tool-using turns match neither accounting branch. Fix the input mapping, not just the output vocabulary. This is the same counting mechanism, not a new routed sibling. The demonstrate finding remains unverified pending phase criteria, but the current mechanism needs another response."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Upheld again, and both halves are right.
+
+**The diagnostic `compaction_end`.** Verified: `_runAutoCompaction` sets `started`, emits `compaction_start` only after preparation succeeds, and guards its failure-path `compaction_end` on that same flag — but the overflow-recovery path emits a `compaction_end` ("context overflow recovery failed after one compact-and-retry attempt") from outside any such window, and the durable-drive path emits `status: "declined"` ones. My rule counted every `compaction_end`, so each of those added a request that never happened.
+
+Fixed by giving the summarization side the state your memory note said it needed, rather than another row:
+
+- assistant sends stay stateless — one `message_end` per send (verified: the agent loop's `done`/`error` paths and `handleRunFailure` each emit exactly one);
+- `compaction_start` and `summarization_retry_attempt_start` **open** an attempt window; `summarization_retry_scheduled` (+1 unmeasured) and `compaction_end` (+1, priced when `result.usage` is present) **close** one;
+- a `compaction_end` finding no open window counts **nothing**, and the window is clamped at zero so a diagnostic cannot drive it negative.
+
+Traces are the tests now: success 1, fail-then-success 2, two fails + success 3, all-fail chain 3, error-then-stop 2, and the overflow diagnostic **0** — the last being your case as a negative control. Two residuals are stated in sec-4: a summarization declined *after* its window opened would overcount by one (only reachable via a `session_before_compact` extension handler, and the server runs `--no-extensions`), and a failure emitting neither usage nor a scheduling record would undercount by one — under-reporting requests, never tokens or cost.
+
+**`tool_use`.** Mapped explicitly as its own paragraph, because one record carries two classifications that were being read into each other: a `message_end` with stop reason `tool_use` or `deferred` is a **counted request with priced usage that must validate**, and it is **not an answer** — `final: false`, `result: null`. A message that issued a tool call paid for it; it did not answer. The abort clause's wording moved from "answer-bearing" to "usage-bearing" so the two vocabularies are named for what they classify.
+
+DEC-097 carries the corrected rule and the residuals. Design revision 64.
 """
 
 [[finding]]

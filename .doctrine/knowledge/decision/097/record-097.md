@@ -170,3 +170,41 @@ accounting concession, so the weaker properties are named together rather than
 discovered one at a time. They do not change the shape of the guarantee the
 ledger rows describe: row 5c remains retrospective accounting with best-effort
 termination, and neither acceptance permits a claim of complete attribution.
+
+
+## RV-043 F-6 (third contest): summarization needs an attempt window
+
+"One counting record per send" was right for assistant sends and wrong for
+summarization, because `compaction_end` is also emitted for outcomes that never
+reached the provider: the overflow-recovery diagnostic ("context overflow recovery
+failed after one compact-and-retry attempt"), a declined summarization, and an
+abort before the attempt began. Counting every `compaction_end` overcounts.
+Verified in the installed build: `_runAutoCompaction` sets `started` and emits
+`compaction_start` only after preparation succeeds, guards its failure-path
+`compaction_end` on that same flag, and the overflow diagnostic emits
+`compaction_end` outside any such window.
+
+The accumulator therefore keeps one bit, an **attempt window**:
+
+- assistant sends: one `message_end` each, no state needed;
+- `compaction_start` and `summarization_retry_attempt_start` **open** a window;
+- `summarization_retry_scheduled` (+1, unmeasured) and `compaction_end` (+1, and
+  priced when `result.usage` is present) **close** one;
+- a `compaction_end` that finds no open window counts **nothing**, and the window
+  count is clamped at zero so a diagnostic cannot drive it negative.
+
+Traces, all as tests: success 1; fail-then-success 2; two fails then a success 3;
+an all-fail chain 3; error-then-stop assistant pair 2; the overflow diagnostic 0.
+
+Residuals: a summarization declined *after* its window opened would overcount by
+one — reachable only through a `session_before_compact` extension handler, and the
+server runs `--no-extensions`; and a failure that emits neither `result.usage` nor
+a scheduling record undercounts by one, which under-reports requests and never
+under-reports tokens or cost.
+
+### `tool_use` and `deferred` are usage-bearing, not answers
+
+Explicit, because one record carries two classifications: a `message_end` with
+stop reason `tool_use` or `deferred` is a counted request whose usage must
+validate, and it is not an answer — `final: false`, `result: null`. A message that
+issued a tool call paid for it; it did not answer.

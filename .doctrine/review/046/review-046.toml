@@ -22,6 +22,11 @@ act = "conclude"
 role = "raiser"
 note = "Re-examined the full materialised SL-029 revision-56 design, synthesized scope and relevant amended decision records, rather than relying on this pass's revision-48 analysis. All four original open majors still require responder disposition: initial-build static-policy rejection, active switch-policy read failure, cross-server session locking, and the newly disclosed but undispositioned nested-spend limitation. Added F-5 major for the revision-56 choice to leave live profile authority editable by a source-root writer, and F-6 minor for timeout/backstop cause-vocabulary inconsistency. Raiser replies to RV-043 were recorded there: three new design verifications, one evidence-backed accounting contest, three demonstrate findings deliberately left answered pending phase criteria. Reproduced retry overlap using extracted installed pi 0.99.1 methods with stubbed sends and recorded mem.fact.pi.retry-events-overlap-completions; no provider or network calls, implementation edits or accepted user acts. Refreshed the selector cache and this brief but did not counterfeit the managed run's separate STALE content binding, which still reports stale against revision 56. This conclusion records the current examination, not design approval or completed reconciliation."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Revision-62 raiser continuation over all six responses. Unsupported-posture refusal, fail-closed policy-source polling, startup profile snapshot and canonical timeout vocabulary are now explicit design repairs. DEC-097 records operator acceptance of the nested-spend limitation, so that concession is no longer disputed. These demonstrate-routed answers remain answered until their obligations are transcribed to phase criteria. F-3 is contested: exclusive fresh creation does not itself make stale-lock reclamation exclusive or prevent deleting a successor's live ownership; an isolated temporary-file interleaving reproduced two successful reclaimers. Required response adds safe recovery/identity semantics and a two-reclaimer negative control, not another fresh-admission test. No new findings were duplicated here, no design/code edits, and no unearned implementation verification or user acceptance."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
@@ -112,16 +117,20 @@ detail = "Expected: same-session concurrency is refused across the actual deploy
 disposition = "fix-now"
 route = "demonstrate"
 response = """
-Accepted. The lock was specified without a scope, so an in-memory busy map would have passed the stated test while two drivers ran two servers over one session home.
+Upheld. The race is real: unlink-then-create lets two reclaimers both unlink, and the second's unlink can delete the first's freshly created lock — after which both create and both believe they own the session. `O_EXCL` protects one create, not the delete-create pair.
 
-Fixed in design revision 60 (sec-6) and DEC-099's appended amendment: the lock and the first-use (root, capability) binding are **files in the server's own state directory**, outside every child bind, and atomic across processes:
+Fixed in design revision 64 (sec-6) and DEC-099's appended amendment by making reclaim **an election**:
 
-- the lock is created with `O_EXCL`, carrying pid, call id and start time; a racing process fails the create and refuses `session-busy` **before any side effect**, which is what makes "exactly one spawns" true across processes rather than within one;
-- the binding is written in the same atomic step as first use, so two processes cannot record different bindings for one session;
-- ownership is held through termination, reap and drain, and released last;
-- crash recovery is specified: a lock whose recorded pid is no longer alive is reclaimed, and the reclamation is recorded in `attempts.jsonl` rather than done silently — a silently reclaimed lock is a session that changed hands with no evidence.
+1. ownership is conferred only by the `O_EXCL` create of `<state>/sessions/<id>.lock`;
+2. a reclaimer elects itself by **atomically renaming** the stale lock to a private name — exactly one `rename` of a given path can succeed, so there is a single winner by construction;
+3. the winner verifies the file it now holds is the file it inspected (same device and inode), re-confirms its owner is dead, creates the successor with `O_EXCL`, and only then unlinks its own copy;
+4. every loser — of the rename, of the inode check, or of the `O_EXCL` — refuses `session-busy` instead of retrying, so a lost election never becomes a delete race;
+5. a reclaimer that dies mid-reclaim leaves the lock **absent**, so the next caller's `O_EXCL` create simply succeeds — double ownership is unreachable, and the worst case is an orphan private file for ops to prune;
+6. owner identity is pid **plus kernel start time**, since a bare pid is reused, and unknowable liveness (no `/proc`) resolves to `session-busy`; every reclaim is recorded in `attempts.jsonl`.
 
-sec-7 names the demonstration: two independent server processes sharing one state root, exactly one of two simultaneous same-session calls spawning, including a first-use race with conflicting root/capability, the loser refused before side effects.
+sec-7's session test now includes it: two processes presented with one stale lock, exactly one may reclaim and spawn, the loser refuses, and a reclaimer killed mid-rename leaves state the next caller can take without double ownership.
+
+The pending item is unchanged and still not claimed: this is a design rule with a named test, verified only when the phase criterion exists.
 """
 
 [[finding.turn]]
@@ -144,6 +153,33 @@ Fixed in design revision 60 (sec-6) and DEC-099's appended amendment: the lock a
 - crash recovery is specified: a lock whose recorded pid is no longer alive is reclaimed, and the reclamation is recorded in `attempts.jsonl` rather than done silently — a silently reclaimed lock is a session that changed hands with no evidence.
 
 sec-7 names the demonstration: two independent server processes sharing one state root, exactly one of two simultaneous same-session calls spawning, including a first-use race with conflicting root/capability, the loser refused before side effects.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The scope is now correctly cross-process and O_EXCL addresses simultaneous fresh admission, but the new crash-recovery rule is not safe merely because creation is exclusive. Revision 62/DEC-099 says a dead-owner lock is reclaimed; it gives no serialisation/identity rule for two reclaimers. A concrete implementation allowed by that description lets both read old lock L as dead, A unlink L and create its live lock with O_EXCL, then B unlink the pathname (now A's lock) and also succeed with O_EXCL. I reproduced that interleaving in an isolated temporary-directory fixture: both acquired successfully and B replaced A's live ownership. This is not a claim that nonexistent production code already implements that algorithm; it is a counterexample to O_EXCL creation alone proving the stated recovery guarantee. Require reclamation to participate in the same exclusion protocol, prevent deletion/release of a successor's lock, and preserve/recover first-use binding under that ownership. Add a two-server stale-lock race and crash-during-initialisation case to the criterion, not just two fresh contenders. PID/call/start metadata must support identity validation, not merely be decorative. Keep the response instrument-routed and unverified until phase criteria exist; no particular locking library is being prescribed."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Upheld. The race is real: unlink-then-create lets two reclaimers both unlink, and the second's unlink can delete the first's freshly created lock — after which both create and both believe they own the session. `O_EXCL` protects one create, not the delete-create pair.
+
+Fixed in design revision 64 (sec-6) and DEC-099's appended amendment by making reclaim **an election**:
+
+1. ownership is conferred only by the `O_EXCL` create of `<state>/sessions/<id>.lock`;
+2. a reclaimer elects itself by **atomically renaming** the stale lock to a private name — exactly one `rename` of a given path can succeed, so there is a single winner by construction;
+3. the winner verifies the file it now holds is the file it inspected (same device and inode), re-confirms its owner is dead, creates the successor with `O_EXCL`, and only then unlinks its own copy;
+4. every loser — of the rename, of the inode check, or of the `O_EXCL` — refuses `session-busy` instead of retrying, so a lost election never becomes a delete race;
+5. a reclaimer that dies mid-reclaim leaves the lock **absent**, so the next caller's `O_EXCL` create simply succeeds — double ownership is unreachable, and the worst case is an orphan private file for ops to prune;
+6. owner identity is pid **plus kernel start time**, since a bare pid is reused, and unknowable liveness (no `/proc`) resolves to `session-busy`; every reclaim is recorded in `attempts.jsonl`.
+
+sec-7's session test now includes it: two processes presented with one stale lock, exactly one may reclaim and spawn, the loser refuses, and a reclaimer killed mid-rename leaves state the next caller can take without double ownership.
+
+The pending item is unchanged and still not claimed: this is a design rule with a named test, verified only when the phase criterion exists.
 """
 
 [[finding]]
