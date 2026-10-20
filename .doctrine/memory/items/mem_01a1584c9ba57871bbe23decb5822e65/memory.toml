@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1584c9ba57871bbe23decb5822e65"
+memory_key = "mem.fact.pi.two-env-axes"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Running pi from a host shell: PI_BIN and PI_MODEL are two separate environment axes"
+summary = "Which pi and which provider are independent. Outside a jail, bare pi holds no gateway credential, so the correct default is PI_BIN=jailed-pi (the jail supplies the key and the model catalog) and PI_MODEL is then unnecessary; inside a jail, leave PI_BIN unset because jailed-pi is on PATH and would nest. Separately: pi --list-models showing only deepseek plus 'No models match pattern llm-gateway/...' is a provider-REGISTRATION symptom of LLM_GATEWAY_KEY missing from that shell (positive control: env -u LLM_GATEWAY_KEY reproduces it, exporting the key fixes it), not a broken models.json and not a missing gateway. Both axes are explicit, never detected: detection mis-fires in both directions."
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi", "harness", "jail", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "8dd4c364e47edb40e159012cd171a76ac02dd70a"
+ref_name = "refs/heads/main"
+checkout_state_id = "d084011f7abdcfb1ec09f1827dc6bac13e683c042aee2dbacad8a6d6c60d349c"
+base_commit = "e99d5b9b9f1f46796405c76fb28977925fde3ec7"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
