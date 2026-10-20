@@ -60,3 +60,34 @@ Precedence: the **earliest** cause wins, and a cause discovered after the child
 has settled still decides the state — a run cannot claim success when the reason
 it stopped was an audit or accounting failure. `transcript` is returned in every
 case; only `result`/`final` are withdrawn.
+
+## RV-043 F-5 (second pass) and F-12: provisional success, the commit point, a total cause order
+
+F-5 was contested once more, correctly. The previous table made a terminal `stop`/`length` sufficient for `completed`, so a valid answer message followed by EOF without `agent_settled`, or by a nonzero exit, still read as success. The F-12 rule then contradicted itself: "earliest cause wins" cannot coexist with "a cause discovered after settling still decides".
+
+Corrected. **Success is one predicate, not a table row**: `completed` iff a terminal assistant message exists with stop reason `stop` (or `length`, which also sets `truncated: true`), **and** `agent_settled` was observed, **and** the child exited 0, **and** accounting is known, **and** the abort latch is empty at the commit point.
+
+The **abort latch** collects causes as they are discovered. `completed` is provisional until the **commit point** — after the termination ladder, reap, stream drain, final accounting, and the `exit` and abort evidence appends. Any cause recorded before that point decides the state; nothing runs after it, so there is no window for a post-commit surprise.
+
+The result carries `causes` (ordered by discovery) with `termination = causes[0]`, and the state is `causes[0]`'s row. A later cause is never hidden behind an earlier one: audit failure after a timeout reports `termination: "timeout"`, `causes: ["timeout","audit"]`.
+
+| cause | state | final | result |
+|---|---|---|---|
+| `stop`, and the success predicate holds | `completed` | true | text |
+| `length`, and the success predicate holds | `completed` | true (truncated) | text |
+| `error` / `aborted` terminal | `failed` | false | null |
+| `tool_use` / `deferred` terminal, no later message | `incomplete` | false | null |
+| stream ended with no terminal assistant message, exit 0 | `incomplete` (`eof`) | false | null |
+| child exited nonzero | `failed` (`exit`) | false | null |
+| spawn failed after the run directory was allocated | `failed` (`spawn`) | false | null |
+| backstop fired | `timeout` | false | null |
+| MCP cancel / stdin EOF / driver death | `cancelled` | false | null |
+| switch flipped mid-run | `cancelled` (`switch`) | false | null |
+| measured ceiling crossing | `ceiling_exceeded` (`ceiling`) | false | null |
+| unknown or unpriced usage | `accounting_unknown` (`accounting`) | false | null |
+| evidence append failed mid-run | `audit_failed` (`audit`) | false | null |
+| nothing spawned | `refused` (its own refusal token, or `audit-failed` / `audit-unavailable`) | false | null |
+
+Pre-spawn failures are refusals, never states: an audit append that fails before spawn discards the run directory and refuses `audit-failed`; an unwritable `attempts.jsonl` refuses `audit-unavailable`. `audit_failed` as a *state* exists only for a spawned run.
+
+And the reconciliation line the F-6 class needed: `status.state` judges the **stream**, `state` judges the **call**. They differ only when the deciding cause arose outside the stream (`exit`, `spawn`, `audit`, `accounting`, `backstop`), and `causes` names it.

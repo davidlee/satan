@@ -28,7 +28,10 @@ pi_agent(prompt, profile, cwd?, session?, tools?, ceilings?, transcript_budget_b
   as `bin/pi-run-reduce` is).
 - Underneath: `pi --mode json`, prompt on the child's stdin, a backstop on the
   wall clock, a per-run dir holding `events.jsonl`, `transcript.md`, `status.json`
-  and `audit.jsonl`. Process exit is completion — no fifo, no poll, no group kill.
+  and `audit.jsonl`. Process exit is completion — no fifo, no tail poll. The
+  server still owns what the shell scripts made look like streaming machinery: a
+  per-call termination domain (process-group ladder, DEC-096) and an idle gate
+  tick bounded to about a second.
 - **Two postures, chosen by the operator** (DEC-100): a wrapper per call
   (default — many roots, one capability per profile) or a static launch-time jail
   around the server (one root, one capability, and the server's own writes
@@ -52,14 +55,14 @@ pi_agent(prompt, profile, cwd?, session?, tools?, ceilings?, transcript_budget_b
 - The reducer is **imported, not shelled out**: one implementation serves the
   shell entry point and the server.
 
-**Affected surface:** `pi/mcp/**`, `bin/pi-mcp`, `pi/reduce/reduce.ts` (one added
-field), `flake.nix` (the wrapped forms and the static-mode derivation),
-`justfile` (test hook).
+**Affected surface:** `pi/mcp/**`, `bin/pi-mcp`, `pi/reduce/reduce.ts` (one
+accumulator plus its fields), `flake.nix` (the two per-call wrapped forms; the
+static-mode derivation is deferred, DEC-100 build status), `justfile` (test hook).
 
 **Verification intent.** TDD at the seams that can be tested offline: argv
-construction, profile→tool resolution, jail refusal, exit/state mapping, result
-shape — with `pi` stubbed on `PATH`. One live smoke run against deepseek-flash
-recorded as evidence, not as a gate.
+construction, profile→tool resolution, jail and child-view refusal, exit/state
+mapping, result shape — with `pi` stubbed on `PATH`. One live smoke run, per-call
+posture, against deepseek-flash, recorded as evidence, not as a gate.
 
 ## Non-Goals
 
@@ -114,10 +117,16 @@ more than a clean page.
   (`setsid`); the jail sets `no-new-session`, so no group exists otherwise. Killing
   `-pid` without that would be a no-op or would fell the server (DEC-096
   amendment).
+- **Evidence isolation is a check, not a bind list.** "Bound into no child" is
+  not isolation: a root or a fixed mount that *contains* a protected store
+  exposes it, and DEC-095 lets an operator allowlist `$HOME` or `/`. sec-2 and
+  sec-3 therefore refuse `view-overlaps-protected` over the effective child view,
+  which makes a broad root a cost (relocate the stores or narrow the root) rather
+  than a free override.
 - **Evidence isolation differs by posture.** Per-call mode can keep evidence out
   of every child bind; static mode cannot, in a single-uid jail (DEC-094
   amendment). The posture choice is therefore a security choice, not a
-  convenience.
+  convenience — and static mode is not in the initial build.
 - **Authority placement.** ADR-017 §3: five `pi-mcp` rows plus one `satan-flake`
   execution-profile row (DEC-091), with row 5c worded as retrospective accounting
   and row 6c covering admission refusal *and* active halt.
@@ -139,9 +148,10 @@ more than a clean page.
   `researcher` profile was absent from this repo, its model disagrees with
   `CLAUDE.md`, and outside the jail the `deepseek` provider key is invalid.
 
-**Promoted to delivery (no longer a follow-up):** the wrapped forms. sec-3 and
-sec-7 make the read-only and read-write launchers, and the static-mode derivation
-that carries pi in its closure, part of this slice. They are declarations in
+**Promoted to delivery (no longer a follow-up):** the two **per-call** wrapped
+forms. sec-3 and sec-7 make the read-only and read-write launchers part of this
+slice; the static-mode derivation that carries pi in its closure stays deferred
+with the rest of static mode (DEC-100 build status). They are declarations in
 `flake.nix` using the existing `makeJailedAgent` API and combinators, not work in
 the pinned `flakes/agents` input — an earlier note in this slice called them a
 cross-repo dependency, which was wrong.

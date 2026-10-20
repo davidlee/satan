@@ -168,3 +168,55 @@ allowlisting, refusal/result contracts).
 Two consequences worth carrying into the plan: static mode's evidence mitigation
 trades tamper-resistance for crash-durability, and it must bind the policy file
 read-only or the child can rewrite its own switch.
+
+## RV-043 second response: five contests adjudicated (design rev 54)
+
+State before this pass: F-2/F-3/F-4/F-8/F-10 verified, F-7/F-9 answered and
+unverified, F-1/F-5/F-6/F-11/F-12 contested. After: all five re-disposed
+`fix-now` and answered, `await=raiser`. RV-046 (four majors) is the current pass
+and is now marked STALE against revision 54 — it must be re-read, not assumed
+still accurate.
+
+What changed, and why the earlier answer was insufficient:
+
+- **F-1 (blocker).** "No evidence bind" was not isolation: `containment` is the
+  property. New policy key `child_binds` + refusal `view-overlaps-protected` over
+  the canonicalised child view, with the protected set classified by harm
+  (evidence/attempts/other sessions unreachable; policy file never writable;
+  profile documents deliberately unprotected because a write root already owns
+  the code). Refusal over masking because masking means the server authoring
+  bwrap args. Stated limit: binds the flake adds and the policy omits are
+  invisible to the server, so the flake check asserts the form's bind set equals
+  root + session dir + `child_binds`.
+- **F-5.** Success had been defined by message content alone, so `stop` + EOF
+  without `agent_settled`, or + nonzero exit, read as completed. Success is now a
+  conjunction (terminal answer-bearing message, `agent_settled`, exit 0,
+  accounting known, empty abort latch). `final` is a two-reason rule (`stop`;
+  `length` + `truncated`).
+- **F-6.** The counting units are defined per record (see DEC-097's amendment).
+  Two raiser claims were pushed back with pi's docs: a retried turn counting both
+  `auto_retry_start` and the final `message_end` is correct (two sends, no
+  `message_end` for the failed one), and deduplication needs no request id because
+  each counting record belongs to exactly one class.
+- **F-11.** Delivery projections swept: "no group kill" line, Affected surface,
+  Promoted-to-delivery, sec-7's "both postures"/"per posture"/static closure check.
+- **F-12.** One total rule: provisional success, commit point (after ladder,
+  reap, drain, accounting, evidence appends), abort latch, ordered `causes` with
+  `termination = causes[0]`. Rows added for `tool_use`/`deferred`/`eof`/`exit`/
+  `spawn`. Pre-spawn audit failure is a refusal (`audit-failed`), never a state.
+  DEC-096's stale cancellation row (`incomplete` → `cancelled`) was found while
+  sweeping the class.
+
+Process notes worth keeping:
+
+- `doctrine design apply` replaces a section body **wholesale**. The first pass
+  silently dropped sec-3's "Executable contract" and sec-4's "Termination"
+  subsections because they were not in the payload (revision 51 restored them).
+  Always diff the materialised document after an apply, not just the fingerprints.
+- `doctrine design show` renders the authored document, so a section edit is
+  invisible until `doctrine design materialise` runs; and materialise itself
+  advances the revision (49 → 50, 53 → 54).
+- Adjacent and still open: RV-046 F-1's substance (sec-1 presenting both postures
+  as supported) is partly addressed here by labelling sec-1's static row
+  "designed, not built here", but its fail-closed question for the deferred mode
+  is untouched — do not treat it as discharged.

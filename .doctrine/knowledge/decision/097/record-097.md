@@ -55,3 +55,24 @@ bounded to about a second by event cadence plus an idle poll. A flip aborts the
 in-flight run through the shutdown ladder, audited as `abort(switch)`, and the
 next call is refused `disabled`. Admission refusal and active halt are two
 distinct behaviours with two distinct names; row 6c covers both.
+
+## RV-043 F-6: the counting units, per record
+
+"Count usage from the stream" was not implementable: "retry attempts" named no record, and a retried turn can look like both a retry and a completion. The units, by record:
+
+| record | requests | tokens | cost |
+|---|---|---|---|
+| `message_end`, `role: assistant`, carrying usage | +1 | + `input`, `output`, `cacheRead`, `cacheWrite` | + `usage.cost.total` |
+| `compaction_end` carrying `result.usage` | +1 | as above | as above |
+| `auto_retry_start` | +1, unmeasured | — | — |
+| `summarization_retry_scheduled` | +1, unmeasured | — | — |
+| `summarization_retry_attempt_start` | +1, unmeasured | — | — |
+| everything else — `agent_end`, `turn_end`, `*_end`, `summarization_retry_finished` | — | — | — |
+
+No record is counted twice: a failed send emits its retry record and no completion record; a successful send emits its completion record only. `agent_end.messages` replays already-counted turns and is ignored for usage.
+
+Requests are an **observed lower bound** on provider sends, and the gaps are named rather than implied: a send that emits no record at all, an abandoned summarization chain's last attempt, and any nested agent the delegate launches for itself. A failed attempt is counted but not priced — it increments `requests_unmeasured` instead of being silently zero.
+
+Usage validity: a completed response with absent, non-finite or negative usage, or without `cost.total`, aborts `accounting_unknown`. A cached read priced at zero is a price, not missing data. `cacheWrite` counts; `cacheRead` is reported as `cached`. Every counting record triggers a gate check, and the same accumulator produces the returned status.
+
+The policy artefact also carries `child_binds` — the fixed mounts the wrapped form adds beyond the root and the session directory — because the server cannot check disjointness (design sec-3) against binds it was never told about.

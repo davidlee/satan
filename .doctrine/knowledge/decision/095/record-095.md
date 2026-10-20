@@ -18,3 +18,9 @@ A validity grammar (absolute, existing, not `/`, not `$HOME`) catches accidents 
 ## Consequence
 
 The policy artefact (inq-12) is doubly load-bearing: it carries the ceilings and the root allowlist. Absent policy fails closed, which is also the root-authorisation story.
+
+## RV-043 F-1 (indirect exposure): a broad allowlist entry does not override the protected stores
+
+Allowlisting `$HOME` or `/` remains permitted, and now has a stated cost: the child-view disjointness check refuses `view-overlaps-protected` while such a root reaches the evidence stores or another session's directory (any exposure at all), or the policy file (a writable exposure — this root as `write`, or a rw fixed bind). Broad reach and reachable control stores are not both grantable; the operator narrows the root or relocates the stores, and the refusal names the path. Masking the store instead of refusing would mean the server authoring bwrap args (SPEC-001 REQ-009), which is the split this decision already refuses.
+
+The tracked profile documents are deliberately **not** in the protected set: a write-capable root already confers authority over the server's own code and flake forms, so guarding them would be theatre.

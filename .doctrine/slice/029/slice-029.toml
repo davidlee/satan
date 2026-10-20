@@ -16,7 +16,33 @@ intent = "scope-relevant"
 
 [[selector]]
 selector = "bin/pi-mcp"
+intent = "design-target"
+note = "the code-impact commitments in sec-7"
+
+[[selector]]
+selector = "pi/reduce/**"
 intent = "scope-relevant"
+note = "added after the review: the reducer gains the result/accounting fields, and the two per-call wrapped forms are flake declarations (the static-mode derivation is deferred, DEC-100 build status)"
+
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+note = "the code-impact commitments in sec-7"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+note = "the code-impact commitments in sec-7"
+
+[[selector]]
+selector = "pi/mcp/**"
+intent = "design-target"
+note = "the code-impact commitments in sec-7"
+
+[[selector]]
+selector = "pi/reduce/reduce.ts"
+intent = "design-target"
+note = "the code-impact commitments in sec-7"
 
 [[relation]]
 label = "governed_by"

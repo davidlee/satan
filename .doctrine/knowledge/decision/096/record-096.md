@@ -4,7 +4,7 @@ Every termination path uses the same ladder: SIGTERM to the child's process grou
 
 | trigger | behaviour |
 |---|---|
-| MCP `notifications/cancelled` | ladder; result `state: incomplete`, partial transcript, audit `abort(cancelled)` |
+| MCP `notifications/cancelled` | ladder; result `state: cancelled`, `termination: "cancelled"`, partial transcript, audit `abort(cancelled)` |
 | server stdin EOF | ladder, then the server exits (EOF is shutdown: the driver owns its stdin) |
 | driver death | the above, via EOF or SIGTERM |
 | server SIGTERM | ladder, then exit |
@@ -34,5 +34,14 @@ fire-and-forget, no backgrounding — not session isolation. Restated, because
 conflating the two is what left the ladder without a group to signal.
 
 Verification: two simultaneous calls plus a grandchild that ignores SIGTERM;
-cancel one and assert its subtree is gone after the grace, the other call and the
+cancel one and assert its subtree is gone after the grace, the other calls and the
 server remain alive, and the session lock is released only after cleanup.
+
+## RV-043 F-12: a cancel is its own outcome
+
+The trigger table above said a cancellation returns `state: incomplete`, which
+predates DEC-093's cause table. Cancellation is a named cause with its own state —
+`cancelled`, `final: false`, `result: null`, partial transcript returned — so a
+driver can tell "the model had not finished" from "we stopped it". Corrected in the
+table above; `causes` carries any later cause (an audit append that also failed)
+rather than hiding it.

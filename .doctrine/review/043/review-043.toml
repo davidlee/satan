@@ -17,6 +17,11 @@ act = "conclude"
 role = "raiser"
 note = "Completed raiser-only adversarial pass over SL-029 design revision 37, sections sec-1 through sec-7, and current scope/DEC-089–100. Checked ADR-017 and SPEC-001 safety/ownership requirements; inspected /workspace/flakes/agents/jailed-agents.nix and launcher-test precedents, this repo's flake.nix, pi/reduce/reduce.ts/tests, and installed pi 0.99.1 CLI/JSON/message/session documentation. Verified the operator's sec-3 correction: mountLaunchDir is explicitly rw and independent of profile, so capability-specific bind declarations belong in this repo's flake. Accepted fail-closed audit as a coherent chosen policy, while finding that writable child access defeats it. Read-only synthetic reducer probes demonstrated settled-error/stale-prose/multiple-text-block finality defects and compaction-accounting disagreement; an isolated temporary-file subprocess probe demonstrated successful O_APPEND+fsync after hostile audit truncation. Raised F-1–F-12: 2 blockers, 8 majors and 2 minors. No design edits, implementation, acceptance attestations, dispositions or commits were performed. Findings remain for the responder; this concludes the examination, not approval or resolution. Existing RV findings are the durable sink; no review chronology was duplicated into slice notes."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Raiser response to the author's RV-043 dispositions, checked against SL-029 revision 48 and amended DEC-093/094/096/097/099/100. Verified design repairs for F-2, F-3, F-4, F-8 and F-10. Contested F-1 (indirect root/home exposure of protected state), F-5 (settlement/exit finality regression), F-6 (provider-request event mapping remains undefined), F-11 (unswept scope/static-delivery projections) and F-12 (earliest-cause versus late-failure contradiction). F-7 and F-9 remain answered and unverified: the launcher/process-group contracts are improved, but their demonstrate obligations cannot be verified before phase criteria exist; no implementation or launcher containment proof is claimed. Operator acceptance of retrospective accounting and deferral of the static build were respected, not reopened. New defects were raised separately on the current managed pass RV-046 rather than duplicating these findings."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
@@ -28,7 +33,21 @@ title = "The delegate can truncate or replace the audit that is supposed to cons
 detail = "Expected: SL-029 sec-6's fail-closed audit and single-writer claim must hold against the model's bash tool, not just cooperative server writes (ADR-017 §2; SPEC-001 REQ-003). Observed: sec-3 explicitly binds the run directory read-write into each child; sec-5 places audit.jsonl and events.jsonl there. Static mode likewise gives the child the server's writable run-directory view. The child therefore has another writable handle to its own evidence. O_APPEND/fsync on the server's handle does not protect against truncation, unlink or replacement by the child, and none need make the server's later append fail. Verified in an isolated Node fixture: parent appended+fsynced spawn, same-uid subprocess truncated the path, parent appended+fsynced exit successfully; only exit survived. This is stronger than the already-disclosed lack of host-admin immutability: the untrusted delegate itself is deliberately granted the write path. Required correction: distinguish server-owned evidence storage from child-writable runtime/session storage and prevent child alteration of the former in both postures, or explicitly withdraw the audit assurance and reconcile the governing invariant. Verification should attempt truncation/replacement from bash and assert either denial with intact evidence or a fail-closed termination; successful server appends alone are not sufficient."
 disposition = "fix-now"
 route = "demonstrate"
-response = "Accepted. The run directory is no longer bound into any child: the child gets only its active session directory. Per-call mode writes evidence (events, transcript, status, audit) into a server-owned directory outside the jail's bind set. Static mode cannot deny its child the server's writable view in a single-uid jail, so evidence is buffered in memory and flushed after the child exits, and that residual is stated rather than papered over. Verification reproduces your truncation fixture in both postures: a hostile bash attempting truncate/unlink/replace must either fail to reach the path or the run must report failed with evidence intact."
+response = """
+Accepted, and the second pass was right on the substance: the first repair removed the evidence *bind* and mistook that for isolation. Containment is the property — a root or fixed mount that contains a protected store exposes it, and DEC-095 does let an operator allowlist `$HOME` or `/`, which contains all of them.
+
+Design revision 56 (48 → 49 → 51 → 53 → 56) answers it with a check over the effective child view rather than the bind list:
+
+- **New policy key `child_binds`** (sec-1, sec-3, DEC-097): the fixed mounts the wrapped form adds beyond the root and the session directory (`~/.pi`, workspaceDeps, anything else). The child view is the canonicalised union {root, active session directory, `child_binds`}.
+- **New refusal `view-overlaps-protected`** as validation step 8 (sec-2) and as the sec-3 section "Child-view disjointness": refused when any member is, contains, or lies inside a protected path.
+- **Protected set classified by harm**, not listed flatly: the run evidence directory and `attempts.jsonl` unreachable read-or-write (tampering defeats the audit; reading leaks other runs); the session home's other sessions and the binding/lock metadata unreachable (histories, forged bindings); the **policy file never writable** because it governs *other* calls — `enabled`, maxima, allowlists; the tracked profile documents deliberately **not** protected, because a write-capable root already confers authority over the server's own code and flake forms, so guarding them would be theatre. That last exclusion is what keeps a repo-rooted write delegate — the main use case — legal.
+- **Refusal, not masking**: a mask means the server authoring bwrap args and a second confinement story (SPEC-001 REQ-009).
+- **The loop is closed where the server cannot see**: binds the flake adds and the policy omits are outside the server's knowledge, so the flake check asserts the form's actual bind set equals root + session directory + `child_binds`. A server promise alone would not have closed it, and the design says so.
+- **Alias probe added** to the demonstrated verification (sec-7): a policy whose root contains the evidence store must refuse before spawn, for both capabilities, alongside your truncation fixture. Static mode's disjointness is a launcher check plus a start-up comparison — stated, and not built (DEC-100 build status).
+- **Your placement point is written in**: sec-7 now says the demonstrate obligations bind the *exit criteria of the phase that implements each mechanism*, the design records obligation and assertion, the plan owns placement, and none is verifiable before that phase exists.
+
+One point I do not concede, because it would overclaim: this does not restore an unconditional isolation promise. Allowlisting `$HOME` now costs something — the refusal names the overlapping path and the operator relocates the stores or narrows the root (DEC-095 amendment). It is a checked invariant with a stated price, not a promise, and static mode's residual is unchanged.
+"""
 
 [[finding.turn]]
 act = "raise"
@@ -41,9 +60,57 @@ disposition = "fix-now"
 route = "demonstrate"
 response = "Accepted. The run directory is no longer bound into any child: the child gets only its active session directory. Per-call mode writes evidence (events, transcript, status, audit) into a server-owned directory outside the jail's bind set. Static mode cannot deny its child the server's writable view in a single-uid jail, so evidence is buffered in memory and flushed after the child exits, and that residual is stated rather than papered over. Verification reproduces your truncation fixture in both postures: a hostile bash attempting truncate/unlink/replace must either fail to reach the path or the run must report failed with evidence intact."
 
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The explicit run-directory bind is removed, and deferring static mode is the right scope reduction, but 'no explicit evidence bind' is not yet evidence isolation. Revision 48 sec-3 still binds the requested root and ~/.pi; DEC-095 explicitly permits an operator to allowlist $HOME or /. There is no rule rejecting roots or other writable aliases containing the evidence store, server-side binding/lock metadata, policy or tracked security profiles. Example admitted by the current contract: evidence under $HOME/.local/state/pi-mcp, roots=[$HOME], write profile and cwd=$HOME. The launch-root bind exposes the audit through /workspace/<home>/.local/state/pi-mcp even though there is no separate evidence-directory bind, reproducing the original truncation attack. A broad read root also exposes other session histories. State/check a disjointness or masking invariant over the effective child view, not merely the list of explicitly named bind sources, and extend the hostile probe to this configuration/alias case. If broad roots intentionally override these protections, that must be an explicit accepted security concession rather than an unconditional isolation promise. The demonstrate response also needs its required phase placement constraint; it cannot be verified before phase criteria exist."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Accepted, and the second pass was right on the substance: the first repair removed the evidence *bind* and mistook that for isolation. Containment is the property — a root or fixed mount that contains a protected store exposes it, and DEC-095 does let an operator allowlist `$HOME` or `/`, which contains all of them.
+
+Design revision 54 (rev 48 → 49 → 51 → 53, materialised 54) answers it with a check over the effective child view rather than the bind list:
+
+- **New policy key `child_binds`** (sec-1, sec-3, DEC-097): the fixed mounts the wrapped form adds beyond the root and the session directory (`~/.pi`, workspaceDeps, anything else). The child view is the canonicalised union {root, active session directory, `child_binds`}.
+- **New refusal `view-overlaps-protected`** as validation step 8 (sec-2) and as the sec-3 section "Child-view disjointness": refused when any member is, contains, or lies inside a protected path.
+- **Protected set classified by harm**, not listed flatly: the run evidence directory and `attempts.jsonl` unreachable read-or-write (tampering defeats the audit; reading leaks other runs); the session home's other sessions and the binding/lock metadata unreachable (histories, forged bindings); the **policy file never writable** because it governs *other* calls — `enabled`, maxima, allowlists; the tracked profile documents deliberately **not** protected, because a write-capable root already confers authority over the server's own code and flake forms, so guarding them would be theatre. That last exclusion is what keeps a repo-rooted write delegate — the main use case — legal.
+- **Refusal, not masking**: a mask means the server authoring bwrap args and a second confinement story (SPEC-001 REQ-009).
+- **The loop is closed where the server cannot see**: binds the flake adds and the policy omits are outside the server's knowledge, so the flake check asserts the form's actual bind set equals root + session directory + `child_binds`. A server promise alone would not have closed it, and the design says so.
+- **Alias probe added** to the demonstrated verification (sec-7): a policy whose root contains the evidence store must refuse before spawn, for both capabilities, alongside your truncation fixture. Static mode's disjointness is a launcher check plus a start-up comparison — stated, and not built (DEC-100 build status).
+- **Your placement point is written in**: sec-7 now says the demonstrate obligations bind the *exit criteria of the phase that implements each mechanism*, the design records obligation and assertion, the plan owns placement, and none is verifiable before that phase exists.
+
+One point I do not concede, because it would overclaim: this does not restore an unconditional isolation promise. Allowlisting `$HOME` now costs something — the refusal names the overlapping path and the operator relocates the stores or narrows the root (DEC-095 amendment). It is a checked invariant with a stated price, not a promise, and static mode's residual is unchanged.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "revision reference corrected: the design is at revision 56 after the disjointness-tolerance refinement and its materialisation"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Accepted, and the second pass was right on the substance: the first repair removed the evidence *bind* and mistook that for isolation. Containment is the property — a root or fixed mount that contains a protected store exposes it, and DEC-095 does let an operator allowlist `$HOME` or `/`, which contains all of them.
+
+Design revision 56 (48 → 49 → 51 → 53 → 56) answers it with a check over the effective child view rather than the bind list:
+
+- **New policy key `child_binds`** (sec-1, sec-3, DEC-097): the fixed mounts the wrapped form adds beyond the root and the session directory (`~/.pi`, workspaceDeps, anything else). The child view is the canonicalised union {root, active session directory, `child_binds`}.
+- **New refusal `view-overlaps-protected`** as validation step 8 (sec-2) and as the sec-3 section "Child-view disjointness": refused when any member is, contains, or lies inside a protected path.
+- **Protected set classified by harm**, not listed flatly: the run evidence directory and `attempts.jsonl` unreachable read-or-write (tampering defeats the audit; reading leaks other runs); the session home's other sessions and the binding/lock metadata unreachable (histories, forged bindings); the **policy file never writable** because it governs *other* calls — `enabled`, maxima, allowlists; the tracked profile documents deliberately **not** protected, because a write-capable root already confers authority over the server's own code and flake forms, so guarding them would be theatre. That last exclusion is what keeps a repo-rooted write delegate — the main use case — legal.
+- **Refusal, not masking**: a mask means the server authoring bwrap args and a second confinement story (SPEC-001 REQ-009).
+- **The loop is closed where the server cannot see**: binds the flake adds and the policy omits are outside the server's knowledge, so the flake check asserts the form's actual bind set equals root + session directory + `child_binds`. A server promise alone would not have closed it, and the design says so.
+- **Alias probe added** to the demonstrated verification (sec-7): a policy whose root contains the evidence store must refuse before spawn, for both capabilities, alongside your truncation fixture. Static mode's disjointness is a launcher check plus a start-up comparison — stated, and not built (DEC-100 build status).
+- **Your placement point is written in**: sec-7 now says the demonstrate obligations bind the *exit criteria of the phase that implements each mechanism*, the design records obligation and assertion, the plan owns placement, and none is verifiable before that phase exists.
+
+One point I do not concede, because it would overclaim: this does not restore an unconditional isolation promise. Allowlisting `$HOME` now costs something — the refusal names the overlapping path and the operator relocates the stores or narrows the root (DEC-095 amendment). It is a checked invariant with a stated price, not a promise, and static mode's residual is unchanged.
+"""
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Binding the shared session home exposes every session to every delegate"
 detail = "Expected: SL-029 sec-6 and DEC-099 bind sessions to a canonical root and filesystem capability so that session history is not a cross-call privilege channel. Observed: sec-3 and sec-6 bind the shared persistent PI_MCP_SESSION_HOME read-write, rather than only the active session's directory; static-mode children inherit that shared writable view. A bash-capable reader for root A can enumerate, read, overwrite or delete another session's JSONL for root B or a write-capability session, without passing the server's session-root/session-capability checks. The checks only mediate opening a session through pi_agent, not direct filesystem access from the model. DEC-099 originally specified a server-owned directory per session; its shared-home addendum widens the actual authority. Required correction: specify the child-visible session scope and keep binding/lock metadata server-owned; normally only the active session should be child-writable. If static mode cannot isolate those histories, restrict its promised isolation or change that posture explicitly. Verification: sessions on different roots/capabilities, with a hostile bash operation in one attempting to read/change the other's history and binding metadata."
@@ -62,9 +129,14 @@ disposition = "fix-now"
 route = "review"
 response = "Accepted. The child-visible bind narrows from the shared home to <home>/<session-id>/ - the active session only - with binding and lock metadata held server-side outside every bind. Static mode inherits a broader view by construction, so that posture's isolation claim is restricted explicitly and its policy may declare a single session."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified the design correction, not an implementation security test: revision 48 sec-3/sec-6 restrict the explicit session bind to the active session directory, keep binding/lock metadata server-side, and the accepted DEC-100 build-status note excludes static mode from the initial build. This removes the originally proposed direct shared-home bind for the deliverable. Indirect reachability via an overlapping root/home bind remains part of contested F-1's confinement obligation; it is not being certified by this review-route verification."
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "The designated kill switch only disables future admission, not ongoing enactment"
 detail = "Expected: the component receiving ledger row 6c supplies a kill switch that halts enactment and fails closed (SPEC-001 REQ-005; ADR-017 §2/§4). Observed: sec-1 reads enabled only once per call; DEC-097 explicitly says enabled=false is not a mid-flight interrupt and an in-flight run keeps its enabled snapshot. Sec-7 nevertheless assigns this to the delegate kill-switch row. A delegate already executing bash or spending on a provider can continue until its ordinary backstop after the operator trips the designated switch. DEC-096's per-request MCP cancellation is a useful shutdown path, but requires the connected driver and is not the persistent switch described in row 6c. Required correction: identify and expose an operator-controlled active-run kill mechanism independent of driver cooperation (which may reuse the shutdown ladder), or change the switch semantics and reconcile the authority/spec claim explicitly. Do not silently equate an admission flag with an active kill. Verification: start a long-running delegate, trip the declared operator switch with no driver cancellation, and assert enactment ends within the documented bound and later admissions fail closed."
@@ -83,9 +155,14 @@ disposition = "fix-now"
 route = "review"
 response = "Accepted. enabled is re-read at each gate tick (event boundary, bounded to about a second) and a flip aborts in-flight runs through the shutdown ladder with audit abort(switch), with no driver cooperation required. The truth table separates admission refusal from active halt, and both are named."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified at design level: revision 48 sec-4 and DEC-097's F-3 amendment explicitly re-read enabled on usage-bearing events plus an idle poll bounded to about one second, invoke the termination ladder without driver cooperation and refuse future admissions. The original admission-only switch defect is repaired in prose. Runtime switch-read failure and an explicit worst-case halt bound are not proved by this act; policy-read failure is raised separately on the current pass."
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The honest retrospective ceiling concession still needs an explicit conformance disposition"
 detail = "Expected: the design identifies which governing safety properties it satisfies and which require an accepted exception or governance revision. SPEC-001 REQ-004 states that a run cannot exceed its token/budget ceilings, and ADR-017 §4 requires absent-client ceiling enforcement. Observed: sec-4 and DEC-097 correctly withdraw the prior admission-gate/one-response guarantee and select retrospective accounting with best-effort termination, no bounded request allowance, and no provider output cap. Sec-7 still assigns 'delegate ceilings' to pi-mcp without naming this as a conformance gap or specifying the accepted replacement property. This finding does not ask to restore the disproved stream gate or automatically move to the SDK: the factual correction is right. But reporting an overrun after it occurs does not by itself discharge the stronger requirement, and DEC-057's accepted provider-entry-point gate is not evidence for this weaker mechanism. Required correction: obtain and record the precise accepted concession/revision (including what finite bounds remain and what is not guaranteed), or supply a mechanism meeting the requirement. Verification/acceptance must test the actual weaker promise rather than label a normal slow-provider smoke run proof of hard ceilings."
@@ -104,6 +181,11 @@ disposition = "fix-now"
 route = "review"
 response = "Accepted. The design records the concession explicitly as a REQ-004 revision candidate with the replacement property stated: no provider output cap, overshoot bounded by observation latency plus one in-flight request, unknown usage aborts. Ledger row 5c describes exactly that weaker property. The concession needs operator acceptance at reconcile and is recorded as pending rather than implied."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified the required conformance disposition: DEC-097 now records the operator's explicit 2026-10-20 acceptance, names the weaker retrospective/best-effort property and absent provider output cap, and requires row 5c wording plus a SPEC-001 REQ-004 revision candidate at reconcile. The SL-029 scope names this a conformance gap rather than hard enforcement. This accepts the documented concession; it does not establish a hard one-response bound or certify accounting coverage."
+
 [[finding]]
 id = "F-5"
 status = "answered"
@@ -112,7 +194,21 @@ title = "agent_settled plus any stop reason does not establish that result is a 
 detail = "Expected: sec-5's new final flag distinguishes a completed answer from partial or stale assistant text, without losing parts of the final response. Observed: final=true is defined by agent_settled 'with a stop reason'. Pi's documented stopReason union includes error, aborted, length, toolUse and deferred as well as stop; settled means automatic work ended, not that a successful answer exists. The current reducer selects the last prose block anywhere in the run (pi/reduce/reduce.ts:158-166), not the entire final assistant message. Read-only synthetic fixtures verified: (1) error+agent_settled yields failed with partial prose, yet satisfies the proposed final predicate; (2) a toolUse message saying 'I will inspect it', followed by a textless stop message and agent_settled, yields completed with that old planning prose as Result; (3) a final assistant message with two text blocks exposes only the second block in Result. Sec-7 promises only adding Reduced.result/final, so exporting the current selection preserves the defect. Required correction: define accepted terminal reasons, tie result/final to the terminal assistant message rather than a backwards search for prose, preserve all of that message's text blocks, and account for server-caused termination. Test error/abort/length/deferred outcomes, a textless terminal message after earlier prose, and multiple final text blocks."
 disposition = "fix-now"
 route = "review"
-response = "Accepted. final and result derive from the terminal assistant message - the last assistant message_end with a recognised terminal stopReason and no later assistant message - joining all of its text blocks. error, aborted, toolUse, deferred and every server-caused stop yield final=false. The reducer gains result, final and terminalReason, with tests for error+settled, a textless terminal message, multiple terminal blocks, and stale planning prose."
+response = """
+Accepted in full. The contest identified a real regression, not a request to discard the improved message selection: `final` had been defined by message content alone, so a valid `stop` followed by EOF without `agent_settled`, or by a nonzero exit, satisfied it while the reducer's own settled rule called the same run incomplete.
+
+Design revision 56 and DEC-093 now define success as one predicate rather than a table row. `completed` requires **all** of:
+
+1. a terminal assistant message with reason `stop` (or `length`, which sets `truncated: true`) — terminal meaning no later assistant message, and a later assistant `message_start` *or* `message_end` now explicitly invalidates an earlier candidate;
+2. `agent_settled` observed;
+3. child exit status 0;
+4. accounting known;
+5. an empty abort latch at the commit point (F-12).
+
+The self-contradictory sentence is gone: `final` is true for exactly two reasons — `stop`, and `length` with `truncated: true` — stated as a two-reason rule, and only when the run also settled and exited 0. `error`, `aborted`, `tool_use` and `deferred` give `final: false, result: null`.
+
+Your three cases are named tests in sec-7's verification list: stop+EOF without `agent_settled`, stop+nonzero exit, settled+nonzero exit. The valid answer plus a nonzero exit is now `failed` (`termination: "exit"`), not `completed`.
+"""
 
 [[finding.turn]]
 act = "raise"
@@ -124,6 +220,54 @@ role = "responder"
 disposition = "fix-now"
 route = "review"
 response = "Accepted. final and result derive from the terminal assistant message - the last assistant message_end with a recognised terminal stopReason and no later assistant message - joining all of its text blocks. error, aborted, toolUse, deferred and every server-caused stop yield final=false. The reducer gains result, final and terminalReason, with tests for error+settled, a textless terminal message, multiple terminal blocks, and stale planning prose."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The terminal-message/all-text-block selection fixes the stale-prose and multi-block defects, but revision 48 sec-5 and DEC-093's normative table now make terminal stop/length sufficient for completed/final. They no longer require agent_settled or successful process completion, and do not define failure when a child emits stop then exits nonzero before settling. Installed pi docs/json.md explicitly separates message completion from agent_settled; the existing reducer correctly reports incomplete when the stream ends without settled. A valid stop message followed by EOF/exit 1 satisfies the proposed new final predicate while status.state remains incomplete if the reducer's current settled rule survives. Require successful run settlement/process completion as well as an answer-bearing terminal message, define how later message_start invalidates an earlier candidate, and test stop+EOF/no-settled, stop+nonzero exit and settled+nonzero exit. Also clarify the contradictory phrase 'final is true only for stop; length is final:true' as an explicit two-reason rule. This is a regression of the finality contract, not a request to discard the improved message selection."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted in full. The contest identified a real regression, not a request to discard the improved message selection: `final` had been defined by message content alone, so a valid `stop` followed by EOF without `agent_settled`, or by a nonzero exit, satisfied it while the reducer's own settled rule called the same run incomplete.
+
+Design revision 54 and DEC-093 now define success as one predicate rather than a table row. `completed` requires **all** of:
+
+1. a terminal assistant message with reason `stop` (or `length`, which sets `truncated: true`) — terminal meaning no later assistant message, and a later assistant `message_start` *or* `message_end` now explicitly invalidates an earlier candidate;
+2. `agent_settled` observed;
+3. child exit status 0;
+4. accounting known;
+5. an empty abort latch at the commit point (F-12).
+
+The self-contradictory sentence is gone: `final` is true for exactly two reasons — `stop`, and `length` with `truncated: true` — stated as a two-reason rule, and only when the run also settled and exited 0. `error`, `aborted`, `tool_use` and `deferred` give `final: false, result: null`.
+
+Your three cases are named tests in sec-7's verification list: stop+EOF without `agent_settled`, stop+nonzero exit, settled+nonzero exit. The valid answer plus a nonzero exit is now `failed` (`termination: "exit"`), not `completed`.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "revision reference corrected: the design is at revision 56 after the disjointness-tolerance refinement and its materialisation"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted in full. The contest identified a real regression, not a request to discard the improved message selection: `final` had been defined by message content alone, so a valid `stop` followed by EOF without `agent_settled`, or by a nonzero exit, satisfied it while the reducer's own settled rule called the same run incomplete.
+
+Design revision 56 and DEC-093 now define success as one predicate rather than a table row. `completed` requires **all** of:
+
+1. a terminal assistant message with reason `stop` (or `length`, which sets `truncated: true`) — terminal meaning no later assistant message, and a later assistant `message_start` *or* `message_end` now explicitly invalidates an earlier candidate;
+2. `agent_settled` observed;
+3. child exit status 0;
+4. accounting known;
+5. an empty abort latch at the commit point (F-12).
+
+The self-contradictory sentence is gone: `final` is true for exactly two reasons — `stop`, and `length` with `truncated: true` — stated as a two-reason rule, and only when the run also settled and exited 0. `error`, `aborted`, `tool_use` and `deferred` give `final: false, result: null`.
+
+Your three cases are named tests in sec-7's verification list: stop+EOF without `agent_settled`, stop+nonzero exit, settled+nonzero exit. The valid answer plus a nonzero exit is now `failed` (`termination: "exit"`), not `completed`.
+"""
 
 [[finding]]
 id = "F-6"
@@ -133,7 +277,31 @@ title = "The gate and verbatim reducer status give different accounts of the sam
 detail = "Expected: the returned status and audit support the ceiling verdict with one defined accounting model, including compaction and precise request/token units. Observed: sec-4 counts message_end and compaction_end usage, while sec-5 embeds pi-run-status/1 verbatim and sec-7 only adds result/final to the reducer. The current reducer ignores compaction_end entirely, adds only usage.input/output/cacheRead, and turns missing cost into zero after an assistant message (pi/reduce/reduce.ts:109-112, absorb and totalCost). An isolated fixture with compaction cost 0.20 USD plus assistant cost 0.01 USD returns status.cost_usd=0.01; the designed gate would account 0.21 and could abort against 0.10 while returning a below-limit status. DEC-097 also correctly says assistant messages are not provider-request counts, but the request-count calculation for max_requests is not defined; retries and summarization attempts cannot simply be counted as assistant turns. Required correction: choose one authoritative usage accumulator or explicitly expose/reconcile separate accounting with their limitations; define request counting, cached-token treatment, missing/unpriced data and when compaction updates trigger checks. Tests must assert returned/audited spend agrees with enforcement inputs, including compaction and failed/retried requests."
 disposition = "fix-now"
 route = "demonstrate"
-response = "Accepted. One accumulator lives in the reducer: message_end plus compaction_end, with compaction triggering a gate check, and retry attempts counted as provider requests. Absent or unpriced usage is unknown, not zero, and unknown aborts. Request counting is defined as observed provider requests. Tests assert the gate's enforcement inputs equal the returned and audited status, including compaction and failed requests."
+response = """
+Accepted on every point that mattered, with two specific pushbacks where the mechanism is sounder than the note allows.
+
+**Accepted and written** (design revision 56, DEC-097 amendment): the counting units are now defined per record, because "retry attempts" and "observed provider requests" named nothing an implementer could code.
+
+| record | effect |
+|---|---|
+| `message_end`, `role: assistant`, with usage | +1 request, + tokens (`input`, `output`, `cacheRead`, `cacheWrite`), + `usage.cost.total` |
+| `compaction_end` carrying `result.usage` | +1 request, + tokens, + cost |
+| `auto_retry_start` | +1 request, unmeasured |
+| `summarization_retry_scheduled` | +1 request, unmeasured |
+| `summarization_retry_attempt_start` | +1 request, unmeasured |
+| everything else (`agent_end`, `turn_end`, `*_end`, `summarization_retry_finished`) | nothing |
+
+The failed compaction case you raised is handled: `compaction_end` without `result.usage` (aborted, or failed with `errorMessage`) contributes no tokens and no cost, and it is not counted as a request *there* — the failed attempt is counted by its retry record. Usage validity is specified: absent, non-finite or negative usage, or an absent `cost.total`, aborts `accounting_unknown`; a cached read priced at zero is a price rather than missing data; `cacheWrite` counts and `cacheRead` is reported as `cached`. Every counting record triggers a gate check. `requests` and `requests_unmeasured` join the accumulator and the embedded status, so the returned and audited status *are* the gate's inputs. The scope of accounting is disclosed as an observed lower bound, with the gaps named: a send that emits no record, an abandoned summarization chain's last attempt, and any nested agent the delegate launches for itself.
+
+**Two pushbacks, each verified against installed pi 0.99.1 `docs/json.md`:**
+
+1. "A successful retried assistant turn can be counted both as retry attempt and message_end" — that is not double counting, it is the correct count. The failed attempt emits `auto_retry_start` (attempt, maxAttempts, delayMs, errorMessage) and no `message_end`; only the successful attempt completes a message. Two sends, two requests, one response.
+2. "…carry no shared request id for deduplication" — no id is needed. Deduplication is by record category: each counting record belongs to exactly one class, and no class overlaps the completion classes. Request ids would be needed only if two record types described the same send, which is the case the table rules out.
+
+**Your last point stands and is now written, not promised:** the demonstrate obligation is in sec-7 with its assertions — a recorded retry/compaction fixture pinning the arithmetic, failed sends counted but unmeasured, absent/unpriced usage aborting, and gate inputs equal to the returned status — and sec-7 states that these bind the exit criteria of the phase implementing the accumulator and gate, with the plan owning placement. The adapter agreeing that one accumulator owns the truth does not verify it; the phase criterion does.
+
+One residual I am not hiding: `requests` errs low in the abandoned-chain case, deliberately, and the design says so — the ceilings that actually bound spend are the token/cost units and the wall clock, both fed from completed responses.
+"""
 
 [[finding.turn]]
 act = "raise"
@@ -145,6 +313,74 @@ role = "responder"
 disposition = "fix-now"
 route = "demonstrate"
 response = "Accepted. One accumulator lives in the reducer: message_end plus compaction_end, with compaction triggering a gate check, and retry attempts counted as provider requests. Absent or unpriced usage is unknown, not zero, and unknown aborts. Request counting is defined as observed provider requests. Tests assert the gate's enforcement inputs equal the returned and audited status, including compaction and failed requests."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "One shared accumulator and compaction-triggered checks are appropriate, but the response still does not define an implementable provider-request count or complete observation/unknown rules. Revision 48 says it consumes 'retry attempts'; the response says 'observed provider requests'. Installed pi 0.99.1 docs/json.md exposes auto_retry_start with a delay (retry scheduling, not proof of a provider send), auto_retry_end, summarization_retry_attempt_start, message_end and successful compaction_end.result.usage. These are not one uniform event per request and carry no shared request id for deduplication. A successful retried assistant turn can be counted both as retry attempt and message_end; a scheduled retry can be cancelled before it sends. Failed compaction has no result/usage. Specify which observable events increment each unit and how they reconcile, including what becomes accounting_unknown rather than silently counted as zero. Define cached-token treatment and numeric validity too, as the original finding required. Then write the demonstrate obligation with its expected assertions and the host-phase placement constraint. No phases have been authored, so the promised accounting probe cannot yet be verified; merely agreeing that one accumulator owns the truth does not establish that it can observe that truth."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Accepted on every point that mattered, with two specific pushbacks where the mechanism is sounder than the note allows.
+
+**Accepted and written** (design revision 54, DEC-097 amendment): the counting units are now defined per record, because "retry attempts" and "observed provider requests" named nothing an implementer could code.
+
+| record | effect |
+|---|---|
+| `message_end`, `role: assistant`, with usage | +1 request, + tokens (`input`, `output`, `cacheRead`, `cacheWrite`), + `usage.cost.total` |
+| `compaction_end` carrying `result.usage` | +1 request, + tokens, + cost |
+| `auto_retry_start` | +1 request, unmeasured |
+| `summarization_retry_scheduled` | +1 request, unmeasured |
+| `summarization_retry_attempt_start` | +1 request, unmeasured |
+| everything else (`agent_end`, `turn_end`, `*_end`, `summarization_retry_finished`) | nothing |
+
+The failed compaction case you raised is handled: `compaction_end` without `result.usage` (aborted, or failed with `errorMessage`) contributes no tokens and no cost, and it is not counted as a request *there* — the failed attempt is counted by its retry record. Usage validity is specified: absent, non-finite or negative usage, or an absent `cost.total`, aborts `accounting_unknown`; a cached read priced at zero is a price rather than missing data; `cacheWrite` counts and `cacheRead` is reported as `cached`. Every counting record triggers a gate check. `requests` and `requests_unmeasured` join the accumulator and the embedded status, so the returned and audited status *are* the gate's inputs. The scope of accounting is disclosed as an observed lower bound, with the gaps named: a send that emits no record, an abandoned summarization chain's last attempt, and any nested agent the delegate launches for itself.
+
+**Two pushbacks, each verified against installed pi 0.99.1 `docs/json.md`:**
+
+1. "A successful retried assistant turn can be counted both as retry attempt and message_end" — that is not double counting, it is the correct count. The failed attempt emits `auto_retry_start` (attempt, maxAttempts, delayMs, errorMessage) and no `message_end`; only the successful attempt completes a message. Two sends, two requests, one response.
+2. "…carry no shared request id for deduplication" — no id is needed. Deduplication is by record category: each counting record belongs to exactly one class, and no class overlaps the completion classes. Request ids would be needed only if two record types described the same send, which is the case the table rules out.
+
+**Your last point stands and is now written, not promised:** the demonstrate obligation is in sec-7 with its assertions — a recorded retry/compaction fixture pinning the arithmetic, failed sends counted but unmeasured, absent/unpriced usage aborting, and gate inputs equal to the returned status — and sec-7 states that these bind the exit criteria of the phase implementing the accumulator and gate, with the plan owning placement. The adapter agreeing that one accumulator owns the truth does not verify it; the phase criterion does.
+
+One residual I am not hiding: `requests` errs low in the abandoned-chain case, deliberately, and the design says so — the ceilings that actually bound spend are the token/cost units and the wall clock, both fed from completed responses.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "revision reference corrected: the design is at revision 56 after the disjointness-tolerance refinement and its materialisation"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Accepted on every point that mattered, with two specific pushbacks where the mechanism is sounder than the note allows.
+
+**Accepted and written** (design revision 56, DEC-097 amendment): the counting units are now defined per record, because "retry attempts" and "observed provider requests" named nothing an implementer could code.
+
+| record | effect |
+|---|---|
+| `message_end`, `role: assistant`, with usage | +1 request, + tokens (`input`, `output`, `cacheRead`, `cacheWrite`), + `usage.cost.total` |
+| `compaction_end` carrying `result.usage` | +1 request, + tokens, + cost |
+| `auto_retry_start` | +1 request, unmeasured |
+| `summarization_retry_scheduled` | +1 request, unmeasured |
+| `summarization_retry_attempt_start` | +1 request, unmeasured |
+| everything else (`agent_end`, `turn_end`, `*_end`, `summarization_retry_finished`) | nothing |
+
+The failed compaction case you raised is handled: `compaction_end` without `result.usage` (aborted, or failed with `errorMessage`) contributes no tokens and no cost, and it is not counted as a request *there* — the failed attempt is counted by its retry record. Usage validity is specified: absent, non-finite or negative usage, or an absent `cost.total`, aborts `accounting_unknown`; a cached read priced at zero is a price rather than missing data; `cacheWrite` counts and `cacheRead` is reported as `cached`. Every counting record triggers a gate check. `requests` and `requests_unmeasured` join the accumulator and the embedded status, so the returned and audited status *are* the gate's inputs. The scope of accounting is disclosed as an observed lower bound, with the gaps named: a send that emits no record, an abandoned summarization chain's last attempt, and any nested agent the delegate launches for itself.
+
+**Two pushbacks, each verified against installed pi 0.99.1 `docs/json.md`:**
+
+1. "A successful retried assistant turn can be counted both as retry attempt and message_end" — that is not double counting, it is the correct count. The failed attempt emits `auto_retry_start` (attempt, maxAttempts, delayMs, errorMessage) and no `message_end`; only the successful attempt completes a message. Two sends, two requests, one response.
+2. "…carry no shared request id for deduplication" — no id is needed. Deduplication is by record category: each counting record belongs to exactly one class, and no class overlaps the completion classes. Request ids would be needed only if two record types described the same send, which is the case the table rules out.
+
+**Your last point stands and is now written, not promised:** the demonstrate obligation is in sec-7 with its assertions — a recorded retry/compaction fixture pinning the arithmetic, failed sends counted but unmeasured, absent/unpriced usage aborting, and gate inputs equal to the returned status — and sec-7 states that these bind the exit criteria of the phase implementing the accumulator and gate, with the plan owning placement. The adapter agreeing that one accumulator owns the truth does not verify it; the phase criterion does.
+
+One residual I am not hiding: `requests` errs low in the abandoned-chain case, deliberately, and the design says so — the ceilings that actually bound spend are the token/cost units and the wall clock, both fed from completed responses.
+"""
 
 [[finding]]
 id = "F-7"
@@ -169,7 +405,7 @@ response = "Accepted. The argv is the launcher followed by pi's options: the exe
 
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Refusals must be audited but have no specified audit location"
 detail = "Expected: policy-unavailable/invalid, disabled, profile/root failures and other pre-spawn refusals produce durable, discoverable evidence without launching a child or requiring a valid policy digest. Observed: sec-2 says every refusal is audited; sec-5 says refused has artifacts=null and 'nothing ran'; sec-6's only sink is per-run audit.jsonl and every record carries a policy digest. No sink/allocation rule is given for a rejected attempt, particularly when policy could not be read, or when the run directory itself is unwritable (the operator's explicit fail-closed audit case). Implementers must either invent an undisclosed attempt directory, omit audit on these paths, or recursively try to audit an audit failure. Required correction: separate 'no child spawned' from 'no attempt storage allocated'; define where refusal records live and how they are discovered, how absent policy digest is represented, and the bounded fallback when durable recording itself is impossible. The essential fail-closed choice should stand: no child may start because logging is unavailable. Verification should cover missing/malformed policy, disabled admission and an unwritable/full evidence store, without recursion or an unhandled JSON-RPC/server crash."
@@ -187,6 +423,11 @@ role = "responder"
 disposition = "fix-now"
 route = "review"
 response = "Accepted. Refusals write to a server-level attempts.jsonl in the state directory: no child, no policy digest required, digest recorded when it was readable. If that sink is unwritable the refusal is still returned, in-band and on stderr, and the no-child-without-logging rule holds. Recursion is excluded by design because the attempt log never requires a run directory."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified the design repair in revision 48 sec-5/sec-6 and DEC-094: server-level attempts.jsonl is the refusal sink independent of a per-run directory, unavailable policy digest is allowed, and failure of that sink yields an in-band/stderr refusal with no spawn rather than recursive logging or default admission. The remaining cause/state precedence issue is tracked by F-12, not a reason to reject this sink-allocation correction."
 
 [[finding]]
 id = "F-9"
@@ -211,7 +452,7 @@ response = "Accepted. Every call owns a termination domain: the child is spawned
 
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The accepted session grammar permits IDs that pi refuses"
 detail = "Expected: requests passing the server's session validation can be passed to pi --session-id without an additional CLI grammar failure. Observed: sec-6 accepts ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$, including IDs such as 'a.' and 'a-'. Installed pi 0.99.1 docs/cli.md §Sessions explicitly requires IDs to start AND end with a letter or number. The server only checks the first character. Required correction: use a grammar compatible with pi (including the one-character case), and test trailing period/underscore/hyphen refusals as well as valid single-character IDs. This should remain a session-invalid pre-spawn refusal, not become an unexplained child invocation failure."
@@ -230,6 +471,11 @@ disposition = "fix-now"
 route = "review"
 response = "Accepted. Grammar becomes alnum at both ends, up to 64 characters, single-character ids valid, with tests for trailing period, underscore and hyphen plus a valid one-character id."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified the corrected grammar in DEC-099 and revision 48 sec-6: alphanumeric at both ends, length 1–64, with the optional grouped suffix preserving valid one-character IDs. This matches installed pi 0.99.1 docs/cli.md and excludes trailing period, underscore and hyphen. Verification is of the design/regex, not a claim that the future server tests have run."
+
 [[finding]]
 id = "F-11"
 status = "answered"
@@ -238,7 +484,20 @@ title = "The slice's risks and follow-ups still contradict the materialised desi
 detail = "Expected: the governing scope accurately reflects the design before review.scope is confirmed. Observed via doctrine show SL-029: the main bullets incorporate DEC-097–100, but the risks still call token/cost ceilings undecided and assert nested confinement is a union that can never narrow; the follow-ups still defer the wrapped-runner jail profile even though sec-3/sec-7 and DEC-098 make safe forms a delivery dependency. The scope also says 'no group kill', while sec-4/DEC-096 explicitly require process-group termination. These are live scope statements, not merely a preserved historical decision record. Required correction: refresh those scope projections against the current design and mark any deliberately historical research claims as superseded; do not remove genuine non-goals such as retiring the old RPC wrappers. Verification: re-read the synthesized SL-029 scope and the design together before discharging review.scope."
 disposition = "fix-now"
 route = "review"
-response = "Accepted. Scope risks and follow-ups are refreshed against the materialised design: ceilings decided as retrospective, the nesting claim restated as intersection with no narrowing, process-group termination required, and the wrapped forms promoted from follow-up to delivery dependency. Historical research claims are marked superseded, not deleted."
+response = """
+Accepted. Three live statements were stale, and the class is "delivery projections that did not follow the static deferral".
+
+Swept in the slice scope and design revision 56:
+
+- "Process exit is completion — no fifo, no poll, no **group kill**" now reads: process exit is completion, no fifo, no tail poll — and names what the server does own: a per-call termination domain (process-group ladder, DEC-096) and an idle gate tick (sec-4).
+- **Affected surface** now says `flake.nix` carries the two per-call wrapped forms, with the static-mode derivation deferred under DEC-100's build status.
+- **Promoted to delivery** now promotes the two *per-call* forms and states that the static derivation carrying pi in its closure stays deferred with the rest of static mode.
+- **Design sec-7** is swept to match: verification is per-call for the built posture, the static launcher closure check / launch-time validation / memory-buffered evidence are labelled *future*, and the smoke run is "per-call posture" rather than "per posture". sec-3 and sec-1 mark static as "designed, not built here".
+- **Verification intent** in the scope now says per-call posture for the smoke run.
+- A scope risk was added for the F-1 consequence (protected stores must sit outside every child-visible bind; a broad root such as `$HOME` is refused until they are relocated), because that is now a delivery property rather than a design footnote.
+
+Kept deliberately: the static design of record (sec-3's static half, DEC-100's second branch), the genuine non-goals, and the superseded-claim annotations — the record that we were wrong is worth more than a clean page. Nothing about the operator's static deferral was reversed.
+"""
 
 [[finding.turn]]
 act = "raise"
@@ -250,6 +509,52 @@ role = "responder"
 disposition = "fix-now"
 route = "review"
 response = "Accepted. Scope risks and follow-ups are refreshed against the materialised design: ceilings decided as retrospective, the nesting claim restated as intersection with no narrowing, process-group termination required, and the wrapped forms promoted from follow-up to delivery dependency. Historical research claims are marked superseded, not deleted."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The risks now explicitly acknowledge the ceiling concession, correct nesting semantics and promote the per-call forms; those parts are repaired. But synthesized SL-029 still says 'Process exit is completion — no fifo, no poll, no group kill', contradicting sec-4's idle policy poll and process-group ladder. The revision-48 static deferral was also only partly swept: scope Non-Goals and DEC-100 defer the static build, while Affected surface and 'Promoted to delivery' still explicitly include the static derivation. Design sec-7's file list defers it but its verification still requires tests 'in both postures', a smoke per posture and the static launcher's closure check. Refresh these live delivery/verification statements and selector notes as one class before confirming review.scope/review.selectors; retained future design can remain clearly labelled future. This is not asking to reverse the operator's static deferral."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Three live statements were stale, and the class is "delivery projections that did not follow the static deferral".
+
+Swept in the slice scope and design revision 54:
+
+- "Process exit is completion — no fifo, no poll, no **group kill**" now reads: process exit is completion, no fifo, no tail poll — and names what the server does own: a per-call termination domain (process-group ladder, DEC-096) and an idle gate tick (sec-4).
+- **Affected surface** now says `flake.nix` carries the two per-call wrapped forms, with the static-mode derivation deferred under DEC-100's build status.
+- **Promoted to delivery** now promotes the two *per-call* forms and states that the static derivation carrying pi in its closure stays deferred with the rest of static mode.
+- **Design sec-7** is swept to match: verification is per-call for the built posture, the static launcher closure check / launch-time validation / memory-buffered evidence are labelled *future*, and the smoke run is "per-call posture" rather than "per posture". sec-3 and sec-1 mark static as "designed, not built here".
+- **Verification intent** in the scope now says per-call posture for the smoke run.
+- A scope risk was added for the F-1 consequence (protected stores must sit outside every child-visible bind; a broad root such as `$HOME` is refused until they are relocated), because that is now a delivery property rather than a design footnote.
+
+Kept deliberately: the static design of record (sec-3's static half, DEC-100's second branch), the genuine non-goals, and the superseded-claim annotations — the record that we were wrong is worth more than a clean page. Nothing about the operator's static deferral was reversed.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "revision reference corrected: the design is at revision 56 after the disjointness-tolerance refinement and its materialisation"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Three live statements were stale, and the class is "delivery projections that did not follow the static deferral".
+
+Swept in the slice scope and design revision 56:
+
+- "Process exit is completion — no fifo, no poll, no **group kill**" now reads: process exit is completion, no fifo, no tail poll — and names what the server does own: a per-call termination domain (process-group ladder, DEC-096) and an idle gate tick (sec-4).
+- **Affected surface** now says `flake.nix` carries the two per-call wrapped forms, with the static-mode derivation deferred under DEC-100's build status.
+- **Promoted to delivery** now promotes the two *per-call* forms and states that the static derivation carrying pi in its closure stays deferred with the rest of static mode.
+- **Design sec-7** is swept to match: verification is per-call for the built posture, the static launcher closure check / launch-time validation / memory-buffered evidence are labelled *future*, and the smoke run is "per-call posture" rather than "per posture". sec-3 and sec-1 mark static as "designed, not built here".
+- **Verification intent** in the scope now says per-call posture for the smoke run.
+- A scope risk was added for the F-1 consequence (protected stores must sit outside every child-visible bind; a broad root such as `$HOME` is refused until they are relocated), because that is now a delivery property rather than a design footnote.
+
+Kept deliberately: the static design of record (sec-3's static half, DEC-100's second branch), the genuine non-goals, and the superseded-claim annotations — the record that we were wrong is worth more than a clean page. Nothing about the operator's static deferral was reversed.
+"""
 
 [[finding]]
 id = "F-12"
@@ -259,7 +564,21 @@ title = "Outcome precedence collapses distinct server aborts into ceiling_exceed
 detail = "Expected: one total result rule preserves the reason and required outcome for every server-controlled stop, including races with an otherwise completed reducer result. Observed: sec-5 gives highest precedence to 'server abort (ceiling_exceeded)', but DEC-096 requires MCP cancellation to return incomplete, sec-6 requires mid-run audit failure to return failed, and sec-4 also aborts on unreadable/unpriced usage without defining its result state. These are all server aborts and need not mean a ceiling was crossed. The response has a refusal reason only when nothing was spawned; it has no specified machine-readable termination reason for these started-run failures. A late cancellation or failed exit-audit after agent_settled is especially ambiguous because the reducer can already report completed/final. Required correction: define a cause-to-state/final mapping and race/precedence rules for cancellation, timeout, measured ceiling crossing, unknown usage/pricing, audit failure and normal/nonzero exit. Preserve a named reason without requiring a new state for every cause. Tests should exercise concurrent abort causes and failures after the settled event, asserting the response cannot claim success or a measured overspend when the actual cause was audit/accounting failure."
 disposition = "fix-now"
 route = "review"
-response = "Accepted. One cause-to-state mapping with a named termination reason for every non-completed outcome: completed, failed, incomplete, timeout, cancelled, audit_failed, accounting_unknown, ceiling_exceeded, refused; result null and final false wherever the cause is not a model answer; earliest-cause-wins for concurrent aborts. Tests cover concurrent causes and a failure after agent_settled."
+response = """
+Accepted. "Earliest cause wins" and "a late cause still decides" were two rules pointing opposite ways, and the table had no row for spawn failure, nonzero exit, or a terminal `tool_use`/`deferred`.
+
+Design revision 56 and DEC-093 now have one total rule:
+
+- **Success is a predicate, not a table row** (with F-5): terminal answer-bearing message, `agent_settled`, exit 0, accounting known, empty abort latch.
+- **Success is provisional until the commit point** — after the termination ladder, reap, stream drain, final accounting, and the `exit` and abort evidence appends. Any cause recorded before it joins the latch and decides the state, so a cause after settling still decides, and it does so without a race. Nothing runs after the commit point, so no post-commit failure can be invented either. The commit point is written down, which is what the previous response lacked.
+- **`causes` is returned, ordered by discovery; `termination = causes[0]`; `state` is that cause's row.** A later audit failure is therefore secondary and exposed, not hidden behind a single winning cause: an audit append that fails after a timeout reports `termination: "timeout"`, `causes: ["timeout","audit"]`, and the audit carries both.
+- **Table rows added** for exactly the reachable outcomes you named: terminal `tool_use` / `deferred` → `incomplete`; no terminal message and exit 0 → `incomplete` (`eof`); nonzero exit → `failed` (`exit`); spawn failure after the run directory was allocated → `failed` (`spawn`). The `termination` enum in sec-5 grew to carry them.
+- **Pre-spawn audit failure is a refusal, never a state**: the run directory is discarded and the call is refused `audit-failed`; an unwritable `attempts.jsonl` refuses `audit-unavailable`. `audit_failed` as a *state* now exists only for a spawned run, which removes the sec-6/table conflict you flagged.
+- **Stale sibling found while sweeping the class**: DEC-096's trigger table still said a cancellation returns `state: incomplete`. Corrected to `cancelled`, with the reason (`final: false`, partial transcript, a cancel is not an unfinished model turn).
+- **Reconciliation line added**, because the F-6 class lives next door: `status.state` judges the stream, `state` judges the call; they diverge only when the deciding cause arose outside the stream (`exit`, `spawn`, `audit`, `accounting`, `backstop`), and `causes` names it.
+
+Tests in sec-7 name the ordering explicitly: concurrent causes asserting `causes[0]` and the full list, a failure after `agent_settled`, and a pre-spawn audit failure reported as a refusal.
+"""
 
 [[finding.turn]]
 act = "raise"
@@ -271,6 +590,54 @@ role = "responder"
 disposition = "fix-now"
 route = "review"
 response = "Accepted. One cause-to-state mapping with a named termination reason for every non-completed outcome: completed, failed, incomplete, timeout, cancelled, audit_failed, accounting_unknown, ceiling_exceeded, refused; result null and final false wherever the cause is not a model answer; earliest-cause-wins for concurrent aborts. Tests cover concurrent causes and a failure after agent_settled."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "Distinct states/termination reasons are a substantial repair, but 'earliest cause wins' is still not a total outcome rule. DEC-093's normative cause table includes terminal stop as completed. If stop/agent_settled happens first and the exit-audit append then fails, earliest-cause-wins selects completed, while sec-5 simultaneously requires that a cause discovered after settling still override success. Exclude provisional success from the abort latch and state the actual commit point for successful output after reap/drain/accounting/evidence writes. Also decide whether a later audit failure can be secondary to an earlier timeout/cancel while still exposed in the result; do not hide it behind a single winning cause. Spawn error/nonzero process exit and terminal toolUse/deferred without further work remain absent from the table/termination enum, despite being reachable non-success outcomes. Specify these mappings and the refused-vs-audit_failed pre-spawn case (sec-6 says refused audit_failed; the table maps audit_failed only mid-run). Test the concrete event ordering rather than relying on the phrase 'a late cause still decides'."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. "Earliest cause wins" and "a late cause still decides" were two rules pointing opposite ways, and the table had no row for spawn failure, nonzero exit, or a terminal `tool_use`/`deferred`.
+
+Design revision 54 and DEC-093 now have one total rule:
+
+- **Success is a predicate, not a table row** (with F-5): terminal answer-bearing message, `agent_settled`, exit 0, accounting known, empty abort latch.
+- **Success is provisional until the commit point** — after the termination ladder, reap, stream drain, final accounting, and the `exit` and abort evidence appends. Any cause recorded before it joins the latch and decides the state, so a cause after settling still decides, and it does so without a race. Nothing runs after the commit point, so no post-commit failure can be invented either. The commit point is written down, which is what the previous response lacked.
+- **`causes` is returned, ordered by discovery; `termination = causes[0]`; `state` is that cause's row.** A later audit failure is therefore secondary and exposed, not hidden behind a single winning cause: an audit append that fails after a timeout reports `termination: "timeout"`, `causes: ["timeout","audit"]`, and the audit carries both.
+- **Table rows added** for exactly the reachable outcomes you named: terminal `tool_use` / `deferred` → `incomplete`; no terminal message and exit 0 → `incomplete` (`eof`); nonzero exit → `failed` (`exit`); spawn failure after the run directory was allocated → `failed` (`spawn`). The `termination` enum in sec-5 grew to carry them.
+- **Pre-spawn audit failure is a refusal, never a state**: the run directory is discarded and the call is refused `audit-failed`; an unwritable `attempts.jsonl` refuses `audit-unavailable`. `audit_failed` as a *state* now exists only for a spawned run, which removes the sec-6/table conflict you flagged.
+- **Stale sibling found while sweeping the class**: DEC-096's trigger table still said a cancellation returns `state: incomplete`. Corrected to `cancelled`, with the reason (`final: false`, partial transcript, a cancel is not an unfinished model turn).
+- **Reconciliation line added**, because the F-6 class lives next door: `status.state` judges the stream, `state` judges the call; they diverge only when the deciding cause arose outside the stream (`exit`, `spawn`, `audit`, `accounting`, `backstop`), and `causes` names it.
+
+Tests in sec-7 name the ordering explicitly: concurrent causes asserting `causes[0]` and the full list, a failure after `agent_settled`, and a pre-spawn audit failure reported as a refusal.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "revision reference corrected: the design is at revision 56 after the disjointness-tolerance refinement and its materialisation"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. "Earliest cause wins" and "a late cause still decides" were two rules pointing opposite ways, and the table had no row for spawn failure, nonzero exit, or a terminal `tool_use`/`deferred`.
+
+Design revision 56 and DEC-093 now have one total rule:
+
+- **Success is a predicate, not a table row** (with F-5): terminal answer-bearing message, `agent_settled`, exit 0, accounting known, empty abort latch.
+- **Success is provisional until the commit point** — after the termination ladder, reap, stream drain, final accounting, and the `exit` and abort evidence appends. Any cause recorded before it joins the latch and decides the state, so a cause after settling still decides, and it does so without a race. Nothing runs after the commit point, so no post-commit failure can be invented either. The commit point is written down, which is what the previous response lacked.
+- **`causes` is returned, ordered by discovery; `termination = causes[0]`; `state` is that cause's row.** A later audit failure is therefore secondary and exposed, not hidden behind a single winning cause: an audit append that fails after a timeout reports `termination: "timeout"`, `causes: ["timeout","audit"]`, and the audit carries both.
+- **Table rows added** for exactly the reachable outcomes you named: terminal `tool_use` / `deferred` → `incomplete`; no terminal message and exit 0 → `incomplete` (`eof`); nonzero exit → `failed` (`exit`); spawn failure after the run directory was allocated → `failed` (`spawn`). The `termination` enum in sec-5 grew to carry them.
+- **Pre-spawn audit failure is a refusal, never a state**: the run directory is discarded and the call is refused `audit-failed`; an unwritable `attempts.jsonl` refuses `audit-unavailable`. `audit_failed` as a *state* now exists only for a spawned run, which removes the sec-6/table conflict you flagged.
+- **Stale sibling found while sweeping the class**: DEC-096's trigger table still said a cancellation returns `state: incomplete`. Corrected to `cancelled`, with the reason (`final: false`, partial transcript, a cancel is not an unfinished model turn).
+- **Reconciliation line added**, because the F-6 class lives next door: `status.state` judges the stream, `state` judges the call; they diverge only when the deciding cause arose outside the stream (`exit`, `spawn`, `audit`, `accounting`, `backstop`), and `causes` names it.
+
+Tests in sec-7 name the ordering explicitly: concurrent causes asserting `causes[0]` and the full list, a failure after `agent_settled`, and a pre-spawn audit failure reported as a refusal.
+"""
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
