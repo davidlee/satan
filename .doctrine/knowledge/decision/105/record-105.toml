@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 105
+slug = "malebolge-daemon-conversation-id-lookup"
+title = "malebolge daemon: a wire conversation id is a validated integer looked up in pi's store; only root and ownerless conversations are attachable"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-030 D-B. runner/durable-ids.ts conversationIdOf round-trips the runner's TEXT column by scan; root may not import src/runner/ (DEC-074, test/structure.test.ts). The daemon has no TEXT column (raw/architecture.md F-7)."
+choice = "The wire carries the conversation id as a JSON number, as pi types it. The daemon accepts a safe positive integer, reads its record in one transaction (tx.conversation), refuses an unknown id and a task-owned conversation, and thereafter uses only the id pi returned. durable-ids.ts stays in src/runner/; structure.test.ts and RUNNER_ROOTS are unchanged."
+alternatives = ["Move durable-ids.ts to root src/durable-ids.ts and add it to RUNNER_ROOTS", "A src/lib/ tier (deferred by DEC-074 to malebolge IMP-002)", "Wire id as decimal text"]
+rationale = "The scan answers the runner's column round-trip, a question the daemon does not have; the allowlist cannot express 'shared' anyway (F-7 structural hole). One lookup is the honest read; refusing task-owned conversations keeps clients out of subagent runs."
+consequences = ["Two id resolvers exist (runner scan, daemon lookup); each header states the question it answers (F-15)", "VT: unknown id, non-integer id and task-owned id are refused with an error"]
+decided_by = "user (accepted agent proposals, 2026-10-20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-030"

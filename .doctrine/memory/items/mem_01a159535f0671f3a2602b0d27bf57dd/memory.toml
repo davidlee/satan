@@ -4,7 +4,7 @@ schema_version = 1
 memory_type = "fact"
 status = "active"
 title = "pi-durable: no default model, root({agent}) ignored on an existing root, ConversationId has no parser"
-summary = "Host must supply each conversation's model; root agent option only applies at creation; ids are unparseable branded numbers"
+summary = "Host must supply each conversation's model; root agent option only applies at creation; configure merges field-wise (a model-only change cannot clobber cwd); createConversation({agent}) is atomic; resume() schedules every conversation; ids are unparseable branded numbers"
 created = "2026-10-20"
 updated = "2026-10-20"
 

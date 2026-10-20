@@ -1,0 +1,941 @@
+id    = 51
+slug  = "design-review-of-sl-030"
+title = "design review of SL-030"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Adversarial lane: four rounds (pi-research deepseek-flash x3, pi-scout x1) over design.md sec-1..sec-7 against DEC-104..109, ASM-007, malebolge 889551d and pi-durable 1.3.0 types; 28 findings raised (1+1 blocker, 13 major total across rounds), all fixed and verified; raw rounds in .doctrine/slice/030/research/raw/rv051-round{1,2,3}.md."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Re-concluded after routing the 11 blocker/major findings (route review); content unchanged from the first conclusion."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-030"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "F-1 (sec-3 / sec-4): `Conversations` needs the harness"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+`Conversations` needs the harness. Two readings: (a) the implementer adds a field and the design's sentence is merely loose; (b) taken literally, sec-3 cannot be built. The cost of (a) is that sec-1's "daemon.ts … one binding" and sec-4's "daemon-only module owns attach target → Conversation" boundary silently grows a second responsibility: whoever owns `Conversations` also owns the event stream. I favour making it explicit and asking which module should own `watchEvents`: `Conversations.watch(conversation)` keeps `daemon.ts` transport-only and gives `conversations.ts` the natural place to hang the "conversation exists before you watch it" guarantee; adding `readonly harness: Harness` is the smaller change but leaks pi's session type into the daemon again — which is exactly what sec-3 says it wanted to avoid."""
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: watchEvents is harness-first (events.d.ts:184), Conversation has no stream accessor. sec-4: Conversations gains watch(conversation); sec-3 bind uses it; serve holds no Harness. DEC-109 amendment proposed to the user."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "F-2: sec-3: a line queued before disconnect or shutdown can still be acted on (today it is dropped)"
+detail = '''
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+The diagram's "destroyed? → stop stream, **return**" (design.md:93) is scoped to `bind`, but the *caller* still holds the first line and the rest of the queue. Two readings: the command is skipped (differs from today only in that the failure is silent) or the command runs (today it does not: `src/daemon.ts:53-58`). Failure scenario: `printf '{"type":"input","content":"refactor X"}\n'` then close, before the store finishes opening → today the input is dropped; after SL-030 the daemon binds root, submits, and starts an unattended model run that nobody is watching (and that `harness.resume()` will keep going). Same shape on shutdown: `serveUnix.close` destroys sockets (`src/unix-socket.ts:132-143`), but queued lines are not cancelled, so a submit can land after `daemon.close()` and race `harness.close()`. Decide one rule ("no line is acted on after the socket is destroyed or `serve` is closing") and give it a row.'''
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified daemon.ts:53-58 drops lines today. sec-3: no line is acted on once the socket is destroyed or serve is closing; V-14 added."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "F-3: sec-3: beforeInput bound is up to two refresh deadlines per input, not one"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+The ordering acceptance rests on a number that is wrong by 2× per request and multiplies across queued inputs. With a wedged `satan-mcp`, each `refresh` burns its full 2 s and *returns* rather than rejecting (`src/satan-tools.ts:136-140`), so: one input whose refresh request coincides with another's in-flight read waits ~4 s; three queued inputs queue ~6-8 s of refresh before an `abort` behind them runs. The design's sentence "abort-latency … bounded by the same deadline that already bounds input" is therefore false as stated, and DEC-086's own wording contradicts "≤ one". Either restate the bound as ~2 deadlines per input (and accept it explicitly), or refuse to start a second `beforeInput` while one is queued for the same connection."""
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified coalesce.ts:34-50 shares the next read. sec-3 restates the bound: up to two deadlines per input, serially per queued input; risk restated."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "F-4: sec-2/sec-6: new client against an old running daemon fails; 'legacy clients see exactly today's stream' overclaims"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+The design reasons carefully about *forward* compatibility (an unknown future `topic` key must fail rather than silently attach root, design.md:59-63) and not at all about *backward* compatibility in the one direction that actually happens on this machine. Concrete: upgrade the repo, `M-x malebolge-start` → `systemctl --user start malebolge-room.service` is a no-op because the unit is active (`emacs/malebolge.el:28-29,56-68`); the new `malebolge-attach` sends `{type:"attach"}`; the old daemon answers `unknown message type "attach"` (`src/protocol.ts:46-48`); per design.md:195 the client discards held lines and detaches, so every Emacs buffer is dead until `malebolge-stop`. The minimum repair is a sentence in sec-6/README ("upgrading requires restarting the daemon; `malebolge-stop` then `malebolge-start`") plus a client message that names the likely stale daemon. Separately, design.md:65's "legacy clients see exactly today's stream" is inaccurate even for a well-behaved legacy client: today the snapshot arrives at connect, after SL-030 only after its first line, so an existing client sits on a blank buffer until the user types."""
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """sec-6: version-skew note, restart hint on 'unknown message type "attach"', exit 1; README upgrade note. sec-2: legacy-client wording narrowed (stream once the first line is sent; nothing before)."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "F-5: sec-7: doc impact names absent text and misses docs/internals.md protocol and constants lines, README:19"
+detail = '''
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+The doc-impact line names a change to text that does not exist and omits the two changes that matter. `docs/internals.md:83-88` is the repository's protocol reference and will be *wrong* after this slice unless it gains the `attach`/`attached` frames and the passive-client rule; `docs/internals.md:116-119` asserts "cwd … are constants", which this slice makes false; `README.md:19` promises "a new client sees the conversation so far", false for a passive client by DEC-108. Grep control: `grep -rni "one ongoing\|one conversation\|single conversation" README.md docs/ src/` returns exactly one hit, `README.md:17`.'''
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified by grep: sec-7 doc impact now names README.md:17-19, docs/internals.md:80-88 (protocol reference) and :116-119 (cwd constants)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "F-6: sec-7 V-9: systemPromptSections reads root only, so V-9 cannot observe a created conversation"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+V-9 names the right property and a test site that cannot test it. `systemPromptSections(test)` submits on `test.root` and pages `test.root.entries` (`test/harness-fixture.ts:137-148`), so it can only ever show root's `cwd` — the one case the slice does not change ("Root's `cwd` is always set … so root's prompt is unchanged", design.md:161). A passing V-9 as written proves nothing about a created conversation. The row must say the helper takes a conversation (`systemPromptSections(test, conversation)`), or V-9 is unfalsifiable."""
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "V-9 now reads a created conversation via systemPromptSections(test, created); fixture change listed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "F-7: sec-7: fixture files missing from impact; no close accessor for V-1; no row replaces daemon.test.ts:174-183"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+Two concrete gaps in the test plan. (i) V-1 requires observing "closes", and `LineClient` has no close accessor (`test/fixtures.ts:119-125`) — an implementer will either add one or resort to a timing assertion. That file is **not** in the code-impact list, which privileges only `test/harness-fixture.ts` and `test/daemon.test.ts`'s `attach()` helper (design.md:209), yet `test/attach.test.ts` (three `serve()` calls), `test/fixtures.ts` and the raw `lineClient` uses at `test/daemon.test.ts:139,178,190` all have to change. (ii) No V row covers the property that replaces the deleted test at `test/daemon.test.ts:174-183` ("waits for the session before sending a connection its snapshot"): under DEC-108 that client is passive and never gets a snapshot, so the test hangs. The replacement property — *a bound-but-unready connection stays silent, and its queued lines are then handled in order* — is the whole point of sec-3's queue and has no row (V-3 covers only `attached`-before-snapshot; V-2 covers first-line-is-a-command)."""
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-7 lists test/fixtures.ts (LineClient.closed()), test/attach.test.ts serve calls, raw lineClient uses; V-13 replaces daemon.test.ts:174-183; V-1 observes close via closed()."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "F-8: sec-2: error-table precedence for a malformed second attach is undefined"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+Rows 1 and 3 disagree for one input. `{type:"attach", conversation:"7"}` as a **second** line: row 1 ("malformed or refused attach → closed") vs row 3 ("attach after the connection is bound → open, binding unchanged"). The design also says `protocol.ts` validates and "nothing downstream sees the raw fields" (design.md:57), which puts validation *before* any bound check — so row 3 is reachable only for well-formed second attaches, and the table does not say so. V-6 tests only the well-formed case. Add the precedence ("shape first, then bound") or split row 3."""
+disposition = "fix-now"
+response = "sec-2: on a bound connection any line of type attach, well-formed or not, gets 'already attached' (bound check precedes shape); V-6 covers both."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-2: on a bound connection any line of type attach, well-formed or not, gets 'already attached' (bound check precedes shape); V-6 covers both."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "F-9: sec-4: pi calls sketched without context; second undefined from harness.conversation unstated"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+`harness.commit(tx => tx.conversation(N as ConversationId))` and `harness.conversation(record.id)` are sketched without the required `context` argument (`dist/types.d.ts:818`, `dist/harness/types.d.ts:652`), while `createConversation({…}, context)` in the same table includes it. Copying the table gives a type error, not a behaviour. Also unstated: `harness.conversation(record.id)` returns `Conversation | undefined`, and the design does not say what the second `undefined` means (probably unreachable — nothing retires conversations in 1.3.0 — but the code must decide)."""
+disposition = "fix-now"
+response = "sec-4: context arguments added; harness.conversation's undefined also maps to 'no conversation N'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-4: context arguments added; harness.conversation's undefined also maps to 'no conversation N'."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "F-10: sec-3: abort resolves when the scope is idle, a cost ordered lines carry"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+`abort` is treated as an ordinary line ("Every line, including `abort`, waits"), but `abort` is not admission-only: it resolves once the ownership scope is idle (`dist/harness/types.d.ts:617-620`). So `abort` then `/compact` on one connection means the compact is not admitted until the aborted run has fully unwound, and the design's only stated ordering cost is `beforeInput`. Either accept it in so many words or admit `abort` out of band (it does not touch `beforeInput` and cannot reorder against itself)."""
+disposition = "fix-now"
+response = "sec-3 states it: abort resolves when the scope is idle and the next line waits; ordering kept deliberately (an abort typed after an input must abort that run; today's unordered handling can miss it)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-3 states it: abort resolves when the scope is idle and the next line waits; ordering kept deliberately (an abort typed after an input must abort that run; today's unordered handling can miss it)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "F-11: sec-6: refused attach exits 0; no visible state while waiting for attached"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+Two client-side holes. (i) Exit status: a refused attach prints the daemon's `ErrorMessage` and `attach()` then resolves normally (`src/attach.ts:66-69`, `src/attach-main.ts:9-16`), so `malebolge-attach --conversation 999` exits 0 — a launcher (RFC-002's nushell idea) cannot tell "refused" from "detached". (ii) No bound on waiting for `attached`: if the daemon accepts the socket and never replies (a wedged `openSession`), typed lines are held forever with no output, where today the client at least printed `[attached]`."""
+disposition = "fix-now"
+response = "sec-6: refused attach rejects, exit 1; '[connected]' printed at connect so a slow daemon is visible. No timeout added (no evidence one is needed)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-6: refused attach rejects, exit 1; '[connected]' printed at connect so a slow daemon is visible. No timeout added (no evidence one is needed)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "F-12: sec-1/sec-3: 'one conversation per connection' should be 'at most one'; probeUnix is an in-repo passive client"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+Two inaccurate one-liners. Invariant 1 "One conversation per connection" (design.md:27) is false for a passive connection — DEC-108 gives it zero; "at most one" is the invariant. And "no in-repo client does this" (design.md:102) is false: `probeUnix` connects, sends nothing, and destroys (`src/unix-socket.ts:69-72`), and it runs against a live daemon on every `EADDRINUSE` claim. Both are harmless, but they are the sort of unverified assertion the design uses elsewhere as a load-bearing premise."""
+disposition = "fix-now"
+response = "sec-1 invariant 1 now 'at most one'; sec-2 names probeUnix as an in-repo passive connection, never bound."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-1 invariant 1 now 'at most one'; sec-2 names probeUnix as an in-repo passive connection, never bound."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "minor"
+title = "F-13: sec-2: parse entry point unnamed; widening parseClientMessage breaks act() exhaustiveness"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+No parse entry point is named, and the obvious one breaks. If `parseClientMessage` gains an `attach` case returning an `AttachTarget`, its return type widens past `ClientMessage`, which destroys the exhaustiveness of `act()`'s switch (`src/daemon.ts:24-35`) and changes the contract `test/protocol.test.ts:5-11` asserts. Say either "a separate `parseAttach(line): AttachTarget`" or "`parseClientMessage` keeps its type; attach is parsed ahead of it"."""
+disposition = "fix-now"
+response = "sec-2: parseConnectionMessage(line): AttachMessage | ClientMessage; parseClientMessage unchanged; daemon narrows so act() stays exhaustive."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-2: parseConnectionMessage(line): AttachMessage | ClientMessage; parseClientMessage unchanged; daemon narrows so act() stays exhaustive."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "minor"
+title = "F-14: sec-7 V-8: ambiguous 'it'"
+detail = """
+adversarial lane (pi-research, deepseek-flash, 2026-10-21)
+
+"reopening the session reconfigures root only and leaves it unchanged" — "it" is ambiguous inside one sentence where the two referents (root, the created conversation) have opposite expectations. Reword to "leaves *the created conversation* unchanged"."""
+disposition = "fix-now"
+response = "V-8 reworded: leaves the created conversation unchanged."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "V-8 reworded: leaves the created conversation unchanged."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 2 (raw/rv051-round2.md)"
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "blocker"
+title = "R-1: sec-3 departure rule and the kept destroyed-check disagree for the attach line; V-11/V-14 on opposite sides"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-1"
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Took the reviewer's favoured reading. sec-3: a line's turn starts once conversations is ready; the departure check is its first step and drops it and every later line. An attach whose turn has started completes (DEC-108 gap), acquires its stream and stops it. V-11 rewritten: attach then disconnect before readiness → no stream, no conversation."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "major"
+title = "R-2: V-5/V-13 need one-chunk and split-frame writes the LineClient fixture cannot make"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-2"
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "test/fixtures.ts LineClient gains write(raw); V-5 and V-13 specify one-write and split-frame input."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-17"
+status = "verified"
+severity = "major"
+title = "R-3: test/daemon.test.ts:185-196 (passive client watch stopped) breaks and is not listed as replaced"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-3"
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-7 names test/daemon.test.ts:185-196 as replaced by V-11, and :174-183 by V-13."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-18"
+status = "verified"
+severity = "minor"
+title = "R-4: 'bound check precedes shape validation' has no mechanism in parseConnectionMessage"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-4"
+disposition = "fix-now"
+response = "sec-2: refused attach throws AttachRefused; on a bound connection the daemon maps AttachMessage or AttachRefused to 'already attached', other failures keep their own message; V-6 covers a garbage line."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-2: refused attach throws AttachRefused; on a bound connection the daemon maps AttachMessage or AttachRefused to 'already attached', other failures keep their own message; V-6 covers a garbage line."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding]]
+id = "F-19"
+status = "verified"
+severity = "minor"
+title = "R-5: sec-1 overview still says 'exactly one conversation'"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-5"
+disposition = "fix-now"
+response = "sec-1 overview: 'each bound connection ... a connection that sends nothing is never bound'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-1 overview: 'each bound connection ... a connection that sends nothing is never bound'."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding]]
+id = "F-20"
+status = "verified"
+severity = "minor"
+title = "R-6: code impact understates test/attach.test.ts (positional attach calls, banner string assertions)"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-6"
+disposition = "fix-now"
+response = "sec-7 lists attach.test.ts positional attach calls (:42, :148) and the banner assertions, which keep their exact-output form; daemon-sections.test.ts sites listed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-7 lists attach.test.ts positional attach calls (:42, :148) and the banner assertions, which keep their exact-output form; daemon-sections.test.ts sites listed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding]]
+id = "F-21"
+status = "verified"
+severity = "minor"
+title = "R-7: refused attach exits 1 through an unhandled-rejection stack trace"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-7"
+disposition = "fix-now"
+response = "sec-6: attach rejects with code ATTACH_REFUSED; attach-main.ts:10-15 already exits 1 without a trace for coded errors; V-10 asserts one error line."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-6: attach rejects with code ATTACH_REFUSED; attach-main.ts:10-15 already exits 1 without a trace for coded errors; V-10 asserts one error line."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding]]
+id = "F-22"
+status = "verified"
+severity = "minor"
+title = "R-8: 'or serve has begun closing' has no state to read; destroyed already covers it"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-8"
+disposition = "fix-now"
+response = "Disjunct dropped: serve close() destroys every socket synchronously (unix-socket.ts:79-89), so destroyed is the only state read; stated in sec-3."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Disjunct dropped: serve close() destroys every socket synchronously (unix-socket.ts:79-89), so destroyed is the only state read; stated in sec-3."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding]]
+id = "F-23"
+status = "verified"
+severity = "minor"
+title = "R-9: 'only holder of the Harness' is false; daemon-start keeps and closes the Session"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-9"
+disposition = "fix-now"
+response = "sec-1: 'the transport's only route to the Harness; daemon-start.ts keeps the Session and closes it last'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-1: 'the transport's only route to the Harness; daemon-start.ts keeps the Session and closes it last'."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding]]
+id = "F-24"
+status = "verified"
+severity = "minor"
+title = "R-10: per-connection queue unbounded from connect"
+detail = "adversarial lane round 2 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round2.md, section R-10"
+disposition = "fix-now"
+response = "Tolerated in words, sec-3: queue and lineSplitter unbounded, within ASM-007's trust boundary."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Tolerated in words, sec-3: queue and lineSplitter unbounded, within ASM-007's trust boundary."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 3 (raw/rv051-round3.md)"
+
+[[finding]]
+id = "F-25"
+status = "verified"
+severity = "major"
+title = "R3-1: no row verifies the started-turn branch (attach completes, stream acquired then stopped, strand); :185-196 parenthetical mismatched"
+detail = "adversarial lane round 3 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round3.md"
+disposition = "fix-now"
+response = "fixed in design.md; see prior response"
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "V-15 added: started-turn attach with a disconnect while open/watch is pending → one stream acquired and stopped; for new, the strand exists. sec-7 parenthetical now names V-11 and V-15 and the restated property."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 4 (pi-scout, 2026-10-21); wording nits folded into sec-6/sec-7"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "route the fix: verified by adversarial re-review"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "fixed in design.md; see prior response"
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "re-verified with route review"
+
+[[finding]]
+id = "F-26"
+status = "verified"
+severity = "minor"
+title = "R3-2: /quit before 'attached' would exit 1 as a refused attach"
+detail = "adversarial lane round 3 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round3.md"
+disposition = "fix-now"
+response = "sec-6: /quit or end of input before 'attached' resolves normally, exit 0; V-10 asserts it."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-6: /quit or end of input before 'attached' resolves normally, exit 0; V-10 asserts it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 4 (pi-scout, 2026-10-21); wording nits folded into sec-6/sec-7"
+
+[[finding]]
+id = "F-27"
+status = "verified"
+severity = "minor"
+title = "R3-3: AttachRefused (protocol) vs code ATTACH_REFUSED (client) differ by one letter, mean different things"
+detail = "adversarial lane round 3 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round3.md"
+disposition = "fix-now"
+response = "Client code renamed NOT_ATTACHED, stated as unrelated to the daemon's AttachRefused."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Client code renamed NOT_ATTACHED, stated as unrelated to the daemon's AttachRefused."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 4 (pi-scout, 2026-10-21); wording nits folded into sec-6/sec-7"
+
+[[finding]]
+id = "F-28"
+status = "verified"
+severity = "minor"
+title = "R3-4: two citations miss: unix-socket.ts close is :131-141; today's pre-session line on an open connection is acted on, not dropped"
+detail = "adversarial lane round 3 (pi-research, deepseek-flash, 2026-10-21); full text: .doctrine/slice/030/research/raw/rv051-round3.md"
+disposition = "fix-now"
+response = "Citations corrected: unix-socket.ts:131-141; sec-3 now states both of today's cases (gone → dropped, :53-58; open → acted on once the handler installs, :66-75)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Citations corrected: unix-socket.ts:131-141; sec-3 now states both of today's cases (gone → dropped, :53-58; open → acted on once the handler installs, :66-75)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "confirmed resolved by adversarial round 4 (pi-scout, 2026-10-21); wording nits folded into sec-6/sec-7"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

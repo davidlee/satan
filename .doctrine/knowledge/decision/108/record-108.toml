@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 108
+slug = "malebolge-daemon-attach-first-frame"
+title = "malebolge daemon protocol: an optional attach first frame binds one conversation per connection"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-030: an optional selector must coexist with clients that send none; a selector on every command would leak into submit (research X-5) and push conversation identity into every event consumer (raw/architecture.md F-3, F-4)."
+choice = "The daemon reads a connection's first line before binding. {type:'attach', conversation?: number, new?: true, cwd?: string} binds the conversation it names (or creates one) and is acknowledged with {type:'attached', conversation} before the snapshot; a bad attach is an ErrorMessage and the connection closes. Any other first line binds root and is acted on. One conversation per connection; a connection's lines are handled strictly in order. malebolge-attach always sends attach on connect and prints its banner on the acknowledgement. The input draft passed to submit is built from validated fields, never forwarded. Amended 2026-10-21 (inquiry review F-2), the valid attach frames: {type:'attach'} = root; {conversation: N} = existing N (DEC-105); {new: true} = create with the daemon's default cwd; {new: true, cwd: S} = create with cwd S (DEC-107). Every other shape — conversation with new, cwd without new, new not true, a wrong type, an unknown key — is refused before anything is created (ErrorMessage, connection closes); malebolge-attach's flags refuse the same combinations. A later attach on a bound connection is an ErrorMessage; no rebind, the connection stays open. The create/acknowledge gap is accepted: a disconnect between the create commit and 'attached' may strand an empty ownerless conversation (no idempotency key; ids are sequential, so it is discoverable). malebolge-attach holds typed lines until 'attached' arrives; the daemon does not gate, since lines are processed in order."
+alternatives = ["Bind root at once and re-bind on a first-line selector (two snapshots)", "A selector on every command", "A distinct 'select'/'new' verb (diverges from RFC-002's attach sketch)", "profile in the acknowledgement (additive later)"]
+rationale = "One binding per connection keeps render.ts and Emacs single-stream; RFC-002's attach name lets it extend rather than replace the frame."
+consequences = ["A client that never sends gets no snapshot; the protocol header says so", "render.ts gains an 'attached' handler", "VT: no-attach first input lands on root; attach to N streams only N", "VT: each refused attach shape creates nothing and closes the connection", "VT: a second attach errors without rebinding"]
+decided_by = "user (accepted agent proposals, 2026-10-20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-030"

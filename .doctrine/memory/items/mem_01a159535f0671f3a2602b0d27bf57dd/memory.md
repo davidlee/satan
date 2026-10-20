@@ -19,3 +19,24 @@ and 1.3.0 (unchanged in these respects). Source: SL-030 research.
   by scan (`src/runner/durable-ids.ts` `conversationIdOf`), never by cast.
 - There is no public conversation listing or metadata. Enumerate with
   `tx.scanConversations` inside a commit.
+
+
+## Per-conversation vs harness-wide (verified 2026-10-20 against pi-durable **1.3.0**, malebolge's pin `@earendil-works/pi-durable@1.3.0`)
+
+- **`configure` merges field-wise.** `configure(tx, id, change)` →
+  `applyChange(state, change)` sets only the keys present in the `AgentChange`:
+  `undefined` leaves a field alone, `null` deletes it (`dist/harness/agent.js:55-58`,
+  `:92-122`). So `configure({ model })` cannot clobber a conversation's `cwd`,
+  and no read-modify-write is needed to change one field. Each call is its own
+  commit (`dist/harness/types.d.ts:592-593`) and emits `agent_changed`.
+- **`createConversation({ ownership, agent?, init? })` applies `agent` inside
+  the creating commit** — after the creation hook, before `init`
+  (`dist/harness/types.d.ts:415-421`). Model and `cwd` for a new conversation are
+  therefore atomic: one write, no second `configure`, no window without a model.
+  (`harness.root(ctx, {agent})` accepts the same shape but only at creation.)
+- **`harness.resume()` is scheduler-wide, not root's.** On open the scheduler
+  scans every live task across all conversations, re-pends `running` ones, and
+  `resume()` kicks them all (`dist/harness/scheduler.js:133-157`, `:158-162`).
+  A store holding N conversations with unfinished turns starts N unattended
+  generations, whoever is attached — relevant to any concurrency/cost bound
+  (malebolge has none: RFC-002 OQ-3).

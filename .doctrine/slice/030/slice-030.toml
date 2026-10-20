@@ -1,7 +1,7 @@
 id = 30
 slug = "malebolge-many-conversations"
 title = "malebolge daemon: many conversations — thread the conversation through the interactive daemon"
-status = "design"
+status = "plan"
 created = "2026-10-20"
 updated = "2026-10-20"
 tags = []
@@ -12,38 +12,38 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "src/session.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[selector]]
 selector = "src/daemon.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[selector]]
 selector = "src/protocol.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[selector]]
 selector = "src/attach.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[selector]]
 selector = "src/cwd.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[selector]]
 selector = "src/daemon-start.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[selector]]
 selector = "src/daemon-extensions.ts"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[selector]]
 selector = "src/runner/durable-ids.ts"
@@ -62,8 +62,33 @@ note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "README.md"
-intent = "scope-relevant"
-note = "cross-repo: paths are in ~/dev/malebolge"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
+
+[[selector]]
+selector = "src/conversations.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
+
+[[selector]]
+selector = "src/daemon-env.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
+
+[[selector]]
+selector = "src/attach-main.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
+
+[[selector]]
+selector = "src/render.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
+
+[[selector]]
+selector = "docs/internals.md"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge; sec-7 code impact"
 
 [[relation]]
 label = "governed_by"

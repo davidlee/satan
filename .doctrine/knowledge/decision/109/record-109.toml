@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 109
+slug = "malebolge-daemon-conversations-module"
+title = "malebolge daemon: src/conversations.ts owns resolving and creating a conversation"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-030 adds the daemon's first many-valued domain object; spreading resolve, create-with-defaults and binding across daemon.ts, session.ts and protocol.ts would double the transport file (raw/architecture.md X-A)."
+choice = "A daemon-only module src/conversations.ts turns a parsed attach request into a Conversation (resolve per the id-lookup decision, or create with the daemon's AgentChange defaults). daemon.ts stays transport and framing; session.ts stays the store opener with root; protocol.ts parses frames; daemon-start.ts composes. serve() takes an options object. Amended 2026-10-21 (RV-051 F-1): Conversations also owns watch(conversation) — watchEvents(session.harness, id, context) — because pi's only event-stream entry point is harness-first; it is the transport's only route to the Harness. daemon-start.ts keeps the Session and closes it last."
+alternatives = ["Grow Session with lookup/create", "Put resolution in daemon.ts"]
+rationale = "One owner per responsibility, testable without a socket; the options object keeps call sites self-describing as serve gains its resolver."
+consequences = ["Same file name as src/runner/conversations.ts (precedented: project-context.ts); headers distinguish them"]
+decided_by = "user (accepted agent proposals, 2026-10-20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-030"

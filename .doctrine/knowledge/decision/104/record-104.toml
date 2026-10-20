@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 104
+slug = "malebolge-daemon-model-creation-default"
+title = "malebolge daemon: the model is a creation-time default; a conversation's stored model is authority"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-030: many conversations. pi-durable has no harness-wide default model (no_model without one); root({agent}) is a no-op on an existing root; configure merges per key (raw/architecture.md F-2, X-E)."
+choice = "The daemon's AgentChange {model, cwd} is written once, atomically, by createConversation({ownership: ownerless, agent}) for each new conversation; a client-supplied cwd overrides the default cwd. Root keeps today's behaviour: the daemon's AgentChange is re-applied to root on every open. No other conversation is reconfigured on open."
+alternatives = ["Re-apply the model to every ownerless conversation on open (research X-1 option 1)", "conversationCreated hook for defaults (createConversation({agent}) already applies them in the creating commit)"]
+rationale = "pi stores the model per conversation; making the daemon's model a creation default matches that, keeps startup O(1), and leaves per-conversation models (RFC-002 OQ-2) possible without a second mechanism."
+consequences = ["After a MALEBOLGE_MODEL change, non-root conversations keep their old model; no client verb changes it yet (RFC-002 OQ-2)", "test/session.test.ts:106-121 keeps its meaning (root)", "VT: a created conversation carries the daemon's model and its own cwd; a reopen does not reconfigure it"]
+decided_by = "user (accepted agent proposals, 2026-10-20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-030"

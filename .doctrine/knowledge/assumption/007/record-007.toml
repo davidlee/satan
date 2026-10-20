@@ -1,0 +1,34 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 7
+slug = "malebolge-daemon-socket-is-attach-authority"
+title = "malebolge daemon: the attach socket is the attach authority"
+record_kind = "assumption"
+status = "held"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+claim = "Any client that can connect to a profile's attach socket may attach to, or create, any root or ownerless conversation in that profile's store. Filesystem permission on the socket and the profile's jail are the only gates; SL-030 adds no authority, since such a client could already drive root."
+confidence = "high"
+basis = "design-inference"
+validation_plan = "Revisit if a client other than the operator's (e.g. a SATAN-run process) gains socket access, or if RFC-002 introduces shared topics."
+validated_by    = ""
+validated_on    = ""
+invalidated_by  = ""
+invalidated_on  = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-030"

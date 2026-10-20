@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 106
+slug = "malebolge-daemon-room-faults-per-daemon"
+title = "malebolge daemon: room fault reporting stays per daemon across conversations"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-030 D-C. The DaemonConnection, its trust latch and the faultLog observer are built once per daemon (daemon-env.ts:131, room/connection.ts), below any conversation."
+choice = "Accept daemon-wide fault reporting with no code change. The trust latch stays on the one room DaemonConnection, the connection seam DEC-079 names. daemon-env.ts's header states this."
+alternatives = ["Per-conversation fault state"]
+rationale = "Faults belong to the room connection, which all conversations share; per-conversation state would let one conversation's retry disagree with another's view of trust."
+consequences = ["A fault seen by one conversation's tool call is logged once for the daemon"]
+decided_by = "user (accepted agent proposals, 2026-10-20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-030"

@@ -40,39 +40,32 @@ to be consolidated in this slice's research artefact):
 
 ## Scope & Objectives
 
-1. **Session:** the session exposes the harness and resolves conversations by
-   id. Root remains the default and is still opened at startup.
-2. **Protocol:** an optional first message selects a conversation by id or
-   creates a new one (optionally with a `cwd`). A connection that does not
-   send it is attached to root, so existing clients and stores keep working.
-3. **Daemon:** `attach()` resolves the selected conversation; watching,
-   input, abort and compact act on it.
-4. **Line client:** `malebolge-attach` gains flags to select an existing
-   conversation or create a new one.
+1. **Session:** `session.ts` stays the store opener; root remains the default
+   and is still opened at startup. A daemon-only `src/conversations.ts`
+   resolves or creates a conversation from an attach request, and watches it, so the transport holds no `Harness` (DEC-109).
+2. **Protocol:** an optional first frame `{type:"attach", conversation?,
+   new?, cwd?}` selects a conversation by id or creates one; the daemon
+   acknowledges with `{type:"attached", conversation}`. Any other first line
+   binds root, so clients that send no attach keep working (DEC-108).
+3. **Daemon:** `attach()` reads the first line, binds one conversation per
+   connection, handles its lines in order; watching, input, abort and compact
+   act on it. `serve()` takes an options object (DEC-109).
+4. **Line client:** `malebolge-attach` always sends `attach` on connect, gains
+   flags to select an existing conversation or create a new one, and prints
+   its banner on the acknowledgement.
 5. **Prompt section:** the working-directory section renders the
-   conversation's own `cwd`.
-6. **Reapplying configuration on open** — design decision D-A: today the
-   daemon's model and `cwd` are reapplied to root on every open
-   (`session.ts:27`). With many conversations, the daemon-wide model must
-   still take effect on restart without overwriting a conversation's own
-   `cwd`.
-7. **Id resolution** — design decision D-B: resolving id text to a
-   `ConversationId` needs `runner/durable-ids.ts` `conversationIdOf`, but
-   `test/structure.test.ts` forbids root modules from importing `src/runner/`.
-   DEC-074 governs this, not RFC-001. Either move it to a named root module
-   (`src/durable-ids.ts`, plus `"durable-ids"` in `RUNNER_ROOTS`), or cast
-   validated text directly. Creating a `src/lib/` tier would reopen what
-   DEC-074 deferred to malebolge IMP-002.
-8. **Room fault reporting** — design decision D-C: the room connection's
-   fault log, trust flag and reconnect window are per daemon, so faults are
-   reported across conversations. Decide whether to accept and document this,
-   or change it.
-9. **Client-supplied `cwd`** — design decision D-D, found in research: a
-   created conversation's `cwd` is where its tools run (both environment
-   hooks use `state.cwd`). Decide which values a client may supply. Research
-   suggests restricting them to what the running profile can serve (CON-005,
-   DEC-078): under the room home for the room profile, under the launch
-   directory for the host profile.
+   conversation's own `cwd` (`input.agent.cwd`).
+6. **Configuration** (D-A → DEC-104): the daemon's model and `cwd` are
+   creation-time defaults, written by `createConversation({agent})`; root is
+   still reconfigured on every open, as today; no other conversation is.
+7. **Id resolution** (D-B → DEC-105): the wire id is a JSON number, validated
+   as a safe positive integer and read with one lookup; unknown and
+   task-owned conversations are refused. `durable-ids.ts` does not move;
+   `test/structure.test.ts` is unchanged.
+8. **Room fault reporting** (D-C → DEC-106): stays per daemon; documented in
+   `daemon-env.ts`'s header.
+9. **Client-supplied `cwd`** (D-D → DEC-107): an opaque string passed to pi
+   unchanged; confinement is the jail's (CON-005). Who may attach: ASM-007.
 
 ## Non-Goals
 
@@ -91,20 +84,30 @@ to be consolidated in this slice's research artefact):
 Done when:
 
 - One daemon serves several conversations at once, each with its own event
-  stream, and input to one is never seen by another.
-- A client that sends no selector behaves exactly as today, against root.
+  stream, and input to one is never seen by another. Verified with
+  overlapping conversations: B completes while A is held mid-turn, abort on
+  A leaves B running, and each stream and transcript holds only its own
+  traffic (faux factories see the transcript, so order need not be scripted).
+- A legacy client whose first line is a command behaves as today, against
+  root. A client that never sends gets no snapshot (DEC-108).
 - A new conversation created with a `cwd` runs its tools there and states
   that directory in its prompt.
-- Changing the daemon's model takes effect on restart according to D-A, and
-  a conversation's `cwd` survives the restart.
-- `test/structure.test.ts` passes with id resolution in the shared tier.
+- A new conversation carries the daemon's model; a restart reconfigures root
+  only, and never changes another conversation's model or `cwd` (DEC-104).
+- `test/structure.test.ts` passes unchanged.
 - `just check` in malebolge is green; the README and the "one conversation"
   comments are updated.
 
 Risks:
 
-- D-A may have no clean answer if pi-durable has no harness-wide default
-  model. Not yet checked.
+- After a model change, non-root conversations keep their old model; no
+  client verb changes it yet (RFC-002 OQ-2).
+- At startup `harness.resume()` restarts every conversation's unfinished
+  turn, unattended and uncapped (RFC-002 OQ-3).
+- The faux provider's response queue is shared by all conversations;
+  overlapping tests use transcript-aware factories or barriers, not
+  scripted order.
+- Version skew: a new `malebolge-attach` against an old running daemon fails with a restart hint until the daemon is restarted.
 - The existing tests (`test/daemon.test.ts`, `test/session.test.ts`) are built
   around `root`, so the test fixtures carry much of the change.
 - Concurrency across conversations is unbounded once creating them is
@@ -114,4 +117,4 @@ Risks:
 
 - malebolge RFC-002: topics, index, titles, clients, concurrency cap.
 - Shared-state hazards in room fault handling (`roomShell` loss counters,
-  `DaemonConnection.trustFailure`), depending on D-C.
+  `DaemonConnection.trustFailure`): accepted by DEC-106, revisit if they bite.

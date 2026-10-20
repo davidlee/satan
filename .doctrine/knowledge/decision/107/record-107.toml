@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 107
+slug = "malebolge-daemon-cwd-opaque-string"
+title = "malebolge daemon: a client-supplied cwd is an opaque string passed to pi unchanged"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-030 D-D. A created conversation's cwd is pi's AgentChange.cwd: a string, the default directory its tools start in (daemon-env.ts:114,136). User direction 2026-10-20: do not over-index on cwd or couple it to conversation identity beyond what pi-durable does; a string stays a string."
+choice = "The daemon stores a client-supplied cwd string as given: no path resolution, containment check or realpath. Omitted, the daemon's default cwd is stored (DEC on model creation default). Confinement is the jail's (CON-005, DEC-078)."
+alternatives = ["Lexical containment under DaemonEnv.cwd", "realpath containment via an injected resolveCwd (raw/architecture.md F-5)"]
+rationale = "cwd is a starting directory, not a boundary: the agent's bash tool already reaches anything its jail binds, so a daemon-side check would imply a guarantee it cannot give. Passing it through adds no coupling pi does not have."
+consequences = ["A cwd outside the jail's binds fails at tool time, not at create", "RFC-019 D1 narrowing stays the jail's job"]
+decided_by = "user (accepted agent proposals, 2026-10-20)"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-030"
