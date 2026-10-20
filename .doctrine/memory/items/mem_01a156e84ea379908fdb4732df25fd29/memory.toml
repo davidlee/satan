@@ -1,0 +1,42 @@
+memory_uid = "mem_01a156e84ea379908fdb4732df25fd29"
+memory_key = "mem.fact.jail.set-env-store-path-not-bound"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "jail.nix set-env with a store path does not put that path in the jail"
+summary = "A store path passed only via set-env is absent inside the jail; ro-bind it or put it in extraPkgs, and check it is bound"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = ["flake.nix"]
+globs = []
+commands = []
+tags = ["jail", "nix", "flake-check"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7c6f51417962c10e0edc8008692c8c8b6528abf8"
+ref_name = "refs/heads/main"
+checkout_state_id = "3873eadcb41df1065253187834b101659aa4e45815afa255966e97062542a870"
+base_commit = "a51dcd7a8f716de9406bb421846b00820f1aa882"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "high"
+weight = 0
+
