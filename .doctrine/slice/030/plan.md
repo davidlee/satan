@@ -83,7 +83,11 @@ behaviour they describe exists, and asserts that `test/structure.test.ts`,
   forbids type assertions (user's choice, 2026-10-21); `ConversationDefaults`
   makes `cwd` required for `exactOptionalPropertyTypes`; flag parsing moves to
   an exported `attachTargetOf` in `attach.ts`; events before `attached`
-  render as they arrive; more README lines are in the docs list. The run must
+  render as they arrive; more README lines are in the docs list. Rounds 2-3:
+  sec-4 Configuration names `ConversationDefaults`; sec-4 says protocol.ts
+  and conversations.ts each check the id; sec-7's fixture list gains the
+  `start` helper and `write(): Promise<void>`, and separates `until` waits
+  from exact-output banners. The run must
   be re-locked before PHASE-01 starts (its EN-1).
 - inq-7 follow-through is reconcile-time and unphased: malebolge RFC-002's
   table and wire sketch, the ISS-053 note, the ADR-017 §3 ledger confirmed

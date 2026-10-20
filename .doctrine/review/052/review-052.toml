@@ -660,5 +660,157 @@ role = "responder"
 disposition = "fix-now"
 response = "Stated in PHASE-04 EX-10; coverage headroom 98% vs 85%."
 
+[[finding]]
+id = "F-35"
+status = "answered"
+severity = "major"
+title = "PHASE-04 EX-9 receipt rule put the macrotask before the close and dropped the post-close wait"
+detail = "test/daemon.test.ts:191-194 waits after close, before resolve; otherwise the turn runs before the FIN and takes V-15's path. Round 3 R-1."
+disposition = "fix-now"
+response = "EX-9 rewritten: await write, close, one macrotask, then resolve; 'immediate' dropped."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "EX-9 rewritten: await write, close, one macrotask, then resolve; 'immediate' dropped."
+
+[[finding]]
+id = "F-36"
+status = "answered"
+severity = "major"
+title = "PHASE-08 EX-2 cannot tell the destroyed branch from close-handler stop"
+detail = "both orders give one stopped stream. Round 3 R-2."
+disposition = "fix-now"
+response = "PHASE-08 EX-1 records start calls; EX-2 waits a macrotask after close before release and asserts start never called; VT keyword 'started'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-08 EX-1 records start calls; EX-2 waits a macrotask after close before release and asserts start never called; VT keyword 'started'."
+
+[[finding]]
+id = "F-37"
+status = "answered"
+severity = "minor"
+title = "PHASE-04 EX-14 'every other test unedited' false: daemon.test.ts start helper changes"
+detail = "test/daemon.test.ts:82-87; ConversationDefaults needs cwd. Round 3 R-3."
+disposition = "fix-now"
+response = "EX-14 names the start helper and its defaults; design sec-7 fixture list amended."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "EX-14 names the start helper and its defaults; design sec-7 fixture list amended."
+
+[[finding]]
+id = "F-38"
+status = "answered"
+severity = "minor"
+title = "Design sec-7 fixture list says write(raw: string), not Promise<void>"
+detail = "design.md sec-7. Round 3 R-4."
+disposition = "fix-now"
+response = "Design sec-7 amended (adopted rev 46)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-7 amended (adopted rev 46)."
+
+[[finding]]
+id = "F-39"
+status = "answered"
+severity = "minor"
+title = "Design sec-4 says isConversationKey is sec-2's validation; the check has two homes"
+detail = "protocol.ts parses; conversations.ts narrows. Round 3 R-5."
+disposition = "fix-now"
+response = "Design sec-4 states both checks and the dependency direction."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-4 states both checks and the dependency direction."
+
+[[finding]]
+id = "F-40"
+status = "answered"
+severity = "nit"
+title = "plan.md lists round-1 amendments only; header rev behind"
+detail = "Round 3 R-6."
+disposition = "fix-now"
+response = "plan.md Notes and header updated."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "plan.md Notes and header updated."
+
+[[finding]]
+id = "F-41"
+status = "answered"
+severity = "nit"
+title = "Design sec-7 calls until waits exact-output"
+detail = "test/attach.test.ts:96,118,155,166. Round 3 R-7."
+disposition = "fix-now"
+response = "Design sec-7 distinguishes waits and toBe sites."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-7 distinguishes waits and toBe sites."
+
+[[finding]]
+id = "F-42"
+status = "answered"
+severity = "nit"
+title = "PHASE-06 EX-7 options object vs exactOptionalPropertyTypes for wait"
+detail = "tsconfig.json:8. Round 3 R-8."
+disposition = "fix-now"
+response = "EX-7 notes {wait} only when defined."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "EX-7 notes {wait} only when defined."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
