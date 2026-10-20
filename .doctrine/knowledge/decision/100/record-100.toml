@@ -1,0 +1,45 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 100
+slug = "pi-agent-two-confinement-postures"
+title = "Two confinement postures, chosen by the policy artefact: per-call wrapper (default) or a static launch-time jail"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context      = ""
+choice       = ""
+alternatives = []
+rationale    = ""
+consequences = []
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "adds the static posture alongside per-call wrapping"
+target = "DEC-089"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "wrapper forms become per-call-mode keys; static mode has none"
+target = "DEC-098"
+
+[[relation]]
+label = "shapes"
+target = "SL-029"

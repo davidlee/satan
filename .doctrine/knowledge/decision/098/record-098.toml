@@ -3,7 +3,7 @@ version = 1
 
 id = 98
 slug = "pi-agent-filesystem-capability"
-title = "Filesystem authority is a profile capability that selects a flake-built wrapper; read-only is a delivery dependency"
+title = "Filesystem authority is a profile capability that selects a flake-built wrapper; read-only is a delivery dependency (per-call mode; DEC-100 adds a static posture)"
 record_kind = "decision"
 status = "proposed"
 created = "2026-10-20"
