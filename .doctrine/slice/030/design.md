@@ -131,16 +131,18 @@ export interface Conversations {
   /** `watchEvents(session.harness, conversation.id, context)`. */
   watch(conversation: Conversation): Promise<AgentEventStream>;
 }
-export function conversations(session: Session, defaults: AgentChange): Conversations;
+/** The daemon's creation defaults; `cwd` is required so the fallback below is always a string. */
+export type ConversationDefaults = AgentChange & { cwd: string };
+export function conversations(session: Session, defaults: ConversationDefaults): Conversations;
 ```
 
 | target | behaviour |
 |---|---|
 | `root` | `session.root` |
-| `existing N` | one read, `harness.commit((tx) => tx.conversation(N as ConversationId), context)`. `undefined` → `no conversation N`. `record.owner !== undefined` → `conversation N belongs to a task`. Otherwise `harness.conversation(record.id, context)`; its `undefined` (unreachable in 1.3.0, which retires no conversation) is also `no conversation N`. Only pi's `record.id` is used after the read. |
+| `existing N` | one read, `harness.commit((tx) => tx.conversation(N), context)`, `N` narrowed by `isConversationKey`. `undefined` → `no conversation N`. `record.owner !== undefined` → `conversation N belongs to a task`. Otherwise `harness.conversation(record.id, context)`; its `undefined` (unreachable in 1.3.0, which retires no conversation) is also `no conversation N`. Only pi's `record.id` is used after the read. |
 | `new` | `harness.createConversation({ ownership: { kind: "ownerless" }, agent: { ...defaults, cwd: target.cwd ?? defaults.cwd } }, context)`. The explicit fallback matters: pi skips an `undefined` key, so spreading an absent `cwd` would store none. Model and `cwd` land in the creating commit; there is no window without a model. |
 
-The cast `N as ConversationId` is a lookup key only; the branded value the daemon keeps is pi's. Header sentence (research F-15): this answers "which conversation does a wire reference name"; `runner/durable-ids.ts` answers "recover the branded id from the runner's TEXT column". Same file name as `src/runner/conversations.ts` (precedent: `project-context.ts`); each header names its program.
+`isConversationKey(n: number): n is ConversationId` (`Number.isSafeInteger(n) && n > 0`) is the safe-positive-integer validation sec-2 requires, written as a type predicate: malebolge's lint forbids type assertions (`eslint.config.js`, `consistent-type-assertions: never`), and pi's `idFromNumber` is not exported. The narrowed number is a lookup key only; the branded value the daemon keeps is pi's `record.id` (amended 2026-10-21, plan review RV-052). Header sentence (research F-15): this answers "which conversation does a wire reference name"; `runner/durable-ids.ts` answers "recover the branded id from the runner's TEXT column". Same file name as `src/runner/conversations.ts` (precedent: `project-context.ts`); each header names its program.
 
 Ownership is immutable in pi's record, so the attach-time refusal of task-owned conversations is stable.
 
@@ -183,9 +185,9 @@ No code change. The `DaemonConnection`, its trust latch and the `faultLog` obser
 <!-- doctrine:section sec-6 -->
 # Line client
 
-## Flags (attach-main.ts)
+## Flags (attach.ts, called from attach-main.ts)
 
-`node:util` `parseArgs`, strict:
+`attach.ts` exports a pure `attachTargetOf(args: string[]): AttachTarget` over `node:util` `parseArgs`, strict, which throws a usage error for a refused combination; `attach-main.ts` calls it, prints the usage line and exits 2 on that error. The parse lives in `attach.ts` so it is tested in-process: `attach-main.ts` runs at import and is outside coverage (amended 2026-10-21, RV-052).
 
 | flags | frame sent |
 |---|---|
@@ -203,6 +205,7 @@ Refused locally with a usage line and exit 2, mirroring the daemon's table: `--c
 - Typed lines are held until `attached` arrives and then sent in order; an `ErrorMessage`, or a close by the daemon, before it prints the error and detaches, discarding held lines (DEC-108 create/acknowledge gap).
 - Exit status: `attach()` rejects when the daemon ends the connection before `attached`, with an error whose `code` is `"NOT_ATTACHED"` (a client-side code, unrelated to the daemon's `AttachRefused` parse error). `attach-main.ts` already exits 1 without a stack trace for any error carrying a `code` (`attach-main.ts:10-15`, `codeOf`), after `attach` has printed why; so a refused attach is one error line and exit 1, and a normal detach still exits 0.
 - **Version skew.** The daemon is a long-lived user unit and `malebolge-start` does not restart an active one, so after an upgrade a new client can meet an old daemon. That daemon answers `unknown message type "attach"`; the client prints `[the daemon predates attach: restart it (malebolge-stop, then malebolge-start)]` and exits 1. The README's upgrade note says to restart the daemon.
+- Events that arrive before `attached` are rendered as they arrive; only typed lines are held. (An old daemon writes its snapshot at connect, so the skew case prints the snapshot, then the hint.)
 - `/quit` or end of input while waiting ends the connection and resolves normally (exit 0): the user chose to leave, nothing was refused.
 
 ## render.ts
@@ -222,6 +225,7 @@ Refused locally with a usage line and exit 2, mirroring the daemon's table: `--c
 
 Docs, each verified by grep at design time:
 
+- `README.md:35-36` ("all in the same conversation"), `:54` ("one durable conversation"), `:70`, `:121-122`: reworded to root by default, many possible (added 2026-10-21, RV-052).
 - `README.md:17-19`: "one ongoing conversation" and "a new client sees the conversation so far" become many conversations, root by default, a client seeing its conversation once attached; plus the upgrade note (restart the daemon).
 - `docs/internals.md:80-88` (§Protocol, the protocol reference): gains `attach`/`attached`, the error table's close rule and the passive-connection rule.
 - `docs/internals.md:116-119`: "cwd … are constants" becomes per conversation.

@@ -1,0 +1,474 @@
+id    = 52
+slug  = "plan-review-of-sl-030"
+title = "plan review of SL-030"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "plan"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-030"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "blocker"
+title = "PHASE-02 EX-2: `N as ConversationId` cannot pass lint"
+detail = "eslint.config.js:55-58 consistent-type-assertions never; repo has no assertions/eslint-disable; idFromNumber not exported. Lane B R-1. Resolution: user chose a type predicate isConversationKey (2026-10-21); design sec-4 amended (rev 44)."
+disposition = "fix-now"
+response = "Design sec-4 amended (run rev 44): isConversationKey type predicate, per user choice 2026-10-21. PHASE-02 EX-2, VT-3."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-4 amended (run rev 44): isConversationKey type predicate, per user choice 2026-10-21. PHASE-02 EX-2, VT-3."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "PHASE-02 EX-3: create agent literal fails tsc under exactOptionalPropertyTypes"
+detail = "tsconfig.json:8; `target.cwd ?? defaults.cwd` is string|null|undefined against AgentChange.cwd. Lane B R-2. Fix: ConversationDefaults = AgentChange & {cwd: string} (design sec-4 amended)."
+disposition = "fix-now"
+response = "Design sec-4 amended: ConversationDefaults = AgentChange & {cwd: string}. PHASE-02 EX-3, PHASE-04 EX-12."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-4 amended: ConversationDefaults = AgentChange & {cwd: string}. PHASE-02 EX-3, PHASE-04 EX-12."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "major"
+title = "PHASE-06: exit-code criteria have no test mechanism"
+detail = "src/attach-main.ts runs at import, excluded from coverage; test/fixtures.ts:66-69 childProcess ignores stdin. Lane B R-3. Fix: pure attachTargetOf in attach.ts (design sec-6 amended); attach-main exit mapping by VA read."
+disposition = "fix-now"
+response = "Design sec-6 amended: exported attachTargetOf in attach.ts. PHASE-06 EX-1/EX-2/EX-10, VT-1/VT-3, VA-1."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-6 amended: exported attachTargetOf in attach.ts. PHASE-06 EX-1/EX-2/EX-10, VT-1/VT-3, VA-1."
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "major"
+title = "PHASE-02 EX-6: task-owned fixture throws without conversationId and gets scheduled"
+detail = "pi-durable transaction.js:190-192 requires options.conversationId in an unbound commit; scheduler kicks on commit. Lanes B R-4, A R-15. Fix: conversationId: root.id; passive harness {resume:false} (test/runner/durable-ids.test.ts:10-12)."
+disposition = "fix-now"
+response = "PHASE-02 EX-6: conversationId: root.id, passive harness {resume:false}."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-02 EX-6: conversationId: root.id, passive harness {resume:false}."
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "major"
+title = "PHASE-04: negative assertions (no stream, nothing created/submitted) lack a settle point"
+detail = "watched.next() is single-shot (test/daemon.test.ts:26-42). Lane B R-5. Fix: a control connection attached after ready is the settle point; assert counts against it."
+disposition = "fix-now"
+response = "PHASE-04 EX-9: control connection as settle point; VT-4 keywords."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-9: control connection as settle point; VT-4 keywords."
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "major"
+title = "PHASE-05: abort under a held faux factory can deadlock"
+detail = "abort resolves when scope idle (harness/types.d.ts:624-628); faux checks signal only after factory resolves (faux.js:384-388, 228-242). Lane B R-6. Fix: spell the order — abort not awaited, B completes, release barrier, then assert."
+disposition = "fix-now"
+response = "PHASE-05 EX-3 spells the abort order."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-05 EX-3 spells the abort order."
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "major"
+title = "PHASE-04 oversized: 15 EX, one gate; lint complexity 8 / max-lines 80"
+detail = "eslint.config.js:63-68. Lane B R-7. Fix: move V-15 (mid-bind departure with a barrier in the watchEvents mock) to its own phase after PHASE-04; note decomposed helpers."
+disposition = "fix-now"
+response = "V-15 moved to new PHASE-08 (after PHASE-04); PHASE-04 EX-10 is a pointer; EX-1 notes lint bounds; plan.md rationale."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "V-15 moved to new PHASE-08 (after PHASE-04); PHASE-04 EX-10 is a pointer; EX-1 notes lint bounds; plan.md rationale."
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "major"
+title = "V-1 resolution rows not verified end-to-end at the daemon"
+detail = "plan.md V-row table narrowed V-1's daemon half to refusals. Lane A R-1. Fix: PHASE-04 EX: attach by conversation:N and new+cwd over the wire; attached id and stored cwd asserted."
+disposition = "fix-now"
+response = "PHASE-04 EX-6 and VT-1: conversation:N and new+cwd over the wire."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-6 and VT-1: conversation:N and new+cwd over the wire."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "major"
+title = "PHASE-04 VT-4 keyword `destroy` will not appear in test/daemon.test.ts"
+detail = "Tests disconnect through LineClient.close() (test/fixtures.ts:188-190). Lane A R-2. Fix: replace keyword."
+disposition = "fix-now"
+response = "PHASE-04 VT-4 keywords replaced (watched.streams, scanConversations, control)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 VT-4 keywords replaced (watched.streams, scanConversations, control)."
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "major"
+title = "README one-conversation statements beyond :17-19 left false"
+detail = "README.md:35-36, :54, :70, :121-122. Lane A R-3. Fix: design sec-7 docs list extended (amended); PHASE-07 EX-1."
+disposition = "fix-now"
+response = "Design sec-7 docs list extended; PHASE-07 EX-1, EX-3."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-7 docs list extended; PHASE-07 EX-1, EX-3."
+
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "minor"
+title = "watchEvents must be imported from the package root or the daemon test mock is bypassed"
+detail = "test/daemon.test.ts:43-56 mocks exactly @earendil-works/pi-durable. Lane B R-8."
+disposition = "fix-now"
+response = "PHASE-02 EX-5 pins the package-root specifier."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-02 EX-5 pins the package-root specifier."
+
+[[finding]]
+id = "F-12"
+status = "answered"
+severity = "minor"
+title = "PHASE-03: root cwd mechanism unspecified; 'unchanged in meaning' over-claims; root half cannot share the V-9 harness"
+detail = "openFauxHarness/openTestHarness root agent has no cwd; systemPromptSections closes the harness (test/harness-fixture.ts:137-148). Lanes A R-11, B R-9, R-10."
+disposition = "fix-now"
+response = "PHASE-03 EX-2..EX-4: root.configure({cwd}); root half by the EX-3 tests; one-arg callers unedited."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-03 EX-2..EX-4: root.configure({cwd}); root half by the EX-3 tests; one-arg callers unedited."
+
+[[finding]]
+id = "F-13"
+status = "answered"
+severity = "minor"
+title = "PHASE-04: EX-5 non-JSON first line and EX-11 have no verification"
+detail = "Lane B R-11. Fix: extend VT-1 expects; EX-11 into VA-1."
+disposition = "fix-now"
+response = "PHASE-04 EX-5 and VT-1 cover the non-JSON first line; EX-11 checked by VA-1."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-5 and VT-1 cover the non-JSON first line; EX-11 checked by VA-1."
+
+[[finding]]
+id = "F-14"
+status = "answered"
+severity = "minor"
+title = "Invariants 4 (socket, persistence duty) and 5 never reach a header criterion"
+detail = "design sec-1 invariants; sec-7 'module headers carry the five invariants'. Lane A R-4."
+disposition = "fix-now"
+response = "PHASE-01 EX-5 (invariant 4 incl. socket and persistence), PHASE-02 EX-7 (invariant 5), PHASE-07 VA-1 header check."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-01 EX-5 (invariant 4 incl. socket and persistence), PHASE-02 EX-7 (invariant 5), PHASE-07 VA-1 header check."
+
+[[finding]]
+id = "F-15"
+status = "answered"
+severity = "minor"
+title = "PHASE-03: DaemonParts.cwd removal only in the objective"
+detail = "src/daemon-extensions.ts:12-18. Lane A R-5."
+disposition = "fix-now"
+response = "PHASE-03 EX-1 names DaemonParts.cwd removal and daemon-start."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-03 EX-1 names DaemonParts.cwd removal and daemon-start."
+
+[[finding]]
+id = "F-16"
+status = "answered"
+severity = "minor"
+title = "PHASE-02 EX-4: session.test.ts site ambiguous"
+detail = "design V-8 names two sites. Lane A R-6."
+disposition = "fix-now"
+response = "PHASE-02 EX-4 states the split: session.test.ts:106-121 unedited for root; created half new."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-02 EX-4 states the split: session.test.ts:106-121 unedited for root; created half new."
+
+[[finding]]
+id = "F-17"
+status = "answered"
+severity = "minor"
+title = "PHASE-04 EX-1 'chain continues' reads as overriding the failed-attach rule"
+detail = "design sec-3 Failed attach. Lane A R-7."
+disposition = "fix-now"
+response = "PHASE-04 EX-1 states the failed-attach exception."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-1 states the failed-attach exception."
+
+[[finding]]
+id = "F-18"
+status = "answered"
+severity = "minor"
+title = "Client behaviour for events before attached is unspecified (skew case)"
+detail = "old daemon writes snapshot at connect (src/daemon.ts:59). Lane A R-8. Fix: render as they arrive (design sec-6 amended)."
+disposition = "fix-now"
+response = "Design sec-6 amended: events before attached render as they arrive. PHASE-06 EX-3, EX-5."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-6 amended: events before attached render as they arrive. PHASE-06 EX-3, EX-5."
+
+[[finding]]
+id = "F-19"
+status = "answered"
+severity = "minor"
+title = "PHASE-04 EX-14 drops raw lineClient uses"
+detail = "test/daemon.test.ts:139 late-client test. Lane A R-9."
+disposition = "fix-now"
+response = "PHASE-04 EX-14 names the raw lineClient uses (:133-145)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-14 names the raw lineClient uses (:133-145)."
+
+[[finding]]
+id = "F-20"
+status = "answered"
+severity = "minor"
+title = "resume() staying in openSession has no criterion"
+detail = "src/session.ts:42; design sec-4. Lane A R-10."
+disposition = "fix-now"
+response = "PHASE-02 EX-9; PHASE-04 EX-12 resolves after openSession (after resume)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-02 EX-9; PHASE-04 EX-12 resolves after openSession (after resume)."
+
+[[finding]]
+id = "F-21"
+status = "answered"
+severity = "nit"
+title = "AttachedMessage shape and 'sent once' unstated"
+detail = "design sec-2 Replies, sec-6. Lane A R-12."
+disposition = "fix-now"
+response = "PHASE-01 EX-4 shape; PHASE-04 EX-6 'exactly once'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-01 EX-4 shape; PHASE-04 EX-6 'exactly once'."
+
+[[finding]]
+id = "F-22"
+status = "answered"
+severity = "nit"
+title = "inq-7 follow-through has no home in the plan"
+detail = "design sec-7. Lane A R-13."
+disposition = "fix-now"
+response = "plan.md Notes: inq-7 reconcile-time, unphased."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "plan.md Notes: inq-7 reconcile-time, unphased."
+
+[[finding]]
+id = "F-23"
+status = "answered"
+severity = "nit"
+title = "VT keywords pre-satisfied or fragile (barrier, split, FauxResponseFactory, abort, /quit, restart, attach)"
+detail = "Lanes A R-14, B R-12."
+disposition = "fix-now"
+response = "Keywords replaced across PHASE-04/05/06/07/08; each row keeps at least one keyword absent before the slice."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Keywords replaced across PHASE-04/05/06/07/08; each row keeps at least one keyword absent before the slice."
+
+[[finding]]
+id = "F-24"
+status = "answered"
+severity = "nit"
+title = "attach.test.ts banners: exact-output form, rewritten in PHASE-04 and PHASE-06"
+detail = "test/attach.test.ts:96,118,121,131,155,166. Lane B R-13."
+disposition = "fix-now"
+response = "PHASE-04 EX-14 keeps toBe form and notes PHASE-06 re-edits; PHASE-06 EX-7."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-14 keeps toBe form and notes PHASE-06 re-edits; PHASE-06 EX-7."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
