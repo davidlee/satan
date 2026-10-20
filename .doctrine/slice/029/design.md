@@ -35,8 +35,8 @@ pi_agent(prompt, profile, cwd?, session?, tools?, ceilings?, transcript_budget_b
 1. **policy** — absent or malformed → `policy-unavailable` / `policy-invalid`; a posture this build does not serve, or a static-only field in an otherwise valid file → `posture-unsupported` (DEC-100 amendment).
 2. **enabled** — `enabled = false` → `disabled`.
 3. **profile** — must match `^[a-z][a-z0-9-]{0,31}$` and exist in the server's **start-up profile snapshot** (DEC-092 amendment), not in a directory read per call; it must be listed in the policy → `profile-invalid` / `profile-unknown` / `profile-not-allowed`.
-4. **root** — canonicalised, existing directory, inside the allowlist by path components (DEC-095) → `root-missing`, `root-not-a-directory`, `root-not-allowlisted`. Static mode: a `cwd` other than the declared root → `cwd-not-supported`.
-5. **capability** — the profile's `filesystem` must match the posture: per-call, the required wrapper form must exist → `wrapper-unavailable`; static, the jail's mode must agree → `capability-mismatch`.
+4. **root** — canonicalised, existing directory, inside the allowlist by path components (DEC-095) → `root-missing`, `root-not-a-directory`, `root-not-allowlisted`. (Static mode's `cwd-not-supported` is design of record only: step 1 refuses that posture in this build.)
+5. **capability** — the profile's `filesystem` must match the posture: per-call, the required wrapper form must exist → `wrapper-unavailable`. (`capability-mismatch` is static-mode only, and likewise unreachable in this build.)
 6. **ceilings** — clamped to the maxima; a ceiling above a maximum is a refusal, not a silent clamp → `ceiling-above-maximum`.
 7. **session** — grammar, then binding to (root, capability), then liveness → `session-invalid`, `session-root-mismatch`, `session-capability-mismatch`, `session-busy`.
 8. **child view** — no member of the effective child bind set may expose a protected store more strongly than that store tolerates (sec-3) → `view-overlaps-protected`.
@@ -176,6 +176,8 @@ One ladder for every trigger: SIGTERM to the group, 2 s grace, SIGKILL to the gr
 `result` is the **terminal assistant message** — the last assistant `message_end` with a terminal stop reason and no later assistant message — with all of its text blocks joined. A later assistant `message_start` or `message_end` invalidates an earlier candidate, so a message is only terminal once the stream has none after it. A backwards search for the last prose block is expressly not the rule (DEC-093 amendment).
 
 `final` is true for exactly two terminal reasons — `stop`, and `length` (which also sets `truncated: true`, the text being complete as far as the provider produced it) — and only when the run also **settled and exited 0** (below). `error`, `aborted`, `toolUse`, `deferred`, `pending` and every server-caused stop give `final: false, result: null`: a stop reason on a message is not by itself evidence that an answer exists.
+
+`pending` is the in-flight marker, so a `message_end` carrying it is malformed rather than merely unfinished: it is counted as a request and the run reports `incomplete` with `termination: "eof"`, because the stream ended on a message the model had not finished. It is never an answer and never `completed`.
 
 `session` is always present — minted and returned when the caller supplied none.
 

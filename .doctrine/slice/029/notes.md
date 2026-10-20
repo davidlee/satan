@@ -407,3 +407,21 @@ atomic; so double ownership is unreachable.
 Also ticked the earlier discussion into the ledger: RV-046 F-4's response now names
 the third accepted limit (extension-mediated work), so the ledger's accepted-limit
 set matches DEC-097 rather than lagging it.
+
+## Self-attack at content freeze (rev 74)
+
+Two gaps found by re-reading the corrected passages, both mine, both fixed:
+
+- a terminal `message_end` carrying `pending` (the in-flight marker) had no row in
+  the normative table and no cause token. Now explicit: malformed rather than
+  unfinished — counted as a request, `state: incomplete`, `termination: "eof"`,
+  never an answer.
+- sec-2's steps 4 and 5 still described `cwd-not-supported` and
+  `capability-mismatch` as live refusals, though step 1 refuses the static posture
+  in this build. Both are now marked design-of-record only, so a reader does not
+  implement a branch that cannot be reached.
+
+Content is frozen at rev 74 for the lock sequence. Not round-tripping
+`drafting → reviewing` to refresh the pass binding: the lock conditions are section
+attestations, a review disposition and design acceptance, none of which read that
+binding, and a round-trip would only mint another empty pass.
