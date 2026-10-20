@@ -374,3 +374,36 @@ sec-7's argv assertion tightened to "no `-e` other than `builtin:mcp` ever". The
 REV to SPEC-001 REQ-004 at reconcile now carries three weaker properties:
 retrospective accounting, nested spend outside attribution, extension-mediated
 work outside observation.
+
+## Fourth round: no window, verbatim tokens, atomic reclaim (rev 72)
+
+Three corrections, all against my text rather than my prose about it.
+
+**Credential failure counted as a send.** `_runDefaultCompaction` resolves auth
+before it calls the provider, so a missing/expired key (and a missing model) throw
+inside the attempt window and emit `compaction_end` with no `result`. The window
+inferred a send from a *start* record. Dropped it: summarization is counted only
+on positive evidence — `result.usage`, `result` without usage (which aborts), or
+`summarization_retry_scheduled` — and a `result`-less `compaction_end` counts
+nothing whoever produced it. Side benefit: an extension cancelling a compaction
+can no longer inflate the count, independent of the accepted extension limit.
+Residual: an abort mid-response or a non-retryable failure after the provider call
+is uncounted, and its spend is unattributed rather than zero; both coincide with a
+server cause.
+
+**`toolUse` was misspelled.** pi's wire tokens are `pending | stop | length |
+toolUse | error | aborted | deferred`. My `tool_use` would have matched nothing
+while looking correct, and `pending` was unmapped. Tokens are now pi's verbatim
+throughout sec-4/sec-5/DEC-093, with a wrong-spelling control in sec-7.
+
+**The reclaim protocol still had an unlocked interval.** Rename-away leaves the
+path absent, so a third process can create a lock there, and the inode check
+cannot undo it; a "rename back" would overwrite a live lock. Replaced: a live lock
+is never removed, a stale one is replaced *atomically* (temp file renamed over
+`<lock>`) under a single `O_EXCL` `<lock>.claim`, losers refuse `session-busy`, and
+an orphan claim needs an operator. Creation needs an absent path; replacement is
+atomic; so double ownership is unreachable.
+
+Also ticked the earlier discussion into the ledger: RV-046 F-4's response now names
+the third accepted limit (extension-mediated work), so the ledger's accepted-limit
+set matches DEC-097 rather than lagging it.

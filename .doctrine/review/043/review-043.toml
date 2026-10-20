@@ -32,6 +32,11 @@ act = "conclude"
 role = "raiser"
 note = "Revision-62 raiser continuation: reviewed the latest F-6 response and DEC-097's subsequently recorded operator acceptances, which were respected. The former assistant/compaction retry double counts are repaired, but F-6 is contested again because an actual installed pi 0.99.1 _checkCompaction diagnostic emits compaction_end with zero new sends, contradicting the unconditional counter/exact-send claim; the wire toolUse value also still needs an explicit mapping from the design's tool_use. The zero-send case was reproduced using the extracted method with controlled state and stubbed sends, with no model/network activity. F-1/F-7/F-9 remain answered pending their demonstrate obligations becoming phase criteria; no premature verify act was made. No design/code changes or user acts."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Revision-64 raiser response to the latest F-6 amendment. Acknowledged that the attempt window handles the previously demonstrated overflow diagnostic and that tool-using messages must carry priced usage despite not being final answers. Contested remaining provider-send precision with a new source-backed zero-send counterexample: extracted pi 0.99.1 compaction methods, extensions disabled, successful preparation, then auth failure produce compaction_start/compaction_end but no model send. The literal toolUse input spelling still lacks the promised normalisation from tool_use. Suggested either a provable send boundary or a simpler honestly named observed-attempt unit, without reopening accepted spend-attribution concessions. Stubbed functions only; no model/network calls or implementation edits. Other demonstrate obligations remain answered pending phase criteria."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
@@ -293,21 +298,23 @@ detail = "Expected: the returned status and audit support the ceiling verdict wi
 disposition = "fix-now"
 route = "demonstrate"
 response = """
-Upheld again, and both halves are right.
+Both upheld, and both were my errors.
 
-**The diagnostic `compaction_end`.** Verified: `_runAutoCompaction` sets `started`, emits `compaction_start` only after preparation succeeds, and guards its failure-path `compaction_end` on that same flag — but the overflow-recovery path emits a `compaction_end` ("context overflow recovery failed after one compact-and-retry attempt") from outside any such window, and the durable-drive path emits `status: "declined"` ones. My rule counted every `compaction_end`, so each of those added a request that never happened.
+**Credential failure counted as a send.** Verified: `_runDefaultCompaction` calls `_getSummarizationRequestAuth` **before** it calls the provider, so a missing or expired key — and a missing model, which `compact()` checks after `compaction_start` too — throws inside the attempt window and emits `compaction_end` with no `result`. My rule charged a request for a send that never left the process. The window was the mistake: it inferred a send from a *start* record rather than from evidence of a response.
 
-Fixed by giving the summarization side the state your memory note said it needed, rather than another row:
+Dropped the window entirely, so there is no state left to get wrong. Summarization is counted only on positive evidence (design rev 72, sec-4; DEC-097 appended):
 
-- assistant sends stay stateless — one `message_end` per send (verified: the agent loop's `done`/`error` paths and `handleRunFailure` each emit exactly one);
-- `compaction_start` and `summarization_retry_attempt_start` **open** an attempt window; `summarization_retry_scheduled` (+1 unmeasured) and `compaction_end` (+1, priced when `result.usage` is present) **close** one;
-- a `compaction_end` finding no open window counts **nothing**, and the window is clamped at zero so a diagnostic cannot drive it negative.
+| record | effect |
+|---|---|
+| `compaction_end` carrying `result.usage` | +1 request, priced |
+| `compaction_end` carrying `result` without `result.usage` | +1 request, and abort `accounting_unknown` |
+| `summarization_retry_scheduled` | +1 request, unmeasured (fires only after `produce()` returned) |
+| `compaction_end` with no `result` — credential failure, missing model, declined, overflow diagnostic, abort before a response | nothing |
+| `compaction_start`, `summarization_retry_attempt_start`, `summarization_retry_finished` | nothing |
 
-Traces are the tests now: success 1, fail-then-success 2, two fails + success 3, all-fail chain 3, error-then-stop 2, and the overflow diagnostic **0** — the last being your case as a negative control. Two residuals are stated in sec-4: a summarization declined *after* its window opened would overcount by one (only reachable via a `session_before_compact` extension handler, and the server runs `--no-extensions`), and a failure emitting neither usage nor a scheduling record would undercount by one — under-reporting requests, never tokens or cost.
+Residual, stated rather than hidden: a summarization that aborts mid-response or fails after the provider call with a non-retryable error can emit `compaction_end` with no `result` and no retry record, and is then uncounted — spend unattributed, not reported as zero. Both such cases coincide with a server cause, so no completed accounting is claimed for them. A side benefit worth naming: an extension cancelling a compaction can no longer inflate the count, because a `result`-less `compaction_end` counts nothing whoever produced it.
 
-**`tool_use`.** Mapped explicitly as its own paragraph, because one record carries two classifications that were being read into each other: a `message_end` with stop reason `tool_use` or `deferred` is a **counted request with priced usage that must validate**, and it is **not an answer** — `final: false`, `result: null`. A message that issued a tool call paid for it; it did not answer. The abort clause's wording moved from "answer-bearing" to "usage-bearing" so the two vocabularies are named for what they classify.
-
-DEC-097 carries the corrected rule and the residuals. Design revision 64.
+**`toolUse` input mapping.** Also right, and worse than a naming preference: pi's wire token is `toolUse` (`docs/message-types.md`: `pending | stop | length | toolUse | error | aborted | deferred`), so the `tool_use` my tables used would have matched nothing while looking correct, and I never mapped `pending` at all. Corrected throughout sec-4, sec-5 and DEC-093: model-reason tokens are pi's stop reasons **verbatim**; `toolUse` and `deferred` are usage-bearing and not answers; `pending` at a `message_end` is counted and is not an answer; a reason pi adds later passes through verbatim, counted and usage-validated, never an answer, until the contract names it. sec-7 carries a wrong-spelling control so a matcher keyed on the wrong token fails the suite instead of silently classifying nothing.
 """
 
 [[finding.turn]]
@@ -442,6 +449,36 @@ Traces are the tests now: success 1, fail-then-success 2, two fails + success 3,
 **`tool_use`.** Mapped explicitly as its own paragraph, because one record carries two classifications that were being read into each other: a `message_end` with stop reason `tool_use` or `deferred` is a **counted request with priced usage that must validate**, and it is **not an answer** — `final: false`, `result: null`. A message that issued a tool call paid for it; it did not answer. The abort clause's wording moved from "answer-bearing" to "usage-bearing" so the two vocabularies are named for what they classify.
 
 DEC-097 carries the corrected rule and the residuals. Design revision 64.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The attempt window correctly excludes the isolated overflow diagnostic, and the new usage-bearing/not-an-answer distinction is right. It still does not prove provider-send accounting. In the installed pi 0.99.1 _runAutoCompaction, compaction_start is emitted BEFORE _runDefaultCompaction calls _getSummarizationRequestAuth; an auth/preflight error therefore closes an open window without any model send, even with extensions disabled. I exercised the extracted _runAutoCompaction and _runDefaultCompaction with hasHandlers=false, successful preparation and an auth failure: events compaction_start then compaction_end(error='Auto-compaction failed: No API key found'), ZERO provider sends, revision-64 window counter ONE request. Thus the stated only-overcount residual (an extension declining after start) is incomplete. Either distinguish this pre-send failure using evidence the stream actually provides, or explicitly define the unit as an observed session attempt rather than exact provider sends; the latter may be considerably simpler than reconstructing unavailable send boundaries. I am not reopening the operator-accepted unknown-spend or nested-spend concessions. Separately, the literal input spelling remains unfixed: pi emits stopReason='toolUse', but sec-4 and DEC-097 still list only 'tool_use' among priced/validated reasons. Explaining that tool calls are usage-bearing does not map that wire value. Require an explicit toolUse-to-internal-token normalisation or use the wire spelling in the accumulator and its fixtures. Add an actual toolUse message and the zero-send auth-failure trace as controls. No model/network calls occurred; source methods were exercised with stubs."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Both upheld, and both were my errors.
+
+**Credential failure counted as a send.** Verified: `_runDefaultCompaction` calls `_getSummarizationRequestAuth` **before** it calls the provider, so a missing or expired key — and a missing model, which `compact()` checks after `compaction_start` too — throws inside the attempt window and emits `compaction_end` with no `result`. My rule charged a request for a send that never left the process. The window was the mistake: it inferred a send from a *start* record rather than from evidence of a response.
+
+Dropped the window entirely, so there is no state left to get wrong. Summarization is counted only on positive evidence (design rev 72, sec-4; DEC-097 appended):
+
+| record | effect |
+|---|---|
+| `compaction_end` carrying `result.usage` | +1 request, priced |
+| `compaction_end` carrying `result` without `result.usage` | +1 request, and abort `accounting_unknown` |
+| `summarization_retry_scheduled` | +1 request, unmeasured (fires only after `produce()` returned) |
+| `compaction_end` with no `result` — credential failure, missing model, declined, overflow diagnostic, abort before a response | nothing |
+| `compaction_start`, `summarization_retry_attempt_start`, `summarization_retry_finished` | nothing |
+
+Residual, stated rather than hidden: a summarization that aborts mid-response or fails after the provider call with a non-retryable error can emit `compaction_end` with no `result` and no retry record, and is then uncounted — spend unattributed, not reported as zero. Both such cases coincide with a server cause, so no completed accounting is claimed for them. A side benefit worth naming: an extension cancelling a compaction can no longer inflate the count, because a `result`-less `compaction_end` counts nothing whoever produced it.
+
+**`toolUse` input mapping.** Also right, and worse than a naming preference: pi's wire token is `toolUse` (`docs/message-types.md`: `pending | stop | length | toolUse | error | aborted | deferred`), so the `tool_use` my tables used would have matched nothing while looking correct, and I never mapped `pending` at all. Corrected throughout sec-4, sec-5 and DEC-093: model-reason tokens are pi's stop reasons **verbatim**; `toolUse` and `deferred` are usage-bearing and not answers; `pending` at a `message_end` is counted and is not an answer; a reason pi adds later passes through verbatim, counted and usage-validated, never an answer, until the contract names it. sec-7 carries a wrong-spelling control so a matcher keyed on the wrong token fails the suite instead of silently classifying nothing.
 """
 
 [[finding]]

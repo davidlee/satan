@@ -27,6 +27,11 @@ act = "conclude"
 role = "raiser"
 note = "Revision-62 raiser continuation over all six responses. Unsupported-posture refusal, fail-closed policy-source polling, startup profile snapshot and canonical timeout vocabulary are now explicit design repairs. DEC-097 records operator acceptance of the nested-spend limitation, so that concession is no longer disputed. These demonstrate-routed answers remain answered until their obligations are transcribed to phase criteria. F-3 is contested: exclusive fresh creation does not itself make stale-lock reclamation exclusive or prevent deleting a successor's live ownership; an isolated temporary-file interleaving reproduced two successful reclaimers. Required response adds safe recovery/identity semantics and a two-reclaimer negative control, not another fresh-admission test. No new findings were duplicated here, no design/code edits, and no unearned implementation verification or user acceptance."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Revision-64 raiser response to the new rename-based F-3 recovery algorithm. Reproduced two stale observers plus a fresh entrant in an isolated temporary directory: reclaimer A acquires a successor lock, stale B renames that live successor out of the ownership pathname, fresh C acquires the vacant pathname while A lives, and B's later inode mismatch/refusal cannot repair double ownership. Contested the algorithm and recommended a proven/kernel-held mechanism or fail-closed recovery rather than another unproved election. No production locking code, dependency or design changes were made. Remaining demonstrate-routed answers stay answered until their obligations become phase criteria."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
@@ -117,20 +122,18 @@ detail = "Expected: same-session concurrency is refused across the actual deploy
 disposition = "fix-now"
 route = "demonstrate"
 response = """
-Upheld. The race is real: unlink-then-create lets two reclaimers both unlink, and the second's unlink can delete the first's freshly created lock — after which both create and both believe they own the session. `O_EXCL` protects one create, not the delete-create pair.
+Upheld. The interval is the defect I missed: between moving the stale record aside and creating the successor, the lock path is **absent**, so a third process can legitimately create a lock there — and nothing done afterwards undoes that. The inode check only tells the reclaimer what it moved, never whether someone else now owns the path. And my "rename back" clause was worse than useless: `rename` overwrites, so restoring could destroy a live lock.
 
-Fixed in design revision 64 (sec-6) and DEC-099's appended amendment by making reclaim **an election**:
+Corrected in design rev 72 (sec-6) and DEC-099 by removing the interval rather than checking across it:
 
-1. ownership is conferred only by the `O_EXCL` create of `<state>/sessions/<id>.lock`;
-2. a reclaimer elects itself by **atomically renaming** the stale lock to a private name — exactly one `rename` of a given path can succeed, so there is a single winner by construction;
-3. the winner verifies the file it now holds is the file it inspected (same device and inode), re-confirms its owner is dead, creates the successor with `O_EXCL`, and only then unlinks its own copy;
-4. every loser — of the rename, of the inode check, or of the `O_EXCL` — refuses `session-busy` instead of retrying, so a lost election never becomes a delete race;
-5. a reclaimer that dies mid-reclaim leaves the lock **absent**, so the next caller's `O_EXCL` create simply succeeds — double ownership is unreachable, and the worst case is an orphan private file for ops to prune;
-6. owner identity is pid **plus kernel start time**, since a bare pid is reused, and unknowable liveness (no `/proc`) resolves to `session-busy`; every reclaim is recorded in `attempts.jsonl`.
+- a **live** lock is never removed, so a new owner can only appear when the path is absent — and reclamation never leaves it absent;
+- reclaiming a **stale** lock is serialised by one well-known claim, an `O_EXCL` create of `<lock>.claim`: the winner re-reads `<lock>`, requires the same stale record it first saw (same pid and start time, still dead), writes the successor record to a temp file and **renames it over `<lock>`** — a single atomic replacement — then unlinks the claim;
+- every loser refuses `session-busy`, so a lost claim never becomes a retry storm;
+- a reclaimer dying while holding the claim leaves a live lock plus an orphan claim: the next caller refuses and names it, and only an operator clears it — one level of indirection, deliberately no recursion.
 
-sec-7's session test now includes it: two processes presented with one stale lock, exactly one may reclaim and spawn, the loser refuses, and a reclaimer killed mid-rename leaves state the next caller can take without double ownership.
+The property this buys: creation requires an absent path, replacement is atomic and only ever replaces a record whose owner is provably dead, so two processes cannot both hold ownership, and there is no unlink anywhere that can delete a fresh lock. sec-7's test now covers the stale-lock race and the mid-claim death.
 
-The pending item is unchanged and still not claimed: this is a design rule with a named test, verified only when the phase criterion exists.
+Still a design rule with a named test, not evidence: the criterion is the phase's.
 """
 
 [[finding.turn]]
@@ -182,6 +185,31 @@ sec-7's session test now includes it: two processes presented with one stale loc
 The pending item is unchanged and still not claimed: this is a design rule with a named test, verified only when the phase criterion exists.
 """
 
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The rename-based election still removes a live successor before it knows which inode it moved. Atomic rename is not compare-and-swap on the previously inspected inode, so 'exactly one rename of a given path can succeed' is false once the path is recreated. Reproduced revision-64's protocol in an isolated filesystem interleaving: A and B both inspect stale inode L; A renames L to private-A, verifies it, creates its live lock A with O_EXCL and acquires; B now successfully renames the pathname, moving A's LIVE replacement to private-B; while B is about to discover the inode mismatch, a fresh caller C creates the absent pathname with O_EXCL and acquires. B then detects the mismatch and refuses/unlinks its private copy, exactly as specified, but A and C already both own the session. The fixture produced A identity check true, B identity check false, B moved live owner A, and C acquired while A remained alive. Rename-back cannot retroactively close that unlocked interval; ordinary rename-back also risks replacing C. The ownership name must not be made vacant by a stale observer of an earlier incarnation. Please simplify to a proven/kernel-held exclusion mechanism, or make automatic reclamation fail closed until a safe protocol is established; these are proposals, not authority to add a dependency. The criterion needs two stale observers PLUS a fresh entrant and invariant checking throughout the transition, not only final inode checks. The original instrument-route verification remains deferred to phase criteria, but the proposed recovery algorithm is currently unsound."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Upheld. The interval is the defect I missed: between moving the stale record aside and creating the successor, the lock path is **absent**, so a third process can legitimately create a lock there — and nothing done afterwards undoes that. The inode check only tells the reclaimer what it moved, never whether someone else now owns the path. And my "rename back" clause was worse than useless: `rename` overwrites, so restoring could destroy a live lock.
+
+Corrected in design rev 72 (sec-6) and DEC-099 by removing the interval rather than checking across it:
+
+- a **live** lock is never removed, so a new owner can only appear when the path is absent — and reclamation never leaves it absent;
+- reclaiming a **stale** lock is serialised by one well-known claim, an `O_EXCL` create of `<lock>.claim`: the winner re-reads `<lock>`, requires the same stale record it first saw (same pid and start time, still dead), writes the successor record to a temp file and **renames it over `<lock>`** — a single atomic replacement — then unlinks the claim;
+- every loser refuses `session-busy`, so a lost claim never becomes a retry storm;
+- a reclaimer dying while holding the claim leaves a live lock plus an orphan claim: the next caller refuses and names it, and only an operator clears it — one level of indirection, deliberately no recursion.
+
+The property this buys: creation requires an absent path, replacement is atomic and only ever replaces a record whose owner is provably dead, so two processes cannot both hold ownership, and there is no unlink anywhere that can delete a fresh lock. sec-7's test now covers the stale-lock race and the mid-claim death.
+
+Still a design rule with a named test, not evidence: the criterion is the phase's.
+"""
+
 [[finding]]
 id = "F-4"
 status = "answered"
@@ -201,6 +229,8 @@ Disposed as a **stated limit plus a named conformance gap**, not as coverage:
 - sec-7's demonstration is the stub gateway / nested-process probe: show extra calls are **not attributed and not claimed** as attributed, so the run cannot publish a ceiling verdict that implies more than it observed.
 
 What I explicitly do not claim: that shared gateway credentials make the per-run ceiling hold. They do not, and the design now says so.
+
+**Added after the operator's decision, so this disposition matches the current design.** The limits this finding starts are now three, not two, and they are recorded together rather than in scattered sentences: retrospective accounting (the F-4 concession), nested spend outside attribution (this finding), and extension-mediated work outside observation — a `session_before_compact` handler can cancel a compaction or return its own `compaction` with its own `usage`, verified in the installed build and operator-accepted on 2026-10-20 (DEC-097). The launch forms pass no `-e` beyond `builtin:mcp`, which registers no such handler, and sec-7 asserts that no other `-e` ever appears. The REV to SPEC-001 REQ-004 at reconcile carries all three weaker properties as one statement about what the ceiling observes.
 """
 
 [[finding.turn]]
@@ -223,6 +253,27 @@ Disposed as a **stated limit plus a named conformance gap**, not as coverage:
 - sec-7's demonstration is the stub gateway / nested-process probe: show extra calls are **not attributed and not claimed** as attributed, so the run cannot publish a ceiling verdict that implies more than it observed.
 
 What I explicitly do not claim: that shared gateway credentials make the per-run ceiling hold. They do not, and the design now says so.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "the accepted-limit set is now three; this disposition must name the extension-mediated limit too so the ledger matches DEC-097"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Accepted. The observation is right and my disclosure did not go far enough: sec-4 called the event reader the sole usage source while sec-3 grants bash, the bare agent executable and gateway credentials, so a nested `pi` or a direct gateway call is reachable by design and invisible to the parent stream.
+
+Disposed as a **stated limit plus a named conformance gap**, not as coverage:
+
+- design revision 60 (sec-4, "Scope of accounting") says the accumulator describes this run's own provider sends; a send that emits no record the parent stream sees, and spend whose only evidence is text in a tool result, are outside it. The ceiling is a bound on the delegate's run, not on all spend its tools can cause.
+- DEC-097's appended section records that limit as a second conformance gap beside the retrospective-accounting concession, and names the mechanism that would close it: a per-run gateway token with a spend limit (IDE-015). It is not claimed as insurance here, and this slice has not been widened to build it.
+- Because it is a second accepted-shape concession, it needs the operator's decision at reconcile like F-4's — recorded as a candidate, not asserted as assent. A REV to SPEC-001 REQ-004 should carry both limits in one place rather than two scattered sentences.
+- sec-7's demonstration is the stub gateway / nested-process probe: show extra calls are **not attributed and not claimed** as attributed, so the run cannot publish a ceiling verdict that implies more than it observed.
+
+What I explicitly do not claim: that shared gateway credentials make the per-run ceiling hold. They do not, and the design now says so.
+
+**Added after the operator's decision, so this disposition matches the current design.** The limits this finding starts are now three, not two, and they are recorded together rather than in scattered sentences: retrospective accounting (the F-4 concession), nested spend outside attribution (this finding), and extension-mediated work outside observation — a `session_before_compact` handler can cancel a compaction or return its own `compaction` with its own `usage`, verified in the installed build and operator-accepted on 2026-10-20 (DEC-097). The launch forms pass no `-e` beyond `builtin:mcp`, which registers no such handler, and sec-7 asserts that no other `-e` ever appears. The REV to SPEC-001 REQ-004 at reconcile carries all three weaker properties as one statement about what the ceiling observes.
 """
 
 [[finding]]

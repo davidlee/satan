@@ -95,3 +95,28 @@ mid-reclaim leaves the lock absent, so the next caller's `O_EXCL` create succeed
 
 The binding is written in the same critical section as the first-use lock, so two
 processes cannot record different (root, capability) bindings for one session.
+
+
+## RV-046 F-3 (third contest): no unlocked interval, so nothing to undo
+
+The rename-away protocol still had an interval in which the lock path was
+**absent** — between moving the stale record aside and creating the successor — so
+a third process could legitimately create a lock there, and the reclaimer's later
+inode check could not undo that. Worse, an attempted "rename back" overwrites
+whatever is at the path, which could destroy a live lock rather than restore one.
+
+Corrected, and the interval is gone rather than checked for:
+
+- a **live** lock is never removed, so a new owner can only appear when the path
+  is absent — and reclamation never leaves it absent;
+- reclaiming a **stale** lock is serialised by one well-known claim, an `O_EXCL`
+  create of `<lock>.claim`: the winner re-reads `<lock>`, requires the same stale
+  record it first saw, writes the successor record to a temp file and **renames it
+  over `<lock>`** — one atomic replacement — then unlinks the claim;
+- every loser refuses `session-busy`, so a lost claim is not a retry storm;
+- a reclaimer that dies holding the claim leaves a live lock plus an orphan claim:
+  the next caller refuses and names it, and only an operator clears it — one level
+  of indirection and no recursion.
+
+Because creation needs an absent path and replacement is atomic, two processes
+cannot both hold ownership, and there is no unlink that can delete a fresh lock.

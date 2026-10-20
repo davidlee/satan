@@ -233,3 +233,33 @@ numbers are wrong today, but because they are no longer the server's to observe.
 Recorded as a limit, not a caveat to be re-litigated: the REV to SPEC-001 REQ-004
 at reconcile now names three weaker properties together — retrospective accounting,
 nested spend outside attribution, and extension-mediated work outside observation.
+
+
+## RV-043 F-6 (fifth contest): no attempt window — count summarization on evidence
+
+The attempt window inferred the first summarization send from `compaction_start`.
+It was wrong: `_runDefaultCompaction` calls `_getSummarizationRequestAuth` *before*
+it calls the provider, so a missing or expired API key — and a missing model —
+throw inside the window and emit `compaction_end` with no `result` at all. The
+window charged a request for a send that never left the process.
+
+Superseded. Summarization is counted only on positive evidence, and no state is
+kept:
+
+| record | effect |
+|---|---|
+| `compaction_end` carrying `result.usage` | +1 request, priced (a response came back) |
+| `compaction_end` carrying `result` without `result.usage` | +1 request, and abort `accounting_unknown` |
+| `summarization_retry_scheduled` | +1 request, unmeasured (a send returned an error) |
+| `compaction_end` with no `result` | nothing — credential failure, missing model, declined summarization, overflow diagnostic, abort before any response |
+| `compaction_start`, `summarization_retry_attempt_start`, `summarization_retry_finished` | nothing |
+
+Residual, stated: a summarization that aborts mid-response or fails after the
+provider call with a non-retryable error can emit `compaction_end` with no
+`result` and no retry record, and is then uncounted — spend unattributed rather
+than reported as zero. Both such cases coincide with a server cause
+(cancellation, switch, backstop), so no completed accounting is claimed for them.
+
+This also removes the window's other exposure: an extension cancelling a
+compaction can no longer inflate the request count, because a `compaction_end`
+without `result` counts nothing regardless of who produced it.

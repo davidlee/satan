@@ -76,7 +76,7 @@ The result carries `causes` (ordered by discovery) with `termination = causes[0]
 | `stop`, and the success predicate holds | `completed` | true | text |
 | `length`, and the success predicate holds | `completed` | true (truncated) | text |
 | `error` / `aborted` terminal | `failed` | false | null |
-| `tool_use` / `deferred` terminal, no later message | `incomplete` | false | null |
+| `toolUse` / `deferred` terminal, no later message | `incomplete` | false | null |
 | stream ended with no terminal assistant message, exit 0 | `incomplete` (`eof`) | false | null |
 | child exited nonzero | `failed` (`exit`) | false | null |
 | spawn failed after the run directory was allocated | `failed` (`spawn`) | false | null |
@@ -100,3 +100,15 @@ its state, and `backstop` is not a cause token (it is the mechanism's name in
 prose). The tables above are corrected. A mapped outcome whose cause has no token
 is a schema defect, not a naming preference, and the test asserts every mapped
 outcome satisfies the advertised result schema.
+
+
+## RV-043 F-6 (fourth contest): the tokens are pi's, verbatim
+
+The tables above spelled a stop reason `tool_use`. pi emits `toolUse`
+(`docs/message-types.md`: `stopReason: "pending" | "stop" | "length" | "toolUse" |
+"error" | "aborted" | "deferred"`), so a matcher keyed on the snake-case spelling
+would classify nothing while looking correct — and `pending` was not mapped at
+all. Corrected throughout: model-reason tokens are pi's stop reasons verbatim, a
+`message_end` carrying `pending` is counted and is not an answer, and a reason pi
+adds later is carried verbatim, counted, usage-validated and never an answer until
+this contract names it.
