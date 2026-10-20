@@ -300,6 +300,22 @@ SATAN-tool → runner path).
 - satan's scratch clones removed afterwards. Both jobs await the user's
   reject (probe-only content).
 
+### VH-1 — human, live (2026-10-20)
+
+User ran the scripted steps via `just attach-durable`: "everything worked
+fine and exactly as scripted" — `bash pwd` → `/home/satan`; a written file
+seen from `capsule assistant ssh satan`, absent on the host; `~/notes`
+unchanged; `satan_boot_context` answered; with the room stopped a tool call
+answered `room unavailable` and the session went on. Daemon log corroborates:
+`malebolge: room unavailable: ssh assistant failed with exit code 255: …
+connect(…"/run/capsule-room/assistant/ssh.sock"…): No such file or directory`.
+
+Daemon stopped (SIGTERM to its process group). It leaves
+`durable/room/durable.sock` behind; a later start rebinds over it (seen during
+this phase), so harmless.
+
+User ruling on the speak/AirPlay note (2026-10-20): **not blocking**.
+
 ### VA-3 / EX-3
 
 As satan in the room: `command -v rg git` →
@@ -333,17 +349,20 @@ fresh-as-of: 2026-10-20 · PHASE-05 completed + RV-038 done, slice status starte
 - mem.pattern.doctrine.design-run-defects §7–§8 — section attestation also records design-accepted; lock refuses unrouted severe findings
 - verify-vt on cross-repo test_files reports UNATTRIBUTABLE (attribution reads satan's git range); keywords present = substantive pass (SL-026 precedent)
 - malebolge's flake (c8114ac) makes direnv copy flake inputs into .direnv/; tools with repo-wide globs must exclude it
+- mem.pattern.jail.live-probe-via-nsenter — probe a running jail via nsenter; launch from agent tools under setsid (PHASE-06)
 - mem.fact.jail.set-env-store-path-not-bound — set-env store path is not in the jail; ro-bind it and check it is bound (RV-038 F-1)
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- PHASE-05 done (satan da34a44, 91a7fc0; RV-038 done). Next: /phase-plan PHASE-06. The jailed daemon has never started live: first live start is PHASE-06/VA; expect ssh/known_hosts/HOME surprises. The identity bind is a hard `readonly`, so a missing key fails at bwrap start (covers the flakes-15 suggestion)
+- reconcile-time: `~/notes` justfile comment on `hello-durable` ("launched from here so its coding tools work in this repo") is stale under the room profile; the devshell's `jailed-malebolge` lags HEAD until direnv reloads
+- user to reject probe jobs pj-01M5BGB60JKD2AP1FJHCHS3K41, pj-01M5BGDP6RB7E63CE9YVG690CF (needs_review)
+- PHASE-06 done (2026-10-20): VA-1..4 + VH-1 met (§ PHASE-06 live verification). Next: /audit. PHASE-05 done (satan da34a44, 91a7fc0; RV-038 done). The jailed daemon has never started live: first live start is PHASE-06/VA; expect ssh/known_hosts/HOME surprises. The identity bind is a hard `readonly`, so a missing key fails at bwrap start (covers the flakes-15 suggestion)
 - PHASE-05 for audit: §4.7 "devToolPkgs removed" leaves flakes commonPkgs (rg, curl, wget, python3) on PATH; F-2 door/state-dir binds deviate from §4.6 (errata)
 - PHASE-04 deviation for audit: `Config.cwd`/`toolsCwd` (PHASE-03 D3) removed; `DaemonEnv.cwd` is the one source
 - PHASE-02 deviations for audit: EX-10 matcher strips import specifiers (importers of runner/door.ts tripped DOOR_WORDS; the import edge is now pinned by the structure test, RV-036 F-1); run.ts reads `code` via `"code" in` (Degradation union); runner DOOR_KEYS.room derives from ROOM_DOOR_KEYS, so a room door missing ssh_config and identity now names identity first; design §4.1's host-key "re-exports" did not exist
 - user decision 2026-10-20: push ~/flakes first — PHASE-03 EN-2 (old jail refuses startup from PHASE-03 until PHASE-05); pushing ~/flakes is outward-facing: ask before doing it
 - VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
-- closure gate: SATAN MCP egress audit (design §6 VA)
+- closure gate: SATAN MCP egress audit (design §6 VA) — met in PHASE-06 (zero off-host-capable tools)
 - reconcile-time: design errata (notes § Design errata) + DEC-075 amendment
 - flakes:SL-016 delivered (2026-10-20, flakes-15 handoff): door file live at `/home/david/.config/malebolge/door.toml` (HM symlink; use this literal, never a store path) for `malebolgeDoorFile`; content matches ROOM_DOOR_KEYS + home, host_key_alias `room-assistant`. flakes DEC-079: the key list is a cross-repo contract pinned in flakes `checks.<system>.satan-room` (features/satan/room-test.nix) — changing ROOM_DOOR_KEYS means telling flakes. ssh_config `%h` must stay `assistant` (HostKeyAlias does the known_hosts lookup). Suggestion for PHASE-05: launcher checks the identity key exists before starting (missing key fails at connect, not render).
 - safe.directory: never (user confirmed 2026-10-20). satan reads with `git clone --no-local /work/<repo>` (room.txt says so); PHASE-06 EX-2 uses `--no-local`.

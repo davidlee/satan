@@ -1,0 +1,46 @@
+memory_uid = "mem_01a15716be3277a19d6e99950537c04a"
+memory_key = "mem.pattern.jail.live-probe-via-nsenter"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Probe a live bwrap jail by entering its namespaces"
+summary = "Run probes inside a running jail with nsenter -U -m -n into the agent's pid, using the jail's own PATH; launch long-lived jails from agent tools under setsid"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "malebolge", "verification"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "55353e1ce725386f677d8c3ac8eec9e8a4365039"
+ref_name = "refs/heads/main"
+checkout_state_id = "8148986047035abd5cde245951ef263a9c8911388c48fd8d83c31dacf1853403"
+base_commit = "474d92dc8cd1cc2be925a385d6d3d771f90a8c58"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-027"
+

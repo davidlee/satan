@@ -1,9 +1,9 @@
 id = 27
 slug = "malebolge-vm-mode"
 title = "malebolge daemon vm mode: coding tools in the room"
-status = "started"
+status = "audit"
 created = "2026-10-19"
-updated = "2026-10-19"
+updated = "2026-10-20"
 tags = []
 
 [relationships]
