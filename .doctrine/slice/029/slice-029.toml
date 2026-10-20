@@ -44,6 +44,21 @@ selector = "pi/reduce/reduce.ts"
 intent = "design-target"
 note = "the code-impact commitments in sec-7"
 
+[[selector]]
+selector = "pi/reduce/cli.ts"
+intent = "design-target"
+note = "sec-7 Files, added at reconcile (RV-055 F-3)"
+
+[[selector]]
+selector = "pi/reduce/reduce.test.ts"
+intent = "design-target"
+note = "sec-7 Files, added at reconcile (RV-055 F-3)"
+
+[[selector]]
+selector = "bin/pi-mcp-hostile-audit"
+intent = "design-target"
+note = "sec-7 Files, added at reconcile (RV-055 F-3)"
+
 [[relation]]
 label = "governed_by"
 target = "ADR-017"

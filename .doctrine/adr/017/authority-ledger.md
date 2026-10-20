@@ -15,8 +15,10 @@ tooling that does not yet exist.
 **Day one (2026-07-24): every item was owned by `emacs-client`.** The first
 migration was SL-023's (2026-10-19): the patch-job duties moved to
 `patch-runner` (rows 4b, 5b, 6b, 8, 9; DEC-062). SL-027 (2026-10-20) added
-row 3b, owned by `satan-flake` from the start (DEC-082). Every other item is
-still `emacs-client`'s. The next planned transition is D4.2 (policy/registry →
+row 3b, owned by `satan-flake` from the start (DEC-082). SL-029 (2026-10-21)
+added the `pi_agent` delegate's own rows — 1b, 2b, 4c, 5c, 6c owned by `pi-mcp`
+and 3c by `satan-flake` — new duties, not migrations (DEC-091). Every other item
+is still `emacs-client`'s. The next planned transition is D4.2 (policy/registry →
 `daemon-core`) per RFC-017; the worked example under *Transition log* shows its
 shape.
 
@@ -24,7 +26,7 @@ shape.
 
 Fixed vocabulary, keyed to the ADR-017 §1 / ADR-018 D1 topology. A token enters
 the legend when its component is first received as an owner; `emacs-client`,
-`patch-runner` and `satan-flake` are in use today.
+`patch-runner`, `satan-flake` and `pi-mcp` are in use today.
 
 | Token | Component |
 |---|---|
@@ -32,6 +34,7 @@ the legend when its component is first received as an owner; `emacs-client`,
 | `daemon-core` | The single daemon repository / core (ADR-018 D1) |
 | `patch-runner` | Patch-job runner: the `satan-runner` binary in `~/dev/malebolge` (IMP-006, SL-023; was `satan-patcher`, the retired Go repo) |
 | `satan-flake` | The satan flake's launchers (`~/dev/satan/flake.nix`; SL-027) |
+| `pi-mcp` | The `pi_agent` stdio MCP server (`~/dev/satan/pi/mcp/`, `bin/pi-mcp`; SL-029) |
 | `satan-memoryd` | Memory substrate daemon (IMP-007) |
 | `satan-audit` | Audit verifier CLI (IMP-008) |
 | `satan-attrd` | Attribute / arrival daemon (ADR-002) |
@@ -50,15 +53,21 @@ old site is deleted (the cutover proof, REQ-009 / NF-001).
 | # | Authority item | Owner | Governs | Enforced at | Since |
 |---|---|---|---|---|---|
 | 1 | Action schema validation | `emacs-client` | REQ-001 | `satan-tool-validate-args` (satan-tools.el:132); `patch_job_create`'s `mode` is not schema-validated model input — stamped from the tool ctx `:mode-name` (`satan-tools-patch.el`, DEC-068) | ADR-017 |
+| 1b | Action schema validation → `pi_agent` requests | `pi-mcp` | REQ-001 | `readToolCall` / `readAgentRequest` (`pi/mcp/server.ts`, `request-invalid`); the policy artefact's schema `validatePolicy` (`pi/mcp/policy.ts`) | SL-029 |
 | 2 | Mode/tool allowlist | `emacs-client` | REQ-002, REQ-006 | mode-spec `:tools` via `satan-mode-register`; consistency `satan-mode-check-tool-references` (satan-mode.el) | ADR-017 |
+| 2b | Profile → tool allowlist → `pi_agent` delegates | `pi-mcp` | REQ-002, REQ-006 | start-up profile snapshot `loadProfiles`, `resolveProfile`, `effectiveTools` (narrow-only), `checkProfileExtensions` (`pi/mcp/profiles.ts`); the policy's `profiles` list | SL-029 |
 | 3 | Capability / jail profiles | `emacs-client` | REQ-002 | `satan-profiles` defcustom / `satan-mode--apply-profile` (satan-mode.el) | ADR-017 |
 | 3b | Malebolge execution profile | `satan-flake` | REQ-002 | `jailed-malebolge` / `malebolgeRoomJailOptions` (`~/dev/satan/flake.nix`), enforced at bwrap; checked by the `malebolge-jail-profile` flake check | SL-027 |
+| 3c | `pi_agent` per-call execution forms | `satan-flake` | REQ-002, REQ-009 | `piMcpJail` / `piMcpForms` (`~/dev/satan/flake.nix`), enforced at bwrap; checked by the `pi-mcp-forms` flake check (residue over the generator baseline); the server authors no bwrap argv | SL-029 |
 | 4a | Append-only audit → run actions ⚠ | `emacs-client` | REQ-003 | `satan-audit-record` (satan-audit.el:95) | ADR-017 |
 | 4b | Append-only audit → patch-job actions | `patch-runner` | REQ-003 | `JobStore.appendEvent` / transition writes, `job_events` append-only triggers (malebolge `src/runner/store.ts`); the job's pi-durable transcript | SL-023 |
+| 4c | Append-only audit → `pi_agent` delegate runs | `pi-mcp` | REQ-003 | `appendAudit` (run `audit.jsonl`: `spawn` / `abort` / `exit`) and `appendAttempt` (`attempts.jsonl`) (`pi/mcp/evidence.ts`); the run's `events.jsonl` is the enacted record | SL-029 |
 | 5a | Token / budget ceiling → run budget | `emacs-client` | REQ-004 | `satan-budget-exceeded-p` (satan-budget.el:67) | ADR-017 |
 | 5b | Token / budget ceiling → per-job ceiling | `patch-runner` | REQ-004 | `createModelGate` / `gatedModels` (`model-gate.ts`), `exhausted` (`ceilings.ts`), `armCeilingTimers` (`deadline.ts`); maxima `checkSubmit` → `ceilingsWithinMaxima` (`protocol.ts`) | SL-023 |
+| 5c | Token / budget ceiling → `pi_agent` delegate run | `pi-mcp` | REQ-004 | `clampCeilings` (`pi/mcp/policy.ts`) at admission; `createGate` (`pi/mcp/gate.ts`) — retrospective accounting with best-effort termination (DEC-097), the wall clock as backstop | SL-029 |
 | 6a | Kill / disable switches → broker and client switches | `emacs-client` | REQ-005 | `satan-*-enabled` defcustoms; broker halt | ADR-017 |
 | 6b | Kill / disable switches → the runner's `enabled` | `patch-runner` | REQ-005 | runner config `enabled` (`config.ts`); `submit` refused `runner_disabled` (`control.ts`); disabled start parks (`recoverHost`, `recover.ts`) | SL-023 |
+| 6c | Kill / disable switch → `pi_agent` | `pi-mcp` | REQ-005 | the policy's `enabled`: admission refusal `disabled` (`admitCall`, `pi/mcp/policy.ts`) *and* active halt — re-read at every gate tick, `abort(switch)` (`createGate`, `pi/mcp/gate.ts`) | SL-029 |
 | 7 | Arrival policy (gating) † | `emacs-client` | ADR-002 † | `satan-tick-quiet-p` / `satan-tick-pick` (satan-tick.el) | ADR-017 |
 | 8 | Patch-job lifecycle / queue consumer | `patch-runner` | REQ-001, ADR-018 D3 ‡ | `parseRequest` / `checkSubmit` (`protocol.ts`), `serveControl` (`control.ts`), `createScheduler` (`scheduler.ts`), `JobStore.transition` (`store.ts`) | SL-023 |
 | 9 | Per-job path allowlist | `patch-runner` | REQ-002 | authoritative at collection: `classify` / `disallowedPaths` (`classify.ts`) over every commit; early: `jobGuard` `beforeTool` (`guard.ts`); submit: `normaliseAllowedEntry`, and mode scope `withinModeScope` (`protocol.ts`, DEC-069) | SL-023 |
@@ -177,6 +186,20 @@ launcher, not an Emacs profile (DEC-082). Row 3 is unchanged.
 ```
 row 3b ↳ 2026-10-20  (new) → satan-flake  (SL-027 audit; malebolge's execution profile is a launcher, not an Emacs profile (DEC-082); no prior enforcement to delete; malebolge-jail-profile green)
 legend ↳ 2026-10-20  (new) satan-flake  (SL-027 audit)
+```
+
+**SL-029 (2026-10-21).** Rows 1b, 2b, 3c, 4c, 5c and 6c are new: the `pi_agent`
+delegate's own duties, owned from the start (DEC-091). No Emacs enforcement moved
+and none is deleted. Rows 1–6a are unchanged.
+
+```
+row 1b ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enforcement to delete; pi/mcp server + policy tests green)
+row 2b ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enforcement to delete; profiles tests green, snapshot-integrity case included)
+row 3c ↳ 2026-10-21  (new) → satan-flake  (SL-029 audit RV-055; no prior enforcement to delete; pi-mcp-forms green, injected bind red)
+row 4c ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enforcement to delete; evidence tests green, confinement probe under both real forms PASS)
+row 5c ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enforcement to delete; gate tests green)
+row 6c ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enforcement to delete; enable-flip and mid-run switch tests green)
+legend ↳ 2026-10-21  (new) pi-mcp  (SL-029 audit)
 ```
 
 ## Maintaining this ledger

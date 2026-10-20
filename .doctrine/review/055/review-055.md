@@ -222,3 +222,80 @@ it.
   bypass") are only satisfied once the bind-set check has actually run. Record
   REQ-016 as **pending on PHASE-09's operator run**; do not advance it on the
   nix-free half (F-1).
+
+## Reconciliation Outcome
+
+Reconcile pass 2026-10-21. User assent: "yes", plus three settlement decisions —
+fix the maxima gap in code, keep and document `final`, backlog the `child_binds`
+schema change.
+
+### Direct edits applied — `design.md` (edited in place; a locked run refuses `adopt` at reconcile)
+
+- sec-1: `maxima` must carry `wall_clock_s`, and every maximum must be positive;
+  `transcript_budget_bytes` is a non-negative integer, where `0` sets no ceiling
+  (RV-053 F-16 items 2 and 3).
+- sec-2: `request-invalid` and the start-up snapshot stand before step 1 (F-16
+  item 1). The `refuse`-in-run-audit clause is replaced: every refusal is an
+  `attempts.jsonl` line (F-4).
+- sec-3: the loop claim now reads form-vs-generator (a derived baseline). The
+  sentence that overstated it is gone; policy-vs-form and the read-write-only
+  `child_binds` are named as open, under IMP-048 (RV-053 F-3 refresh; F-6).
+- sec-5: example `pi-run-status/2`; `final` is derived in the server as
+  `state === completed`, and a textless `stop` is `final: true, result: null`
+  (QUE-007 items 1 and 4, F-16 item 6); `session` is `null` on a refusal (QUE-007
+  item 3); budget `0` means full, elision is `status.transcript.elided`, and
+  `truncated` means `length`; `backstop` → `timeout`, with the `toolUse` /
+  `deferred` / settled-after-`pending` divergences named (QUE-007 item 2, F-16
+  items 4 and 5).
+- sec-6: the run audit has three record kinds (`spawn`, `abort` carrying the
+  cause, `exit`); a timeout or switch flip is an `abort` (F-4).
+- sec-7: Files gains `bin/pi-mcp-hostile-audit`, `pi/reduce/reduce.test.ts` and
+  `pi/reduce/cli.ts`; the reducer line drops `final` and names `/2` (F-3,
+  QUE-007 item 1). Verification describes the plain confinement probe (F-7) and
+  the check against the generator baseline (F-6).
+
+### Registry
+
+- `slice selector add 29 --intent design-target` `pi/reduce/cli.ts`,
+  `pi/reduce/reduce.test.ts`, `bin/pi-mcp-hostile-audit` (F-3). Conformance: 28
+  conformant, 0 undelivered; the undeclared cell holds `.doctrine/` paths only
+  (F-2, tolerated).
+
+### Code (user decision, TDD)
+
+- `pi/mcp/policy.ts`: the policy is refused `policy-invalid` without
+  `maxima.wall_clock_s`, with a non-positive maximum, or with a negative
+  `transcript_budget_bytes`. Two new tests in `policy.test.ts` (red, then green).
+  `gate.test.ts`'s lowered-maximum case now lowers to positive values, since a
+  zero maximum is malformed and correctly aborts `switch`. pi suites: 254 pass,
+  0 fail.
+
+### REVs completed
+
+- REV-012 (`reconcile-sl-029`): done. It adds ADR-017 ledger rows 1b, 2b, 4c, 5c
+  and 6c (`pi-mcp`) and 3c (`satan-flake`), with the legend token and the
+  transition block; REQ-004's rationale gains the three weaker properties
+  (status `pending`); REQ-016's rationale records the per-call class (status
+  `pending`). Rationale in `revision-012.md`.
+
+### Knowledge
+
+- DEC-093: section "SL-029 reconcile" appended (a REV cannot target a DEC).
+  Status left `proposed`; it was not in the brief.
+- QUE-007: `answered`.
+- IMP-048: new — `child_binds` exposure per bind, plus a policy-vs-baseline check.
+- RV-053 F-3 and F-16: verified as raiser against these writes.
+
+### Withdrawn / tolerated
+
+- F-2: tolerated (foreign SL-030 paths in PHASE-08's range); unchanged.
+
+### Left open, not this pass's
+
+- RV-053 F-15 and F-17 (dedupe / probe), RV-043 F-6 / F-7 / F-9, RV-046
+  F-1..F-6: answered-not-terminal housekeeping, none a blocker (handover). F-16's
+  original `switch`-cause audit-fidelity note (a second trigger during a
+  cancellation's grace is not recorded) is not covered by the settled text and is
+  not tracked yet. It is a candidate backlog item at close.
+
+Reconcile pass complete — handoff to /close.

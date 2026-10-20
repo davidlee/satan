@@ -14,7 +14,7 @@ The posture is an operator declaration in the policy artefact, fixed for the pro
 
 ## One policy artefact (DEC-097)
 
-A single read-only file, operator-published, carries: `mode`, `roots`, `maxima`, `profiles`, the wrapper forms (or `agent` in static mode), `child_binds`, `enabled`, `transcript_budget_bytes`. Read once per call so a change applies to the next call; an in-flight run keeps its maxima snapshot, and the audit records the policy digest. The `enabled` switch is the exception and is re-read at every gate tick, because a switch read once is an admission gate rather than a halt (sec-4). Absent or malformed refuses everything: a delegate with no ceiling is unbounded spend.
+A single read-only file, operator-published, carries: `mode`, `roots`, `maxima`, `profiles`, the wrapper forms (or `agent` in static mode), `child_binds`, `enabled`, `transcript_budget_bytes`. Read once per call so a change applies to the next call; an in-flight run keeps its maxima snapshot, and the audit records the policy digest. The `enabled` switch is the exception and is re-read at every gate tick, because a switch read once is an admission gate rather than a halt (sec-4). Absent or malformed refuses everything: a delegate with no ceiling is unbounded spend. So `maxima` must carry `wall_clock_s` — the one ceiling that holds when the stream reports no usage — and every maximum it carries must be positive; `maxima: {}` is malformed. `transcript_budget_bytes` is a report bound, not a spend bound: a non-negative integer, where `0` sets no ceiling (the reducer's full transcript).
 
 **This build serves one posture.** `mode` must be `per-call`; a policy asking for `static`, or carrying a static-only field (`agent`, `root`, `filesystem`, `session_home`, `run_dir`, `evidence_dir`), is refused `posture-unsupported` before anything spawns. It is never silently downgraded to another posture and never falls back to a bare agent on the host — that would be a different security story wearing the requested one's name (DEC-100 amendment).
 
@@ -32,6 +32,8 @@ pi_agent(prompt, profile, cwd?, session?, tools?, ceilings?, transcript_budget_b
 
 ## Validation order (fail closed, first failure wins)
 
+Two checks stand before step 1. The server does not start at all if its start-up profile snapshot fails to validate (sec-3), so no call meets that refusal. And a request whose own shape is not a `pi_agent` call is refused `request-invalid` (DEC-103) before the policy is read: a caller with a broken request is told about its request, not about a policy it cannot see. The numbered order below governs a well-formed request.
+
 1. **policy** — absent or malformed → `policy-unavailable` / `policy-invalid`; a posture this build does not serve, or a static-only field in an otherwise valid file → `posture-unsupported` (DEC-100 amendment).
 2. **enabled** — `enabled = false` → `disabled`.
 3. **profile** — must match `^[a-z][a-z0-9-]{0,31}$` and exist in the server's **start-up profile snapshot** (DEC-092 amendment), not in a directory read per call; it must be listed in the policy → `profile-invalid` / `profile-unknown` / `profile-not-allowed`.
@@ -41,7 +43,7 @@ pi_agent(prompt, profile, cwd?, session?, tools?, ceilings?, transcript_budget_b
 7. **session** — grammar, then binding to (root, capability), then liveness → `session-invalid`, `session-root-mismatch`, `session-capability-mismatch`, `session-busy`.
 8. **child view** — no member of the effective child bind set may expose a protected store more strongly than that store tolerates (sec-3) → `view-overlaps-protected`.
 
-The refusals are the contract: each is a stable token plus a `detail` string, and each is recorded — `attempts.jsonl` when nothing spawned, `refuse` in the run audit once a run directory exists. A caller never receives a silent downgrade.
+The refusals are the contract: each is a stable token plus a `detail` string, and each is recorded in `attempts.jsonl`. Every refusal precedes the run directory, which is allocated only after step 8; an audit append that fails before spawn discards that directory and is refused `audit-failed` (sec-6), recorded the same way. A caller never receives a silent downgrade.
 
 <!-- doctrine:section sec-3 -->
 # Confinement contract
@@ -82,7 +84,7 @@ Refusal, not masking. A mask (`--ro-bind /dev/null` over the store) means the se
 Two consequences, stated rather than discovered:
 
 - allowlisting a broad root such as `$HOME` now **fails** this check until the operator relocates the stores out of it or narrows the root. That is the cost of keeping one writable alias out of the delegate's reach, and the refusal detail names the path.
-- the check covers what the policy declares. A bind the flake adds and the policy omits is outside the server's knowledge, so the flake check asserts the form's actual bind set equals root + session directory + `child_binds`. That is where the loop closes; a server promise alone would not close it.
+- the check covers what the policy declares, and what closes the loop on the form is in the flake. Both forms are one generator call (`piMcpJail`); the flake check `pi-mcp-forms` builds the same call with no extra options as a **baseline** and asserts each form's bind set is the baseline plus root and session directory — nothing added, nothing dropped. The baseline is the host exposure the policy's `child_binds` declares, and the check carries no copy of the generator's bind set, so a generator change neither fails nor moves it. That closes **form-vs-generator**. It does not close **policy-vs-form**: nothing yet asserts that a policy's `child_binds` covers the baseline's host-visible binds, so a bind the generator adds and the policy omits is still outside the server's knowledge. And `child_binds` is `string[]`, which the child-view check reads as read-write, so a read-only fixed mount cannot be declared as one and over-refuses where it contains the policy file. Both are a policy-schema change (`{path, exposure}[]`) plus a policy-vs-baseline check, tracked as IMP-048.
 
 ## Static mode — designed, not in the initial build
 
@@ -165,7 +167,7 @@ One ladder for every trigger: SIGTERM to the group, 2 s grace, SIGKILL to the gr
   "truncated": false,
   "result": "<answer>" | null,
   "transcript": "<markdown>",
-  "status": { ...pi-run-status/1... } | null,
+  "status": { ...pi-run-status/2... } | null,
   "artifacts": { "dir": "…", "events": "…", "transcript": "…", "status": "…", "audit": "…" } | null,
   "refusal": { "reason": "…", "detail": "…" }
 }
@@ -177,11 +179,13 @@ One ladder for every trigger: SIGTERM to the group, 2 s grace, SIGKILL to the gr
 
 `final` is true for exactly two terminal reasons — `stop`, and `length` (which also sets `truncated: true`, the text being complete as far as the provider produced it) — and only when the run also **settled and exited 0** (below). `error`, `aborted`, `toolUse`, `deferred`, `pending` and every server-caused stop give `final: false, result: null`: a stop reason on a message is not by itself evidence that an answer exists.
 
+`final` is derived by the server, not the reducer: it needs the child's exit status, which the reducer never sees, so it is exactly `state === "completed"`. It says the run finished cleanly, not that the model said anything: a terminal `stop` with no text blocks is `final: true` with `result: null`.
+
 `pending` is the in-flight marker, so a `message_end` carrying it is malformed rather than merely unfinished: it is counted as a request and the run reports `incomplete` with `termination: "eof"`, because the stream ended on a message the model had not finished. It is never an answer and never `completed`.
 
-`session` is always present — minted and returned when the caller supplied none.
+`session` is the session the run used — minted and returned when the caller supplied none — and `null` on a refusal, which mints none.
 
-`transcript` is budgeted and the budget is **soft**: mandatory sections can exceed it, by design and by test. The unbudgeted text is at `artifacts.transcript`.
+`transcript` is budgeted and the budget is **soft**: mandatory sections can exceed it, by design and by test. A budget of `0` is the reducer's full transcript. Elision is reported as `status.transcript.elided`, not as `truncated`, which means stop reason `length`. The unbudgeted text is at `artifacts.transcript`.
 
 ## Cause, state and precedence
 
@@ -192,7 +196,7 @@ The table in DEC-093 is normative. Model-reason tokens are pi's stop reasons **v
 
 **Success** requires all of: a terminal answer-bearing message (`stop` / `length`); `agent_settled` observed; child exit status 0; accounting known. Anything else is decided by the latch, or, when the latch is empty, by the terminal reason. Exit 0 is never evidence of success (json mode exits 0 on a model error), and a valid answer plus a nonzero exit is `failed`.
 
-`status.state` is the reducer's verdict **on the stream**; `state` is the server's verdict **on the call**. They differ only when the deciding cause happened outside the stream — `exit`, `spawn`, `audit`, `accounting`, `backstop` — and `causes` names it. Two verdicts, one reason, and never two accounting stories.
+`status.state` is the reducer's verdict **on the stream**; `state` is the server's verdict **on the call**. They differ when the deciding cause happened outside the stream — `exit`, `spawn`, `audit`, `accounting`, `timeout`, `switch`, `cancelled` — and where DEC-093's table maps a stream reason to a call state the reducer does not use: `toolUse` and `deferred` (`incomplete`), and a settled stream whose last assistant message ended `pending` (`status.state: "completed"`, `state: "incomplete"`, `termination: "eof"`). The table decides `state`, `causes[0]` names the reason, and `status` stays the reducer's record verbatim. Two verdicts, one reason, and never two accounting stories.
 
 `refused` carries `status`, `artifacts`, `result` all null and a `refusal { reason, detail }`: nothing ran. `termination` is `"refused"` and `causes` is `["refused"]`; `refusal.reason` names which refusal, which may be a refusal token or a failure to record one (`audit-failed`, `audit-unavailable`). `audit_failed` as a **state** exists only for a run that spawned; `failed` with `termination: "spawn"` is a pre-spawn process failure after the run directory was allocated.
 
@@ -218,7 +222,7 @@ One directory per run under `PI_MCP_RUN_DIR`, never inside the root, never bound
 Two sinks, both server-owned and outside every child bind — asserted by sec-3's disjointness check, not assumed from the bind list:
 
 - `attempts.jsonl` — server-level, one line per attempt that spawned nothing: policy unavailable/invalid, disabled, profile, root, capability, ceiling, session and child-view refusals, and any failure to allocate a run directory. Policy digest recorded when one was readable; no run directory required.
-- `<run>/audit.jsonl` — control decisions for a spawned run: `spawn` (with the profile snapshot digest), `abort` (with usage at the gate and the cause), `timeout`, `exit`, `switch`, each with the policy digest.
+- `<run>/audit.jsonl` — control decisions for a spawned run, three record kinds, each with the policy digest: `spawn` (with the profile snapshot digest), `abort` (with the cause, whether the stream had settled, and usage at the gate — plus unit, observed and limit for a ceiling crossing), and `exit` (code, signal, settled). A timeout or a switch flip is an `abort` whose `cause` names it, not a record kind of its own.
 
 Enacted actions are covered by `<run>/events.jsonl` beside it. Control decisions and enacted actions together are the audit (SPEC-001 REQ-003); neither is claimed alone.
 
@@ -234,8 +238,11 @@ pi/mcp/*.ts                      server, policy load, profiles, wrapper forms, c
 pi/mcp/profiles/*.md             tracked profile documents (filesystem capability + model + tools)
 pi/mcp/*.test.ts                 node --test, offline
 bin/pi-mcp                       shim → node pi/mcp/main.ts
-pi/reduce/reduce.ts              + result, final, terminalReason, requests, requests_unmeasured; one accumulator incl. compaction_end and retry records
-flake.nix                        two per-call wrapped forms (the static-mode derivation is deferred)
+bin/pi-mcp-hostile-audit         confinement probe against a real form (PHASE-09 EX-7)
+pi/reduce/reduce.ts              + result, terminalReason, requests, requests_unmeasured, cache_write, accounting; one accumulator incl. compaction_end and retry records; status → pi-run-status/2
+pi/reduce/reduce.test.ts         the accumulator and answer cases
+pi/reduce/cli.ts                 status line reads requests, unmeasured, accounting
+flake.nix                        two per-call wrapped forms over one generator call, its baseline, and the pi-mcp-forms check (the static-mode derivation is deferred)
 justfile                         node --test pi/mcp/*.test.ts
 ```
 
@@ -253,7 +260,7 @@ Offline, with a stub launcher and a stub pi:
 - accounting: compaction included; **one request per send**, with the verified retry traces as controls (error+stop = 2, not 3; scheduled+`compaction_end` = 2, not 3); stop reasons matched on pi's verbatim tokens, `toolUse` included, with a wrong-spelling case proving the matcher fails closed; a failure message counted but unmeasured; a `compaction_end` with no `result` counting no request — credential failure, missing model, declined summarization and the overflow diagnostic as separate controls; a `compaction_end` carrying `result` without usage aborting; absent, non-finite or unpriced usage on a usage-bearing message aborts; returned status equals the gate's inputs — a recorded retry/compaction fixture pins the arithmetic;
 - result: error+settled, textless terminal message, multi-block terminal message, stale planning prose, `length` truncation, and the three settlement combos — stop+EOF without `agent_settled`, stop+nonzero exit, settled+nonzero exit;
 - precedence: concurrent causes (`causes[0]` and the full list), a failure after `agent_settled`, and a pre-spawn audit failure reported as a refusal;
-- evidence isolation, per-call: a hostile bash attempting truncate/unlink/replace of the audit from inside the child — refusal-with-intact-evidence or a fail-closed `audit_failed`, never a clean success; and the alias case, a policy whose root contains the evidence store refusing `view-overlaps-protected` before spawn, for both capabilities;
+- evidence isolation, per-call, under the real form: the delegate asked plainly, as the operator's confinement test, to append a marker to its run's audit with bash — the write denied with the evidence intact, or a fail-closed `audit_failed`; never a clean success, and never a pass without the attempt in the stream. The probe must not depend on the model agreeing to attack: a request to truncate and forge the audit is refused by an aligned model and proves nothing (RV-055 F-7); and the alias case, a policy whose root contains the evidence store refusing `view-overlaps-protected` before spawn, for both capabilities;
 - lifecycle: two concurrent calls plus a grandchild ignoring SIGTERM; cancel one, assert its subtree is gone after the grace, the other call and the server survive, and the session lock releases only after cleanup; a mid-run switch flip aborts;
 - sessions: minting and return, binding mismatches, busy refusal, grammar edges including a valid single character and trailing `.` `_` `-` — and **two independent server processes** sharing one state root, where simultaneous same-session calls spawn exactly one, the loser is refused before side effects, and a first-use race with conflicting root/capability binds exactly once — plus two processes presented with one **stale** lock, where exactly one may reclaim and spawn, the loser refuses, and a reclaimer killed mid-rename leaves state the next caller can take without double ownership;
 - authority integrity: mutate a tracked profile from inside an authorised `write` call and assert a subsequent call on another root keeps the snapshotted capability — the change takes effect only after a restart;
@@ -261,7 +268,7 @@ Offline, with a stub launcher and a stub pi:
 
 The demonstrate obligations above (child-view disjointness, accounting arithmetic, argv exactness, termination domain) bind the exit criteria of the phase that implements each mechanism; the design records the obligation and the assertion, and the plan owns the placement. None of them is verifiable before that phase exists.
 
-One live smoke run, per-call posture, against deepseek-flash, recorded as evidence, not a gate. Flake checks: each wrapped form's argv and its actual bind set against `child_binds` (`jailProbes` pattern). *Future, on the static build:* the static launcher's closure check, the launch-time writability and disjointness validation, and the memory-buffered evidence path. `just check` carries the suite.
+One live smoke run, per-call posture, against deepseek-flash, recorded as evidence, not a gate. Flake checks: each wrapped form's argv, and its bind set against the generator baseline plus root and session directory (`pi-mcp-forms`). *Future, on the static build:* the static launcher's closure check, the launch-time writability and disjointness validation, and the memory-buffered evidence path. `just check` carries the suite.
 
 ## Out of scope, not precluded
 

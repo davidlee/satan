@@ -92,7 +92,7 @@ note = "Verified against the tree at 0fc4022: the repaired mechanism is present,
 
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "`child_binds` is one fact in three places with the exposure half missing; the bind-set check does not close policy↔form"
 detail = """
@@ -133,6 +133,11 @@ Observed: (a) `child_binds` is `string[]` (`policy.ts:53`), so every member is h
 
 Routes: `demonstrate` for the missing policy-vs-form check (PHASE-09 EX-3 / VA-1, blocked on this host), `refresh` for the design's claim at reconcile.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "demonstrate: pi-mcp-forms ran 2026-10-21 against the built forms (residue over a derived generator baseline; injected bind red), notes.md § PHASE-09 evidence. refresh: design sec-3 now says the check closes form-vs-generator, not policy-vs-form, and that child_binds is string[] read as read-write; the schema change and the policy-vs-baseline check are IMP-048. The three-places duplication is gone from the flake (no copied bind list)."
 
 [[finding]]
 id = "F-4"
@@ -527,7 +532,7 @@ Deferred, not declined: `spawn.test.ts` and `gate.test.ts` each define the same 
 
 [[finding]]
 id = "F-16"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Design-record divergences owed at reconcile: validation order, unbounded `maxima`, budget-0 inversion, pending→settled status divergence, `switch` mapping, `final` with no answer"
 detail = """
@@ -579,6 +584,11 @@ Six design-record divergences, none a code defect, all owed at reconcile (the QU
 5. `switch` mapping. `switch → cancelled` and `toolUse|deferred → incomplete` (DEC-093's table, normative) diverge from `status.state` beyond sec-5's out-of-stream list; the table wins, `causes[0]` names the reason, `status` stays verbatim — the design text needs to say so.
 6. `final: true` with `result: null`. A textless `stop` message completes as final with no answer; that is the letter of sec-5, but "final" arguably should mean an answer exists.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "All six settled in design.md at reconcile: (1) sec-2 states request-invalid and the start-up snapshot precede step 1; (2) sec-1 requires maxima.wall_clock_s and positive maxima — enforced in code (policy.ts, two new tests, user decision); (3) sec-1/sec-5: a policy transcript budget of 0 sets no ceiling, negative refused; (4)+(5) sec-5 names the toolUse/deferred and settled-after-pending divergences, table decides state, status verbatim; (6) sec-5 + DEC-093: final = state === completed, a textless stop is final:true/result:null (user decision: keep)."
 
 [[finding]]
 id = "F-17"

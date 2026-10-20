@@ -112,3 +112,30 @@ all. Corrected throughout: model-reason tokens are pi's stop reasons verbatim, a
 `message_end` carrying `pending` is counted and is not an answer, and a reason pi
 adds later is carried verbatim, counted, usage-validated and never an answer until
 this contract names it.
+
+
+## SL-029 reconcile (RV-055, QUE-007, RV-053 F-16)
+
+As built and settled at reconcile, 2026-10-21. The examples above are kept as
+history, and where they differ these rules hold.
+
+- **The status record is `pi-run-status/2`**, not `/1`. PHASE-01 added
+  `requests`, `requests_unmeasured`, `cache_write` and the `accounting` signal,
+  which changed the shape. `status` is still embedded verbatim.
+- **`final` is derived by the server**, as `state === "completed"`, because it
+  needs the child's exit status, which the reducer never sees. It says the run
+  finished cleanly, not that the model said anything: a terminal `stop` with no
+  text blocks is `final: true, result: null`. The reducer carries `result` and
+  `terminalReason`, but not `final`.
+- **`status.state` and `state` diverge beyond out-of-stream causes.** Besides
+  `exit`, `spawn`, `audit`, `accounting`, `timeout`, `switch` and `cancelled`, the
+  table above maps `toolUse` and `deferred` to `incomplete`. A settled stream
+  whose last assistant message ended `pending` reads `status.state: "completed"`
+  against `state: "incomplete"`, `termination: "eof"`. The table decides `state`,
+  `causes[0]` names the reason, and `status` stays the reducer's record verbatim.
+- **`session` is `null` on a refusal**, which mints none. Otherwise it is the
+  session the run used, minted when the caller supplied none.
+- **The transcript budget.** In a call or a policy, `transcript_budget_bytes` is
+  a non-negative integer. In a call, `0` asks for the full transcript but cannot
+  unbound a policy ceiling. In the policy, `0` sets no ceiling. Elision is
+  reported in `status.transcript.elided`; `truncated` means stop reason `length`.
