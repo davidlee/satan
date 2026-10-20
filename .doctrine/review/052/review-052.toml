@@ -888,5 +888,100 @@ role = "responder"
 disposition = "fix-now"
 response = "Header rev 46; options object built with only defined members (target, wait)."
 
+[[finding]]
+id = "F-47"
+status = "answered"
+severity = "major"
+title = "serveUnix mock must spread importOriginal or fixtures' connectUnix/listenUnix vanish"
+detail = "test/fixtures.ts:13; src/unix-socket-transport.ts:15; probe confirmed. Round 5 R-1."
+disposition = "fix-now"
+response = "EX-9 names the importOriginal spread and serveUnix-only override returning actual.serveUnix unchanged."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "EX-9 names the importOriginal spread and serveUnix-only override returning actual.serveUnix unchanged."
+
+[[finding]]
+id = "F-48"
+status = "answered"
+severity = "minor"
+title = "No selection rule or per-test reset for the recorded server sockets"
+detail = "hoisted state survives tests (test/daemon.test.ts:188 watched.reset). Round 5 R-2."
+disposition = "fix-now"
+response = "Recorder reset in beforeEach; next() takes the first accept after the departing connect."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Recorder reset in beforeEach; next() takes the first accept after the departing connect."
+
+[[finding]]
+id = "F-49"
+status = "answered"
+severity = "minor"
+title = "once(serverSocket,'close') armed late can hang; rejects on error"
+detail = "Round 5 R-3."
+disposition = "fix-now"
+response = "Armed before client.close(); destroyed read if already closed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Armed before client.close(); destroyed read if already closed."
+
+[[finding]]
+id = "F-50"
+status = "answered"
+severity = "minor"
+title = "PHASE-08 cannot use the attach() helper (waits for a withheld snapshot)"
+detail = "test/daemon.test.ts:91-96. Round 5 R-4."
+disposition = "fix-now"
+response = "PHASE-08 EX-2 uses a raw lineClient with LineClient.write; same in PHASE-04 EX-9."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-08 EX-2 uses a raw lineClient with LineClient.write; same in PHASE-04 EX-9."
+
+[[finding]]
+id = "F-51"
+status = "answered"
+severity = "nit"
+title = "Precedent range :200-211 misses the gate release; header round count"
+detail = "Round 5 R-5, R-6."
+disposition = "fix-now"
+response = "Cited :200-212; header says rounds 1-5 amended the plan."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Cited :200-212; header says rounds 1-5 amended the plan."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
