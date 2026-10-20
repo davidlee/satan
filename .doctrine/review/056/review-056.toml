@@ -1,0 +1,42 @@
+id    = 56
+slug  = "sl-030-per-phase-code-review-pi-reviewer-lanes"
+title = "SL-030 per-phase code review (pi reviewer lanes)"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "pi-reviewer"
+responder = "orchestrator"
+rounds_base = 0
+contests_base = 0
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-030"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "nit"
+title = "PHASE-03 V-9 test pins the whole prompt entry, not the cwd section"
+detail = "malebolge 2aac756 test/daemon-sections.test.ts:101-103 asserts toEqual([{persona:'', cwd:...}]); EX-4/V-9 concern only cwd. Any new default-rendering section or a persona change fails it spuriously. Fix: toMatchObject on the cwd entry."
+disposition = "fix-now"
+response = "Valid: behaviour over incidental shape. Worker session resumed to assert only the cwd entry."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid: behaviour over incidental shape. Worker session resumed to assert only the cwd entry."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge b2c37cf: toMatchObject on the cwd entry; host gate green."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

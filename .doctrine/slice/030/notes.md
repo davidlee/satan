@@ -30,6 +30,27 @@ Durable lessons (also in plan.toml criteria):
 - Negative assertions (no stream / nothing created / nothing submitted) need a control connection and a receipt guarantee, or they pass vacuously.
 - `attach-main.ts` runs at import, outside coverage — testable logic belongs in `attach.ts`.
 
+## Execution log (pi capsule run, 2026-10-21)
+
+Shape: Claude orchestrator (host) → per phase jailed pi planner → pi worker →
+host gate → commit → pi reviewer → RV-056. Prompts/helper in the untracked
+`.capsule-runs/` (excluded via `.git/info/exclude`). All pi on
+`llm-gateway/deepseek-flash`.
+
+Gate deviations (environmental, not slice work):
+- biome's glibc binary cannot run in the jail (no `/lib64` loader); workers skip
+  it, the orchestrator runs `npx biome format --write` on the host.
+- malebolge's untracked `_pi/` breaks `eslint .` (project-service parse
+  errors); gate runs with `--ignore-pattern '_pi/**' --ignore-pattern
+  '.agents/**'`. Base `889551d` otherwise green (lint, tsc, vitest, 98.5 %).
+- `test/runner/*` has known jail-only failures; the host gate is authoritative.
+
+| phase | malebolge | review | notes |
+|---|---|---|---|
+| PHASE-01 | 71f1bed | clean | planner/worker/reviewer ≈ $0.15 total |
+| PHASE-02 | 48af103 | clean | ≈ $0.22 |
+| PHASE-03 | 2aac756, b2c37cf | RV-056 F-1 nit, fixed | ≈ $0.22; facts: an absent pi section writes no `pi.system` entry (`[]`, not `[{}]`); `configure` emits `agent_changed`, never a `pi.system` patch |
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-21 · ready (design re-locked rev 52; plan reviewed; phases materialised; none started) · 5e55f00
