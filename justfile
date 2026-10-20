@@ -64,6 +64,14 @@ test: _require-test-dbs
 pi-suites:
     node --test pi/reduce/*.test.ts pi/mcp/*.test.ts
 
+# Build the pi-mcp wrapper forms to fixed, GC-rooted links. The operator policy
+# names `<forms>/<capability>/bin/pi-mcp-<capability>`, so a rebuild is picked up
+# without editing it and a garbage collection cannot delete a form in use.
+pi-mcp-forms forms=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "pi-mcp/forms"):
+    mkdir -p {{forms}}
+    nix build -o {{forms}}/read .#pi-mcp-read
+    nix build -o {{forms}}/write .#pi-mcp-write
+
 _require-test-dbs:
     #!/usr/bin/env bash
     set -euo pipefail

@@ -6,6 +6,14 @@
         "--mcp"
       ],
       "command": "${DOCTRINE_BIN:-doctrine}"
+    },
+    "pi-agent": {
+      "command": "bin/pi-mcp",
+      "env": {
+        "PI_MCP_POLICY": "${HOME}/.config/pi-mcp/policy.json",
+        "PI_MCP_RUN_DIR": "${HOME}/.local/state/pi-mcp/runs",
+        "PI_MCP_SESSION_HOME": "${HOME}/.local/state/pi-mcp/sessions"
+      }
     }
   }
 }
