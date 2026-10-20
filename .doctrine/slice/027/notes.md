@@ -151,6 +151,15 @@ correct facts.
     with them (§5 "goad bindings removed").
 - PHASE-05 EX-4 (2026-10-20, user assent "agreed"): `durable/session.sqlite`
   moved to `durable/host/` (no sidecars existed, no daemon running).
+- RV-038 F-2 (user 2026-10-20, "Root + state dir"): §4.6's door bind
+  `(readonly "/run/capsule-room/assistant")` is wrong — that dir is the
+  relay's RuntimeDirectory, removed on every room stop (oubliette DEC-056,
+  host/room-client.nix). The jail binds the door root `/run/capsule-room` and
+  the room's state dir `/var/lib/capsule/room/assistant` (holds only
+  known_hosts) instead of the known_hosts file. §4.6's "room literal appears
+  once" claim and §6's probe list change with it (RV-038 F-4).
+- RV-038 F-1: §4.6's `set-env "MALEBOLGE_SSH_CONFIG"` alone leaves the store
+  file outside the jail; it is also ro-bound.
 - PHASE-05 for reconcile: §4.7 "devToolPkgs (incl. rg) removed" is satan's
   grant only; flakes' base `commonPkgs` still puts `rg`, `curl`, `wget`,
   `python3` on every jail's PATH (offline here, so no egress).

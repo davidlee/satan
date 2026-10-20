@@ -235,11 +235,13 @@
         # explicitly, since the jail home is not the host's.
         malebolgeKeyFile = "/home/david/.config/llm-gateway/keys/malebolge";
         malebolgeCatalog = "/home/david/.config/malebolge/gateway-models.json";
-        # The room's facts for the daemon (flakes:SL-016); the room literal
-        # `assistant` appears only in the door dir bind below.
+        # The room's facts for the daemon (flakes:SL-016). The jail binds what
+        # the door file names, so the identity and known_hosts paths repeat it
+        # here: pure eval cannot read the door file (RV-038 F-4).
         malebolgeDoorFile = "/home/david/.config/malebolge/door.toml";
         malebolgeRoomIdentity = "/home/david/.ssh/malebolge-vm.key";
-        roomKnownHosts = "/var/lib/capsule/room/assistant/known_hosts";
+        # The room's state dir, which holds its known_hosts.
+        roomStateDir = "/var/lib/capsule/room/assistant";
         # `%h` is the room name (the daemon's ssh host); socat by store path,
         # so it is in the jail's closure.
         malebolgeSshConfig = pkgs.writeText "malebolge-room-ssh-config" ''
@@ -248,7 +250,8 @@
         '';
         # The gateway's client socket; gatewaySocketOptions binds its directory.
         gatewayClientSocket = (import "${inputs.agents}/gateway.nix").clientSocket;
-        # The profile's own state and runtime dirs: the daemon's only writes.
+        # The profile's own state and runtime dirs. Besides these the jail can
+        # write only its persisted home and /tmp (RV-038 F-3).
         malebolgeStateDir = "/home/david/.local/state/satan/durable/room";
         malebolgeRuntimeDir = "/run/user/1000/satan/durable/room";
         malebolgeRoomJailOptions = with jailLib.combinators;
@@ -261,11 +264,15 @@
             (set-env "MALEBOLGE_GATEWAY_SOCKET" gatewayClientSocket)
             (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
             (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
-            # The door socket's directory, connect only (ISS-042).
-            (readonly "/run/capsule-room/assistant")
-            (readonly roomKnownHosts)
+            # Directories, never the files (ISS-042), and the door's root, not
+            # its own dir: that is the relay's RuntimeDirectory, removed on
+            # every room stop (oubliette DEC-056; RV-038 F-2). Connect only.
+            (readonly "/run/capsule-room")
+            (readonly roomStateDir)
             (readonly malebolgeRoomIdentity)
             (readonly malebolgeDoorFile)
+            # set-env puts no store path in the jail's closure (RV-038 F-1).
+            (readonly "${malebolgeSshConfig}")
             # satan-mcp, connect only; the rest of /run/user/1000/satan stays out.
             (readonly "/run/user/1000/satan/mcp")
             (readonly malebolgeRoot)
@@ -388,35 +395,37 @@
           # reached over its door socket, the gateway over its client socket,
           # writes only to the profile's own state and runtime dirs.
           malebolge = {
+            # Each ends at its separator, so a longer value cannot match.
             present = [
-              "--setenv MALEBOLGE_PROFILE room"
-              "--setenv MALEBOLGE_DOOR /home/david/.config/malebolge/door.toml"
+              "--setenv MALEBOLGE_PROFILE room "
+              "--setenv MALEBOLGE_DOOR /home/david/.config/malebolge/door.toml "
               "--setenv MALEBOLGE_SSH_CONFIG /nix/store/"
-              "--setenv MALEBOLGE_GATEWAY_SOCKET /run/llm-gateway-client/api.sock"
-              "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge"
-              "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json"
-              "--ro-bind /run/capsule-room/assistant /run/capsule-room/assistant"
-              "--ro-bind /var/lib/capsule/room/assistant/known_hosts /var/lib/capsule/room/assistant/known_hosts"
-              "--ro-bind /home/david/.ssh/malebolge-vm.key /home/david/.ssh/malebolge-vm.key"
-              "--ro-bind /home/david/.config/malebolge/door.toml /home/david/.config/malebolge/door.toml"
-              "--ro-bind /run/llm-gateway-client /run/llm-gateway-client"
-              "--ro-bind /run/user/1000/satan/mcp /run/user/1000/satan/mcp"
-              "--ro-bind /home/david/dev/malebolge /home/david/dev/malebolge"
-              "--ro-bind /home/david/satan-corpus /home/david/satan-corpus"
-              "--ro-bind /home/david/.config/llm-gateway/keys/malebolge /home/david/.config/llm-gateway/keys/malebolge"
-              "--ro-bind /home/david/.config/malebolge/gateway-models.json /home/david/.config/malebolge/gateway-models.json"
-              "--bind ~/.local/share/jail.nix/home/malebolge ~"
-              "--bind /run/user/1000/satan/durable/room /run/user/1000/satan/durable/room"
-              "--bind /home/david/.local/state/satan/durable/room /home/david/.local/state/satan/durable/room"
+              "--setenv MALEBOLGE_GATEWAY_SOCKET /run/llm-gateway-client/api.sock "
+              "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge "
+              "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json "
+              "--ro-bind /run/capsule-room /run/capsule-room "
+              "--ro-bind /var/lib/capsule/room/assistant /var/lib/capsule/room/assistant "
+              "--ro-bind /home/david/.ssh/malebolge-vm.key /home/david/.ssh/malebolge-vm.key "
+              "--ro-bind /home/david/.config/malebolge/door.toml /home/david/.config/malebolge/door.toml "
+              "--ro-bind /run/llm-gateway-client /run/llm-gateway-client "
+              "--ro-bind /run/user/1000/satan/mcp /run/user/1000/satan/mcp "
+              "--ro-bind /home/david/dev/malebolge /home/david/dev/malebolge "
+              "--ro-bind /home/david/satan-corpus /home/david/satan-corpus "
+              "--ro-bind /home/david/.config/llm-gateway/keys/malebolge /home/david/.config/llm-gateway/keys/malebolge "
+              "--ro-bind /home/david/.config/malebolge/gateway-models.json /home/david/.config/malebolge/gateway-models.json "
+              "--bind ~/.local/share/jail.nix/home/malebolge ~ "
+              "--bind /run/user/1000/satan/durable/room /run/user/1000/satan/durable/room "
+              "--bind /home/david/.local/state/satan/durable/room /home/david/.local/state/satan/durable/room "
               "mkdir -p /home/david/.local/state/satan/durable/room /run/user/1000/satan/durable/room"
-              "--unshare-net"
-              # The store hashes force interpolation.
-              "${pkgs.openssh}/bin"
-              "${pkgs.socat}/bin"
+              "--unshare-net "
+              # On PATH; the store hashes force interpolation.
+              "${pkgs.openssh}/bin:"
+              "${pkgs.socat}/bin:"
             ];
             absent = [
               "/workspace/"
               "--bind /run/user/1000/satan "
+              "--bind /run/user/1000/satan/ "
               "goad"
               "MALEBOLGE_SKILLS"
               "durable/host"
@@ -500,6 +509,13 @@
               fail "launcher sets no MALEBOLGE_SSH_CONFIG store file"
             fi
             ${probe "must" "$ssh_config" "ssh config" p.sshConfigPresent}
+            # set-env alone leaves the file outside the jail: it must be bound,
+            # by the runtime closure or explicitly.
+            closure=$(sed -n 's|^exec {RUNTIME_CLOSURE_BIND_ARGS_FD}<\(/nix/store/[^ ]*\)$|\1|p' "$launcher")
+            test -f "$closure" || fail "launcher names no runtime closure bind args"
+            if ! grep -Faq -- "$ssh_config" "$closure" && ! grep -Fq -- "--ro-bind $ssh_config $ssh_config " "$launcher"; then
+              fail "ssh config $ssh_config is not bound in the jail"
+            fi
           '';
 
         # I4 (SL-023 REQ-016): the satan-runner control socket is bound into
