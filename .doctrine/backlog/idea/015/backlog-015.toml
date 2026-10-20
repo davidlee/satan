@@ -1,0 +1,28 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 15
+slug = "per-run-gateway-token"
+title = "Per-run gateway token with a spend limit as the hard-cap mechanism for delegated runs"
+kind = "idea"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = ["ceilings", "gateway", "mcp", "pi", "satan"]
+
+# outbound-only. Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows — author them with
+# `doctrine link ITEM-NNN <label> <target>`; `doctrine inspect ITEM-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "the hard-cap alternative to retrospective accounting"
+target = "DEC-097"

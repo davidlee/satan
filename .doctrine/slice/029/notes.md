@@ -144,3 +144,27 @@ per-call wrapper are different products:
 MCP stdio configs are per-project anyway, so a server-per-project jail is
 defensible and simpler; it costs the multi-root, mixed-capability case. Not
 settled — it changes DEC-089 and DEC-098.
+
+## Evidence isolation across the three forms (asked at review)
+
+RV-043 F-1/F-2 left static mode visibly weaker than per-call. Where does it sit
+relative to the shell wrappers (`scripts/spawn-confined.sh`, `pi-agent`)?
+
+| | shell script (today) | per-call MCP | static MCP |
+|---|---|---|---|
+| child can reach its own evidence | no — unjailed shell redirects the child's stdout to a host file | no — evidence dir not bound | **yes** — same jail, same uid; mitigated by memory buffering, flushed after exit |
+| crash durability of evidence | yes (written as it streams) | yes | **no** — a server crash loses the buffered run |
+| jail per call / distinct roots | yes, one bwrap per invocation | yes | **no** — one jail, one root for the process |
+| session continuity across runs | per-worktree session dir only | yes, one bound dir per session | yes, but the shared home is visible to co-resident children |
+| policy surface (ceilings, audit, allowlist, refusals, result shape) | none — the orchestrator parses a shell | full | full |
+| supervisor readable by a human | yes — a shell script | no — node | no — node |
+
+Verdict: static mode is a **policy upgrade and an isolation downgrade** relative
+to the script form. It does not improve the one property the script form already
+has by construction (an unjailed supervisor writing evidence no child can touch);
+it improves the properties the script form has none of (ceilings, audit,
+allowlisting, refusal/result contracts).
+
+Two consequences worth carrying into the plan: static mode's evidence mitigation
+trades tamper-resistance for crash-durability, and it must bind the policy file
+read-only or the child can rewrite its own switch.
