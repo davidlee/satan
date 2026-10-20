@@ -25,7 +25,7 @@ function region(text: string, start: string, end: string): string {
   return text.slice(from, to);
 }
 
-const forms = region(flake, 'piMcpForms = let', 'jailPkgs =');
+const forms = region(flake, 'piMcpJail = ', 'jailPkgs =');
 
 test('one form per capability, built on the shared jail generator without its launch-dir mount', () => {
   assert.match(forms, /pi-mcp-read = mkForm "read";/);
@@ -34,8 +34,10 @@ test('one form per capability, built on the shared jail generator without its la
   // The generator's own launch dir is a rw `--bind` at /workspace/<basename>:
   // the wrong strength for read and the wrong path for both.
   assert.match(forms, /mountLaunchDir = false;/);
+  // One generator call, shared by both forms and the check's baseline.
+  assert.equal(forms.match(/jailLib\.makeJailedPi \{/g)?.length, 1);
   const mkForm = region(forms, 'mkForm = capability:', 'pi-mcp-read = mkForm "read";');
-  assert.equal(mkForm.match(/mountLaunchDir = false;/g)?.length, 1);
+  assert.match(mkForm, /jail = piMcpJail name \[/);
 });
 
 test('the root bind is read-only for read and writable for write, at its own absolute path', () => {
@@ -71,11 +73,14 @@ test('each form consumes exactly one positional and forwards the rest with no ex
 test('the flake carries the bind-set probes and the check that reads the built launchers', () => {
   const probes = region(flake, 'jailProbes = {', 'launcherCheck =');
   assert.match(probes, /pi-mcp = \{/);
-  assert.match(probes, /shared = \[/);
   assert.match(probes, /read = \{/);
   assert.match(probes, /write = \{/);
-  // The expected set is root + session directory + `child_binds`.
-  assert.match(probes, /child_binds/);
+  // The expected residue over the generator's own jail is root + session
+  // directory; the generator's binds are derived from a baseline built by the
+  // same call, never listed, so a generator change cannot fail or move it.
+  assert.doesNotMatch(probes, /shared = \[/);
+  assert.match(flake, /piMcpJail = /);
+  assert.match(flake, /piMcpBaseline = piMcpJail /);
   assert.match(flake, /piMcpFormCheck = let/);
   assert.match(flake, /pi-mcp-forms = piMcpFormCheck;/);
 });

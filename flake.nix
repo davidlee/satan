@@ -302,6 +302,23 @@
         # home and the run directory are never bound. `~/.pi` is the
         # generator's persisted-home bind; a second bind for it would be a
         # second story about the same path.
+        # The one generator call both forms share; `extraOptions` is a form's
+        # own residue over it. `piMcpBaseline` is the same call with none: the
+        # `pi-mcp-forms` check subtracts its binds, so whatever the generator
+        # (jail.nix base, network, persisted home, gateway) binds cancels
+        # rather than being listed here — a generator bump neither fails nor
+        # moves the check. Never a package: it exists to be compared against.
+        piMcpJail = name: extraOptions:
+          jailLib.makeJailedPi {
+            inherit name extraOptions;
+            # The tracked profiles name `llm-gateway/deepseek-flash`, so the
+            # form carries the same gateway the other pi jails do.
+            profile = "specDev";
+            gateway = piGateway;
+            mountLaunchDir = false;
+            workspaceDepsFromEnv = false;
+          };
+        piMcpBaseline = piMcpJail "pi-mcp-baseline" [];
         piMcpForms = let
           # Read-only or writable at the same absolute path: the capability is
           # one word here and nowhere else.
@@ -313,25 +330,16 @@
             );
           mkForm = capability: let
             name = "pi-mcp-${capability}";
-            jail = jailLib.makeJailedPi {
-              inherit name;
-              # The tracked profiles name `llm-gateway/deepseek-flash`, so the
-              # form carries the same gateway the other pi jails do.
-              profile = "specDev";
-              gateway = piGateway;
-              mountLaunchDir = false;
-              workspaceDepsFromEnv = false;
-              extraOptions = [
-                (rootBindOption capability)
-                # The active session directory, and only it: rw in both
-                # capabilities, because pi writes the conversation there even
-                # under a read root (design sec-3).
-                (jailLib.combinators.unsafe-add-raw-args ''--bind "$PI_MCP_ACTIVE_SESSION_DIR" "$PI_MCP_ACTIVE_SESSION_DIR"'')
-                (jailLib.combinators.unsafe-add-raw-args ''--tmpfs /tmp'')
-                # After the generator's own --chdir "$HOME": the later wins.
-                (jailLib.combinators.unsafe-add-raw-args ''--chdir "$PWD"'')
-              ];
-            };
+            jail = piMcpJail name [
+              (rootBindOption capability)
+              # The active session directory, and only it: rw in both
+              # capabilities, because pi writes the conversation there even
+              # under a read root (design sec-3).
+              (jailLib.combinators.unsafe-add-raw-args ''--bind "$PI_MCP_ACTIVE_SESSION_DIR" "$PI_MCP_ACTIVE_SESSION_DIR"'')
+              (jailLib.combinators.unsafe-add-raw-args ''--tmpfs /tmp'')
+              # After the generator's own --chdir "$HOME": the later wins.
+              (jailLib.combinators.unsafe-add-raw-args ''--chdir "$PWD"'')
+            ];
           in
             pkgs.writeShellScriptBin name ''
               set -euo pipefail
@@ -520,29 +528,14 @@
             ];
           };
           # SL-029's per-call forms (design sec-3, "Per-call mode"). The
-          # expected bind set is the root, the active session directory and the
-          # shared generator's own textual binds — the `child_binds` a policy
-          # declares beyond the first two. Written literally, never derived from
-          # the generator's option lists, so a bind added there (or dropped)
-          # fails `pi-mcp-forms` rather than moving it. The check folds store
-          # hashes on both sides, so a nixpkgs bump does not read as drift.
+          # expected residue over `piMcpBaseline` — the same generator call
+          # with no extra options — is the root and the active session
+          # directory, nothing else. The generator's own binds are derived from
+          # the baseline, never listed: pi-mcp asserts what it adds, and
+          # carries no copy of jail.nix's or the generator's bind set.
           pi-mcp = {
-            # The bind words both capabilities carry, unquoted: the check reads
-            # them from the launcher with its quotes stripped. The session
-            # directory is the one run-time path; `~/.pi` is the persisted
-            # home's `~`, not a bind of its own.
-            shared = [
-              "--bind $PI_MCP_ACTIVE_SESSION_DIR $PI_MCP_ACTIVE_SESSION_DIR"
-              "--tmpfs /tmp"
-              "--ro-bind ${pkgs.coreutils}/bin/env /usr/bin/env"
-              "--bind ~/.local/share/jail.nix/home/agent ~"
-              "--ro-bind-try ~/.local/share/doctrine/bin /run/doctrine-bin"
-              "--ro-bind-try $(/nix/store/*-host-git-excludes-file) ~/.config/git/ignore"
-            ];
-            # The models.json bind's destination. The check extracts the store
-            # path from the built launcher with sed, as malebolgeJailProfile
-            # extracts ssh_config, and requires the bind to carry it.
-            modelsDestination = "~/.pi/agent/models.json";
+            # Unquoted, as the check reads launchers with quotes stripped.
+            session = "--bind $PI_MCP_ACTIVE_SESSION_DIR $PI_MCP_ACTIVE_SESSION_DIR";
             read = {
               # At its own absolute path, read-only for this capability. The
               # write form must not carry this one, and vice versa.
@@ -675,10 +668,11 @@
           '';
 
         # SL-029 (design sec-3's per-call mode, sec-7's verification): each
-        # form's actual bind set equals root + active session directory +
-        # `child_binds`, so an added bind and a dropped one both fail here
-        # rather than moving the expectation. Also the positional contract and
-        # the run-time session path. Text only (DEC-046): nothing is launched.
+        # form's bind set equals the generator baseline's (`piMcpBaseline`)
+        # plus root + active session directory, so a bind the form adds or
+        # drops fails here; what the generator binds is its own concern. Also
+        # the positional contract and the run-time session path. Text only
+        # (DEC-046): nothing is launched.
         piMcpFormCheck = let
           p = jailProbes.pi-mcp;
           # One capability's half: pkg is the form package, whose exec line
@@ -730,44 +724,31 @@
             # are read the same way.
             sed 's/"//g' "$launcher" > "$TMPDIR/$cap-unquoted"
 
-            # The generated pi models file over ~/.pi/agent/models.json: the
-            # store path is extracted from the launcher and required, so a
-            # dropped bind fails here rather than falling out of the set.
-            models_bind=$(sed -n 's|.*\(--ro-bind /nix/store/[^ ]*\) ${p.modelsDestination}.*|\1|p' "$launcher" | head -1)
-            if [ -z "$models_bind" ]; then
-              fail "(a) $cap: the launcher binds no store file over ${p.modelsDestination}"
-            fi
-
-            # (a) Set equality: every bind word-pair the launcher carries,
-            # against root + active session directory + child_binds. Both sets
-            # and the residue each way are printed when they differ.
-            {
-              printf '%s\n' ${lib.escapeShellArg cap.root} ${lib.concatMapStringsSep " " (s: lib.escapeShellArg s) p.shared}
-              printf '%s\n' "$models_bind ${p.modelsDestination}"
-            } > "$TMPDIR/$cap-expected-raw"
-            sed 's/"//g' "$TMPDIR/$cap-expected-raw" > "$TMPDIR/$cap-expected"
-            bind_words "$TMPDIR/$cap-expected" > "$TMPDIR/$cap-expected-set"
+            # (a) The residue over the baseline: every bind word-pair this
+            # form adds to the generator's own jail must be root + session
+            # directory, and it must drop none. Both residues are printed
+            # when they differ.
             bind_words "$TMPDIR/$cap-unquoted" > "$TMPDIR/$cap-actual-set"
-            if ! cmp -s "$TMPDIR/$cap-expected-set" "$TMPDIR/$cap-actual-set"; then
+            printf '%s\n' ${lib.escapeShellArg cap.root} ${lib.escapeShellArg p.session} |
+              sed 's/"//g' > "$TMPDIR/$cap-expected"
+            bind_words "$TMPDIR/$cap-expected" > "$TMPDIR/$cap-expected-set"
+            comm -13 "$TMPDIR/baseline-set" "$TMPDIR/$cap-actual-set" > "$TMPDIR/$cap-added"
+            comm -23 "$TMPDIR/baseline-set" "$TMPDIR/$cap-actual-set" > "$TMPDIR/$cap-dropped"
+            if ! cmp -s "$TMPDIR/$cap-expected-set" "$TMPDIR/$cap-added" || [ -s "$TMPDIR/$cap-dropped" ]; then
               {
-                echo "pi-mcp-forms: $cap: the bind set differs from root + active session directory + child_binds"
-                echo "--- expected ---"
+                echo "pi-mcp-forms: $cap: the residue over the generator baseline is not root + active session directory"
+                echo "--- expected residue ---"
                 cat "$TMPDIR/$cap-expected-set"
-                echo "--- actual ---"
-                cat "$TMPDIR/$cap-actual-set"
-                echo "--- only in the launcher (added?) ---"
-                comm -13 "$TMPDIR/$cap-expected-set" "$TMPDIR/$cap-actual-set" || true
-                echo "--- only in the expectation (dropped?) ---"
-                comm -23 "$TMPDIR/$cap-expected-set" "$TMPDIR/$cap-actual-set" || true
+                echo "--- added over the baseline ---"
+                cat "$TMPDIR/$cap-added"
+                echo "--- dropped from the baseline ---"
+                cat "$TMPDIR/$cap-dropped"
               } >&2
-              fail "(a) $cap: the launcher's bind set is not root + session directory + child_binds"
+              fail "(a) $cap: the launcher's bind set is not baseline + root + session directory"
             fi
 
-            # (c) A tmpfs /tmp inside the jail, never the host's /tmp, and the
-            # non-store binds required by name. The set equality above has
-            # already printed the residue for any bind that moved.
+            # (c) A tmpfs /tmp inside the jail, never the host's /tmp.
             must ${lib.escapeShellArg "(c) ${capability} launcher"} "$TMPDIR/$cap-unquoted" ${lib.escapeShellArg "--tmpfs /tmp"}
-            ${lib.concatMapStringsSep "\n" (s: "must ${lib.escapeShellArg "(c) ${capability} launcher"} \"$TMPDIR/$cap-unquoted\" ${lib.escapeShellArg s}") (lib.filter (s: !(lib.hasInfix "/nix/store/" s)) p.shared)}
 
           '';
         in
@@ -779,6 +760,17 @@
                 sed -E 's|/nix/store/[a-z0-9]{32}-|/nix/store/*-|g' |
                 sort -u
             }
+
+            # The baseline's bind set, once: same generator call, no extra
+            # options. Its gateway wrapper execs the bwrap launcher.
+            baseline_outer=${piMcpBaseline}/bin/jailed-pi-mcp-baseline
+            test -f "$baseline_outer" || fail "no baseline at $baseline_outer"
+            baseline=$(sed -n 's|^exec \(/nix/store/[^ ]*/bin/jailed-[^ ]*\) .*|\1|p' "$baseline_outer")
+            if [ -z "$baseline" ] || [ ! -f "$baseline" ]; then
+              fail "the baseline's gateway wrapper execs no bwrap launcher"
+            fi
+            sed 's/"//g' "$baseline" > "$TMPDIR/baseline-unquoted"
+            bind_words "$TMPDIR/baseline-unquoted" > "$TMPDIR/baseline-set"
 
             ${formCheck "read" "${jailPkgs.pi-mcp-read}"}
             ${formCheck "write" "${jailPkgs.pi-mcp-write}"}
