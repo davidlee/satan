@@ -25,6 +25,10 @@
 #   PI_BACKSTOP        hard timeout in seconds (default: 900)
 #   PI_THINK_DEFAULT   thinking level when --think is absent (default: off)
 #   PI_AGENT_AS        name to report in usage/error text (default: pi-agent)
+#   PI_MODEL           override the profile's model. The profile names the provider
+#                      the JAIL provides; outside it a provider may hold no
+#                      credentials at all (`deepseek` does not), so a caller needs
+#                      a way to retarget without editing the profile.
 
 set -euo pipefail
 
@@ -57,6 +61,11 @@ if [[ -z "$model" || -z "$tools" || -z "$sysprompt" ]]; then
   echo "ERROR: $AGENT_FILE is missing model, tools, or a system prompt body" >&2
   exit 1
 fi
+
+# The profile's model is a jail-side name. Overriding it here keeps the profile as
+# the declaration of intent (which model class this role wants) while letting a
+# caller outside the jail honest about the provider it can actually reach.
+model="${PI_MODEL:-$model}"
 
 # --- parse --think flag ---
 thinking="${PI_THINK_DEFAULT:-off}"
