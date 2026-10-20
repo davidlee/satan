@@ -10,6 +10,12 @@ raiser    = "reviewer"
 responder = "implementer"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "jailed-pi-research pass over satan da34a44/ae5b29b and malebolge 89476f4 against design §4.6/§4.7/§6 and PHASE-05 EX/VT; each finding verified by the implementer (closure bind args, oubliette door-root evidence, grep controls) before raise; fixes re-checked by check-jails, flake check, negative controls."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-027"
@@ -17,68 +23,144 @@ phase = "PHASE-05"
 
 [[finding]]
 id = "F-1"
-status = "open"
+status = "verified"
 severity = "blocker"
 title = "Expected the rendered ssh_config to be readable in the jail; observed its store path set by env only, absent from the runtime closure binds"
 detail = """flake.nix: `(set-env "MALEBOLGE_SSH_CONFIG" "${malebolgeSshConfig}")` is the config's only use. jail.nix set-env updates state.env only; bind-nix-store-runtime-closure builds its closure from additionalRuntimeClosures, argv and entry. Verified: the launcher's runtime-closure-bind-args (675 entries) contains socat (extraPkgs) but no malebolge-room-ssh-config. Failure: daemon runs `ssh -F /nix/store/...-malebolge-room-ssh-config`; the file doesn't exist in the jail; every room call fails. malebolge-jail-profile stays green: it reads the config on the host, never checks it is bound. Source: jailed-pi-research pass, verified by implementer."""
+disposition = "fix-now"
+response = 'satan 91a7fc0: `(readonly "${malebolgeSshConfig}")`. malebolge-jail-profile now asserts the config path is in the runtime closure bind args or ro-bound in the launcher; red before the fix ("ssh config … is not bound in the jail"), green after; control (drop the bind) red again.'
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = 'satan 91a7fc0: `(readonly "${malebolgeSshConfig}")`. malebolge-jail-profile now asserts the config path is in the runtime closure bind args or ro-bound in the launcher; red before the fix ("ssh config … is not bound in the jail"), green after; control (drop the bind) red again.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Bound-check red→green; drop-bind control red."
 
 [[finding]]
 id = "F-2"
-status = "open"
+status = "verified"
 severity = "major"
 title = "Expected the door bind to survive a room stop/restart; observed a ro-bind of the per-room dir, which is the relay's RuntimeDirectory"
 detail = """flake.nix `(readonly "/run/capsule-room/assistant")`, inherited from design §4.6. oubliette host/services.nix:357 sets RuntimeDirectory = dirOf socket (removed on stop); host/room-client.nix:19-23,46 binds the door ROOT for exactly this reason (DEC-056), making the root at boot (services.nix:812 tmpfiles). Failures: (a) jail start with the room stopped fails in bwrap (ro-bind source missing), before the daemon's graceful degrade; (b) after a relay restart the jail holds the old unlinked dir, so every call stays `room unavailable` until the daemon restarts — contradicting §4.4/README "next call tries again". Design-level: the locked sketch names this path."""
+disposition = "design-wrong"
+response = 'User chose "Root + state dir" (2026-10-20). satan 91a7fc0 binds ro /run/capsule-room and /var/lib/capsule/room/assistant (oubliette DEC-056 pattern), replacing the per-room door dir and the known_hosts file binds; probes updated first (red), then binds (green). Design §4.6/§6 erratum in notes.md for reconcile.'
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = 'User chose "Root + state dir" (2026-10-20). satan 91a7fc0 binds ro /run/capsule-room and /var/lib/capsule/room/assistant (oubliette DEC-056 pattern), replacing the per-room door dir and the known_hosts file binds; probes updated first (red), then binds (green). Design §4.6/§6 erratum in notes.md for reconcile.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Launcher binds /run/capsule-room and the room state dir; probes red→green; erratum in notes."
+
 [[finding]]
 id = "F-3"
-status = "open"
+status = "verified"
 severity = "minor"
 title = """Expected confinement prose to name every writable path; observed "writes only under durable/room/" (README) and "the daemon's only writes" (flake.nix)"""
 detail = "The persisted home (`--bind ~/.local/share/jail.nix/home/malebolge ~`) is writable by design (§4.6 persisted-home bullet), and /tmp is a tmpfs. malebolge README (89476f4) and the flake comment above malebolgeStateDir overstate confinement; an audit reading them would miss the home."
+disposition = "fix-now"
+response = "malebolge ca2e0ae: README names durable/room/, the persisted jail home and /tmp. satan 91a7fc0: the flake comment says the same."
 
 [[finding.turn]]
 act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "malebolge ca2e0ae: README names durable/room/, the persisted jail home and /tmp. satan 91a7fc0: the flake comment says the same."
+
+[[finding.turn]]
+act = "verify"
 role = "raiser"
 
 [[finding]]
 id = "F-4"
-status = "open"
+status = "verified"
 severity = "nit"
 title = 'Expected the "room literal appears only in the door dir bind" comment to hold; observed a second literal in roomKnownHosts, and identity/known_hosts duplicating door-file facts'
 detail = """flake.nix: comment above malebolgeDoorFile; `roomKnownHosts = "/var/lib/capsule/room/assistant/known_hosts"` and `malebolgeRoomIdentity` restate door.toml's known_hosts/identity. Design §4.6 makes the same claim. If the door file moves either path, the jail binds stale paths while the daemon reads the new ones. The bind paths can't come from door.toml at eval (host file, pure eval), so the coupling is inherent; the comment is what's wrong."""
+disposition = "fix-now"
+response = """satan 91a7fc0: comment now says the jail binds what the door file names, so identity and state-dir paths repeat it (pure eval cannot read the door file). Coupling accepted; §4.6's "once" claim recorded as erratum alongside F-2."""
 
 [[finding.turn]]
 act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """satan 91a7fc0: comment now says the jail binds what the door file names, so identity and state-dir paths repeat it (pure eval cannot read the door file). Coupling accepted; §4.6's "once" claim recorded as erratum alongside F-2."""
+
+[[finding.turn]]
+act = "verify"
 role = "raiser"
 
 [[finding]]
 id = "F-5"
-status = "open"
+status = "verified"
 severity = "minor"
 title = "Expected malebolge-unbound to check the launcher the devshell puts on PATH; observed it builds against the lock, while .envrc overrides agents with live ~/flakes/agents"
 detail = "justfile malebolge-unbound runs `nix build --impure .#jailed-malebolge` (lock). .envrc `use flake_local agents emacs --impure` reads ~/flakes/agents live. A live-only regression in the env merge would make the devshell's launcher bind /workspace/notes while check-jails stays green. Today the live tree matches pin ef19f95 byte-for-byte (reviewer diff). Recorded in advance as phase decision D1 and notes EN-2."
+disposition = "tolerated"
+response = "Deliberate (phase decision D1, notes EN-2): the recipe checks the lock, which is what ships — the runtime jail deploys from the GitHub input. The flake_local override is a dev convenience that tracks the same repo; the live tree matches the pin today (reviewer's diff). Checking the override would couple the justfile to the host's direnv helper."
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "Deliberate (phase decision D1, notes EN-2): the recipe checks the lock, which is what ships — the runtime jail deploys from the GitHub input. The flake_local override is a dev convenience that tracks the same repo; the live tree matches the pin today (reviewer's diff). Checking the override would couple the justfile to the host's direnv helper."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Tolerance accepted: lock is what ships; recorded as D1."
 
 [[finding]]
 id = "F-6"
-status = "open"
+status = "verified"
 severity = "minor"
 title = "Expected probes to reject wrong values; observed unanchored grep -F substrings that false-match (room2, home subdir) and false-miss (trailing-slash whole-dir bind)"
 detail = "Reviewer's commands: `--setenv MALEBOLGE_PROFILE room2` matches the present probe `--setenv MALEBOLGE_PROFILE room`; `--bind ~/.local/share/jail.nix/home/malebolge ~/jail-home` matches the home probe; `--bind /run/user/1000/satan/ /run/user/1000/satan/` escapes the absent probe `--bind /run/user/1000/satan `. Current values are right; the probes are weak."
+disposition = "fix-now"
+response = """satan 91a7fc0: every present probe ends at its separator (space, or `:` for PATH entries); absent adds `--bind /run/user/1000/satan/ `. Control: MALEBOLGE_PROFILE room2 now fails "launcher must contain '--setenv MALEBOLGE_PROFILE room '"."""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """satan 91a7fc0: every present probe ends at its separator (space, or `:` for PATH entries); absent adds `--bind /run/user/1000/satan/ `. Control: MALEBOLGE_PROFILE room2 now fails "launcher must contain '--setenv MALEBOLGE_PROFILE room '"."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "room2 control red."
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
