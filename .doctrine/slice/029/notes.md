@@ -279,3 +279,32 @@ the lock gate needs a fresh pass. Recorded as
 Side effects to tidy later: RV-048 is an empty active review the engine minted
 during the diagnosis. RV-043 and RV-046 remain active with their findings; they
 are not superseded by RV-048, which carries none.
+
+## Operator acceptance of the two concessions (design rev 62)
+
+Both propositions were put to the operator and accepted explicitly, in one reply
+("1. accept  2. accept"), 2026-10-20. Recorded as the durable disposition:
+
+1. **Placeholder usage** — the `accounting_unknown` abort applies to
+   *answer-bearing* messages only; a failure message's `EMPTY_USAGE` is counted
+   as a request, contributes no tokens or cost, and is disclosed as
+   `requests_unmeasured`.
+2. **Nested spend** — the ceiling bounds the delegate's own run, not all spend
+   its tools can cause; nested `pi` / direct gateway calls are outside
+   attribution, with IDE-015 as the closing mechanism.
+
+Where they live: DEC-097 carries the acceptance with its basis (a section
+"Operator acceptance (2026-10-20)"), design sec-4 marks both as
+operator-accepted in the text that states them, and the slice scope's Risks
+section names them as two conformance gaps sharing one REV to SPEC-001 REQ-004 at
+reconcile.
+
+Not recorded as a design-run `sufficiency-accepted` act yet, deliberately: acts
+are invalidated by later content changes (a linked slice edge already invalidated
+`governance-confirmed` once on this run), and review rounds will still edit
+sections. The act belongs at lock, over final content, not now.
+
+Consequence for the pass binding: design.md moved 60 → 62, so RV-048's coverage is
+stale again. That is expected and is not worth another round-trip; the sequence at
+freeze is: finish verification → `drafting` → `reviewing` (mints the next pass over
+final content) → raiser concludes it → `conducted` disposition → `locked`.

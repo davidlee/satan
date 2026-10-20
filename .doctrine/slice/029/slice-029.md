@@ -113,6 +113,17 @@ more than a clean page.
   crossing or on unknown usage, and **no provider output cap**. Overshoot is
   bounded by observation latency plus one in-flight request. This is a recorded
   conformance gap against SPEC-001 REQ-004, not an undecided question.
+- **The ceiling bounds this run, not everything its tools can buy** (RV-046 F-4,
+  operator-accepted 2026-10-20). A bash-capable delegate can start another `pi` or
+  call the reachable gateway directly; those requests share credentials and reach
+  and produce no record the parent stream sees. IDE-015's per-run gateway token is
+  the mechanism that would close it, not this accumulator. Second conformance gap,
+  same REV.
+- **A failed send's spend is unmeasured, not zero** (RV-043 F-6, second contest;
+  operator-accepted 2026-10-20). pi reports `EMPTY_USAGE` for a failure message.
+  The `accounting_unknown` abort applies to answer-bearing messages; a failure is
+  counted as a request, contributes no tokens or cost, and is disclosed as
+  `requests_unmeasured`.
 - **Process groups.** The server creates each call's termination domain
   (`setsid`); the jail sets `no-new-session`, so no group exists otherwise. Killing
   `-pid` without that would be a no-op or would fell the server (DEC-096

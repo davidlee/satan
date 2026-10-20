@@ -144,3 +144,29 @@ run, not on all spend its tools can cause; that limit is a stated conformance ga
 (a second one, beside the retrospective-accounting concession) rather than an
 implied guarantee, and a per-run gateway token with a spend limit (IDE-015) is the
 mechanism for closing it.
+
+
+## Operator acceptance (2026-10-20): the two recorded concessions
+
+Both candidate clauses above were put to the operator as propositions and accepted
+explicitly, in the same session that produced this response. Recorded here as the
+durable disposition, not as the author's inference:
+
+1. **Placeholder usage (RV-043 F-6, second contest).** Accepted: the
+   `accounting_unknown` abort applies to *answer-bearing* messages (`stop`,
+   `length`, `tool_use`, `deferred`). A failure message's `EMPTY_USAGE` is counted
+   as a request, contributes no tokens or cost, and is disclosed as
+   `requests_unmeasured`. The accepted F-4 clause is narrowed by exactly that
+   much and no more — a failure message cannot be read as zero spend, and its
+   separately-counted retry is the only spend that follows it.
+2. **Nested spend (RV-046 F-4).** Accepted: the ceiling bounds the delegate's own
+   run, not all spend its tools can cause. A nested `pi`, a direct call to the
+   reachable gateway, and spend evidenced only inside a tool result are outside
+   attribution; the limit is a stated conformance gap and a per-run gateway token
+   with a spend limit (IDE-015) is the mechanism that closes it.
+
+Both belong in one REV to SPEC-001 REQ-004 at reconcile, beside the retrospective
+accounting concession, so the weaker properties are named together rather than
+discovered one at a time. They do not change the shape of the guarantee the
+ledger rows describe: row 5c remains retrospective accounting with best-effort
+termination, and neither acceptance permits a claim of complete attribution.
