@@ -315,3 +315,55 @@ Process notes:
   was reverted with nixfmt. Format consumer flakes with their own formatter.
 - A consumer edit using a new agents export doesn't evaluate until that consumer's lock
   moves; keep the edit uncommitted until the lock bump lands with it.
+
+## PHASE-06 (2026-10-20, done) — ~ a49c3f0b, 62cebbe5; emacs 08367c7 (all pushed)
+
+Entry: user reported satan pushed and home switched. Observed: satan origin/main = `8b8ea04`;
+`~/flakes/flake.lock` dirty, root `satan` re-locked to `8b8ea04` (contains `9df0cf5`).
+
+Landed (`~` a49c3f0b; emacs 08367c7):
+- `features/satan/malebolge.nix` as design §4.1; registered in `features/satan.nix`.
+- **Beyond design (§4.1/§5 omit it):** a feature is inert until selected. Added
+  `feature.satan.malebolge.enable = lib.mkDefault true` to
+  `features/profiles/personal-linux.nix`; `features-test.nix` `testSleipnirHomeSelection`
+  expects `satan.malebolge#homeManager` (red without the enable → green).
+- `SATAN.md`: repos row and daemon-catalog row drop "not a unit" / `hello-durable`; units
+  table row; live-tree exception paragraph after the runner's store-build paragraph
+  (RSK-020, restart after a wrapper or tree change).
+
+Evidence:
+- `just test`, `just gate`, `just home-build` green in ~/flakes.
+- EX-1/VA-1: after home-switch the unit is `linked`, `inactive` (the switch did not start
+  it); `systemctl --user cat` shows no `[Install]`, `X-RestartIfChanged=false`; no
+  `*.wants` link in the generation.
+- EX-3: ExecStart `/nix/store/k2ipkm4x…-jailed-malebolge/bin/jailed-malebolge`; its script
+  `mkdir -p … /run/user/1000/satan/mcp` and `--ro-bind /run/user/1000/satan/mcp`; no
+  `mcp.sock` literal.
+- EX-4: unit started (MainPID 3489852, 21:13:05). Switched with RestartSec 10→11 (reloaded:
+  `RestartUSec=11s`), then reverted and switched again: same MainPID and
+  ActiveEnterTimestamp, NRestarts=0.
+- EX-5 / VA-2: started with satan-mcp refusing (`ECONNREFUSED …/mcp.sock`, the mcp dir
+  present): journal `0 SATAN tools`, unit stays active. User ran `satan-mcp-start`
+  (socket recreated 21:21) and sent an input: journal `37 SATAN tools` at 21:22:08, same
+  PID, NRestarts=0. Substitution (proposed, unopposed): satan-mcp refusing rather than the
+  mcp dir absent at a fresh login; the absent case is VT-2's.
+- VH-2 (user): satan-mcp stopped and restarted; a SATAN tool call then succeeded, no daemon
+  restart (PID 3489852 throughout). Emacs-restart variant not run with the daemon up.
+- VH-3 (user): `M-x malebolge-stop` at 21:22:55 — systemd "Stopped", no failure result,
+  socat exited on SIGTERM. The stop handler logs only on failure (`daemon-main.ts:45`).
+- VH-1 (user): first `malebolge-start` (21:23:01, new PID, 37 tools, attached) ran in a
+  long-lived Emacs. From a fresh Emacs it failed: **`malebolge-start` not defined**.
+  Cause: `~/.config/emacs/apps/dl-satan.el` `use-package malebolge :commands
+  malebolge-attach` only; `;;;###autoload` cookies do nothing for a bare `:load-path`
+  package. Beyond design (§5 omits the file): `:commands (malebolge-attach
+  malebolge-start malebolge-stop)`; macroexpansion shows all three autoloads. Unit
+  stopped, `systemctl --user restart emacs` (21:29:01), `M-x malebolge-start`: daemon
+  PID 3512714 at 21:29:07, 37 SATAN tools, attached. Pass.
+- RV-049 (per-phase code review, done): F-1 nit — SATAN.md credited
+  `X-RestartIfChanged=false` with blocking tree edits; fixed in `~` 62cebbe5. Synthesis
+  tolerates the `:commands` list duplicating the autoload cookies (the config's idiom).
+- Pushed: `~` (a49c3f0b went out by auto-push before this session's push), emacs (6 commits,
+  incl. PHASE-05's 827fb04).
+
+For reconcile: design §5 code impact should list `features/profiles/personal-linux.nix`,
+`features-test.nix` and `~/.config/emacs/apps/dl-satan.el`.

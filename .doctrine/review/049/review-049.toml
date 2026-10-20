@@ -1,0 +1,53 @@
+id    = 49
+slug  = "code-review-review-of-sl-028"
+title = "code-review review of SL-028"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Quick pass (stakes × scope: ~60 lines of HM config + docs, already exercised live).
+Examined ~ a49c3f0b (features/satan/malebolge.nix vs design §4.1 verbatim; satan.nix
+registration; personal-linux enable + features-test expectation; SATAN.md rows 22/55/81 and
+the live-tree paragraph) and emacs 08367c7 (dl-satan.el :commands), against design §4.1/§4.6/§7
+and the live unit file. One nit (F-1), fixed in 62cebbe5.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-028"
+phase = "PHASE-06"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "nit"
+title = "SATAN.md live-tree paragraph: expected X-RestartIfChanged scoped to switches; observed it credited with blocking tree edits"
+detail = "~/flakes/SATAN.md:185-187 (a49c3f0b): 'The unit sets X-RestartIfChanged=false, so neither a switch nor a tree edit reaches a running daemon'. A running node process never reloads ~/dev/malebolge sources, flag or not; the flag only stops a switch restarting the unit (design §4.1, §7). Misattributed cause invites a reader to think flipping the flag would deploy tree edits. Fix: say a switch never restarts it, and both a changed wrapper and a tree edit take effect only at the next start."
+disposition = "fix-now"
+response = "Fixed in ~ 62cebbe5: 'a switch never restarts it; a changed wrapper (a switch) or live tree (an edit) takes effect only at the next start'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in ~ 62cebbe5: 'a switch never restarts it; a changed wrapper (a switch) or live tree (an edit) takes effect only at the next start'."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
