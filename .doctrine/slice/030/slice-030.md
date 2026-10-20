@@ -59,12 +59,20 @@ to be consolidated in this slice's research artefact):
 7. **Id resolution** — design decision D-B: resolving id text to a
    `ConversationId` needs `runner/durable-ids.ts` `conversationIdOf`, but
    `test/structure.test.ts` forbids root modules from importing `src/runner/`.
-   Move it to the shared tier per malebolge's RFC-001 and IMP-002 conventions,
-   and update the allowlists.
+   DEC-074 governs this, not RFC-001. Either move it to a named root module
+   (`src/durable-ids.ts`, plus `"durable-ids"` in `RUNNER_ROOTS`), or cast
+   validated text directly. Creating a `src/lib/` tier would reopen what
+   DEC-074 deferred to malebolge IMP-002.
 8. **Room fault reporting** — design decision D-C: the room connection's
    fault log, trust flag and reconnect window are per daemon, so faults are
    reported across conversations. Decide whether to accept and document this,
    or change it.
+9. **Client-supplied `cwd`** — design decision D-D, found in research: a
+   created conversation's `cwd` is where its tools run (both environment
+   hooks use `state.cwd`). Decide which values a client may supply. Research
+   suggests restricting them to what the running profile can serve (CON-005,
+   DEC-078): under the room home for the room profile, under the launch
+   directory for the host profile.
 
 ## Non-Goals
 
