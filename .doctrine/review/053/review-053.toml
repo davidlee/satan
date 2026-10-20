@@ -260,7 +260,7 @@ response = "Fixed in 80bb3ce. pi/mcp/session.ts, both diagnosis fixes, no policy
 
 [[finding]]
 id = "F-10"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "The posture-state branch is unreachable dead code that carries EX-11's claim"
 detail = """
@@ -272,14 +272,22 @@ Raised in R2 (finding 1, LOW).
 
 Suggestion: delete `PostureState`/`createPostureState` and their plumbing, and let the design sec-1 comment say the schema refusal is what fixes the posture; or widen `PolicyMode` so the runtime check and its test are real.
 """
+disposition = "fix-now"
+response = """Fixed in 8350a98. Deleted rather than guarded: `PostureState`, `createPostureState()` and `admitCall`'s `posture` parameter are gone (pi/mcp/policy.ts), together with the `acceptedMode !== null && mode !== acceptedMode` branch and the `posture.acceptedMode = loaded.policy.mode` write it guarded; `admitCall` is now `admitCall(env, callId)`. pi/mcp/server.ts drops the import, `Context.posture`, the `createPostureState()` in the context literal and the third argument at the call site. The PHASE-02 EX-11 intent is preserved by the mechanism that already enforced it: every call re-reads and re-validates the artefact, and `validatePolicy` refuses any `mode` other than `per-call` with `posture-unsupported` (policy.ts:203-210), so a file edited mid-life to name another mode is refused at the next call and no path re-launches into one. A comment in the branch's place states exactly that, including why a remembered mode would add nothing, so the dead state is not reinstated; the `admitCall` step list no longer implies a state check. The "mode change between calls" case in policy.test.ts now drives the real mechanism — first call admitted, file rewritten with `mode: "static"`, next call refused `posture-unsupported` with the schema's own detail (naming the mode and the per-call-only posture) and the refusal present in attempts.jsonl for call_id 12 — and is retitled to say the re-validation is the mechanism."""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """Fixed in 8350a98. Deleted rather than guarded: `PostureState`, `createPostureState()` and `admitCall`'s `posture` parameter are gone (pi/mcp/policy.ts), together with the `acceptedMode !== null && mode !== acceptedMode` branch and the `posture.acceptedMode = loaded.policy.mode` write it guarded; `admitCall` is now `admitCall(env, callId)`. pi/mcp/server.ts drops the import, `Context.posture`, the `createPostureState()` in the context literal and the third argument at the call site. The PHASE-02 EX-11 intent is preserved by the mechanism that already enforced it: every call re-reads and re-validates the artefact, and `validatePolicy` refuses any `mode` other than `per-call` with `posture-unsupported` (policy.ts:203-210), so a file edited mid-life to name another mode is refused at the next call and no path re-launches into one. A comment in the branch's place states exactly that, including why a remembered mode would add nothing, so the dead state is not reinstated; the `admitCall` step list no longer implies a state check. The "mode change between calls" case in policy.test.ts now drives the real mechanism — first call admitted, file rewritten with `mode: "static"`, next call refused `posture-unsupported` with the schema's own detail (naming the mode and the per-call-only posture) and the refusal present in attempts.jsonl for call_id 12 — and is retitled to say the re-validation is the mechanism."""
+
 [[finding]]
 id = "F-11"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "Form `extensions` accept any token while only `builtin:mcp` is honoured"
 detail = """
@@ -291,14 +299,22 @@ Raised in R2 (finding 2, LOW); R3's design tension 6 makes the same observation 
 
 Suggestion: refuse any `extensions` entry other than `MCP_EXTENSION` as `policy-invalid`; if the field is meant to be a pure declaration, document it as one and test the restriction, so an operator cannot believe they configured argv.
 """
+disposition = "fix-now"
+response = """Fixed in 8350a98. pi/mcp/policy.ts `readForm` now refuses any `extensions` entry that is not `builtin:mcp` as `policy-invalid`, with a detail naming the entry and its index: `forms.<field>.extensions[<i>] "<entry>" is not an extension this build passes: the launch forms pass no "-e" other than "builtin:mcp"` (design sec-3). The allowed value is the existing `MCP_EXTENSION` constant, imported from pi/mcp/profiles.ts (profiles imports only paths.ts, so no cycle), not a second literal. The refusal is additive: `Policy`/`Form` keep their shape, `validatePolicy` is untouched, and `spawn.ts:buildArgv` still decides `-e builtin:mcp` from `profile.tools` and never reads the form's extensions. The form test "a form may declare the extensions it passes, and nothing else" gained the foreign-extension case alongside the existing bad-type cases (7, a bare string), asserting the detail names the exact entry."""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """Fixed in 8350a98. pi/mcp/policy.ts `readForm` now refuses any `extensions` entry that is not `builtin:mcp` as `policy-invalid`, with a detail naming the entry and its index: `forms.<field>.extensions[<i>] "<entry>" is not an extension this build passes: the launch forms pass no "-e" other than "builtin:mcp"` (design sec-3). The allowed value is the existing `MCP_EXTENSION` constant, imported from pi/mcp/profiles.ts (profiles imports only paths.ts, so no cycle), not a second literal. The refusal is additive: `Policy`/`Form` keep their shape, `validatePolicy` is untouched, and `spawn.ts:buildArgv` still decides `-e builtin:mcp` from `profile.tools` and never reads the form's extensions. The form test "a form may declare the extensions it passes, and nothing else" gained the foreign-extension case alongside the existing bad-type cases (7, a bare string), asserting the detail names the exact entry."""
+
 [[finding]]
 id = "F-12"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "Assumption labels `A1`–`A6` resolve to no record, and `A1` means two different things"
 detail = """
@@ -310,14 +326,22 @@ Raised in R2 (finding 5, LOW).
 
 Suggestion: record them as `ASM-` entries and cite the ids (which also gives F-3's exposure gap a place to be argued), or state each assumption inline in one sentence and drop the labels.
 """
+disposition = "fix-now"
+response = '''Fixed in 8350a98. Every `A1`..`A6` label in pi/mcp is gone (`grep -nE "\bA[1-6]\b" pi/mcp/*.ts` is empty), and no governance record was created — that stays reconcile's work. Where the sentence already carried the assumption the label was simply dropped (pi/mcp/paths.ts canonicalPath: a run dir, session home or named policy file may not exist at check time and a lexical comparison would let a symlinked ancestor through; pi/mcp/result.ts `derivedCause` and REACHABILITY; pi/mcp/session.ts `SessionPaths`). Two sites had the label standing in for the assumption, and now state it inline: pi/mcp/childview.ts's `Exposure` doc says in this posture the root is writable for a `write` capability and read-only for a `read` one, and every fixed child mount and the active session directory are writable; pi/mcp/gate.ts's header says the gate keeps no usage of its own, so the numbers it judges and the numbers the result reports are the same accumulator's. `(A1/D2)` in gate.ts went the same way (neither label resolved). The test-side labels were dropped with the wording byte-identical, so no VT keyword moved: childview.test.ts's two section rules and one comment. The wider sweep `\bA[1-6]\b` also caught the four parenthetical survivors (childview.test.ts:80, :143; policy.ts:340; session.ts:150) and two inline ones (childview.ts:92, result.test.ts:639) — the real references (`DEC-095`, `EX-5`, `EX-6`, `EX-9`, "design sec-3's table") were kept, only the dangling label and its separator removed.'''
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = '''Fixed in 8350a98. Every `A1`..`A6` label in pi/mcp is gone (`grep -nE "\bA[1-6]\b" pi/mcp/*.ts` is empty), and no governance record was created — that stays reconcile's work. Where the sentence already carried the assumption the label was simply dropped (pi/mcp/paths.ts canonicalPath: a run dir, session home or named policy file may not exist at check time and a lexical comparison would let a symlinked ancestor through; pi/mcp/result.ts `derivedCause` and REACHABILITY; pi/mcp/session.ts `SessionPaths`). Two sites had the label standing in for the assumption, and now state it inline: pi/mcp/childview.ts's `Exposure` doc says in this posture the root is writable for a `write` capability and read-only for a `read` one, and every fixed child mount and the active session directory are writable; pi/mcp/gate.ts's header says the gate keeps no usage of its own, so the numbers it judges and the numbers the result reports are the same accumulator's. `(A1/D2)` in gate.ts went the same way (neither label resolved). The test-side labels were dropped with the wording byte-identical, so no VT keyword moved: childview.test.ts's two section rules and one comment. The wider sweep `\bA[1-6]\b` also caught the four parenthetical survivors (childview.test.ts:80, :143; policy.ts:340; session.ts:150) and two inline ones (childview.ts:92, result.test.ts:639) — the real references (`DEC-095`, `EX-5`, `EX-6`, `EX-9`, "design sec-3's table") were kept, only the dangling label and its separator removed.'''
+
 [[finding]]
 id = "F-13"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "A source-text parentheses scan stands in for a behavioural transcript-budget test"
 detail = """
@@ -329,14 +353,22 @@ Raised in R3 (finding 9, LOW).
 
 Suggestion: delete the scan and add the one behavioural case the harness makes cheap: a call with `transcript_budget_bytes` set asserts `doc.status.transcript.elided > 0` and `status.transcript.bytes` below the same run without a budget.
 """
+disposition = "fix-now"
+response = """Fixed in 8350a98. Deleted the parenthesis-balancing source-text scan ("server.ts hands the clamp to the reducer", result.test.ts:546-570) and the now-unused `readFileSync` import. Replaced it with one behavioural case in pi/mcp/gate.test.ts, in the file whose rig already drives full calls in-process through `serve` against a stub launcher: a stub emits forty distinct tool round-trips (distinct ids and commands, so the reducer's repeat-collapsing never folds them), one priced `message_end`, `agent_settled` and exit 0; the first call runs under an effectively unbudgeted `transcript_budget_bytes: 10_000_000` and the second after `patchPolicy(…, 256)`, which is the honest test of the per-call read. Asserts both calls `completed`, the unbudgeted run `elided === 0`, the budgeted run `status.transcript.elided > 0`, its `status.transcript.bytes` strictly below the unbudgeted run's, and "entries elided" present in the transcript text an operator reads. That is PHASE-08 EX-6's carried obligation discharged in-suite and behaviourally: a dropped `budgetBytes` argument at the server seam now fails this case, where the deleted scan would have stayed green through any reformat and failed on any rename. The real-form smoke stays PHASE-09's. Suite: 252 tests, 5.4 s (one subtest removed, one test added)."""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """Fixed in 8350a98. Deleted the parenthesis-balancing source-text scan ("server.ts hands the clamp to the reducer", result.test.ts:546-570) and the now-unused `readFileSync` import. Replaced it with one behavioural case in pi/mcp/gate.test.ts, in the file whose rig already drives full calls in-process through `serve` against a stub launcher: a stub emits forty distinct tool round-trips (distinct ids and commands, so the reducer's repeat-collapsing never folds them), one priced `message_end`, `agent_settled` and exit 0; the first call runs under an effectively unbudgeted `transcript_budget_bytes: 10_000_000` and the second after `patchPolicy(…, 256)`, which is the honest test of the per-call read. Asserts both calls `completed`, the unbudgeted run `elided === 0`, the budgeted run `status.transcript.elided > 0`, its `status.transcript.bytes` strictly below the unbudgeted run's, and "entries elided" present in the transcript text an operator reads. That is PHASE-08 EX-6's carried obligation discharged in-suite and behaviourally: a dropped `budgetBytes` argument at the server seam now fails this case, where the deleted scan would have stayed green through any reformat and failed on any rename. The real-form smoke stays PHASE-09's. Suite: 252 tests, 5.4 s (one subtest removed, one test added)."""
+
 [[finding]]
 id = "F-14"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "The gate's trigger facts are computed and dropped, and `triggers()`/`cause()` serve only tests"
 detail = """
@@ -348,10 +380,18 @@ Raised in R3 (finding 5, LOW-MEDIUM); R2's design tension 7 records the same tes
 
 Suggestion: carry the trigger on the abort reason (`controller.abort({ cause, trigger })`) and write `unit`/`observed`/`limit` into the abort record, which gives the exports a production consumer and makes an overrun diagnosable from evidence rather than from the returned status alone.
 """
+disposition = "fix-now"
+response = "Fixed in 8350a98. The crossing now reaches production evidence without a new cause: `GateConfig.abort` takes the whole `GateTrigger` (gate.ts: `fire` passes the trigger, not `trigger.cause`), and server.ts wires `abort: (trigger) => controller.abort({ cause: trigger.cause, trigger })` — the cause token stays exactly what the ladder reads, the trigger rides along in the same signal reason rather than a second channel. spawn.ts reads it structurally (no dependency on gate.ts): `abortCauseOf` accepts a bare token or `{ cause, trigger }` with the same `'cancelled'` fallback, a new `crossingOf` returns `{ unit, observed, limit }` when the reason carries one, and `terminate(cause, crossing)` writes `unit`, `observed` and `limit` onto the abort audit record only when a crossing is present — so a `cancelled`/`eof`/`audit` abort writes the identical record it always wrote. `AbortCause` and `Termination` are unchanged and `evidence.ts` needed no change (`AuditRecord` is open). `triggers()`/`cause()` keep their signatures and now have a production consumer. Tests: gate.test.ts's live-crossing case asserts the audit record names the unit (`cost_usd`), the accumulator's value at the crossing (`0.01`) and the clamped bound it crossed (`0.005`), and `unitGate` keeps its `causes: string[]` API so every existing cause assertion still holds. Audit-record shape note for the audit stage: the `abort` record for a gate rung gains three optional fields — the phase-09 hostile-audit script asserts the audit is intact or the call is `audit_failed`, never a clean success, and does not fix the record's field set, so no fixture change is implied."
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 8350a98. The crossing now reaches production evidence without a new cause: `GateConfig.abort` takes the whole `GateTrigger` (gate.ts: `fire` passes the trigger, not `trigger.cause`), and server.ts wires `abort: (trigger) => controller.abort({ cause: trigger.cause, trigger })` — the cause token stays exactly what the ladder reads, the trigger rides along in the same signal reason rather than a second channel. spawn.ts reads it structurally (no dependency on gate.ts): `abortCauseOf` accepts a bare token or `{ cause, trigger }` with the same `'cancelled'` fallback, a new `crossingOf` returns `{ unit, observed, limit }` when the reason carries one, and `terminate(cause, crossing)` writes `unit`, `observed` and `limit` onto the abort audit record only when a crossing is present — so a `cancelled`/`eof`/`audit` abort writes the identical record it always wrote. `AbortCause` and `Termination` are unchanged and `evidence.ts` needed no change (`AuditRecord` is open). `triggers()`/`cause()` keep their signatures and now have a production consumer. Tests: gate.test.ts's live-crossing case asserts the audit record names the unit (`cost_usd`), the accumulator's value at the crossing (`0.01`) and the clamped bound it crossed (`0.005`), and `unitGate` keeps its `causes: string[]` API so every existing cause assertion still holds. Audit-record shape note for the audit stage: the `abort` record for a gate rung gains three optional fields — the phase-09 hostile-audit script asserts the audit is intact or the call is `audit_failed`, never a clean success, and does not fix the record's field set, so no fixture change is implied."
 
 [[finding]]
 id = "F-15"
