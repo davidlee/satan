@@ -9,6 +9,9 @@ oauth2.*
 .claude/settings.local.json
 .org-id-locations
 .mc-lists.el
+.envrc
+# use jpegs
+/*.png
 
 /eca
 /.spec-driver/run/events.jsonl

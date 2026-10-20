@@ -3,6 +3,8 @@ export JAIL_WORKSPACE_DEPS="\
 /home/david/.config/emacs/
 /home/david/flakes/
 /home/david/dev/panopticon/
+/home/david/dev/malebolge/
+/home/david/dev/oubliette/
 "
 export DOCKER_HOST="unix:///run/user/1000/podman/podman.sock"
 # Live ~/flakes/{agents,emacs} (see ~/flakes/_templates/agents/_envrc).
