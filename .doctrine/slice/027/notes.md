@@ -354,9 +354,9 @@ fresh-as-of: 2026-10-20 · PHASE-05 completed + RV-038 done, slice status starte
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- reconcile-time: `~/notes` justfile comment on `hello-durable` ("launched from here so its coding tools work in this repo") is stale under the room profile; the devshell's `jailed-malebolge` lags HEAD until direnv reloads
+- the devshell's `jailed-malebolge` lags HEAD until direnv reloads (the hello-durable comment was fixed, ~/notes 945497e, RV-039 F-5)
 - user to reject probe jobs pj-01M5BGB60JKD2AP1FJHCHS3K41, pj-01M5BGDP6RB7E63CE9YVG690CF (needs_review)
-- PHASE-06 done (2026-10-20): VA-1..4 + VH-1 met (§ PHASE-06 live verification). Next: /audit. PHASE-05 done (satan da34a44, 91a7fc0; RV-038 done). The jailed daemon has never started live: first live start is PHASE-06/VA; expect ssh/known_hosts/HOME surprises. The identity bind is a hard `readonly`, so a missing key fails at bwrap start (covers the flakes-15 suggestion)
+- Audit RV-039 done (2026-10-20): 7 findings verified; Reconciliation Brief RB-1..4, RB-G1..5 in review-039.md. Next: /reconcile. PHASE-06 done: VA-1..4 + VH-1 met (§ PHASE-06 live verification). PHASE-05 done (satan da34a44, 91a7fc0; RV-038 done). The jailed daemon has never started live: first live start is PHASE-06/VA; expect ssh/known_hosts/HOME surprises. The identity bind is a hard `readonly`, so a missing key fails at bwrap start (covers the flakes-15 suggestion)
 - PHASE-05 for audit: §4.7 "devToolPkgs removed" leaves flakes commonPkgs (rg, curl, wget, python3) on PATH; F-2 door/state-dir binds deviate from §4.6 (errata)
 - PHASE-04 deviation for audit: `Config.cwd`/`toolsCwd` (PHASE-03 D3) removed; `DaemonEnv.cwd` is the one source
 - PHASE-02 deviations for audit: EX-10 matcher strips import specifiers (importers of runner/door.ts tripped DOOR_WORDS; the import edge is now pinned by the structure test, RV-036 F-1); run.ts reads `code` via `"code" in` (Degradation union); runner DOOR_KEYS.room derives from ROOM_DOOR_KEYS, so a room door missing ssh_config and identity now names identity first; design §4.1's host-key "re-exports" did not exist

@@ -1,0 +1,241 @@
+id    = 39
+slug  = "reconciliation-review-of-sl-027"
+title = "reconciliation review of SL-027"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Audited SL-027 against design §4/§6, CON-005 and plan PHASE-01..06: live PHASE-06 evidence (jail netns probes, room clone/write as satan during/after patch jobs, egress sweep of 37 tools, VH-1), gates in satan/malebolge/check-jails, slice conformance and verify-vt, and carry-over of RV-035..038. 7 findings, all verified; design/governance drift mapped in the Reconciliation Brief.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-027"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Expected design §4.8/§6 to name the clone form satan can use; observed they prescribe safe.directory and plain git clone, which git refuses"
+detail = """
+Design §4.8: oubliette IMP-023 gives readers "git `safe.directory` for the readers"; §6 VA: "as `satan`, `git clone /work/<repo>` succeeds".
+Observed (PHASE-06, notes § VA-2): no safe.directory is configured (user decision 2026-10-20, notes: "safe.directory: never"); `git clone /work/goad-walk` as satan → `fatal: detected dubious ownership in repository at '/work/goad-walk/.git'`; `git clone --no-local` succeeds; prompts/env/room.txt already tells the agent `--no-local`.
+Plan PHASE-06 EX-2 carries the same plain-clone text (immutable; note only).
+"""
+disposition = "design-wrong"
+response = """
+Design is wrong, the user's decision stands (no safe.directory; --no-local). Reconcile: design §4.8 (drop "git safe.directory for the readers"; clone form `git clone --no-local /work/<repo>`; in-place git refused by design) and §6 VA bullet. Brief entry RB-1.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Design is wrong, the user's decision stands (no safe.directory; --no-local). Reconcile: design §4.8 (drop "git safe.directory for the readers"; clone form `git clone --no-local /work/<repo>`; in-place git refused by design) and §6 VA bullet. Brief entry RB-1.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Expected §4.7's 'devToolPkgs (incl. rg) removed' to describe the jail's PATH; observed flakes commonPkgs still put rg, curl, wget, python3, libnotify, pulseaudio on it"
+detail = """
+Design §4.7 row "devToolPkgs (incl. rg) — removed — no host coding tools".
+Observed (live, /proc/<daemon>/environ PATH, PHASE-06): ripgrep, curl, wget, python3, libnotify, pulseaudio, fd, jq, git-guarded among the jail's PATH — flakes' base commonPkgs, not satan's grant. No egress consequence: the netns is offline (ENETUNREACH v4/v6) and no D-Bus / Pulse socket is bound (/run/user/1000 holds only satan/{mcp,durable}). The design's claim is satan-grant-only and should say so.
+"""
+disposition = "design-wrong"
+response = """
+Design overclaims. Reconcile: §4.7 row says devToolPkgs is satan's grant, removed; flakes base commonPkgs (rg, curl, wget, python3, …) remain, harmless under the offline netns with no host session sockets bound. Brief entry RB-2.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Design overclaims. Reconcile: §4.7 row says devToolPkgs is satan's grant, removed; flakes base commonPkgs (rg, curl, wget, python3, …) remain, harmless under the offline netns with no host session sockets bound. Brief entry RB-2.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Expected design §4.1/§4.3/§4.4 to describe the delivered room API and daemon env; observed drift recorded across PHASE-02/04 reviews"
+detail = """
+From notes § Design errata (each verified in its phase):
+- §4.1 ReadFailure drops "exit" (runner keeps its own Failure with exit; RV-036 F-3, malebolge 2ba8667).
+- §4.1 room API omits exports added with one consumer each: successStdout, answerable, Attempt, ExecFacts, Collected, OutputCollector, observedEnv (RV-036 F-7, already design-wrong); observedEnv options gain reword?; ROOM_DOOR_READERS pinned by the structure test (RV-036 F-1), daemon config.ts among them.
+- §4.1 "host-key re-exports" did not exist (PHASE-02).
+- §4.3 daemonEnv gains helpers?: DaemonHelpers; readRoomContext / requireGatewaySocket exported; Config.cwd / toolsCwd removed, DaemonEnv.cwd the one source (PHASE-04).
+- §4.4 / §7 R3: a lost room reaches grep as a thrown ExecutionError rendered `[error] room unavailable: …`, not spawn_error; the neutral `rg could not run:` covers a missing binary only.
+"""
+disposition = "design-wrong"
+response = """
+Code is correct and reviewed (RV-036, RV-037); design text lags. Reconcile: §4.1, §4.3, §4.4/§7 R3 per the listed items (incl. RV-036 F-7). Brief entry RB-3.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code is correct and reviewed (RV-036, RV-037); design text lags. Reconcile: §4.1, §4.3, §4.4/§7 R3 per the listed items (incl. RV-036 F-7). Brief entry RB-3.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Expected design §4.2/§4.6 and DEC-075 to match the delivered launcher and door facts; observed errata from PHASE-05 and RV-038"
+detail = """
+From notes § Design errata:
+- §4.2 door sample host_key_alias "room-assistant", not "assistant"; door file gains home (R2 already).
+- §4.2, §4.8, §5, §6 entry, §7: the door file render is flakes:SL-016 (not SL-015); the vm-mode key is generated by hand, not issued by flakes — DEC-075's consequences say "flakes issues its key" (user: amend at reconcile).
+- §4.6: gatewayClientSocket is gateway.nix's clientSocket imported from inputs.agents, not a flakes export; mkdir -p is jail.nix add-runtime; with mountLaunchDir=false the jail starts in $HOME (the persisted home); ssh_config store path is ro-bound as well as set-env (RV-038 F-1); door bind is the root /run/capsule-room plus the room state dir /var/lib/capsule/room/assistant, not the per-room dir or the known_hosts file (RV-038 F-2, already design-wrong) — §4.6's "room literal appears once" and §6's probe list change with it.
+- §5: goad flake input removed with the goad grants.
+"""
+disposition = "design-wrong"
+response = """
+Launcher is correct and reviewed (RV-038); design and DEC-075 lag. Reconcile: §4.2, §4.6, §4.8, §5, §6, §7 per the items (incl. RV-038 F-2); DEC-075 consequences amended (key generated by hand). Brief entries RB-4, RB-G4.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Launcher is correct and reviewed (RV-038); design and DEC-075 lag. Reconcile: §4.2, §4.6, §4.8, §5, §6, §7 per the items (incl. RV-038 F-2); DEC-075 consequences amended (key generated by hand). Brief entries RB-4, RB-G4.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Expected the ~/notes justfile hello-durable comment to describe the room profile; observed it said the daemon's coding tools work in ~/notes"
+detail = """
+~/notes/justfile:13-14 (before): "launched from here so its coding tools work in this repo." Under the room profile the coding tools run in room assistant as satan (VH-1: bash pwd → /home/satan; ~/notes unchanged). Design §4.8 said the recipes keep working unchanged, which holds; the comment did not.
+"""
+disposition = "fix-now"
+response = """
+Fixed: ~/notes 945497e rewrites the comment ("in the room profile: its coding tools run in room `assistant` as user `satan`, never in this repo").
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: ~/notes 945497e rewrites the comment ("in the room profile: its coding tools run in room `assistant` as user `satan`, never in this repo").
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Expected the SATAN tool set audit to find only safe argv; observed content_read passes the model's query to rg without --"
+detail = """
+satan/satan-tools-content.el:300 `rg --json --fixed-strings -i QUERY -g *.md`. A query beginning with `-` is parsed as an rg flag (`--files` lists filenames). Tested: a single element cannot pair --pre=CMD with a pattern (rg: "requires at least one pattern"), so no exec, no egress — EX-4 unaffected. Pre-existing (not SL-027 code); surfaced by the PHASE-06 egress sweep. Captured as ISS-051.
+"""
+disposition = "follow-up"
+response = """
+Pre-existing defect outside SL-027's code; owned by ISS-051 (fix: "--" before query, test for a leading "-").
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Pre-existing defect outside SL-027's code; owned by ISS-051 (fix: "--" before query, test for a leading "-").
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Expected slice conformance to show delivery; observed 27 undelivered selectors that live in other repos and 2 undeclared images from the user's README commits"
+detail = """
+`doctrine slice conformance 27`: undelivered = malebolge src/**, test/**, docs/internals.md, satan-corpus prompts/**, plus .doctrine/adr/017 and spec/tech/002, 004 (reconcile-time, §4.9). Conformance reads only satan's git range; malebolge/corpus delivery is evidenced by commits listed in notes § Harvest Produced and by the phase reviews (RV-036/037 on malebolge). Undeclared: doctrine bookkeeping, flake.lock (PHASE-05 input changes), gnu2.jpg / system-map.jpg (user commits cbcab1d, 9d38003 "README", not slice work).
+"""
+disposition = "tolerated"
+response = """
+Tool limitation, not drift: conformance cannot see cross-repo deltas. Delivery evidence for malebolge/corpus is the phase reviews and commit list; the governance selectors are delivered at reconcile (§4.9). The undeclared files are bookkeeping and the user's own commits.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tool limitation, not drift: conformance cannot see cross-repo deltas. Delivery evidence for malebolge/corpus is the phase reviews and commit list; the governance selectors are delivered at reconcile (§4.9). The undeclared files are bookkeeping and the user's own commits.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
