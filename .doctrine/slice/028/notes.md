@@ -6,13 +6,21 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: <yyyy-mm-dd> · <PHASE-NN | stage> · <head-commit>
+fresh-as-of: 2026-10-20 · PHASE-01 · malebolge 3a39d16
 
 ### Produced
+- PHASE-01 done — instance lock, `lockPath`, `serveUnix` claim, runner on
+  `SocketInUse` (malebolge 7b9294a eslint base fix, 3a39d16); detail in
+  § PHASE-01 below
 
 ### Learned
+- mem.fact.malebolge.eslint-ignores-doctrine-state — typed eslint needs
+  `.doctrine` ignored after `doctrine install`
 
 ### Open
+- DEC-083..DEC-088 — design decisions binding PHASE-02..06
+- RSK-020 — two malebolge revisions in production; REV at reconcile
+- PHASE-03 must release the lock exactly once (non-idempotent `release`)
 
 ## Design triage (2026-10-20, exploring)
 
@@ -89,3 +97,34 @@ Evidence: `research/research.md` (C = code fact, G = governance, X = cross-threa
   from GitHub), `~/dev/satan` in PHASE-06.
 - No home-switch mid-slice (runner shares `serveUnix`; switches build
   malebolge from the dirty checkout).
+
+## PHASE-01 (2026-10-20, done) — malebolge `3a39d16`
+
+- Base fix first: malebolge `just check` was red at base — `doctrine install`
+  writes TS under `.doctrine/state/pi/extensions/` and eslint linted it.
+  `7b9294a` adds `.doctrine` to eslint ignores.
+- `src/instance-lock.ts`: `acquireInstanceLock(path)` mkdirs the parent (the
+  profile dir may not exist before the store opens, PHASE-03 order), opens
+  `DatabaseSync`, `PRAGMA locking_mode=EXCLUSIVE; BEGIN EXCLUSIVE;`. Only
+  `errcode === 5` (SQLITE_BUSY) becomes `InstanceLocked`; e.g. a non-database
+  file propagates SQLite's own error. Same-process second acquire is refused
+  too (SQLite tracks locks per inode). `release` is not idempotent (a second
+  `db.close()` throws) — PHASE-03's stop handler should call it once.
+- `serveUnix` → `claimUnix` + `probeUnix` (`"live" | "stale" | "gone"`, other
+  errors rethrown). Verified on this host: `listen` on a regular file →
+  EADDRINUSE, `connect` to it → ECONNREFUSED, so the runner's "stale regular
+  file" test still takes the unlink path. The ENOENT (gone meanwhile) branch
+  is a race and stays untested by design (one branch).
+- Behaviour change reaching the daemon now (via shared `serveUnix`): a second
+  daemon on a live socket gets `SocketInUse` instead of stealing the path.
+  No daemon test relied on stealing.
+- Runner: `refuseIfLive` deleted; `serveControl` maps `SocketInUse` →
+  `StartRefused("a runner already serves …")`.
+- Test fixture `childProcess(source)` (`test/fixtures.ts`): runs an ES module
+  in a child node, resolves on its first stdout line, `kill()` = SIGKILL.
+  Register `onTestFinished(child.kill)` — a failing assertion before `kill`
+  otherwise leaves the child alive and vitest hangs (seen once in a mutation
+  check).
+- Sandbox quirk: `listen` under a missing directory reported EACCES, not
+  ENOENT, in this session's sandbox; the test asserts `syscall: "listen"`.
+- Not run: no home-switch (runner shares `serveUnix`; see Plan notes).
