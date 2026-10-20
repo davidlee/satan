@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1586263417190892dc7eee4fecdb1"
+memory_key = "mem.fact.jail.background-launch-dies-with-shell"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "jailed-pi dies with its launching shell: no background/nohup launches"
+summary = "bwrap --die-with-parent means a jail launched in the background dies as soon as the launching shell exits, killing the worker silently. Launch jailed agents in the FOREGROUND inside a single supervisor call, and use --session-id + a stable session dir to resume a chunk that ran out of time under the timeout. Never background-detach a jailed pi run."
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "pi", "harness", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "72ee315f6585e6eee843b5f865f2b60a8793d1fc"
+tree = "73c32920a28c464a60b29ae81718af3a30a7c24d"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "72ee315f6585e6eee843b5f865f2b60a8793d1fc"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

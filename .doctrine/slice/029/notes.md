@@ -79,3 +79,31 @@
 - `pi --mode json` self-exits and its exit code is not the verdict.
 - The wrapped runner can be exec'd per call without a measurable startup cost
   worth avoiding.
+
+## Inquiring results (rev 18)
+
+| inquiry | outcome |
+|---|---|
+| inq-1 | DEC-089 wrapped runner launched per call; the flake binds the launcher's `$PWD` (`jailed-agents.nix:197`), so the root is per call for free |
+| inq-2 | DEC-090 ceilings owned by `pi-mcp`, gated on the event stream, one-response overshoot (DEC-057 precedent); gateway budgets stay insurance (DEC-043) |
+| inq-3 | DEC-091 five `pi-mcp` rows + one `satan-flake` profile row |
+| inq-4 | DEC-092 profiles resolve only from the server's tracked profile dir under `^[a-z][a-z0-9-]{0,31}$`; unknown profile refuses, never defaults |
+| inq-7 | DEC-093 `pi-agent-result/1`; `status` embedded verbatim; `Reduced.result` added; artefacts outside the tree under `PI_MCP_RUN_DIR` |
+| inq-9 | DEC-094 audit is the server's own append-only `audit.jsonl` per run; pi's event stream is not the audit |
+| inq-5 | deferred — provisional: a second wrapped form (read-only) built by the flake, since the rw root bind is the flake's (DEC-089 consequence 3) |
+| inq-6 | deferred — provisional: session dir inside the bound root (`.pi-session/<id>`), never `/tmp` (per-run tmpfs) |
+| inq-8 | deferred — provisional: enable is absence/sentinel in the read-only maxima artifact the server already loads (DEC-090), so one artifact carries numbers and the switch |
+
+## Process lifetime (user-conveyed, 2026-10-20)
+
+`jailed-pi` dies when its launching shell exits (`bwrap --die-with-parent`), which is
+what kills a worker launched with `nohup … &`. The user's working pattern is
+foreground chunks inside one supervisor call, resuming via `--session-id` when a
+chunk runs out of the timeout. Recorded as
+`mem.fact.jail.background-launch-dies-with-shell`.
+
+Design consequence: the server must not detach its child, and the driver must not
+background the server. A stdio MCP server launched by the driver satisfies this by
+construction — the child's parent is the server, the server's parent is the
+driver — but it must be stated, because "detach and poll" is the obvious wrong
+answer for a long delegate call, and it silently yields a dead jail and no result.
