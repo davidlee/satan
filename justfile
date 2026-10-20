@@ -12,7 +12,7 @@ export SATAN_DB_HOST := PGHOST
 # create the DATABASE. Must match the suites' defconsts.
 test_dbs := "satan_memory_test trace_test patch_live_test"
 
-check: lint test
+check: lint test pi-suites
 
 gate: check
 
@@ -57,8 +57,11 @@ test: _require-test-dbs
       -l satan-test -f satan-test-run-batch-and-exit
     for t in noctalia/*/test/*_test.luau; do luau "$t"; done
     (cd satan/harness && python3 -m unittest -q test_gptel_harness)
-    # pi harness tooling (TS, run by node's type stripping — no build step).
-    node --test pi/reduce/*.test.ts
+
+# The offline pi suites (TS, run by node's type stripping — no build step). No
+# test database and no network, so `check` covers them without the DB gate.
+pi-suites:
+    node --test pi/reduce/*.test.ts pi/mcp/*.test.ts
 
 _require-test-dbs:
     #!/usr/bin/env bash
