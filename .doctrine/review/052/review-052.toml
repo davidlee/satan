@@ -812,5 +812,81 @@ role = "responder"
 disposition = "fix-now"
 response = "EX-7 notes {wait} only when defined."
 
+[[finding]]
+id = "F-43"
+status = "answered"
+severity = "major"
+title = "One macrotask does not guarantee the daemon has read the hang-up: V-11/V-14 and PHASE-08 would flake"
+detail = "Reviewer measured ~7/400 misses (node 24, unix sockets); assertions now depend on it. Round 4 R-1."
+disposition = "fix-now"
+response = "PHASE-04 EX-9 and PHASE-08 EX-2 await the server-side socket's close, recorded by a vi.mock of serveUnix that delegates to the real one; VT-4 keyword serveUnix."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-9 and PHASE-08 EX-2 await the server-side socket's close, recorded by a vi.mock of serveUnix that delegates to the real one; VT-4 keyword serveUnix."
+
+[[finding]]
+id = "F-44"
+status = "answered"
+severity = "minor"
+title = "F-37 recurrence: 'takes the options object' vs 'no other test changes'"
+detail = "test/daemon.test.ts:82-89 and four call sites. Round 4 R-2."
+disposition = "fix-now"
+response = "start keeps its signature and call sites; only its body changes."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "start keeps its signature and call sites; only its body changes."
+
+[[finding]]
+id = "F-45"
+status = "answered"
+severity = "minor"
+title = "PHASE-08 barrier has no entry signal"
+detail = "precedent test/daemon.test.ts:200-211 entered+gate. Round 4 R-3."
+disposition = "fix-now"
+response = "EX-1 entered + gate; EX-2 disconnects after entered."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "EX-1 entered + gate; EX-2 disconnects after entered."
+
+[[finding]]
+id = "F-46"
+status = "answered"
+severity = "nit"
+title = "plan.toml header rev stale; F-42 enumerated only wait"
+detail = "Round 4 R-4 and F-42 note."
+disposition = "fix-now"
+response = "Header rev 46; options object built with only defined members (target, wait)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Header rev 46; options object built with only defined members (target, wait)."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
