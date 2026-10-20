@@ -1,4 +1,4 @@
-# IMP-047: Drop notes jailed-pi's writable /run/user/1000/satan bind; update goad backends through satan-runner
+# IMP-047: Update goad backends through satan-runner; drop notes jailed-pi's writable goad backends bind
 
 <!-- Backlog item body — context, detail, links. The structured, queried fields
      live in the sister `backlog-NNN.toml`; this prose is free-form and is never
@@ -29,3 +29,14 @@ serve clients until satan-mcp-start replaces it. The bind order is also
 protected only by a comment. Both go away once the jail no longer gets a
 writable satan dir. Acceptance: no jail in `~/notes/flake.nix` binds
 `/run/user/1000/satan` writable.
+
+**Socket half done (2026-10-20, DEC-102, notes 16a98a8):** notes
+jailed-pi no longer binds `/run/user/1000/satan` at all. The socket only
+served interactive pi's `goad-emit`, which it gives up. RV-047 F-1 is closed
+by that.
+
+**Remaining:** goad backends are still edited in place through the writable
+`readwrite goadBackends` bind (`~/satan-corpus/goad`). Make satan-runner the
+update path and drop that bind. Acceptance: no jail in `~/notes/flake.nix`
+binds `~/satan-corpus/goad` writable, and a backend change lands through a
+runner job.

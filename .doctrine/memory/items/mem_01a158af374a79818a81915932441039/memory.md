@@ -6,8 +6,8 @@ that order. So:
 - **A later bind of a parent hides an earlier bind of its child.** Notes'
   `jailed-pi` had `satanMcpOptions` (`--ro-bind-try /run/user/1000/satan/mcp`)
   *before* `try-readwrite "/run/user/1000/satan"`, so `mcp/` came out
-  writable. Fix: put the read-only child after the writable parent
-  ([[DEC-101]], SL-028 PHASE-05).
+  writable. Put the read-only child after the writable parent ([[DEC-101]], SL-028
+  PHASE-05), or better, drop the writable parent ([[DEC-102]]).
 - **`try-*` binds disappear when the source is missing.** `--ro-bind-try` is
   skipped if the path is absent at launch, so a read-only overlay inside a
   writable parent protects nothing until the directory exists, and the jail

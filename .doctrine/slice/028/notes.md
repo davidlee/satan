@@ -25,7 +25,7 @@ fresh-as-of: 2026-10-20 · PHASE-05 · satan 9df0cf5
   mcp dir (satan 9df0cf5; ~ d73eddd5; corpus ff80e21; emacs 827fb04; notes
   8f338e9); § PHASE-05
 - RV-047 — PHASE-05 code review, F-1 → IMP-047
-- DEC-101 — notes jailed-pi bind order (consult)
+- DEC-101 — notes jailed-pi bind order (consult); superseded by DEC-102 (bind removed)
 
 ### Learned
 - mem.fact.malebolge.eslint-ignores-doctrine-state — typed eslint needs
@@ -38,7 +38,7 @@ fresh-as-of: 2026-10-20 · PHASE-05 · satan 9df0cf5
 ### Open
 - DEC-083..DEC-088 — design decisions binding PHASE-03..06
 - RSK-020 — two malebolge revisions in production; REV at reconcile
-- IMP-047 — notes jailed-pi writable satan dir; goad via satan-runner
+- IMP-047 — goad backends via satan-runner; drop writable goadBackends bind
 - doctrine pi extensions bake one install's doctrine path (malebolge: a host
   /nix/store path, absent in the jail; satan: `/run/doctrine-bin`, absent on the
   host, and a jailed run rewrote satan's boot.md with it) — doctrine install
@@ -290,8 +290,9 @@ Landed:
 Beyond design (consulted): notes `jailed-pi` also binds `/run/user/1000/satan` writable
 for goad's ingress socket (notes `e2965c4`, 2026-10-19), which would hide `mcp/`'s
 read-only bind. DEC-101: apply `satanMcpOptions` after it, so `mcp/` is a read-only
-overlay. The writable parent → IMP-047 (user: drop the goad socket from the jail; update
-goad backends via satan-runner).
+overlay. Then, at the user's call, the bind was removed outright (DEC-102 supersedes
+DEC-101; notes `16a98a8`): it served only interactive pi's `goad-emit`. IMP-047 keeps the
+remaining half (goad backends updated via satan-runner, not a writable bind).
 
 Evidence:
 - VT-1: `checks.jailed-agents` red (missing attr) → green; mutation `try-readwrite` → red.
@@ -305,7 +306,9 @@ Evidence:
   EX-2: no `mcp/mcp.sock` literal in the four flake.nix.
 - satan `just check` green (1309 tests); the first run aborted on ISS-044 (known flake).
 - RV-047 (per-phase code review, done): F-1 minor — notes' overlay only holds when `mcp/`
-  exists at jail launch, and the order is guarded by a comment → follow-up IMP-047.
+  exists at jail launch, and the order is guarded by a comment → follow-up IMP-047;
+  closed by DEC-102 (notes `16a98a8`). VA-1 re-run: notes jailed-pi binds no
+  `/run/user/1000/satan` at all.
 
 Process notes:
 - satan-corpus's flake.nix is nixfmt-style; alejandra reformatted the whole file and

@@ -3,7 +3,7 @@ version = 1
 
 id = 47
 slug = "drop-notes-jailed-pis-writable-runuser1000satan-bind-update-goad-backends-through-satan-runner"
-title = "Drop notes jailed-pi's writable /run/user/1000/satan bind; update goad backends through satan-runner"
+title = "Update goad backends through satan-runner; drop notes jailed-pi's writable goad backends bind"
 kind = "improvement"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place

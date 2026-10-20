@@ -1,0 +1,35 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 102
+slug = "notes-jailed-pi-drops-goads-ingress-socket-no-bind-of-runuser1000satan"
+title = "notes jailed-pi drops goad's ingress socket: no bind of /run/user/1000/satan"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context      = "notes jailed-pi bound /run/user/1000/satan read-write so interactive pi could goad-emit to the router's ingress socket (notes e2965c4). That let the jail replace satan-mcp's socket; DEC-101's read-only overlay held only when mcp/ existed at launch (RV-047 F-1)."
+choice       = "Remove the bind. jailed-pi gets satan-mcp only through satanMcpOptions; goadBackends stays writable."
+alternatives = ["Keep the writable bind with the mcp overlay after it (DEC-101)", "Bind /run/user/1000/satan read-only: goad-emit keeps working, but the jail can connect to every socket under it, including malebolge's attach socket (durable/room)"]
+rationale    = "The socket served only interactive pi (user, 2026-10-20). Losing goad-emit there costs little; the broker emits from outside the jail. Removing the bind closes F-1 outright and needs no ordering invariant."
+consequences = ["Interactive pi (jpi) cannot goad-emit", "IMP-047's remaining half: update goad backends through satan-runner instead of the writable goadBackends bind"]
+decided_by   = "user (2026-10-20)"
+decided_on   = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-101"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "notes jailed-pi satan runtime dir bind"
+target = "SL-028"
