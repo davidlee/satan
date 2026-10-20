@@ -8,6 +8,14 @@ title = "design review of SL-029"
 facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "raiser"
 responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Completed current examination of all seven materialised SL-029 sections at revision 62, scope, latest RV-043/RV-046 dispositions and amended DEC-097/099. Checked request-accounting claims against pi 0.99.1 embedded source and stubbed control-flow execution, and stale-lock recovery with an isolated filesystem interleaving. Remaining defects are already on original ledgers: RV-043 F-6 and RV-046 F-3 were contested; no duplicate new findings were raised on this pass. Other repairs are explicit but demonstrate-route verification waits for phase criteria, not another prose approval. Honoured the recorded operator concessions on unmeasured failed sends and nested-spend attribution. No implementation/model calls/design mutations/responder acts/user acceptance. This conclusion is an examination record, not clearance of inherited findings; the managed run's separate STALE binding has not been manually rewritten."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
