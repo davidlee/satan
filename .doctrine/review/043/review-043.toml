@@ -8,9 +8,269 @@ title = "design review of SL-029"
 facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "raiser"
 responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Completed raiser-only adversarial pass over SL-029 design revision 37, sections sec-1 through sec-7, and current scope/DEC-089–100. Checked ADR-017 and SPEC-001 safety/ownership requirements; inspected /workspace/flakes/agents/jailed-agents.nix and launcher-test precedents, this repo's flake.nix, pi/reduce/reduce.ts/tests, and installed pi 0.99.1 CLI/JSON/message/session documentation. Verified the operator's sec-3 correction: mountLaunchDir is explicitly rw and independent of profile, so capability-specific bind declarations belong in this repo's flake. Accepted fail-closed audit as a coherent chosen policy, while finding that writable child access defeats it. Read-only synthetic reducer probes demonstrated settled-error/stale-prose/multiple-text-block finality defects and compaction-accounting disagreement; an isolated temporary-file subprocess probe demonstrated successful O_APPEND+fsync after hostile audit truncation. Raised F-1–F-12: 2 blockers, 8 majors and 2 minors. No design edits, implementation, acceptance attestations, dispositions or commits were performed. Findings remain for the responder; this concludes the examination, not approval or resolution. Existing RV findings are the durable sink; no review chronology was duplicated into slice notes."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "blocker"
+title = "The delegate can truncate or replace the audit that is supposed to constrain it"
+detail = "Expected: SL-029 sec-6's fail-closed audit and single-writer claim must hold against the model's bash tool, not just cooperative server writes (ADR-017 §2; SPEC-001 REQ-003). Observed: sec-3 explicitly binds the run directory read-write into each child; sec-5 places audit.jsonl and events.jsonl there. Static mode likewise gives the child the server's writable run-directory view. The child therefore has another writable handle to its own evidence. O_APPEND/fsync on the server's handle does not protect against truncation, unlink or replacement by the child, and none need make the server's later append fail. Verified in an isolated Node fixture: parent appended+fsynced spawn, same-uid subprocess truncated the path, parent appended+fsynced exit successfully; only exit survived. This is stronger than the already-disclosed lack of host-admin immutability: the untrusted delegate itself is deliberately granted the write path. Required correction: distinguish server-owned evidence storage from child-writable runtime/session storage and prevent child alteration of the former in both postures, or explicitly withdraw the audit assurance and reconcile the governing invariant. Verification should attempt truncation/replacement from bash and assert either denial with intact evidence or a fail-closed termination; successful server appends alone are not sufficient."
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. The run directory is no longer bound into any child: the child gets only its active session directory. Per-call mode writes evidence (events, transcript, status, audit) into a server-owned directory outside the jail's bind set. Static mode cannot deny its child the server's writable view in a single-uid jail, so evidence is buffered in memory and flushed after the child exits, and that residual is stated rather than papered over. Verification reproduces your truncation fixture in both postures: a hostile bash attempting truncate/unlink/replace must either fail to reach the path or the run must report failed with evidence intact."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. The run directory is no longer bound into any child: the child gets only its active session directory. Per-call mode writes evidence (events, transcript, status, audit) into a server-owned directory outside the jail's bind set. Static mode cannot deny its child the server's writable view in a single-uid jail, so evidence is buffered in memory and flushed after the child exits, and that residual is stated rather than papered over. Verification reproduces your truncation fixture in both postures: a hostile bash attempting truncate/unlink/replace must either fail to reach the path or the run must report failed with evidence intact."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "Binding the shared session home exposes every session to every delegate"
+detail = "Expected: SL-029 sec-6 and DEC-099 bind sessions to a canonical root and filesystem capability so that session history is not a cross-call privilege channel. Observed: sec-3 and sec-6 bind the shared persistent PI_MCP_SESSION_HOME read-write, rather than only the active session's directory; static-mode children inherit that shared writable view. A bash-capable reader for root A can enumerate, read, overwrite or delete another session's JSONL for root B or a write-capability session, without passing the server's session-root/session-capability checks. The checks only mediate opening a session through pi_agent, not direct filesystem access from the model. DEC-099 originally specified a server-owned directory per session; its shared-home addendum widens the actual authority. Required correction: specify the child-visible session scope and keep binding/lock metadata server-owned; normally only the active session should be child-writable. If static mode cannot isolate those histories, restrict its promised isolation or change that posture explicitly. Verification: sessions on different roots/capabilities, with a hostile bash operation in one attempting to read/change the other's history and binding metadata."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. The child-visible bind narrows from the shared home to <home>/<session-id>/ - the active session only - with binding and lock metadata held server-side outside every bind. Static mode inherits a broader view by construction, so that posture's isolation claim is restricted explicitly and its policy may declare a single session."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. The child-visible bind narrows from the shared home to <home>/<session-id>/ - the active session only - with binding and lock metadata held server-side outside every bind. Static mode inherits a broader view by construction, so that posture's isolation claim is restricted explicitly and its policy may declare a single session."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "blocker"
+title = "The designated kill switch only disables future admission, not ongoing enactment"
+detail = "Expected: the component receiving ledger row 6c supplies a kill switch that halts enactment and fails closed (SPEC-001 REQ-005; ADR-017 §2/§4). Observed: sec-1 reads enabled only once per call; DEC-097 explicitly says enabled=false is not a mid-flight interrupt and an in-flight run keeps its enabled snapshot. Sec-7 nevertheless assigns this to the delegate kill-switch row. A delegate already executing bash or spending on a provider can continue until its ordinary backstop after the operator trips the designated switch. DEC-096's per-request MCP cancellation is a useful shutdown path, but requires the connected driver and is not the persistent switch described in row 6c. Required correction: identify and expose an operator-controlled active-run kill mechanism independent of driver cooperation (which may reuse the shutdown ladder), or change the switch semantics and reconcile the authority/spec claim explicitly. Do not silently equate an admission flag with an active kill. Verification: start a long-running delegate, trip the declared operator switch with no driver cancellation, and assert enactment ends within the documented bound and later admissions fail closed."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. enabled is re-read at each gate tick (event boundary, bounded to about a second) and a flip aborts in-flight runs through the shutdown ladder with audit abort(switch), with no driver cooperation required. The truth table separates admission refusal from active halt, and both are named."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. enabled is re-read at each gate tick (event boundary, bounded to about a second) and a flip aborts in-flight runs through the shutdown ladder with audit abort(switch), with no driver cooperation required. The truth table separates admission refusal from active halt, and both are named."
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "major"
+title = "The honest retrospective ceiling concession still needs an explicit conformance disposition"
+detail = "Expected: the design identifies which governing safety properties it satisfies and which require an accepted exception or governance revision. SPEC-001 REQ-004 states that a run cannot exceed its token/budget ceilings, and ADR-017 §4 requires absent-client ceiling enforcement. Observed: sec-4 and DEC-097 correctly withdraw the prior admission-gate/one-response guarantee and select retrospective accounting with best-effort termination, no bounded request allowance, and no provider output cap. Sec-7 still assigns 'delegate ceilings' to pi-mcp without naming this as a conformance gap or specifying the accepted replacement property. This finding does not ask to restore the disproved stream gate or automatically move to the SDK: the factual correction is right. But reporting an overrun after it occurs does not by itself discharge the stronger requirement, and DEC-057's accepted provider-entry-point gate is not evidence for this weaker mechanism. Required correction: obtain and record the precise accepted concession/revision (including what finite bounds remain and what is not guaranteed), or supply a mechanism meeting the requirement. Verification/acceptance must test the actual weaker promise rather than label a normal slow-provider smoke run proof of hard ceilings."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. The design records the concession explicitly as a REQ-004 revision candidate with the replacement property stated: no provider output cap, overshoot bounded by observation latency plus one in-flight request, unknown usage aborts. Ledger row 5c describes exactly that weaker property. The concession needs operator acceptance at reconcile and is recorded as pending rather than implied."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. The design records the concession explicitly as a REQ-004 revision candidate with the replacement property stated: no provider output cap, overshoot bounded by observation latency plus one in-flight request, unknown usage aborts. Ledger row 5c describes exactly that weaker property. The concession needs operator acceptance at reconcile and is recorded as pending rather than implied."
+
+[[finding]]
+id = "F-5"
+status = "answered"
+severity = "major"
+title = "agent_settled plus any stop reason does not establish that result is a final answer"
+detail = "Expected: sec-5's new final flag distinguishes a completed answer from partial or stale assistant text, without losing parts of the final response. Observed: final=true is defined by agent_settled 'with a stop reason'. Pi's documented stopReason union includes error, aborted, length, toolUse and deferred as well as stop; settled means automatic work ended, not that a successful answer exists. The current reducer selects the last prose block anywhere in the run (pi/reduce/reduce.ts:158-166), not the entire final assistant message. Read-only synthetic fixtures verified: (1) error+agent_settled yields failed with partial prose, yet satisfies the proposed final predicate; (2) a toolUse message saying 'I will inspect it', followed by a textless stop message and agent_settled, yields completed with that old planning prose as Result; (3) a final assistant message with two text blocks exposes only the second block in Result. Sec-7 promises only adding Reduced.result/final, so exporting the current selection preserves the defect. Required correction: define accepted terminal reasons, tie result/final to the terminal assistant message rather than a backwards search for prose, preserve all of that message's text blocks, and account for server-caused termination. Test error/abort/length/deferred outcomes, a textless terminal message after earlier prose, and multiple final text blocks."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. final and result derive from the terminal assistant message - the last assistant message_end with a recognised terminal stopReason and no later assistant message - joining all of its text blocks. error, aborted, toolUse, deferred and every server-caused stop yield final=false. The reducer gains result, final and terminalReason, with tests for error+settled, a textless terminal message, multiple terminal blocks, and stale planning prose."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. final and result derive from the terminal assistant message - the last assistant message_end with a recognised terminal stopReason and no later assistant message - joining all of its text blocks. error, aborted, toolUse, deferred and every server-caused stop yield final=false. The reducer gains result, final and terminalReason, with tests for error+settled, a textless terminal message, multiple terminal blocks, and stale planning prose."
+
+[[finding]]
+id = "F-6"
+status = "answered"
+severity = "major"
+title = "The gate and verbatim reducer status give different accounts of the same run's spend"
+detail = "Expected: the returned status and audit support the ceiling verdict with one defined accounting model, including compaction and precise request/token units. Observed: sec-4 counts message_end and compaction_end usage, while sec-5 embeds pi-run-status/1 verbatim and sec-7 only adds result/final to the reducer. The current reducer ignores compaction_end entirely, adds only usage.input/output/cacheRead, and turns missing cost into zero after an assistant message (pi/reduce/reduce.ts:109-112, absorb and totalCost). An isolated fixture with compaction cost 0.20 USD plus assistant cost 0.01 USD returns status.cost_usd=0.01; the designed gate would account 0.21 and could abort against 0.10 while returning a below-limit status. DEC-097 also correctly says assistant messages are not provider-request counts, but the request-count calculation for max_requests is not defined; retries and summarization attempts cannot simply be counted as assistant turns. Required correction: choose one authoritative usage accumulator or explicitly expose/reconcile separate accounting with their limitations; define request counting, cached-token treatment, missing/unpriced data and when compaction updates trigger checks. Tests must assert returned/audited spend agrees with enforcement inputs, including compaction and failed/retried requests."
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. One accumulator lives in the reducer: message_end plus compaction_end, with compaction triggering a gate check, and retry attempts counted as provider requests. Absent or unpriced usage is unknown, not zero, and unknown aborts. Request counting is defined as observed provider requests. Tests assert the gate's enforcement inputs equal the returned and audited status, including compaction and failed requests."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. One accumulator lives in the reducer: message_end plus compaction_end, with compaction triggering a gate check, and retry attempts counted as provider requests. Absent or unpriced usage is unknown, not zero, and unknown aborts. Request counting is defined as observed provider requests. Tests assert the gate's enforcement inputs equal the returned and audited status, including compaction and failed requests."
+
+[[finding]]
+id = "F-7"
+status = "answered"
+severity = "major"
+title = "The proposed argv treats an agent launcher as a generic command-prefix wrapper"
+detail = "Expected: sec-3's flake-built forms and sec-4's argv contract connect without an extra command word or option terminator becoming part of pi's prompt. Observed: sec-4 specifies '<wrapper form> [--] pi --mode json ...'. The cited makeJailedAgent/makeJailedPi API takes agent=<derivation> and builds a launcher for that fixed executable, forwarding its arguments; it is not a generic wrapper that consumes an arbitrary executable argument (verified /workspace/flakes/agents/jailed-agents.nix:343-346, inner construction around 621, gatewayOuter exec and makeJailedPi). With that API, the server should pass pi's options to the already-bound pi executable: a literal 'pi' is an additional message, and '--' before '--mode' terminates pi option parsing. A separate generic exec launcher could make the sample valid, but none is specified. Static mode also needs the bare pi executable and its provider configuration in the server jail's closure/PATH: makeJailedAgent's piInJail test is false for agent=pi-mcp unless pi is supplied through the declared mechanism. Required correction: state the exact executable/argv/environment/path contract for both postures, including runtime bind variables and child-visible session paths. Verify a stub captures exactly pi's intended options and prompt, and a thin launcher integration confirms the selected executable/provider configuration is actually available."
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. The argv is the launcher followed by pi's options: the executable is baked into the launcher, so there is no pi token and no double-dash. Static mode names its pi executable and provider configuration in the launch closure and PATH, handling piInJail explicitly. A stub asserts the exact argv; a launcher probe asserts the executable and provider config are reachable."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. The argv is the launcher followed by pi's options: the executable is baked into the launcher, so there is no pi token and no double-dash. Static mode names its pi executable and provider configuration in the launch closure and PATH, handling piInJail explicitly. A stub asserts the exact argv; a launcher probe asserts the executable and provider config are reachable."
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "major"
+title = "Refusals must be audited but have no specified audit location"
+detail = "Expected: policy-unavailable/invalid, disabled, profile/root failures and other pre-spawn refusals produce durable, discoverable evidence without launching a child or requiring a valid policy digest. Observed: sec-2 says every refusal is audited; sec-5 says refused has artifacts=null and 'nothing ran'; sec-6's only sink is per-run audit.jsonl and every record carries a policy digest. No sink/allocation rule is given for a rejected attempt, particularly when policy could not be read, or when the run directory itself is unwritable (the operator's explicit fail-closed audit case). Implementers must either invent an undisclosed attempt directory, omit audit on these paths, or recursively try to audit an audit failure. Required correction: separate 'no child spawned' from 'no attempt storage allocated'; define where refusal records live and how they are discovered, how absent policy digest is represented, and the bounded fallback when durable recording itself is impossible. The essential fail-closed choice should stand: no child may start because logging is unavailable. Verification should cover missing/malformed policy, disabled admission and an unwritable/full evidence store, without recursion or an unhandled JSON-RPC/server crash."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. Refusals write to a server-level attempts.jsonl in the state directory: no child, no policy digest required, digest recorded when it was readable. If that sink is unwritable the refusal is still returned, in-band and on stderr, and the no-child-without-logging rule holds. Recursion is excluded by design because the attempt log never requires a run directory."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. Refusals write to a server-level attempts.jsonl in the state directory: no child, no policy digest required, digest recorded when it was readable. If that sink is unwritable the refusal is still returned, in-band and on stderr, and the no-child-without-logging rule holds. Recursion is excluded by design because the attempt log never requires a run directory."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "major"
+title = "The termination ladder has no process-group creation and ownership contract"
+detail = "Expected: sec-4/DEC-096's SIGTERM then SIGKILL ladder targets all of one call's work and cannot signal the MCP server or a different concurrent call. Observed: sec-4 always signals 'the child's process group' but never states how that group is created or identified. The cited jail generator includes no-new-session in baseJailOptions (/workspace/flakes/agents/jailed-agents.nix:183-186). A normal Node spawn inherits the parent's process group; neither a child PID nor a wrapper's existence establishes a new group. Killing minus-child-PID can therefore find no such group, while killing the inherited group can kill the server and other calls. 'Never detached' also leaves ambiguous whether group/session isolation is forbidden or only lifetime decoupling is forbidden. Required correction: explicitly own a per-call termination domain/group, establish it before execution, define wrapper/timeout PID transitions and waiting/reaping/stream-drain completion, and distinguish group creation from fire-and-forget detachment. Verification: two simultaneous calls plus a grandchild ignoring SIGTERM; cancel one and assert its subtree is gone after the grace, the other call and server remain alive, and results/session-lock release occur only after cleanup."
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. Every call owns a termination domain: the child is spawned as a process-group leader (detached/setsid) so the ladder signals -pid and can never reach the server or a concurrent call, with reaping and stream drain completing before the result and before the session lock is released. 'Never detached' is restated as lifetime coupling - which is what it meant - not session isolation."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Accepted. Every call owns a termination domain: the child is spawned as a process-group leader (detached/setsid) so the ladder signals -pid and can never reach the server or a concurrent call, with reaping and stream drain completing before the result and before the session lock is released. 'Never detached' is restated as lifetime coupling - which is what it meant - not session isolation."
+
+[[finding]]
+id = "F-10"
+status = "answered"
+severity = "minor"
+title = "The accepted session grammar permits IDs that pi refuses"
+detail = "Expected: requests passing the server's session validation can be passed to pi --session-id without an additional CLI grammar failure. Observed: sec-6 accepts ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$, including IDs such as 'a.' and 'a-'. Installed pi 0.99.1 docs/cli.md §Sessions explicitly requires IDs to start AND end with a letter or number. The server only checks the first character. Required correction: use a grammar compatible with pi (including the one-character case), and test trailing period/underscore/hyphen refusals as well as valid single-character IDs. This should remain a session-invalid pre-spawn refusal, not become an unexplained child invocation failure."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. Grammar becomes alnum at both ends, up to 64 characters, single-character ids valid, with tests for trailing period, underscore and hyphen plus a valid one-character id."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. Grammar becomes alnum at both ends, up to 64 characters, single-character ids valid, with tests for trailing period, underscore and hyphen plus a valid one-character id."
+
+[[finding]]
+id = "F-11"
+status = "answered"
+severity = "minor"
+title = "The slice's risks and follow-ups still contradict the materialised design"
+detail = "Expected: the governing scope accurately reflects the design before review.scope is confirmed. Observed via doctrine show SL-029: the main bullets incorporate DEC-097–100, but the risks still call token/cost ceilings undecided and assert nested confinement is a union that can never narrow; the follow-ups still defer the wrapped-runner jail profile even though sec-3/sec-7 and DEC-098 make safe forms a delivery dependency. The scope also says 'no group kill', while sec-4/DEC-096 explicitly require process-group termination. These are live scope statements, not merely a preserved historical decision record. Required correction: refresh those scope projections against the current design and mark any deliberately historical research claims as superseded; do not remove genuine non-goals such as retiring the old RPC wrappers. Verification: re-read the synthesized SL-029 scope and the design together before discharging review.scope."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. Scope risks and follow-ups are refreshed against the materialised design: ceilings decided as retrospective, the nesting claim restated as intersection with no narrowing, process-group termination required, and the wrapped forms promoted from follow-up to delivery dependency. Historical research claims are marked superseded, not deleted."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. Scope risks and follow-ups are refreshed against the materialised design: ceilings decided as retrospective, the nesting claim restated as intersection with no narrowing, process-group termination required, and the wrapped forms promoted from follow-up to delivery dependency. Historical research claims are marked superseded, not deleted."
+
+[[finding]]
+id = "F-12"
+status = "answered"
+severity = "major"
+title = "Outcome precedence collapses distinct server aborts into ceiling_exceeded"
+detail = "Expected: one total result rule preserves the reason and required outcome for every server-controlled stop, including races with an otherwise completed reducer result. Observed: sec-5 gives highest precedence to 'server abort (ceiling_exceeded)', but DEC-096 requires MCP cancellation to return incomplete, sec-6 requires mid-run audit failure to return failed, and sec-4 also aborts on unreadable/unpriced usage without defining its result state. These are all server aborts and need not mean a ceiling was crossed. The response has a refusal reason only when nothing was spawned; it has no specified machine-readable termination reason for these started-run failures. A late cancellation or failed exit-audit after agent_settled is especially ambiguous because the reducer can already report completed/final. Required correction: define a cause-to-state/final mapping and race/precedence rules for cancellation, timeout, measured ceiling crossing, unknown usage/pricing, audit failure and normal/nonzero exit. Preserve a named reason without requiring a new state for every cause. Tests should exercise concurrent abort causes and failures after the settled event, asserting the response cannot claim success or a measured overspend when the actual cause was audit/accounting failure."
+disposition = "fix-now"
+route = "review"
+response = "Accepted. One cause-to-state mapping with a named termination reason for every non-completed outcome: completed, failed, incomplete, timeout, cancelled, audit_failed, accounting_unknown, ceiling_exceeded, refused; result null and final false wherever the cause is not a model answer; earliest-cause-wins for concurrent aborts. Tests cover concurrent causes and a failure after agent_settled."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Accepted. One cause-to-state mapping with a named termination reason for every non-completed outcome: completed, failed, incomplete, timeout, cancelled, audit_failed, accounting_unknown, ceiling_exceeded, refused; result null and final false wherever the cause is not a model answer; earliest-cause-wins for concurrent aborts. Tests cover concurrent causes and a failure after agent_settled."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
