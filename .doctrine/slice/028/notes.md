@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-04 · malebolge 7d7cc08
+fresh-as-of: 2026-10-20 · PHASE-05 · satan 9df0cf5
 
 ### Produced
 - PHASE-01 done — instance lock, `lockPath`, `serveUnix` claim (malebolge
@@ -21,16 +21,24 @@ fresh-as-of: 2026-10-20 · PHASE-04 · malebolge 7d7cc08
 - PHASE-04 done — attach connect retry, malebolge-start/stop, docs
   (malebolge bb55244..7d7cc08); § PHASE-04
 - RV-045 — PHASE-04 code review (pi reviewer), 3 findings fixed + verified
+- PHASE-05 done — satanMcpOptions in agents + four consumers, jailed-malebolge
+  mcp dir (satan 9df0cf5; ~ d73eddd5; corpus ff80e21; emacs 827fb04; notes
+  8f338e9); § PHASE-05
+- RV-047 — PHASE-05 code review, F-1 → IMP-047
+- DEC-101 — notes jailed-pi bind order (consult)
 
 ### Learned
 - mem.fact.malebolge.eslint-ignores-doctrine-state — typed eslint needs
   `.doctrine` ignored after `doctrine install`
 - mem.pattern.satan.drive-jailed-pi-worker — chunked jailed-pi worker +
   reviewer sessions; jail gotchas (biome, runner tests, doctrine extension)
+- mem.fact.nix.bwrap-bind-order-and-try-skip — parent bind after child hides
+  it; `-try` overlays vanish when the source is absent
 
 ### Open
 - DEC-083..DEC-088 — design decisions binding PHASE-03..06
 - RSK-020 — two malebolge revisions in production; REV at reconcile
+- IMP-047 — notes jailed-pi writable satan dir; goad via satan-runner
 - doctrine pi extensions bake one install's doctrine path (malebolge: a host
   /nix/store path, absent in the jail; satan: `/run/doctrine-bin`, absent on the
   host, and a jailed run rewrote satan's boot.md with it) — doctrine install
@@ -262,3 +270,45 @@ Evidence:
   hint, no attach; stop → `stop` verb. 10/10 PASS. Reviewer repeated it in the jail.
 - `just check` green: 1655 tests, lines 98.52%.
 - Not run: VH-1..3 — need the `malebolge-room` unit (PHASE-05/06).
+
+## PHASE-05 (2026-10-20, done) — satan 9df0cf5; ~ d73eddd5; corpus ff80e21; emacs 827fb04; notes 8f338e9
+
+Done directly by the orchestrator, no worker (small cross-repo nix edits).
+
+Landed:
+- `~/flakes/agents` (`~` repo `d73eddd5`, on origin/main): `satanMcpOptions` as design §4.5,
+  exported beside `gatewaySocketOptions`, README exports list. `jailed-agents-test.nix`
+  fixture `satanMcp` (specDev + the combinator) asserts `--ro-bind-try …/satan/mcp …`,
+  both env forwards; refutes `mcp/mcp.sock` and `--bind(-try)? …/satan/mcp`.
+- satan `9df0cf5`: `mcpJailOptions = satanMcpOptions ++ [emacs server]`; jailed-malebolge's
+  `add-runtime mkdir` adds `/run/user/1000/satan/mcp`; `jailProbes.malebolge.present` asserts it.
+- satan-corpus `ff80e21`, emacs `827fb04`: same replacement (emacs keeps its server bind).
+  Emacs's lock commit carries the user's pending input updates too (user's call).
+- notes `8f338e9`: `jailEnvOptions = satanMcpOptions`; `hello-durable`/`attach-durable` gone.
+- All four consumers lock agents at `d73eddd5`. satan not pushed (waits for PHASE-06).
+
+Beyond design (consulted): notes `jailed-pi` also binds `/run/user/1000/satan` writable
+for goad's ingress socket (notes `e2965c4`, 2026-10-19), which would hide `mcp/`'s
+read-only bind. DEC-101: apply `satanMcpOptions` after it, so `mcp/` is a read-only
+overlay. The writable parent → IMP-047 (user: drop the goad socket from the jail; update
+goad backends via satan-runner).
+
+Evidence:
+- VT-1: `checks.jailed-agents` red (missing attr) → green; mutation `try-readwrite` → red.
+  `just gate` in ~/flakes green (tests + treefmt).
+- VT-2: `malebolge-jail-profile` red on the new probe → green; `nix flake check` green
+  with the override and again on the bumped lock.
+- VA-1: every jail script in each flake's devshell closure grepped — 15 mcp-binding
+  launchers clean, notes jailed-pi layered `ro mcp over rw satan`, jailed-malebolge strict
+  `--ro-bind` (designed). Run with the agents override and again on the bumped locks.
+  The grep matched `mcp/mcp.sock` in an old store launcher, so it can fail.
+  EX-2: no `mcp/mcp.sock` literal in the four flake.nix.
+- satan `just check` green (1309 tests); the first run aborted on ISS-044 (known flake).
+- RV-047 (per-phase code review, done): F-1 minor — notes' overlay only holds when `mcp/`
+  exists at jail launch, and the order is guarded by a comment → follow-up IMP-047.
+
+Process notes:
+- satan-corpus's flake.nix is nixfmt-style; alejandra reformatted the whole file and
+  was reverted with nixfmt. Format consumer flakes with their own formatter.
+- A consumer edit using a new agents export doesn't evaluate until that consumer's lock
+  moves; keep the edit uncommitted until the lock bump lands with it.

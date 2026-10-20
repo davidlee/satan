@@ -1,0 +1,46 @@
+memory_uid = "mem_01a158af374a79818a81915932441039"
+memory_key = "mem.fact.nix.bwrap-bind-order-and-try-skip"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "bwrap: a later writable parent bind hides an earlier read-only child bind; -try binds vanish when the source is absent"
+summary = "In a jail.nix option list, bind order is mount order: a read-only child (e.g. satan/mcp) must come AFTER any writable bind of its parent, and a --*-bind-try overlay is silently skipped if the path doesn't exist at launch"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = ["flake.nix"]
+globs = []
+commands = []
+tags = ["nix", "jail", "bwrap", "security"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7aaac20dbb14f0fdb7e76aaa5901004aa42b5f54"
+ref_name = "refs/heads/main"
+checkout_state_id = "b0b0cf6c821300e75043ec36306ccb6f84e0979cd529255610f0f943cb8319b6"
+base_commit = "9df0cf56ad4e538dca26bc1ff466f6ef357210f1"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-028"
+
