@@ -1,7 +1,7 @@
 id = 28
 slug = "malebolge-daemon-unit"
 title = "malebolge room daemon as an Emacs-started user unit, robust to satan-mcp restarts"
-status = "reconcile"
+status = "done"
 created = "2026-10-20"
 updated = "2026-10-20"
 tags = []

@@ -5,10 +5,10 @@ id = 39
 slug = "malebolge-refresh-the-satan-tool-list-when-satan-mcps-tools-change"
 title = "malebolge: refresh the SATAN tool list when satan-mcp's tools change"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-10-16"
-updated = "2026-10-16"
+updated = "2026-10-20"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

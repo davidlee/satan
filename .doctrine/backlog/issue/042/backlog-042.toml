@@ -5,10 +5,10 @@ id = 42
 slug = "jails-bind-satan-mcps-socket-as-a-file-an-emacs-restart-of-satan-mcp-leaves-jpi-on-a-dead-socket"
 title = "Jails bind satan-mcp's socket as a file; an Emacs restart of satan-mcp leaves jpi on a dead socket"
 kind = "issue"
-status = "started"
-resolution = ""
+status = "resolved"
+resolution = "fixed"
 created = "2026-10-16"
-updated = "2026-10-17"
+updated = "2026-10-20"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
