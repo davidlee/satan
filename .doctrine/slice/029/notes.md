@@ -516,3 +516,90 @@ dispatch conclude/handover, as designed.
 Next: /phase-plan PHASE-01, then /execute (or /dispatch to drive the phases in
 worktrees — note F-1's blocker still refuses audit→reconcile until PHASE-05/06
 prove it).
+
+## Plan review (independent agent) and the revision
+
+An `oracle` reviewer read the plan adversarially against design.md, the slice, the
+research and the tree, and returned 16 findings plus a coverage table. Adjudicated
+as follows — evidence flipped two of my own choices, which is the point.
+
+**Accepted and fixed in the plan:**
+
+- **F-1 (blocker) — the truncation fixture was placed where it cannot pass.**
+  PHASE-06's EX-5 promised "cannot reach *or* fails closed" with a stub launcher:
+  no jail means the child *can* reach, and the review's measurement says
+  truncate-then-append succeeds silently, so both halves were false. Restated: P6
+  proves non-exposure (no fd, env var or argv member naming the evidence) plus
+  append-failure fail-closed; the hostile fixture moved to PHASE-09's real form
+  (EX-7, VA-3, human fallback). The blocker now has an execution proof that can
+  actually run.
+- **F-2 (blocker) — `tools` narrowing had no phase.** Design §2 ("may only
+  narrow") and authority row 2b were unimplemented. Added to PHASE-03 (EX-10,
+  VT-7): intersection with the snapshotted set, the whole narrowed list to
+  `--tools`, widening refused before spawn. The *token* is a design omission, so
+  it is raised as a design gap rather than invented into a criterion silently.
+- **F-3 — the result envelope landed too late.** Five phases would have returned
+  an undefined payload and PHASE-08 would have rewired four suites. The envelope
+  now lands in PHASE-02 (EX-2); PHASE-08 owns semantics only.
+- **F-4 — cancellation was never specified.** Design-silent; raised as design gap
+  (3) rather than guessed.
+- **F-5 — P4 asserted a spawn outcome before a spawner existed.** P4 now asserts
+  acquisition/refusal/binding; the no-child assertion moved to P6 EX-9.
+- **F-6 — the argv contract contradicted the run-time session bind.** The form
+  consumes one positional (the active session directory) before pi's options;
+  P6 EX-1, P9 EX-1 and both objectives now say so. This was a genuine
+  contradiction that would have forced the implementer to break one of the two.
+- **F-7 — `ping` and `notifications/initialized` were missing** from the wire
+  surface although the cited precedent implements both. Added to P2 EX-1/VT-7.
+- **F-8 — no token for malformed params, and a refusal mints no session.** Raised
+  as design gap (2); the plan states `session: null` on a refusal as a reading.
+- **F-9 — two plan-time decisions the slice assigned were missing.** Answered in
+  plan.md: no registration helper (a per-call server has no launch state to
+  register); `default_profile` not adopted (design makes `profile` required);
+  absent `cwd` resolves to the launch directory through the *same* allowlist, so
+  an un-allowlisted launch dir refuses rather than being exempt.
+- **F-10 — `cancelled`/`ceiling_exceeded` had no producer.** P7 EX-1 names the
+  state; P8 EX-9 makes every enum member reachable-or-declared-unreachable.
+- **F-11 — maxima snapshot vs the tick's re-parse.** P7 EX-4 now says the
+  re-parse is for the switch and the run is judged against its admission snapshot.
+- **F-12 — the no-bwrap scan would match its own tests.** Scoped to sources
+  excluding `pi/mcp/*.test.ts` (P2 EX-7, P9 EX-6).
+- **F-13 — two unowned evidence obligations.** Reclaim records added to P4 EX-8;
+  the run-directory allocation boundary (after step 8) and the resulting scope of
+  the run audit's `refuse` record added to P6 EX-6.
+- **F-14 — vacuous VT keywords and a contradiction about the module split.** The
+  generic keywords replaced with distinctive tokens; the module split is now
+  *named* in plan.md instead of being called unspecified while the VT rows pinned
+  it. P6 VT-4 no longer pins `audit_failed` for a case that may be `failed`.
+- **F-15 — the smoke run would fail as written.** The deepseek key is invalid
+  outside the jail (the slice's own follow-up says so), so VA-2 runs through the
+  wrapped form with the gateway env forwarded.
+- **F-16 — precision items.** Status schema id advances to `pi-run-status/2` with
+  the status-line consumers re-checked; design §4's token/cost asymmetry for
+  `error`/`aborted` is now asserted rather than smoothed; the design's residual
+  `backstop` wording recorded as a REV candidate.
+- **Coverage gaps** the review's table found are closed: the launch-env contract
+  (P2 EX-10), posture fixed for the process lifetime (P2 EX-11), `tools` (P3),
+  session directory creation and permissions (P4 EX-9),
+  `transcript_budget_bytes` wiring through the policy clamp (P8 EX-6).
+
+**Contested, with reasons:** none outright — but two adjudications are worth
+recording because the review's phrasing overstated them. (i) "The truncation
+fixture cannot pass" is right about the *jail* half and wrong about nothing else;
+the non-exposure half is real and testable without a jail, which is why P6 keeps
+it rather than losing the criterion entirely. (ii) "Five green suites do not
+exercise the seam" was true only because the envelope was late — after moving it
+to P2 the seam is exercised from the second phase, so the deeper restructuring the
+review offered (moving PHASE-08 earlier) was unnecessary.
+
+**Judgement calls confirmed by the review:** the server-side `final` derivation
+(defensible, but now also a REV candidate so it is in the design record, not just
+the plan); `attempts.jsonl` owning module named in P2 and consumed by P5; the
+research baseline restamped *with its scope stated* in research.md (Thread 2
+re-verified, Threads 3–4 carried as user-conveyed) rather than left un-restamped
+to fire at every later reader.
+
+**Open for the operator: three design gaps.** `tools`-widening token,
+malformed-params token, cancellation trigger. Proposals are in plan.md § Design
+gaps raised at plan review; they change the wire contract, so they need a design
+act or an explicit decision to carry them as reconcile-time revisions.

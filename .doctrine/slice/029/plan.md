@@ -42,6 +42,14 @@ where they can actually be proven. It also front-loads the security boundary:
 the phases that decide *whether* anything runs are done before the phase that
 decides *how*.
 
+**The result envelope lands in PHASE-02, not PHASE-08.** An earlier draft kept
+the refusal payload provisional and introduced `pi-agent-result/1` at the end —
+which would have left five phases returning an undefined payload and made
+PHASE-08 rewire the returns of four suites. The envelope is a data contract, not
+runtime machinery, so a refusal carries the real shape from the first phase that
+answers a call; PHASE-08 then owns only what needs a run to exist — state, cause
+precedence, the latch, the success predicate.
+
 **Sessions before spawn, not after.** Session ownership is validation step 7 and
 is cross-process by construction (one stdio server per client). Building it after
 the spawn machinery would tempt an in-memory busy map that passes a
@@ -68,6 +76,16 @@ offline and fast; the form's bind set is then asserted against the policy's
 `child_binds` — the closure RV-043 F-1 demanded, because a bind the flake adds
 and the policy omits is outside the server's knowledge entirely.
 
+The same reasoning places the blocker's **hostile fixture** in PHASE-09 rather
+than PHASE-06. With a stub launcher there is no jail, so "the child cannot reach
+the audit" is false by construction and "the run fails closed" is false by the
+review's own measurement — truncate-then-append succeeds silently. PHASE-06
+proves what is provable without a jail (the child inherits no fd, env var or
+argv member naming the evidence) and PHASE-09 proves unreachability under the
+real form, with a fallback to a human run if no jail is available. Putting the
+fixture in PHASE-06 would have produced a criterion that can only be waived or
+faked, and the slice's one blocker would have lost its only execution proof.
+
 **The live smoke is last and is not a gate.** Design §7 says so: one run against
 deepseek-flash, recorded as evidence. It needs the real form, a real profile and
 a real gateway, so it cannot move earlier, and making it a gate would make the
@@ -87,7 +105,7 @@ prose. Their placement, per the constraint recorded in each response:
 
 | finding | phase | obligation |
 |---|---|---|
-| RV-043 F-1 (blocker) | 05, 06 | alias-case refusal before spawn; hostile truncation fixture after |
+| RV-043 F-1 (blocker) | 05, 06, 09 | alias-case refusal before spawn; non-exposure of the evidence to the child; the hostile truncation fixture under the real form |
 | RV-043 F-6 | 01, 07 | counting arithmetic with the verified traces; gate inputs == returned status |
 | RV-043 F-7 | 06 | argv exactness: no executable word, no `--`, conditional `-e builtin:mcp` |
 | RV-043 F-9 | 06 | per-call process group, concurrent calls, subtree gone after the grace |
@@ -102,13 +120,15 @@ F-1 remains `answered`, not `verified`, and it refuses audit→reconcile while
 unresolved: the plan gives it teeth in PHASE-05/06 and leaves the ledger status
 alone. Nothing here verifies it; the phase criteria do.
 
-**Research advisory — drift, checked rather than restamped.** `doctrine slice
-research 29` reports the baseline drifted: `slice-029.md` changed and `design.md`
-was added after the research round. Both are expected — research precedes the
-synthesised scope and the design — and every research claim the plan leans on was
-re-checked against the current tree (see below). Restamping now would record
-freshness the artefact has not re-earned, so the advisory is left standing and
-the drift is named here instead.
+**Research advisory — drift checked, then restamped with its scope stated.**
+`doctrine slice research 29` reported the baseline drifted: `slice-029.md`
+changed and `design.md` was added after the research round. Both are expected —
+research precedes the synthesised scope and the design. Every research claim the
+plan leans on was re-checked against the current tree (below) and the baseline is
+restamped with the split recorded in `research.md` itself: Thread 2's hotspots and
+cited facts re-verified, Threads 3–4 (user-conveyed) and the naming precedents
+carried as-is. Left un-restamped, the advisory fires for every later reader and
+nothing distinguishes "checked" from "stale".
 
 **Selectors unchanged.** The slice's selectors already cover the design's
 affected surface (`pi/**`, `pi/mcp/**`, `pi/reduce/**`, `pi/reduce/reduce.ts`,
@@ -141,15 +161,16 @@ reducer never sees the child's exit. Computing `final` in both places would be
 two truths about the same call, the exact defect RV-043 F-6 raised about spend.
 The plan therefore puts `result`, `terminalReason`, `settled` and the
 accounting-known signal in the reducer (PHASE-01) and `final` in the server's
-result (PHASE-08 EX-8), which is the only place the predicate's inputs exist.
-Flagged here so an auditor can contest the reading rather than discover it.
+result (PHASE-08 EX-8). It is listed again among the REV candidates below, because
+a reading recorded only in a plan is weaker than one recorded in the design.
 
-**deliberately under-specified (and why).** Two things are left to the phase
-that implements them rather than being pre-decided here: the module split inside
-`pi/mcp/` (the design names `pi/mcp/*.ts`; the plan names the file each phase
-owns, and a phase may split further if a module earns it), and the exact wire
-encoding details of `initialize` (the research names `satan/satan-mcp.el:230-331`
-as the precedent, and matching it is the phase's job).
+**The module split is named, not left open.** Each phase owns one file under
+`pi/mcp/`: `server.ts`, `policy.ts`, `profiles.ts`, `session.ts`, `childview.ts`,
+`evidence.ts`, `spawn.ts`, `gate.ts`, `result.ts`, with `main.ts` as the entry
+point. The VT mandates pin those files so the gate has a real target; a phase may
+extract further modules *behind* its named file, but it may not move the file the
+plan told the next phase to import. An earlier draft called the split
+unspecified while the VT rows nevertheless pinned it — one of the two had to go.
 
 **Known risk carried, not solved.** The reducer's accounting is exact only for
 sends the parent stream sees; PHASE-07 discloses the residual and asserts the
@@ -157,3 +178,62 @@ absence of a nested figure rather than its zero. If a later phase finds the
 stream cannot distinguish a retry from a fresh send, that is a `/consult`
 moment — the arithmetic is the ceiling's input, and guessing it would be worse
 than stopping.
+
+## Plan-time decisions the slice owed
+
+`slice-029.md` leaves two items for the plan to answer, and a review of this plan
+found them unanswered:
+
+- **Driver registration** ("a deployment question the plan must answer once").
+  Answer: this slice does **not** build a registration helper. It delivers
+  `bin/pi-mcp` plus the launch-environment contract (PHASE-02 EX-10: policy path,
+  run dir, session home, all absolute, refusing when unset), and registration —
+  project config versus `claude mcp add` — stays the operator's act. The reason
+  is the posture: a per-call server has no launch-time state to register beyond
+  its environment, so a helper would encode a deployment convention this repo
+  does not own.
+- **Convenience defaults** ("both are plan-time decisions"). Answer, on the
+  evidence the design already fixes rather than on speculation:
+  - `default_profile`: **not adopted.** Design §2 makes `profile` required, and a
+    default would be a policy-supplied answer to "who is this delegate" — the one
+    question the caller should have to answer. If it is ever added it must name a
+    `filesystem: read` profile, as the follow-up says.
+  - launch-cwd as default root: **adopted, with no special case.** An absent
+    `cwd` resolves to the server's own launch directory, canonicalised and put
+    through the same allowlist check as any supplied root — so an operator who
+    has not allowlisted it gets `root-not-allowlisted`, not a quiet exemption.
+    This keeps the root decision in the policy rather than in the caller.
+
+## Design gaps raised at plan review
+
+Three things the phasing work needs that the locked design does not name. They
+are **not** settled here: each changes the wire contract, so each needs a design
+act or an explicit decision to carry it as a reconcile-time revision.
+
+1. **A refusal token for a `tools` request outside the profile's set.** Design §2
+   says `tools` "may only narrow" and supplies no token for a widening attempt.
+   Proposed: `tools-not-allowed` (matching the `profile-not-allowed` family),
+   refused at validation before the session step.
+2. **A refusal token for malformed params.** §5 says a result is never a
+   JSON-RPC error and §2's token list has nothing for a bad params object, a
+   missing `prompt` or `profile`, or an unknown key. Proposed: `request-invalid`
+   with a `detail` naming the field.
+3. **The cancellation trigger.** `cancelled` is in both §5 enums and §4 says a
+   blocking result never blocks cancellation, but nothing names the wire
+   mechanism. Proposed: `notifications/cancelled{requestId}` aborts exactly that
+   call through the ladder (`state: cancelled`); stdin EOF stops admission,
+   aborts in-flight runs the same way, flushes the audit and exits, since a
+   client that closed stdin can receive nothing.
+
+Carried as **reconcile-time REV candidates**, needing no design change if the
+operator prefers to keep the design untouched until then:
+
+- `final` is derived in the server, not the reducer — restating the reading above
+  as a design-record correction.
+- §5's reconciliation sentence still names `backstop` among stream-external
+  causes while its enum and the timeout rows say `timeout` — the residue of
+  RV-046 F-6's repair.
+- §5 says `session` is "always present"; a refusal mints none, so a refused result
+  carries `session: null`.
+- `pi-run-status/1` gains fields in PHASE-01, so the id advances to
+  `pi-run-status/2` and the status-line consumers are re-checked.
