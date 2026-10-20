@@ -1,0 +1,42 @@
+memory_uid = "mem_01a15b2975027062be75064890df2e50"
+memory_key = "mem.pattern.doctrine.concurrent-tree-pollutes-conformance"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A concurrent session's commit inside a recorded phase delta pollutes `slice conformance`'s undeclared cell"
+summary = "When two slices commit into one tree, a phase delta recorded as start..end can span the other session's commit, so `slice conformance` reports its paths as this slice's scope creep."
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "conformance", "concurrent-sessions", "audit"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "958b2704f2791abf5ab0c5c3ef26336635dd346b"
+ref_name = "refs/heads/main"
+checkout_state_id = "f921cad40e40d628bba1c8010d56dae21ca81aebb75815faacfbc00b971c8824"
+base_commit = "620ae5908c6fac9c2cfa557d90d135a84c145705"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

@@ -795,15 +795,88 @@ Suite after repairs: 252 pass, 0 fail, ~5.4 s. `verify-vt` unchanged.
    file. The artefact is present
    ([[mem.pattern.doctrine.vt-attribution-gap]]).
 
+## Audit (RV-055) — reconciliation, eight of nine phases
+
+Conducted after the implementation review, on the same tree, with the ledger at
+`.doctrine/review/055/` (`doctrine show RV-055`). Five findings: one blocker left
+open, four minors (two verified `design-wrong` to reconcile, one `tolerated`, one
+repaired here).
+
+**The verdict: reconcilable in substance, not yet closable in evidence.**
+
+### What the audit confirmed
+
+- All 54 executable `VT` rows run green (`slice verify-vt 29`); `just check`
+  exit 0, 252 tests. The 80 `EX` rows were read against their mechanisms and
+  carrier tests, in the phase plan's axis order. The 3 `VA` rows are PHASE-09's
+  and are unexecuted.
+- Design sec-1..7 match the delivered code, including every divergence the slice
+  already recorded (QUE-007's four, DEC-103's three, RV-053 F-16's six). Each
+  reproduced as described.
+- The bwrap-token source scan over `pi/mcp` (tests excluded) is green: no server
+  module authors a jail token, so ADR-017's ownership split holds on this surface.
+
+### What the audit added
+
+- **Two divergences no prior list carried** (F-3, F-4): design §7's delivery list
+  and the `design-target` selector set omit `pi/reduce/cli.ts`,
+  `pi/reduce/reduce.test.ts` and `bin/pi-mcp-hostile-audit`; and design sec-2
+  promises a `refuse` record in the run audit that no code path can write and
+  that sec-6's own vocabulary contradicts. Both are design-record defects →
+  reconcile.
+- **The verdict's one open blocker** (F-1): PHASE-09's three empirical criteria,
+  the phase's missing boundary row, and everything that follows from it —
+  `verify-vt`'s `UNATTRIBUTABLE` VT-1, `flake.nix` reading `undelivered`, and the
+  two prior blockers (RV-043 F-1, RV-053 F-18) still `answered`. **This is the
+  decision the slice is waiting on**: run the three operator commands on a host
+  with `nix` and the gateway, or record a human waiver and reconcile design
+  sec-3's loop-closing sentence down to what is actually proven. The audit cannot
+  make that call.
+- **The conformance signal's tenant** (F-2, tolerated): PHASE-08's recorded delta
+  spans a foreign SL-030 commit (`2c1b98e`), so `slice conformance 29`'s
+  `undeclared` cell carries eight `.doctrine/**` paths belonging to another
+  slice. Read that cell with this caveat
+  ([[mem.pattern.doctrine.concurrent-tree-pollutes-conformance]]).
+- **Lifecycle bookkeeping** (F-5): the slice sat at `ready` through eight
+  implemented phases; moved `ready → audit` in this pass, classified `[skip]`
+  because `started` was never recorded — the honest record.
+
+### Residual register (audit tail)
+
+RV-053 F-17's five hardening observations are carried into RV-055's `##
+Synthesis` § "Standing risks", unchanged and unresolved: over-broad `childEnv`
+strip, unbounded line/stream buffers, no server SIGTERM/SIGINT handler, the
+stale-lock operator advice, and the tolerated audit-kind collapse (whose design
+text F-4 now owes). RV-053 F-15 (test-harness duplication) stays `follow-up`.
+
+The runtime phase sheets held nothing the notes did not already carry; the one
+thing they could not carry is F-1's consequence, recorded above.
+
+### Reconcile is gated, and on what
+
+`doctrine slice status 29 reconcile` will be refused while F-1 is open, and
+should be. `/reconcile` has a complete brief in RV-055 § "Reconciliation Brief"
+for every finding that does not depend on F-1 — it can be driven the moment the
+PHASE-09 decision lands.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · 8/9 completed, PHASE-09 blocked · 0fc4022
+fresh-as-of: 2026-10-20 · 8/9 completed, PHASE-09 blocked · audit RV-055 · c01735f
 
 ### Produced
 - nine phases implemented, one commit each (`47064a6` … `bba7d87`); PHASE-01..08
   `completed`, PHASE-09 `blocked`
+- plan authored as nine phases, one mechanism each, then revised after an
+  independent adversarial review — commits 4c9221b, 546bdd7, 51dcb0e, 98659fa, d2c794f
+- nine runtime phase sheets materialised; `verify-vt` reports zero UNCHECKABLE rows
+- minted: DEC-103 (the three wire-contract additions the locked design left
+  unnamed), QUE-007 (the four design-record corrections owed at reconcile)
+- research baseline restamped with its scope stated (local only — `research/` is
+  gitignored)
 - RV-053 — implementation review (three reviewers, 18 findings, concluded);
   thirteen repairs across `ab9ae66`, `a5abffc`, `8350a98`
+- RV-055 — reconciliation audit (five findings: one open blocker, four minors),
+  concluded; two new design-record divergences added to the reconcile set
 - new module `pi/mcp/paths.ts` (one canonicalisation + `within` predicate)
 - PHASE-09 evidence in `notes.md` § PHASE-09 evidence: the two forms, the probe,
   the hostile-audit fixture, the operator sequence
@@ -812,41 +885,21 @@ fresh-as-of: 2026-10-20 · 8/9 completed, PHASE-09 blocked · 0fc4022
 - mem.pattern.pi-subagents.charter-wall-clock — a blocking orchestrator dies at 30 min; charter ≤3 phases
 - mem.pattern.doctrine.review-verbs-serialise — `doctrine review` takes a per-review lock; parallel invocations refuse
 - mem.pattern.doctrine.vt-attribution-gap — `verify-vt` does not credit `flake.nix`
+- mem.pattern.doctrine.concurrent-tree-pollutes-conformance — a concurrent session's commit inside a recorded phase delta lands in `slice conformance`'s undeclared cell
 - mem.fact.satan.dev-host-lacks-nix-and-gateway — the verification host cannot build jails or reach the gateway
 - (carried) mem.pattern.doctrine.phase-sheets-not-refreshed, mem.fact.satan.research-dir-gitignored,
   mem.pattern.pi-subagents.capsule-tiering, mem.pattern.doctrine.review-ledger-extraction,
   mem.fact.pi.codemode-sandbox-broken, mem.pattern.doctrine.knowledge-decision-edit
 
 ### Open
-- QUE-007 — fold the design-record corrections at reconcile; RV-053 F-16 adds six
-  (validation order, unbounded `maxima`, budget-0 inversion, pending→settled
-  `status.state`, `switch`/DEC-093 mapping, `final` with no answer)
+- **RV-055 F-1 (blocker, undisposed)** — PHASE-09's empirical criteria; the
+  operator run or a human waiver decides it
+- QUE-007 (four corrections) + RV-053 F-16 (six) + RV-055 F-3/F-4 (three) — the
+  design-record correction set owed at reconcile; RV-055 § Reconciliation Brief
+  maps each to its write surface
 - RV-053 F-3 — `child_binds` exposure and the unclosed policy↔form check
-- RV-053 F-18 — PHASE-09's empirical criteria, unexecuted (host)
+- RV-053 F-18 — PHASE-09's empirical criteria, unexecuted (host); same decision as RV-055 F-1
 - RV-053 F-15 — test-harness duplication, deferred
-- RV-053 F-17 — hardening observations, tolerated
+- RV-053 F-17 — hardening observations, tolerated (carried into RV-055 § Synthesis)
 - RV-043 F-1 — blocker still `answered`; refuses audit→reconcile until PHASE-05/06/09 prove it
-- RV-046 F-1..F-6 — answered on `demonstrate` routes; the plan carries their criteria
-
-### Produced
-- SL-029 plan authored as nine phases, one mechanism each, then revised after an
-  independent adversarial review — commits 4c9221b, 546bdd7, 51dcb0e, 98659fa, d2c794f
-- nine runtime phase sheets materialised (all `planned`); `verify-vt` reports zero
-  UNCHECKABLE rows
-- minted: DEC-103 — the three wire-contract additions the locked design left unnamed
-- minted: QUE-007 — the four design-record corrections owed at reconcile
-- research baseline restamped with its scope stated (local only — `research/` is
-  gitignored)
-
-### Learned
-- mem.pattern.doctrine.phase-sheets-not-refreshed — editing plan.toml does not refresh sheets
-- mem.fact.satan.research-dir-gitignored — a research restamp is never a commit here
-- mem.pattern.pi-subagents.capsule-tiering — builtin worker/delegate cannot spawn children
-- mem.pattern.doctrine.review-ledger-extraction — parse review-NNN.toml, not `review show`
-- mem.fact.pi.codemode-sandbox-broken — codemode fails in this deployment; use bash/python
-- mem.pattern.doctrine.knowledge-decision-edit — DEC ref, facet flags, separate status verb
-
-### Open
-- QUE-007 — fold the four design-record corrections at reconcile
-- RV-043 F-1 — blocker still `answered`; refuses audit→reconcile until PHASE-05/06/09 prove it
-- RV-046 F-1..F-6 — answered on `demonstrate` routes; the plan carries their criteria
+- RV-046 F-1..F-6, RV-043 F-6/F-7/F-9 — answered on `demonstrate` routes; the plan carries their criteria

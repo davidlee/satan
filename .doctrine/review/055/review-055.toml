@@ -1,0 +1,210 @@
+id    = 55
+slug  = "sl-029-reconciliation-audit-does-the-delivered-pi-mcp-server-match-its-locked-design-and-governance"
+title = "SL-029 reconciliation audit: does the delivered pi-mcp server match its locked design and governance"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "auditor"
+responder = "implementer"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Reconciliation audit of SL-029 at c01735f, eight of nine phases implemented. Examined all 80 EX, 55 VT and 3 VA rows of plan.toml (54 VT run green via `slice verify-vt 29`, one PHASE-09 row UNATTRIBUTABLE; EX rows read against the mechanism and its carrier test; all 3 VA rows unexecuted), the delivered pi/mcp surface module by module in its dependency order (server, spawn, gate, result, then policy/profiles/childview/session/evidence/paths and the form/text layer in flake.nix, bin/pi-mcp-hostile-audit and forms.test.ts), design sec-1..7 against the code including the three already-recorded divergence families (QUE-007, DEC-103, RV-053 F-16), the mechanical signals (`slice conformance 29`, `slice verify-vt 29`, `doctrine check gate` green, the bwrap-token source scan), the recorded phase boundaries, and the prior ledgers' open findings (RV-043 F-1, RV-053 F-3/F-15/F-16/F-17/F-18). Five findings raised: one blocker (PHASE-09's empirical criteria unexecuted and unbounded — left open, its disposition is a human decision between the operator run and a recorded waiver) and four minors, of which two are design-record omissions this pass adds to QUE-007 and F-16, one is the conformance signal's known tenant, and one is repaired in-pass.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-029"
+
+[[finding]]
+id = "F-1"
+status = "open"
+severity = "blocker"
+title = "PHASE-09's three empirical criteria are unexecuted and the phase has no recorded boundary, so the slice's loop-closing property is undemonstrated"
+detail = """
+Expected (plan.toml PHASE-09 EX-3/EX-5/EX-7 and VA-1..VA-3, which are the phase's authority; design sec-3 and sec-7): three criteria that only executing the built forms can prove — the flake check asserting each form's actual bind set equals root + active session directory + the policy's child_binds (EX-3/VA-1), one live per-call smoke run against deepseek-flash through the wrapped form with the gateway forwarded (EX-5/VA-2), and the hostile truncate/unlink/replace fixture under the real wrapped form (EX-7/VA-3). Design sec-3 rests its loop-closing claim on the first: "the flake check asserts the form's actual bind set equals root + session directory + child_binds. That is where the loop closes; a server promise alone would not close it."
+
+Observed: none of the six has been executed, and the tree says so (notes.md § "What did not run, and is not claimed"). This host has no nix binary (/nix/store is a transplanted snapshot, /nix/var/nix empty) and no gateway socket (/run/llm-gateway-client absent), so the derivations cannot be built, pi-mcp-forms / just check-jails cannot run, and the smoke has no provider. What is green is the nix-free half: 252 tests including pi/mcp/forms.test.ts (six textual assertions over flake.nix), PHASE-09 EX-6's bwrap-token scan, and a bash rehearsal of the check's body against hand-built launcher text. The hostile driver was exercised only against a stub form, which the phase evidence itself labels "Plumbing, not EX-7: a stub form has no jail".
+
+Three consequences, all mechanical and all verified in this pass:
+
+(a) PHASE-09 has no boundary row in .doctrine/state/slice/029/boundaries.toml (PHASE-01..08 only, PHASE-08's row last), because a blocked phase is never concluded. Its actual delta (bba7d87: flake.nix, bin/pi-mcp-hostile-audit, pi/mcp/forms.test.ts, justfile) is therefore outside every recorded delta.
+
+(b) `doctrine slice verify-vt 29` reports 54 PASS with the single exception of PHASE-09 VT-1 UNATTRIBUTABLE ("keyword present but flake.nix not modified by this slice"), and `doctrine slice conformance 29` reports flake.nix undelivered. Both are the same missing row, not a missing artefact: flake.nix was modified by bba7d87 (git log -- flake.nix). The attribution heuristic is starved of the delta it reads, not wrong about the file.
+
+(c) Two open blockers on prior ledgers wait on exactly this evidence and are still answered-not-terminal: RV-043 F-1 (BLOCKER, fix-now, route demonstrate — "the delegate can truncate or replace the audit that is supposed to constrain it") and RV-053 F-18 (BLOCKER, follow-up, route demonstrate — "PHASE-09's empirical criteria are unexecuted on this host"). Under lib:reference/review-ledger.md §3 an unresolved blocker refuses the audit->reconcile crossing, so the slice cannot reach reconcile on this evidence.
+
+The status is honest — PHASE-09 reads blocked and must not be flipped to completed — so this is not a finding about a false claim. It is about the one thing that decides whether the slice may close: either the operator run happens (the three recorded commands in notes.md § PHASE-09 evidence), or a human consciously accepts an undemonstrated blocker and design sec-3's loop-closing sentence is reconciled to say what is actually proven (form-vs-literal proven by the check as written; policy-vs-form awaiting the operator run — RV-053 F-3's refresh route). That choice is not the audit's to make."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "PHASE-08's recorded delta range spans a foreign SL-030 commit, so the conformance undeclared cell reports eleven paths this slice never touched"
+detail = """
+Expected (the recorded source-delta is what `slice conformance` reads): a phase's recorded code range contains that phase's work, so an `undeclared` path is a lead about this slice's scope.
+
+Observed: PHASE-08's boundary row is df71ab4 (PHASE-07's tip) .. 1a7a769, and `git log df71ab4..1a7a769` is two commits — 1a7a769 (SL-029 PHASE-08) and 2c1b98e ("doctrine(SL-030): plan — seven phases from the locked design"), a concurrent session that commits into this same tree. `doctrine slice conformance 29` consequently lists eleven .doctrine/** paths (backlog/issue/053, one memory item, slice/030/*) in its `undeclared` cell plus one more in `M` state, none of it SL-029's work. The signal is real but polluted: read alone, the cell attributes another slice's planning artefacts to this one.
+
+PHASE-06's range was narrowed for the same reason (notes.md § "Implementation and review": it now starts at 31afa50 rather than PHASE-05's tip 9879067), which leaves the boundary chain non-contiguous in two places. That is the precedent's cost, and it is why re-recording PHASE-08 is not the obvious repair: narrowing its start to 2c1b98e would drop the foreign commit but make the row claim the phase began after its predecessor ended, understating the phase's own span. The honest disposition is to keep the row truthful and read the undeclared cell with this caveat — which is what this finding records."""
+disposition = "tolerated"
+response = """
+Accepted as the honest reading rather than repaired. PHASE-08's boundary row df71ab4..1a7a769 is a true statement of the range in which the phase's work landed; that a concurrent SL-030 session committed 2c1b98e inside it is a fact about this tree, not about the row. Narrowing the start to 2c1b98e would remove the noise and make the row claim the phase began after PHASE-07 ended, understating the span and repeating a falsification PHASE-06's narrowing already introduced.
+
+What is accepted: `slice conformance 29`'s undeclared cell must be read with the caveat that eleven of its entries are SL-030's `.doctrine/**` planning artefacts, and the boundary chain is knowingly non-contiguous in two places (PHASE-06 and PHASE-08). Carried into the audit's synthesis as a standing reading instruction, so a later auditor does not re-derive it. If a future pass wants the cell clean, the correct repair is a per-phase delta that can express an interleaved foreign commit — a doctrine change, not an SL-029 one."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Accepted as the honest reading rather than repaired. PHASE-08's boundary row df71ab4..1a7a769 is a true statement of the range in which the phase's work landed; that a concurrent SL-030 session committed 2c1b98e inside it is a fact about this tree, not about the row. Narrowing the start to 2c1b98e would remove the noise and make the row claim the phase began after PHASE-07 ended, understating the span and repeating a falsification PHASE-06's narrowing already introduced.
+
+What is accepted: `slice conformance 29`'s undeclared cell must be read with the caveat that eleven of its entries are SL-030's `.doctrine/**` planning artefacts, and the boundary chain is knowingly non-contiguous in two places (PHASE-06 and PHASE-08). Carried into the audit's synthesis as a standing reading instruction, so a later auditor does not re-derive it. If a future pass wants the cell clean, the correct repair is a per-phase delta that can express an interleaved foreign commit — a doctrine change, not an SL-029 one."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified: the boundary row is truthful, the eleven foreign paths are SL-030's planning artefacts, and the reading caveat is carried into the synthesis."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Design sec-7's delivery list and the design-target selector set omit three artefacts the slice actually shipped"
+detail = """
+Expected (design sec-7 "Files"; slice-029.toml's design-target selectors, the set `slice conformance` compares actual edits against): every shipped file is named in the delivery list, and a file named there is also a selector, so design §6's prose mirror and the registry (what conformance reads) agree.
+
+Observed: the delivery list names pi/mcp/*.ts, pi/mcp/profiles/*.md, pi/mcp/*.test.ts, bin/pi-mcp, pi/reduce/reduce.ts, flake.nix and justfile. Three shipped artefacts are absent:
+
+- pi/reduce/cli.ts — modified by 47064a6 (PHASE-01). It is named in plan.toml PHASE-01 EX-7 ("every consumer is checked — the status line built in cli.ts and read by scripts/lib/pi-report.sh"), so the plan required an edit the design's file list did not anticipate.
+- pi/reduce/reduce.test.ts — modified by 47064a6; the carrier of VT-1..VT-4's evidence.
+- bin/pi-mcp-hostile-audit — added by bba7d87 (PHASE-09), the driver design sec-7's verification list describes ("a hostile bash attempting truncate/unlink/replace") without naming.
+
+The selector set repeats the omission: pi/reduce/** is declared scope-relevant (so prime tracks both files — RV-055's prime list has 28 paths including them) but only pi/reduce/reduce.ts is design-target, and no selector matches bin/pi-mcp-hostile-audit at all. Conformance therefore reports pi/reduce/cli.ts and pi/reduce/reduce.test.ts as undeclared (correctly, given the registry) and would report the hostile driver too were PHASE-09's delta recorded — the third is hidden only by F-1's missing boundary row, a second reason F-1 matters."""
+disposition = "design-wrong"
+response = """
+The design record is the defect, not the code. Three files shipped and are owed a place in the record; the registry is what conformance reads, so the registry — not the prose — is the load-bearing change:
+
+Per-slice (direct edit) — design sec-7 "Files": add `pi/reduce/cli.ts` (the status-line consumer PHASE-01 EX-7 names), `pi/reduce/reduce.test.ts` (VT-1..VT-4's carrier) and `bin/pi-mcp-hostile-audit` (PHASE-09's hostile driver, which sec-7's verification list already describes without naming).
+
+Registry (`doctrine slice selector`, which is what `slice conformance` reads): add design-target selectors for `pi/reduce/cli.ts` and `pi/reduce/reduce.test.ts`, and for `bin/pi-mcp-hostile-audit` — no selector matches the driver today. The `pi/reduce/**` selector stays scope-relevant for prime.
+
+Both surfaces named in RV-055's Reconciliation Brief. The conformance cell goes quiet for cli.ts and reduce.test.ts once the selectors land; the hostile driver's cell appears only after F-1's boundary row exists, so this repair must not be read as having fixed that."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The design record is the defect, not the code. Three files shipped and are owed a place in the record; the registry is what conformance reads, so the registry — not the prose — is the load-bearing change:
+
+Per-slice (direct edit) — design sec-7 "Files": add `pi/reduce/cli.ts` (the status-line consumer PHASE-01 EX-7 names), `pi/reduce/reduce.test.ts` (VT-1..VT-4's carrier) and `bin/pi-mcp-hostile-audit` (PHASE-09's hostile driver, which sec-7's verification list already describes without naming).
+
+Registry (`doctrine slice selector`, which is what `slice conformance` reads): add design-target selectors for `pi/reduce/cli.ts` and `pi/reduce/reduce.test.ts`, and for `bin/pi-mcp-hostile-audit` — no selector matches the driver today. The `pi/reduce/**` selector stays scope-relevant for prime.
+
+Both surfaces named in RV-055's Reconciliation Brief. The conformance cell goes quiet for cli.ts and reduce.test.ts once the selectors land; the hostile driver's cell appears only after F-1's boundary row exists, so this repair must not be read as having fixed that."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified: the omission is real, the registry selectors are named, and both write surfaces are in the Reconciliation Brief."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Design sec-2 promises a `refuse` record in the run audit that the build never writes, and sec-6's own audit vocabulary contradicts it"
+detail = """
+Expected (design sec-2, closing paragraph of "Validation order"): "The refusals are the contract: each is a stable token plus a detail string, and each is recorded — attempts.jsonl when nothing spawned, refuse in the run audit once a run directory exists. A caller never receives a silent downgrade."
+
+Observed: there is no refuse record kind and no path that could write one. AuditKind = 'spawn' | 'abort' | 'exit' (pi/mcp/evidence.ts), and a grep for a refuse audit record across pi/mcp/*.ts finds only the refusal-token vocabulary, never a record. Every refusal — steps 1-8, the pre-spawn audit-failed arm, and the audit-unavailable probe failure — goes to attempts.jsonl through appendAttempt, because the run directory does not exist until after step 8 and is discarded when the pre-spawn audit append fails (server.ts: the refusal path returns before runChild).
+
+So sec-2's clause describes a state the build cannot reach, and design sec-6's own enumeration contradicts it: sec-6 lists the run audit's records as "spawn …, abort …, timeout, switch, exit" — no refuse. RV-053 F-17 records the related collapse (timeout/switch are emitted as abort + cause, tolerated as defensible) but neither F-16's six-item list nor QUE-007's four-item list names this clause.
+
+This is a design-record defect, not a code defect: the code's behaviour is the safer one (one ledger per truth; nothing claimed about a run that never existed). Reconciling it means dropping the refuse clause from sec-2 and stating sec-6's audit-record vocabulary as three kinds plus a cause field."""
+disposition = "design-wrong"
+response = """
+The design record is the defect. Two edits, both per-slice, both in the Reconciliation Brief:
+
+1. design sec-2, "Validation order" closing paragraph: drop the clause "`refuse` in the run audit once a run directory exists". The build allocates no run directory before step 8 and discards it when the pre-spawn audit append fails, so every refusal is an `attempts.jsonl` line — which the same sentence already says. The clause describes a reachable state that is not reachable and a record kind that does not exist.
+2. design sec-6, "Evidence": state the run audit's record vocabulary as the three kinds the code emits — `spawn`, `abort`, `exit` — with the cause carried as a field, so `timeout` and `switch` are `abort` records carrying their cause rather than kinds of their own. This also settles by text what RV-053 F-17 tolerated by disposition, and closes the sec-2/sec-6 contradiction F-4 names.
+
+No code change is owed: the code's behaviour is the safer one (one ledger per truth; nothing claimed about a run that never existed). The audit does not mutate either sec-2 or sec-6 — /reconcile is the sole writer of reconciled truth."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The design record is the defect. Two edits, both per-slice, both in the Reconciliation Brief:
+
+1. design sec-2, "Validation order" closing paragraph: drop the clause "`refuse` in the run audit once a run directory exists". The build allocates no run directory before step 8 and discards it when the pre-spawn audit append fails, so every refusal is an `attempts.jsonl` line — which the same sentence already says. The clause describes a reachable state that is not reachable and a record kind that does not exist.
+2. design sec-6, "Evidence": state the run audit's record vocabulary as the three kinds the code emits — `spawn`, `abort`, `exit` — with the cause carried as a field, so `timeout` and `switch` are `abort` records carrying their cause rather than kinds of their own. This also settles by text what RV-053 F-17 tolerated by disposition, and closes the sec-2/sec-6 contradiction F-4 names.
+
+No code change is owed: the code's behaviour is the safer one (one ledger per truth; nothing claimed about a run that never existed). The audit does not mutate either sec-2 or sec-6 — /reconcile is the sole writer of reconciled truth."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the code: no `refuse` record kind exists, no path could write one, and sec-6's vocabulary contradicts sec-2. Owed to reconcile."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "The slice's lifecycle status was never advanced past `ready` across eight implemented phases and a concluded implementation review"
+detail = """
+Expected (the vocabulary `doctrine slice status` enforces: proposed -> design -> plan -> ready -> started -> audit -> reconcile -> done): the slice's status is an honest account of where the work is, and the closure seam is crossed from the state the work actually reached.
+
+Observed: .doctrine/slice/029/slice-029.toml carried status = "ready" at c01735f — after eight phases read completed, after the plan was approved, after the design locked at revision 80, and after RV-053's implementation review had been concluded over 2931b97..bba7d87. The slice was never moved to started, so `doctrine status` and `doctrine next` reported it as pre-execution work.
+
+Nothing in the delivered code depends on this, and the closure seam was not breached (audit is reachable from ready), so the cost is bookkeeping fidelity: a fresh agent reading `doctrine status` would conclude the phases had not begun. Repaired in this pass by `doctrine slice status 29 audit`, which classifies as a skip of started — the honest record of what actually happened."""
+disposition = "fix-now"
+response = """
+Repaired in this pass. `doctrine slice status 29 audit` moved the slice ready -> audit, classified [skip] because `started` was never recorded — the honest account of a slice whose eight phases had already landed and whose implementation review had already concluded at c01735f.
+
+Verified against the file rather than the command's optimism: slice-029.toml now reads status = "audit", and `doctrine slice status 29` reports the phase rollup that justifies it. The finding stands as a record of the bookkeeping gap, not as an open defect."""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Repaired in this pass. `doctrine slice status 29 audit` moved the slice ready -> audit, classified [skip] because `started` was never recorded — the honest account of a slice whose eight phases had already landed and whose implementation review had already concluded at c01735f.
+
+Verified against the file rather than the command's optimism: slice-029.toml now reads status = "audit", and `doctrine slice status 29` reports the phase rollup that justifies it. The finding stands as a record of the bookkeeping gap, not as an open defect."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the file: slice-029.toml now reads status = audit."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
