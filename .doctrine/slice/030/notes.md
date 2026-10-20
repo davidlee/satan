@@ -21,7 +21,7 @@ Four rounds (pi-research ×3, pi-scout ×1; raw: `research/raw/rv051-round{1,2,3
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-21 · plan (design locked, run dr-01a15954 rev 42; no plan yet) · HEAD at commit below
+fresh-as-of: 2026-10-21 · plan (design locked, run dr-01a15954 rev 42; no plan yet) · cdc8ce9
 
 ### Produced
 - scope authored (173f682), re-aligned to the decisions at inquiry and review; research round + architecture supplement (`research/`, gitignored)
