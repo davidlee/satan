@@ -34,9 +34,12 @@ pi_agent(prompt, cwd?, profile?, session?, tools?, jail?, backstop_s?)
   naming a profile that declares them, so write access is never ambient.
 - `session` maps to `--session-id`, so a delegate conversation continues across
   calls without a long-lived process.
-- `jail` defaults true. When `bwrap` is unavailable the tool refuses with a named
-  reason rather than running unconfined (the `REASON_NO_BWRAP` pattern
-  `scripts/spawn-confined.sh` already uses).
+- `jail` is **not** a bwrap switch in the server. Jail policy is project-specific
+  and lives in the flake, which wraps execution and exposes a wrapped form
+  (`jailed-pi`, `jailed-claude`); the server execs a wrapped runner and holds no
+  bwrap argv of its own. Consequence for the ledger: the execution/jail-profile
+  row belongs to `satan-flake` (the row-3b precedent), while the server owns
+  request schema validation, profile→tools, audit, ceiling and kill switch.
 - The result carries the reducer's transcript (budgeted) and the status record
   verbatim; `transcript_path` names the artefacts for the rest.
 - The reducer is **imported, not shelled out**: one implementation serves the
@@ -71,13 +74,19 @@ must place explicitly rather than inherit from a shell script.
 
 ## Risks, Assumptions, Open Questions
 
-- **Nested confinement.** The driver may itself be jailed (`jailed-claude` runs
-  with `subagents = ["pi" "claude"]`). Assumption to verify: bwrap works nested in
-  that jail.
+- **Per-call `cwd` versus a launch-time jail.** A jail is fixed when the wrapper
+  starts, but `pi_agent` takes a `cwd`. Two shapes keep bwrap out of the server:
+  the flake exposes a per-call launcher that receives the root, or the server runs
+  inside one root fixed at launch and refuses a `cwd` outside it. Design chooses.
+- **Nested confinement is settled, and it is additive.** An unjailed process in a
+  jail is jailed; a jailed process in a jail gets the union of both. So a nested
+  jail can never repair an outer profile's exposure — if the driver is
+  `jailed-claude` with the eval socket bound, that still applies. The flake
+  profile, not the server, is where this is fixed.
 - **Authority placement.** ADR-017 §3 gives each authority item one owner
-  (allow-list, ceiling, audit append, kill switch, permission profile). The
-  server's profile→tools mapping and backstop ceiling need a ledger row, or an
-  explicit finding that it adds no authority.
+  (allow-list, ceiling, audit append, kill switch, permission profile). Research
+  finds no "adds no authority" escape: the server needs new rows under a token
+  such as `pi-mcp`, and the execution profile stays with `satan-flake`.
 - **Driver registration.** How a driver declares a stdio server (project config
   file vs `claude mcp add`) is a deployment question the design should answer once.
 - **Cost ceiling.** A delegate run spends money with no driver-visible cap: the
@@ -88,5 +97,11 @@ must place explicitly rather than inherit from a shell script.
 - Spawn-script transport migration (RPC → json) and the deletion of
   `lib/pi-reap.sh` plus `lib/pi-reap-test.sh` (that test is run by nothing and
   takes 94 s).
+- The wrapped-runner jail profile in `flakes/agents`, using the DEC-088 read-only
+  directory bind rather than `jailEnvOptions` (which rw-binds the editor eval
+  socket and reaches `~/notes`), plus its flake check.
+- The `pi-research` runner defect found while starting the research round: the
+  `researcher` profile was absent from this repo, its model disagrees with
+  `CLAUDE.md`, and outside the jail the `deepseek` provider key is invalid.
 - The harness jail machinery stays in `flakes/agents`; revisit only if the server
   needs a profile of its own there.
