@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-02 · malebolge 298fcd0
+fresh-as-of: 2026-10-20 · PHASE-03 · malebolge f44240e
 
 ### Produced
 - PHASE-01 done — instance lock, `lockPath`, `serveUnix` claim (malebolge
@@ -14,6 +14,10 @@ fresh-as-of: 2026-10-20 · PHASE-02 · malebolge 298fcd0
 - PHASE-02 done — satanTools handle, coalesce, reconnecting-client
   (malebolge 460b7c6..298fcd0, pi worker); § PHASE-02
 - RV-041 — PHASE-02 code review, 9 findings fixed
+- PHASE-03 done — registry-taking openSession, serve(Promise<Session>,
+  beforeInput), startDaemon, thin daemon-main (malebolge c0d3264..f44240e,
+  pi worker via `--mode json` + pi-run-reduce); § PHASE-03
+- RV-042 — PHASE-03 code review (pi reviewer), 2 findings fixed + verified
 
 ### Learned
 - mem.fact.malebolge.eslint-ignores-doctrine-state — typed eslint needs
@@ -24,9 +28,10 @@ fresh-as-of: 2026-10-20 · PHASE-02 · malebolge 298fcd0
 ### Open
 - DEC-083..DEC-088 — design decisions binding PHASE-03..06
 - RSK-020 — two malebolge revisions in production; REV at reconcile
-- PHASE-03 must release the instance lock once (non-idempotent `release`)
-- malebolge doctrine pi extension calls a host store path absent in the jail
-  (doctrine boot fails inside jailed-pi) — doctrine install concern, unfiled
+- doctrine pi extensions bake one install's doctrine path (malebolge: a host
+  /nix/store path, absent in the jail; satan: `/run/doctrine-bin`, absent on the
+  host, and a jailed run rewrote satan's boot.md with it) — doctrine install
+  concern, unfiled
 
 ## Design triage (2026-10-20, exploring)
 
@@ -173,3 +178,49 @@ verify-vt: PHASE-02 VTs report UNATTRIBUTABLE (test files are in malebolge,
 outside this repo's diff) — expected, as in SL-027
 (mem.pattern … reconcile-selectors-outside-phase-registry); evidence is the
 malebolge commits above.
+
+## PHASE-03 (2026-10-20, done) — malebolge c0d3264..f44240e
+
+Executed by jailed pi (deepseek-flash) in 5 chunks, session `satan-b`, driven with
+`jailed-pi --mode json` → `bin/pi-run-reduce` (status line + budgeted transcript)
+instead of `-p` text; orchestrator reviewed each, ran biome + `just check` on the
+host, committed per chunk. Per-phase review: RV-042 by a second pi session
+(`satan-b-review`), which also verified the fixes in a follow-on turn.
+
+Shape landed (PHASE-04 builds on it):
+- `src/daemon-start.ts` `startDaemon(config, { log, models? })` → `DaemonHandle`
+  (`stop` memoised + the facts daemon-main logs). Order: persona, skills, gateway
+  check, models (`requireKnownModel`), `daemonEnv`, project context → lock (refusal
+  closes env) → `satanTools` → serve (claim) → refresh → openSession → resolve.
+  Failure undoes in reverse, lock last. `sessionReady` never rejects.
+- `src/daemon-main.ts`: resolveConfig → startDaemon; `InstanceLocked`/`SocketInUse`
+  → `refusing to start: …`, exit 1; signals → `handle.stop()`.
+- `serve(Promise<Session>, path, beforeInput)`: `attach` registers its close handler
+  before awaiting the session; a stream arriving on a destroyed socket is stopped
+  (RV-042 F-1 — the startup window otherwise leaked a watch per early client).
+- `openSession` takes `registry`; `daemonExtensions` has no `satan`;
+  `connectSatanTools` gone.
+
+Evidence and deviations:
+- D7 (accepted): plan VT-2's lock/concurrency tests live in
+  `test/daemon-start.test.ts`, with every other startDaemon test, not
+  `test/daemon.test.ts`.
+- VT-3 (session.test.ts): a turn held in its provider request across a close
+  resumes on reopen; its pinned `satan` tool call executes against the reopen
+  registry, and settles `tool_unavailable` without it. pi-durable pins the
+  model-facing tool list at `prepare`; execution resolves against the live
+  registry — so refresh-before-openSession is what makes the resumed call work.
+- Mutation checks (orchestrator + reviewer): refresh-after-open, no release on
+  failure, no server close on failure, no release on stop, un-memoised stop,
+  beforeInput removed / added to abort, openSession ignoring the registry — all
+  caught. The F-1 test failed 3/3 under the old close-handler ordering.
+- Not run: no live daemon start against the real gateway (PHASE-04's VH/VA cover
+  the unit path). The worker smoked the refusal path in the jail: exit 1,
+  `refusing to start: another daemon holds …`.
+
+pi-driving facts (folded into mem.pattern.satan.drive-jailed-pi-worker):
+- `jailed-pi` runs bwrap `--die-with-parent`: a `nohup … &` launch dies when the
+  launching shell exits. Run each chunk in the foreground under `timeout`.
+- `--session-dir` must be under the bound cwd (jail `/tmp` is a fresh tmpfs);
+  follow-on turns with the same `--session-id` then resume across runs.
+- The scout profile writes brief files into the repo; delete them after.

@@ -1,0 +1,76 @@
+id    = 42
+slug  = "sl-028-phase-03-per-phase-code-review-malebolge-298fcd0d23d619"
+title = "SL-028 PHASE-03 per-phase code review (malebolge 298fcd0..d23d619)"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "pi-reviewer"
+responder = "orchestrator"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "malebolge 298fcd0..f44240e src+test (PHASE-03: registry-taking openSession, serve(Promise<Session>, beforeInput), startDaemon, thin daemon-main). Full depth; 8 mutation bite-checks all caught; watch-leak probes; tsc/eslint/phase tests clean. Pi reviewer (deepseek-flash, jailed), findings recorded by the orchestrator."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-028"
+phase = "PHASE-03"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "A connection closed before the session resolves leaks its event watch"
+detail = """
+malebolge src/daemon.ts:43-57 (at d23d619). `attach` awaits the session (:43) and `watchEvents` (:49) before registering `socket.on("close", () => void stream.stop())` (:57); a close emitted earlier is not replayed. Reviewer probe: a client connected while the session promise was unresolved, then destroyed, then the session resolved — the close handler never ran and the watch (view mount pinning a transcript snapshot and the per-commit delivery loop) stays for the daemon's life. Against a ready session the handler registered in time 30/30. PHASE-03 widened the window to the whole store open + resume. Fix: register the close handler first; stop a stream that arrives on a destroyed socket; test by destroying a client before the session resolves and asserting the stream stops.
+"""
+disposition = "fix-now"
+response = "Fixed in malebolge f44240e: close handler registered before the awaits; a stream arriving on a destroyed socket is stopped. Test 'stops watching when a client leaves before the session resolves' observes the stream's closed promise; bite-checked 3/3 red against the old ordering."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge f44240e: close handler registered before the awaits; a stream arriving on a destroyed socket is stopped. Test 'stops watching when a client leaves before the session resolves' observes the stream's closed promise; bite-checked 3/3 red against the old ordering."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "pi-reviewer follow-on turn (session satan-b-review): verified against malebolge f44240e; F-1 ghost probe re-run shows the stream stopped."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "nit"
+title = "lockOf hides the environment close on a lock refusal"
+detail = """
+malebolge src/daemon-start.ts:43-49, call site :82 (at d23d619). `lockOf(path, environment)` reads as an accessor but closes the environment on InstanceLocked, hiding one of the D2 compensations outside the single teardown list in the catch (:100-109). Fix: inline the try/catch at the call site.
+"""
+disposition = "fix-now"
+response = "Fixed in malebolge f44240e: lockOf inlined into startDaemon (unknown-model check extracted to requireKnownModel to stay under eslint complexity)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge f44240e: lockOf inlined into startDaemon (unknown-model check extracted to requireKnownModel to stay under eslint complexity)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "pi-reviewer follow-on turn (session satan-b-review): verified against malebolge f44240e; F-1 ghost probe re-run shows the stream stopped."
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
