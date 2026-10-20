@@ -164,6 +164,147 @@ correct facts.
   grant only; flakes' base `commonPkgs` still puts `rg`, `curl`, `wget`,
   `python3` on every jail's PATH (offline here, so no egress).
 
+## PHASE-06 live verification (2026-10-20)
+
+Launcher: HEAD build `/nix/store/qchyc38x…-jailed-malebolge` (the devshell's
+`af3i…` was stale). Started detached (`setsid`) from `~`; a plain `nohup &`
+died with the tool's process group. First start refused, correctly:
+`satan-mcp not reachable at /run/user/1000/satan/mcp/mcp.sock` (Emacs's server
+process was dead, socket file stale); `satan-mcp-start`, then the daemon
+started:
+
+```
+malebolge: gateway/deepseek-flash · 37 SATAN tools · 0 skills · no project context
+malebolge: profile room · cwd /home/satan
+malebolge: session /home/david/.local/state/satan/durable/room/session.sqlite
+malebolge: attach  /run/user/1000/satan/durable/room/durable.sock
+```
+
+"no project context": `/home/satan` holds no context files (`.bash_history`,
+`doctrine/`, `.pi/`), so none is expected.
+
+### EN-2 (evidence)
+
+Room up (`/run/capsule-room/assistant/ssh.sock`); door file present;
+`~/.ssh/malebolge-vm.key` 0600; gateway client socket
+`/run/llm-gateway-client/api.sock`; `capsule assistant ssh satan`:
+`uid=1002(satan) gid=100(users) groups=100(users),2000(repos-read)`, pwd
+`/home/satan`; every `/work/<repo>` is `drwxr-x--- agent repos-read`.
+
+### VA-1 / EX-1 — negative probes inside the live jail
+
+Method: `nsenter -t <node pid> -U -m -n --preserve-credentials` (the daemon's
+own user, mount and net namespaces; distinct from the host's), jail PATH.
+
+| probe | result |
+|---|---|
+| connect 1.1.1.1:443 / [2606:4700:4700::1111]:443 | `ENETUNREACH Network is unreachable` (both) |
+| `curl https://example.com` / `http://1.1.1.1` | rc 6 (no resolver) / rc 7 |
+| 127.0.0.1:4000 (gateway forwarder) | connected — the one route |
+| `~/notes`, `~/dev/satan` (launch dir), `/workspace` | absent |
+| `durable/host` (state and runtime) | absent |
+| `/run/user/1000/satan` | only `durable/` (room) and `mcp/` |
+| `goad.sock` | absent |
+| `touch /run/capsule-room/assistant/probe`, `/run/capsule-room/probe` | Read-only file system |
+| HM door file (store symlink) | reads (`-r--r--r-- 65534`, `[door] home = "/home/satan"…`) |
+| `touch ~/satan-corpus/probe` | Read-only file system |
+| write `durable/room/` | ok (the profile's own) |
+
+### VA-4 / EX-4 — SATAN MCP egress audit (closure gate)
+
+**Criteria, stated before the sweep** (phase sheet). Sanctioned channel: the
+LLM gateway (CON-005, "no network beyond the gateway"). A tool is
+off-host-capable, hence blocking, if any path it starts can carry
+model-supplied arguments, or data it reads, to any other endpoint:
+C1 own network I/O; C2 hands content to a host process/service that sends it
+off-host; C3 writes where an automatic sync carries it off-host without a
+human act; C4 runs a command whose program/argv is model-influenced beyond
+fixed validated values, or a fixed command with a network mode reachable
+from model input. Self-test: a `notify_send` posting to ntfy is C2, a
+`fetch_url` is C1: both blocking.
+
+**Set**: live, `emacsclient (satan-mcp--interactive-tools)` → 37 tools,
+matching the daemon's "37 SATAN tools".
+
+**Host facts the classification rests on** (checked 2026-10-20):
+- No network primitive in the package besides two `:family 'local` servers/
+  clients (`satan-mcp.el:449`, `satan-patch-rpc.el:71`); grep for
+  url-retrieve / open-network-stream / smtp / curl / wget / http(s) URLs: none.
+- psql: `satan-db-default-host` `/run/postgresql` (local socket).
+- Notifications: `notifications-notify` (D-Bus) → owner `noctalia` (local
+  desktop shell); no phone mirror running (kdeconnect/gsconnect/valent/ntfy:
+  none).
+- Speech: `say -- TEXT` (`satan-announce.el:68`) → piper/kokoro → `pw-play`
+  on the default sink (`auto`). `--` stops `-d`/`-e` injection.
+- `~/notes`, `~/satan-corpus`: `autocommit` hourly, commit only ("Push stays
+  manual"; both repos ahead of origin, 10 / 14); global hook
+  `~/.config/git/hooks/post-commit` → `satan-git-post-commit`, no push.
+- Room (patch jobs' and the daemon's execution site), as satan: no DNS,
+  `curl http://1.1.1.1` rc 7.
+
+| tool(s) | path | class |
+|---|---|---|
+| satan_boot_context, org_read_context, motive_read, docs_{list,read,search}, activity_read, memory_{show_trace,resonate} | local reads (files, psql socket) | on-host |
+| notes_{grep,read,recent}, hippocampus_grep, notes_at_satan_scan | rg argv, pattern after `--` / fixed mark | on-host |
+| content_read | rg, query **without `--`** (`satan-tools-content.el:300`) | on-host — one argv element can't pair `--pre=` with a pattern (tested: rg refuses, no exec); worst case `--files`, a local listing. Defect filed, not egress |
+| vcs_log | `git -C <any dir> log` with fixed format | on-host — repo-config command hooks (e.g. `gpg.program`) need a planted `.git/`; no tool can write one (hippocampus: plain basenames; others: fixed targets) |
+| memory_mark | psql, local socket | on-host |
+| motive_replace, inbox_append, hippocampus_{write,overwrite,delete,rename}, proposal_stage, org_update_owned_block, notes_at_satan_{done,intervention_done} | local files under the corpus / notes roots | on-host (C3 checked: commit-only, push is the user's act) |
+| notify_send | D-Bus → noctalia | on-host |
+| speak | `say` → local TTS → default sink | on-host **today**; see note |
+| sway_border_set / _reset | swaymsg argv: class from a fixed list, colours schema-checked `#RRGGBB` | on-host |
+| patch_job_{create,status,result,cancel} | local unix socket → satan-runner → room (no egress; model via gateway) | on-host |
+
+**Result: zero off-host-capable tools. EX-4 met.**
+
+Note for the user (speak): PipeWire has an AirPlay sink `Draupnir`
+(`raop_sink…192.168.0.106`). The default sink today is the local USB DAC. If
+the default were switched to Draupnir, `speak` audio would leave the host
+over the LAN. Switching is a human act, like a push (C3's carve-out), so it
+is not classed blocking; raised here, not silently decided.
+
+### Smoke (pre-VA-2)
+
+`attach-main.ts` driven on stdin, one prompt → the agent's `bash
+{"command":"pwd; id; hostname"}` returned `/home/satan`,
+`uid=1002(satan) gid=100(users) groups=100(users),2000(repos-read)`,
+`capsule`. First live room exec from the jailed daemon: no ssh/known_hosts
+or HOME surprises.
+
+### VA-2 / EX-2 — RV-035 F-2, live, as satan
+
+Repo `goad-walk` (a smoke repo). Clone form: `git clone --no-local` (user,
+2026-10-20: no safe.directory; plain `git clone /work/<repo>` and in-place git
+are refused, "dubious ownership" — expected, not a defect). Both jobs were
+submitted by the jailed daemon itself through `patch_job_create` (the full
+SATAN-tool → runner path).
+
+- Job 1 `pj-01M5BGB60JKD2AP1FJHCHS3K41` ran 9 s (01:55:47–01:55:56Z),
+  `complete`, `needs_review`: too short for "during", so its probes count as
+  after (01:56:39 / 01:57:00): clone ok (`--no-local`); `touch`, append to
+  `SMOKE.md`, `mkdir .git/probe` → Permission denied.
+- Job 2 `pj-01M5BGDP6RB7E63CE9YVG690CF` (directive opens with `sleep 150`),
+  running 01:57:09–01:59:49Z, `complete`, `offending: []`, `needs_review`.
+  - **During** (01:58:37; `ps -u agent` shows the job's `sleep 150`, 87 s
+    elapsed): clone ok (HEAD 6fe3a49, the base); all three writes Permission
+    denied.
+  - **Concurrent daemon session** (attach, 01:58:38, inside the job window):
+    the agent's `bash` ran `git clone --no-local /work/goad-walk
+    ~/ex2-session` → ok. Session and job both completed.
+  - **After** (02:00:04): clone ok (HEAD 3839bab, the job's commit); all
+    three writes Permission denied; `/work/goad-walk` still `drwxr-x---
+    agent:repos-read`, `.git` `drwxr-xr-x agent:users`.
+  - **Job clone untouched by satan** (read as agent): `find . ! -user agent`
+    empty; no probe files; `git status` clean on `job/pj-…690CF`; HEAD's
+    stat is `SMOKE.md | 1 +`, last line `SL-027 PHASE-06 EX-2 probe 2`.
+- satan's scratch clones removed afterwards. Both jobs await the user's
+  reject (probe-only content).
+
+### VA-3 / EX-3
+
+As satan in the room: `command -v rg git` →
+`/run/current-system/sw/bin/rg`, `/run/current-system/sw/bin/git`.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-20 · PHASE-05 completed + RV-038 done, slice status started · satan 91a7fc0 · malebolge ca2e0ae
