@@ -1,0 +1,46 @@
+memory_uid = "mem_01a158f5d1a97100b0db5837648b5850"
+memory_key = "mem.fact.emacs.use-package-load-path-autoload-cookies-inert"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "use-package :load-path packages get no autoloads from ;;;###autoload cookies"
+summary = "A bare :load-path package has no generated autoloads file: list every entry command in :commands or a fresh Emacs lacks them"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["emacs", "malebolge"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "0c9e3dc5124118d400da2df0060240288e8149e3"
+ref_name = "refs/heads/main"
+checkout_state_id = "8479606090d7b9ec2b9231ed7e0111ab470407a6c8ae8aa2032fb537b772c02f"
+base_commit = "fec38b2a60d3572bcdd0bf29539b800cf8303adf"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-028"
+

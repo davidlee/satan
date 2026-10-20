@@ -1,0 +1,46 @@
+memory_uid = "mem_01a158f5d18a77538c9bcbfa585efe55"
+memory_key = "mem.fact.nix.flakes-feature-needs-profile-enable"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A new ~/flakes feature module is inert until a profile enables it"
+summary = "Registering features/<area>/<name>.nix in its area list builds nothing: add feature.<area>.<name>.enable in features/profiles/* and the features-test.nix selection expectation"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["nix", "flakes"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "0c9e3dc5124118d400da2df0060240288e8149e3"
+ref_name = "refs/heads/main"
+checkout_state_id = "a82fd8396f48ae24bbc161c6f57bea84eff8f95677a67bfa7fbcd072786913d6"
+base_commit = "fec38b2a60d3572bcdd0bf29539b800cf8303adf"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-028"
+

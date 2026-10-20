@@ -367,3 +367,15 @@ Evidence:
 
 For reconcile: design §5 code impact should list `features/profiles/personal-linux.nix`,
 `features-test.nix` and `~/.config/emacs/apps/dl-satan.el`.
+
+## Audit (2026-10-20) — RV-050 done
+
+Conformance by hand (slice conformance / verify-vt read only satan's git; F-2 tolerated).
+Suites green at HEAD: malebolge 1655, satan 1309 + `nix flake check`, `doctrine check gate`.
+Findings: F-1 design §5 omits seven delivered files (design-wrong → design §5 + selectors);
+F-2 tooling blind cross-repo (tolerated); F-3 SPEC-002:36 and REQ-015 stale (design-wrong →
+REV); F-4 EX-5 run with a refused socket, not an absent dir (tolerated). Brief in RV-050.
+
+Harvest: memories `mem.fact.nix.flakes-feature-needs-profile-enable`,
+`mem.fact.emacs.use-package-load-path-autoload-cookies-inert`. Phase sheets swept — nothing
+else durable beyond notes § PHASE-06.

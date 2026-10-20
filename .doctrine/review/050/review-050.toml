@@ -1,0 +1,122 @@
+id    = 50
+slug  = "reconciliation-review-of-sl-028"
+title = "reconciliation review of SL-028"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-028 across six repos: per-repo commit lists vs the selector
+registry and design §5 (slice conformance/verify-vt are satan-only, F-2); suites at HEAD
+(malebolge just check, satan just check + nix flake check, doctrine check gate; flakes
+just test/gate/home-build at a49c3f0b); live VA/VH evidence in notes § PHASE-06 vs design
+§6; §4.6 governance targets (SPEC-002:36, REQ-015). Four findings, none blocker; brief written.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-028"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Design §5 code impact: expected every delivered file listed; observed seven delivered files absent from §5 and the selector registry"
+detail = "Manual per-repo conformance (slice conformance is satan-only). Delivered but undeclared: malebolge src/coalesce.ts, src/reconnecting-client.ts (PHASE-02; notes:169-171), src/attach-main.ts (PHASE-04; notes:249), justfile (PHASE-04 4098b6b: daemon recipe comment); ~/flakes features/profiles/personal-linux.nix + features-test.nix (PHASE-06 a49c3f0b: the feature is inert until selected); ~/.config/emacs apps/dl-satan.el (PHASE-06 08367c7: :commands lacked malebolge-start/-stop, VH-1 failed from a fresh Emacs). Each was necessary and is recorded in notes; the design and the selector registry lag the work. Every design-target selector was delivered (none undelivered)."
+disposition = "design-wrong"
+response = "Reconcile, per-slice direct edit: design.md §5 table gains the seven files; selector registry gains them as design-target (doctrine slice selector add), the load-bearing change. See ## Reconciliation Brief."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Reconcile, per-slice direct edit: design.md §5 table gains the seven files; selector registry gains them as design-target (doctrine slice selector add), the load-bearing change. See ## Reconciliation Brief."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Conformance tooling: expected slice conformance / verify-vt to judge the slice; observed both blind to cross-repo paths"
+detail = "doctrine slice conformance SL-028: 33 undeclared (all satan .doctrine bookkeeping, SL-029's concurrent files, flake.lock), 21 undelivered (every cross-repo selector), 1 conformant (flake.nix). doctrine slice verify-vt SL-028: every VT UNATTRIBUTABLE 'not modified by this slice', including satan's own flake.nix (VT-2 PHASE-05). Selectors carry 'cross-repo: paths are in ~/dev/malebolge|~/flakes' notes, so the gap was known at plan. Substituted: per-repo commit lists (malebolge 3a39d16^..7d7cc08; ~ d73eddd5 a49c3f0b 62cebbe5; satan 9df0cf5; corpus ff80e21; emacs 827fb04 08367c7; notes 8f338e9 16a98a8) and each repo's suite green at HEAD (malebolge 1655 tests; satan 1309; nix flake check; flakes just test)."
+disposition = "tolerated"
+response = "The tools are single-repo by construction and the plan annotated every selector cross-repo; the audit substituted per-repo commit lists and green suites at HEAD (detail). No reconcile write: the registry is correct for what it can see. Recurs for any cross-repo slice in this repo."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "The tools are single-repo by construction and the plan annotated every selector cross-repo; the audit substituted per-repo commit lists and green suites at HEAD (detail). No reconcile write: the registry is correct for what it can see. Recurs for any cross-repo slice in this repo."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Governance: expected SPEC-002 and REQ-015 to describe the deployed daemon; observed both stale (design §4.6 defers them to reconcile)"
+detail = "SPEC-002 spec-002.md:36 Interactive daemon row, Runtime column: 'jailed launcher jailed-malebolge, room profile: no network' — no mention that it now runs as an on-demand user service (malebolge-room, ~ a49c3f0b). REQ-015 Rationale 'Tracked gaps: RSK-016.' — RSK-020 (pinned runner + live-tree daemon: two malebolge revisions in production) is not tracked. Design §4.6 drafts both as REV at reconcile; SPEC-002 D2: do not name the unit."
+disposition = "design-wrong"
+response = "Reconcile, REV: SPEC-002 interactive-daemon Runtime gains 'on-demand user service' without naming the unit (SPEC-002 D2); REQ-015 Rationale Tracked gaps adds RSK-020. See ## Reconciliation Brief."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Reconcile, REV: SPEC-002 interactive-daemon Runtime gains 'on-demand user service' without naming the unit (SPEC-002 D2); REQ-015 Rationale Tracked gaps adds RSK-020. See ## Reconciliation Brief."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "EX-5 / design VA-3: expected the start with /run/user/1000/satan/mcp absent; observed it run with the dir present and satan-mcp refusing"
+detail = "Notes § PHASE-06: unit started 21:13:05 with ECONNREFUSED on mcp.sock: journal '0 SATAN tools', unit stayed active; after satan-mcp-start the next input logged '37 SATAN tools' (21:22:08, same PID). The absent-dir path needs a fresh login (disruptive). Code equivalence: malebolge src/satan-tools.ts:135-141 maps any connect/list failure (ENOENT or ECONNREFUSED alike) to state unreachable; the launcher mkdir -p's the dir before bwrap (jailed-malebolge script line 31) so the bind never fails on absence; VT-2 (PHASE-02) covers the absent socket in test."
+disposition = "tolerated"
+response = "Equivalent on the code path (any failure → unreachable; launcher creates the dir before the bind) and the absent case is VT-2's in test; a fresh-login run would disrupt the user's session for no new branch. User was told and did not object (notes § PHASE-06)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "Equivalent on the code path (any failure → unreachable; launcher creates the dir before the bind) and the absent case is VT-2's in test; a fresh-login run would disrupt the user's session for no new branch. User was told and did not object (notes § PHASE-06)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
