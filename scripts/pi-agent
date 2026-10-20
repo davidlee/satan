@@ -37,6 +37,12 @@
 #                      inside it too, and detecting it there would nest jails.
 #                      Inside jailed-pi, $PWD is /workspace/<basename> and sibling
 #                      repos are /workspace/<name>: write prompt paths that way.
+#
+# `--no-extensions` is load-bearing, not hygiene. Without it the child loads the
+# project's doctrine pi extension, which runs install/bootstrap side effects in
+# whatever tree it was started in: a jailed scout rewrote this repo's
+# `.doctrine/state/boot.md` to name the jail's `/run/doctrine-bin/doctrine`, which
+# is wrong for every host session until it is regenerated.
 
 set -euo pipefail
 
@@ -128,6 +134,7 @@ timeout "${PI_BACKSTOP:-900}" "${PI_BIN:-pi}" --print \
   --tools "$tools" \
   --thinking "$thinking" \
   --session-dir "$SESSION_DIR" \
+  --no-extensions \
   --no-skills \
   --no-context-files \
   "$query" </dev/null || status=$?
