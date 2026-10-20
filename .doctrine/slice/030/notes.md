@@ -19,22 +19,37 @@ Four rounds (pi-research ×3, pi-scout ×1; raw: `research/raw/rv051-round{1,2,3
 
 **A further pass would probe:** an implementation-time read of sec-3 against the actual `daemon.ts` rewrite (turn queue, departure check, bind), since the lifecycle took three rounds to state consistently; and V-4/V-15's barrier mechanics against the `vi.mock` spy once written. No further design-time pass is needed: round 4 found only wording nits, folded in.
 
+## Plan review RV-052 (2026-10-21)
+
+Seven rounds (pi-research ×5, pi-scout ×2; raw in a session scratchpad, not kept): 24 → 10 → 8 → 4 → 5 → 5 → 1 findings, F-1..F-57, all fix-now and verified; concluded. Design-level findings amended sec-4/6/7 (run regressed to reviewing, adopted, re-locked rev 52 on user acceptance; RV-054 disposed conducted on RV-052's basis).
+
+Durable lessons (also in plan.toml criteria):
+- malebolge lint forbids every type assertion — the wire id narrows through `isConversationKey` (user's choice over a suppression or a scan).
+- `exactOptionalPropertyTypes` shapes optionals: `ConversationDefaults` requires `cwd`; options objects carry only defined members.
+- One macrotask does not guarantee a unix-socket server has read the hang-up (reviewer measured ~7/400 misses). Departure tests observe the server-side socket's `close` via a `serveUnix` recorder mocked in `test/daemon.test.ts` instead.
+- Negative assertions (no stream / nothing created / nothing submitted) need a control connection and a receipt guarantee, or they pass vacuously.
+- `attach-main.ts` runs at import, outside coverage — testable logic belongs in `attach.ts`.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-21 · plan (design locked, run dr-01a15954 rev 42; no plan yet) · cdc8ce9
+fresh-as-of: 2026-10-21 · ready (design re-locked rev 52; plan reviewed; phases materialised; none started) · 5e55f00
 
 ### Produced
 - scope authored (173f682), re-aligned to the decisions at inquiry and review; research round + architecture supplement (`research/`, gitignored)
 - malebolge RFC-002 — topics/conversations policy deliberation (malebolge c082433)
 - minted: ISS-053 — SPEC-002 transport row missing for the interactive daemon socket
-- design.md locked (7 sections; adversarial-then-human review)
-- decisions: DEC-104 (model creation default), DEC-105 (id lookup), DEC-106 (room faults per daemon), DEC-107 (cwd opaque string), DEC-108 (attach first frame; amended 2026-10-21), DEC-109 (conversations.ts; amended 2026-10-21, watch); ASM-007 (socket is attach authority)
-- RV-051 — design review ledger, 28 findings verified, pass conducted
+- design.md locked (7 sections); amended by plan review, re-locked rev 52
+- decisions: DEC-104..DEC-109 (DEC-108, DEC-109 amended 2026-10-21); ASM-007
+- RV-051 — design review, 28 findings verified, concluded
+- plan.toml / plan.md — 8 phases (order 01,02,03,04,08,05,06,07); runtime sheets materialised
+- RV-052 — plan review, 57 findings verified, concluded; RV-054 — design-amendment pass, concluded (basis RV-052)
 
 ### Learned
 - mem.fact.pi-durable.agent-defaults-and-ids — no default model; root({agent}) ignored on an existing root; ConversationId has no parser; configure merges per key; resume() is scheduler-wide
 - user direction: keep cwd an opaque string, no path semantics (DEC-107)
+- user direction: wire id narrowed by type predicate, never assertion (design sec-4, 2026-10-21)
+- notes § Plan review RV-052 — lint/tsconfig constraints, unix-socket close timing, negative-assertion controls
 
 ### Open
 - inq-7 follow-through (reconcile): malebolge RFC-002 table + wire sketch; ISS-053 note; REQ-004/REQ-010 deferral cited; ADR-017 §3 ledger untouched
-- further review probe at implementation: sec-3 lifecycle vs the daemon.ts rewrite; V-4/V-15 barrier mechanics (notes § Design review RV-051)
+- PHASE-04 VA-1: implementation-time read of sec-3 against the daemon.ts rewrite (the RV-051 probe, now a criterion)
