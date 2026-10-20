@@ -1,0 +1,9 @@
+Verified against the installed pi 0.99.1 executable's embedded JS during SL-029 / RV-043 F-6, 2026-10-20. Package: /nix/store/d3689api2w432k5zqya9i3vx1536hdl6-pi-0.99.1/libexec/pi/pi (94,725,600 bytes).
+
+AgentSession._handleAgentEvent forwards message_end (including assistant errors) before handling the message. _prepareRetry subsequently emits auto_retry_start, sleeps, and omits the failed message from FUTURE context; omission does not retract its already-emitted wire event. Inspected source near byte offsets 92,506,112 and 92,577,079.
+
+pi-ai retryAssistantCall emits onRetryScheduled after a failed produce(), onRetryAttemptStart before retrying produce(), and the caller later emits compaction_end with the final result. Inspected helper near 86,082,500 and AgentSession._summarizationRetryCallbacks near 92,576,035.
+
+In-memory control-flow probes extracted these installed functions, replaced sends/persistence/delays with stubs, and made NO model/network calls. Assistant error then success emitted message_end, auto_retry_start, message_end, auto_retry_end. Compaction error then success emitted summarization_retry_scheduled, summarization_retry_attempt_start, summarization_retry_finished, compaction_end. Each represented TWO stubbed sends; naively adding every message/compaction completion and every retry scheduling/start record counted THREE.
+
+Distinct event categories do not prove distinct provider sends. Any request counter needs reconciliation/state or an explicitly different unit, plus real retry fixtures. Revalidate on pi upgrades; docs/json.md's event inventory alone does not establish the complete ordering. Related transport context: [[mem.fact.harness.pi-transport]].

@@ -53,3 +53,18 @@ What this removes from the build: the static derivation (`flake.nix`), the
 posture switch and its `policy-invalid` cross-check, the start-up validation of
 launch-bound dirs, and the memory-buffered evidence path. What it keeps: every
 contract in sec-2, sec-4, sec-5, sec-6 and the per-call half of sec-3.
+
+
+## RV-046 F-1: the initial build refuses a static policy instead of guessing
+
+The build note above says the initial build ships per-call only, but left open
+what the server does when it *reads* `mode = "static"` — ignore it and run
+another posture, or take a bare host agent path. "Deferred" must not mean
+"unspecified at a security boundary".
+
+Rule for the initial build: `mode` accepts exactly `per-call`. A policy declaring
+`static`, or carrying any static-only field (`agent`, `root`, `filesystem`,
+`session_home`, `run_dir`, `evidence_dir`), is refused **`posture-unsupported`**
+at validation step 1, before any spawn. No downgrade to per-call, no agent-only
+fallback, no silent ignore of the field it could not honour. The static half of
+the design stays as the record of what a future build must implement.

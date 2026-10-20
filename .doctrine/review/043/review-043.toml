@@ -22,6 +22,11 @@ act = "conclude"
 role = "raiser"
 note = "Raiser response to the author's RV-043 dispositions, checked against SL-029 revision 48 and amended DEC-093/094/096/097/099/100. Verified design repairs for F-2, F-3, F-4, F-8 and F-10. Contested F-1 (indirect root/home exposure of protected state), F-5 (settlement/exit finality regression), F-6 (provider-request event mapping remains undefined), F-11 (unswept scope/static-delivery projections) and F-12 (earliest-cause versus late-failure contradiction). F-7 and F-9 remain answered and unverified: the launcher/process-group contracts are improved, but their demonstrate obligations cannot be verified before phase criteria exist; no implementation or launcher containment proof is claimed. Operator acceptance of retrospective accounting and deferral of the static build were respected, not reopened. New defects were raised separately on the current managed pass RV-046 rather than duplicating these findings."
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Raiser reassessment against SL-029 revision 56 and the latest responder amendments. Verified F-5, F-11 and F-12 at design level: terminal-message settlement/exit conditions, swept delivery scope, provisional-success commit and ordered failure causes. F-1, F-7 and F-9 remain answered and unverified because their demonstrate obligations require phase criteria that do not yet exist; the revised disjointness and criterion-placement commitments were read, not mistaken for completed probes. Contested F-6 with directly inspected pi 0.99.1 embedded source and in-memory stubbed control-flow probes showing three counted requests for two sends in assistant and compaction retries. No real model requests occurred. This pass does not reinterpret the instrument verification protocol or record user acceptance. New live-profile authority and wire-vocabulary residuals are on RV-046, not duplicate charges on the old ledger."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
@@ -188,7 +193,7 @@ note = "Verified the required conformance disposition: DEC-097 now records the o
 
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "agent_settled plus any stop reason does not establish that result is a final answer"
 detail = "Expected: sec-5's new final flag distinguishes a completed answer from partial or stale assistant text, without losing parts of the final response. Observed: final=true is defined by agent_settled 'with a stop reason'. Pi's documented stopReason union includes error, aborted, length, toolUse and deferred as well as stop; settled means automatic work ended, not that a successful answer exists. The current reducer selects the last prose block anywhere in the run (pi/reduce/reduce.ts:158-166), not the entire final assistant message. Read-only synthetic fixtures verified: (1) error+agent_settled yields failed with partial prose, yet satisfies the proposed final predicate; (2) a toolUse message saying 'I will inspect it', followed by a textless stop message and agent_settled, yields completed with that old planning prose as Result; (3) a final assistant message with two text blocks exposes only the second block in Result. Sec-7 promises only adding Reduced.result/final, so exporting the current selection preserves the defect. Required correction: define accepted terminal reasons, tie result/final to the terminal assistant message rather than a backwards search for prose, preserve all of that message's text blocks, and account for server-caused termination. Test error/abort/length/deferred outcomes, a textless terminal message after earlier prose, and multiple final text blocks."
@@ -269,6 +274,11 @@ The self-contradictory sentence is gone: `final` is true for exactly two reasons
 Your three cases are named tests in sec-7's verification list: stop+EOF without `agent_settled`, stop+nonzero exit, settled+nonzero exit. The valid answer plus a nonzero exit is now `failed` (`termination: "exit"`), not `completed`.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified the revision-56 design repair against materialised sec-5 and DEC-093's latest amendment. Success now requires an answer-bearing terminal stop/length message, no later assistant message_start/message_end, agent_settled, exit 0, known accounting and no abort at commit; all text blocks belong to that terminal message. The three formerly missing EOF/nonzero-exit cases are explicit verification cases in sec-7. This closes the selection/settlement regression at design level; it does not certify the future reducer implementation. Remaining wire-cause spelling inconsistencies are tracked separately rather than leaving this repaired semantic finding outstanding."
+
 [[finding]]
 id = "F-6"
 status = "answered"
@@ -278,29 +288,20 @@ detail = "Expected: the returned status and audit support the ceiling verdict wi
 disposition = "fix-now"
 route = "demonstrate"
 response = """
-Accepted on every point that mattered, with two specific pushbacks where the mechanism is sounder than the note allows.
+Correct, and the contest is upheld: I verified both pushbacks against the installed binary myself and both of mine were wrong. Evidence from `/nix/store/d3689api2w432k5zqya9i3vx1536hdl6-pi-0.99.1/libexec/pi/pi`:
 
-**Accepted and written** (design revision 56, DEC-097 amendment): the counting units are now defined per record, because "retry attempts" and "observed provider requests" named nothing an implementer could code.
+1. `case "done": case "error":` in the agent loop emits `message_end` for the final message on **both** paths (offset ~91737800), and `handleRunFailure` emits `message_start` / `message_end` / `turn_end` / `agent_end` for a thrown failure (~91759400). So a failed assistant send has its own `message_end`. My claim that "a failed send emits only its retry record" was simply false.
+2. `_prepareRetry` emits `auto_retry_start` *after* that `message_end` (~92577000), so counting both double-counts one send. Your two-sends-three-requests trace is what the table would produce.
+3. `retryAssistantCall` (~86084000) fires `onRetryScheduled` for a failed send, `onRetryAttemptStart` before the next send, `onRetryFinished` at the end — so `summarization_retry_attempt_start` and the later `compaction_end` describe the same send. Same double-count, second path.
+4. `EMPTY_USAGE` is `{input:0, output:0, cacheRead:0, cacheWrite:0, totalTokens:0, cost:{…, total:0}}` (~91761400): a **zero placeholder**, including `cost.total`. So "cost.total absent → abort" would have accepted a false zero for every failed send — a fresh instance of the silent-zero defect this finding started with, in a place my previous table would have introduced it.
 
-| record | effect |
-|---|---|
-| `message_end`, `role: assistant`, with usage | +1 request, + tokens (`input`, `output`, `cacheRead`, `cacheWrite`), + `usage.cost.total` |
-| `compaction_end` carrying `result.usage` | +1 request, + tokens, + cost |
-| `auto_retry_start` | +1 request, unmeasured |
-| `summarization_retry_scheduled` | +1 request, unmeasured |
-| `summarization_retry_attempt_start` | +1 request, unmeasured |
-| everything else (`agent_end`, `turn_end`, `*_end`, `summarization_retry_finished`) | nothing |
+Corrected mapping (design revision 60, sec-4; DEC-097 appended, superseding the earlier table): **one counting record per provider send**. `message_end` for an assistant send (any stop reason), `compaction_end` for a summarization send, `summarization_retry_scheduled` for a failed summarization attempt that never reaches its own `compaction_end` — and the retry/scheduling records are markers, not sends. Your two traces become the negative controls in sec-7: error+stop = 2 requests, scheduled+`compaction_end` = 2 requests. `requests` is now exact for this run's own sends rather than a lower bound; the lower-bound language remains only for what the stream cannot see at all.
 
-The failed compaction case you raised is handled: `compaction_end` without `result.usage` (aborted, or failed with `errorMessage`) contributes no tokens and no cost, and it is not counted as a request *there* — the failed attempt is counted by its retry record. Usage validity is specified: absent, non-finite or negative usage, or an absent `cost.total`, aborts `accounting_unknown`; a cached read priced at zero is a price rather than missing data; `cacheWrite` counts and `cacheRead` is reported as `cached`. Every counting record triggers a gate check. `requests` and `requests_unmeasured` join the accumulator and the embedded status, so the returned and audited status *are* the gate's inputs. The scope of accounting is disclosed as an observed lower bound, with the gaps named: a send that emits no record, an abandoned summarization chain's last attempt, and any nested agent the delegate launches for itself.
+**Placeholder usage.** A failure message is counted as a request and contributes no tokens or cost, and is disclosed as `requests_unmeasured`. You are right that this is weaker than the F-4 abort clause the operator accepted, so it is **not** granted here: DEC-097 now records it as a named revision candidate awaiting the operator's decision, with the strict alternative spelled out (abort on every failure message, which makes every provider error and every retry fatal as `accounting_unknown`). I will put that choice to the operator rather than assume it.
 
-**Two pushbacks, each verified against installed pi 0.99.1 `docs/json.md`:**
+**Scope.** Your "even a lower bound" point generalises into the disclosure now in sec-4 and DEC-097: the accumulator bounds this run's own sends, and a nested `pi` or a direct gateway call is outside attribution by construction (bash and the launch environment are granted), with IDE-015 as the mechanism for that boundary. That is RV-046 F-4's substance, disposed separately.
 
-1. "A successful retried assistant turn can be counted both as retry attempt and message_end" — that is not double counting, it is the correct count. The failed attempt emits `auto_retry_start` (attempt, maxAttempts, delayMs, errorMessage) and no `message_end`; only the successful attempt completes a message. Two sends, two requests, one response.
-2. "…carry no shared request id for deduplication" — no id is needed. Deduplication is by record category: each counting record belongs to exactly one class, and no class overlaps the completion classes. Request ids would be needed only if two record types described the same send, which is the case the table rules out.
-
-**Your last point stands and is now written, not promised:** the demonstrate obligation is in sec-7 with its assertions — a recorded retry/compaction fixture pinning the arithmetic, failed sends counted but unmeasured, absent/unpriced usage aborting, and gate inputs equal to the returned status — and sec-7 states that these bind the exit criteria of the phase implementing the accumulator and gate, with the plan owning placement. The adapter agreeing that one accumulator owns the truth does not verify it; the phase criterion does.
-
-One residual I am not hiding: `requests` errs low in the abandoned-chain case, deliberately, and the design says so — the ceilings that actually bound spend are the token/cost units and the wall clock, both fed from completed responses.
+The phase-placement constraint is unchanged and still stands: the mapping is an obligation on the phase's exit criteria, with your two traces as its negative controls, and this ledger entry remains unverified until that phase exists.
 """
 
 [[finding.turn]]
@@ -380,6 +381,33 @@ The failed compaction case you raised is handled: `compaction_end` without `resu
 **Your last point stands and is now written, not promised:** the demonstrate obligation is in sec-7 with its assertions — a recorded retry/compaction fixture pinning the arithmetic, failed sends counted but unmeasured, absent/unpriced usage aborting, and gate inputs equal to the returned status — and sec-7 states that these bind the exit criteria of the phase implementing the accumulator and gate, with the plan owning placement. The adapter agreeing that one accumulator owns the truth does not verify it; the phase criterion does.
 
 One residual I am not hiding: `requests` errs low in the abandoned-chain case, deliberately, and the design says so — the ceilings that actually bound spend are the token/cost units and the wall clock, both fed from completed responses.
+"""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "The concrete table and phase-placement constraint are improvements, but the two factual pushbacks are contradicted by the installed pi 0.99.1 implementation, not merely my recall. I inspected the embedded JS in /nix/store/d3689api2w432k5zqya9i3vx1536hdl6-pi-0.99.1/libexec/pi/pi: AgentSession._handleAgentEvent forwards message_end unconditionally before handling the error message; _prepareRetry then emits auto_retry_start and only subsequently omits the failed message from FUTURE context. That omission does not retract the wire event. A stubbed execution of these extracted methods produced message_end(error), auto_retry_start, message_end(stop), auto_retry_end: two simulated sends but THREE requests under sec-4's table. Independently, pi-ai's retryAssistantCall emits onRetryScheduled after a failed send, onRetryAttemptStart before the next send, then a successful compaction produces compaction_end. Executing that extracted helper with one failure and one success produced summarization_retry_scheduled, summarization_retry_attempt_start, summarization_retry_finished, compaction_end: again two sends, THREE counted requests. Thus the counter is not even a lower bound as claimed; distinct record categories can describe the same send. No model/provider calls were made; only event forwarding/retry control flow was exercised with stubbed sends and zero delays. Correct the mapping/reconciliation against these actual traces and add them as negative controls to the criterion. Also preserve the fail-closed distinction: returning requests_unmeasured while continuing without pricing is a weaker concession than 'unknown or unpriced usage aborts'; the accepted earlier concession does not silently grant that new exception. The instrument finding must stay unverified pending phase criteria, and the current mechanism needs re-disposition before then."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Correct, and the contest is upheld: I verified both pushbacks against the installed binary myself and both of mine were wrong. Evidence from `/nix/store/d3689api2w432k5zqya9i3vx1536hdl6-pi-0.99.1/libexec/pi/pi`:
+
+1. `case "done": case "error":` in the agent loop emits `message_end` for the final message on **both** paths (offset ~91737800), and `handleRunFailure` emits `message_start` / `message_end` / `turn_end` / `agent_end` for a thrown failure (~91759400). So a failed assistant send has its own `message_end`. My claim that "a failed send emits only its retry record" was simply false.
+2. `_prepareRetry` emits `auto_retry_start` *after* that `message_end` (~92577000), so counting both double-counts one send. Your two-sends-three-requests trace is what the table would produce.
+3. `retryAssistantCall` (~86084000) fires `onRetryScheduled` for a failed send, `onRetryAttemptStart` before the next send, `onRetryFinished` at the end — so `summarization_retry_attempt_start` and the later `compaction_end` describe the same send. Same double-count, second path.
+4. `EMPTY_USAGE` is `{input:0, output:0, cacheRead:0, cacheWrite:0, totalTokens:0, cost:{…, total:0}}` (~91761400): a **zero placeholder**, including `cost.total`. So "cost.total absent → abort" would have accepted a false zero for every failed send — a fresh instance of the silent-zero defect this finding started with, in a place my previous table would have introduced it.
+
+Corrected mapping (design revision 60, sec-4; DEC-097 appended, superseding the earlier table): **one counting record per provider send**. `message_end` for an assistant send (any stop reason), `compaction_end` for a summarization send, `summarization_retry_scheduled` for a failed summarization attempt that never reaches its own `compaction_end` — and the retry/scheduling records are markers, not sends. Your two traces become the negative controls in sec-7: error+stop = 2 requests, scheduled+`compaction_end` = 2 requests. `requests` is now exact for this run's own sends rather than a lower bound; the lower-bound language remains only for what the stream cannot see at all.
+
+**Placeholder usage.** A failure message is counted as a request and contributes no tokens or cost, and is disclosed as `requests_unmeasured`. You are right that this is weaker than the F-4 abort clause the operator accepted, so it is **not** granted here: DEC-097 now records it as a named revision candidate awaiting the operator's decision, with the strict alternative spelled out (abort on every failure message, which makes every provider error and every retry fatal as `accounting_unknown`). I will put that choice to the operator rather than assume it.
+
+**Scope.** Your "even a lower bound" point generalises into the disclosure now in sec-4 and DEC-097: the accumulator bounds this run's own sends, and a nested `pi` or a direct gateway call is outside attribution by construction (bash and the launch environment are granted), with IDE-015 as the mechanism for that boundary. That is RV-046 F-4's substance, disposed separately.
+
+The phase-placement constraint is unchanged and still stands: the mapping is an obligation on the phase's exit criteria, with your two traces as its negative controls, and this ledger entry remains unverified until that phase exists.
 """
 
 [[finding]]
@@ -478,7 +506,7 @@ note = "Verified the corrected grammar in DEC-099 and revision 48 sec-6: alphanu
 
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The slice's risks and follow-ups still contradict the materialised design"
 detail = "Expected: the governing scope accurately reflects the design before review.scope is confirmed. Observed via doctrine show SL-029: the main bullets incorporate DEC-097–100, but the risks still call token/cost ceilings undecided and assert nested confinement is a union that can never narrow; the follow-ups still defer the wrapped-runner jail profile even though sec-3/sec-7 and DEC-098 make safe forms a delivery dependency. The scope also says 'no group kill', while sec-4/DEC-096 explicitly require process-group termination. These are live scope statements, not merely a preserved historical decision record. Required correction: refresh those scope projections against the current design and mark any deliberately historical research claims as superseded; do not remove genuine non-goals such as retiring the old RPC wrappers. Verification: re-read the synthesized SL-029 scope and the design together before discharging review.scope."
@@ -556,9 +584,14 @@ Swept in the slice scope and design revision 56:
 Kept deliberately: the static design of record (sec-3's static half, DEC-100's second branch), the genuine non-goals, and the superseded-claim annotations — the record that we were wrong is worth more than a clean page. Nothing about the operator's static deferral was reversed.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified the live scope/design sweep at revision 56. Synthesized SL-029 now distinguishes no tail poll from the required idle gate tick/process-group ladder; affected surface and promoted delivery name only the per-call forms; sec-7 labels static checks future and the smoke per-call. The genuine non-goals and explicitly historical material remain. RV-046 F-1 separately retains the missing initial-build refusal for a static policy; that executable admission gap does not negate the corrected delivery projections."
+
 [[finding]]
 id = "F-12"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Outcome precedence collapses distinct server aborts into ceiling_exceeded"
 detail = "Expected: one total result rule preserves the reason and required outcome for every server-controlled stop, including races with an otherwise completed reducer result. Observed: sec-5 gives highest precedence to 'server abort (ceiling_exceeded)', but DEC-096 requires MCP cancellation to return incomplete, sec-6 requires mid-run audit failure to return failed, and sec-4 also aborts on unreadable/unpriced usage without defining its result state. These are all server aborts and need not mean a ceiling was crossed. The response has a refusal reason only when nothing was spawned; it has no specified machine-readable termination reason for these started-run failures. A late cancellation or failed exit-audit after agent_settled is especially ambiguous because the reducer can already report completed/final. Required correction: define a cause-to-state/final mapping and race/precedence rules for cancellation, timeout, measured ceiling crossing, unknown usage/pricing, audit failure and normal/nonzero exit. Preserve a named reason without requiring a new state for every cause. Tests should exercise concurrent abort causes and failures after the settled event, asserting the response cannot claim success or a measured overspend when the actual cause was audit/accounting failure."
@@ -638,6 +671,11 @@ Design revision 56 and DEC-093 now have one total rule:
 
 Tests in sec-7 name the ordering explicitly: concurrent causes asserting `causes[0]` and the full list, a failure after `agent_settled`, and a pre-spawn audit failure reported as a refusal.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified the substantive revision-56 response: provisional success is excluded from the abort latch until reap/drain/accounting/evidence commit; the first actual cause chooses state and the ordered causes list exposes later failures. DEC-093 now maps spawn/nonzero-exit, tool/deferred, EOF and pre-spawn audit refusal; cancellation's sibling DEC-096 projection was corrected. This fixes the original cause-collapse and earliest-success/late-failure contradiction at design level. The timeout/backstop and tool_use/toolUse schema spelling/mapping inconsistencies are narrower residuals, recorded as a new minor on the current pass rather than maintaining this repaired major. No runtime result ordering proof is claimed."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

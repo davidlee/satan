@@ -51,3 +51,26 @@ alnum at both ends, 1–64 characters, single-character ids valid:
 
 Tested on trailing period, underscore and hyphen (refused `session-invalid`
 before spawn) and on a valid one-character id.
+
+
+## RV-046 F-3: exclusion and binding are cross-process, not in-memory
+
+A stdio MCP server is per client, so two drivers run two server processes over the
+same `PI_MCP_SESSION_HOME`. An in-memory busy map passes a single-process test and
+still lets both processes write one pi session, or race a first-use binding.
+
+Corrected: the session lock and the (root, capability) binding are **files** in
+the server's own state directory, outside every child bind:
+
+- the lock is created atomically (`O_EXCL`) carrying pid, call id and start time;
+  a racing process fails the create and refuses `session-busy` before any side
+  effect, which is what makes "exactly one spawns" true across processes;
+- the first-use binding is written in the same atomic step, so two processes
+  cannot record different bindings for one session;
+- ownership is held through termination, reap and drain, and released last;
+- a lock whose recorded pid is no longer alive (crash recovery) is reclaimed, and
+  the reclamation is recorded in `attempts.jsonl` rather than done silently.
+
+Verification is two independent server processes sharing one state root: exactly
+one of two simultaneous same-session calls may spawn, including a first-use race
+with conflicting root/capability; the loser is refused before side effects.

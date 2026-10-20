@@ -76,3 +76,71 @@ Requests are an **observed lower bound** on provider sends, and the gaps are nam
 Usage validity: a completed response with absent, non-finite or negative usage, or without `cost.total`, aborts `accounting_unknown`. A cached read priced at zero is a price, not missing data. `cacheWrite` counts; `cacheRead` is reported as `cached`. Every counting record triggers a gate check, and the same accumulator produces the returned status.
 
 The policy artefact also carries `child_binds` — the fixed mounts the wrapped form adds beyond the root and the session directory — because the server cannot check disjointness (design sec-3) against binds it was never told about.
+
+
+## RV-043 F-6 (second contest): the mapping was wrong — one record per send
+
+Supersedes the counting table above. That table counted `auto_retry_start`,
+`summarization_retry_scheduled` *and* `summarization_retry_attempt_start` beside
+the completion records, and claimed "a failed send emits its retry record and no
+completion record". Inspected against the installed pi 0.99.1 implementation, the
+claim is false and the table over-counts:
+
+- the agent loop emits `message_end` for the final message on both its `done` and
+  its `error` stream events, and `handleRunFailure` emits `message_start` /
+  `message_end` for a thrown failure. A failed assistant send therefore has its
+  **own** `message_end`; `auto_retry_start` (emitted afterwards by
+  `_prepareRetry`) marks the retry of a send already counted.
+- in the summarization path `retryAssistantCall` fires `onRetryScheduled` for a
+  failed send, `onRetryAttemptStart` before the next one, and `onRetryFinished` at
+  the end, while the send itself lands as `summarization_retry_scheduled` (failed)
+  or `compaction_end` (completed). Counting `attempt_start` as well double-counts
+  the send that `compaction_end` reports.
+- traces verified without any provider call, by exercising the extracted control
+  flow with stubbed sends: error-then-stop = 2 sends, and scheduled-then-
+  `compaction_end` = 2 sends. The superseded table reported 3 for each.
+
+The corrected invariant is **one counting record per provider send**:
+
+| record | requests | tokens | cost |
+|---|---|---|---|
+| `message_end`, `role: assistant`, stop reason `stop` / `length` / `tool_use` / `deferred` | +1 | + `input`, `output`, `cacheRead`, `cacheWrite` | + `usage.cost.total` |
+| `message_end`, `role: assistant`, stop reason `error` / `aborted` | +1, unmeasured | — | — |
+| `compaction_end` (with or without `result.usage`) | +1 | + usage when present | as above |
+| `summarization_retry_scheduled` | +1, unmeasured | — | — |
+| `auto_retry_start`, `auto_retry_end`, `summarization_retry_attempt_start`, `summarization_retry_finished`, `agent_end`, `turn_end` | — | — | — |
+
+`requests` is therefore exact for this run's own sends, not a lower bound; the
+lower-bound language applies only to what the stream cannot see at all.
+
+### Placeholder usage, and the narrow clause this needs accepted
+
+`handleRunFailure` builds its failure message with `usage: EMPTY_USAGE` — zeros,
+including `cost.total: 0`. That is a placeholder, not an observation: a
+mid-stream abort may well have been billed. It is counted as a request,
+contributes nothing to tokens or cost, and is disclosed as `requests_unmeasured`.
+
+That is a **narrowing of the F-4 concession's abort clause** ("abort on unknown or
+unpriced usage; missing data is never headroom"), which the operator accepted on
+2026-10-20. It is recorded here as a revision candidate awaiting the operator's
+decision, not as granted:
+
+- asked for: the abort applies to **answer-bearing** messages (`stop`, `length`,
+  `tool_use`, `deferred`); a failure message's placeholder usage is counted,
+  unpriced and disclosed, because the run's verdict is already failure and no
+  further spend follows from that send except through its separately-counted retry.
+- if refused, the strict alternative is an abort on every failure message, which
+  makes every provider error and every retry terminate the run as
+  `accounting_unknown` — fail-closed, and it should be chosen rather than
+  silently weakened.
+
+### Scope of accounting (RV-046 F-4)
+
+The accumulator bounds this run's own provider sends. It cannot attribute a
+nested `pi`, a direct call to the reachable gateway, or spend whose only evidence
+is text in a tool result — and sec-3 grants bash plus the launch environment, so
+those are reachable by design. The ceiling is therefore a bound on the delegate's
+run, not on all spend its tools can cause; that limit is a stated conformance gap
+(a second one, beside the retrospective-accounting concession) rather than an
+implied guarantee, and a per-run gateway token with a spend limit (IDE-015) is the
+mechanism for closing it.

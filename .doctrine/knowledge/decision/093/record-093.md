@@ -48,7 +48,7 @@ F-12 defeated the precedence rule: every server abort collapsed into
 | terminal `length` | `completed` | true (truncated) | text |
 | terminal `error` / `aborted` | `failed` | false | null |
 | no terminal message, child exited | `incomplete` | false | null |
-| backstop fired | `timeout` | false | null |
+| `timeout` — the wall-clock backstop | `timeout` | false | null |
 | MCP cancel / stdin EOF / driver death | `cancelled` | false | null |
 | switch flipped mid-run | `cancelled` | false | null |
 | measured ceiling crossing | `ceiling_exceeded` | false | null |
@@ -80,7 +80,7 @@ The result carries `causes` (ordered by discovery) with `termination = causes[0]
 | stream ended with no terminal assistant message, exit 0 | `incomplete` (`eof`) | false | null |
 | child exited nonzero | `failed` (`exit`) | false | null |
 | spawn failed after the run directory was allocated | `failed` (`spawn`) | false | null |
-| backstop fired | `timeout` | false | null |
+| `timeout` — the wall-clock backstop | `timeout` | false | null |
 | MCP cancel / stdin EOF / driver death | `cancelled` | false | null |
 | switch flipped mid-run | `cancelled` (`switch`) | false | null |
 | measured ceiling crossing | `ceiling_exceeded` (`ceiling`) | false | null |
@@ -90,4 +90,13 @@ The result carries `causes` (ordered by discovery) with `termination = causes[0]
 
 Pre-spawn failures are refusals, never states: an audit append that fails before spawn discards the run directory and refuses `audit-failed`; an unwritable `attempts.jsonl` refuses `audit-unavailable`. `audit_failed` as a *state* exists only for a spawned run.
 
-And the reconciliation line the F-6 class needed: `status.state` judges the **stream**, `state` judges the **call**. They differ only when the deciding cause arose outside the stream (`exit`, `spawn`, `audit`, `accounting`, `backstop`), and `causes` names it.
+And the reconciliation line the F-6 class needed: `status.state` judges the **stream**, `state` judges the **call**. They differ only when the deciding cause arose outside the stream (`exit`, `spawn`, `audit`, `accounting`, `timeout`), and `causes` names it.
+
+## RV-046 F-6: one vocabulary for causes and outcomes
+
+`termination` and `causes` are the same vocabulary, and a token names the outcome
+rather than the mechanism: the wall-clock backstop's cause is `timeout`, matching
+its state, and `backstop` is not a cause token (it is the mechanism's name in
+prose). The tables above are corrected. A mapped outcome whose cause has no token
+is a schema defect, not a naming preference, and the test asserts every mapped
+outcome satisfies the advertised result schema.

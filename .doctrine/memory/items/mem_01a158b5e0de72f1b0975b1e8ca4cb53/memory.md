@@ -1,0 +1,8 @@
+The `review_pass` line in `doctrine design show --format status` is a **coverage snapshot**, stamped when the run *enters* `reviewing`, and it goes STALE on the next content change. Observed on SL-029 during RV-043/RV-046 (doctrine 0.46.7/0.46.8, 2026-10-20):
+
+- `[review.pass]` in `.doctrine/state/slice/NNN/design.toml` records `review = "RV-NNN"` plus one fingerprint per covered section (`[review.pass.covered.covered] sec-1 = …`). STALE means "a covered section's fingerprint differs from the recorded one" — nothing to do with the review ledger's own state.
+- `doctrine review prime RV-NNN` refreshes the *code-selector* warm-cache (`review status` → `cache: current`). It does **not** touch the design run's pass binding, so re-priming never clears STALE.
+- `design apply --stage {to: reviewing}` while already `reviewing` is refused ("illegal stage move: reviewing → reviewing"), so a pass cannot be re-stamped in place.
+- The only way to stamp a fresh binding is to leave and re-enter: `stage {to: drafting}` then `stage {to: reviewing}`. That **allocates the next review id** (`RV-048` in this case) as the current pass and covers the current fingerprints — it does not rebind the existing pass. Each round-trip therefore mints an empty active review; the id it allocates is not chosen by the caller.
+- Consequence: any further content edit re-stales the freshly stamped pass. STALE is unavoidable until content freezes — a treadmill if you round-trip per edit cycle. Live with it while editing, and round-trip once at freeze if the lock gate needs a non-stale pass.
+- Side effect seen: the `design apply` that re-enters reviewing attempted a git remote fetch and printed `fatal: Could not read from remote repository`, then succeeded. Offline is tolerated.

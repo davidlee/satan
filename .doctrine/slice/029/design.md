@@ -14,7 +14,9 @@ The posture is an operator declaration in the policy artefact, fixed for the pro
 
 ## One policy artefact (DEC-097)
 
-A single read-only file, operator-published, carries: `mode`, `roots`, `maxima`, `profiles`, the wrapper forms (or `agent` in static mode), `child_binds`, `enabled`, `transcript_budget_bytes`. Read once per call so a change applies to the next call; an in-flight run keeps its snapshot, and the audit records the policy digest. Absent or malformed refuses everything: a delegate with no ceiling is unbounded spend.
+A single read-only file, operator-published, carries: `mode`, `roots`, `maxima`, `profiles`, the wrapper forms (or `agent` in static mode), `child_binds`, `enabled`, `transcript_budget_bytes`. Read once per call so a change applies to the next call; an in-flight run keeps its maxima snapshot, and the audit records the policy digest. The `enabled` switch is the exception and is re-read at every gate tick, because a switch read once is an admission gate rather than a halt (sec-4). Absent or malformed refuses everything: a delegate with no ceiling is unbounded spend.
+
+**This build serves one posture.** `mode` must be `per-call`; a policy asking for `static`, or carrying a static-only field (`agent`, `root`, `filesystem`, `session_home`, `run_dir`, `evidence_dir`), is refused `posture-unsupported` before anything spawns. It is never silently downgraded to another posture and never falls back to a bare agent on the host — that would be a different security story wearing the requested one's name (DEC-100 amendment).
 
 ## What it is not
 
@@ -30,9 +32,9 @@ pi_agent(prompt, profile, cwd?, session?, tools?, ceilings?, transcript_budget_b
 
 ## Validation order (fail closed, first failure wins)
 
-1. **policy** — absent or malformed → `policy-unavailable` / `policy-invalid`.
+1. **policy** — absent or malformed → `policy-unavailable` / `policy-invalid`; a posture this build does not serve, or a static-only field in an otherwise valid file → `posture-unsupported` (DEC-100 amendment).
 2. **enabled** — `enabled = false` → `disabled`.
-3. **profile** — must match `^[a-z][a-z0-9-]{0,31}$` and exist in the server's tracked profile directory (DEC-092); it must be listed in the policy → `profile-invalid` / `profile-unknown` / `profile-not-allowed`.
+3. **profile** — must match `^[a-z][a-z0-9-]{0,31}$` and exist in the server's **start-up profile snapshot** (DEC-092 amendment), not in a directory read per call; it must be listed in the policy → `profile-invalid` / `profile-unknown` / `profile-not-allowed`.
 4. **root** — canonicalised, existing directory, inside the allowlist by path components (DEC-095) → `root-missing`, `root-not-a-directory`, `root-not-allowlisted`. Static mode: a `cwd` other than the declared root → `cwd-not-supported`.
 5. **capability** — the profile's `filesystem` must match the posture: per-call, the required wrapper form must exist → `wrapper-unavailable`; static, the jail's mode must agree → `capability-mismatch`.
 6. **ceilings** — clamped to the maxima; a ceiling above a maximum is a refusal, not a silent clamp → `ceiling-above-maximum`.
@@ -67,7 +69,13 @@ Protected paths, by the harm each would do:
 | the run evidence directory (every run's), `attempts.jsonl` | unreachable — neither read nor write | tampering defeats the audit; reading it leaks other runs' transcripts and prompts |
 | the session home's *other* sessions — the home minus the active session directory — and the binding/lock metadata | unreachable | other sessions' histories are not this call's to read, and a forged binding crosses the session capability check |
 | the policy file | never writable (readable is tolerated) | it governs *other* calls — `enabled`, maxima, allowlists — i.e. authority the call does not have |
-| the tracked profile directory | not protected | a write-capable root already confers authority over the server's own code and flake forms, so guarding the profile documents would be theatre |
+| the tracked profile directory | not protected *as a store* — the live authority is the start-up snapshot below | the profile **documents** are source; the **snapshot** is what grants capability and tools |
+
+## Profiles are live authority, so the server snapshots them
+
+An earlier revision of this section called the profile directory unprotected because a write-capable root already owns the server's source. That equated editing source with deploying it, and it was wrong: profiles are read for every call and DEC-098 takes the filesystem capability *from the profile document*, so a delegate with a write root containing the checkout could rewrite a `read` profile into a `write` one and elevate a later call on another root, with no policy change and no deployment act.
+
+Corrected: the server loads, validates and **freezes** the tracked profiles at start-up — one snapshot, held for the process lifetime, its digest recorded in every run's audit `spawn` record. A profile edit on disk is therefore inert until the server is restarted, which is a deployment act rather than something a delegate can perform from inside a call. Startup refuses (`profile-invalid`, with the path) if the snapshot does not validate.
 
 Refusal, not masking. A mask (`--ro-bind /dev/null` over the store) means the server authoring bwrap args (REQ-009) and gives the posture a second confinement story; a refusal names the overlapping path and keeps one.
 
@@ -80,6 +88,8 @@ Two consequences, stated rather than discovered:
 
 (DEC-100 build-status note: the shape below stands as the design of record; the
 initial build ships per-call only. Read it as a specification, not a deliverable.)
+
+In this build the posture is refused at validation step 1 (`posture-unsupported`), so nothing below can activate; it is the design of record for whoever builds it.
 
 `makeJailedAgent { agent = pi-mcp; profile = … }`; the launch jail is the whole confinement. The policy restates what the jail decided — `root`, `filesystem`, `agent`, `session_home`, `run_dir`, `evidence_dir` — and the server validates at start-up that its own dirs are writable (`bind-unavailable`). Its bind set is fixed at launch and it cannot add a bind, so disjointness is a flake check on the launcher plus a start-up comparison against the policy's declaration, not a per-call refusal.
 
@@ -104,22 +114,24 @@ One reader parses each event (LF framing, no `readline`) and maintains the **sin
 
 | record | requests | tokens | cost |
 |---|---|---|---|
-| `message_end`, `role: assistant`, carrying usage | +1 | + `input`, `output`, `cacheRead`, `cacheWrite` | + `usage.cost.total` |
-| `compaction_end` carrying `result.usage` | +1 | as above | as above |
-| `auto_retry_start` (an assistant send failed) | +1, unmeasured | — | — |
-| `summarization_retry_scheduled` (a summarization send failed) | +1, unmeasured | — | — |
-| `summarization_retry_attempt_start` (a retried summarization send) | +1, unmeasured | — | — |
-| everything else — `agent_end`, `turn_end`, `*_end`, `summarization_retry_finished` | — | — | — |
+| `message_end`, `role: assistant`, stop reason `stop` / `length` / `tool_use` / `deferred` | +1 | + `input`, `output`, `cacheRead`, `cacheWrite` | + `usage.cost.total` |
+| `message_end`, `role: assistant`, stop reason `error` / `aborted` | +1, unmeasured | — | — |
+| `compaction_end`, with or without `result.usage` | +1 | + usage when `result.usage` is present | as above |
+| `summarization_retry_scheduled` | +1, unmeasured | — | — |
+| `auto_retry_start`, `auto_retry_end`, `summarization_retry_attempt_start`, `summarization_retry_finished`, `agent_end`, `turn_end` | — | — | — |
 
-A failed send emits only its retry record and never a `message_end`/`compaction_end` for that attempt, so a retried-and-then-succeeded turn is two requests and one response, and no record is counted twice. `agent_end.messages` replays turns already counted and is ignored for usage.
+The invariant is **one counting record per provider send**, and never two. The agent loop emits `message_end` for the final message on both its `done` and its `error` stream events, and `handleRunFailure` emits `message_start`/`message_end` for a thrown failure — so a failed assistant send still produces its *own* `message_end`, which is why `auto_retry_start` must not be counted as well: it marks the retry of a send already counted. In the summarization path `retryAssistantCall` fires `onRetryScheduled` for a failed send, `onRetryAttemptStart` before the next one and `onRetryFinished` at the end, while the send itself lands as `summarization_retry_scheduled` (failed) or `compaction_end` (completed, successfully or not). Verified traces: error-then-stop is 2 requests, scheduled-then-`compaction_end` is 2 requests. Both are negative controls in sec-7. `agent_end.messages` replays turns already counted and is ignored for usage.
 
-Requests are therefore an **observed lower bound** on provider sends, and this is stated rather than implied: a send that emits no record at all is invisible, as is an abandoned summarization chain's final attempt and any nested agent the delegate launches itself. Tokens and cost come only from completed responses, so a failed attempt is counted but not priced — it increments `requests_unmeasured` instead of being silently zero.
+**Placeholder usage.** A failure message carries `EMPTY_USAGE` — zeros, including `cost.total: 0` — which is a placeholder, not an observation. It is counted as a request and contributes nothing to tokens or cost: reading the zero as spend would understate, and reading it as an accounting failure would make every provider error and every retry fatal. It is classified **unmeasured** and disclosed as `requests_unmeasured`. The abort rule stays where the run's own accounting is meant to be complete — an *answer-bearing* message (`stop`, `length`, `tool_use`, `deferred`) whose usage is absent, non-finite, negative, or lacks `cost.total` aborts `accounting_unknown`.
+
+**Scope of accounting.** `requests`, `tokens` and `cost` describe this run's own provider sends. Two things are outside them and are named rather than assumed: a send that emits no record the parent stream sees (a nested `pi`, or a direct call to the reachable gateway — sec-3 grants bash and the launch environment), and spend whose only evidence is text inside a tool result. The ceiling is therefore a bound on the delegate's own run, not on all spend its tools can cause. The mechanism for the latter is a per-run gateway token (IDE-015), not this accumulator.
 
 A tick — every record that increments a unit, plus an idle poll bounded to about a second — evaluates:
 
 - ceilings — requests, tokens, cost, against the clamped maxima;
 - the wall clock — the hard backstop;
 - the **switch** — `enabled` re-read at the tick, so a flip halts an in-flight run through the ladder, audited `abort(switch)`, with no driver cooperation (DEC-097 amendment);
+- the **policy source itself** — the tick re-reads and re-parses the file. Absent, unreadable or malformed aborts the run through the ladder with cause `switch`, because a switch whose source cannot be read is not evidence that it is off. A brief window during a non-atomic rewrite halts the run: the operator publishes atomically (write, then rename), and fail-closed is the direction a control channel should fail in. Later calls are refused `policy-unavailable` / `policy-invalid` as usual;
 - usage sanity — a completed response whose usage is absent, non-finite or negative, or whose `cost.total` is absent, aborts `accounting_unknown`. A cached read priced at zero is a price, not missing data. Missing data is never headroom.
 
 The gate is **retrospective**: it aborts a crossing, it does not prevent the next request, and there is no provider output cap (DEC-097; operator-accepted conformance concession). Overshoot is bounded by observation latency plus one in-flight request's spend. The same accumulator produces the returned status, so enforcement and reporting cannot disagree (DEC-093 amendment).
@@ -135,7 +147,7 @@ One ladder for every trigger: SIGTERM to the group, 2 s grace, SIGKILL to the gr
 {
   "schema": "pi-agent-result/1",
   "state": "completed|failed|incomplete|timeout|cancelled|ceiling_exceeded|accounting_unknown|audit_failed|refused",
-  "termination": "stop|length|error|aborted|tool_use|deferred|eof|exit|spawn|backstop|cancelled|switch|ceiling|accounting|audit|refused",
+  "termination": "stop|length|error|aborted|tool_use|deferred|eof|exit|spawn|timeout|cancelled|switch|ceiling|accounting|audit|refused",
   "causes": ["timeout", "audit"],
   "session": "<id>",
   "final": true,
@@ -160,7 +172,7 @@ One ladder for every trigger: SIGTERM to the group, 2 s grace, SIGKILL to the gr
 
 ## Cause, state and precedence
 
-The table in DEC-093 is normative. Two rules apply it.
+The table in DEC-093 is normative. Cause tokens are canonical: they are the same vocabulary as `termination`, and no token names a mechanism where there is a name for the outcome — the wall-clock backstop's cause is `timeout`, which is also its state. Two rules apply the table.
 
 - **The abort latch defeats provisional success.** `completed` is provisional until the **commit point**: after the ladder, reap, stream drain, final accounting and the `exit` and abort evidence appends. A cause recorded before that point joins the latch and decides the state, so there is no ordering in which the run reports success while the reason it stopped was accounting or audit failure. After the commit point the result is immutable — nothing is left that can fail, because the return is the last step.
 - **`causes[0]` is the reported cause; the whole ordered list is returned.** Precedence among concurrent causes is order of discovery, and a later cause is never hidden behind an earlier one: an audit append that fails after a timeout reports `termination: "timeout"` with `causes: ["timeout", "audit"]`, and the audit carries both. `termination` is always `causes[0]`, and `state` is that cause's row.
@@ -182,7 +194,7 @@ One directory per run under `PI_MCP_RUN_DIR`, never inside the root, never bound
 
 - Minted when absent and returned; grammar alnum at both ends, 1–64 characters — the grammar pi itself accepts.
 - Bound on first use to (canonical root, filesystem capability); resuming otherwise is refused.
-- Same-session concurrency is refused (`session-busy`), not queued.
+- Same-session concurrency is refused (`session-busy`), not queued — **across processes**, not only within one. A stdio MCP server is per client, so two drivers run two servers over the same `PI_MCP_SESSION_HOME`; an in-memory busy map would pass a single-process test and still let both write one session. The lock and the binding are therefore files in the server's own state (never in a child bind): the lock is created atomically with `O_EXCL` carrying pid, call id and start time, and the (root, capability) binding is written in the same atomic step as first use. Ownership survives until reap, drain and lock release; a lock whose recorded pid is no longer alive is reclaimed and the reclamation is recorded in `attempts.jsonl`.
 - The child sees **one** directory: `<PI_MCP_SESSION_HOME>/<session-id>/`. Binding and lock metadata are server-side, outside every bind and inside sec-3's protected set. A session id is a bearer capability within the policy's trust domain and the design says so without pretending to authenticate callers.
 - In static mode the home is bound at launch, so the policy declares a single session, and the reachability of other sessions is stated as that posture's known limit.
 
@@ -191,7 +203,7 @@ One directory per run under `PI_MCP_RUN_DIR`, never inside the root, never bound
 Two sinks, both server-owned and outside every child bind — asserted by sec-3's disjointness check, not assumed from the bind list:
 
 - `attempts.jsonl` — server-level, one line per attempt that spawned nothing: policy unavailable/invalid, disabled, profile, root, capability, ceiling, session and child-view refusals, and any failure to allocate a run directory. Policy digest recorded when one was readable; no run directory required.
-- `<run>/audit.jsonl` — control decisions for a spawned run: `spawn`, `abort` (with usage at the gate and the cause), `timeout`, `exit`, `switch`, each with the policy digest.
+- `<run>/audit.jsonl` — control decisions for a spawned run: `spawn` (with the profile snapshot digest), `abort` (with usage at the gate and the cause), `timeout`, `exit`, `switch`, each with the policy digest.
 
 Enacted actions are covered by `<run>/events.jsonl` beside it. Control decisions and enacted actions together are the audit (SPEC-001 REQ-003); neither is claimed alone.
 
@@ -222,13 +234,15 @@ Five `pi-mcp` rows — request schema validation (1b), profile→tool allowlist 
 
 Offline, with a stub launcher and a stub pi:
 
-- validation order and every refusal token; argv exactness (no executable word, no `--`); capability→form selection; that no bwrap token appears anywhere in `pi/mcp`;
-- accounting: compaction included; a retried turn counted once per send; a failed send counted but unmeasured; absent, non-finite or unpriced usage aborts; returned status equals the gate's inputs — a recorded retry/compaction fixture pins the arithmetic;
+- validation order and every refusal token, including a valid-looking **static** policy refused `posture-unsupported` before spawn with no agent-only fallback path; argv exactness (no executable word, no `--`); capability→form selection; that no bwrap token appears anywhere in `pi/mcp`;
+- accounting: compaction included; **one request per send**, with the two verified retry traces as negative controls (error+stop = 2, not 3; scheduled+`compaction_end` = 2, not 3); a failure message counted but unmeasured; absent, non-finite or unpriced usage on an answer-bearing message aborts; returned status equals the gate's inputs — a recorded retry/compaction fixture pins the arithmetic;
 - result: error+settled, textless terminal message, multi-block terminal message, stale planning prose, `length` truncation, and the three settlement combos — stop+EOF without `agent_settled`, stop+nonzero exit, settled+nonzero exit;
 - precedence: concurrent causes (`causes[0]` and the full list), a failure after `agent_settled`, and a pre-spawn audit failure reported as a refusal;
 - evidence isolation, per-call: a hostile bash attempting truncate/unlink/replace of the audit from inside the child — refusal-with-intact-evidence or a fail-closed `audit_failed`, never a clean success; and the alias case, a policy whose root contains the evidence store refusing `view-overlaps-protected` before spawn, for both capabilities;
 - lifecycle: two concurrent calls plus a grandchild ignoring SIGTERM; cancel one, assert its subtree is gone after the grace, the other call and the server survive, and the session lock releases only after cleanup; a mid-run switch flip aborts;
-- sessions: minting and return, binding mismatches, busy refusal, grammar edges including a valid single character and trailing `.` `_` `-`.
+- sessions: minting and return, binding mismatches, busy refusal, grammar edges including a valid single character and trailing `.` `_` `-` — and **two independent server processes** sharing one state root, where simultaneous same-session calls spawn exactly one, the loser is refused before side effects, and a first-use race with conflicting root/capability binds exactly once;
+- authority integrity: mutate a tracked profile from inside an authorised `write` call and assert a subsequent call on another root keeps the snapshotted capability — the change takes effect only after a restart;
+- policy loss: delete and separately corrupt the policy during an idle run, with no driver cancellation, asserting a fail-closed abort, cleanup, and refusal of later calls;
 
 The demonstrate obligations above (child-view disjointness, accounting arithmetic, argv exactness, termination domain) bind the exit criteria of the phase that implements each mechanism; the design records the obligation and the assertion, and the plan owns the placement. None of them is verifiable before that phase exists.
 
@@ -237,4 +251,5 @@ One live smoke run, per-call posture, against deepseek-flash, recorded as eviden
 ## Out of scope, not precluded
 
 A non-pi agent behind the same MCP (the operator's codex/GPT review use case); steering and follow-ups; job handles; retiring the shell wrappers; the RPC→json migration of the spawn scripts.
+
 

@@ -220,3 +220,62 @@ Process notes worth keeping:
   as supported) is partly addressed here by labelling sec-1's static row
   "designed, not built here", but its fail-closed question for the deferred mode
   is untouched — do not treat it as discharged.
+
+## RV-046 dispositions and the accounting correction (design rev 56 → 60)
+
+RV-046's four original majors were still open plus two new ones (F-5 profile
+authority, F-6 token vocabulary). All six answered `fix-now`/`demonstrate`.
+RV-043 F-6 was contested again and the contest was upheld — it defeated my
+mapping, not its wording.
+
+**RV-043 F-6, corrected.** Verified independently in the installed pi 0.99.1
+binary: the agent loop emits `message_end` on both its `done` and `error` stream
+events, and `handleRunFailure` emits `message_start`/`message_end` for a thrown
+failure, so a failed send has its **own** `message_end`; `_prepareRetry` emits
+`auto_retry_start` afterwards, so counting both double-counts one send. In the
+summarization path `retryAssistantCall` fires `onRetryScheduled` for the failed
+send and `onRetryAttemptStart` before the next one, which `compaction_end` then
+reports — same double count. The superseded table reported 3 requests for 2 sends
+on both traces; the raiser's probes and mine agree. The invariant is now **one
+counting record per send**, and both traces are negative controls in sec-7.
+
+Also found while verifying: a failure message carries `EMPTY_USAGE` — zeros
+including `cost.total: 0` — so the previous "absent cost.total → abort" rule
+would have swallowed a **false zero** for every failed send. Failure-message usage
+is now classified *unmeasured* (counted as a request, contributes no tokens or
+cost, disclosed as `requests_unmeasured`).
+
+**Two decisions now need the operator, both recorded as candidates rather than
+assumed:**
+
+1. That unmeasured classification narrows the operator-accepted F-4 clause
+   ("abort on unknown or unpriced usage"). The strict alternative — abort on every
+   failure message — makes every provider error and every retry fatal as
+   `accounting_unknown`. DEC-097 carries the choice.
+2. RV-046 F-4's nested-spend limit (a bash-capable delegate can call another `pi`
+   or the gateway directly, invisible to the parent stream) is disclosed as a
+   second conformance gap, with IDE-015 (per-run gateway token) as the closing
+   mechanism. Accepting it as a limit is an operator decision at reconcile.
+
+**Other design changes at rev 60:** `posture-unsupported` refuses any static-mode
+policy in this build (no downgrade, no agent fallback); the switch tick now
+re-reads and re-parses the policy and fails closed with cause `switch` when it
+cannot; the session lock and first-use binding are cross-process files
+(`O_EXCL`, pid-checked stale reclamation recorded in `attempts.jsonl`); profiles
+are frozen into a start-up snapshot with a per-run digest, because profile edits
+are live authority while source edits are not; `timeout` is the canonical cause
+token and `backstop` is gone from the enum.
+
+**The STALE binding, diagnosed.** `[review.pass]` records one section fingerprint
+per covered section, stamped when the run *enters* `reviewing`. Re-priming
+refreshes only the code-selector cache, and `reviewing → reviewing` is refused, so
+a pass cannot be re-stamped in place: the only route is `drafting → reviewing`,
+which **allocates the next review id** (RV-048 came from that) and covers current
+fingerprints — and the next content edit restales it. So STALE is unavoidable
+while editing and is not a fault to chase; round-trip once at content freeze if
+the lock gate needs a fresh pass. Recorded as
+`mem.fact.doctrine.design-review-pass-coverage-goes-stale`.
+
+Side effects to tidy later: RV-048 is an empty active review the engine minted
+during the diagnosis. RV-043 and RV-046 remain active with their findings; they
+are not superseded by RV-048, which carries none.

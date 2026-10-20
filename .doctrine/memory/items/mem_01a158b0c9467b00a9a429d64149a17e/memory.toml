@@ -1,0 +1,43 @@
+memory_uid = "mem_01a158b0c9467b00a9a429d64149a17e"
+memory_key = "mem.fact.pi.retry-events-overlap-completions"
+schema_version = 1
+lifespan = "episodic"
+memory_type = "fact"
+status = "active"
+title = "pi 0.99.1 retry events overlap message and compaction completions; they are not independent send counts"
+summary = ""
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = ["pi/reduce/reduce.ts"]
+globs = ["pi/mcp/**"]
+commands = ["pi --mode json"]
+tags = ["pi", "accounting", "retry", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "9864e7441f36b84d31b94861f73d59e6b7445d4f"
+ref_name = "refs/heads/main"
+checkout_state_id = "3fe26435866ad6f156bc9abfc1a87851345b7da8618e1d5aeb07035e09787776"
+base_commit = "527f1abf52e562c71d9d1c12b054bcb8682be6f7"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+

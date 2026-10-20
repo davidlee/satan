@@ -1,0 +1,42 @@
+memory_uid = "mem_01a158b5e0de72f1b0975b1e8ca4cb53"
+memory_key = "mem.fact.doctrine.design-review-pass-coverage-goes-stale"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "The design run's review pass binding is a coverage snapshot; re-priming never clears it"
+summary = "STALE on a design run means the reviewed section fingerprints changed; re-priming only refreshes the selector cache, and re-entering reviewing mints a new pass id rather than rebinding"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = [".doctrine/state/slice/029/design.toml"]
+globs = []
+commands = []
+tags = ["doctrine", "design-run", "review", "gotcha"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7b5c3b88ad0eb9b2b65a1f02fc78bca7e1a61531"
+ref_name = "refs/heads/main"
+checkout_state_id = "30ffc8e156bcefabf464d4fcb386afc30b89eccca451d0f224fd9347157a59f8"
+base_commit = "bbcc14ae49733c20c65b706ec70ec00ea8e4f95b"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
