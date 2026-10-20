@@ -6,7 +6,7 @@ disposable phase sheet (`.doctrine/state/.../phase-NN.md`) that must survive
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-03 · malebolge f44240e
+fresh-as-of: 2026-10-20 · PHASE-04 · malebolge 7d7cc08
 
 ### Produced
 - PHASE-01 done — instance lock, `lockPath`, `serveUnix` claim (malebolge
@@ -18,6 +18,9 @@ fresh-as-of: 2026-10-20 · PHASE-03 · malebolge f44240e
   beforeInput), startDaemon, thin daemon-main (malebolge c0d3264..f44240e,
   pi worker via `--mode json` + pi-run-reduce); § PHASE-03
 - RV-042 — PHASE-03 code review (pi reviewer), 2 findings fixed + verified
+- PHASE-04 done — attach connect retry, malebolge-start/stop, docs
+  (malebolge bb55244..7d7cc08); § PHASE-04
+- RV-045 — PHASE-04 code review (pi reviewer), 3 findings fixed + verified
 
 ### Learned
 - mem.fact.malebolge.eslint-ignores-doctrine-state — typed eslint needs
@@ -224,3 +227,38 @@ pi-driving facts (folded into mem.pattern.satan.drive-jailed-pi-worker):
 - `--session-dir` must be under the bound cwd (jail `/tmp` is a fresh tmpfs);
   follow-on turns with the same `--session-id` then resume across runs.
 - The scout profile writes brief files into the repo; delete them after.
+
+## PHASE-04 (2026-10-20, done) — malebolge bb55244..7d7cc08
+
+C1 (attach retry) and C3 (docs) by jailed pi, session `satan-c`; C2 (elisp, verbatim
+from design §4.2) written by the orchestrator — reviewing it would have cost as much.
+Per-phase review RV-045 by pi session `satan-c-review`; 3 findings fixed + verified.
+
+Landed:
+- `src/unix-socket.ts` `connectUnixWaiting(path, { intervalMs, timeoutMs })`: retries
+  ENOENT/ECONNREFUSED, throws the last error; other codes throw at once. `codeOf` now
+  exported. `attach(…, wait = 200 ms / 10 s)`; on failure prints
+  `[cannot connect to <path>: <code>]` and rejects; `attach-main` exits 1 without a
+  stack on coded errors only (RV-045 F-1, F-3).
+- `emacs/malebolge.el`: `malebolge-unit`, `malebolge--systemctl`, `malebolge-start`,
+  `malebolge-stop` as design §4.2; no `require 'satan-mcp`.
+- README launch → `M-x malebolge-start`/`-stop`; dev recipes need `MALEBOLGE_PROFILE`
+  (F-2); refusal is per profile. internals: unit start path, startup order, per-input
+  refresh, residual race; stale "sets no MALEBOLGE_PROFILE" fixed (jail sets `room`).
+- Beyond plan (small, in scope): `just daemon`'s `emacsclient -e (satan-mcp-start)`
+  is `-`-prefixed, so a failed satan-mcp start no longer aborts the recipe — matches
+  the soft dependency the docs state. Socket test helpers (`socketPath`, `rejection`,
+  `staleSocket`) moved to `test/fixtures.ts`; daemon-start.test.ts's copies dropped.
+
+Evidence:
+- VT-1: `test/attach.test.ts` "attach: waits for the daemon" (ENOENT then served,
+  stale then served, bound spent → last code, EACCES fails < 1 s, give-up line).
+  Mutations (orchestrator + reviewer): ECONNREFUSED not retried, code filter removed,
+  bound removed — each caught.
+- VA-1 (host): `emacs --batch -Q` byte-compile with `byte-compile-error-on-warn` →
+  exit 0. Stub script (call-process, malebolge-attach, message): unbound satan-mcp →
+  "not loaded" + start + attach; `error` → message names cause + start + attach;
+  `user-error` → attach; systemctl status 1 → user-error with status and journalctl
+  hint, no attach; stop → `stop` verb. 10/10 PASS. Reviewer repeated it in the jail.
+- `just check` green: 1655 tests, lines 98.52%.
+- Not run: VH-1..3 — need the `malebolge-room` unit (PHASE-05/06).

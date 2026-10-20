@@ -1,0 +1,96 @@
+id    = 45
+slug  = "sl-028-phase-04-per-phase-code-review-malebolge-f44240e4098b6b"
+title = "SL-028 PHASE-04 per-phase code review (malebolge f44240e..4098b6b)"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "pi-reviewer"
+responder = "orchestrator"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "malebolge f44240e..4098b6b (attach retry, malebolge.el start/stop, README/internals/justfile), plus fix commits cc6f478 and 7d7cc08; probes: retry bound timing, backlog-full connect, mutation bite-checks, emacs --batch stubs, attach-main exhaustion."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-028"
+phase = "PHASE-04"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "An exhausted attach wait is silent for 10 s, then a raw Node crash dump"
+detail = "src/attach.ts:40-43, src/attach-main.ts:7: nothing is written before connectUnixWaiting; on exhaustion the rejection escapes attach-main uncaught (stack trace, exit 1). With Type=simple, a daemon that exits 1 at startup (InstanceLocked, missing gateway key) leaves systemctl start at status 0, so M-x malebolge-start shows 10 s of nothing then the dump, with no journalctl hint. Verified: MALEBOLGE_SOCKET=<absent> node src/attach-main.ts → 10.1 s silence, triggerUncaughtException ENOENT. Suggestion: turn the exhausted wait into one line naming the socket and the journalctl hint."
+disposition = "fix-now"
+response = "Fixed in malebolge cc6f478: attach writes '[no daemon at <path> (<code>); see journalctl --user -u malebolge-room]' then rejects; attach-main exits 1 without a stack on connect errors (others still throw). Test 'says why when it gives up…' (red seen: empty output). Probe: absent socket → 10.1 s, that line, exit 1. No 'waiting' line: unit startup races the listen routinely, so it would print on most starts."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge cc6f478: attach writes '[no daemon at <path> (<code>); see journalctl --user -u malebolge-room]' then rejects; attach-main exits 1 without a stack on connect errors (others still throw). Test 'says why when it gives up…' (red seen: empty output). Probe: absent socket → 10.1 s, that line, exit 1. No 'waiting' line: unit startup races the listen routinely, so it would print on most starts."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified (cc6f478): line then rethrow; attach-main exit 1, 0 bytes stderr; survives a pipe."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "nit"
+title = "README's just daemon claims omit the required MALEBOLGE_PROFILE environment"
+detail = "README.md:99-104: 'just daemon … from the working tree' and the second-daemon 'refusing to start' example assume MALEBOLGE_PROFILE is set; the devShell (flake.nix:126-130) sets none, and resolveConfig (src/config.ts:66-74) throws outside daemon-main's refusing-to-start try. Verified: env -u MALEBOLGE_PROFILE just daemon → 'MALEBOLGE_PROFILE is not set' stack trace. Suggestion: state the premise (environment from Configuration, e.g. MALEBOLGE_PROFILE=host just daemon)."
+disposition = "fix-now"
+response = "Fixed in malebolge cc6f478: README dev paragraph states the Configuration environment (MALEBOLGE_PROFILE). Also corrected the example: a host-profile just daemon holds a different lock from the room unit and is not refused; the refusal is per profile."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge cc6f478: README dev paragraph states the Configuration environment (MALEBOLGE_PROFILE). Also corrected the example: a host-profile just daemon holds a different lock from the room unit and is not refused; the refusal is per profile."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified (cc6f478): per-profile wording matches config lockPath; Configuration anchor resolves."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = "Give-up line says 'no daemon' for any coded error and hardcodes the room unit in a generic client"
+detail = "src/attach.ts:44-47: EACCES (live, unreadable socket) and EAGAIN (listener present, backlog full) print '[no daemon at …]'; 'journalctl --user -u malebolge-room' is printed for host-profile attaches too, and duplicates emacs/malebolge.el's customisable malebolge-unit. Verified by probes (chmod-000 listener; MALEBOLGE_PROFILE=host bogus socket). Suggestion: word by code, keep the unit hint out of attach()."
+disposition = "fix-now"
+response = "Fixed in malebolge 7d7cc08: '[cannot connect to <path>: <code>]'; no unit name in attach (malebolge-unit in the elisp stays the single home). Test updated; just check green (1655)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in malebolge 7d7cc08: '[cannot connect to <path>: <code>]'; no unit name in attach (malebolge-unit in the elisp stays the single home). Test updated; just check green (1655)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified by orchestrator on raiser's behalf: nit, wording-only change matching the suggestion; test asserts the exact line."
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
