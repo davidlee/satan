@@ -298,4 +298,34 @@ schema change.
   cancellation's grace is not recorded) is not covered by the settled text and is
   not tracked yet. It is a candidate backlog item at close.
 
+### Addendum — review of the reconcile arc (2026-10-21)
+
+A user-conveyed review of `de2a5b1..de36bec` raised six points. They were
+adjudicated on the artefacts:
+
+1. **Wall-clock-only maxima admitted with no spend ceiling.** Correct:
+   `gate.ts` leaves an absent limit unjudged. The user chose to require all
+   four units. `policy.ts` now refuses a missing `requests`, `tokens`,
+   `cost_usd` or `wall_clock_s`; the test that had passed a wall-clock-only
+   policy now refuses it (red, then green; pi suites 254/0). Design sec-1 is
+   amended; REQ-004 is amended through REV-013.
+2. **The concrete `child_binds` trigger.** Correct: `checkChildView` reads only
+   the policy's binds. A run directory under the persisted home, with a
+   `child_binds` that omits it, is unrefused. Named as IMP-048's acceptance.
+3. **The baseline moved the guard boundary.** Correct by construction. Sec-3
+   now says the shared `piMcpJail` call is trusted by review, not tested.
+4. **The probe still needs the model to run it.** Correct. Recorded in sec-7
+   verification as an accepted residual, with the deterministic alternative
+   named.
+5. **Member-wise where set-wise was owed.** Recorded as a memory
+   (`mem.pattern.review.equality-assertions-need-exhaustiveness`), with the F-7
+   lesson as a second memory.
+6. **Bookkeeping.** The `flake.lock` part is contested: the PHASE-09 form store
+   paths rebuild byte-identical from committed `3f0affa` (`74l6…-pi-mcp-read`,
+   `dl2n…-pi-mcp-write`), because the lock bump came after the runs. The bump
+   and its memory belong to another session and are left for it (user
+   decision). The reconcile code outside every boundary row is now recorded in
+   `notes.md`. The operator policy doc is IMP-049. The slice status and the
+   answered housekeeping findings are `/close`'s.
+
 Reconcile pass complete — handoff to /close.

@@ -1197,3 +1197,13 @@ Owed to `/reconcile`, in addition to RV-055 § Reconciliation Brief:
    now a plain confinement probe (one marker append, framed honestly), not an
    attempt to truncate, unlink and forge the audit. The reason is RV-055 F-7: a
    probe that depends on the model complying with an attack proves nothing.
+
+### Reconcile code outside every boundary row
+
+`de36bec` (and the follow-up "all four maxima" commit) changed
+`pi/mcp/policy.ts`, `policy.test.ts` and `gate.test.ts` at reconcile: the user's
+decision to close the unbounded-`maxima` gap (RV-053 F-16 item 2, then the arc
+review's point 1). These commits are in no phase's delta: PHASE-09's row is still
+`bba7d87`, like the F-6 and F-7 repairs. `slice conformance` stays quiet
+because `pi/mcp/**` matches, so read the registry as covering the phases' code,
+not all of the slice's code. Same family as RV-055 F-2.

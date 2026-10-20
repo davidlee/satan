@@ -1,0 +1,46 @@
+memory_uid = "mem_01a15b68b0197ee09dc59ab733e1ea10"
+memory_key = "mem.pattern.review.equality-assertions-need-exhaustiveness"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Auditing an equality check: verify the reference set is exhaustive, not that each named member matches"
+summary = "When a check asserts actual == expected, cross-checking each expected member against the source proves membership, not completeness; enumerate the actual set and diff it"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["review", "audit", "nix"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c920a01423806f941ae1820b91c50be9170c171e"
+ref_name = "refs/heads/main"
+checkout_state_id = "72af5ec5a042d430244401e8813a10b596bef86a3c561653049184656ef54df2"
+base_commit = "de36bececee2af277d49fc63ccbb7f8f68c0b166"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-055"
+

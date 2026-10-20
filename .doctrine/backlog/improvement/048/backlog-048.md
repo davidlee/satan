@@ -23,3 +23,13 @@ Shape: `child_binds: {path, exposure: "read"|"read-write"}[]`, and a check
 (flake-side or a server start-up probe against the configured form) that the
 declared set covers the baseline's host paths. Keep the release-independence
 constraint: compare against a derived baseline, never a copied bind list.
+
+**Concrete trigger (acceptance must cover it).** The generator always binds the
+persisted home `~/.local/share/jail.nix/home/agent` read-write at `~`. An
+operator who sets `PI_MCP_RUN_DIR` (or `PI_MCP_SESSION_HOME`) under that path
+and publishes a minimal `child_binds` that omits it gets no refusal:
+`checkChildView` builds the child view only from the policy's `child_binds`
+(`pi/mcp/childview.ts`), so no member contains the run directory, and the child
+can write the audit. That is two lines of operator configuration and a total
+audit bypass. Acceptance: this configuration is refused before spawn, whether the
+policy declares the bind or not.

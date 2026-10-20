@@ -25,7 +25,8 @@ on requests, tokens, cost and wall clock, with three properties weaker than "can
   such handler.
 - **The rest needs a per-run gateway token** (IDE-015), not this accumulator.
 
-The wall clock is the backstop that does not depend on reported usage: a policy
-whose `maxima` lacks `wall_clock_s`, or carries a non-positive maximum, is
-refused `policy-invalid`. REQ-004 stays `pending`; this records what holds, not a
+Every unit is bounded: a policy whose `maxima` lacks any of `requests`,
+`tokens`, `cost_usd` or `wall_clock_s`, or carries a non-positive maximum, is
+refused `policy-invalid`. The wall clock is the backstop that does not depend on
+reported usage, and it does not stand in for a spend ceiling (DEC-057). REQ-004 stays `pending`; this records what holds, not a
 promotion.

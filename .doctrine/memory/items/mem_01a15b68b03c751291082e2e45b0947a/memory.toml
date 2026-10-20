@@ -1,0 +1,46 @@
+memory_uid = "mem_01a15b68b03c751291082e2e45b0947a"
+memory_key = "mem.pattern.testing.adversarial-probe-must-not-need-model-compliance"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A confinement probe driven through an LLM must not depend on the model agreeing to attack"
+summary = "Prompting a delegate to destroy or forge evidence gets refused by aligned models, and the run then proves nothing; ask for a plain, honestly framed probe whose expected outcome is denial, keep a no-attempt-no-pass guard, or drive it with a fixture-owned tool"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["testing", "jail", "llm"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c920a01423806f941ae1820b91c50be9170c171e"
+ref_name = "refs/heads/main"
+checkout_state_id = "e8e6f220f4af2a3da74a8a02b027da88b5a6d51d0894ff70c0666ab35eaa1508"
+base_commit = "de36bececee2af277d49fc63ccbb7f8f68c0b166"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-055"
+
