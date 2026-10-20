@@ -1078,5 +1078,24 @@ role = "responder"
 disposition = "fix-now"
 response = "write resolves as writeLine does; EX-14 excepts the replaced tests."
 
+[[finding]]
+id = "F-57"
+status = "answered"
+severity = "minor"
+title = "Recorder construction: unannotated override params; hoisted holder cannot call imported recorder; items[0] dead text; closed() arming; barrier reset; citations"
+detail = "Scout round 7: tsconfig strict/noUncheckedIndexedAccess; test/daemon.test.ts:47-49 precedent; fixtures.ts:254-265; test spans :185-197."
+disposition = "fix-now"
+response = "EX-9 points at the :47-49 typing model, holder Recorder|undefined read with ?., socket via next(); closed() armed at creation; reset re-arms barrier; citations corrected (design sec-7 too)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "EX-9 points at the :47-49 typing model, holder Recorder|undefined read with ?., socket via next(); closed() armed at creation; reset re-arms barrier; citations corrected (design sec-7 too)."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
