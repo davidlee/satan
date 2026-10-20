@@ -107,3 +107,40 @@ background the server. A stdio MCP server launched by the driver satisfies this 
 construction — the child's parent is the server, the server's parent is the
 driver — but it must be stated, because "detach and poll" is the obvious wrong
 answer for a long delegate call, and it silently yields a dead jail and no result.
+
+## Correction: the wrappers are in-repo declarations, not cross-repo machinery
+
+An earlier note called the read-only form and the session-dir bind "cross-repo
+flakes/agents dependencies". Wrong on both counts:
+
+- `makeJailedAgent { agent = <derivation>; profile = …; extraOptions = … }`
+  already takes any executable and any profile, and `extraOptions` already
+  carries raw bwrap args in this repo's flake (`--ro-bind "$HOME/notes"`,
+  `flake.nix:159`). Both forms are a few lines in `satan/flake.nix`.
+- **But `profile = "research"` is not a read-only mode.** Profiles carry only
+  persisted home, network, and per-profile git/op-env defaults
+  (`jailed-agents.nix:205-232`). Read-only-ness is `mountLaunchDir`, whose true
+  branch rw-binds the launch dir (`:193-198`). A read-only root needs
+  `mountLaunchDir = false`, or a raw `--ro-bind "$PWD"` + `--chdir` in
+  `extraOptions`.
+
+Two real remaining items: the server must be a **derivation** to be passed as
+`agent = …` (today `bin/pi-mcp` is a repo shim — a `writeShellScriptBin` is
+enough), and the fork below.
+
+## Open fork: jail the server once, or the runner per call
+
+`agent = pi-mcp` is possible and would mean the *server* is the jailed process,
+children inheriting (intersection of authority). That shape and DEC-089's
+per-call wrapper are different products:
+
+| | jail the server once | wrapper per call (DEC-089/098) |
+|---|---|---|
+| roots | fixed at server launch | per call, arbitrary allowlisted root |
+| capabilities | one jail = one filesystem mode; read-only needs a second server | both modes in one server, selected per profile |
+| server's own writes | confined | unconfined (writes run/audit dirs) |
+| moving parts | wrapper only, no child jail | wrapper per call |
+
+MCP stdio configs are per-project anyway, so a server-per-project jail is
+defensible and simpler; it costs the multi-root, mixed-capability case. Not
+settled — it changes DEC-089 and DEC-098.

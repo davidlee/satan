@@ -1,0 +1,42 @@
+memory_uid = "mem_01a15875e09b7d41bb1cba1b060a7416"
+memory_key = "mem.fact.jail.profile-is-not-readonly"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A jail profile is not a mount mode: read-only comes from mountLaunchDir or raw args"
+summary = 'In flakes/agents, a profile (specDev|research|offline) carries only the persisted home, network, and per-profile git/op-env defaults (jailed-agents.nix:205-232). Read-only-ness is not a profile property: mountLaunchDir is a build argument whose true branch rw-binds the launch dir (--bind "$PWD" /workspace/<base>, :193-198). A read-only root means mountLaunchDir=false or an unsafe-add-raw-args --ro-bind for the launch dir, plus extraOptions. Pass the executable with agent = <derivation>; makeJailedAgent takes any agent.'
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "flakes", "harness"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "3bac40ddb30ae59361b46ef7db1494a7308140f3"
+ref_name = "refs/heads/main"
+checkout_state_id = "ddf998ab54d60e69bc1bfa2c15766e7de860c7da048bbbce0b60022deeccc6cb"
+base_commit = "164e0486da9fc11e3f63964a58ac46605a1832cb"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

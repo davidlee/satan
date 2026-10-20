@@ -1,0 +1,3 @@
+# A jail profile is not a mount mode: read-only comes from mountLaunchDir or raw args
+
+In flakes/agents, a profile (specDev|research|offline) carries only the persisted home, network, and per-profile git/op-env defaults (jailed-agents.nix:205-232). Read-only-ness is not a profile property: mountLaunchDir is a build argument whose true branch rw-binds the launch dir (--bind "$PWD" /workspace/<base>, :193-198). A read-only root means mountLaunchDir=false or an unsafe-add-raw-args --ro-bind for the launch dir, plus extraOptions. Pass the executable with agent = <derivation>; makeJailedAgent takes any agent.
