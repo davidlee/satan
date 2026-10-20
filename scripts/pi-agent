@@ -29,6 +29,14 @@
 #                      the JAIL provides; outside it a provider may hold no
 #                      credentials at all (`deepseek` does not), so a caller needs
 #                      a way to retarget without editing the profile.
+#   PI_BIN             the pi to run (default: pi). Outside the jail, `pi` holds no
+#                      gateway credential; set PI_BIN=jailed-pi, which runs pi in
+#                      the jail with the key and the gateway's model list (so the
+#                      profile's model resolves and PI_MODEL is unneeded). Explicit,
+#                      not detected: the jail binds $PATH, so `jailed-pi` is visible
+#                      inside it too, and detecting it there would nest jails.
+#                      Inside jailed-pi, $PWD is /workspace/<basename> and sibling
+#                      repos are /workspace/<name>: write prompt paths that way.
 
 set -euo pipefail
 
@@ -114,7 +122,7 @@ trap 'rm -rf "$SESSION_DIR"' EXIT
 # error (ISS-266). `timeout` is the backstop for the residual — a wedged run
 # fails loudly and non-zero rather than hanging forever.
 status=0
-timeout "${PI_BACKSTOP:-900}" pi --print \
+timeout "${PI_BACKSTOP:-900}" "${PI_BIN:-pi}" --print \
   --model "$model" \
   --system-prompt "$sysprompt" \
   --tools "$tools" \
