@@ -1,0 +1,27 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a158df-162b-7ed0-a727-97591c550fe1"
+recorded_at = "2026-10-20T10:32:57.643126787Z"
+kind = "friction"
+summary = "A design run's lock edge is satisfied by disposing its current pass, so minting a pass mints a way to release it"
+detail = """
+SL-029, 2026-10-20. The reviewing→locked edge lists three conditions: section attestations, a review disposition, and design acceptance. Two probes established how the disposition resolves:
+
+1. 'conducted' must name the pass the run is ON, not a substantively relevant one. Naming RV-043 (the pass that carried the five review rounds) was refused: 'the review-disposed act does not correspond to its rule: it disposes RV-043, which is not the pass this run is on (RV-048)'. A run can therefore never dispose a prior pass, only its current one.
+
+2. Disposing the current pass opened the edge with a live blocker elsewhere. RV-048 is the pass the engine minted automatically when the run re-entered reviewing (drafting→reviewing) during a diagnosis of the review-pass STALE binding; it carries no findings and its coverage fingerprints predate the current content. Disposing it as 'conducted' was accepted and cleared review-disposed, while RV-043 F-1 (a blocker, answered but not terminal) sat open on a different pass and held nothing.
+
+Consequence: the blocker/contested edge is evaluated per pass, not per slice. Any act that mints a pass — a stage round-trip, or a re-entry into reviewing — also mints a way past the edge, because the new pass trivially has no open findings. The slice-level close gate (an unresolved blocker on an active RV refuses audit→reconcile and reconcile→done) is separate and still bites, so the obligation is deferred rather than lost; but 'the design run is review-disposed' does not mean the slice's findings are closed.
+
+Mitigation to consider (not applied here): refuse 'conducted' for a pass whose recorded coverage fingerprints do not match current content, i.e. treat the STALE marker as a gate on this act rather than an advisory; or evaluate the edge across every active RV targeting the slice. Recorded by the responder driving SL-029's design run; the design was not changed."""
+
+[facets.execution]
+schema_version = 1
+interface = "cli"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

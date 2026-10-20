@@ -425,3 +425,31 @@ Content is frozen at rev 74 for the lock sequence. Not round-tripping
 `drafting → reviewing` to refresh the pass binding: the lock conditions are section
 attestations, a review disposition and design acceptance, none of which read that
 binding, and a round-trip would only mint another empty pass.
+
+## Locked at revision 80
+
+Sequence, all three conditions met by user acts recorded on their assent
+("then i'll take design-accepted and all sections reviewed and we can lock"):
+
+- `section-reviewed` × 7 (human lane, att-1..att-7) → 76, 77;
+- `review-disposed: conducted RV-048` → 75 (see the pass-disposal observation);
+- `design-accepted` → 78, citing the three recorded conformance limits;
+- `reviewing → locked` → 79, materialised 80.
+
+The engine's own line at the move is worth keeping: *"locked on an auditable agent
+claim of user acceptance — not authenticated proof of a human act."* That is
+exactly what happened — the acts are my record of your reply, not an authenticated
+human signature.
+
+Open and deliberately not closed: RV-043 F-1 (blocker) and F-6/F-7/F-9, plus all
+six RV-046 findings, remain `answered` on `demonstrate` routes. The block of phasing
+work now owed is to transcribe them into phase criteria — evidence isolation with
+the alias case, accounting with the credential-failure and retry controls, argv
+exactness, the termination domain, the static-policy refusal, the switch's
+fail-closed read, cross-process locking and atomic reclamation, profile-snapshot
+integrity, nested-spend disclosure, and the `timeout` vocabulary conformance test.
+F-1 still refuses audit→reconcile while it is unresolved, so the deferral has teeth
+at the slice level.
+
+Next: /plan (design is locked; plan.toml + phase sheets, or /dispatch to drive the
+phases in worktrees).
