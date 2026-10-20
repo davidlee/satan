@@ -373,90 +373,90 @@
         };
 
         jailPkgs = lib.optionalAttrs isLinux ({
-          jailed-pi = jailLib.makeJailedPi {
-            profile = "specDev";
-            allowSelfAsSubagent = true;
-            maxSubagentDepth = 2;
-            subagents = ["pi" "claude"];
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
-            gateway = piGateway;
-            inherit workspaceDeps;
-          };
-          jailed-pi-research = jailLib.makeJailedPi {
-            name = "pi-research";
-            profile = "research";
-            extraPkgs = projectPkgs;
-            extraOptions = corpusJailOptions;
-            gateway = piGateway;
-            inherit workspaceDeps;
-          };
-          jailed-claude = jailLib.makeJailedClaude {
-            profile = "specDev";
-            subagents = ["pi" "claude"]; # pi agents run nested on the pi gateway
-            maxSubagentDepth = 2;
-            extraPkgs = projectPkgs;
-            extraOptions = jailEnvOptions;
-            gateway = piGateway;
-            inherit workspaceDeps;
-          };
-          # jailed-codex = jailLib.makeJailedCodex {
-          #   profile = "specDev";
-          #   extraPkgs = projectPkgs;
-          #   extraOptions = jailEnvOptions;
-          #   inherit workspaceDeps;
-          # };
-          # jailed-zero = jailLib.makeJailedZerostack {
-          #   profile = "specDev";
-          #   extraPkgs = projectPkgs;
-          #   extraOptions = jailEnvOptions;
-          #   inherit workspaceDeps;
-          # };
-          SATAN-jailed-fake-harness = jailLib.makeJailedAgent {
-            name = "satan-fake-harness";
-            agent = satanFakeHarness;
-            profile = "offline";
-            extraOptions = satanJailOptions;
-            workspaceDeps = [];
-          };
-          satan-jailed-gptel-harness = jailLib.makeJailedAgent {
-            name = "satan-gptel-harness";
-            agent = satanGptelHarness;
-            profile = "specDev";
-            extraOptions = satanGptelJailOptions;
-            gateway = satanGateway;
-            workspaceDeps = [];
-          };
-          jailed-malebolge = jailLib.makeJailedAgent {
-            name = "malebolge";
-            agent = malebolgeDaemon;
-            profile = "offline";
-            mountLaunchDir = false;
-            extraPkgs = [pkgs.nodejs pkgs.openssh pkgs.socat];
-            extraOptions = malebolgeRoomJailOptions;
-            # No provider keys, so no 1Password wrapper: the key file is its only secret.
-            apiKeys = [];
-            useOpEnv = false;
-            workspaceDeps = [];
-            # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
-            workspaceDepsFromEnv = false;
-            # Its own persisted home, shared with no other jail (RV-035 F-6).
-            persistedHome = "malebolge";
-          };
-          jailed-shell = jailLib.makeJailedAgent {
-            name = "shell";
-            agent = pkgs.zsh;
-            profile = "specDev";
-            extraPkgs = projectPkgs;
-            subagents = ["pi" "claude"];
-            extraOptions = jailEnvOptions;
-            gateway = piGateway;
-          };
-          bubblewrap = pkgs.bubblewrap;
-        }
-        # The per-call forms are `packages` (nix build .#pi-mcp-read) and are
-        # swept by runnerSocketUnjailed like every jail.
-        // piMcpForms);
+            jailed-pi = jailLib.makeJailedPi {
+              profile = "specDev";
+              allowSelfAsSubagent = true;
+              maxSubagentDepth = 2;
+              subagents = ["pi" "claude"];
+              extraPkgs = projectPkgs;
+              extraOptions = jailEnvOptions;
+              gateway = piGateway;
+              inherit workspaceDeps;
+            };
+            jailed-pi-research = jailLib.makeJailedPi {
+              name = "pi-research";
+              profile = "research";
+              extraPkgs = projectPkgs;
+              extraOptions = corpusJailOptions;
+              gateway = piGateway;
+              inherit workspaceDeps;
+            };
+            jailed-claude = jailLib.makeJailedClaude {
+              profile = "specDev";
+              subagents = ["pi" "claude"]; # pi agents run nested on the pi gateway
+              maxSubagentDepth = 2;
+              extraPkgs = projectPkgs;
+              extraOptions = jailEnvOptions;
+              gateway = piGateway;
+              inherit workspaceDeps;
+            };
+            # jailed-codex = jailLib.makeJailedCodex {
+            #   profile = "specDev";
+            #   extraPkgs = projectPkgs;
+            #   extraOptions = jailEnvOptions;
+            #   inherit workspaceDeps;
+            # };
+            # jailed-zero = jailLib.makeJailedZerostack {
+            #   profile = "specDev";
+            #   extraPkgs = projectPkgs;
+            #   extraOptions = jailEnvOptions;
+            #   inherit workspaceDeps;
+            # };
+            SATAN-jailed-fake-harness = jailLib.makeJailedAgent {
+              name = "satan-fake-harness";
+              agent = satanFakeHarness;
+              profile = "offline";
+              extraOptions = satanJailOptions;
+              workspaceDeps = [];
+            };
+            satan-jailed-gptel-harness = jailLib.makeJailedAgent {
+              name = "satan-gptel-harness";
+              agent = satanGptelHarness;
+              profile = "specDev";
+              extraOptions = satanGptelJailOptions;
+              gateway = satanGateway;
+              workspaceDeps = [];
+            };
+            jailed-malebolge = jailLib.makeJailedAgent {
+              name = "malebolge";
+              agent = malebolgeDaemon;
+              profile = "offline";
+              mountLaunchDir = false;
+              extraPkgs = [pkgs.nodejs pkgs.openssh pkgs.socat];
+              extraOptions = malebolgeRoomJailOptions;
+              # No provider keys, so no 1Password wrapper: the key file is its only secret.
+              apiKeys = [];
+              useOpEnv = false;
+              workspaceDeps = [];
+              # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
+              workspaceDepsFromEnv = false;
+              # Its own persisted home, shared with no other jail (RV-035 F-6).
+              persistedHome = "malebolge";
+            };
+            jailed-shell = jailLib.makeJailedAgent {
+              name = "shell";
+              agent = pkgs.zsh;
+              profile = "specDev";
+              extraPkgs = projectPkgs;
+              subagents = ["pi" "claude"];
+              extraOptions = jailEnvOptions;
+              gateway = piGateway;
+            };
+            bubblewrap = pkgs.bubblewrap;
+          }
+          # The per-call forms are `packages` (nix build .#pi-mcp-read) and are
+          # swept by runnerSocketUnjailed like every jail.
+          // piMcpForms);
 
         # Every probe string of the launcher checks, and no other binding:
         # the I1 closure sweep excludes this one by name. Written literally,
