@@ -337,3 +337,25 @@ Both are `demonstrate` routes and remain unverified: the assertions are in sec-7
 the placement belongs to the phases. Raiser said the other repairs are explicit
 but their demonstrate routes stay pending phase criteria — no further prose
 verification is expected of this seat.
+
+## `--no-extensions` also disables MCP (design rev 66)
+
+Asked, checked, and worth writing down because it changes what a delegate can do:
+pi's MCP support is the **built-in extension** `builtin:mcp` (`docs/settings.md`),
+and `--no-extensions` "disables discovered, configured, and built-in extensions".
+So a bare `--no-extensions` child has **no `mcp__*` tools** — no doctrine MCP, no
+satan-mcp. Explicit `-e` paths still load, so `pi -ne -e builtin:mcp` keeps only
+MCP.
+
+That is the right default for this slice (the profiles are read/grep/find/ls/bash),
+and it closes ISS-052's actual complaint — the doctrine extension installing state
+in whatever tree it started in — without needing MCP to be off for that reason.
+Recorded in sec-3's executable contract as an explicit opt-in rule: a profile whose
+tool list names an `mcp__*` tool while the form omits `-e builtin:mcp` is refused
+`profile-invalid` at validation, rather than silently receiving fewer tools than it
+asked for. sec-7's argv assertion now checks exactly that pairing.
+
+Also verified for the compaction-window caveat: no built-in extension registers a
+`session_before_compact` handler (the only registrations are the durable-drive
+`before_compaction` hooks), so enabling `builtin:mcp` alone does not reopen the
+declined-summarization overcount.

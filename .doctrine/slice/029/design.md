@@ -97,6 +97,10 @@ In this build the posture is refused at validation step 1 (`posture-unsupported`
 
 ## Executable contract (both postures)
 
+Extensions are off, and that flag has a wider reach than its name suggests.
+
+`--no-extensions` disables *discovered, configured and built-in* extensions, and pi's MCP support is the built-in extension `builtin:mcp` (pi 0.99.1 `docs/settings.md`). A delegate run under a bare `--no-extensions` therefore has **no `mcp__*` tools at all** — no doctrine MCP, no `satan-mcp`, no corpus search — which is the right default for this slice's profiles (file and bash tools, per the tracked documents) and closes the ISS-052 route by which the doctrine extension rewrote state in whatever tree it started in. Explicit `-e` paths still load, so a profile that needs MCP tools makes the launch form pass `-e builtin:mcp`, which re-enables only the MCP built-in and still excludes every discovered extension. That opt-in is not silent: a profile whose tool list names an `mcp__*` tool while the form does not pass `-e builtin:mcp` is refused at validation (`profile-invalid`), because the alternative is a profile that asks for tools it will never receive. Verified against the installed build: no built-in extension registers a `session_before_compact` handler, so enabling `builtin:mcp` alone does not disturb sec-4's compaction-window rule.
+
 The launcher has the executable baked in and forwards arguments to it: `<launcher> --mode json …`, with no executable word and no `--` (DEC-098 amendment). Static mode names `agent` and requires pi plus its provider configuration in the launch closure and `PATH`; a launcher probe asserts reachability, because the flake's `piInJail` is false when the agent is the server. That probe, like the rest of the static path, is *future* (DEC-100 build status): the per-call forms are the deliverable.
 
 <!-- doctrine:section sec-4 -->
@@ -106,7 +110,7 @@ The launcher has the executable baked in and forwards arguments to it: `<launche
 
 The child is spawned as a **process-group leader** (its own session), so the ladder can signal `-pid` without reaching the server or a concurrent call — the jail sets `no-new-session` (`jailed-agents.nix:184`), so no group exists unless the server creates it. cwd is the root; the prompt goes to the child's stdin through a pipe the server closes; stdout is captured by the server into its **own evidence directory** (a path no child can open); stderr goes to a separate file. Never `2>&1`: stdout is JSONL only.
 
-`--no-extensions` is load-bearing (ISS-052). `--tools` replaces the selection. Lifetimes are coupled — the child is never backgrounded — but the group is independent, and those are different things (DEC-096 amendment).
+`--no-extensions` is load-bearing (ISS-052), and it also disables the `builtin:mcp` extension, so the child has no MCP tools unless the launch form adds `-e builtin:mcp` for a profile that needs them (sec-3's executable contract). `--tools`/`-t` applies to built-in, extension and custom tools, and replaces the selection. Lifetimes are coupled — the child is never backgrounded — but the group is independent, and those are different things (DEC-096 amendment).
 
 ## Gate
 
@@ -128,7 +132,7 @@ One reader parses each event (LF framing, no `readline`) and maintains the **sin
 
 The window is trustworthy because the session emits `compaction_start` only after preparation succeeded and the attempt is about to be made, emits `compaction_end` on its failure paths only inside the same `started` guard, and `retryAssistantCall` fires `onRetryAttemptStart` immediately before a retried send and `onRetryScheduled` only after a send returned an error. Verified traces: a plain success is 1; fail-then-success is 2; two fails then a success is 3; an all-fail chain is 3; an error-then-stop assistant pair is 2; **the overflow diagnostic with no open window is 0**. All are negative controls in sec-7. `agent_end.messages` replays turns already counted and is ignored for usage.
 
-**Residuals, stated.** A summarization declined *after* its window opened would count one request too many — reachable only through a `session_before_compact` extension handler, and the server runs `--no-extensions` (ISS-052), so it cannot occur in this build. A send whose failure emits neither `result.usage` nor a scheduling record would count one too few; that errs toward under-reporting requests, never toward unbounded spend, because tokens and cost come only from completed responses.
+**Residuals, stated.** A summarization declined *after* its window opened would count one request too many — reachable only through a `session_before_compact` extension handler, and the server runs `--no-extensions` (ISS-052); the sole opt-in, `-e builtin:mcp`, registers no such handler, so it cannot occur in this build. A send whose failure emits neither `result.usage` nor a scheduling record would count one too few; that errs toward under-reporting requests, never toward unbounded spend, because tokens and cost come only from completed responses.
 
 **`tool_use` and `deferred` are usage-bearing, not answers.** Two classifications meet at one record and must not be read into each other: a `message_end` with stop reason `tool_use` or `deferred` is a **counted request with priced usage** whose usage must validate, while both give `final: false` and `result: null` (sec-5). A message that issued a tool call paid for it; it did not answer.
 
@@ -246,7 +250,7 @@ Five `pi-mcp` rows — request schema validation (1b), profile→tool allowlist 
 
 Offline, with a stub launcher and a stub pi:
 
-- validation order and every refusal token, including a valid-looking **static** policy refused `posture-unsupported` before spawn with no agent-only fallback path; argv exactness (no executable word, no `--`); capability→form selection; that no bwrap token appears anywhere in `pi/mcp`;
+- validation order and every refusal token, including a valid-looking **static** policy refused `posture-unsupported` before spawn with no agent-only fallback path; argv exactness (no executable word, no `--`; `--no-extensions` present, and `-e builtin:mcp` present exactly when a profile names an `mcp__*` tool); capability→form selection; that no bwrap token appears anywhere in `pi/mcp`;
 - accounting: compaction included; **one request per send**, with the two verified retry traces as negative controls (error+stop = 2, not 3; scheduled+`compaction_end` = 2, not 3); a failure message counted but unmeasured; a diagnostic `compaction_end` with no open attempt window counting no request; absent, non-finite or unpriced usage on a usage-bearing message aborts; returned status equals the gate's inputs — a recorded retry/compaction fixture pins the arithmetic;
 - result: error+settled, textless terminal message, multi-block terminal message, stale planning prose, `length` truncation, and the three settlement combos — stop+EOF without `agent_settled`, stop+nonzero exit, settled+nonzero exit;
 - precedence: concurrent causes (`causes[0]` and the full list), a failure after `agent_settled`, and a pre-spawn audit failure reported as a refusal;
@@ -263,6 +267,7 @@ One live smoke run, per-call posture, against deepseek-flash, recorded as eviden
 ## Out of scope, not precluded
 
 A non-pi agent behind the same MCP (the operator's codex/GPT review use case); steering and follow-ups; job handles; retiring the shell wrappers; the RPC→json migration of the spawn scripts.
+
 
 
 
