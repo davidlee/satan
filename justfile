@@ -22,6 +22,7 @@ check-jails: malebolge-unbound
     nix build --no-link -L .#checks.x86_64-linux.harness-jail-profile
     nix build --no-link -L .#checks.x86_64-linux.runner-socket-unjailed
     nix build --no-link -L .#checks.x86_64-linux.malebolge-jail-profile
+    nix build --no-link -L .#checks.x86_64-linux.pi-mcp-forms
 
 # RV-035 F-1: the jailed-malebolge an impure devshell builds binds no
 # /workspace/ path, even with JAIL_WORKSPACE_DEPS set. `nix flake check` is

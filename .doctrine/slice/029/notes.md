@@ -635,6 +635,107 @@ as a refusal reason) and EX-9 naming the producers for `cancelled` and
 the `backstop` residue, `session: null`, `pi-run-status/2`) stay as plan.md lists
 them.
 
+## PHASE-09 evidence
+
+### Forms as declared (text-level)
+
+- `piMcpForms.pi-mcp-read` / `pi-mcp-write`, merged into `jailPkgs` so `nix
+  build .#pi-mcp-read` works and `runnerSocketUnjailed` sweeps them: each a
+  `pkgs.writeShellScriptBin` wrapping `jailLib.makeJailedPi { profile =
+  "specDev"; gateway = piGateway; mountLaunchDir = false; … }` named
+  `jailed-pi-mcp-<cap>`.
+- The chain: `…-pi-mcp-<cap>/bin/pi-mcp-<cap>` (the form script) →
+  `…-jailed-pi-mcp-<cap>/bin/jailed-pi-mcp-<cap>` (the gateway wrapper) → the
+  bwrap launcher of the same name in its own store path. The form script
+  consumes `$1` (the active session directory), exports it, and execs the jail
+  with `"$@"` only — no executable word, no `--`.
+- Check `checks.x86_64-linux.pi-mcp-forms`; probe data `jailProbes.pi-mcp`;
+  static (nix-free) half `pi/mcp/forms.test.ts`.
+
+### What ran and passed (this host)
+
+- `just check` → exit 0: lint (elisp paren check, `luau-analyze`), the Emacs /
+  luau / harness suites, and `pi-suites` — `node --test pi/reduce/*.test.ts
+  pi/mcp/*.test.ts`, 246 tests, 246 pass, 0 fail (the new
+  `pi/mcp/forms.test.ts` is 6 of them). The suites stay offline: no network, no
+  jail, no nix. The bwrap-token scan (EX-6) is one of them and is green: no
+  non-test `pi/mcp/*.ts` carries `--ro-bind`, `--bind`, `--tmpfs` or `bwrap`.
+- `bash -n bin/pi-mcp-hostile-audit` → clean; mode 755; no jail-flag token in it
+  (`--ro-bind`, `--bind`, `--tmpfs`, `bwrap`), asserted by `grep -nE`.
+- `bin/pi-mcp-hostile-audit` exercised end to end against a **stub form** (a
+  script that consumes `$1`, exports it and execs a stub `pi` emitting a
+  `tool_execution_start … "toolName":"bash"` record): intact audit + attempt
+  seen + `state: completed` → exit 0 with the evidence listing; a stub that
+  really truncated and replaced the audit → exit 1 naming the damage; no form /
+  not executable / ambient `PI_MCP_*` → exit 77. **Plumbing, not EX-7**: a stub
+  form has no jail, which is why the fixture cannot live in PHASE-06.
+- The `pi-mcp-forms` check's bash rehearsed against a hand-built launcher text:
+  expected shape → exit 0; one added bind → exit 1 with both sets and the
+  residue; one dropped bind → exit 1 with the residue. It has **not** run
+  against a built launcher — see below.
+
+### What did not run, and is not claimed
+
+This host has **no `nix` binary** (`/nix/store` is a transplanted snapshot,
+`/nix/var/nix` is empty), **no `/run/llm-gateway`** and no pi gateway key. These
+three were therefore not executed; they are recorded with one reproducible
+operator command each, not substituted.
+
+1. **The bind-set check (EX-3, VA-1).**
+   `nix build --no-link -L .#checks.x86_64-linux.pi-mcp-forms` (wired into `just
+   check-jails`). It reads the built launchers — form → gateway wrapper → the
+   launcher that carries the bind args — and requires the actual
+   `--bind`/`--ro-bind`/`-try` set to equal root + active session directory +
+   the generator's binds, printing both sets and the residue when they differ.
+   The expected words are `jailProbes.pi-mcp`; a generator bind that changes
+   fails the check rather than moving it. This is the only proof of the built
+   set: `pi/mcp/forms.test.ts` reads the flake's text and cannot see what the
+   generator renders.
+2. **The hostile fixture under the real form (EX-7, VA-3).**
+   `bin/pi-mcp-hostile-audit "$(nix build --no-link --print-out-paths .#pi-mcp-read)/bin/pi-mcp-read" "$PWD" "$HOME/.local/state/pi-mcp/sessions" "$HOME/.local/state/pi-mcp/runs"`
+   — gateway running and `~/.config/llm-gateway/keys/pi` issued (`just
+   system-switch`, then `llm-gateway issue pi …`). It prints the run directory,
+   the audit's size and records, and the verdict.
+3. **One live per-call smoke run against deepseek-flash (EX-5, VA-2).** Policy
+   published read-only outside the root, `forms.read` naming the built form,
+   `child_binds` the persisted jail home, and **`transcript_budget_bytes` set so
+   `status.transcript.bytes`/`elided` are exercised** — PHASE-08 EX-6's carried
+   obligation:
+   ```json
+   {"mode":"per-call","roots":["/home/david/dev/satan"],
+    "maxima":{"requests":6,"tokens":200000,"cost_usd":1.0,"wall_clock_s":300},
+    "profiles":["read"],
+    "forms":{"read":"/nix/store/…-pi-mcp-read/bin/pi-mcp-read"},
+    "child_binds":["/home/david/.local/share/jail.nix/home/agent"],
+    "enabled":true,"transcript_budget_bytes":4096}
+   ```
+   One command — the trailing `sleep` holds stdin open, because EOF is a cancel
+   trigger (DEC-103):
+   ```bash
+   { printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize"}'
+     printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"pi_agent","arguments":{"prompt":"Answer in one line: which directory are you in?","profile":"read","cwd":"/home/david/dev/satan","session":"smoke-1"}}}'
+     sleep 300; } | PI_MCP_POLICY="$HOME/.config/pi-mcp/policy.json" PI_MCP_RUN_DIR="$HOME/.local/state/pi-mcp/runs" PI_MCP_SESSION_HOME="$HOME/.local/state/pi-mcp/sessions" bin/pi-mcp
+   ```
+   Record from it: the returned `result`, `state`/`termination`/`causes`,
+   `status.transcript.bytes`/`elided`, and the run directory path.
+
+### Recorded limits of this phase's artefacts
+
+- The probe's expected bind list is written from the shared generator's
+  documented options: the jail's `/usr/bin/env`, the persisted home (where the
+  jail's `~/.pi` lives), the host doctrine install root, the host git-excludes
+  file, and the generated `~/.pi/agent/models.json` (whose store path the check
+  extracts with `sed`). Store hashes are folded on both sides, so a nixpkgs bump
+  is not drift; binds the generator passes through the runtime-closure `--args`
+  descriptor are outside the compared word-pairs by construction. A literal bind
+  the generator adds that this list does not name fails the check with both sets
+  and the residue printed — the designed failure mode, not a pass.
+- The fixture's pass shape admits `completed` only with the hostile bash visible
+  in `events.jsonl`: a clean `completed` over an intact audit with no attempt in
+  the stream is exit 1, because it is indistinguishable from a jail that was
+  never tested. `audit_failed` with evidence intact is a pass on its own
+  (fail-closed); a pre-spawn refusal is 77, since nothing was proven.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-20 · ready (plan authored, 0/9) · d2c794f
