@@ -861,7 +861,7 @@ PHASE-09 decision lands.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · 8/9 completed, PHASE-09 blocked · audit RV-055 · c01735f
+fresh-as-of: 2026-10-20 · status `audit`, 8/9 phases, PHASE-09 blocked · audit RV-055 · ad2988d
 
 ### Produced
 - nine phases implemented, one commit each (`47064a6` … `bba7d87`); PHASE-01..08
