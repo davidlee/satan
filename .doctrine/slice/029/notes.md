@@ -634,3 +634,30 @@ as a refusal reason) and EX-9 naming the producers for `cancelled` and
 `ceiling_exceeded`. The four other reconcile-time candidates (`final` ownership,
 the `backstop` residue, `session: null`, `pi-run-status/2`) stay as plan.md lists
 them.
+
+## Harvest
+<!-- single-copy: updated in place each harvest; ids only, never restated content -->
+fresh-as-of: 2026-10-20 · ready (plan authored, 0/9) · d2c794f
+
+### Produced
+- SL-029 plan authored as nine phases, one mechanism each, then revised after an
+  independent adversarial review — commits 4c9221b, 546bdd7, 51dcb0e, 98659fa, d2c794f
+- nine runtime phase sheets materialised (all `planned`); `verify-vt` reports zero
+  UNCHECKABLE rows
+- minted: DEC-103 — the three wire-contract additions the locked design left unnamed
+- minted: QUE-007 — the four design-record corrections owed at reconcile
+- research baseline restamped with its scope stated (local only — `research/` is
+  gitignored)
+
+### Learned
+- mem.pattern.doctrine.phase-sheets-not-refreshed — editing plan.toml does not refresh sheets
+- mem.fact.satan.research-dir-gitignored — a research restamp is never a commit here
+- mem.pattern.pi-subagents.capsule-tiering — builtin worker/delegate cannot spawn children
+- mem.pattern.doctrine.review-ledger-extraction — parse review-NNN.toml, not `review show`
+- mem.fact.pi.codemode-sandbox-broken — codemode fails in this deployment; use bash/python
+- mem.pattern.doctrine.knowledge-decision-edit — DEC ref, facet flags, separate status verb
+
+### Open
+- QUE-007 — fold the four design-record corrections at reconcile
+- RV-043 F-1 — blocker still `answered`; refuses audit→reconcile until PHASE-05/06/09 prove it
+- RV-046 F-1..F-6 — answered on `demonstrate` routes; the plan carries their criteria

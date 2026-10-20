@@ -1,0 +1,43 @@
+memory_uid = "mem_01a15945b88979b3af3af9c65cf8db0d"
+memory_key = "mem.fact.satan.research-dir-gitignored"
+schema_version = 1
+lifespan = "semantic"
+memory_type = "fact"
+status = "active"
+title = "Research artefacts are gitignored in the satan repo"
+summary = "A research restamp is not a commit; fresh clones have no research artefact"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = [".doctrine/slice/*/research/**"]
+commands = []
+tags = ["doctrine", "research"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7bee5746bb36bd9d328b992473ac4e1e4ec413df"
+ref_name = "refs/heads/main"
+checkout_state_id = "44bc7e6490e46b3d48457651e948658239393c59e39525260d89790e0d21005a"
+base_commit = "173f682784302d1d72071be17829c8a4aa4b9622"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

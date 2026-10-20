@@ -1,0 +1,31 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 7
+slug = "sl-029-reconcile-design-corrections"
+title = "SL-029 reconcile: fold the four design-record corrections"
+record_kind = "question"
+status = "open"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+question    = ""
+why_matters = ""
+answer      = ""
+answered_by = ""
+answered_on = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-029"
