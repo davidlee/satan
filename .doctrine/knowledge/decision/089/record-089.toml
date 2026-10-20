@@ -3,7 +3,7 @@ version = 1
 
 id = 89
 slug = "pi-agent-jail-root-per-call"
-title = "pi_agent launches the wrapped runner per call, with the call's cwd as its root"
+title = "pi_agent launches the wrapped runner per call, with the call's cwd as its root (root and session clauses amended by DEC-095, DEC-099)"
 record_kind = "decision"
 status = "proposed"
 created = "2026-10-20"

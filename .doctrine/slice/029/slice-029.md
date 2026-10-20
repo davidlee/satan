@@ -105,3 +105,15 @@ must place explicitly rather than inherit from a shell script.
   `CLAUDE.md`, and outside the jail the `deepseek` provider key is invalid.
 - The harness jail machinery stays in `flakes/agents`; revisit only if the server
   needs a profile of its own there.
+
+## Explicitly out of scope, not precluded
+
+The same server should later serve a **non-pi agent behind the same MCP** — the
+operator uses codex/GPT for architecture review, and the design goal is that a
+different profile set and model can ride the same surface. Nothing in this
+slice's contracts is satan-specific: the model and profile are already
+parameters (DEC-092), confinement is the flake's (DEC-091/098), and the policy
+artefact (DEC-097) names the wrapped forms rather than assuming pi. What does
+*not* transfer is the wrapper and the model: the jails are portable, the profiles
+and providers are not. Recorded so a later reader does not narrow the contracts
+to pi by accident.

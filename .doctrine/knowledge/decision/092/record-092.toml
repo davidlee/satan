@@ -3,7 +3,7 @@ version = 1
 
 id = 92
 slug = "pi-agent-profile-trust-boundary"
-title = "pi_agent resolves profiles only from its own tracked profile directory, under a strict name grammar"
+title = "pi_agent resolves profiles only from its own tracked profile directory, under a strict name grammar (filesystem authority amended by DEC-098)"
 record_kind = "decision"
 status = "proposed"
 created = "2026-10-20"

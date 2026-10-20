@@ -3,7 +3,7 @@ version = 1
 
 id = 90
 slug = "pi-agent-ceilings-outside-pi"
-title = "pi_agent owns wall-clock, request, token and cost ceilings, gated on the event stream with a one-response overshoot bound"
+title = "pi_agent owns wall-clock, request, token and cost ceilings — retrospective accounting, best-effort abort (guarantee amended by DEC-097)"
 record_kind = "decision"
 status = "proposed"
 created = "2026-10-20"

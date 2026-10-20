@@ -1,0 +1,39 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 97
+slug = "pi-agent-policy-provenance"
+title = "One operator-published policy artefact carries roots, ceilings, profiles and the switch; ceilings are retrospective accounting"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context      = ""
+choice       = ""
+alternatives = []
+rationale    = ""
+consequences = []
+decided_by   = ""
+decided_on   = ""
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "amends DEC-090: the ceiling guarantee is withdrawn"
+target = "DEC-090"
+
+[[relation]]
+label = "shapes"
+target = "SL-029"

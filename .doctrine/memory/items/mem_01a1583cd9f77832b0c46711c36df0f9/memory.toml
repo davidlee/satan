@@ -3,8 +3,8 @@ memory_key = "mem.fact.jail.nesting-is-additive"
 schema_version = 1
 memory_type = "fact"
 status = "active"
-title = "Nested jails are additive, never narrowing"
-summary = "An unjailed process inside a jail is jailed; a jailed process inside a jail gets the union of both jails. A nested jail can therefore never repair an outer profile's exposure, so the outer profile remains the containing guarantee and 'nested' never implies 'narrower'."
+title = "Nested jails intersect authority: an inner jail can narrow, never widen"
+summary = "A jailed process inside a jail carries the union of both jails' restrictions — i.e. the intersection of permitted authority. An inner namespace CAN narrow further (an inner ro-bind, a masked path) and can never widen; authority the mount namespace does not govern (inherited fds, credentials, reachable sockets) survives nesting. A nested jail proves less about reduced authority than it looks like it does."
 created = "2026-10-20"
 updated = "2026-10-20"
 
