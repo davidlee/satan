@@ -307,7 +307,10 @@
         # `pi-mcp-forms` check subtracts its binds, so whatever the generator
         # (jail.nix base, network, persisted home, gateway) binds cancels
         # rather than being listed here — a generator bump neither fails nor
-        # moves the check. Never a package: it exists to be compared against.
+        # moves the check. The baseline is the host exposure a per-call policy
+        # declares as `child_binds` (design sec-3): what the form adds beyond
+        # it is the call's root and session directory, nothing else. Never a
+        # package: it exists to be compared against.
         piMcpJail = name: extraOptions:
           jailLib.makeJailedPi {
             inherit name extraOptions;
