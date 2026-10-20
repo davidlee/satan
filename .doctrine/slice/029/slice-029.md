@@ -20,32 +20,40 @@ See `mem.fact.harness.pi-transport`.
 A stdio MCP server exposing one tool:
 
 ```
-pi_agent(prompt, cwd?, profile?, session?, tools?, jail?, backstop_s?)
-  → { state, result, transcript, status, transcript_path }
+pi_agent(prompt, profile, cwd?, session?, tools?, ceilings?, transcript_budget_bytes?)
+  → { schema, state, session, final, result, transcript, status, artifacts, refusal }
 ```
 
 - `pi/mcp/` is the server; `bin/pi-mcp` is the node shim (interpreter swappable,
   as `bin/pi-run-reduce` is).
-- Underneath: `pi --mode json`, prompt supplied by file, `timeout` as the sole
-  backstop, a per-run dir holding `events.jsonl`, `transcript.md` and
-  `status.json`. Process exit is completion — no fifo, no poll, no group kill.
-- `profile` names an agent profile (model + tool set, as `scripts/pi-agent`
-  resolves them). **Read-only by default**: write/edit tools are reachable only by
-  naming a profile that declares them, so write access is never ambient.
-- `session` maps to `--session-id`, so a delegate conversation continues across
-  calls without a long-lived process.
-- `jail` is **not** a bwrap switch in the server. Jail policy is project-specific
-  and lives in the flake, which wraps execution and exposes a wrapped form
-  (`jailed-pi`, `jailed-claude`); the server execs a wrapped runner and holds no
-  bwrap argv of its own. Consequence for the ledger: the execution/jail-profile
-  row belongs to `satan-flake` (the row-3b precedent), while the server owns
-  request schema validation, profile→tools, audit, ceiling and kill switch.
-- The result carries the reducer's transcript (budgeted) and the status record
-  verbatim; `transcript_path` names the artefacts for the rest.
+- Underneath: `pi --mode json`, prompt on the child's stdin, a backstop on the
+  wall clock, a per-run dir holding `events.jsonl`, `transcript.md`, `status.json`
+  and `audit.jsonl`. Process exit is completion — no fifo, no poll, no group kill.
+- **Two postures, chosen by the operator** (DEC-100): a wrapper per call
+  (default — many roots, one capability per profile) or a static launch-time jail
+  around the server (one root, one capability, and the server's own writes
+  confined too). The posture is never a per-call argument.
+- **One operator-published policy artefact** (DEC-097) carries the postures,
+  roots allowlist, ceilings, permitted profiles, wrapper forms and the enable
+  switch. Absent or malformed refuses everything.
+- `profile` is an identifier resolved only from the server's tracked profile
+  directory, never a path and never from the call's cwd (DEC-092); a profile
+  declares `filesystem: read | write` as a capability, and capability — not the
+  tool list — selects the wrapped form (DEC-098).
+- `session` maps to `--session-id`; it is minted and returned when absent, bound
+  to (root, capability) on first use, and same-session calls are serialised by
+  refusal (DEC-099).
+- **Ceilings are owned by the server and enforced retrospectively** (DEC-090,
+  amended by DEC-097): usage is counted from the event stream and a crossing
+  aborts the run. There is no admission gate, and the design says so.
+- The result carries the reducer's transcript (budgeted, soft) and the status
+  record verbatim, with `final` distinguishing an answer from partial text
+  (DEC-093). `artifacts` names the rest.
 - The reducer is **imported, not shelled out**: one implementation serves the
   shell entry point and the server.
 
-**Affected surface:** `pi/mcp/**`, `bin/pi-mcp`, `pi/reduce/**` (import only),
+**Affected surface:** `pi/mcp/**`, `bin/pi-mcp`, `pi/reduce/reduce.ts` (one added
+field), `flake.nix` (the wrapped forms and the static-mode derivation),
 `justfile` (test hook).
 
 **Verification intent.** TDD at the seams that can be tested offline: argv

@@ -12,3 +12,27 @@ DEC-089 said the session dir "must sit inside the bound root" because `/tmp` is 
 ## Consequence
 
 The session directory becomes part of the wrapper contract: the flake form must accept one extra rw bind. That is a second delivery dependency (with inq-5), and it should be a single flake change rather than two.
+
+
+## Addendum (2026-10-20): the session home is outside the jail, and bindable
+
+An external reviewer read this decision as "the session dir has to sit under the
+repo, which the jail mounts". That is not required, and it is worth stating the
+mechanism, because the wrapper's bind set is otherwise assumed fixed at build
+time.
+
+The wrapper is a generated shell script, and its raw bwrap args are expanded at
+run time. `satan/flake.nix:161` already binds `"$SATAN_RUN_DIR"` that way. So a
+per-call form can bind a **shared, persistent session home outside the tree**
+(`PI_MCP_SESSION_HOME`, default under `PI_MCP_RUN_DIR/sessions`) with a raw
+`--bind "$PI_MCP_SESSION_HOME" …` plus `--setenv`, and follow-on turns resume
+across runs without the repo hosting anything.
+
+Why this matters beyond tidiness: it is a reason for the server to exist. It
+mints the session id, binds the home, keeps the audit and the transcript beside
+it, and returns the id — so a reader-capability run on a read-only root can still
+carry a conversation forward, which no bare `jailed-pi` invocation can do.
+
+What is *not* optional: the bind must come from the flake form (raw arg plus
+`--setenv`), because the server does not assemble bwrap. That is a contract item
+on the per-call forms, recorded with the capability forms in DEC-098/DEC-100.

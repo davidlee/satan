@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1587eefd37e83b29f62adb96da288"
+memory_key = "mem.fact.jail.runtime-path-bind"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A generated jail wrapper can bind a run-time path via raw args and an env var"
+summary = """The flakes/agents wrapper is a shell script whose bwrap raw args expand at run time, so a path the flake cannot know at build time can still be bound: satan's own flake binds "$SATAN_RUN_DIR" this way (flake.nix:161). Consequence: a persistent session home (or run dir) outside the jail's static bind set is expressible with --bind "$VAR" + --setenv, which is how a jailed delegate keeps a session across runs without the repo hosting it."""
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["jail", "flakes", "pi"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "b4ce7cafed682cd947925cb4d6581913898fc9d4"
+ref_name = "refs/heads/main"
+checkout_state_id = "d17ea3ba429d978055d3ddcd150c70935bc2f164134badc09407ba88842a8457"
+base_commit = "1b566a678b08f0c4a008f463b71361071392fe24"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
