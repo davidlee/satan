@@ -7,8 +7,9 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 
 ## Overview
 
-All code is in `~/dev/malebolge`. The locked design (`design.md`, run
-dr-01a15954 rev 42) is the authority; this plan orders its code impact
+All code is in `~/dev/malebolge`. The design (`design.md`, run dr-01a15954;
+locked at rev 42, amended by plan review RV-052, re-lock pending — PHASE-01
+EN-1) is the authority; this plan orders its code impact
 (sec-7) into eight phases, each ending with `just check` green, and maps its
 verification rows V-1..V-15 onto phase VT criteria.
 

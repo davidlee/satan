@@ -470,5 +470,195 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-14 keeps toBe form and notes PHASE-06 re-edits; PHASE-06 EX-7."
 
+[[finding]]
+id = "F-25"
+status = "answered"
+severity = "blocker"
+title = 'PHASE-06: four until("[attached]\n") waits hang after the banner rename; F-24 inventory wrong'
+detail = "test/attach.test.ts:96,118,155,166 are until waits, :121,:131 toBe. Round 2 R-1."
+disposition = "fix-now"
+response = "PHASE-04 EX-14 and PHASE-06 EX-7 inventory all six sites correctly."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-14 and PHASE-06 EX-7 inventory all six sites correctly."
+
+[[finding]]
+id = "F-26"
+status = "answered"
+severity = "major"
+title = "V-11/V-14 pass vacuously if the departing frame never reaches the daemon"
+detail = "LineClient.close() destroys (test/fixtures.ts:188-190); no receipt evidence. Round 2 R-2."
+disposition = "fix-now"
+response = "PHASE-04 EX-9: close after write callback + one macrotask; V-13 as positive twin; LineClient.write returns Promise (EX-14)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "PHASE-04 EX-9: close after write callback + one macrotask; V-13 as positive twin; LineClient.write returns Promise (EX-14)."
+
+[[finding]]
+id = "F-27"
+status = "answered"
+severity = "minor"
+title = "PHASE-08 EX-2 'no attached or snapshot written' is unfalsifiable"
+detail = "writes to a destroyed socket are unobservable. Round 2 R-3."
+disposition = "fix-now"
+response = "Clause removed; EX-2 says so."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Clause removed; EX-2 says so."
+
+[[finding]]
+id = "F-28"
+status = "answered"
+severity = "minor"
+title = "PHASE-07 VT-1 keyword malebolge-stop pre-satisfied"
+detail = "README.md:97. Round 2 R-4."
+disposition = "fix-now"
+response = "Keyword 'restart the daemon'."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Keyword 'restart the daemon'."
+
+[[finding]]
+id = "F-29"
+status = "answered"
+severity = "minor"
+title = "VT keywords pin `export function` forms the design does not require"
+detail = "repo idiom export const (src/cwd.ts:6). Round 2 R-5."
+disposition = "fix-now"
+response = "Identifier-only keywords in PHASE-01 VT-2, PHASE-06 VT-3."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Identifier-only keywords in PHASE-01 VT-2, PHASE-06 VT-3."
+
+[[finding]]
+id = "F-30"
+status = "answered"
+severity = "minor"
+title = "Design sec-4 Configuration still says AgentChange where the plan says ConversationDefaults"
+detail = "design.md Configuration bullet. Round 2 R-6."
+disposition = "fix-now"
+response = "Design sec-4 Configuration amended (adopted)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Design sec-4 Configuration amended (adopted)."
+
+[[finding]]
+id = "F-31"
+status = "answered"
+severity = "minor"
+title = "PHASE-06 EX-5 old-daemon fake can drift from the real error text; empty snapshot renders nothing"
+detail = "src/protocol.ts:47; src/render.ts:163-164. Round 2 R-7."
+disposition = "fix-now"
+response = "EX-5: error text from parseClientMessage; snapshot with one user entry."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "EX-5: error text from parseClientMessage; snapshot with one user entry."
+
+[[finding]]
+id = "F-32"
+status = "answered"
+severity = "nit"
+title = "PHASE-04 EX-10 asserts nothing"
+detail = "Round 2 R-8."
+disposition = "fix-now"
+response = "Reworded as a checkable negative."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Reworded as a checkable negative."
+
+[[finding]]
+id = "F-33"
+status = "answered"
+severity = "nit"
+title = "plan.md overview still names rev 42 as the locked authority"
+detail = "Round 2 R-9."
+disposition = "fix-now"
+response = "plan.md overview amended."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "plan.md overview amended."
+
+[[finding]]
+id = "F-34"
+status = "answered"
+severity = "nit"
+title = "PHASE-04 lands a branch only PHASE-08 exercises"
+detail = "Round 2 R-10."
+disposition = "fix-now"
+response = "Stated in PHASE-04 EX-10; coverage headroom 98% vs 85%."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Stated in PHASE-04 EX-10; coverage headroom 98% vs 85%."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

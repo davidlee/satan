@@ -151,7 +151,7 @@ Ownership is immutable in pi's record, so the attach-time refusal of task-owned 
 ## Configuration (DEC-104)
 
 - `session.ts` keeps `root.configure(options.agent)` on every open. Its option comment becomes "applied to root on every open"; the module header drops "its root conversation" as the session's content in favour of "the store, and root opened as the default conversation".
-- `daemon-start.ts` builds one `AgentChange` `{ model, cwd: environment.cwd }` and passes it to both `openSession` (root) and `conversations` (defaults).
+- `daemon-start.ts` builds one `ConversationDefaults` `{ model, cwd: environment.cwd }` (assignable to `openSession`'s `AgentChange`) and passes it to both `openSession` (root) and `conversations` (defaults).
 - No conversation other than root is configured on open. `test/session.test.ts:106-121` keeps its meaning.
 - `harness.resume()` stays in `openSession`, before any client can attach; it resumes every conversation's unfinished work (risk, sec-7).
 
