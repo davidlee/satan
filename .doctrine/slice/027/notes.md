@@ -323,7 +323,7 @@ As satan in the room: `command -v rg git` →
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · PHASE-05 completed + RV-038 done, slice status started · satan 91a7fc0 · malebolge ca2e0ae
+fresh-as-of: 2026-10-20 · PHASE-06 completed + audit RV-039 done, slice status reconcile · satan f701f0f · malebolge ca2e0ae · ~/notes 945497e
 
 ### Produced
 - CON-005 (execution profiles), EVD-011 (two-client probe, room PATH)
@@ -342,6 +342,9 @@ fresh-as-of: 2026-10-20 · PHASE-05 completed + RV-038 done, slice status starte
 - PHASE-05: satan da34a44 (jailed-malebolge room profile; goad input removed; jailProbes.malebolge literal; `just malebolge-unbound` in check-jails), malebolge 89476f4 (README); EX-4 store moved to durable/host/
 - RV-038 (PHASE-05 code review, jailed-pi-research pass): done, 6 findings (1 blocker, 1 major, 3 minor, 1 nit); fixes satan 91a7fc0, malebolge ca2e0ae; F-2 design-wrong (door root + state dir, user), F-5 tolerated
 - vm-mode key ~/.ssh/malebolge-vm.key (public half in § Design errata)
+- PHASE-06: live VA-1..4 + VH-1 (§ PHASE-06 live verification); EX-4 egress audit: 0 off-host tools; satan 474d92d, a2f5fc6
+- RV-039 (audit, 2026-10-20): done, 7 findings verified (4 design-wrong, 1 fix-now ~/notes 945497e, 1 follow-up ISS-051, 1 tolerated); Reconciliation Brief RB-1..4, RB-G1..5; satan 285bab7
+- ISS-051 (content_read rg without --), IDE-013 (interactive executor profiles + taint rule; user idea, related CON-005/RFC-019/ADR-017/RSK-019)
 - cross-repo: oubliette IMP-022 (9127afe); oubliette IMP-023 (repo readers, RV-035 F-2); flakes:SL-015 incl. PHASE-05 (03dc0f0a)
 
 ### Learned
@@ -354,18 +357,8 @@ fresh-as-of: 2026-10-20 · PHASE-05 completed + RV-038 done, slice status starte
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- the devshell's `jailed-malebolge` lags HEAD until direnv reloads (the hello-durable comment was fixed, ~/notes 945497e, RV-039 F-5)
+- Next: /reconcile — consume RV-039's Reconciliation Brief (RB-1..4 direct edits to design.md, no adopt; RB-G1..5 governance). Then /close.
 - user to reject probe jobs pj-01M5BGB60JKD2AP1FJHCHS3K41, pj-01M5BGDP6RB7E63CE9YVG690CF (needs_review)
-- Audit RV-039 done (2026-10-20): 7 findings verified; Reconciliation Brief RB-1..4, RB-G1..5 in review-039.md. Next: /reconcile. PHASE-06 done: VA-1..4 + VH-1 met (§ PHASE-06 live verification). PHASE-05 done (satan da34a44, 91a7fc0; RV-038 done). The jailed daemon has never started live: first live start is PHASE-06/VA; expect ssh/known_hosts/HOME surprises. The identity bind is a hard `readonly`, so a missing key fails at bwrap start (covers the flakes-15 suggestion)
-- PHASE-05 for audit: §4.7 "devToolPkgs removed" leaves flakes commonPkgs (rg, curl, wget, python3) on PATH; F-2 door/state-dir binds deviate from §4.6 (errata)
-- PHASE-04 deviation for audit: `Config.cwd`/`toolsCwd` (PHASE-03 D3) removed; `DaemonEnv.cwd` is the one source
-- PHASE-02 deviations for audit: EX-10 matcher strips import specifiers (importers of runner/door.ts tripped DOOR_WORDS; the import edge is now pinned by the structure test, RV-036 F-1); run.ts reads `code` via `"code" in` (Degradation union); runner DOOR_KEYS.room derives from ROOM_DOOR_KEYS, so a room door missing ssh_config and identity now names identity first; design §4.1's host-key "re-exports" did not exist
-- user decision 2026-10-20: push ~/flakes first — PHASE-03 EN-2 (old jail refuses startup from PHASE-03 until PHASE-05); pushing ~/flakes is outward-facing: ask before doing it
-- VA/VH entry: flakes:SL-015, oubliette IMP-023, fleet `satan` user + `repos.readers` + key deployed
-- closure gate: SATAN MCP egress audit (design §6 VA) — met in PHASE-06 (zero off-host-capable tools)
-- reconcile-time: design errata (notes § Design errata) + DEC-075 amendment
-- flakes:SL-016 delivered (2026-10-20, flakes-15 handoff): door file live at `/home/david/.config/malebolge/door.toml` (HM symlink; use this literal, never a store path) for `malebolgeDoorFile`; content matches ROOM_DOOR_KEYS + home, host_key_alias `room-assistant`. flakes DEC-079: the key list is a cross-repo contract pinned in flakes `checks.<system>.satan-room` (features/satan/room-test.nix) — changing ROOM_DOOR_KEYS means telling flakes. ssh_config `%h` must stay `assistant` (HostKeyAlias does the known_hosts lookup). Suggestion for PHASE-05: launcher checks the identity key exists before starting (missing key fails at connect, not render).
-- safe.directory: never (user confirmed 2026-10-20). satan reads with `git clone --no-local /work/<repo>` (room.txt says so); PHASE-06 EX-2 uses `--no-local`.
-- oubliette IMP-023 resolved (oubliette 3c44a37, live checks passed 2026-10-20): satan can clone /work, cannot write; in-place git refused (no safe.directory). satan reads agent's clones via `git clone --no-local`. Decision: see safe.directory line above.
-- fleet: rooms.assistant.users.satan (uid, key above) + repos.readers = ["satan"] — oubliette/fleet side
-- reconcile-time: §4.9 revisions (ADR-017 ledger 3b, SPEC-002, SPEC-004, malebolge IMP-002/RV-001 F-4 note, DEC-072, IMP-037)
+- the devshell's `jailed-malebolge` lags HEAD until direnv reloads
+- standing (not this slice's to close): ISS-050 room-action audit gap (RV-035 F-5); RSK-019 egress-free MCP set by care; ISS-051; IDE-013
+- user decision 2026-10-20: pushing ~/flakes is outward-facing: ask before doing it
