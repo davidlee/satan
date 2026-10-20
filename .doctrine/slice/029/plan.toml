@@ -1,0 +1,276 @@
+# Implementation plan for SL-029 — the authored, durable phase plan.
+#
+# Runtime status lives under .doctrine/state/ (phase sheets) — never here.
+# Hand-edit freely: the tool reads this file but does not rewrite it.
+#
+# Paths are in this repo (the satan checkout). "design sec-N" cites
+# .doctrine/slice/029/design.md. Phase VT/EX ids are local to their phase.
+#
+# Routed design-review findings (route = demonstrate) are transcribed here as
+# criteria, each citing `RV-NNN F-n` inline on the earliest phase that satisfies
+# its placement constraint: RV-043 F-1 (evidence isolation — PHASE-05 alias case,
+# PHASE-06 truncation fixture), F-6 (accounting — PHASE-01 arithmetic,
+# PHASE-07 gate==status), F-7 (argv — PHASE-06), F-9 (termination domain —
+# PHASE-06); RV-046 F-1 (posture refusal — PHASE-02), F-2 (switch fail-closed —
+# PHASE-07), F-3 (cross-process sessions — PHASE-04), F-4 (nested spend —
+# PHASE-07), F-5 (profile snapshot — PHASE-03), F-6 (timeout vocabulary and
+# schema conformance — PHASE-08). RV-043 F-1 is a blocker: it must be resolved
+# before audit→reconcile.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-029"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Reducer: one accumulator and the answer fields"
+objective = "Design sec-4 accounting table and sec-5 answer semantics, in pi/reduce/reduce.ts: one usage accumulator that counts exactly one request per provider send with the counting units defined per record; `result` (the terminal assistant message, all text blocks joined), `terminalReason`, `settled`, `truncated`, `requests`, `requests_unmeasured` and an accounting-known signal join `Reduced` and the embedded status. Usage is either observed or unknown — never silently zero. The CLI keeps its shape and gains the fields; the reducer stays the single truth the server embeds. `final` is derived where exit status is known — the server (PHASE-08) — because the reducer never sees the child's exit; the reducer supplies the stream-side inputs (`terminalReason`, `settled`, accounting)."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (revision 80). `node --test pi/reduce/*.test.ts` green at the phase's base commit (no Postgres needed)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "One request per assistant send, any stop reason: `message_end` (role assistant) counts a request whether the send succeeded, errored or aborted; `compaction_end` carrying `result.usage` counts one request and its tokens/cost; `summarization_retry_scheduled` counts one request, unmeasured; a `compaction_end` carrying `result` without `result.usage` counts a request and marks accounting unknown; every `result`-less `compaction_end` (credential failure, missing model, declined summarization, the overflow diagnostic) counts nothing (RV-043 F-6)." },
+  { id = "EX-2", text = "Verified-trace controls pin the arithmetic: error+stop = 2 requests (not 3), summarization_retry_scheduled+compaction_end = 2 (not 3), and a zero-send overflow-diagnostic compaction_end = 0 — the three traces the review reproduced against installed pi 0.99.1 (RV-043 F-6)." },
+  { id = "EX-3", text = "Token and cost accounting uses one path: input/output/cacheRead/cacheWrite tokens and `usage.cost.total`; a compaction priced at 0.20 plus an assistant message at 0.01 reports 0.21, not 0.01. A missing cost is unknown, never zero, and the status carries the distinction explicitly (`accounting: known | unknown`) so no consumer has to infer it from a zero (RV-043 F-6)." },
+  { id = "EX-4", text = "Usage validity: on a usage-bearing message (stop, length, toolUse, deferred) absent, non-finite or negative usage, or an absent `cost.total`, marks the run's accounting unknown; `EMPTY_USAGE` (a failure placeholder of zeros) is classified unmeasured — counted as a request, contributing no tokens or cost, disclosed as `requests_unmeasured`; a cached read priced at zero is a price, not missing data (RV-043 F-6)." },
+  { id = "EX-5", text = "Stop reasons are pi's tokens verbatim: `toolUse` and `deferred` are usage-bearing and not answers; `pending` at a message_end is counted and not an answer; a test keyed on the misspelling `tool_use` classifies nothing, so the wrong-spelling control fails closed rather than passing silently (RV-043 F-6)." },
+  { id = "EX-6", text = "`result` is the terminal assistant message — the last assistant `message_end` with a terminal stop reason and no later assistant message; a later `message_start`/`message_end` invalidates an earlier candidate; all text blocks are joined; a textless terminal message yields no answer; `length` sets `truncated` and is answer-bearing (design sec-5)." },
+  { id = "EX-7", text = "`status` carries `requests`, `requests_unmeasured`, `cache_write` and the accounting-known signal alongside the existing fields, and the existing reducer behaviour (rendering, transcript budget, exit mapping) is unchanged except where a test is deliberately updated for a corrected count." },
+  { id = "EX-8", text = "`node --test pi/reduce/*.test.ts` green." },
+]
+verification = [
+  { id = "VT-1", expects = "counting table per record: assistant message_end, priced compaction_end, retry-scheduled, result-without-usage, result-less compaction_end", test_file = "pi/reduce/reduce.test.ts", keywords = ["requests_unmeasured", "compaction_end", "summarization_retry_scheduled"], waived = false },
+  { id = "VT-2", expects = "the three verified traces as controls: error+stop 2, scheduled+compaction_end 2, zero-send diagnostic 0", test_file = "pi/reduce/reduce.test.ts", keywords = ["overflow", "auto_retry", "diagnostic"], waived = false },
+  { id = "VT-3", expects = "cost arithmetic across compaction and assistant send; EMPTY_USAGE unmeasured; absent cost unknown", test_file = "pi/reduce/reduce.test.ts", keywords = ["EMPTY_USAGE", "cost_usd", "unknown"], waived = false },
+  { id = "VT-4", expects = "terminal-message selection: multi-block, stale prose invalidated by a later message, textless terminal, length truncation", test_file = "pi/reduce/reduce.test.ts", keywords = ["result", "truncated", "terminalReason"], waived = false },
+  { id = "VT-5", expects = "the accumulator and the counting constants live in reduce.ts", test_file = "pi/reduce/reduce.ts", keywords = ["requests_unmeasured", "compaction_end", "accounting"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Server shell, policy artefact, posture and enable gate"
+objective = "Design sec-1 and sec-2 steps 1–2, plus sec-6's attempts ledger: pi/mcp/{main,server,policy}.ts and bin/pi-mcp — a bash shim execing node on the entry point, no build step, shaped like bin/pi-run-reduce. LF-framed JSON-RPC 2.0 over stdio (initialize, tools/list, tools/call, -32601) shaped like satan/satan-mcp.el's wire, exposing one tool `pi_agent` with its inputSchema. The operator policy file is read once per call; absent or malformed refuses everything; `mode` accepts only per-call in this build; `enabled = false` refuses. Every pre-spawn refusal is a tool result (`content` + `isError`), never a JSON-RPC error, and is appended to attempts.jsonl with the policy digest when one was readable — the refusal payload being provisional here and brought under the `pi-agent-result/1` shape in PHASE-08. No bwrap argv is authored here or anywhere in pi/mcp. The justfile gains the offline pi suite hook now, so every later phase's `just check` already covers the suite."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "bin/pi-mcp execs node on pi/mcp/main.ts; the server answers `initialize` (protocolVersion, capabilities, serverInfo), lists exactly one tool `pi_agent` with the declared inputSchema, answers an unknown method with -32601, and exits cleanly on stdin EOF (no orphan child, no fifo, no poll loop)." },
+  { id = "EX-2", text = "A `tools/call` for a bad params object or a failed run returns a tool result with content and isError — never a JSON-RPC error object (design sec-1)." },
+  { id = "EX-3", text = "Validation step 1: an absent policy refuses `policy-unavailable`; an unparsable or schema-invalid one refuses `policy-invalid`; both refuse every call, and each refusal appends one attempts.jsonl line carrying the reason plus the policy digest when one was readable (design sec-2, sec-6)." },
+  { id = "EX-4", text = "Validation step 1, posture: a valid-looking policy declaring `mode = \"static\"`, or carrying any static-only field (`agent`, `root`, `filesystem`, `session_home`, `run_dir`, `evidence_dir`), is refused `posture-unsupported` before anything spawns — no downgrade to per-call, no silent field-drop, and no branch reaches a bare unwrapped agent on the host (RV-046 F-1)." },
+  { id = "EX-5", text = "Validation step 2: `enabled = false` refuses `disabled`, recorded in attempts.jsonl." },
+  { id = "EX-6", text = "The policy schema covers `mode`, `roots`, `maxima`, `profiles`, the per-call wrapper forms, `child_binds`, `enabled` and `transcript_budget_bytes`; an unknown key or a wrong-typed value is `policy-invalid` rather than ignored." },
+  { id = "EX-7", text = "No member of pi/mcp authors a bwrap token (`--ro-bind`, `--bind`, `--tmpfs`, `bwrap`): jail policy is the flake's, asserted by a source scan over pi/mcp (design sec-3; SPEC-001 REQ-009)." },
+  { id = "EX-8", text = "`node --test pi/mcp/*.test.ts` green; the suite runs offline with no network and no spawn." },
+  { id = "EX-9", text = "The justfile runs `node --test pi/reduce/*.test.ts pi/mcp/*.test.ts` as a hook reachable without the test-database gate that `just test` requires, so `just check` covers the suite from this phase onward." },
+]
+verification = [
+  { id = "VT-1", expects = "wire: initialize, one-tool list with schema, -32601, stdin EOF exit; refusals are tool results", test_file = "pi/mcp/server.test.ts", keywords = ["initialize", "-32601", "pi_agent"], waived = false },
+  { id = "VT-2", expects = "policy load: unavailable, invalid, unknown key, wrong type; attempts.jsonl line with digest", test_file = "pi/mcp/policy.test.ts", keywords = ["policy-unavailable", "policy-invalid", "attempts.jsonl"], waived = false },
+  { id = "VT-3", expects = "posture refusal for mode=static and for each static-only field, with no fallback past step 1", test_file = "pi/mcp/policy.test.ts", keywords = ["posture-unsupported", "child_binds"], waived = false },
+  { id = "VT-4", expects = "enabled=false refuses disabled", test_file = "pi/mcp/policy.test.ts", keywords = ["disabled", "enabled"], waived = false },
+  { id = "VT-5", expects = "the server module holds the wire loop and the tool descriptor", test_file = "pi/mcp/server.ts", keywords = ["tools/call", "pi_agent", "inputSchema"], waived = false },
+  { id = "VT-6", expects = "the offline pi suite hook in the justfile", test_file = "justfile", keywords = ["pi/mcp"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Profiles are live authority: snapshot, grammar, root and ceilings"
+objective = "Design sec-2 steps 3–6 and sec-3's profile section: pi/mcp/profiles.ts plus the tracked documents under pi/mcp/profiles/*.md. The server loads, validates and freezes the profile directory at start-up — one snapshot for the process lifetime, its digest recorded for the audit's spawn record — and resolves `profile` only from that snapshot by grammar and policy allowlist. Roots are canonicalised and allowlisted by path components; the profile's `filesystem` capability selects the required per-call wrapper form; ceilings clamp downward and refuse an above-maximum request."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The profile directory is read once at start-up into a frozen snapshot; a call after a profile file is mutated keeps the snapshotted capability and tool set, and the change takes effect only after a restart (RV-046 F-5)." },
+  { id = "EX-2", text = "An invalid profile document refuses at start-up with `profile-invalid` naming the path — never discovered per call (RV-046 F-5)." },
+  { id = "EX-3", text = "Profile grammar `^[a-z][a-z0-9-]{0,31}$` splits the refusals: a malformed name is `profile-invalid`, an absent one `profile-unknown`, one not listed by the policy `profile-not-allowed`; the name is never joined into a path from the call's cwd (design sec-2 step 3)." },
+  { id = "EX-4", text = "Root: a non-existent path is `root-missing`, a file is `root-not-a-directory`, a path outside the allowlist by components (not string prefix) is `root-not-allowlisted`; the canonical path is what the call proceeds with." },
+  { id = "EX-5", text = "Capability: a `read` profile requires the read wrapper form and a `write` profile the write form; an absent form is `wrapper-unavailable`; `capability-mismatch` and `cwd-not-supported` are unreachable in this build (step 1 refuses their posture) and appear in no reachable branch (design sec-2 steps 1, 5)." },
+  { id = "EX-6", text = "Ceilings: a value above a policy maximum is refused `ceiling-above-maximum`, never silently clamped; a value at or below it is clamped as requested; an absent ceiling takes the maximum." },
+  { id = "EX-7", text = "A profile whose tool list names an `mcp__*` tool while the policy's form does not pass `-e builtin:mcp` is refused `profile-invalid`, because the alternative is a profile asking for tools it can never receive (design sec-3 executable contract)." },
+  { id = "EX-8", text = "The tracked profile documents declare filesystem capability, model and tools, and validate under the loader; each shipped document is exercised by a test." },
+  { id = "EX-9", text = "`node --test pi/mcp/*.test.ts` green, offline." },
+]
+verification = [
+  { id = "VT-1", expects = "snapshot frozen for the process: mutation is inert, restart picks it up; invalid document refuses at start-up", test_file = "pi/mcp/profiles.test.ts", keywords = ["snapshot", "profile-invalid", "digest"], waived = false },
+  { id = "VT-2", expects = "grammar and the three profile refusals, including a valid single-character name and a rejected trailing separator", test_file = "pi/mcp/profiles.test.ts", keywords = ["profile-unknown", "profile-not-allowed", "grammar"], waived = false },
+  { id = "VT-3", expects = "root classification and component-wise allowlisting (a prefix-sharing sibling is not allowlisted)", test_file = "pi/mcp/profiles.test.ts", keywords = ["root-not-allowlisted", "root-missing", "canonical"], waived = false },
+  { id = "VT-4", expects = "capability selects the form; absent form wrapper-unavailable; ceiling above maximum refused", test_file = "pi/mcp/policy.test.ts", keywords = ["wrapper-unavailable", "ceiling-above-maximum"], waived = false },
+  { id = "VT-5", expects = "mcp__* tool without -e builtin:mcp refuses profile-invalid", test_file = "pi/mcp/profiles.test.ts", keywords = ["builtin:mcp", "mcp__"], waived = false },
+  { id = "VT-6", expects = "the loader and snapshot live in profiles.ts", test_file = "pi/mcp/profiles.ts", keywords = ["snapshot", "filesystem"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Sessions: cross-process ownership, binding and reclamation"
+objective = "Design sec-2 step 7 and sec-6's session contract, in pi/mcp/session.ts: mint and return; grammar; binding to (canonical root, filesystem capability) written in the same critical section as first use; ownership by a single O_EXCL create of sessions/<id>.lock carrying pid, kernel start time, call id and start; stale reclamation serialised by an O_EXCL <lock>.claim with an atomic rename of a successor record over <lock>; no unlink anywhere that could delete a live successor; release last. Correct under the real topology: one server process per client over one PI_MCP_SESSION_HOME."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "A call with no session mints one (grammar alnum at both ends, 1–64 chars) and returns it; grammar edges — one character valid, trailing `.` `_` `-` refused `session-invalid` — are asserted." },
+  { id = "EX-2", text = "Two independent server processes over one session home: of two simultaneous same-session calls exactly one spawns, the loser is refused `session-busy` before any side effect (RV-046 F-3)." },
+  { id = "EX-3", text = "A first-use race with conflicting root/capability binds exactly once: one (root, capability) pair is recorded and the losing call is refused rather than writing a different binding; resuming on another root or capability is `session-root-mismatch` / `session-capability-mismatch` (RV-046 F-3)." },
+  { id = "EX-4", text = "Two processes presented with one stale lock: exactly one reclaims and proceeds, the loser refuses `session-busy`; the reclaim is a single atomic rename over `<lock>` under `<lock>.claim`, with no interval in which the path is absent (RV-046 F-3)." },
+  { id = "EX-5", text = "A reclaimer killed mid-claim leaves a live lock plus an orphan claim; the next caller refuses `session-busy` naming the claim and only an operator clears it — the two-stale-observers-plus-fresh-entrant interleaving from the review cannot produce two owners (RV-046 F-3)." },
+  { id = "EX-6", text = "Unknown liveness (no readable /proc) resolves to `session-busy`: fail closed, never a silent steal. Owner identity is pid plus kernel start time, so a reused pid does not read as the same owner." },
+  { id = "EX-7", text = "`node --test pi/mcp/*.test.ts` green, with the cross-process cases driven by real child processes over a temp state root." },
+]
+verification = [
+  { id = "VT-1", expects = "mint, return, grammar edges", test_file = "pi/mcp/session.test.ts", keywords = ["session-invalid", "mint"], waived = false },
+  { id = "VT-2", expects = "two server processes, simultaneous same-session: one spawns, one session-busy", test_file = "pi/mcp/session.test.ts", keywords = ["session-busy", "fork", "spawnSync"], waived = false },
+  { id = "VT-3", expects = "first-use binding race records one pair; mismatch refusals", test_file = "pi/mcp/session.test.ts", keywords = ["session-root-mismatch", "session-capability-mismatch"], waived = false },
+  { id = "VT-4", expects = "stale-lock race: one reclaimer under <lock>.claim, atomic rename, no absent-path window", test_file = "pi/mcp/session.test.ts", keywords = [".claim", "rename", "stale"], waived = false },
+  { id = "VT-5", expects = "reclaimer killed mid-claim leaves a live lock plus orphan claim; operator-only recovery", test_file = "pi/mcp/session.test.ts", keywords = ["orphan", "claim"], waived = false },
+  { id = "VT-6", expects = "ownership record carries pid and kernel start time; unknown liveness refuses", test_file = "pi/mcp/session.ts", keywords = ["starttime", "session-busy"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Child-view disjointness and the evidence store"
+objective = "Design sec-2 step 8 and sec-3's child-view section: pi/mcp/childview.ts and the evidence layout. The child view is the canonicalised union {root, the active session directory, the policy's `child_binds`}; it is refused `view-overlaps-protected`, naming the path, when a member is, contains, or lies inside a protected path more strongly than that store tolerates — the run evidence directory and attempts.jsonl unreachable, the session home's other sessions and the binding/lock metadata unreachable, the policy file never writable (readable tolerated), the tracked profile documents not protected as a store. Refusal, never a mask."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "A policy whose root contains the run evidence directory is refused `view-overlaps-protected` before spawn, for a `read` and for a `write` capability alike — the alias case the review constructed ($HOME- or /-rooted write delegate) (RV-043 F-1)." },
+  { id = "EX-2", text = "The session home minus the active session directory, and the binding/lock metadata, are protected: a root, a `child_bind` or a fixed mount that contains them refuses." },
+  { id = "EX-3", text = "The policy file is protected against writable exposure only: a write root containing it refuses, a read root containing it is allowed." },
+  { id = "EX-4", text = "Tracked profile documents are not protected as a store: a write root containing the checkout is legal, so the repo-rooted writer use case survives (design sec-3)." },
+  { id = "EX-5", text = "The evidence store has one layout: one directory per run under PI_MCP_RUN_DIR holding events.jsonl, stderr.log, transcript.md, status.json and audit.jsonl, plus the server-level attempts.jsonl whose location PHASE-02 fixed — and the check consumes that layout rather than assuming a bind list." },
+  { id = "EX-6", text = "The check reports the overlapping member and the protected path in the refusal detail, and no mask or bwrap argument is produced anywhere in pi/mcp." },
+  { id = "EX-7", text = "`node --test pi/mcp/*.test.ts` green, offline." },
+]
+verification = [
+  { id = "VT-1", expects = "root containing the evidence store refuses for both capabilities (alias case)", test_file = "pi/mcp/childview.test.ts", keywords = ["view-overlaps-protected", "evidence"], waived = false },
+  { id = "VT-2", expects = "other sessions and lock metadata unreachable; policy file write-only protection; profiles not protected", test_file = "pi/mcp/childview.test.ts", keywords = ["sessions", "policy", "profiles"], waived = false },
+  { id = "VT-3", expects = "child_binds membership is part of the view: a bind exposing a protected store refuses", test_file = "pi/mcp/childview.test.ts", keywords = ["child_binds"], waived = false },
+  { id = "VT-4", expects = "evidence layout under PI_MCP_RUN_DIR with the five per-run files plus attempts.jsonl", test_file = "pi/mcp/childview.test.ts", keywords = ["events.jsonl", "attempts.jsonl", "audit.jsonl"], waived = false },
+  { id = "VT-5", expects = "the disjointness check lives in childview.ts", test_file = "pi/mcp/childview.ts", keywords = ["view-overlaps-protected"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Spawn: launcher argv, the termination domain, evidence capture"
+objective = "Design sec-3's executable contract and sec-4's spawn/termination: pi/mcp/spawn.ts launches the policy's wrapped form — the executable baked into the launcher, pi's options forwarded, no executable word and no `--` — with cwd at the root, the prompt on the child's stdin pipe closed after the write, stdout captured straight into the run's events.jsonl, stderr into stderr.log, and the child as its own process-group leader so the ladder signals -pid and can never reach the server or a concurrent call. Ladder: SIGTERM to the group, 2 s grace, SIGKILL to the group, reap, drain, audit, return — release and result last. Audit and evidence failures fail closed."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "argv exactness: a stub launcher captures exactly pi's options (`--mode json`, `--model`, `--tools`, `--session-id`, `--session-dir`, `--no-extensions`, and `-e builtin:mcp` exactly when the profile names an `mcp__*` tool) with no `pi` token, no `--`, and no other `-e` path ever (RV-043 F-7)." },
+  { id = "EX-2", text = "Stream capture: events.jsonl holds JSONL records only — stdout is redirected there, stderr to its own file, never merged — and the prompt is delivered on the child's own stdin and the pipe closed, never on the MCP server's stdin (design sec-4)." },
+  { id = "EX-3", text = "Termination domain: two concurrent calls plus a grandchild ignoring SIGTERM; cancelling one leaves the other call and the server alive, and the cancelled call's whole subtree is gone after the 2 s grace (RV-043 F-9)." },
+  { id = "EX-4", text = "Ordering: the result and the session-lock release happen only after the ladder, reap, stream drain and final audit append — with a stub that delays the drain, a second process's same-session call is still refused `session-busy` until cleanup finishes (RV-043 F-9)." },
+  { id = "EX-5", text = "Evidence isolation: a hostile bash that truncates, unlinks or replaces the run's audit either cannot reach the path or the run reports a fail-closed failure with the surviving evidence intact — never a clean success (RV-043 F-1)." },
+  { id = "EX-6", text = "Failure policy: an audit append failing before spawn discards the run directory and refuses `audit-failed`; an unwritable attempts.jsonl refuses `audit-unavailable` without spawning; a pre-exec spawn failure after the run directory exists reports `failed` with termination `spawn`." },
+  { id = "EX-7", text = "The child's exit status and the observed `agent_settled` are reported to the result builder rather than interpreted here, and a nonzero exit is never treated as success (design sec-5)." },
+  { id = "EX-8", text = "`node --test pi/mcp/*.test.ts` green, offline: every case runs against a stub launcher and a stub `pi` on PATH." },
+]
+verification = [
+  { id = "VT-1", expects = "argv exactness and the conditional -e builtin:mcp", test_file = "pi/mcp/spawn.test.ts", keywords = ["--no-extensions", "builtin:mcp", "argv"], waived = false },
+  { id = "VT-2", expects = "stdout to events.jsonl, stderr separate, prompt on the child's stdin and closed", test_file = "pi/mcp/spawn.test.ts", keywords = ["events.jsonl", "stderr.log", "stdin"], waived = false },
+  { id = "VT-3", expects = "termination domain: concurrent calls plus a SIGTERM-ignoring grandchild", test_file = "pi/mcp/spawn.test.ts", keywords = ["SIGTERM", "SIGKILL", "detached"], waived = false },
+  { id = "VT-4", expects = "hostile truncation/unlink/replace against the audit fails closed with evidence intact", test_file = "pi/mcp/spawn.test.ts", keywords = ["truncate", "audit_failed", "unlink"], waived = false },
+  { id = "VT-5", expects = "audit/attempts failure policy: pre-spawn refusal, mid-run abort", test_file = "pi/mcp/spawn.test.ts", keywords = ["audit-failed", "audit-unavailable"], waived = false },
+  { id = "VT-6", expects = "the ladder and process-group ownership live in spawn.ts", test_file = "pi/mcp/spawn.ts", keywords = ["kill", "detached"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "The gate: enforcement, ceilings, switch and policy re-read"
+objective = "Design sec-4's gate, in pi/mcp/gate.ts: one reader over the child's stream maintaining the single accumulator from PHASE-01; every record that increments a unit is a tick, and an idle poll bounded to about a second is a tick, so a blocking result never delays cancellation. A tick evaluates the clamped ceilings (requests, tokens, cost), the wall-clock backstop, the switch (the policy file re-read and re-parsed — absent, unreadable or malformed aborts through the ladder with cause `switch`, because a switch whose source cannot be read is not evidence that it is off), and usage sanity. Retrospective, not admission: a crossing aborts the run."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "A ceiling crossing on requests, tokens or cost aborts through the ladder and the abort record carries the accumulator's usage at the crossing (design sec-4)." },
+  { id = "EX-2", text = "Enforcement and reporting cannot disagree: the returned status is produced by the same accumulator the gate consults, pinned by a recorded retry/compaction fixture whose arithmetic the test asserts (RV-043 F-6)." },
+  { id = "EX-3", text = "Switch: flipping `enabled` to false during an in-flight run aborts it through the ladder with cause `switch`, with no driver cooperation and no child left behind." },
+  { id = "EX-4", text = "Policy loss fails closed: deleting the policy, and separately corrupting it, during an idle run aborts through the ladder with cause `switch`, performs cleanup and audit, and leaves later calls refused `policy-unavailable` / `policy-invalid` (RV-046 F-2)." },
+  { id = "EX-5", text = "Usage sanity: a completed response whose usage is absent, non-finite or negative, or whose `cost.total` is absent, aborts `accounting_unknown`; a cached read priced at zero does not abort." },
+  { id = "EX-6", text = "The wall-clock backstop aborts with cause `timeout` and its own state row; a run that hits no limit completes without an abort record." },
+  { id = "EX-7", text = "Accounting scope is disclosed, not overclaimed: a stub gateway or nested process invoked from the child's bash is not attributed to the run and is not reported as attributed — the returned status describes this run's own sends only, and the test asserts the absence of the nested figure rather than a zero (RV-046 F-4)." },
+  { id = "EX-8", text = "`node --test pi/mcp/*.test.ts` green, offline, driven by recorded event fixtures." },
+]
+verification = [
+  { id = "VT-1", expects = "ceiling crossing aborts per unit; abort record carries usage", test_file = "pi/mcp/gate.test.ts", keywords = ["ceiling", "abort"], waived = false },
+  { id = "VT-2", expects = "gate inputs equal the returned status on the retry/compaction fixture", test_file = "pi/mcp/gate.test.ts", keywords = ["requests_unmeasured", "status"], waived = false },
+  { id = "VT-3", expects = "switch flip halts an in-flight run with cause switch", test_file = "pi/mcp/gate.test.ts", keywords = ["switch", "ladder"], waived = false },
+  { id = "VT-4", expects = "policy deleted and policy corrupted during an idle run: fail-closed abort, later refusals", test_file = "pi/mcp/gate.test.ts", keywords = ["policy-unavailable", "policy-invalid"], waived = false },
+  { id = "VT-5", expects = "usage sanity aborts accounting_unknown; zero-priced cached read does not; wall clock aborts timeout", test_file = "pi/mcp/gate.test.ts", keywords = ["accounting_unknown", "timeout"], waived = false },
+  { id = "VT-6", expects = "nested spend is not attributed and not claimed", test_file = "pi/mcp/gate.test.ts", keywords = ["nested", "attributed"], waived = false },
+  { id = "VT-7", expects = "the gate and the tick live in gate.ts", test_file = "pi/mcp/gate.ts", keywords = ["tick", "ceiling"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "The result: state, causes, precedence, conformance"
+objective = "Design sec-5, in pi/mcp/result.ts: the `pi-agent-result/1` shape (schema, state, termination, causes, session, final, truncated, result, transcript, status, artifacts, refusal); the DEC-093 state/termination table with pi's stop reasons verbatim; the abort latch and the commit point; the success predicate; the refusal shape; the transcript budget (soft) with artifacts naming the unbudgeted text. `termination` is always `causes[0]`, and `causes` carries the whole ordered list."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Success requires all of: an answer-bearing terminal message (stop or length), `agent_settled` observed, child exit status 0, and known accounting. The three settlement combinations — stop+EOF without settled, stop+nonzero exit, settled+nonzero exit — are each non-success, and exit 0 is never taken as evidence of success (design sec-5)." },
+  { id = "EX-2", text = "The latch defeats provisional success: a cause recorded before the commit point (after ladder, reap, drain, final accounting and the exit/abort appends) decides the state, so no ordering reports `completed` while accounting or audit failed; concurrent causes return the full ordered list with `termination = causes[0]` (e.g. timeout then audit → termination `timeout`, causes `[timeout, audit]`)." },
+  { id = "EX-3", text = "The refusal shape: `refused` carries status, artifacts and result null plus `refusal {reason, detail}`, termination `refused`, causes `[refused]`; `audit-failed` and `audit-unavailable` are valid refusal reasons; the `audit_failed` state exists only for a run that spawned. PHASE-02's provisional refusal envelopes are brought under this shape here, so one shape covers a refusal and a run." },
+  { id = "EX-4", text = "Vocabulary conformance: `termination` and `causes` are one enum with `timeout` as the cause token and no `backstop` token; every mapped outcome satisfies the advertised result schema, so a cause token outside the enum fails the suite rather than the reader (RV-046 F-6)." },
+  { id = "EX-5", text = "`status.state` judges the stream and `state` judges the call; they diverge only when the deciding cause arose outside the stream (`exit`, `spawn`, `audit`, `accounting`, `timeout`) and `causes` names it — never two accounting stories." },
+  { id = "EX-6", text = "The transcript is budgeted and the budget is soft: mandatory sections can exceed it (by design and by test), `truncated` reports it, and `artifacts.transcript` names the unbudgeted text; status is embedded verbatim from the reducer." },
+  { id = "EX-7", text = "`node --test pi/mcp/*.test.ts` green, offline." },
+  { id = "EX-8", text = "`final` is derived in exactly one place — here, where exit status and accounting are known — from the stream-side inputs the reducer supplies; no other module computes or overrides it." },
+]
+verification = [
+  { id = "VT-1", expects = "success predicate: every settlement combination, answer-bearing reasons only", test_file = "pi/mcp/result.test.ts", keywords = ["agent_settled", "final", "exit"], waived = false },
+  { id = "VT-2", expects = "latch and precedence: cause before commit point, concurrent causes with the full list", test_file = "pi/mcp/result.test.ts", keywords = ["causes", "latch", "commit"], waived = false },
+  { id = "VT-3", expects = "refusal shape and the audit-failed refusal", test_file = "pi/mcp/result.test.ts", keywords = ["refused", "audit-failed"], waived = false },
+  { id = "VT-4", expects = "every mapped outcome satisfies the result schema; no backstop token; timeout is the cause token", test_file = "pi/mcp/result.test.ts", keywords = ["pi-agent-result/1", "timeout", "backstop"], waived = false },
+  { id = "VT-5", expects = "soft transcript budget, artifacts paths, verbatim status", test_file = "pi/mcp/result.test.ts", keywords = ["transcript", "artifacts", "status"], waived = false },
+  { id = "VT-6", expects = "the result shape and precedence table live in result.ts", test_file = "pi/mcp/result.ts", keywords = ["pi-agent-result/1", "causes"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-09"
+name      = "Wrapped forms, test hook, one live smoke"
+objective = "Design sec-3's per-call forms, sec-7's verification loop and the delivery list: flake.nix gains the two per-call wrapped forms (read: --ro-bind the launch dir; write: --bind) built on the shared jail generator with `~/.pi`, a tmpfs /tmp, and the active session directory bound by run-time path, plus `jailProbes` entries asserting each form's actual bind set equals root + active session directory + `child_binds` — the check that closes the loop where the server cannot see. justfile gains the offline pi suite hook. Then one live per-call smoke run against deepseek-flash, recorded as evidence in the slice notes, not as a gate."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-08 complete and green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "flake.nix declares the two per-call wrapped forms, one per filesystem capability, with the executable baked in and arguments forwarded (no executable word, no `--`) (RV-043 F-7)." },
+  { id = "EX-2", text = "Each form binds the launch directory `--ro-bind` for read and `--bind` for write, `~/.pi`, a tmpfs /tmp, and only the active session directory (a run-time path, not the session home and never the run directory) (design sec-3 per-call mode)." },
+  { id = "EX-3", text = "A flake check asserts each form's actual bind set equals root + active session directory + the policy's `child_binds`; adding or dropping a bind fails the check rather than moving it (RV-043 F-1, the loop-closing half)." },
+  { id = "EX-4", text = "`just check` is green and covers the pi suites through the hook added in PHASE-02, which stays runnable without the test-database gate." },
+  { id = "EX-5", text = "One live per-call smoke run against deepseek-flash succeeds end to end: policy, profile, wrapped form, gate, result; the returned result, status and run directory are recorded in the slice notes as evidence, and the run is not a gate." },
+  { id = "EX-6", text = "`just check` green, and no bwrap token appears anywhere in pi/mcp." },
+]
+verification = [
+  { id = "VT-1", expects = "the two per-call forms and their bind sets in the flake", test_file = "flake.nix", keywords = ["pi-mcp", "child_binds"], waived = false },
+  { id = "VT-2", expects = "the offline pi suite hook", test_file = "justfile", keywords = ["pi/mcp"], waived = false },
+  { id = "VA-1", expects = "the flake's bind-set check passes on the real forms and fails when a bind is added or dropped (agent-run `nix` check, result recorded)." },
+  { id = "VA-2", expects = "one live per-call smoke run against deepseek-flash recorded in .doctrine/slice/029/notes.md with its result, status and run-directory path." },
+]
+specs        = []
+requirements = []
