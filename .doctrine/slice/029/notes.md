@@ -453,3 +453,66 @@ at the slice level.
 
 Next: /plan (design is locked; plan.toml + phase sheets, or /dispatch to drive the
 phases in worktrees).
+
+## Plan authored (nine phases)
+
+`plan.toml` + `plan.md` committed; nine sheets materialised (0/9). One mechanism
+per phase, in dependency order: reducer → server shell/policy/posture → profiles
+(snapshot, root, capability, ceilings) → sessions → child-view/evidence → spawn
+(argv, termination domain, capture) → gate (ceilings, switch, re-read) → result
+(state, causes, precedence) → flake forms + live smoke.
+
+Ordering decisions worth keeping:
+
+- **The reducer goes first** because the server embeds `status` verbatim; the gate
+  must consume fields that already exist, not invent a second accounting.
+- **Refusal before spawning**: PHASE-02..05 are entirely child-free, so every
+  refusal token is asserted before there is a run to fail in. Session ownership
+  (step 7) sits in that block deliberately — building it after the spawn machinery
+  would invite an in-memory busy map that passes one process and fails two.
+- **The justfile hook moved to PHASE-02**, not PHASE-09 with the flake: `just test`
+  is DB-gated, and eight phases whose `just check` excludes their own tests is a
+  false green.
+- **The flake's wrapped forms stay last**: everything before them tests against a
+  stub launcher with `pi` stubbed on PATH, so only the bind-set check and the
+  smoke need `nix`.
+
+## Routed demonstrate findings — transcribed, not cited
+
+Ten findings with `route = demonstrate` were transcribed into EN/EX criteria with
+`RV-NNN F-n` inline on the earliest phase matching each response's placement
+constraint: RV-043 F-1 → PHASE-05 (alias refusal) + PHASE-06 (truncation fixture),
+F-6 → PHASE-01 (arithmetic) + PHASE-07 (gate == status), F-7/F-9 → PHASE-06;
+RV-046 F-1 → PHASE-02, F-2 → PHASE-07, F-3 → PHASE-04, F-4 → PHASE-07,
+F-5 → PHASE-03, F-6 → PHASE-08. F-1 stays `answered`; its teeth are the criteria,
+and the ledger status is untouched.
+
+## Plan-time checks
+
+- **Research advisory drift** (`slice-029.md` changed, `design.md` added since the
+  baseline) is expected and was left un-restamped rather than papered over: every
+  research claim the plan leans on was re-checked against the tree. Restamping
+  would record freshness the artefact has not re-earned.
+- **Design premises re-grepped.** All concrete references resolve; two anchors
+  drifted by line number only — `absorb`/`totalCost` at reduce.ts:116–117 (review
+  cited 109–112) and `no-new-session` at jailed-agents.nix:193 (design says 184).
+  Neither moves a symbol or changes a premise, so no design revision was owed.
+- **Selectors unchanged**: they already cover the design's affected surface; the
+  research hotspots that are not changed (`scripts/pi-review.sh`, `pi-agent`,
+  `satan-mcp.el`) are read-only precedents and would only add staleness churn.
+- **One reading made explicit**: design §7 lists `final` among the reducer's new
+  fields, but §5's predicate needs exit status, which the reducer never sees. The
+  plan puts `result`/`terminalReason`/`settled`/accounting in the reducer and
+  derives `final` once, in PHASE-08. Recorded in plan.md so it can be contested.
+
+## Verification gate
+
+`doctrine slice verify-vt 29` reports no `UNCHECKABLE` rows — every VT carries a
+valid `test_file` + `keywords` mandate. The `FAIL`s on `pi/mcp/**` are the
+unbuilt files, and PHASE-01/09 rows read `UNATTRIBUTABLE` because the slice has
+not modified those files yet; both resolve as phases land. The gate fires at
+dispatch conclude/handover, as designed.
+
+Next: /phase-plan PHASE-01, then /execute (or /dispatch to drive the phases in
+worktrees — note F-1's blocker still refuses audit→reconcile until PHASE-05/06
+prove it).
