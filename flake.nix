@@ -68,6 +68,7 @@
           sqlite
           socat
           bun
+          jq
           python3 # `just test`: satan/harness unittest
           ripgrep # content_read search scope (and its tests)
 
