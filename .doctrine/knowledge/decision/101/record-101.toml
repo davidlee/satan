@@ -1,0 +1,35 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 101
+slug = "notes-jailed-pi-satanmcpoptions-applied-after-the-writable-runuser1000satan-bind-so-mcp-stays-read"
+title = "notes jailed-pi: satanMcpOptions applied after the writable /run/user/1000/satan bind, so mcp/ stays read-only"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context      = "SL-028 PHASE-05 (DEC-088): notes jailed-pi also binds /run/user/1000/satan read-write for goad's ingress socket (notes e2965c4). A later writable parent bind hides the earlier read-only mcp/ bind, so the jail could replace satan-mcp's socket. Design §4.5 did not account for it."
+choice       = "In ~/notes/flake.nix jailed-pi, apply jailLib.satanMcpOptions after the writable parent bind, so mcp/ is a read-only mount inside it. The wider writable parent is IMP-047."
+alternatives = ["Narrow the parent bind to read-only (breaks a goad host run inside the jail; unverified)", "Leave it; record a VA-1 exception and backlog"]
+rationale    = "Keeps DEC-088 and VA-1 true within the phase without changing goad's access; the proper fix (no goad socket in the jail, satan-runner updates goad backends) is larger and user-directed to the backlog."
+consequences = ["jailed-pi's extraOptions put the goad binds before jailEnvOptions; the guarantee depends on that order, so a comment there names it", "The rest of /run/user/1000/satan stays writable in that jail until IMP-047"]
+decided_by   = "user (consult reply, 2026-10-20)"
+decided_on   = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "PHASE-05 notes jailed-pi bind order"
+target = "SL-028"

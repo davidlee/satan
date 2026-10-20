@@ -1,0 +1,59 @@
+id    = 47
+slug  = "code-review-review-of-sl-028"
+title = "code-review review of SL-028"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Quick pass over PHASE-05's cross-repo delta (d73eddd5 + uncommitted flake.nix in satan, satan-corpus, emacs, notes; notes justfile) against design §4.5/DEC-088 and DEC-101; VT-1 mutation-tested; VA-1 launcher grep over all four flakes with the agents override."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-028"
+phase = "PHASE-05"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Expected notes jailed-pi to keep mcp/ read-only in every host state; observed it holds only when mcp/ exists at launch and only by unchecked option order"
+detail = """
+~/notes/flake.nix jailed-pi: extraOptions = [readwrite goadBackends, try-readwrite "/run/user/1000/satan"] ++ jailEnvOptions (= satanMcpOptions). DEC-101 makes mcp/ a read-only mount layered over the writable satan dir.
+
+Two gaps, both from the writable parent (IMP-047):
+1. State: `--ro-bind-try` skips when /run/user/1000/satan/mcp is absent at jail launch (fresh login, satan-mcp never started, jailed-malebolge not yet run). The jail then has the host's satan dir writable with no overlay, and can mkdir mcp/ and listen on mcp/mcp.sock itself; a client (e.g. the malebolge daemon) connecting before satan-mcp-start replaces the socket talks to the jail. Window closes when satan-mcp-start recreates the socket (it unlinks + rebinds, ISS-042) and sets the dir 0700.
+2. Order: the guarantee is a comment ("Order matters") with no check. notes has no flake checks; VA-1's grep (scratchpad script) is an agent pass, not a regression test. Appending a writable satan bind after jailEnvOptions silently reopens DEC-088's hole.
+
+Evidence: launcher grep (VA-1, 2026-10-20) shows `--bind-try /run/user/1000/satan …` before `--ro-bind-try /run/user/1000/satan/mcp …` in notes jailed-pi — correct today. bwrap `--ro-bind-try` ignores a missing source (bwrap(1)).
+"""
+disposition = "follow-up"
+response = """
+Owned by IMP-047: drop notes jailed-pi's writable /run/user/1000/satan bind and update goad backends through satan-runner (user direction, 2026-10-20 consult). That removes both gaps: with no writable parent there's nothing to layer over, and an absent mcp/ simply isn't bound. In-phase alternatives were rejected: a notes flake check would add check infrastructure to the user's notes repo for a bind that IMP-047 deletes. Closing the window with a strict (non-try) bind would fail every jailed-pi launch before satan-mcp first starts. IMP-047's body now carries F-1's absent-dir state and its acceptance line. DEC-088 holds today in the common state (mcp/ exists; jailed-malebolge's launch also creates it).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Owned by IMP-047: drop notes jailed-pi's writable /run/user/1000/satan bind and update goad backends through satan-runner (user direction, 2026-10-20 consult). That removes both gaps: with no writable parent there's nothing to layer over, and an absent mcp/ simply isn't bound. In-phase alternatives were rejected: a notes flake check would add check infrastructure to the user's notes repo for a bind that IMP-047 deletes. Closing the window with a strict (non-try) bind would fail every jailed-pi launch before satan-mcp first starts. IMP-047's body now carries F-1's absent-dir state and its acceptance line. DEC-088 holds today in the common state (mcp/ exists; jailed-malebolge's launch also creates it).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
