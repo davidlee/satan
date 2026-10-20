@@ -1,0 +1,165 @@
+id = 28
+slug = "malebolge-daemon-unit"
+title = "malebolge room daemon as an Emacs-started user unit, robust to satan-mcp restarts"
+status = "plan"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+
+[[selector]]
+selector = "src/satan-tools.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/session.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon-extensions.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon-main.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/unix-socket.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/runner/control.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/attach.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "emacs/malebolge.el"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "README.md"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "docs/internals.md"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/**"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "features/satan/malebolge.nix"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes"
+
+[[selector]]
+selector = "features/satan.nix"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes"
+
+[[selector]]
+selector = "agents/jailed-agents.nix"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes"
+
+[[selector]]
+selector = "agents/jailed-agents-test.nix"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes"
+
+[[selector]]
+selector = "agents/README.md"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes"
+
+[[selector]]
+selector = "SATAN.md"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes"
+
+[[selector]]
+selector = "justfile"
+intent = "design-target"
+note = "cross-repo: ~/satan-corpus, ~/.config/emacs and ~/notes each change flake.nix; ~/notes also justfile"
+
+[[selector]]
+selector = "src/instance-lock.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/config.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon-start.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "delivered by this slice"
+target = "IMP-045"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "delivered by this slice"
+target = "IMP-039"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "delivered by this slice"
+target = "ISS-042"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "RSK-020"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

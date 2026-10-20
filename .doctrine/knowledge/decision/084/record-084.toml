@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 84
+slug = "malebolge-start-in-malebolge-el"
+title = "malebolge-start/stop live in malebolge.el with a soft satan dependency"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Emacs must start the unit and attach (IMP-045); satan-mcp must be up for SATAN tools."
+choice = "malebolge-start (malebolge.el): if satan-mcp-start is fboundp call it under condition-case on error (any failure: message that the daemon will have zero SATAN tools and continue), else message the same; systemctl --user start malebolge-room, user-error on non-zero exit; malebolge-attach. malebolge-stop: systemctl --user stop. attach retries connect every 200 ms for up to 10 s on ENOENT/ECONNREFUSED. Amended 2026-10-20 by RV-040 F-4."
+alternatives = ["command in satan (satan-mcp.el)", "hard (require 'satan-mcp)", "Type=notify readiness"]
+rationale = "POL-001 seats interactive commands in the client but names no file; malebolge.el owns the daemon's client side and must stay loadable without satan. Type=notify is broken by bwrap's pid namespace."
+consequences = ["malebolge.el gains declare-function for satan-mcp-start.", "Degraded start is visible, never silent (GPT review)."]
+decided_by = "user"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-028"

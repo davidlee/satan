@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 86
+slug = "malebolge-refresh-satan-tools-per-turn"
+title = "The daemon re-lists SATAN tools before every input and after every reconnect"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "IMP-039: tool list fixed at daemon start; lazy reconnect fires only on a SATAN tool call, which deadlocks with zero tools. satan-mcp emits no tools/list_changed and pi-mcp does not handle it."
+choice = "openSession takes a Registry built by the daemon; satanTools(socketPath, registry, log).refresh() = connection.get() + listTools() + Registry.install(defineExtension({name:'satan', tools})) under one 2 s deadline carried as an AbortSignal. Runs at startup before openSession, before each input submit, after each reconnect. Coalesced: one read in flight; a request during a read gets one more read started after it. Failure or timeout installs an empty set and calls reconnectingClient.reset() so a hung connect or late response never wedges later calls. Amended 2026-10-20 by RV-040 F-3."
+alternatives = ["refresh on reconnect only", "timer/backoff poll", "MCP list_changed notifications"]
+rationale = "pi-durable 1.3.0 Registry.install replaces by name while the Harness runs; per-turn refresh also picks up Emacs tool changes without a restart; empty-on-failure keeps the daemon a mirror, never a policy copy (ADR-018 D2, REQ-006)."
+consequences = ["session.ts and test/harness-fixture.ts change.", "One local listTools per turn."]
+decided_by = "user"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-028"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 83
+slug = "malebolge-room-unit-shape"
+title = "malebolge-room is an on-demand home-manager user unit that never restarts on switch"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-028 moves the interactive room daemon out of a terminal (IMP-045)."
+choice = "systemd.user.services.malebolge-room in ~/flakes/features/satan/malebolge.nix; ExecStart = jailed-malebolge from the satan input; no Install; Restart=on-failure, RestartSec=10, StartLimitBurst=5/IntervalSec=300; Environment HOME=%h, XDG_RUNTIME_DIR=%t; X-RestartIfChanged=false; default KillMode delivers SIGTERM to node inside bwrap. Off switch: systemctl --user stop/mask — service management, not a SATAN kill switch (that stays satan-mcp-enabled, ledger row 6a)."
+alternatives = ["WantedBy=default.target (always on)", "socket activation", "malebolge@<profile> template"]
+rationale = "On demand per IMP-045; X-RestartIfChanged=false mirrors home-manager services/emacs.nix so a switch never kills a live conversation; DEC-077 requires the wrapper as ExecStart."
+consequences = ["A changed wrapper or live tree takes effect only on explicit systemctl --user restart malebolge-room — documented in SATAN.md.", "No authority-ledger row changes."]
+decided_by = "user"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-028"

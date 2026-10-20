@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 85
+slug = "malebolge-degrade-without-satan-mcp"
+title = "The room daemon degrades to zero SATAN tools when satan-mcp is unreachable"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "daemon-main.ts:31-35 throws when satan-mcp is absent; under Restart=on-failure that crash-loops."
+choice = "Start with an empty satan extension and a live refresh handle; log the degraded state. connectSatanTools must return the handle even when the first connection fails."
+alternatives = ["fail and rely on StartLimitBurst"]
+rationale = "ADR-017 §4: daemons idle or degrade, never fall open; satan-mcp-start may legitimately refuse (satan-mcp-enabled nil)."
+consequences = ["Start limit remains a backstop for genuine crashes only."]
+decided_by = "user"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-028"

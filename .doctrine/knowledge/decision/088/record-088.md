@@ -1,0 +1,5 @@
+# DEC-088: Jails reach satan-mcp through one read-only directory-bind combinator in ~/flakes/agents
+
+<!-- Knowledge record body — context, detail, links. The structured, queried
+     fields live in the sister `record-NNN.toml`; this prose is free-form and is
+     never structurally parsed (the storage rule). -->

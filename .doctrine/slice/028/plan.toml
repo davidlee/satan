@@ -1,0 +1,171 @@
+# Implementation plan for SL-028 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# Code paths are in ~/dev/malebolge unless prefixed (flakes/, satan/,
+# satan-corpus/, emacs/, notes/). VT test_file paths outside this repo are
+# absolute (SL-023/SL-027 convention). "design VT-n" cites design.md §6;
+# phase VT ids are local to their phase. RV-040's findings (all fix-now,
+# route review) are already in design.md; criteria cite them where they bind.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-028"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Instance lock and socket claim"
+objective = "Design §4.4 primitives, unwired: src/instance-lock.ts (acquireInstanceLock over node:sqlite, InstanceLocked); config.lockPath beside storagePath; serveUnix claims by listening and probes only on EADDRINUSE (SocketInUse; unlink only after ECONNREFUSED; ENOENT retries once; other errors propagate); the runner drops refuseIfLive and maps SocketInUse to StartRefused. Daemon startup unchanged until PHASE-03."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (run dr-01a15761, rev 34); malebolge `just check` green at the phase's base commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "acquireInstanceLock(path) opens path with DatabaseSync and runs PRAGMA locking_mode=EXCLUSIVE; BEGIN EXCLUSIVE; returns { release }; a second acquire while held throws InstanceLocked naming the path; release makes it acquirable." },
+  { id = "EX-2", text = "The lock is released by the kernel when its holder dies: a child process holding it is killed with SIGKILL, then the parent acquires it (design VT-15)." },
+  { id = "EX-3", text = "config.lockPath = <state>/satan/durable/<profile>/daemon.lock, derived next to storagePath in src/config.ts (design VT-16)." },
+  { id = "EX-4", text = "serveUnix: a free path listens; a live listener -> SocketInUse and the socket file is untouched; a stale socket (ECONNREFUSED) is unlinked and replaced; a probe error other than ECONNREFUSED/ENOENT propagates and nothing is unlinked (RV-040 F-5; design VT-10)." },
+  { id = "EX-5", text = "src/runner/control.ts has no refuseIfLive; a second runner on a live control socket still refuses with StartRefused (existing runner tests green unchanged in intent)." },
+  { id = "EX-6", text = "test/structure.test.ts allowlists stay green (instance-lock.ts is a daemon-side root module; the runner does not import it). `just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "second acquire refused; acquire after release; acquire after holder SIGKILL (child process)", test_file = "/home/david/dev/malebolge/test/instance-lock.test.ts", keywords = ["acquireInstanceLock", "InstanceLocked", "SIGKILL", "release"], waived = false },
+  { id = "VT-2", expects = "lockPath beside storagePath in the profile dir", test_file = "/home/david/dev/malebolge/test/config.test.ts", keywords = ["lockPath", "daemon.lock"], waived = false },
+  { id = "VT-3", expects = "serveUnix claim: free, live (SocketInUse, file untouched), stale (replaced), other probe error propagates without unlink", test_file = "/home/david/dev/malebolge/test/unix-socket.test.ts", keywords = ["serveUnix", "SocketInUse", "ECONNREFUSED"], waived = false },
+  { id = "VT-4", expects = "the shared claim lives in unix-socket.ts; the runner keeps no private probe", test_file = "/home/david/dev/malebolge/src/unix-socket.ts", keywords = ["SocketInUse", "EADDRINUSE"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "SATAN tools handle: refresh, deadline, reset"
+objective = "Design §4.3, the satan-tools.ts half: satanTools(socketPath, registry, log) with refresh() and close(), replacing connectSatanTools. refresh = connection.get() + listTools() + registry.install(satan extension) under one 2 s AbortSignal deadline; empty set on failure or timeout; coalesced (one read in flight, a request during a read gets one more read started after it); reconnectingClient gains reset() and onReconnect; `first` goes. connectSatanTools stays as a thin adapter only until PHASE-03 removes its caller."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "refresh installs satan-mcp's current list as extension `satan` in the given Registry; after satan-mcp restarts with a changed tool set, the next refresh installs the new set (design VT-1)." },
+  { id = "EX-2", text = "satan-mcp absent: satanTools constructs without throwing; refresh installs `tools: []` and logs once per state change (design VT-2, tools half)." },
+  { id = "EX-3", text = "A hung listTools and a stalled connect each hit the deadline: empty set installed, reset() called, and the next refresh opens a fresh connection; a response arriving after the deadline is dropped (RV-040 F-3; design VT-4)." },
+  { id = "EX-4", text = "Coalescing: with a read in flight, a second request triggers exactly one further read that starts after the request; installs apply in order (design VT-5)." },
+  { id = "EX-5", text = "A call to a tool removed by a refresh settles as pi-durable `tool_unavailable` with isError (design VT-6)." },
+  { id = "EX-6", text = "satan-mcp lost and recovered during a turn: the lazy reconnect fires onReconnect, refresh runs (no re-entrancy deadlock with refresh's own get()), later calls succeed (design VT-7)." },
+  { id = "EX-7", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "refresh installs current list; changed set after restart; absent satan-mcp -> empty, no throw", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["satanTools", "refresh", "registry"], waived = false },
+  { id = "VT-2", expects = "deadline: hung listTools and stalled connect time out, reset, recover; late response dropped", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["timeout", "reset", "stalled"], waived = false },
+  { id = "VT-3", expects = "coalescing: one extra read after a mid-flight request; ordered installs", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["coalesce"], waived = false },
+  { id = "VT-4", expects = "removed tool -> tool_unavailable; mid-turn loss and reconnect refreshes via onReconnect", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["tool_unavailable", "onReconnect"], waived = false },
+  { id = "VT-5", expects = "the handle carries the deadline and reset", test_file = "/home/david/dev/malebolge/src/satan-tools.ts", keywords = ["export function satanTools", "AbortSignal", "reset"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Daemon wiring: startup order, refresh per input"
+objective = "Design §4.3 callers and §4.4 order. The startup sequence moves out of the top-level script into src/daemon-start.ts (startDaemon(config, deps) -> { stop }, after src/runner/start.ts) so its order is testable; daemon-main.ts stays the thin entry (env, signals, exit codes). openSession takes a Registry; daemon-extensions drops `satan`; serve(Promise<Session>, path, beforeInput) awaits the session per connection and awaits beforeInput before `input` submits only; daemon-main runs lock -> serve (claim) -> satan.refresh() -> openSession -> resolve, exits 1 on InstanceLocked/SocketInUse/openSession failure (closing the server), releases the lock last on stop; the satan-mcp throw goes; connectSatanTools is deleted."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-mcp absent at startup: the daemon starts and serves with zero SATAN tools (design VT-2, daemon half)." },
+  { id = "EX-2", text = "A degraded daemon gains SATAN tools on the next input once satan-mcp is reachable, with no SATAN tool call (design VT-3)." },
+  { id = "EX-3", text = "Concurrent inputs each await one (coalesced) refresh and are submitted; abort/compact do not refresh (design VT-8)." },
+  { id = "EX-4", text = "A second daemon with the lock held exits on InstanceLocked without opening the store (store file untouched) and without touching the socket; two concurrent starters on a free or stale socket: exactly one serves (design VT-9)." },
+  { id = "EX-5", text = "A turn left in flight by a restart is resumed with the SATAN tools installed (refresh before openSession) (design VT-11)." },
+  { id = "EX-6", text = "connectSatanTools and the 'satan-mcp not reachable' throw are gone; the startup log reports the first refresh's tool count." },
+  { id = "EX-7", text = "startDaemon is exported from src/daemon-start.ts and exercised by tests with a temp state root and a fake satan-mcp; test/structure.test.ts places daemon-start.ts on the daemon side (the runner does not import it)." },
+  { id = "EX-8", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-5", expects = "startDaemon order: lock, claim, refresh, openSession; failure paths close the server and release the lock", test_file = "/home/david/dev/malebolge/test/daemon-start.test.ts", keywords = ["startDaemon", "InstanceLocked", "SocketInUse"], waived = false },
+  { id = "VT-1", expects = "zero-tool start; tools after next input; concurrent inputs; abort/compact skip refresh", test_file = "/home/david/dev/malebolge/test/daemon.test.ts", keywords = ["beforeInput", "zero SATAN tools", "concurrent"], waived = false },
+  { id = "VT-2", expects = "second daemon refused at the lock before the store; two concurrent starters, one serves", test_file = "/home/david/dev/malebolge/test/daemon.test.ts", keywords = ["InstanceLocked", "store"], waived = false },
+  { id = "VT-3", expects = "resumed turn sees SATAN tools; openSession takes a Registry", test_file = "/home/david/dev/malebolge/test/session.test.ts", keywords = ["registry", "resume"], waived = false },
+  { id = "VT-4", expects = "startup order in startDaemon: lock, serve, refresh, openSession", test_file = "/home/david/dev/malebolge/src/daemon-start.ts", keywords = ["export async function startDaemon", "acquireInstanceLock", "satanTools", "openSession"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Emacs start/stop, attach wait, malebolge docs"
+objective = "Design §4.2 and the malebolge part of §4.6: attach() connects through a bounded retry (200 ms, up to 10 s, on ENOENT/ECONNREFUSED; other errors fail at once); malebolge.el gains malebolge-unit, malebolge--systemctl, malebolge-start (soft satan-mcp-start under condition-case on error) and malebolge-stop; README.md and docs/internals.md describe the unit start path, per-input tool refresh and the instance lock."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "attach retries ENOENT and ECONNREFUSED up to its bound, then fails with the last error; any other connect error fails at once (design VT-12)." },
+  { id = "EX-2", text = "malebolge.el: malebolge-start calls satan-mcp-start only when fboundp, catches any `error` from it with a message naming the cause and continues; runs systemctl --user start malebolge-room and signals user-error with exit status and journalctl hint on failure; then malebolge-attach. malebolge-stop runs systemctl --user stop. No (require 'satan-mcp)." },
+  { id = "EX-3", text = "malebolge.el byte-compiles with no warnings (declare-function present)." },
+  { id = "EX-4", text = "README.md launch section and docs/internals.md (start path, tool list refreshed per input and reconnect, instance lock) match design §4.6; no mention of hello-durable as the launch path." },
+  { id = "EX-5", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "attach retry bound and error classes", test_file = "/home/david/dev/malebolge/test/attach.test.ts", keywords = ["ECONNREFUSED", "ENOENT", "retry"], waived = false },
+  { id = "VT-2", expects = "malebolge.el defines start/stop with the soft dependency", test_file = "/home/david/dev/malebolge/emacs/malebolge.el", keywords = ["defun malebolge-start", "defun malebolge-stop", "declare-function satan-mcp-start", "condition-case"], waived = false },
+  { id = "VA-1", expects = "emacs --batch byte-compile of emacs/malebolge.el reports no warnings; with satan-mcp-start stubbed to signal `error` and systemctl stubbed, malebolge-start messages and still reaches attach (design VA-4)." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "satanMcpOptions: one read-only satan-mcp client bind"
+objective = "Design §4.5 (DEC-088, ISS-042): flakes/agents/jailed-agents.nix exports satanMcpOptions (try-readonly /run/user/1000/satan/mcp + fwd XDG_RUNTIME_DIR, SATAN_MCP_SOCKET), asserted in jailed-agents-test.nix and documented in agents/README.md; satan/flake.nix mcpJailOptions, satan-corpus/flake.nix, emacs/flake.nix and notes/flake.nix use it; jailed-malebolge pre-creates /run/user/1000/satan/mcp (RV-040 F-2) and malebolge-jail-profile asserts it; notes/justfile loses hello-durable and attach-durable."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete (no code dependency; ordering keeps malebolge's suite settled before flake locks move)." },
+  { id = "EN-2", text = "Consumers take agents from github:davidlee/nix-config?dir=flakes/agents: checks run first with --override-input agents path:/home/david/flakes/agents; moving their locks needs ~/flakes pushed, on the user's go-ahead (outward-facing)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satanMcpOptions exported next to gatewaySocketOptions; the agents test builds a launcher with it and asserts the read-only directory bind is present and neither mcp/mcp.sock nor a writable bind of /run/user/1000/satan/mcp appears (design VT-13). `just check` (or the repo's test recipe) green in ~/flakes." },
+  { id = "EX-2", text = "Each consumer flake binds satan-mcp only through satanMcpOptions; no `mcp/mcp.sock` literal remains in any of the four flake.nix files. satan's mcpJailOptions keeps its emacs server bind." },
+  { id = "EX-3", text = "jailed-malebolge's add-runtime mkdir also creates /run/user/1000/satan/mcp; malebolge-jail-profile asserts that; `nix flake check ~/dev/satan` green (design VT-14)." },
+  { id = "EX-4", text = "Each consumer's checks (or launcher build) pass with --override-input agents path:/home/david/flakes/agents before any push. After the user's go-ahead: ~/flakes pushed, each consumer's agents lock updated and committed. Satan's push waits for PHASE-06." },
+  { id = "EX-5", text = "notes/justfile has no hello-durable or attach-durable recipe." },
+]
+verification = [
+  { id = "VT-1", expects = "combinator binds the directory read-only, never the socket file or a writable directory", test_file = "/home/david/flakes/agents/jailed-agents-test.nix", keywords = ["satanMcpOptions", "/run/user/1000/satan/mcp", "mcp.sock"], waived = false },
+  { id = "VT-2", expects = "jailed-malebolge pre-creates the mcp dir and the profile check asserts it", test_file = "/home/david/dev/satan/flake.nix", keywords = ["satanMcpOptions", "/run/user/1000/satan/mcp"], waived = false },
+  { id = "VA-1", expects = "every jail launcher built by the four flakes, grepped: no mcp/mcp.sock, no writable satan/mcp bind (design VA-1)." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "malebolge-room unit, SATAN.md, deploy and live checks"
+objective = "Design §4.1 and the flakes part of §4.6: flakes/features/satan/malebolge.nix (systemd.user.services.malebolge-room, no Install, Restart=on-failure, StartLimit 5/300, Environment HOME/XDG_RUNTIME_DIR, X-RestartIfChanged=false) registered in features/satan.nix; SATAN.md units table, live-tree exception (RSK-020) and restart note; deploy (satan push + nix flake update satan + home-switch, on the user's go-ahead); live VA/VH."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 complete." },
+  { id = "EN-2", text = "User go-ahead to push ~/dev/satan and ~/flakes and to run home-switch (outward-facing; memory mem.fact.satan.runtime-jail-deploys-from-github-input)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The unit module evaluates and builds (home-build green); systemctl --user cat malebolge-room shows no [Install] and X-RestartIfChanged=false (design VA-2)." },
+  { id = "EX-2", text = "SATAN.md: malebolge-room row in the units table; lines saying the daemon is not a unit replaced; live-tree exception beside the runner's store-build line citing RSK-020; explicit restart needed after a wrapper or live-tree change." },
+  { id = "EX-3", text = "Deployed: ~/.nix-profile / unit ExecStart resolves to a jailed-malebolge that pre-creates the mcp dir and binds it read-only." },
+  { id = "EX-4", text = "home-switch with the unit running does not restart it (design VA-2)." },
+  { id = "EX-5", text = "With /run/user/1000/satan/mcp absent and satan-mcp never started, the unit starts, logs zero SATAN tools and stays up; after satan-mcp-start the next input lists them (design VA-3)." },
+  { id = "EX-6", text = "VH-1..VH-3 (design §6) performed by the user and recorded." },
+]
+verification = [
+  { id = "VA-1", expects = "unit file shape and switch behaviour (design VA-2)" },
+  { id = "VA-2", expects = "degraded start with the mcp dir absent; tools after satan-mcp-start (design VA-3)" },
+  { id = "VH-1", expects = "fresh Emacs: M-x malebolge-start brings the daemon up with no terminal and attaches" },
+  { id = "VH-2", expects = "restart satan-mcp (or Emacs); a SATAN tool call then succeeds with no daemon restart" },
+  { id = "VH-3", expects = "M-x malebolge-stop stops cleanly; the journal shows the stop handler" },
+]
+specs        = []
+requirements = []

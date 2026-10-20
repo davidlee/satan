@@ -1,0 +1,18 @@
+schema = "doctrine.observation"
+schema_version = 1
+uid = "01a1577c-e5bb-7920-88cb-9584160d6489"
+recorded_at = "2026-10-20T04:06:05.499206575Z"
+kind = "friction"
+summary = "design run: adding a concerns edge to the slice invalidates the user's governance-confirmed act"
+detail = """SL-028 design run, inquiring stage. After the user confirmed governance (rev 7), `doctrine link SL-028 references RSK-020 --role concerns` moved `governance-edges` and the act went stale ("given over governance-edges, which has moved"), forcing a re-ask. The user: "adding new governance really shouldn't blow the acceptance". Expected: additive edges (especially a references/concerns edge to a backlog risk, not a governed_by edge) leave the confirmation live, or only removals/changes to governed_by invalidate it."""
+
+[facets.execution]
+schema_version = 1
+interface = "mcp"
+interface_origin = "automatic"
+product_surface = "doctrine"
+product_surface_origin = "automatic"
+command = "observation_record"
+command_origin = "automatic"
+repository_context = "primary"
+repository_context_origin = "automatic"

@@ -1,0 +1,239 @@
+id    = 40
+slug  = "design-review-of-sl-028"
+title = "design review of SL-028"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "GPT-6-sol adversarial pass on SL-028 design.md: 5 findings (2 blocker, 3 major), all fix-now and verified after two rechecks."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Re-concluded after routing F-1..F-5 (review)."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-028"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "§4.4: probe-then-unlink can delete a live peer's socket"
+detail = "GPT-6-sol adversarial. refuseIfLive runs before serveUnix, which unlinks unconditionally (unix-socket.ts:44); a daemon binding between the two has its live socket removed, and the new process opens the same store. Fix: listen is the claim; on EADDRINUSE probe and unlink only a verified stale socket, then retry once."
+disposition = "fix-now"
+response = "Fixed in design.md (RV-040 F-1 markers in §4; §5-7); verified by GPT-6-sol recheck."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted; design.md revised (see 'RV-040 F-1' in §4/§6). Verified at the cited sites before revising."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck 1: NOT RESOLVED (stale-socket race after listen-first). Fixed by a lifetime instance lock (node:sqlite exclusive, daemon.lock beside the store) before the socket claim, user's choice; DEC-087 amended. GPT-6-sol recheck 2: RESOLVED."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Add route; disposition unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Fixed in design.md (RV-040 F-1 markers in §4; §5-7); verified by GPT-6-sol recheck."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "blocker"
+title = "§4.3/4.5: absent satan-mcp dir makes the room jail fail before it can degrade"
+detail = "GPT-6-sol adversarial. jailed-malebolge binds /run/user/1000/satan/mcp with a strict readonly (flake.nix:277); only satan-mcp-start creates the dir (satan-mcp.el:444, after the disabled check at :432). On a fresh login with satan-mcp disabled or not yet started, bwrap fails. Fix: the launcher creates the dir (flake.nix:284 add-runtime mkdir), Emacs still enforces 0700 (satan-mcp--check-socket-dir)."
+disposition = "fix-now"
+response = "Fixed in design.md (RV-040 F-2 markers in §4; §5-7); verified by GPT-6-sol recheck."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted; design.md revised (see 'RV-040 F-2' in §4/§6). Verified at the cited sites before revising."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Add route; disposition unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Fixed in design.md (RV-040 F-2 markers in §4; §5-7); verified by GPT-6-sol recheck."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "§4.3: refresh timeout does not cancel; a hung connect wedges every later refresh"
+detail = "GPT-6-sol adversarial. A timeout racing connection.get()/listTools() leaves the read live; a stalled open() stays reconnectingClient's current (satan-tools.ts:51-69) so later gets never reconnect. pi-mcp requests take signal/timeoutMs (client.d.ts:18-19); listTools may page (client.js:218). Fix: one overall refresh deadline as an AbortSignal; on timeout close/replace the client so the next get() opens fresh; test stalled init and a late response."
+disposition = "fix-now"
+response = "Fixed in design.md (RV-040 F-3 markers in §4; §5-7); verified by GPT-6-sol recheck."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted; design.md revised (see 'RV-040 F-3' in §4/§6). Verified at the cited sites before revising."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Add route; disposition unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Fixed in design.md (RV-040 F-3 markers in §4; §5-7); verified by GPT-6-sol recheck."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "§4.2: malebolge-start catches only user-error"
+detail = "GPT-6-sol adversarial. satan-mcp-start also signals plain error (missing tool description satan-mcp.el:114, socket dir :142), aborting before systemctl start. Fix: condition-case on error, report the cause, continue to start and attach."
+disposition = "fix-now"
+response = "Fixed in design.md (RV-040 F-4 markers in §4; §5-7); verified by GPT-6-sol recheck."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted; design.md revised (see 'RV-040 F-4' in §4/§6). Verified at the cited sites before revising."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Add route; disposition unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Fixed in design.md (RV-040 F-4 markers in §4; §5-7); verified by GPT-6-sol recheck."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "§4.4: shared probe treats every connect error as dead"
+detail = "GPT-6-sol adversarial. refuseIfLive (control.ts:326-338) maps any error to not-live; with an unlink after it, EACCES or another unexpected error authorises deleting the socket. Fix: only ECONNREFUSED (stale) permits unlink; ENOENT retries listen; other errors propagate. Test each."
+disposition = "fix-now"
+response = "Fixed in design.md (RV-040 F-5 markers in §4; §5-7); verified by GPT-6-sol recheck."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted; design.md revised (see 'RV-040 F-5' in §4/§6). Verified at the cited sites before revising."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Add route; disposition unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = "Fixed in design.md (RV-040 F-5 markers in §4; §5-7); verified by GPT-6-sol recheck."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "GPT-6-sol recheck: RESOLVED."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

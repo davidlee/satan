@@ -15,6 +15,12 @@ tags = ["architecture", "durable", "habitat", "malebolge", "room", "tools"]
 superseded_by = []   # reverse link is derived (REV→RFC originates_from)
 
 [[relation]]
+label = "references"
+role = "concerns"
+descriptor = "RFC-019 follow-on: room daemon lifecycle"
+target = "SL-028"
+
+[[relation]]
 label = "related"
 target = "RFC-018"
 

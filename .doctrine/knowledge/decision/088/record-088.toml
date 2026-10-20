@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 88
+slug = "satan-mcp-client-combinator"
+title = "Jails reach satan-mcp through one read-only directory-bind combinator in ~/flakes/agents"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "ISS-042: ~/dev/satan/flake.nix:86, ~/satan-corpus/flake.nix:57, ~/.config/emacs/flake.nix:80 bind mcp.sock as a file; ~/notes/flake.nix:71 binds the directory read-write. Three of those flakes have no checks output."
+choice = "Export a satanMcpClient combinator from ~/flakes/agents: try-readonly /run/user/1000/satan/mcp plus fwd XDG_RUNTIME_DIR and SATAN_MCP_SOCKET. All four jails use it. The jailed-agents test asserts the combinator binds the directory read-only and never mcp.sock."
+alternatives = ["per-flake checks in four flakes", "satan-flake check plus audit grep"]
+rationale = "A rw directory lets a jailed agent replace the socket and impersonate satan-mcp to the daemon; only listen needs write. One combinator removes four duplicated bind sets and puts the check in one place."
+consequences = ["Scope widens to ~/flakes/agents.", "The satan flake bind ships only after push + nix flake update satan."]
+decided_by = "user"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-028"

@@ -5,10 +5,10 @@ id = 38
 slug = "malebolge-reconnect-to-satan-mcp-when-emacs-restarts-it"
 title = "malebolge: reconnect to satan-mcp when Emacs restarts it"
 kind = "improvement"
-status = "started"
-resolution = ""
+status = "resolved"
+resolution = "done"
 created = "2026-10-16"
-updated = "2026-10-16"
+updated = "2026-10-20"
 tags = ["durable", "mcp", "satan"]
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 87
+slug = "malebolge-claim-socket-before-store"
+title = "The room daemon claims its socket before opening the store and refuses a live owner"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "serveUnix unlinks then listens (unix-socket.ts:44); a second room-profile daemon steals the path, and openSession/Harness.open run before serve, so a second daemon opens the live store and may recover the first's tasks."
+choice = "The room daemon takes a lifetime exclusive lock (node:sqlite PRAGMA locking_mode=EXCLUSIVE + BEGIN EXCLUSIVE on daemon.lock beside the store) before anything else; a holder elsewhere -> exit 1 (InstanceLocked). It then claims the socket by listening: on EADDRINUSE probe-connect; live -> SocketInUse; ECONNREFUSED -> unlink and listen once; ENOENT -> listen once; other errors propagate. serveUnix implements the claim for both the daemon and the runner (refuseIfLive removed). The socket is claimed and SATAN tools refreshed before openSession; connections await the session. Remove hello-durable and attach-durable from ~/notes/justfile; keep malebolge just daemon for dev. Amended 2026-10-20 by RV-040 F-1/F-5 (user chose the lock)."
+alternatives = ["probe before rmSync (store still opened first)", "listen-first claim without a lock (stale-socket race)", "document only"]
+rationale = "Claiming before the store prevents a refused daemon from touching the live store; the socket doubles as the instance lock."
+consequences = ["A refused daemon never opens the store or touches the socket.", "The lock relies on POSIX advisory locks on a local filesystem; only builds with the lock contend.", "The runner takes no lock (systemd keeps it single)."]
+decided_by = "user"
+decided_on = "2026-10-20"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-028"
