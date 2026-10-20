@@ -736,9 +736,97 @@ operator command each, not substituted.
   never tested. `audit_failed` with evidence intact is a pass on its own
   (fail-closed); a pre-spawn refusal is 77, since nothing was proven.
 
+## Implementation and review (nine phases via capsule orchestrators)
+
+The slice was driven through five capsule-orchestrator charters plus three repair
+charters, one worker per phase, strictly serial, in the main worktree.
+
+| phase | commit | note |
+|---|---|---|
+| PHASE-01 | `47064a6` | one accumulator, the terminal answer, `pi-run-status/2` |
+| PHASE-02 | `b6834c4` | stdio server shell, operator policy, posture and enable gate |
+| PHASE-03 | `44bd292` | profile snapshot, grammar, root allowlist, ceilings, tools narrowing |
+| PHASE-04 | `d4cc8d9` | session ownership, binding, stale reclamation |
+| PHASE-05 | `9879067` | child-view disjointness, the one evidence layout |
+| PHASE-06 | `2b3894d` | launcher argv, the one termination ladder, evidence capture |
+| PHASE-07 | `df71ab4` | the gate: one tick, three ceilings, the wall clock, the switch re-read |
+| PHASE-08 | `1a7a769` | one cause table, the latch before the commit point, success as a predicate |
+| PHASE-09 | `bba7d87` | the two per-call forms, the bind-set probe, the hostile-audit fixture — **status `blocked`** |
+
+Two charters hit the 30-minute wall (charter B inside PHASE-06, charter E2a
+before its disposals); both were re-chartered for the same phase and lost no
+work. One concurrent SL-030 session committed `.doctrine/**` into this tree
+throughout — every phase commit was path-scoped for that reason, and foreign
+commits sit inside two boundary ranges (`PHASE-06`'s and `PHASE-08`'s).
+
+### Review: RV-053 (concluded)
+
+Three read-only reviews over `2931b97..bba7d87` — wire/session/termination,
+validation/admission/accounting, whole-slice cohesion — raised 18 findings: two
+blockers, three major, thirteen minor. Dispositions:
+
+- **Fixed and verified (13):** F-1, F-2, F-4..F-14, commits `ab9ae66`
+  (ladder bounds the drain; in-flight index; session ownership first; reclaim
+  diagnosis), `a5abffc` (one envelope, one path predicate `pi/mcp/paths.ts`, one
+  clamp home, one tally factory), `8350a98` (dead posture branch, inert form
+  extensions, inline assumptions, a behavioural transcript-budget case, the
+  crossing written into the abort audit record).
+- **F-1 was the blocker that mattered**: the drain after the reap sat outside the
+  ladder, so a grandchild holding stdout made a run unbounded — no trigger could
+  reach it and the session lock outlived the call. Both correctness reviewers
+  reproduced it independently.
+- **F-3** returned to the design record (child_binds exposure; the bind-set check
+  closes form-vs-literal, not policy-vs-form); **F-16** returned to reconcile,
+  joining the QUE-007 class; **F-15** deferred (test-harness duplication collides
+  with the source scan's rules); **F-17** tolerated, handed to the audit's risk
+  register; **F-18** open on host limitation.
+
+Suite after repairs: 252 pass, 0 fail, ~5.4 s. `verify-vt` unchanged.
+
+### Residuals for the audit
+
+1. **PHASE-09 is `blocked`, not complete.** No `nix` binary on this host, no
+   llm-gateway socket: EX-3/EX-5/EX-7 and VA-1..VA-3 are unexecuted. The forms,
+   probes and hostile fixture are text-validated only.
+2. **RV-043 F-1 stays undemonstrated** until that operator run.
+3. **RV-053 F-3 and F-16 are reconcile's**, with QUE-007.
+4. `verify-vt` reports PHASE-09 VT-1 `UNATTRIBUTABLE` although `flake.nix` was
+   modified by `bba7d87`: doctrine's attribution heuristic does not credit the
+   file. The artefact is present
+   ([[mem.pattern.doctrine.vt-attribution-gap]]).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · ready (plan authored, 0/9) · d2c794f
+fresh-as-of: 2026-10-20 · 8/9 completed, PHASE-09 blocked · 0fc4022
+
+### Produced
+- nine phases implemented, one commit each (`47064a6` … `bba7d87`); PHASE-01..08
+  `completed`, PHASE-09 `blocked`
+- RV-053 — implementation review (three reviewers, 18 findings, concluded);
+  thirteen repairs across `ab9ae66`, `a5abffc`, `8350a98`
+- new module `pi/mcp/paths.ts` (one canonicalisation + `within` predicate)
+- PHASE-09 evidence in `notes.md` § PHASE-09 evidence: the two forms, the probe,
+  the hostile-audit fixture, the operator sequence
+
+### Learned
+- mem.pattern.pi-subagents.charter-wall-clock — a blocking orchestrator dies at 30 min; charter ≤3 phases
+- mem.pattern.doctrine.review-verbs-serialise — `doctrine review` takes a per-review lock; parallel invocations refuse
+- mem.pattern.doctrine.vt-attribution-gap — `verify-vt` does not credit `flake.nix`
+- mem.fact.satan.dev-host-lacks-nix-and-gateway — the verification host cannot build jails or reach the gateway
+- (carried) mem.pattern.doctrine.phase-sheets-not-refreshed, mem.fact.satan.research-dir-gitignored,
+  mem.pattern.pi-subagents.capsule-tiering, mem.pattern.doctrine.review-ledger-extraction,
+  mem.fact.pi.codemode-sandbox-broken, mem.pattern.doctrine.knowledge-decision-edit
+
+### Open
+- QUE-007 — fold the design-record corrections at reconcile; RV-053 F-16 adds six
+  (validation order, unbounded `maxima`, budget-0 inversion, pending→settled
+  `status.state`, `switch`/DEC-093 mapping, `final` with no answer)
+- RV-053 F-3 — `child_binds` exposure and the unclosed policy↔form check
+- RV-053 F-18 — PHASE-09's empirical criteria, unexecuted (host)
+- RV-053 F-15 — test-harness duplication, deferred
+- RV-053 F-17 — hardening observations, tolerated
+- RV-043 F-1 — blocker still `answered`; refuses audit→reconcile until PHASE-05/06/09 prove it
+- RV-046 F-1..F-6 — answered on `demonstrate` routes; the plan carries their criteria
 
 ### Produced
 - SL-029 plan authored as nine phases, one mechanism each, then revised after an

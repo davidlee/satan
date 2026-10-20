@@ -1,0 +1,42 @@
+memory_uid = "mem_01a159cabf85729189bc04f2b5401619"
+memory_key = "mem.pattern.pi-subagents.charter-wall-clock"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "A blocking capsule-orchestrator dies at the 30-minute wall"
+summary = "pi-subagents caps a blocking child run at 30 min; charter 2-3 phases, not more"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["capsule", "subagents"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6d5feb63fbd8ba3425b47c6240ba086906b390b3"
+ref_name = "refs/heads/main"
+checkout_state_id = "ae59da719a7efba3d5d40a3de3aa76c1cbe264691c18268b85eda4bb6157ce48"
+base_commit = "0fc40222a528db2c0a73c8df4ae320f58eed23e9"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

@@ -1,0 +1,42 @@
+memory_uid = "mem_01a159cabfc070b3aab53d513061f624"
+memory_key = "mem.pattern.doctrine.review-verbs-serialise"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "doctrine review verbs serialise on a per-review lock"
+summary = "Two concurrent  invocations on one RV: the second refuses "
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "review"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6d5feb63fbd8ba3425b47c6240ba086906b390b3"
+ref_name = "refs/heads/main"
+checkout_state_id = "d0e43aece42ce0e026fe2656f51d8f148bef6dfbd8a92b9380bd6987114d1a05"
+base_commit = "0fc40222a528db2c0a73c8df4ae320f58eed23e9"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

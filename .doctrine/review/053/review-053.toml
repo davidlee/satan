@@ -10,13 +10,25 @@ raiser    = "code-review"
 responder = "implementer"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Three read-only reviews of the SL-029 implementation over `2931b97..bba7d87` — wire/session/termination, validation/admission/accounting, and whole-slice cohesion — raised 18 findings (2 blocker, 3 major, 13 minor).
+
+Closing state: 13 fixed and verified in this pass (F-1, F-2, F-4..F-13, F-14) across three repair commits `ab9ae66`, `a5abffc`, `8350a98`; F-3 (child_binds exposure and the unclosed policy↔form check) returned to the design record; F-16 (six design divergences) returned to reconcile, joining the QUE-007 class; F-15 (test-harness duplication) deferred to a follow-up; F-17 (hardening observations) tolerated and handed to the audit's risk register; F-18 (PHASE-09's unexecuted empirical criteria) open on the host limitation and routed to the operator run.
+
+Suite 252 pass / 0 fail / 5.4 s; `doctrine slice verify-vt 29` unchanged (PHASE-01..08 every row PASS; PHASE-09 VT-1 unattributable on `flake.nix`, VT-2 PASS); no bwrap token in any non-test `pi/mcp` file.
+"""
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-029"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "The drain after the reap is outside the ladder: no trigger can bound a run whose leader has exited"
 detail = """
@@ -41,9 +53,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Fixed in 80bb3ce. pi/mcp/spawn.ts: the abort listener now stays attached through the drain and is removed only after the exit record; terminate no longer early-returns on exit !== null but SIGKILLs the group (a pgid outlives its reaped leader), and every signalling rung leaves a drainBound one grace out so the drain is waited a slice at a time and gives up on an unreachable tail rather than never. Pinned by 'a cancellation arriving after the leader was reaped still bounds the drain: the group that holds stdout is killed, so the call answers instead of waiting on a grandchild' (spawn.test.ts; fails on HEAD at 5 s, passes in ~0.2 s now) and by the reworked 'the session lock is released only after the drain and the final audit append … and the ladder is what ends the drain', whose grandchild is now sleep 30 and whose assertion is the bound, not the sleep."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "`failedResult` emits an envelope its own validator rejects, and no test covers it"
 detail = """
@@ -68,9 +85,14 @@ role = "responder"
 disposition = "fix-now"
 response = """Fixed in a5abffc. Shape chosen: the conforming failure envelope, not a fourth refusal — design sec-5 defines `refused` as "nothing ran" with status/artifacts null, so a server throw after the session and run directory exist cannot honestly claim it, while sec-5 also says "session is always present". pi/mcp/result.ts: `failedResult(termination, causes, session, status, layout)` now builds a fully conforming arm — the call's session, a status record, and the five artifact paths from the RunLayout — and `transcript` is `""`: the diagnostic detail is not reduced markdown and now goes only to the diagnostics sink. pi/mcp/server.ts: the run layout is allocated once (`runLayout(admission.runDir, id)`) and handed to the spawn through `plan.layout` (spawn already honoured `plan.layout ?? runLayout(...)`, so this is the same layout it would have computed), and `callTool`'s try/finally gained a catch answering `failedResult('error', ['error'], session.session, reduce([], {}).status, layout)` — the reducer's verdict on an unread stream. The outer `tools/call` catch now only sees throws from before the run was established (every step before it answers a refusal rather than throwing), so it answers `refusedResult('server-error', …)`, the new token added to `RESULT_REFUSAL_REASONS`; nothing ran there, so a null session/status/artifacts pair is the truth. Tests: the arm sweep in result.test.ts now runs every reachable builder arm through `validateAgentResult` — `resultFor` per termination token, `refusedResult` per declared refusal reason (including `server-error`), and the new subtest "the last resort: a post-run throw is a conforming `failed` envelope, not a refusal" (asserts conformance, the call's session, `artifacts.dir === layout.dir`, `transcript === ''`, null result, `final: false`, null refusal). Verified by evaluation: the HEAD shape returns `{ok:false, detail:'a spawned run carries its session'}`; the new one returns `{ok:true}`."""
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-3"
-status = "open"
+status = "answered"
 severity = "major"
 title = "`child_binds` is one fact in three places with the exposure half missing; the bind-set check does not close policy↔form"
 detail = """
@@ -85,14 +107,36 @@ Raised in R3 (finding 3, MEDIUM); the exposure half is also R2's design tension 
 
 Suggestion: make `child_binds` `{path, exposure}[]` (or a `{read, write}` split) so the policy can state the truth the child view checks against, and add one test asserting the documented example policy's bind set equals `jailProbes.pi-mcp.shared`; if the three-way duplication is accepted instead, say so where design sec-3 claims the loop is closed.
 """
+disposition = "design-wrong"
+route = "demonstrate"
+response = """
+Not repaired here: the fix is a policy-schema change plus a check that needs nix to run, so it belongs to reconcile and to PHASE-09's operator run.
+
+Observed: (a) `child_binds` is `string[]` (`policy.ts:53`), so every member is hard-coded `read-write` in `childview.ts:114-126`, while the wrapped form's fixed mounts are mostly `--ro-bind` — a policy cannot declare a read-only bind, so the "policy file is never writable" rule over-refuses a legitimately read-only mount. (b) Nothing ties the policy's list to the form's actual binds: the flake check compares the built launcher against a third literal (`jailProbes.pi-mcp.shared`), the recorded smoke policy declares one bind, and every test rig declares none. The design's "the flake check asserts the form's actual bind set equals root + session directory + child_binds — that is where the loop closes" is therefore overstated: the loop closes form-vs-literal, not policy-vs-form.
+
+Routes: `demonstrate` for the missing policy-vs-form check (PHASE-09 EX-3 / VA-1, blocked on this host), `refresh` for the design's claim at reconcile.
+"""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "demonstrate"
+response = """
+Not repaired here: the fix is a policy-schema change plus a check that needs nix to run, so it belongs to reconcile and to PHASE-09's operator run.
+
+Observed: (a) `child_binds` is `string[]` (`policy.ts:53`), so every member is hard-coded `read-write` in `childview.ts:114-126`, while the wrapped form's fixed mounts are mostly `--ro-bind` — a policy cannot declare a read-only bind, so the "policy file is never writable" rule over-refuses a legitimately read-only mount. (b) Nothing ties the policy's list to the form's actual binds: the flake check compares the built launcher against a third literal (`jailProbes.pi-mcp.shared`), the recorded smoke policy declares one bind, and every test rig declares none. The design's "the flake check asserts the form's actual bind set equals root + session directory + child_binds — that is where the loop closes" is therefore overstated: the loop closes form-vs-literal, not policy-vs-form.
+
+Routes: `demonstrate` for the missing policy-vs-form check (PHASE-09 EX-3 / VA-1, blocked on this host), `refresh` for the design's claim at reconcile.
+"""
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "A duplicate in-flight request id evicts the first call from cancellation and the EOF sweep"
 detail = """
@@ -117,9 +161,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Fixed in 80bb3ce. pi/mcp/server.ts: inFlight is Map<string, InFlightCall[]> — a repeated wire id appends to the list under its key, the finally removes by entry identity and deletes the key only when the list empties, abortNamed aborts every entry under the id, and the EOF sweep flattens all lists. The invariant 'every running call is in the index' therefore holds for a misbehaving client's repeated id. Pinned by 'two tools/calls carrying one id are both in the index: a cancellation naming it aborts both, and each run records its abort' (spawn.test.ts; fails on HEAD — one call answered, the other run hung to the 10 s ceiling — and passes now)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The within/contains predicate has two independent implementations"
 detail = """
@@ -144,9 +193,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Fixed in a5abffc. New pi/mcp/paths.ts exports the canonicalisation (`canonicalPath`, realpath of the longest existing ancestor with the remaining components appended) and the containment predicate (`within(outer, inner)` by `relative`,  ⇒ same path, absolute ⇒ not inside, `..` / `../` ⇒ not inside), moved verbatim with their A2/DEC-095 reasoning. pi/mcp/childview.ts imports both and keeps no copy; pi/mcp/profiles.ts drops `componentsOf` and `canonicalForComparison` and its allowlist loop becomes `within(canonicalPath(allowedRoot), canonical)` against the already-`realpathSync`'d candidate, so step 4 and step 8 now ask one function the same question. Both behaviours are preserved unchanged: prefix-sharing sibling refused, symlink resolving to its target, `..` and trailing-slash normalisation, `/`-root refused, and the child view's longest-existing-ancestor rule (an absent leaf under an existing ancestor still classifies) all still hold — pinned by the existing profiles/childview/root tests, which pass with no assertion edited; the only test change is childview.test.ts's import line (`canonicalPath, within` now from `./paths.ts`)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Two clampers for one concept, one of them living in the result module"
 detail = """
@@ -171,9 +225,14 @@ role = "responder"
 disposition = "fix-now"
 response = 'Fixed in a5abffc. pi/mcp/policy.ts now owns `transcriptBudget`, immediately after `clampCeilings`, with its body and docstring unchanged and one sentence stating the asymmetry: "This maximum clamps silently where `clampCeilings` refuses an above-maximum request: a transcript budget is a report bound, not a spend bound, so nothing is refused over it." pi/mcp/result.ts no longer defines it (and its header no longer claims the soft transcript budget among its subjects); pi/mcp/server.ts imports it from ./policy.ts. Tests: the pure clamp table moved verbatim into pi/mcp/policy.test.ts ("the transcript budget clamps to the policy maximum, silently where clampCeilings refuses (F-6)"); the result-side budget-application assertions stayed in result.test.ts and now import the function from ./policy.ts; the seam assertion that the budget reaches the reducer through the clamp is untouched and passes.'
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "`Tally` is constructed in three places and the gate's idle poll depends on a caller priming it"
 detail = """
@@ -200,9 +259,14 @@ role = "responder"
 disposition = "fix-now"
 response = """Fixed in a5abffc. pi/reduce/reduce.ts exports `createTally(): Tally`, the one constructor, and uses it for its own accumulator; the hand-copied literals in pi/mcp/spawn.ts (`emptyTally`) and pi/mcp/gate.test.ts are deleted in favour of an import, so a new `Tally` field can no longer produce a silent partial accumulator. pi/mcp/gate.ts: `last` is initialised with `createTally()` instead of `null` and the idle poll judges unconditionally, so the wall clock and the switch bound a silent child from the first period without any caller priming them (the empty accumulator reads zero units, which crosses no ceiling); `wallClock()` still takes no tally and the spawn's `onRecord` priming is kept but no longer load-bearing. Pinned by the new test "timeout: the wall clock fires with no tick at all — the idle poll stands alone (F-7)" in gate.test.ts: a gate with a 0.05 s wall clock and no `tick` at all aborts with cause `timeout`."""
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The session directory is created before ownership is decided"
 detail = """
@@ -227,9 +291,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Fixed in 80bb3ce. pi/mcp/session.ts: acquireSession makes home and sessions before the lock (the lock lives in sessions) and <home>/<id> only after takeOwnership succeeds; a layout failure there releases the ownership before refusing, so no lock is left for the next caller to wait out. Pinned by 'a refused acquisition creates no session directory: the layout is made only once the lock is this call's (EX-2)' (session.test.ts; fails on HEAD where the refused caller materialises the directory)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "`reclaim` misdiagnoses a retryable race as `session-busy` and collapses unreadable liveness into alive"
 detail = """
@@ -258,9 +327,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Fixed in 80bb3ce. pi/mcp/session.ts, both diagnosis fixes, no policy change: (a) reclaim's before.missing branch now re-attempts the single create exactly once (a retried flag threaded through takeOwnership/reclaim, never recursive) — one vanished path is a race, two are a disagreement — and the surviving refusal's detail no longer claims the call was not retried in place; (b) the re-confirm under the claim branches on all three liveness answers, so unknown routes to unknownRefusal(again.record, procDir) instead of aliveRefusal's assertion about a liveness nobody could read. Tokens unchanged (session-busy both ways). No test: both paths are synchronous inside one fs sequence with no seam, and adding one would be new public surface, so the fix is code-only and reviewed by inspection."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The posture-state branch is unreachable dead code that carries EX-11's claim"
 detail = """
@@ -285,9 +359,14 @@ role = "responder"
 disposition = "fix-now"
 response = """Fixed in 8350a98. Deleted rather than guarded: `PostureState`, `createPostureState()` and `admitCall`'s `posture` parameter are gone (pi/mcp/policy.ts), together with the `acceptedMode !== null && mode !== acceptedMode` branch and the `posture.acceptedMode = loaded.policy.mode` write it guarded; `admitCall` is now `admitCall(env, callId)`. pi/mcp/server.ts drops the import, `Context.posture`, the `createPostureState()` in the context literal and the third argument at the call site. The PHASE-02 EX-11 intent is preserved by the mechanism that already enforced it: every call re-reads and re-validates the artefact, and `validatePolicy` refuses any `mode` other than `per-call` with `posture-unsupported` (policy.ts:203-210), so a file edited mid-life to name another mode is refused at the next call and no path re-launches into one. A comment in the branch's place states exactly that, including why a remembered mode would add nothing, so the dead state is not reinstated; the `admitCall` step list no longer implies a state check. The "mode change between calls" case in policy.test.ts now drives the real mechanism — first call admitted, file rewritten with `mode: "static"`, next call refused `posture-unsupported` with the schema's own detail (naming the mode and the per-call-only posture) and the refusal present in attempts.jsonl for call_id 12 — and is retitled to say the re-validation is the mechanism."""
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Form `extensions` accept any token while only `builtin:mcp` is honoured"
 detail = """
@@ -312,9 +391,14 @@ role = "responder"
 disposition = "fix-now"
 response = """Fixed in 8350a98. pi/mcp/policy.ts `readForm` now refuses any `extensions` entry that is not `builtin:mcp` as `policy-invalid`, with a detail naming the entry and its index: `forms.<field>.extensions[<i>] "<entry>" is not an extension this build passes: the launch forms pass no "-e" other than "builtin:mcp"` (design sec-3). The allowed value is the existing `MCP_EXTENSION` constant, imported from pi/mcp/profiles.ts (profiles imports only paths.ts, so no cycle), not a second literal. The refusal is additive: `Policy`/`Form` keep their shape, `validatePolicy` is untouched, and `spawn.ts:buildArgv` still decides `-e builtin:mcp` from `profile.tools` and never reads the form's extensions. The form test "a form may declare the extensions it passes, and nothing else" gained the foreign-extension case alongside the existing bad-type cases (7, a bare string), asserting the detail names the exact entry."""
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-12"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Assumption labels `A1`–`A6` resolve to no record, and `A1` means two different things"
 detail = """
@@ -339,9 +423,14 @@ role = "responder"
 disposition = "fix-now"
 response = '''Fixed in 8350a98. Every `A1`..`A6` label in pi/mcp is gone (`grep -nE "\bA[1-6]\b" pi/mcp/*.ts` is empty), and no governance record was created — that stays reconcile's work. Where the sentence already carried the assumption the label was simply dropped (pi/mcp/paths.ts canonicalPath: a run dir, session home or named policy file may not exist at check time and a lexical comparison would let a symlinked ancestor through; pi/mcp/result.ts `derivedCause` and REACHABILITY; pi/mcp/session.ts `SessionPaths`). Two sites had the label standing in for the assumption, and now state it inline: pi/mcp/childview.ts's `Exposure` doc says in this posture the root is writable for a `write` capability and read-only for a `read` one, and every fixed child mount and the active session directory are writable; pi/mcp/gate.ts's header says the gate keeps no usage of its own, so the numbers it judges and the numbers the result reports are the same accumulator's. `(A1/D2)` in gate.ts went the same way (neither label resolved). The test-side labels were dropped with the wording byte-identical, so no VT keyword moved: childview.test.ts's two section rules and one comment. The wider sweep `\bA[1-6]\b` also caught the four parenthetical survivors (childview.test.ts:80, :143; policy.ts:340; session.ts:150) and two inline ones (childview.ts:92, result.test.ts:639) — the real references (`DEC-095`, `EX-5`, `EX-6`, `EX-9`, "design sec-3's table") were kept, only the dangling label and its separator removed.'''
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-13"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "A source-text parentheses scan stands in for a behavioural transcript-budget test"
 detail = """
@@ -366,9 +455,14 @@ role = "responder"
 disposition = "fix-now"
 response = """Fixed in 8350a98. Deleted the parenthesis-balancing source-text scan ("server.ts hands the clamp to the reducer", result.test.ts:546-570) and the now-unused `readFileSync` import. Replaced it with one behavioural case in pi/mcp/gate.test.ts, in the file whose rig already drives full calls in-process through `serve` against a stub launcher: a stub emits forty distinct tool round-trips (distinct ids and commands, so the reducer's repeat-collapsing never folds them), one priced `message_end`, `agent_settled` and exit 0; the first call runs under an effectively unbudgeted `transcript_budget_bytes: 10_000_000` and the second after `patchPolicy(…, 256)`, which is the honest test of the per-call read. Asserts both calls `completed`, the unbudgeted run `elided === 0`, the budgeted run `status.transcript.elided > 0`, its `status.transcript.bytes` strictly below the unbudgeted run's, and "entries elided" present in the transcript text an operator reads. That is PHASE-08 EX-6's carried obligation discharged in-suite and behaviourally: a dropped `budgetBytes` argument at the server seam now fails this case, where the deleted scan would have stayed green through any reformat and failed on any rename. The real-form smoke stays PHASE-09's. Suite: 252 tests, 5.4 s (one subtest removed, one test added)."""
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-14"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The gate's trigger facts are computed and dropped, and `triggers()`/`cause()` serve only tests"
 detail = """
@@ -393,9 +487,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Fixed in 8350a98. The crossing now reaches production evidence without a new cause: `GateConfig.abort` takes the whole `GateTrigger` (gate.ts: `fire` passes the trigger, not `trigger.cause`), and server.ts wires `abort: (trigger) => controller.abort({ cause: trigger.cause, trigger })` — the cause token stays exactly what the ladder reads, the trigger rides along in the same signal reason rather than a second channel. spawn.ts reads it structurally (no dependency on gate.ts): `abortCauseOf` accepts a bare token or `{ cause, trigger }` with the same `'cancelled'` fallback, a new `crossingOf` returns `{ unit, observed, limit }` when the reason carries one, and `terminate(cause, crossing)` writes `unit`, `observed` and `limit` onto the abort audit record only when a crossing is present — so a `cancelled`/`eof`/`audit` abort writes the identical record it always wrote. `AbortCause` and `Termination` are unchanged and `evidence.ts` needed no change (`AuditRecord` is open). `triggers()`/`cause()` keep their signatures and now have a production consumer. Tests: gate.test.ts's live-crossing case asserts the audit record names the unit (`cost_usd`), the accumulator's value at the crossing (`0.01`) and the clamped bound it crossed (`0.005`), and `unitGate` keeps its `causes: string[]` API so every existing cause assertion still holds. Audit-record shape note for the audit stage: the `abort` record for a gate rung gains three optional fields — the phase-09 hostile-audit script asserts the audit is intact or the call is `audit_failed`, never a clean success, and does not fix the record's field set, so no fixture change is implied."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Verified against the tree at 0fc4022: the repaired mechanism is present, the suite is green and verify-vt is unchanged."
+
 [[finding]]
 id = "F-15"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "Roughly 450 lines of test harness are duplicated between `spawn.test.ts` and `gate.test.ts`"
 detail = """
@@ -407,14 +506,28 @@ Raised in R3 (finding 10, LOW).
 
 Suggestion: one shared fixtures module for the five harness-driven files — with the wrinkle R3 names: the bwrap-token scan at pi/mcp/server.test.ts:370 reads every non-`*.test.ts` file in `pi/mcp`, so either name the module `*.test-helpers.ts` and widen the scan's exclusion, or place it under `pi/mcp/testing/` and exclude that directory, else the fixture module is treated as production source.
 """
+disposition = "follow-up"
+route = "dedupe"
+response = """
+Deferred, not declined: `spawn.test.ts` and `gate.test.ts` each define the same `Env`, `line`, `callLine`, `emit`, `stubLauncher`, `Rig`, `newRig`, `killSurvivors`, `readText`, `jsonLines`, `marker`, `markerPids`, `isAlive`, `Session`, `openServer`, `document` (~450 lines), `attemptLines` is repeated in four files, and they have begun to drift. Extraction is cheap in principle but collides with `server.test.ts`'s source scan, which treats every non-`*.test.ts` file in `pi/mcp` as production source: a shared fixtures module needs either a `*.test-helpers.ts` exclusion or a `pi/mcp/testing/` directory carved out of the scan. That widens a security scan's rules and touches five test files — more than a review repair should do while a phase is still blocked. Follow-up after PHASE-09 closes; the drift is currently benign (each copy is correct in its own file).
+"""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+route = "dedupe"
+response = """
+Deferred, not declined: `spawn.test.ts` and `gate.test.ts` each define the same `Env`, `line`, `callLine`, `emit`, `stubLauncher`, `Rig`, `newRig`, `killSurvivors`, `readText`, `jsonLines`, `marker`, `markerPids`, `isAlive`, `Session`, `openServer`, `document` (~450 lines), `attemptLines` is repeated in four files, and they have begun to drift. Extraction is cheap in principle but collides with `server.test.ts`'s source scan, which treats every non-`*.test.ts` file in `pi/mcp` as production source: a shared fixtures module needs either a `*.test-helpers.ts` exclusion or a `pi/mcp/testing/` directory carved out of the scan. That widens a security scan's rules and touches five test files — more than a review repair should do while a phase is still blocked. Follow-up after PHASE-09 closes; the drift is currently benign (each copy is correct in its own file).
+"""
+
 [[finding]]
 id = "F-16"
-status = "open"
+status = "answered"
 severity = "major"
 title = "Design-record divergences owed at reconcile: validation order, unbounded `maxima`, budget-0 inversion, pending→settled status divergence, `switch` mapping, `final` with no answer"
 detail = """
@@ -434,14 +547,42 @@ Six divergences between the locked design record (design sec-1/2/4/5) and the im
 
 Suggestion: settle each in the design record at reconcile (the six are the right size for one REV or a QUE entry per item, as DEC-093's existing list of reconcile corrections does), and let the implementation follow the settled prose — except the `switch`-cause loss, which is cheap to fix in code either way (append an abort record per trigger, or record the extra cause).
 """
+disposition = "design-wrong"
+route = "refresh"
+response = """
+Six design-record divergences, none a code defect, all owed at reconcile (the QUE-007 class). Each is recorded here so the reconciled truth can settle it once:
+
+1. Validation order. `request-invalid` and the start-up profile-snapshot check run before design sec-2's step 1 (policy), so two refusal tokens can disagree with "first failure wins".
+2. Unbounded maxima. `maxima: {}` — and any maxima without `wall_clock_s` — satisfies the schema while granting an unbounded delegate with no hard backstop; sec-1's "no ceiling → refuse everything" is enforced only for the artefact's absence. A negative maximum is accepted and turns every call into an instant `ceiling` abort.
+3. Budget-0 inversion. `transcript_budget_bytes: 0` (or negative) in the policy is read as "no ceiling" by `transcriptBudget`'s `policyMax > 0`, inverting the clause: a maximum of zero means unbounded rather than none.
+4. Pending→settled divergence. A settled stream whose last assistant message ended `pending` yields `status.state: "completed"` with `result: null`, while sec-5 says `incomplete`/`eof` and that `status.state` and `state` diverge only for out-of-stream causes.
+5. `switch` mapping. `switch → cancelled` and `toolUse|deferred → incomplete` (DEC-093's table, normative) diverge from `status.state` beyond sec-5's out-of-stream list; the table wins, `causes[0]` names the reason, `status` stays verbatim — the design text needs to say so.
+6. `final: true` with `result: null`. A textless `stop` message completes as final with no answer; that is the letter of sec-5, but "final" arguably should mean an answer exists.
+"""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "refresh"
+response = """
+Six design-record divergences, none a code defect, all owed at reconcile (the QUE-007 class). Each is recorded here so the reconciled truth can settle it once:
+
+1. Validation order. `request-invalid` and the start-up profile-snapshot check run before design sec-2's step 1 (policy), so two refusal tokens can disagree with "first failure wins".
+2. Unbounded maxima. `maxima: {}` — and any maxima without `wall_clock_s` — satisfies the schema while granting an unbounded delegate with no hard backstop; sec-1's "no ceiling → refuse everything" is enforced only for the artefact's absence. A negative maximum is accepted and turns every call into an instant `ceiling` abort.
+3. Budget-0 inversion. `transcript_budget_bytes: 0` (or negative) in the policy is read as "no ceiling" by `transcriptBudget`'s `policyMax > 0`, inverting the clause: a maximum of zero means unbounded rather than none.
+4. Pending→settled divergence. A settled stream whose last assistant message ended `pending` yields `status.state: "completed"` with `result: null`, while sec-5 says `incomplete`/`eof` and that `status.state` and `state` diverge only for out-of-stream causes.
+5. `switch` mapping. `switch → cancelled` and `toolUse|deferred → incomplete` (DEC-093's table, normative) diverge from `status.state` beyond sec-5's out-of-stream list; the table wins, `causes[0]` names the reason, `status` stays verbatim — the design text needs to say so.
+6. `final: true` with `result: null`. A textless `stop` message completes as final with no answer; that is the letter of sec-5, but "final" arguably should mean an answer exists.
+"""
+
 [[finding]]
 id = "F-17"
-status = "open"
+status = "answered"
 severity = "minor"
 title = "Hardening observations: over-broad child env strip, unbounded line buffer, no server signal handler, stale-lock advice, undocumented audit-kind collapse"
 detail = """
@@ -459,14 +600,40 @@ Five hardening observations raised as "design tensions, residual" rather than de
 
 Suggestion: state the audit-kind collapse in the comment (`timeout`/`switch` are `abort` records carrying a cause), narrow `childEnv`'s test to the variables the design actually names, bound the line buffer and the retained stream (or state the size limit), add the SIGTERM/SIGINT handler or record it in the slice's residual list, and replace the stale-lock advice with "owned, record not yet readable — retry".
 """
+disposition = "tolerated"
+route = "probe"
+response = """
+Accepted as residual risk for the audit's risk register, judged not worth a repair now (each fails safe or is bounded by the deployment):
+
+- Over-broad child env strip. `childEnv` drops any variable whose value contains the run directory path; with a short `PI_MCP_RUN_DIR` (e.g. `/run/user/1000/satan`) that can drop `XDG_RUNTIME_DIR` or a `PATH` entry, producing a confusing `spawn` failure.
+- Unbounded buffers. `serve`'s per-line buffer and `spawn`'s in-memory `lines` (alongside the on-disk `events.jsonl`) are bounded only by RAM; fine for the intended prompt sizes.
+- No SIGTERM/SIGINT handler on the server. A driver that kills the server rather than closing stdin leaves the child's session alive — a declared boundary (DEC-103 names stdin EOF as the shutdown), but the natural counterpart to EX-11 and worth stating in the residual list.
+- Stale-lock advice. `reclaim`'s message tells the operator to clear a lock that, between `openSync('wx')` and the record write, may be about to become live.
+- `AuditKind` collapses design sec-6's `timeout`/`switch` record kinds into `abort` + `cause` without saying so; defensible, currently reads as an oversight.
+"""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
 
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+route = "probe"
+response = """
+Accepted as residual risk for the audit's risk register, judged not worth a repair now (each fails safe or is bounded by the deployment):
+
+- Over-broad child env strip. `childEnv` drops any variable whose value contains the run directory path; with a short `PI_MCP_RUN_DIR` (e.g. `/run/user/1000/satan`) that can drop `XDG_RUNTIME_DIR` or a `PATH` entry, producing a confusing `spawn` failure.
+- Unbounded buffers. `serve`'s per-line buffer and `spawn`'s in-memory `lines` (alongside the on-disk `events.jsonl`) are bounded only by RAM; fine for the intended prompt sizes.
+- No SIGTERM/SIGINT handler on the server. A driver that kills the server rather than closing stdin leaves the child's session alive — a declared boundary (DEC-103 names stdin EOF as the shutdown), but the natural counterpart to EX-11 and worth stating in the residual list.
+- Stale-lock advice. `reclaim`'s message tells the operator to clear a lock that, between `openSync('wx')` and the record write, may be about to become live.
+- `AuditKind` collapses design sec-6's `timeout`/`switch` record kinds into `abort` + `cause` without saying so; defensible, currently reads as an oversight.
+"""
+
 [[finding]]
 id = "F-18"
-status = "open"
+status = "answered"
 severity = "blocker"
 title = "PHASE-09's empirical criteria are unexecuted on this host"
 detail = """
@@ -485,10 +652,28 @@ The operator sequence recorded in the PHASE-09 hand-back, one reproducible comma
 
 Suggestion: do not close SL-029 on the nix-free half alone. Either run the three commands on a host with `nix` and a live gateway and append their output to the PHASE-09 evidence, or obtain an explicit operator waiver that records EX-3, EX-5 and EX-7 (and VA-1..VA-3) as unexecuted-in-environment, before audit→reconcile — the same way this slice already records its other unexecuted-and-not-claimed items.
 """
+disposition = "follow-up"
+route = "demonstrate"
+response = """
+Unexecuted here, by host limitation rather than omission. PHASE-09 EX-3/EX-5/EX-7 and VA-1..VA-3 could not run: this host has no `nix` binary (`/nix/store` is a transplanted snapshot, `/nix/var/nix` empty) so the per-call forms cannot be built, `pi-mcp-forms`/`just check-jails` cannot run and the bind-set equality cannot be observed; and there is no llm-gateway socket (`/run/llm-gateway-client` absent, no pi key) so the deepseek-flash smoke cannot run. What landed at bba7d87 is text-validated only: the two forms, `jailProbes.pi-mcp`, the `checks.pi-mcp-forms` residue printer, `bin/pi-mcp-hostile-audit`, and `pi/mcp/forms.test.ts` (the nix-free half).
+
+PHASE-09 therefore stays `blocked`, deliberately: flipping it to `completed` would claim a verification nobody performed, and RV-043 F-1's execution proof depends on exactly this. Operator sequence to close it is recorded in the slice handover and in `notes.md` § PHASE-09 evidence: `just check-jails` → `bin/pi-mcp-hostile-audit` against the built read and write forms → the recorded smoke with `transcript_budget_bytes` set → append outcomes, flip to `completed`.
+"""
 
 [[finding.turn]]
 act = "raise"
 role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+route = "demonstrate"
+response = """
+Unexecuted here, by host limitation rather than omission. PHASE-09 EX-3/EX-5/EX-7 and VA-1..VA-3 could not run: this host has no `nix` binary (`/nix/store` is a transplanted snapshot, `/nix/var/nix` empty) so the per-call forms cannot be built, `pi-mcp-forms`/`just check-jails` cannot run and the bind-set equality cannot be observed; and there is no llm-gateway socket (`/run/llm-gateway-client` absent, no pi key) so the deepseek-flash smoke cannot run. What landed at bba7d87 is text-validated only: the two forms, `jailProbes.pi-mcp`, the `checks.pi-mcp-forms` residue printer, `bin/pi-mcp-hostile-audit`, and `pi/mcp/forms.test.ts` (the nix-free half).
+
+PHASE-09 therefore stays `blocked`, deliberately: flipping it to `completed` would claim a verification nobody performed, and RV-043 F-1's execution proof depends on exactly this. Operator sequence to close it is recorded in the slice handover and in `notes.md` § PHASE-09 evidence: `just check-jails` → `bin/pi-mcp-hostile-audit` against the built read and write forms → the recorded smoke with `transcript_budget_bytes` set → append outcomes, flip to `completed`.
+"""
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

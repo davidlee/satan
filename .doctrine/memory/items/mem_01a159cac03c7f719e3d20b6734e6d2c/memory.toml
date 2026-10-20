@@ -1,0 +1,42 @@
+memory_uid = "mem_01a159cac03c7f719e3d20b6734e6d2c"
+memory_key = "mem.fact.satan.dev-host-lacks-nix-and-gateway"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "This dev host has no nix and no llm-gateway socket"
+summary = "Flake builds, jail probes and gateway smokes cannot run in the /workspace/satan dev container"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan", "verification", "environment"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "6d5feb63fbd8ba3425b47c6240ba086906b390b3"
+ref_name = "refs/heads/main"
+checkout_state_id = "18d32c3e022df5fb8c748e69b9d902369c31ff2c69dac6710b626039db651b3a"
+base_commit = "0fc40222a528db2c0a73c8df4ae320f58eed23e9"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
