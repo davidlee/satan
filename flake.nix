@@ -82,14 +82,12 @@
             jailLib.agentsByName.claude
           ];
 
-        mcpJailOptions = with jailLib.combinators; [
-          # expose SATAN MCP
-          (try-readwrite "/run/user/1000/satan/mcp/mcp.sock")
-          (try-fwd-env "XDG_RUNTIME_DIR")
-          (try-fwd-env "SATAN_MCP_SOCKET")
-          # (allow arbitrary elisp execution):
-          (try-readwrite "/run/user/1000/emacs/server")
-        ];
+        mcpJailOptions =
+          jailLib.satanMcpOptions
+          ++ [
+            # (allow arbitrary elisp execution):
+            (jailLib.combinators.try-readwrite "/run/user/1000/emacs/server")
+          ];
 
         supabaseJailOptions = with jailLib.combinators; [
           (try-fwd-env "DOCKER_HOST")
@@ -281,8 +279,10 @@
             (readonly malebolgeKeyFile)
             (readonly malebolgeCatalog)
             # bwrap binds only existing paths. The socket dir is rw: listen
-            # needs it.
-            (add-runtime "mkdir -p ${malebolgeStateDir} ${malebolgeRuntimeDir}")
+            # needs it. satan-mcp's dir too: its bind above is strict, and
+            # only satan-mcp-start creates it, so on a fresh login bwrap would
+            # fail before the daemon could degrade (RV-040 F-2).
+            (add-runtime "mkdir -p ${malebolgeStateDir} ${malebolgeRuntimeDir} /run/user/1000/satan/mcp")
             (readwrite malebolgeRuntimeDir)
             (readwrite malebolgeStateDir)
           ];
@@ -417,7 +417,7 @@
               "--bind ~/.local/share/jail.nix/home/malebolge ~ "
               "--bind /run/user/1000/satan/durable/room /run/user/1000/satan/durable/room "
               "--bind /home/david/.local/state/satan/durable/room /home/david/.local/state/satan/durable/room "
-              "mkdir -p /home/david/.local/state/satan/durable/room /run/user/1000/satan/durable/room"
+              "mkdir -p /home/david/.local/state/satan/durable/room /run/user/1000/satan/durable/room /run/user/1000/satan/mcp"
               "--unshare-net "
               # On PATH; the store hashes force interpolation.
               "${pkgs.openssh}/bin:"
