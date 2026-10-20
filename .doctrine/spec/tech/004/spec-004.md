@@ -27,7 +27,7 @@ Host facts (unit, paths, keys, room name, config values) live in
  │ promote / reject         ├─disposition►│   job_* tables + pi_* tables      │
  └──┬───────────────────────┘             │ harness (pi-durable)              │
     │ fetch quarantine ref                │   model gate ─────────────────────┼──► LLM gateway
-    │ CAS-create satan/patch/<id>         │   guard hooks, JobConnection      │
+    │ CAS-create satan/patch/<id>         │   guard hooks, ObservedConnection │
     ▼                                     │ git-channel port (slot | room)    │
  real repos ◄─────── read only ───────────┤                                   │
     ▲                                     └──────┬───────────────┬────────────┘
@@ -49,8 +49,8 @@ Host facts (unit, paths, keys, room name, config values) live in
 | Job state machine (`jobs.ts`) | allowed transitions and the recovery table, as pure data |
 | Policy and prompt (`policy.ts`, `prompt.ts`) | the policy ladder; prompt composition, a pure function of (prompt text, resolved policy, job, project context) (DEC-070) |
 | Model gate (`model-gate.ts`, `ceilings.ts`) | per-job ceilings at the provider boundary |
-| Environment (`env.ts`, `guard.ts`) | per-job pi-env environment and connection; room-down recognition; early path check |
-| Git channel (`room.ts`) | the door port and its slot and room adapters |
+| Environment (`env.ts`, `guard.ts`; on `src/room/`) | per-job pi-env environment and connection; room-down recognition; early path check |
+| Git channel (`door.ts`, was `room.ts`) | the door port and its slot and room adapters |
 | Collection (`collect.ts`, `classify.ts`) | collect into quarantine, ancestry and allowlist over all commits, class |
 | Emacs client (`satan-patch-rpc`, `satan-tools-patch`, `satan-patch-inbox`, `satan-patch-promote`) | the model-facing tools, the inbox, promotion and rejection |
 
@@ -160,6 +160,11 @@ oubliette's `known_hosts`; oubliette's own verbs learn keys. Tools offered:
 `read`, `write`, `edit`, `bash`, `grep` (ripgrep in the room); `read` and
 `grep` are replay-safe.
 
+The room session itself — connection, shell, source reader, door table — lives
+in malebolge `src/room/`, shared with the interactive daemon (SL-027, DEC-074);
+a structure test keeps `src/runner/` and `src/room/` from importing daemon
+modules. The runner's per-job env, tools and door values are unchanged.
+
 ## Concerns
 
 - **Trust boundary.** The agent and its tools are untrusted; the model and its
@@ -172,7 +177,9 @@ oubliette's `known_hosts`; oubliette's own verbs learn keys. Tools offered:
   malebolge's `package.json`; upgrades are deliberate and gated by the
   harness and env conformance tests.
 - **One seat.** One job in flight across all repos means a wedged job blocks
-  every later one (ISS-047); every held state must make progress or end.
+  every later one (ISS-047); every held state must make progress or end. The interactive daemon is a
+  concurrent room client outside the seat, as its own room user: it never
+  writes `/work` clones and never starts or stops the room (SL-027).
 - **Deployment drift.** Room and repo config values are literals in
   `~/flakes`, commented with their fleet source, because the fleet exposes no
   room data; the `preparing` guest-path check and the push oid gate catch

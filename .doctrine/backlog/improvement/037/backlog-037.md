@@ -36,3 +36,11 @@ agent = a `writeShellScriptBin` running the pinned `nodejs_latest` on
 Verified: devshell builds; launcher args inspected (bind order, two keys on the
 FD, no `mcp.sock` file bind). Pending: live run (1Password prompt; outside
 Claude Code's sandbox).
+
+## History (closed by SL-027, 2026-10-20)
+
+The progress notes above are history (SL-027 DEC-076). The jailed daemon now
+lives in `~/dev/satan/flake.nix` as `jailed-malebolge`, room profile: no
+network, no launch dir, no `~/notes`; its gateway key is a file; its coding
+tools run in oubliette room `assistant` as room user `satan`. Grants and their
+dispositions: SL-027 design §4.7.

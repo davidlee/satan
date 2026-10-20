@@ -65,7 +65,7 @@ collisions resolved to verb-first command names: `satan-renormalize-memory`,
 
 ## Key invariants
 
-- **The trust boundary is a protocol, not a process** (ADR-017, amending POL-001 2026-07-22). Safety is defined by invariants every surface must satisfy — schema-validated actions, allowlists, append-only audit, ceilings, kill switches. Each authority item has exactly one owner at a time (ADR-017 §3 ledger); today the Emacs client owns all but the patch-job rows (4b/5b/6b/8/9, `patch-runner` since SL-023), and the broker is the current enforcement point, not the definition. Emacs keeps the human approval surfaces permanently.
+- **The trust boundary is a protocol, not a process** (ADR-017, amending POL-001 2026-07-22). Safety is defined by invariants every surface must satisfy — schema-validated actions, allowlists, append-only audit, ceilings, kill switches. Each authority item has exactly one owner at a time (ADR-017 §3 ledger); today the Emacs client owns all but the patch-job rows (4b/5b/6b/8/9, `patch-runner` since SL-023) and row 3b (malebolge's execution profile, `satan-flake` since SL-027), and the broker is the current enforcement point, not the definition. Emacs keeps the human approval surfaces permanently.
 - **psql is the only DB interface**. ~10 files talk to postgres via `satan-db-*`; all via `call-process` to `psql`. No elisp PG libraries.
 - **Tools are registered at load time** via `satan-tool-register`. Mode→tool allowlists are on mode specs.
 - **The broker's spawn sequence** (in `satan-broker--spawn`) runs percept build → resonance → motive read → sensor alerts → curiosity/WPM probes → bundle assembly → process spawn. Order matters; it's a flat ~185-line `let*`.

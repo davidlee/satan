@@ -199,7 +199,7 @@ def context(out):
   d.path("M 648,304 V 400", "default", "QUEUE · EMIT", (656 + text_w("QUEUE · EMIT") / 2, 346))
 
   d.node(264, 64, 160, 64, "backend", "JAIL", "Run harness", "python → deepseek")
-  d.node(536, 64, 160, 64, "backend", "JAIL", "Interactive pi", "jailed-pi · satan.ts")
+  d.node(536, 64, 160, 64, "backend", "JAIL", "Interactive agents", "jailed-pi · malebolge")
   d.node(240, 224, 480, 80, "focal", "EMACS", "satan broker (Emacs daemon)",
          "~/dev/satan · policy · tools · audit · MCP server")
   d.node(816, 224, 160, 80, "store", "DB", "Postgres", "satan_memory")
@@ -226,6 +226,8 @@ def context(out):
           "<code>pg_notify</code>. The broker LISTENs via <code>satan-attrd notify-stream</code>.",
           "The <b>patch runner</b> (SPEC-004) owns its jobs in its own SQLite store and runs them in an oubliette "
           "room; Emacs submits, watches and promotes over its control socket.",
+          "The <b>interactive daemon</b> (malebolge, room profile) runs its coding tools in the same oubliette "
+          "room as its own user, and reaches models only through the gateway's client socket; its jail has no network.",
           "Files: panopticon writes <code>behaviour/</code>; goad reads <code>state/goad/queue.json</code> and "
           "writes <code>~/satan-corpus/goad/data/</code>; the model-facing corpus is <code>~/satan-corpus</code>."]),
         card("Known gaps (SPEC-002 NF-003, NF-004)", [
@@ -311,7 +313,7 @@ def end_state(out):
   d.path("M 648,304 V 400", "default", "QUEUE · EMIT", (656 + text_w("QUEUE · EMIT") / 2, 346))
 
   d.node(264, 64, 160, 64, "backend", "JAIL", "Run harness", "python → provider")
-  d.node(536, 64, 160, 64, "backend", "JAIL", "Interactive pi", "jailed-pi")
+  d.node(536, 64, 160, 64, "backend", "JAIL", "Interactive agents", "jailed-pi · malebolge")
   d.node(240, 224, 480, 80, "focal", "CORE", "satan core daemon",
          ["policy + registry (read-only artifact) · runs · attributes", "one repo · Cargo workspace · owns migrations"])
   d.node(40, 224, 144, 80, "input", "CLIENT", "Emacs", ["approval surfaces", "org / denote handlers"])
@@ -338,7 +340,9 @@ def end_state(out):
           "ADR-018 D3: inbox tables + <code>pg_notify</code> + <code>notify-stream</code> retire in favour of UDS RPC.",
           "ADR-018 D4 order: rehearse in elisp → policy + registry → handlers by substrate → run execution last.",
           "Patch runner (done, SL-023; SPEC-004): TypeScript in malebolge by workload fit, its own store, "
-          "tools in an oubliette room, UDS RPC to Emacs."]),
+          "tools in an oubliette room, UDS RPC to Emacs.",
+          "Interactive daemon (done, SL-027): a room client; its coding tools run in the room, its model calls "
+          "through the gateway socket."]),
         card("Not decided here", [
           "Process count and binary split of the core (ADR-018 OQ-1).",
           "Where MCP is served once Emacs no longer holds the registry."])])

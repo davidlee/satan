@@ -11,3 +11,5 @@
 <!-- Why it must hold — the force behind it, not the implementation. -->
 
 Observation must stay separate from authorship (SL-015). This already holds in the broker; it is stated here because every future container inherits it.
+
+Room writes are not host writes (SL-027): the interactive daemon's coding tools write in an oubliette room, as the room user's own home, which is none of the three roots. That work reaches the host only as a patch job.

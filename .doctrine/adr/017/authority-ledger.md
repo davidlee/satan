@@ -14,22 +14,24 @@ tooling that does not yet exist.
 
 **Day one (2026-07-24): every item was owned by `emacs-client`.** The first
 migration was SL-023's (2026-10-19): the patch-job duties moved to
-`patch-runner` (rows 4b, 5b, 6b, 8, 9; DEC-062). Every other item is still
-`emacs-client`'s. The next planned transition is D4.2 (policy/registry →
+`patch-runner` (rows 4b, 5b, 6b, 8, 9; DEC-062). SL-027 (2026-10-20) added
+row 3b, owned by `satan-flake` from the start (DEC-082). Every other item is
+still `emacs-client`'s. The next planned transition is D4.2 (policy/registry →
 `daemon-core`) per RFC-017; the worked example under *Transition log* shows its
 shape.
 
 ## Owner legend
 
 Fixed vocabulary, keyed to the ADR-017 §1 / ADR-018 D1 topology. A token enters
-the legend when its component is first received as an owner; `emacs-client` and
-`patch-runner` are in use today.
+the legend when its component is first received as an owner; `emacs-client`,
+`patch-runner` and `satan-flake` are in use today.
 
 | Token | Component |
 |---|---|
 | `emacs-client` | The permanent privileged Emacs client (ADR-017 §1) |
 | `daemon-core` | The single daemon repository / core (ADR-018 D1) |
 | `patch-runner` | Patch-job runner: the `satan-runner` binary in `~/dev/malebolge` (IMP-006, SL-023; was `satan-patcher`, the retired Go repo) |
+| `satan-flake` | The satan flake's launchers (`~/dev/satan/flake.nix`; SL-027) |
 | `satan-memoryd` | Memory substrate daemon (IMP-007) |
 | `satan-audit` | Audit verifier CLI (IMP-008) |
 | `satan-attrd` | Attribute / arrival daemon (ADR-002) |
@@ -50,6 +52,7 @@ old site is deleted (the cutover proof, REQ-009 / NF-001).
 | 1 | Action schema validation | `emacs-client` | REQ-001 | `satan-tool-validate-args` (satan-tools.el:132); `patch_job_create`'s `mode` is not schema-validated model input — stamped from the tool ctx `:mode-name` (`satan-tools-patch.el`, DEC-068) | ADR-017 |
 | 2 | Mode/tool allowlist | `emacs-client` | REQ-002, REQ-006 | mode-spec `:tools` via `satan-mode-register`; consistency `satan-mode-check-tool-references` (satan-mode.el) | ADR-017 |
 | 3 | Capability / jail profiles | `emacs-client` | REQ-002 | `satan-profiles` defcustom / `satan-mode--apply-profile` (satan-mode.el) | ADR-017 |
+| 3b | Malebolge execution profile | `satan-flake` | REQ-002 | `jailed-malebolge` / `malebolgeRoomJailOptions` (`~/dev/satan/flake.nix`), enforced at bwrap; checked by the `malebolge-jail-profile` flake check | SL-027 |
 | 4a | Append-only audit → run actions ⚠ | `emacs-client` | REQ-003 | `satan-audit-record` (satan-audit.el:95) | ADR-017 |
 | 4b | Append-only audit → patch-job actions | `patch-runner` | REQ-003 | `JobStore.appendEvent` / transition writes, `job_events` append-only triggers (malebolge `src/runner/store.ts`); the job's pi-durable transcript | SL-023 |
 | 5a | Token / budget ceiling → run budget | `emacs-client` | REQ-004 | `satan-budget-exceeded-p` (satan-budget.el:67) | ADR-017 |
@@ -166,6 +169,14 @@ row 6b ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; satan-patch
 row 8  ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; elisp runner/store/listener deleted, satan-patcher unit removed and repo archived, patch_jobs dropped — one consumer verified deployed; control/scheduler/store tests green)
 row 9  ↳ 2026-10-19  emacs-client → patch-runner  (SL-023 audit; satan-patch-worktree-path-allowed-p deleted — `rg -l` → 0; classify / guard / run tests green)
 legend ↳ 2026-10-19  satan-patcher → patch-runner  (SL-023 audit; token renamed, never an owner; DEC-062)
+```
+
+**SL-027 (2026-10-20).** Row 3b is new: malebolge's execution profile is a
+launcher, not an Emacs profile (DEC-082). Row 3 is unchanged.
+
+```
+row 3b ↳ 2026-10-20  (new) → satan-flake  (SL-027 audit; malebolge's execution profile is a launcher, not an Emacs profile (DEC-082); no prior enforcement to delete; malebolge-jail-profile green)
+legend ↳ 2026-10-20  (new) satan-flake  (SL-027 audit)
 ```
 
 ## Maintaining this ledger

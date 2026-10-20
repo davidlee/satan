@@ -187,9 +187,9 @@ stays in `src/runner/`.
 ```mermaid
 flowchart TB
   subgraph roomtier["src/room/ (shared)"]
-    conn["connection.ts<br/>RoomConnection · Launch · directLaunch<br/>sshTarget · DaemonHelpers · daemonCommand<br/>DaemonConnection · daemonConnection<br/>HostKeyFailure · LostFailure · ConnectionObserver<br/>ObservedConnection"]
-    shell["shell.ts<br/>RoomShell · ShellLimits · ShellOutput<br/>ChannelUnavailable · ChannelFailed<br/>notOverflowed · succeeded · outputCollector<br/>settle · OVERFLOW_EXIT_CODE · roomShell"]
-    reader["source-reader.ts<br/>roomSourceReader · ReadFailure<br/>attempt · attemptNamed<br/>FETCH_LIMITS · HEAD_LIMITS"]
+    conn["connection.ts<br/>RoomConnection · Launch · directLaunch<br/>sshTarget · DaemonHelpers · daemonCommand<br/>DaemonConnection · daemonConnection<br/>HostKeyFailure · LostFailure · ConnectionObserver<br/>ObservedConnection · observedEnv"]
+    shell["shell.ts<br/>RoomShell · ShellLimits · ShellOutput<br/>ChannelUnavailable · ChannelFailed<br/>notOverflowed · succeeded · successStdout<br/>outputCollector · OutputCollector · Collected<br/>ExecFacts · settle · OVERFLOW_EXIT_CODE · roomShell"]
+    reader["source-reader.ts<br/>roomSourceReader · ReadFailure<br/>answerable · Attempt · attempt · attemptNamed<br/>FETCH_LIMITS · HEAD_LIMITS"]
     door["door.ts<br/>RoomDoor · ROOM_DOOR_KEYS<br/>readRoomDoor · roomConnectionOf"]
   end
   subgraph runner["src/runner/ (job-only)"]
@@ -224,8 +224,9 @@ files), stating the invariants that travel:
 
 **Moves, unchanged in behaviour.** From `runner/env.ts`: `LostFailure`,
 `HostKeyFailure`, `ConnectionObserver`, `sshTarget`, `DaemonHelpers`,
-`daemonCommand`, `DaemonConnection`, `daemonConnection`, and the
-`HostKeyChangedError`/`HostKeyUnknownError` re-exports. From `runner/room.ts`:
+`daemonCommand`, `DaemonConnection`, `daemonConnection` (the
+`HostKeyChangedError`/`HostKeyUnknownError` re-exports did not travel:
+`connection.ts` imports them for `HostKeyFailure` only). From `runner/room.ts`:
 `RoomConnection`, `Launch`, `RoomShell`, `ShellLimits`, `ShellOutput`,
 `ChannelUnavailable`, `ChannelFailed`, `notOverflowed`, `succeeded`. From
 `runner/shell.ts` (the whole file): `outputCollector`, `settle`,
@@ -255,10 +256,18 @@ export type Reword = (fault: RoomFault, error: RemoteError) => RemoteError;
 // shell.ts — the factory takes an env identity, not a job
 export function roomShell(connection: Connection, at: { id: string; cwd: string }): RoomShell;
 
+/** pi-env's remote env over an ObservedConnection of `connection` (never of another one). */
+export function observedEnv(
+  connection: Connection,
+  observer: ConnectionObserver,
+  options: { id: string; cwd: string; reword?: Reword },
+): RemoteExecutionEnv;
+
 // source-reader.ts — admission split off: failures go to the caller
+// (no "exit": the runner's own Failure carries it, doctrine's step its one producer)
 export type ReadFailure =
   | { reason: "missing" | "timeout" | "overflow" }
-  | { reason: "exit" | "error"; code?: number | string; stderr?: string };
+  | { reason: "error"; code?: number | string; stderr?: string };
 export function roomSourceReader(
   shell: RoomShell,
   signal: AbortSignal,
@@ -285,7 +294,11 @@ built on it, and the daemon's fault wording (§4.4) needs the same seam. The
 runner's `jobEnv` builds an `ObservedConnection` with its pause observer and no
 `reword`; its behaviour is unchanged. `roomSourceReader` rethrows what the
 classification does not answer for (the caller's abort, `ChannelUnavailable`,
-`ChannelFailed` `host_key`, non-channel errors), as today. `expandHome` moves
+`ChannelFailed` `host_key`, non-channel errors), as today. Exports beyond the
+sketch, each with one consumer: `successStdout` (shell.ts); `answerable`,
+`Attempt` (source-reader.ts); the types `ExecFacts`, `Collected`,
+`OutputCollector` (shell.ts; `Collected` shares its name with the older one in
+`runner/door.ts`). `expandHome` moves
 from `runner/config.ts` to `src/fields.ts` with `requireString` and `onlyKeys`.
 
 **Stays in `src/runner/`.** `jobEnv` and the pause wiring (`env.ts`,
@@ -295,7 +308,8 @@ clone hygiene (`checkRoomClone`, `cleanRoomClone`, `CloneDefect`,
 kind; `directLaunch` for a slot) and `roomConnection(config)`, which dispatches
 on `[door] kind` and calls `roomConnectionOf` for a room door. The remainder of
 `room.ts` is renamed `runner/door.ts`. `Degradation` becomes
-`{ source: string } & (ReadFailure | { reason: "boot_not_ignored" | "empty" })`;
+`{ source: string } & Failure`, where the runner's `Failure` is `ReadFailure`
+plus `{ reason: "exit"; code; stderr }` and `{ reason: "boot_not_ignored" | "empty" }`;
 the doctrine step and `DOCTRINE_LIMITS` stay (the daemon runs no doctrine).
 `readDoor` (kind `room`) is `{ kind, ...readRoomDoor(fields, home),
 sshConfig, sessionPath }`.
@@ -322,7 +336,9 @@ an allowlist asserted over source text, file by file:
   daemon module.
 
 A new root module is outside the runner's allowlist until it is added on
-purpose.
+purpose. The test also pins who may import `room/door.ts`
+(`ROOM_DOOR_READERS`): the daemon's `config.ts`, `runner/config.ts` and
+`runner/door.ts`.
 EX-10 (`test/runner/room.test.ts`) is revised: the door is named in
 `runner/config.ts`, `runner/door.ts`, `room/door.ts`, `room/connection.ts` and
 the daemon's `config.ts`; the *kind* (slot vs room door) only in
@@ -343,15 +359,15 @@ what its profile names.
 | `MALEBOLGE_SSH_CONFIG` | launcher | room | path of the jail's rendered ssh_config (a store path in the jail's closure). Required for `room` |
 | `MALEBOLGE_GATEWAY_SOCKET` | launcher | room | the gateway client socket; checked at startup (§4.4) |
 
-Door file (rendered by home-manager from one attrset beside the runner's
-`[door]`, flakes side):
+Door file (rendered by home-manager beside the runner's `[door]`,
+flakes:SL-016, at `~/.config/malebolge/door.toml`):
 
 ```toml
 [door]
 room = "assistant"
 user = "satan"
 known_hosts = "/var/lib/capsule/room/assistant/known_hosts"
-host_key_alias = "assistant"
+host_key_alias = "room-assistant"
 identity = "/home/david/.ssh/malebolge-vm.key"
 home = "/home/satan"
 ```
@@ -379,8 +395,9 @@ export interface Config {
 export function resolveConfig(env: Env, cwd: string, readFile: (path: string) => string): Config;
 ```
 
-`cwd` and `skillDirs` stay; `cwd` becomes `execution.cwd` for `host` and
-`execution.home` for `room`.
+`skillDirs` stays. `Config` has no `cwd` (nor `toolsCwd`): the agent's cwd is
+`execution.cwd` for `host` and `execution.home` for `room`, and
+`DaemonEnv.cwd` (§4.3) is its one source for the daemon.
 
 **Profile-bound store (DEC-078).** The store and attach socket live in
 directories named for the profile; each jail binds only its own (§4.6). As a
@@ -419,7 +436,16 @@ export interface DaemonEnv {
   readContext: () => Promise<ContextSource[]>;
   close: () => void;
 }
-export function daemonEnv(execution: Execution, log: (text: string) => void): DaemonEnv;
+/** `helpers`: pi-env's start steps, a test seam. */
+export function daemonEnv(
+  execution: Execution,
+  log: (text: string) => void,
+  helpers?: DaemonHelpers,
+): DaemonEnv;
+/** The startup context read (§4.5); exported for test. */
+export function readRoomContext(shell: RoomShell, home: string, log: (text: string) => void): Promise<ContextSource[]>;
+/** The missing-socket check (§4.4). */
+export function requireGatewaySocket(execution: Execution, exists?: (path: string) => boolean): void;
 ```
 
 - **host**: today's behaviour — `NodeExecutionEnv`, `nodeSourceReader` over
@@ -433,7 +459,7 @@ export function daemonEnv(execution: Execution, log: (text: string) => void): Da
   wraps a `DaemonConnection` directly, never another `ObservedConnection` —
   its trust check reads `trustFailure()` from its immediate inner connection,
   so a nested wrapper would report a host-key refusal as a loss.
-  The hook returns a `RemoteExecutionEnv` over the tool path's wrapper, id `pi-env:daemon-room`,
+  The hook returns `observedEnv(connection, observer, { id: "pi-env:daemon-room", cwd, reword })`,
   cwd `state.cwd ?? home`. The connection is lazy: nothing runs until the
   first call, a failed start fails that call, the next call retries (pi-env).
   `close` closes it at shutdown.
@@ -475,10 +501,13 @@ Observed at the connection seam, never conflated, worded once for every tool:
 pi-env copies a `RemoteError`'s message into the `ExecutionError` /
 `FileError` it returns (`remote-env.ts`), so rewording at the seam reaches
 `read`, `write`, `edit`, `bash` and `grep` alike; the daemon's `reword` is the
-injection, and neither pi-durable's tools nor `grep` learn about rooms. `grep`'s
-own `spawn_error` text becomes neutral — `rg could not run: <message>` —
-which reads correctly for a missing binary and for a reworded room fault
-(§7 R3). The session survives either fault; the next call tries again.
+injection, and neither pi-durable's tools nor `grep` learn about rooms. A
+lost room does not reach `grep` as `spawn_error`: pi-env returns the start
+failure as an `ExecutionError` of another code, so `runGrep` throws and the
+harness renders `room unavailable: …` as a tool error. `grep`'s own
+`spawn_error` text becomes neutral — `rg could not run: <message>` — for a
+missing binary (§7 R3). The session survives either fault; the next call tries
+again.
 
 **Startup.** A room that cannot be reached means no project context section,
 logged, and the daemon starts. A **missing-socket check**: when
@@ -503,30 +532,34 @@ reader. The cwd section reads `Current working directory: /home/satan`.
 ## 4.6 The room-profile jail (DEC-075)
 
 ```nix
-# ~/dev/satan/flake.nix (sketch; names per flakes:SL-015 as landed)
+# ~/dev/satan/flake.nix (as delivered, abridged)
 malebolgeSshConfig = pkgs.writeText "malebolge-room-ssh-config" ''
   Host *
     ProxyCommand ${pkgs.socat}/bin/socat - UNIX-CONNECT:/run/capsule-room/%h/ssh.sock
 '';
+gatewayClientSocket = (import "${inputs.agents}/gateway.nix").clientSocket;
+roomStateDir = "/var/lib/capsule/room/assistant";   # holds only known_hosts
 malebolgeRoomJailOptions = with jailLib.combinators; jailLib.gatewaySocketOptions ++ [
   (try-fwd-env "XDG_RUNTIME_DIR")
   (set-env "MALEBOLGE_PROFILE" "room")
   (set-env "MALEBOLGE_DOOR" malebolgeDoorFile)
   (set-env "MALEBOLGE_SSH_CONFIG" "${malebolgeSshConfig}")
   (set-env "MALEBOLGE_GATEWAY_SOCKET" gatewayClientSocket)
-  (readonly "/run/capsule-room/assistant")          # door socket dir (ISS-042)
-  (readonly roomKnownHosts)
+  (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
+  (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
+  (readonly "/run/capsule-room")                   # door root, not the room's own dir
+  (readonly roomStateDir)
   (readonly malebolgeRoomIdentity)
   (readonly malebolgeDoorFile)
+  (readonly "${malebolgeSshConfig}")               # set-env alone does not bind it
   (readonly "/run/user/1000/satan/mcp")            # satan-mcp, connect only
   (readonly malebolgeRoot)
   (readonly "/home/david/satan-corpus")
   (readonly malebolgeKeyFile)
   (readonly malebolgeCatalog)
-  (readwrite "/run/user/1000/satan/durable/room")  # attach socket: listen needs rw
-  (readwrite "/home/david/.local/state/satan/durable/room")
-  (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
-  (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
+  (add-runtime "mkdir -p ${malebolgeStateDir} ${malebolgeRuntimeDir}")
+  (readwrite malebolgeRuntimeDir)                  # attach socket: listen needs rw
+  (readwrite malebolgeStateDir)
 ];
 jailed-malebolge = jailLib.makeJailedAgent {
   name = "malebolge";
@@ -544,8 +577,17 @@ jailed-malebolge = jailLib.makeJailedAgent {
 - `%h` in `ProxyCommand` is the ssh host, which `sshTarget` sets to the room
   name, so the ssh_config holds no room literal; the store-path `socat` is in
   the jail's closure (handback: the oubliette host's socat is not).
-- The writable directories must exist before bwrap binds them; the launcher
-  creates both (`mkdir -p`) before entering the jail.
+- `gatewayClientSocket` is `gateway.nix`'s `clientSocket`
+  (`/run/llm-gateway-client/api.sock`), imported from the `agents` input
+  (plain data), not a literal.
+- The door binds are the door root `/run/capsule-room` and the room's state
+  dir: `/run/capsule-room/<room>` is the relay's RuntimeDirectory, removed on
+  every room stop (oubliette DEC-056), so a bind of it would go stale
+  (RV-038 F-2). `MALEBOLGE_SSH_CONFIG` names a store file, which `set-env`
+  does not put in the jail; it is ro-bound as well (RV-038 F-1).
+- The writable directories must exist before bwrap binds them; jail.nix's
+  `add-runtime` runs `mkdir -p` host-side before bwrap. With
+  `mountLaunchDir = false` the jail starts in `$HOME`, the persisted home.
 - `mcp/` alone is bound; `goad.sock` and the rest of `/run/user/1000/satan`
   are not in the jail.
 - **Persisted jail home.** Profile `offline` persists a host-backed,
@@ -566,9 +608,9 @@ jailed-malebolge = jailLib.makeJailedAgent {
   it false for `jailed-malebolge`. Until PHASE-05 lands the room profile does
   not ship. Probe: no `/workspace/` bind at all, checked on the launcher built
   from the impure devshell, not only under pure `nix flake check`.
-- The room literal `assistant` appears once in the satan flake (the door
-  dir bind), beside the door file path; the door file is the single source of
-  the room's facts for the daemon.
+- The door file is the single source of the room's facts for the daemon.
+  The flake repeats the paths it must bind (identity, the room's state dir):
+  pure evaluation cannot read the door file (RV-038 F-4).
 - Residual network egress: the gateway, bounded by the key's model list and
   budget. Host reach: the SATAN MCP tool set through Emacs. CON-005 forbids
   egress with the room attached, so an MCP tool that can carry data off the
@@ -581,7 +623,7 @@ jailed-malebolge = jailLib.makeJailedAgent {
 |---|---|---|
 | launch dir rw at `/workspace/<dir>` | removed (`mountLaunchDir = false`) | CHR-020 |
 | host network (`specDev`) | removed (`offline`) | CON-005; gateway via socket |
-| `devToolPkgs` (incl. `rg`) | removed | no host coding tools; `grep` runs in the room |
+| `devToolPkgs` (incl. `rg`) | removed (satan's grant only) | no host coding tools; `grep` runs in the room. flakes' base `commonPkgs` (`rg`, `curl`, `wget`, `python3`, …) stay on every jail's PATH, inert under `offline` with no host session sockets bound |
 | `goadPkgs`, goad skill (`MALEBOLGE_SKILLS`), rw `~/satan-corpus/goad` | removed | goad-backend authoring becomes patch jobs on satan-corpus (IMP-020); goad's host service keeps writing its data |
 | rw `/run/user/1000/satan` | narrowed: ro `mcp/` + rw `durable/room/` | no host write but the profile's own socket |
 | rw `~/.local/state/satan/durable` | narrowed: rw `durable/room/` | DEC-078 |
@@ -596,19 +638,22 @@ jailed-malebolge = jailLib.makeJailedAgent {
 - **Room user (D3 by permissions).** vm mode runs as its own room user,
   `satan`, with its own key and home `/home/satan`. `/work`
   clones stay owned by `agent`: readable by `satan`, not writable. vm mode
-  clones what it needs into its home (`git clone /work/<repo>`); its work
-  reaches the host only as a patch job. Today oubliette seeds each clone
-  directory `0700` for `agent` alone; read access comes from oubliette
+  clones what it needs into its home (`git clone --no-local /work/<repo>`);
+  its work reaches the host only as a patch job. Today oubliette seeds each
+  clone directory `0700` for `agent` alone; read access comes from oubliette
   IMP-023 (prerequisite): `repos.readers`, a readers' group with a declared
-  gid, clone directories `0750` to that group, git `safe.directory` for the
-  readers. Declared in `/srv/fleet/flake.nix`: `rooms.assistant.users.satan`
-  and `repos.readers = ["satan"]`; the key is issued by `~/flakes` with the
-  door file. `dirty_clone` stays as the runner's own check.
+  gid, clone directories `0750` to that group. No `safe.directory`: a plain
+  clone or in-place git in `/work` is refused ("dubious ownership"), by
+  design. Declared in `/srv/fleet/flake.nix`: `rooms.assistant.users.satan`
+  and `repos.readers = ["satan"]`. The key `~/.ssh/malebolge-vm.key` is
+  generated by hand (the user's); the door file is flakes:SL-016.
+  `dirty_clone` stays as the runner's own check.
 - **Persona.** `prompts/interactive.txt` is shared with pi's `jailed-pi`
   (`~/notes` `just build-system-prompt`), whose environment differs (host
   jail, `/workspace/notes`). Its "Execution environment" paragraph moves to a
   per-profile file: `prompts/env/room.txt` (room `assistant`, user `satan`,
-  cwd the home; `/work` clones are read-only — clone into your home; your
+  cwd the home; `/work` clones are read-only — clone into your home with
+  `git clone --no-local`; your
   changes reach the user only as a patch job you propose; web access is not
   available) and `prompts/env/pi.txt` (today's wording, for `jailed-pi`).
   `personaFiles(corpusRoot, profile)` appends `prompts/env/<profile>.txt`;
@@ -620,9 +665,9 @@ jailed-malebolge = jailLib.makeJailedAgent {
   unchanged (attach defaults to `room`); `build-system-prompt` gains the pi
   env file.
 - **flakes (not ours; lands first).** flakes:SL-015 delivers the gateway
-  client socket, `jailLib.gatewaySocketOptions`, `mountLaunchDir`, the door
-  file render, the vm-mode identity key, and (PHASE-05) `workspaceDepsFromEnv`
-  and `persistedHome`. oubliette IMP-022 (room-client bundle) is backlog only.
+  client socket, `jailLib.gatewaySocketOptions`, `mountLaunchDir`, and
+  (PHASE-05) `workspaceDepsFromEnv` and `persistedHome`; flakes:SL-016
+  renders the door file. oubliette IMP-022 (room-client bundle) is backlog only.
 
 ## 4.9 Governance revisions (DEC-082; drafted here, applied at reconcile)
 
@@ -685,14 +730,15 @@ jailed-malebolge = jailLib.makeJailedAgent {
 | `malebolge/test/runner/room.test.ts` | EX-10 owners and kind regex revised; tests of moved code move with it (`test/room/…`) |
 | `malebolge/test/…` | per §6 |
 | `malebolge/docs/internals.md`, `README.md` | room tier, profiles, door file, socket path |
-| `satan/flake.nix` | `jailed-malebolge` → room profile (§4.6); `malebolgeJailOptions` replaced; goad bindings removed; `jailProbes.malebolge` rewritten; `devToolPkgs` `ripgrep` comment no longer names the daemon |
+| `satan/flake.nix` | `jailed-malebolge` → room profile (§4.6); `malebolgeJailOptions` replaced; goad bindings removed; `jailProbes.malebolge` rewritten; `devToolPkgs` `ripgrep` comment no longer names the daemon; `goad` flake input removed (no consumer left) |
 | `satan-corpus/prompts/interactive.txt`, `prompts/env/room.txt`, `prompts/env/pi.txt` | §4.8 |
 | `notes/justfile` | `build-system-prompt` appends `prompts/env/pi.txt` |
 | `satan/.doctrine/adr/017/authority-ledger.md`, `spec/tech/002`, `spec/tech/004` | at reconcile (§4.9) |
 
 Cross-repo, not this slice's to write: `~/flakes` (flakes:SL-015: gateway
-client socket, `gatewaySocketOptions`, `mountLaunchDir`, door file, identity
-key, `workspaceDepsFromEnv`, `persistedHome`), `~/dev/oubliette` (IMP-023:
+client socket, `gatewaySocketOptions`, `mountLaunchDir`,
+`workspaceDepsFromEnv`, `persistedHome`; flakes:SL-016: door file), the
+hand-generated identity key, `~/dev/oubliette` (IMP-023:
 `repos.readers`, the readers' group that makes `/work` clones readable) and
 `/srv/fleet/flake.nix` (`rooms.assistant.users` gains `satan`;
 `repos.readers = ["satan"]`).
@@ -746,9 +792,12 @@ literally, never derived):
 
 - `malebolge-jail-profile` present: `MALEBOLGE_PROFILE room`,
   `MALEBOLGE_DOOR`, `MALEBOLGE_SSH_CONFIG`, `MALEBOLGE_GATEWAY_SOCKET`, ro
-  binds of the door dir, known hosts, identity, door file, the gateway
+  binds of the door root `/run/capsule-room`, the room state dir
+  `/var/lib/capsule/room/assistant`, identity, door file, the gateway
   client socket dir, `/run/user/1000/satan/mcp`, malebolge tree, corpus,
-  key, catalog; the persisted home named `malebolge`; rw binds of `durable/room` (state and runtime);
+  key, catalog; the persisted home named `malebolge`; the `add-runtime`
+  `mkdir -p`; rw binds of `durable/room` (state and runtime); the rendered
+  ssh_config's `ProxyCommand`;
   `openssh` and `socat` on PATH; the netns flag the `offline` profile renders.
 - Absent: `/workspace/` in any bind (CHR-020; launch dir and workspace deps), `--bind
   /run/user/1000/satan ` (whole dir rw), `satan-corpus/goad`,
@@ -766,7 +815,7 @@ literally, never derived):
   `durable/host/` and another profile's socket dir absent; `goad.sock`
   absent; writing `/run/capsule-room/assistant/` fails (EROFS).
 - A daemon session concurrent with a running patch job: both complete;
-  the job's clone is untouched by `satan`; as `satan`, `git clone
+  the job's clone is untouched by `satan`; as `satan`, `git clone --no-local
   /work/<repo>` succeeds and writing `/work/<repo>` fails with permission
   denied — checked again after the job completes, since a job may leave
   restrictive modes behind (RV-035 F-2).
@@ -786,8 +835,9 @@ literally, never derived):
 (`git status`); SATAN MCP tools still answer (`satan_boot_context`); with the
 room stopped, a tool call answers `room unavailable` and the session goes on.
 
-Entry for VA/VH: flakes:SL-015 and oubliette IMP-023 deployed; fleet `satan`
-user, reader entry and key deployed.
+Entry for VA/VH: flakes:SL-015, flakes:SL-016 and oubliette IMP-023
+deployed; fleet `satan` user, reader entry and the hand-generated key
+deployed.
 
 <!-- doctrine:section sec-7 -->
 # 7. Risks & Open Edges
@@ -807,8 +857,9 @@ decisions did not settle; each is drafted above.
   `/home/<user>` would be a literal (SPEC-002 NF-006).
 - **R3 Fault wording at the seam, grep made neutral** (DEC-079 says grep's
   mapping is injected). The injection is the daemon's `reword` at the
-  connection seam, which covers all five tools; grep's own text only stops
-  naming a cause it cannot know.
+  connection seam, which covers all five tools; on grep's path a lost room is
+  a thrown error rendered `room unavailable: …`, and grep's own
+  `rg could not run:` text covers a missing binary only.
 - **R4 Persona split** (scope objective 4 says the D3 rule is stated in
   `interactive.txt`). That file is shared with `jailed-pi`, whose environment
   differs; a per-profile env file keeps each harness's facts true. Touches
@@ -843,7 +894,8 @@ user 2026-10-20):
 
 **Risks.**
 
-- **flakes:SL-015 slips** → the room profile cannot ship (no gateway path).
+- **flakes:SL-015 or SL-016 slips** → the room profile cannot ship (no
+  gateway path; no door file).
   The malebolge half (§4.1–§4.5) is testable without it. satan's flake takes
   `agents` from GitHub (`github:davidlee/nix-config?dir=flakes/agents`), not
   the local checkout: the jail work needs `~/flakes` pushed (PHASE-05
