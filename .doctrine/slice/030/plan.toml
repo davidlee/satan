@@ -1,0 +1,202 @@
+# Implementation plan for SL-030 — the authored, durable phase plan.
+#
+# Runtime status lives under .doctrine/state/ (phase sheets) — never here.
+# Hand-edit freely: the tool reads this file but does not rewrite it.
+#
+# Paths are in ~/dev/malebolge unless stated. "design sec-N" and "V-N" cite
+# .doctrine/slice/030/design.md (V-N = its sec-7 verification rows). Phase
+# VT/EX ids are local to their phase. pi-durable / pi-ai are 1.3.0 in
+# node_modules; ~/.local/src/pi is the matching source checkout.
+#
+# Routed design-review findings: RV-051 has none (every finding is route
+# `review` or unrouted, all fix-now and verified) — nothing to transcribe.
+#
+# Gate for every phase: `just check` in ~/dev/malebolge (lint + typecheck +
+# vitest). Each phase ends green; no phase edits src/room/, src/runner/ or
+# test/structure.test.ts (DEC-105).
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-030"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Wire frames: attach, attached, AttachRefused"
+objective = "Design sec-2 in src/protocol.ts and the Printable half of sec-6 in src/render.ts, as pure parsing and typing with no caller yet: `AttachTarget`, `AttachMessage`, `AttachedMessage`, `AttachRefused`, and `parseConnectionMessage(line): AttachMessage | ClientMessage`, which validates the attach frame strictly and delegates every other type to the unchanged `parseClientMessage`. `render.ts` renders `attached` as `[attached to conversation N]`."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (run dr-01a15954, rev 42). `just check` green in ~/dev/malebolge at the phase's base commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Each row of the sec-2 attach table parses to its `AttachTarget`: `{type:\"attach\"}` → root; `conversation: N` → existing N; `new: true` → new; `new: true, cwd: S` → new with S, untrimmed, the empty string kept." },
+  { id = "EX-2", text = "Every refused shape throws `AttachRefused` (an exported class, so `instanceof` distinguishes it from other parse errors): `conversation` with `new`; `cwd` without `new`; `new` other than `true`; `conversation` not a safe positive integer (0, -1, 1.5, 2^53, \"3\", null); `cwd` not a string; any key outside `type`, `conversation`, `new`, `cwd`." },
+  { id = "EX-3", text = "A non-attach line parses exactly as `parseClientMessage` does, errors included; `ClientMessage` and `test/protocol.test.ts`'s existing cases are unchanged, so `act()`'s switch stays exhaustive (RV-051 F-13)." },
+  { id = "EX-4", text = "`render.ts`'s `Printable` includes `AttachedMessage` and its handler map has an `attached` entry (a missing one is a compile error); `toPrintable` is unchanged." },
+  { id = "EX-5", text = "The protocol header states: the attach frame is valid only as a connection's first line; a connection whose first line is not `attach` is bound to root and gets no `attached`; a connection that sends nothing is never bound and receives nothing; a conversation id names a conversation only within this profile's store (sec-2 § Ids)." },
+  { id = "EX-6", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "attach table rows and every refused shape, refused as AttachRefused", test_file = "/home/david/dev/malebolge/test/protocol.test.ts", keywords = ["parseConnectionMessage", "AttachRefused", "\"existing\"", "\"new\"", "cwd"], waived = false },
+  { id = "VT-2", expects = "the frames and the parser live in protocol.ts", test_file = "/home/david/dev/malebolge/src/protocol.ts", keywords = ["export type AttachTarget", "AttachedMessage", "export class AttachRefused", "export function parseConnectionMessage"], waived = false },
+  { id = "VT-3", expects = "attached renders as its banner line", test_file = "/home/david/dev/malebolge/test/render.test.ts", keywords = ["attached to conversation"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Conversations: resolve, create with defaults, watch"
+objective = "Design sec-4 (DEC-104, DEC-105, DEC-107, DEC-109): new daemon-only `src/conversations.ts` exporting `Conversations` and `conversations(session, defaults)` — `root`, `open(target)` and `watch(conversation)` — and the session.ts comment changes. No caller in the daemon yet; composition moves in PHASE-04."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 complete (`AttachTarget` exported from protocol.ts)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`open({kind:\"root\"})` returns `session.root`." },
+  { id = "EX-2", text = "`open({kind:\"existing\", id})` reads once with `harness.commit((tx) => tx.conversation(id as ConversationId), context)`; `undefined` rejects `no conversation N`; a record with an `owner` rejects `conversation N belongs to a task`; otherwise it returns `harness.conversation(record.id, context)`, whose `undefined` also rejects `no conversation N`. Only pi's `record.id` is used after the read (V-7)." },
+  { id = "EX-3", text = "`open({kind:\"new\", cwd?})` calls `harness.createConversation({ ownership: { kind: \"ownerless\" }, agent: { ...defaults, cwd: target.cwd ?? defaults.cwd } }, context)`; the created conversation's stored agent carries the daemon's model and its own `cwd`, or the default when none was given (V-8)." },
+  { id = "EX-4", text = "Reopening the session (a second `openSession` on the same storage with a changed model/cwd) reconfigures root and leaves a created conversation's stored agent unchanged (V-8, DEC-104; `test/session.test.ts:106-121` keeps its meaning)." },
+  { id = "EX-5", text = "`watch(conversation)` returns `watchEvents(session.harness, conversation.id, context)`; its stream's snapshot is that conversation's." },
+  { id = "EX-6", text = "The task-owned fixture follows pi's own precedent (`~/.local/src/pi/packages/durable/test/harness-conversations.test.ts:378-388`: `defineTask`, `tx.createTask(…, {ownership:{kind:\"conversation\"}})`, `tx.createConversation({ownership:{kind:\"task\", taskId}})`), built in a test helper, not in src/." },
+  { id = "EX-7", text = "conversations.ts's header states its question (\"which conversation does a wire reference name\") against `src/runner/durable-ids.ts`'s, names its program (the daemon), and carries invariants 2-3 of sec-1 saying \"non-root\"; session.ts's header and `agent` option comment say root (sec-4 § Configuration)." },
+  { id = "EX-8", text = "`just check` green; test/structure.test.ts unchanged and passing." },
+]
+verification = [
+  { id = "VT-1", expects = "unknown id and task-owned id refused with their messages; root and existing resolve (V-7)", test_file = "/home/david/dev/malebolge/test/conversations.test.ts", keywords = ["no conversation", "belongs to a task", "createTask", "\"existing\""], waived = false },
+  { id = "VT-2", expects = "a created conversation stores the daemon model and its own or the default cwd; reopen leaves it unchanged (V-8)", test_file = "/home/david/dev/malebolge/test/conversations.test.ts", keywords = ["\"new\"", "cwd", "openSession", "model"], waived = false },
+  { id = "VT-3", expects = "the module and its three operations", test_file = "/home/david/dev/malebolge/src/conversations.ts", keywords = ["export interface Conversations", "export function conversations", "createConversation", "watchEvents", "ownerless"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Working-directory section per conversation"
+objective = "Design sec-5 § Working-directory section: `cwdExtension` becomes a constant extension rendering `input.agent.cwd`, `DaemonParts.cwd` is removed, `daemon-extensions.ts` gains the per-section scope comment, and `daemon-start.ts` stops passing `cwd` to `daemonExtensions`. The test fixture reads any conversation's prompt."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 complete (V-9 creates its conversation through `conversations(…).open({kind:\"new\", cwd})`)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`cwdExtension` renders `Current working directory: <agent.cwd>` and no section when `agent.cwd` is undefined; it takes no construction argument." },
+  { id = "EX-2", text = "`test/harness-fixture.ts`'s `systemPromptSections(test, conversation = test.root)` submits to and reads that conversation; existing one-argument callers (persona, skills, project-context, daemon-sections tests) are unchanged in meaning." },
+  { id = "EX-3", text = "Tests whose root renders a cwd section configure root's `cwd` explicitly (the faux fixture's root has none), so each existing daemon-sections assertion keeps its expected text." },
+  { id = "EX-4", text = "A conversation created with `cwd` S states S in its prompt, read with `systemPromptSections(test, created)`; root's prompt is unchanged (V-9)." },
+  { id = "EX-5", text = "`daemon-extensions.ts` carries one comment naming each section's scope (persona, project context, skills per profile; cwd per conversation) and the accepted project-context inconsistency (research X-6, DEC-080)." },
+  { id = "EX-6", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "created conversation's prompt states its own cwd; root unchanged (V-9)", test_file = "/home/david/dev/malebolge/test/daemon-sections.test.ts", keywords = ["systemPromptSections(test, ", "Current working directory", "\"new\""], waived = false },
+  { id = "VT-2", expects = "the section reads the conversation's agent", test_file = "/home/david/dev/malebolge/src/cwd.ts", keywords = ["agent.cwd", "export const cwdExtension"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Daemon transport: one binding per connection, ordered lines"
+objective = "Design sec-3 in src/daemon.ts: install the close handler and one line splitter at connect; feed one per-connection serial chain; each turn first awaits `conversations`, then drops itself and every later line if the socket is destroyed; the first line binds (attach → open → bind with ack; anything else → bind root, then act); later lines act on the bound conversation (an attach line → `already attached to conversation N`). `serve({socketPath, conversations, beforeInput})`. Composition in daemon-start.ts, the daemon-env.ts header (DEC-106), and the minimal client bridge that keeps attach.test.ts green: `attach.ts` sends `{type:\"attach\"}` on connect."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 and PHASE-02 complete." },
+  { id = "EN-2", text = "Read design sec-3 in full before writing daemon.ts; the lifecycle took three review rounds to state (notes § Design review RV-051)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "One splitter, one queue: the `data` handler and splitter are installed at connect, before `conversations` resolves; every line, `abort` included, waits for the previous line's handling; a failed handler writes its `ErrorMessage` and the chain continues (sec-3 § Rules)." },
+  { id = "EX-2", text = "Departure: a turn's first step, after `conversations` resolves and the previous line is done, is the `socket.destroyed` check; a destroyed socket drops that line and every later one. An attach whose turn has started completes its open, acquires its stream and stops it at once (sec-3 § No line after departure)." },
+  { id = "EX-3", text = "Bind: `conversations.watch(conv)`; if the socket is destroyed, stop the stream and drop the queue; else write `attached` (attach only), the snapshot, then start the stream. The close handler stops any stream already acquired." },
+  { id = "EX-4", text = "Failed attach (refused shape, unknown id, task-owned): one `ErrorMessage`, socket ended, queued lines dropped, never acted on root (V-1 daemon half, observed with `LineClient.closed()`)." },
+  { id = "EX-5", text = "A first line that is a command binds root and is acted on, with no `attached` (V-2); a first line that is not JSON or not a valid command binds root then errors, connection open." },
+  { id = "EX-6", text = "`attached` precedes the snapshot and carries the opened/created id (V-3)." },
+  { id = "EX-7", text = "`attach`+`input` in one write, and one frame split across two writes, are handled in order (V-5); while `conversations` is pending a connection is silent and its one-write `attach`+`input` are handled in order once it resolves (V-13, replacing `test/daemon.test.ts:174-183`)." },
+  { id = "EX-8", text = "A second `attach`, well-formed and malformed, errors `already attached to conversation N`; a garbage non-attach line gets its own error; the binding is unchanged (V-6). The bound check precedes shape validation: a parsed `AttachMessage` or an `AttachRefused` on a bound connection both answer `already attached` (RV-051 F-18)." },
+  { id = "EX-9", text = "Departed before ready: an `attach` (root, and `new`) then disconnect before `conversations` resolves acquires no stream and creates nothing (V-11); an `input` then immediate disconnect before ready is never submitted on root (V-14)." },
+  { id = "EX-10", text = "Departed mid-bind: an `attach` (root, and `new`) whose turn has started, socket destroyed while `open`/`watch` is pending (a barrier inside the `watchEvents` mock): `watched.streams` holds exactly one stream, its `closed` resolves `stopped`; for `new`, a `scanConversations` read finds the created ownerless conversation (V-15; with V-11 replaces `test/daemon.test.ts:185-196`)." },
+  { id = "EX-11", text = "The `submit` draft is built from validated fields (`content`, `requestId`), not the parsed wire object (research X-5)." },
+  { id = "EX-12", text = "`daemon-start.ts` builds one `AgentChange {model, cwd: environment.cwd}` for `openSession` and `conversations`, and passes `serve` a `Promise<Conversations>` resolved after the session opens; shutdown order is unchanged (daemon, harness, environment, satan, lock)." },
+  { id = "EX-13", text = "Headers: daemon.ts states invariant 1 of sec-1 and that `beforeInput` is one daemon-wide gate shared by every conversation; daemon-env.ts states that faults and trust belong to the one room connection every conversation shares (DEC-106)." },
+  { id = "EX-14", text = "`test/fixtures.ts` `LineClient` gains `closed(): Promise<void>` and `write(raw: string)`; `test/daemon.test.ts`'s `attach()` helper sends an attach frame and waits for `attached` then the snapshot; `test/attach.test.ts`'s `serve()` calls take the options object and its exact-output banner assertions include the `[attached to conversation N]` line; `attach.ts` sends `{type:\"attach\"}` first on connect. Every other existing test passes unmodified in meaning." },
+  { id = "EX-15", text = "`just check` green; test/structure.test.ts unchanged and passing." },
+]
+verification = [
+  { id = "VT-1", expects = "refused attach closes with one error and creates nothing; command first line binds root without attached; attached precedes snapshot (V-1, V-2, V-3)", test_file = "/home/david/dev/malebolge/test/daemon.test.ts", keywords = ["closed()", "\"attached\"", "snapshot", "conversation"], waived = false },
+  { id = "VT-2", expects = "one-write and split-frame ordering; silence until ready (V-5, V-13)", test_file = "/home/david/dev/malebolge/test/daemon.test.ts", keywords = ["write(", "split"], waived = false },
+  { id = "VT-3", expects = "second attach errors already attached, binding unchanged (V-6)", test_file = "/home/david/dev/malebolge/test/daemon.test.ts", keywords = ["already attached"], waived = false },
+  { id = "VT-4", expects = "departure before ready and mid-bind: no stream / stopped stream, nothing submitted, the stranded create (V-11, V-14, V-15)", test_file = "/home/david/dev/malebolge/test/daemon.test.ts", keywords = ["watched.streams", "stopped", "scanConversations", "destroy"], waived = false },
+  { id = "VT-5", expects = "serve takes options; the transport reaches pi only through Conversations", test_file = "/home/david/dev/malebolge/src/daemon.ts", keywords = ["ServeOptions", "conversations.watch", "parseConnectionMessage", "destroyed"], waived = false },
+  { id = "VA-1", expects = "Read daemon.ts against design sec-3 line by line: one chain per connection, departure check as each turn's first step, bind order (watch → destroyed? → attached → snapshot → start), no `Harness` import, no closing flag. Record the read in the phase sheet." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Overlapping conversations"
+objective = "V-4: prove isolation and concurrency across conversations on one daemon, driving the faux provider with transcript-aware factories and barriers, never scripted response order. Test-first; a src change happens only if the test exposes a defect, and then is held to design sec-3/sec-4."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "A is held mid-turn (its faux factory awaits a barrier); B attaches with `new`, submits and completes; A then completes." },
+  { id = "EX-2", text = "Each client's stream holds only its own conversation's inputs and outputs, and each conversation's transcript (`entries`) holds only its own." },
+  { id = "EX-3", text = "Abort on A while B runs ends A's run and leaves B's run intact to completion." },
+  { id = "EX-4", text = "Reattaching to A by id streams A only: its snapshot carries A's history, not B's." },
+  { id = "EX-5", text = "Faux responses are chosen by the factory from the transcript it receives (pi-ai 1.3.0 `faux.js:349-351`), so the test passes under any interleaving." },
+  { id = "EX-6", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "the V-4 overlap scenario: held A, completing B, abort isolation, reattach by id", test_file = "/home/david/dev/malebolge/test/daemon.test.ts", keywords = ["FauxResponseFactory", "barrier", "abort", "conversation:"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Line client: flags, hold until attached, exit status"
+objective = "Design sec-6: `attach-main.ts` parses flags with `node:util` `parseArgs` (strict) into an `AttachTarget`; `attach(socketPath, input, output, { target, wait })` sends the frame on connect, prints `[connected]`, holds typed lines until `attached`, and handles refusal, version skew and early quit."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 complete (the daemon answers `attach`)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "No flags → `{type:\"attach\"}`; `--conversation N` → `conversation: N`; `--new` → `new: true`; `--new --cwd S` → `new: true, cwd: S`, S uninterpreted." },
+  { id = "EX-2", text = "`--conversation` with `--new`, `--cwd` without `--new`, `--conversation` not a positive integer, and any unknown flag or positional print a usage line and exit 2 without connecting." },
+  { id = "EX-3", text = "`[connected]` prints at connect; typed lines are held until `attached` and then sent in order." },
+  { id = "EX-4", text = "An `ErrorMessage` or a daemon close before `attached` prints the error, discards held lines, and rejects with an error whose `code` is `NOT_ATTACHED`; `attach-main.ts` exits 1 with one error line and no stack trace." },
+  { id = "EX-5", text = "An old daemon's `unknown message type \"attach\"` before `attached` prints `[the daemon predates attach: restart it (malebolge-stop, then malebolge-start)]` and exits 1." },
+  { id = "EX-6", text = "`/quit` or end of input before `attached` ends the connection and resolves normally (exit 0)." },
+  { id = "EX-7", text = "`attach()`'s positional `wait` callers (`test/attach.test.ts:42`, `:148`) move to the options object; banner assertions keep their exact-output form with `[connected]`." },
+  { id = "EX-8", text = "`emacs/` has no match for the banner text (`grep -rn attached emacs/`), so `malebolge.el` is unaffected." },
+  { id = "EX-9", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "each flag combination's frame and each refusal's exit 2 (V-10)", test_file = "/home/david/dev/malebolge/test/attach.test.ts", keywords = ["--conversation", "--new", "--cwd"], waived = false },
+  { id = "VT-2", expects = "hold until attached, NOT_ATTACHED, restart hint, quit before attached (V-10)", test_file = "/home/david/dev/malebolge/test/attach.test.ts", keywords = ["[connected]", "NOT_ATTACHED", "predates attach", "/quit"], waived = false },
+  { id = "VT-3", expects = "flag parsing is strict parseArgs", test_file = "/home/david/dev/malebolge/src/attach-main.ts", keywords = ["parseArgs", "strict"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Docs and the final gate"
+objective = "Design sec-7 § Docs: README.md and docs/internals.md describe many conversations, the attach frame and the per-conversation cwd; module headers carry sec-1's invariants; the suite is green with test/structure.test.ts unchanged (V-12)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01..06 complete." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "`README.md:17-19`'s \"one ongoing conversation\" and \"a new client sees the conversation so far\" become many conversations, root by default, a client seeing its conversation once attached; plus the flags and an upgrade note (restart the daemon)." },
+  { id = "EX-2", text = "`docs/internals.md` §Protocol gains `attach`/`attached`, the error table's close rule and the passive-connection rule; its \"cwd … are constants\" line becomes per conversation." },
+  { id = "EX-3", text = "No stale \"one conversation\" / \"the conversation\" wording remains in src/ headers or docs where many are meant (grep sweep recorded in the phase sheet)." },
+  { id = "EX-4", text = "`git diff <SL-030 base> -- test/structure.test.ts src/room src/runner` is empty." },
+  { id = "EX-5", text = "`just check` green." },
+]
+verification = [
+  { id = "VT-1", expects = "README names the attach flags and the restart note", test_file = "/home/david/dev/malebolge/README.md", keywords = ["--conversation", "--new", "restart"], waived = false },
+  { id = "VT-2", expects = "internals protocol reference covers attach", test_file = "/home/david/dev/malebolge/docs/internals.md", keywords = ["attach", "attached", "already attached"], waived = false },
+  { id = "VA-1", expects = "Wording sweep: grep src/ and docs/ for single-conversation phrasing; each hit is fixed or justified in the phase sheet." },
+]
+specs        = []
+requirements = []
