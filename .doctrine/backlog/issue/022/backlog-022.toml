@@ -5,10 +5,10 @@ id = 22
 slug = "satan-tick-timer-is-dormant-fires-once-5-min-after-boot-never-recurs"
 title = "SATAN tick timer is dormant: fires once 5 min after boot, never recurs"
 kind = "issue"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "started"
+resolution = ""
 created = "2026-09-23"
-updated = "2026-09-23"
+updated = "2026-10-20"
 tags = ["satan", "tick"]
 
 # outbound-only (ADR-004). Cross-kind structural edges (e.g. references with a role

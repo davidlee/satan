@@ -67,3 +67,9 @@ attributes for the reflex. **Arrival-doctrine shift is the thing to settle
 before any code.** Promote to a delta (or fold into [[DE-010]]'s successor)
 once D1/D2 in DE-010 are settled and the doctrine question has an ADR.
 
+
+## Direction (user, 2026-10-20)
+
+Likely the right medium-term scheduler, in preference to a model-chosen
+interval alone (IDE-014). Pair it with a richer noctalia bar widget showing
+SATAN's attributes, so the state that drives arrival is visible.

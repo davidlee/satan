@@ -63,3 +63,10 @@ same thing with `bwrap <binds> <daemon>` as the argv, so SL-027's seams
 
 Related: CON-005, RFC-019, ADR-017 (authority ledger), SL-027 (room profile;
 `src/room/` seams), RSK-019 (per-mode tool filtering).
+
+## Sequencing
+
+User, 2026-10-20: **after RFC-019.** RFC-019 D1 makes the room the default
+(host coding tools removed); host executor profiles are a later exception on
+top of it, not a competing default. (`doctrine after` cannot target an RFC, so
+this is a `references --role concerns` edge.)

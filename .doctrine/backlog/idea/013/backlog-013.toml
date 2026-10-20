@@ -22,6 +22,12 @@ after    = []                   # item→item soft sequence: { to, rank? }
 triggers = []                   # watched source globs: { globs, note? }
 
 [[relation]]
+label = "references"
+role = "concerns"
+descriptor = "sequenced after RFC-019: room-first; host executors are a later exception (user, 2026-10-20)"
+target = "RFC-019"
+
+[[relation]]
 label = "related"
 target = "CON-005"
 

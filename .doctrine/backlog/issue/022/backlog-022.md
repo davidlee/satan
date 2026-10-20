@@ -31,3 +31,13 @@ Either restore the recurrence (uncomment both lines) or, if it was disabled on
 purpose, fix the comment to say so. Before re-enabling, check the tick cost
 budget (IMP-014) and that the SL-018 credential escalation is wanted at a
 30-minute cadence.
+
+## Decision (user, 2026-10-20)
+
+Disabled on purpose at the time: recurring ticks swarmed the user with
+credential prompts. Moving model traffic to the LLM gateway (SL-022) ended
+those, so recurrence is restored at **40 min** with 5 min jitter
+(`~/flakes/features/satan/harness.nix`; `SATAN.md` units row updated). The
+fixed timer is also the heartbeat for IDE-014 (self-paced ticks).
+Resolve once deployed (`just home-switch` in `~/flakes`) and a second tick is
+seen in `journalctl --user -u satan-tick`.
