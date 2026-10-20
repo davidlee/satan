@@ -362,15 +362,19 @@ Deploy order: `~/flakes/agents` first (the other flakes consume it as
 | malebolge | `src/unix-socket.ts` | `serveUnix` claims by listening; probe on `EADDRINUSE`; `SocketInUse` |
 | malebolge | `src/runner/control.ts` | drop `refuseIfLive`; map `SocketInUse` to `StartRefused` |
 | malebolge | `src/attach.ts` | bounded connect retry |
+| malebolge | `src/coalesce.ts` (new), `src/reconnecting-client.ts` (new) | one refresh in flight with one shared follow-up; lazy connect with `reset()` (extracted in PHASE-02) |
+| malebolge | `src/attach-main.ts`, `justfile` | exit 1 when attach gives up; `daemon` recipe notes satan-mcp is optional |
 | malebolge | `emacs/malebolge.el` | `malebolge-start`, `malebolge-stop`, `malebolge-unit` |
 | malebolge | `test/satan-tools.test.ts`, `test/daemon.test.ts`, `test/session.test.ts`, `test/attach.test.ts`, `test/harness-fixture.ts`, `test/unix-socket.test.ts` (new), `test/instance-lock.test.ts` (new), `test/config.test.ts` | see §6 |
 | malebolge | `README.md`, `docs/internals.md` | §4.6 |
 | flakes | `features/satan/malebolge.nix` (new), `features/satan.nix` | unit |
 | flakes | `agents/jailed-agents.nix`, `agents/jailed-agents-test.nix`, `agents/README.md` | `satanMcpOptions` + test |
 | flakes | `SATAN.md` | §4.6 |
+| flakes | `features/profiles/personal-linux.nix`, `features-test.nix` | enable `satan.malebolge`; expect it in the Sleipnir selection |
 | satan | `flake.nix` | `mcpJailOptions` uses `satanMcpOptions`; `jailed-malebolge` pre-creates `/run/user/1000/satan/mcp` |
 | satan-corpus | `flake.nix` | uses `satanMcpOptions` |
 | emacs | `flake.nix` | uses `satanMcpOptions` |
+| emacs | `apps/dl-satan.el` | `:commands` lists `malebolge-start`, `malebolge-stop` |
 | notes | `flake.nix`, `justfile` | uses `satanMcpOptions`; `hello-durable`, `attach-durable` removed |
 
 <!-- doctrine:section sec-6 -->

@@ -62,3 +62,21 @@ Lines of attack:
 
 ### For close (not reconcile writes)
 - Backlog IMP-045, IMP-039, ISS-042 resolved at close (design §4.6); RSK-020 stays open.
+
+## Reconciliation Outcome
+
+### Direct edits applied
+- `design.md` §5: rows for malebolge `src/coalesce.ts`, `src/reconnecting-client.ts`,
+  `src/attach-main.ts`, `justfile`; flakes `features/profiles/personal-linux.nix`,
+  `features-test.nix`; emacs `apps/dl-satan.el` (F-1). Selector registry: the same paths
+  added as `design-target` with cross-repo notes (`justfile` already present).
+
+### REVs completed
+- REV-011 (`reconcile-sl-028`): done — SPEC-002:36 daemon Runtime gains "on-demand user
+  service"; REQ-015 Rationale tracks RSK-020 (F-3). Narrative in revision-011.md.
+
+### Withdrawn / tolerated
+- F-2: tolerated — conformance/verify-vt are single-repo; conformance done by hand.
+- F-4: tolerated — EX-5 with a refused socket; same code path as an absent directory.
+
+User agreement: "agreed" (2026-10-20). Reconcile pass complete — handoff to /close.

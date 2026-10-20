@@ -107,7 +107,7 @@ note = "cross-repo: paths are in ~/flakes"
 [[selector]]
 selector = "justfile"
 intent = "design-target"
-note = "cross-repo: ~/satan-corpus, ~/.config/emacs and ~/notes each change flake.nix; ~/notes also justfile"
+note = "cross-repo: ~/dev/malebolge justfile (RV-050 F-1)"
 
 [[selector]]
 selector = "src/instance-lock.ts"
@@ -123,6 +123,36 @@ note = "cross-repo: paths are in ~/dev/malebolge"
 selector = "src/daemon-start.ts"
 intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/coalesce.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge (RV-050 F-1)"
+
+[[selector]]
+selector = "src/reconnecting-client.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge (RV-050 F-1)"
+
+[[selector]]
+selector = "src/attach-main.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge (RV-050 F-1)"
+
+[[selector]]
+selector = "features/profiles/personal-linux.nix"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes (RV-050 F-1)"
+
+[[selector]]
+selector = "features-test.nix"
+intent = "design-target"
+note = "cross-repo: paths are in ~/flakes (RV-050 F-1)"
+
+[[selector]]
+selector = "apps/dl-satan.el"
+intent = "design-target"
+note = "cross-repo: path is in ~/.config/emacs (RV-050 F-1)"
 
 [[relation]]
 label = "governed_by"
