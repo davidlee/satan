@@ -983,5 +983,100 @@ role = "responder"
 disposition = "fix-now"
 response = "Cited :200-212; header says rounds 1-5 amended the plan."
 
+[[finding]]
+id = "F-52"
+status = "answered"
+severity = "minor"
+title = "PHASE-08 EX-2 rationale names the snapshot; the helper blocks on attached"
+detail = "bind order watch→attached→snapshot (PHASE-04 EX-3). Scout D1."
+disposition = "fix-now"
+response = "Rationale names attached; root and new are separate tests."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Rationale names attached; root and new are separate tests."
+
+[[finding]]
+id = "F-53"
+status = "answered"
+severity = "minor"
+title = "'returns actual.serveUnix unchanged' contradicts wrapping onConnection"
+detail = "src/unix-socket.ts:110-116. Scout D2."
+disposition = "fix-now"
+response = "Override written out; only the returned UnixServer is actual's."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Override written out; only the returned UnixServer is actual's."
+
+[[finding]]
+id = "F-54"
+status = "answered"
+severity = "major"
+title = "Removing :185-196 orphans the only watched.reset(); exact stream counts become order-dependent"
+detail = "test/daemon.test.ts:188, :101-106. Scout D3."
+disposition = "fix-now"
+response = "beforeEach calls watched.reset() and refills the accepted recorder."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "beforeEach calls watched.reset() and refills the accepted recorder."
+
+[[finding]]
+id = "F-55"
+status = "answered"
+severity = "minor"
+title = "Dead 'already closed' clause; once() rejection unguarded; single-slot next()"
+detail = "Scout D4, D5."
+disposition = "fix-now"
+response = "Clause dropped; rejection fails the test; recorder is fixtures' recorder (items, next(match)) refilled per test."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Clause dropped; rejection fails the test; recorder is fixtures' recorder (items, next(match)) refilled per test."
+
+[[finding]]
+id = "F-56"
+status = "answered"
+severity = "nit"
+title = "LineClient.write on a destroyed socket; EX-14 'no other test changes' vs replaced tests"
+detail = "fixtures.ts:255-266. Scout minor + pre-existing."
+disposition = "fix-now"
+response = "write resolves as writeLine does; EX-14 excepts the replaced tests."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "write resolves as writeLine does; EX-14 excepts the replaced tests."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
