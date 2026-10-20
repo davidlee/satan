@@ -18,10 +18,26 @@ gate: check
 
 # Nix: assert the built jail launchers (flake checks, Linux).
 # Separate from `check`, which stays Nix-free.
-check-jails:
+check-jails: malebolge-unbound
     nix build --no-link -L .#checks.x86_64-linux.harness-jail-profile
     nix build --no-link -L .#checks.x86_64-linux.runner-socket-unjailed
     nix build --no-link -L .#checks.x86_64-linux.malebolge-jail-profile
+
+# RV-035 F-1: the jailed-malebolge an impure devshell builds binds no
+# /workspace/ path, even with JAIL_WORKSPACE_DEPS set. `nix flake check` is
+# pure, so it never sees the env merge; this builds it impure.
+malebolge-unbound:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out=$(JAIL_WORKSPACE_DEPS="$HOME/notes/" \
+      nix build --impure --no-link --print-out-paths .#jailed-malebolge)
+    launcher=$out/bin/jailed-malebolge
+    test -f "$launcher" || { echo "no launcher at $launcher" >&2; exit 1; }
+    if grep -Fq -- /workspace/ "$launcher"; then
+      echo "$launcher binds /workspace/:" >&2
+      grep -Eo -- '"?/workspace/[^ ]*' "$launcher" | sort -u >&2 || true
+      exit 1
+    fi
 
 lint:
     #!/usr/bin/env bash

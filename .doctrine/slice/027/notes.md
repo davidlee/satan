@@ -130,6 +130,26 @@ correct facts.
     daemon-env.ts (VT-3, VT-4).
   - §4.1: `observedEnv`'s options gain `reword?`.
 
+- PHASE-05 EN-2 (2026-10-20): §4.6 names checked against the pinned agents
+  input (nix-config `ef19f95`, `flakes/agents/jailed-agents.nix`). Present as
+  sketched: `gatewaySocketOptions` (exported), `mountLaunchDir`,
+  `workspaceDepsFromEnv`, `persistedHome`, profile `offline`. Drift, for
+  reconcile:
+  - `gatewayClientSocket` is not a flakes export. The value is
+    `gateway.nix`'s `clientSocket` (`/run/llm-gateway-client/api.sock`);
+    satan imports `${inputs.agents}/gateway.nix` (plain data; its header says
+    jails import it, nothing copies it) instead of a literal.
+  - The launcher's `mkdir -p` (§4.6 bullet 2) is jail.nix's `add-runtime`
+    combinator: host-side shell run before bwrap.
+  - With `mountLaunchDir = false` the jail starts in `$HOME` (`--chdir`),
+    i.e. the persisted home.
+  - satan's `.envrc` builds the devshell with `use flake_local agents`, which
+    reads `~/flakes/agents` live, not the lock. EX-1's recipe builds
+    `.#jailed-malebolge` against the lock (what ships; the runtime deploys from
+    the GitHub input), with `JAIL_WORKSPACE_DEPS` set explicitly.
+  - The `goad` flake input has no consumer once the goad grants go; removed
+    with them (§5 "goad bindings removed").
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-20 · PHASE-04 completed + RV-037 done, slice status started · malebolge 368f625

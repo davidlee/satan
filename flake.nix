@@ -15,8 +15,6 @@
     emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
-    # Not `follows`: goad builds with its own pinned toolchain.
-    goad.url = "github:davidlee/goad";
   };
 
   outputs = inputs @ {
@@ -71,7 +69,7 @@
           socat
           bun
           python3 # `just test`: satan/harness unittest
-          ripgrep # content_read search scope (and its tests); malebolge daemon's grep tool
+          ripgrep # content_read search scope (and its tests)
 
           coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           luau # noctalia/ plugin tests + lint
@@ -223,10 +221,10 @@
             (try-fwd-env "SATAN_MAX_BUDGET_TOKENS")
           ]);
 
-        # Malebolge, SATAN's durable session daemon (IMP-037). Its coding tools
-        # work in the launch dir (`just hello-durable` in ~/notes); its own
-        # code is read-only, so those tools cannot rewrite the daemon. The jail
-        # home is not the host's: corpus and session store are bound in.
+        # Malebolge, SATAN's durable session daemon (IMP-037), in the room
+        # profile (SL-027 DEC-075): its coding tools run in the room VM over
+        # ssh, so the jail is offline and binds no host work tree. Its own
+        # code is read-only; store and socket are explicit binds.
         malebolgeRoot = "/home/david/dev/malebolge";
         malebolgeDaemon = pkgs.writeShellScriptBin "malebolge" ''
           exec ${lib.getExe pkgs.nodejs_latest} ${malebolgeRoot}/src/daemon-main.ts "$@"
@@ -237,30 +235,49 @@
         # explicitly, since the jail home is not the host's.
         malebolgeKeyFile = "/home/david/.config/llm-gateway/keys/malebolge";
         malebolgeCatalog = "/home/david/.config/malebolge/gateway-models.json";
-        # goad's tools and kit (its skill), so the daemon can write SATAN's
-        # goad backends as jpi does.
-        goad = inputs.goad.packages.${system};
-        goadPkgs = [goad.goad goad.goad-check goad.goad-emit goad.goad-kit];
-        # The goad kit's skill, from the pinned store path: `nix flake update
-        # goad` moves it. The jail can read it because goad-kit is in goadPkgs,
-        # and so in the runtime closure.
-        goadSkill = "${goad.goad-kit}/kit/skills/goad-backend";
-        malebolgeJailOptions = with jailLib.combinators; [
-          (try-fwd-env "XDG_RUNTIME_DIR")
-          (try-fwd-env "SATAN_MCP_SOCKET")
-          # The daemon serves durable.sock here; mcp/ sits beneath it.
-          (readwrite "/run/user/1000/satan")
-          (readonly malebolgeRoot)
-          (readonly "/home/david/satan-corpus")
-          # After the read-only corpus bind, so it stays writable inside it.
-          (readwrite "/home/david/satan-corpus/goad")
-          (readwrite "/home/david/.local/state/satan/durable")
-          (readonly malebolgeKeyFile)
-          (readonly malebolgeCatalog)
-          (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
-          (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
-          (set-env "MALEBOLGE_SKILLS" goadSkill)
-        ];
+        # The room's facts for the daemon (flakes:SL-016); the room literal
+        # `assistant` appears only in the door dir bind below.
+        malebolgeDoorFile = "/home/david/.config/malebolge/door.toml";
+        malebolgeRoomIdentity = "/home/david/.ssh/malebolge-vm.key";
+        roomKnownHosts = "/var/lib/capsule/room/assistant/known_hosts";
+        # `%h` is the room name (the daemon's ssh host); socat by store path,
+        # so it is in the jail's closure.
+        malebolgeSshConfig = pkgs.writeText "malebolge-room-ssh-config" ''
+          Host *
+            ProxyCommand ${pkgs.socat}/bin/socat - UNIX-CONNECT:/run/capsule-room/%h/ssh.sock
+        '';
+        # The gateway's client socket; gatewaySocketOptions binds its directory.
+        gatewayClientSocket = (import "${inputs.agents}/gateway.nix").clientSocket;
+        # The profile's own state and runtime dirs: the daemon's only writes.
+        malebolgeStateDir = "/home/david/.local/state/satan/durable/room";
+        malebolgeRuntimeDir = "/run/user/1000/satan/durable/room";
+        malebolgeRoomJailOptions = with jailLib.combinators;
+          jailLib.gatewaySocketOptions
+          ++ [
+            (try-fwd-env "XDG_RUNTIME_DIR")
+            (set-env "MALEBOLGE_PROFILE" "room")
+            (set-env "MALEBOLGE_DOOR" malebolgeDoorFile)
+            (set-env "MALEBOLGE_SSH_CONFIG" "${malebolgeSshConfig}")
+            (set-env "MALEBOLGE_GATEWAY_SOCKET" gatewayClientSocket)
+            (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
+            (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
+            # The door socket's directory, connect only (ISS-042).
+            (readonly "/run/capsule-room/assistant")
+            (readonly roomKnownHosts)
+            (readonly malebolgeRoomIdentity)
+            (readonly malebolgeDoorFile)
+            # satan-mcp, connect only; the rest of /run/user/1000/satan stays out.
+            (readonly "/run/user/1000/satan/mcp")
+            (readonly malebolgeRoot)
+            (readonly "/home/david/satan-corpus")
+            (readonly malebolgeKeyFile)
+            (readonly malebolgeCatalog)
+            # bwrap binds only existing paths. The socket dir is rw: listen
+            # needs it.
+            (add-runtime "mkdir -p ${malebolgeStateDir} ${malebolgeRuntimeDir}")
+            (readwrite malebolgeRuntimeDir)
+            (readwrite malebolgeStateDir)
+          ];
 
         jailPkgs = lib.optionalAttrs isLinux {
           jailed-pi = jailLib.makeJailedPi {
@@ -320,13 +337,18 @@
           jailed-malebolge = jailLib.makeJailedAgent {
             name = "malebolge";
             agent = malebolgeDaemon;
-            profile = "specDev";
-            extraPkgs = devToolPkgs ++ goadPkgs;
-            extraOptions = malebolgeJailOptions;
+            profile = "offline";
+            mountLaunchDir = false;
+            extraPkgs = [pkgs.nodejs pkgs.openssh pkgs.socat];
+            extraOptions = malebolgeRoomJailOptions;
             # No provider keys, so no 1Password wrapper: the key file is its only secret.
             apiKeys = [];
             useOpEnv = false;
             workspaceDeps = [];
+            # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
+            workspaceDepsFromEnv = false;
+            # Its own persisted home, shared with no other jail (RV-035 F-6).
+            persistedHome = "malebolge";
           };
           jailed-shell = jailLib.makeJailedAgent {
             name = "shell";
@@ -362,23 +384,53 @@
             # key travels over `--args 22`, never on bwrap's argv.
             argvAbsent = ["LLM_GATEWAY_KEY"];
           };
-          # The daemon's key custody (SL-023 PHASE-18): a read-only key file
-          # it is pointed at, no provider key, no gateway env.
+          # The room profile (SL-027 DEC-075, design §6): offline, the room
+          # reached over its door socket, the gateway over its client socket,
+          # writes only to the profile's own state and runtime dirs.
           malebolge = {
             present = [
-              "--ro-bind /home/david/.config/llm-gateway/keys/malebolge /home/david/.config/llm-gateway/keys/malebolge"
-              "--ro-bind /home/david/.config/malebolge/gateway-models.json /home/david/.config/malebolge/gateway-models.json"
+              "--setenv MALEBOLGE_PROFILE room"
+              "--setenv MALEBOLGE_DOOR /home/david/.config/malebolge/door.toml"
+              "--setenv MALEBOLGE_SSH_CONFIG /nix/store/"
+              "--setenv MALEBOLGE_GATEWAY_SOCKET /run/llm-gateway-client/api.sock"
               "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge"
               "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json"
-              "--bind /home/david/satan-corpus/goad /home/david/satan-corpus/goad"
-              # The store hash forces interpolation; the SKILL.md test in
-              # malebolgeJailProfile guards the value.
-              "--setenv MALEBOLGE_SKILLS ${goadSkill}"
-              # The daemon's grep tool (SL-026) execs rg: it must be on the
-              # jail PATH. The store hash forces interpolation, as above.
-              "${pkgs.ripgrep}/bin"
+              "--ro-bind /run/capsule-room/assistant /run/capsule-room/assistant"
+              "--ro-bind /var/lib/capsule/room/assistant/known_hosts /var/lib/capsule/room/assistant/known_hosts"
+              "--ro-bind /home/david/.ssh/malebolge-vm.key /home/david/.ssh/malebolge-vm.key"
+              "--ro-bind /home/david/.config/malebolge/door.toml /home/david/.config/malebolge/door.toml"
+              "--ro-bind /run/llm-gateway-client /run/llm-gateway-client"
+              "--ro-bind /run/user/1000/satan/mcp /run/user/1000/satan/mcp"
+              "--ro-bind /home/david/dev/malebolge /home/david/dev/malebolge"
+              "--ro-bind /home/david/satan-corpus /home/david/satan-corpus"
+              "--ro-bind /home/david/.config/llm-gateway/keys/malebolge /home/david/.config/llm-gateway/keys/malebolge"
+              "--ro-bind /home/david/.config/malebolge/gateway-models.json /home/david/.config/malebolge/gateway-models.json"
+              "--bind ~/.local/share/jail.nix/home/malebolge ~"
+              "--bind /run/user/1000/satan/durable/room /run/user/1000/satan/durable/room"
+              "--bind /home/david/.local/state/satan/durable/room /home/david/.local/state/satan/durable/room"
+              "mkdir -p /home/david/.local/state/satan/durable/room /run/user/1000/satan/durable/room"
+              "--unshare-net"
+              # The store hashes force interpolation.
+              "${pkgs.openssh}/bin"
+              "${pkgs.socat}/bin"
             ];
-            absent = ["op run" "-api-keys.env" "API_KEY" "LLM_GATEWAY_KEY"];
+            absent = [
+              "/workspace/"
+              "--bind /run/user/1000/satan "
+              "goad"
+              "MALEBOLGE_SKILLS"
+              "durable/host"
+              "agent-offline"
+              "op run"
+              "-api-keys.env"
+              "API_KEY"
+              "LLM_GATEWAY_KEY"
+            ];
+            # The rendered ssh_config: the door socket by room name, socat from
+            # the store (the oubliette host has none on PATH).
+            sshConfigPresent = [
+              "ProxyCommand ${pkgs.socat}/bin/socat - UNIX-CONNECT:/run/capsule-room/%h/ssh.sock"
+            ];
           };
         };
 
@@ -439,13 +491,15 @@
           launcherCheck "malebolge-jail-profile" ''
             launcher=${jailPkgs.jailed-malebolge}/bin/jailed-malebolge
             test -f "$launcher" || fail "no launcher at $launcher"
-            # The package, not only the launcher text: a wrong suffix fails here
-            # instead of being logged and dropped at daemon start (RV-028 F-3).
-            test -r ${goadSkill}/SKILL.md || fail "no goad-backend skill at ${goadSkill}"
             # Absent first: a 1Password wrapper in place of the launcher
             # would otherwise fail as a missing bind.
             ${probe "must_not" "$launcher" "launcher" p.absent}
             ${probe "must" "$launcher" "launcher" p.present}
+            ssh_config=$(sed -n 's|.*--setenv MALEBOLGE_SSH_CONFIG \(/nix/store/[^ ]*\).*|\1|p' "$launcher")
+            if [ -z "$ssh_config" ] || [ ! -f "$ssh_config" ]; then
+              fail "launcher sets no MALEBOLGE_SSH_CONFIG store file"
+            fi
+            ${probe "must" "$ssh_config" "ssh config" p.sshConfigPresent}
           '';
 
         # I4 (SL-023 REQ-016): the satan-runner control socket is bound into
