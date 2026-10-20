@@ -1,0 +1,37 @@
+id = 29
+slug = "pi-agent-mcp"
+title = "pi-agent MCP server: one blocking delegate call over stdio"
+status = "proposed"
+created = "2026-10-20"
+updated = "2026-10-20"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "pi/**"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "bin/pi-mcp"
+intent = "scope-relevant"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "IMP-046"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
