@@ -359,3 +359,18 @@ Also verified for the compaction-window caveat: no built-in extension registers 
 `session_before_compact` handler (the only registrations are the durable-drive
 `before_compaction` hooks), so enabling `builtin:mcp` alone does not reopen the
 declined-summarization overcount.
+
+## Third accepted limit: extensions can fiddle the accounting (rev 68)
+
+Operator's call, and correct: a `session_before_compact` extension can return
+`{cancel: true}` after the attempt window opened (one request counted that never
+happened) or `{compaction: {...}}`, which skips `_runDefaultCompaction` and hands
+the server the extension's own `usage` — so the spend figure would be the
+extension's word. Both verified in the installed source.
+
+Noted and accepted rather than defended: recorded as DEC-097's third accepted
+limit, stated in sec-3's executable contract and sec-4's scope of accounting, and
+sec-7's argv assertion tightened to "no `-e` other than `builtin:mcp` ever". The
+REV to SPEC-001 REQ-004 at reconcile now carries three weaker properties:
+retrospective accounting, nested spend outside attribution, extension-mediated
+work outside observation.

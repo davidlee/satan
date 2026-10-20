@@ -208,3 +208,28 @@ Explicit, because one record carries two classifications: a `message_end` with
 stop reason `tool_use` or `deferred` is a counted request whose usage must
 validate, and it is not an answer — `final: false`, `result: null`. A message that
 issued a tool call paid for it; it did not answer.
+
+
+## Operator acceptance (2026-10-20, third): extension-mediated compaction is outside accounting
+
+Accepted as a stated limit, third beside the retrospective ceiling and the nested-
+spend scope.
+
+The mechanism, verified: an extension handling `session_before_compact` either
+returns `{cancel: true}`, which cancels the compaction *after* `compaction_start`
+has opened the attempt window — so the accumulator counts one request that never
+reached a provider — or returns `{compaction: {...}}`, in which case
+`_runDefaultCompaction` is skipped entirely and `usage` comes from the extension's
+own object, so `compaction_end.result.usage` would be the extension's word for
+spend rather than the provider's.
+
+What keeps it out of reach in this build: the launch forms pass `--no-extensions`,
+which disables built-in extensions too, and add no `-e` beyond `builtin:mcp`;
+`builtin:mcp` registers no `session_before_compact` handler (checked in the
+installed build). Any deployment that enables another extension puts both the
+request count and the spend figure outside the accounting model — not because the
+numbers are wrong today, but because they are no longer the server's to observe.
+
+Recorded as a limit, not a caveat to be re-litigated: the REV to SPEC-001 REQ-004
+at reconcile now names three weaker properties together — retrospective accounting,
+nested spend outside attribution, and extension-mediated work outside observation.
