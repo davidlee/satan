@@ -1,0 +1,422 @@
+id    = 53
+slug  = "sl-029-implementation-review-maintainability-and-correctness"
+title = "SL-029 implementation review: maintainability and correctness"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "code-review"
+responder = "implementer"
+rounds_base = 0
+contests_base = 0
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-029"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "blocker"
+title = "The drain after the reap is outside the ladder: no trigger can bound a run whose leader has exited"
+detail = """
+Expected (design sec-4, "Termination": "One ladder for every trigger: SIGTERM to the group, 2 s grace, SIGKILL to the group, then reap and drain the stream, then audit, then return"; and "a blocking result never blocks cancellation"; PHASE-06 EX-11 "it never leaves a child behind"; PHASE-07 EX-6 "the wall clock — the hard backstop"): a trigger arriving while the stream is still draining kills the group and the drain ends, so no run outlives every trigger.
+
+Observed: pi/mcp/spawn.ts:396 removes the abort listener the instant `await exited` returns, so the whole drain phase has no listener at all; and the non-signal path stops earlier — `terminate`'s `if (exit !== null) return;` at pi/mcp/spawn.ts:368, whose comment ("already reaped: there is no group left to signal") is false, because a process group outlives its leader while members remain. The result is that `await finished(stdout)` at pi/mcp/spawn.ts:401 is bounded by nothing, including the comment at :399 that claims "the ladder's SIGKILL to the group is what bounds this on the abort path". Reproduced with a stub launcher that starts `sleep 60 &` (R3: `sleep 30 &`), prints the stream and exits 0: `abort('cancelled')` 100 ms after the leader's exit left `runChild` pending at 3000 ms with `outcome.abort === null` and `audit.jsonl` holding `spawn` only (R1: still pending at 6 s after an abort at 703 ms). Consequences: `serve`'s EOF sweep awaits `call.done` (pi/mcp/server.ts:609-611) and never settles, so the server never exits, the child's session is orphaned and the session lock is held for the process's life; and the gate's idle poll keeps ticking, aborting a controller nobody is listening to, so the backstop is dead exactly when the run is stuck. The existing test encodes the hole rather than closing it: the drain test at pi/mcp/spawn.test.ts:906 measures the grandchild's `sleep 2`, not the ladder.
+
+Raised in both reviews: R1 finding 1 (HIGH) and R3 finding 1 (HIGH), independently reproduced.
+
+Suggestion: keep the abort listener attached until after the drain (remove it where `gate.close()` happens, i.e. after `finished(events)`), let a post-reap `terminate` still `signalGroup(pid, 'SIGKILL')` (signalling `-pid` after the leader is reaped is safe while the group has members), bound the drain with the remaining grace, and end the run with an `audit`/`timeout` cause if it still has not closed. Correct the stale comment at :368.
+"""
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/spawn.ts: the abort listener now stays attached through the drain and is removed only after the exit record; terminate no longer early-returns on exit !== null but SIGKILLs the group (a pgid outlives its reaped leader), and every signalling rung leaves a drainBound one grace out so the drain is waited a slice at a time and gives up on an unreachable tail rather than never. Pinned by 'a cancellation arriving after the leader was reaped still bounds the drain: the group that holds stdout is killed, so the call answers instead of waiting on a grandchild' (spawn.test.ts; fails on HEAD at 5 s, passes in ~0.2 s now) and by the reworked 'the session lock is released only after the drain and the final audit append … and the ladder is what ends the drain', whose grandchild is now sleep 30 and whose assertion is the bound, not the sleep."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/spawn.ts: the abort listener now stays attached through the drain and is removed only after the exit record; terminate no longer early-returns on exit !== null but SIGKILLs the group (a pgid outlives its reaped leader), and every signalling rung leaves a drainBound one grace out so the drain is waited a slice at a time and gives up on an unreachable tail rather than never. Pinned by 'a cancellation arriving after the leader was reaped still bounds the drain: the group that holds stdout is killed, so the call answers instead of waiting on a grandchild' (spawn.test.ts; fails on HEAD at 5 s, passes in ~0.2 s now) and by the reworked 'the session lock is released only after the drain and the final audit append … and the ladder is what ends the drain', whose grandchild is now sleep 30 and whose assertion is the bound, not the sleep."
+
+[[finding]]
+id = "F-2"
+status = "open"
+severity = "major"
+title = "`failedResult` emits an envelope its own validator rejects, and no test covers it"
+detail = """
+Expected (design sec-5 "Result contract": one envelope with "session is always present — minted and returned when the caller supplied none", and a failure after spawn carrying `status` and `artifacts`; pi/mcp/result.ts:395-397 states the same rule as an invariant: "a spawned run carries its session" / "carries its status" / "carries its artifacts"): every arm of `resultFor`/`failedResult` returns a document `validateAgentResult` accepts, and the suite tests that for every reachable arm.
+
+Observed: pi/mcp/result.ts:305 `failedResult` is the last-resort arm and emits `session: null`, `status: null`, `artifacts: null` with `state: 'failed'`; running `validateAgentResult` on its own output returns `{ok:false, detail:'a spawned run carries its session'}` (R3 verified this by read-only module evaluation, not by reading alone). It also overloads `transcript` with the failure detail, a field design sec-5 documents as the reduced markdown. The single call site is the catch arm at pi/mcp/server.ts:515, so a conforming client rejects the server's last-resort answer — the one answer a client gets when something already went wrong. No test references `failedResult` at all, although the suite runs the other three arms through `validateAgentResult`.
+
+Raised in R3 (finding 2, MEDIUM); the untested-arm half is R3's coverage note.
+
+Suggestion: give the catch arm the call's session (it is minted before the run) and a `status`/`artifacts` pair, or declare a fourth refusal-shaped arm (`refusal.reason: 'server-error'`); and add the one test that runs every reachable arm — including this one — through `validateAgentResult`.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "open"
+severity = "major"
+title = "`child_binds` is one fact in three places with the exposure half missing; the bind-set check does not close policy↔form"
+detail = """
+Expected (design sec-3): `child_binds` is the policy's declaration of the posture's fixed child binds and the child view is their union with {root, active session directory} — "all canonicalised, and it is refused `view-overlaps-protected` when a member is, contains, or lies inside a protected path more strongly than that store tolerates — unreachable stores refuse any exposure, read or write; the never-writable policy file refuses only a writable one (a `write`-capability root, or a rw fixed bind)" (design.md:63), so the declaration carries exposure. And design.md:85: "the flake check asserts the form's actual bind set equals root + session directory + `child_binds`. That is where the loop closes; a server promise alone would not close it."
+
+Observed, three separate faults in one fact:
+- (a) No exposure half. `child_binds` is `string[]` (pi/mcp/policy.ts:53) and every member is hard-coded `exposure: 'read-write'` at pi/mcp/childview.ts:124-125, while the form's fixed mounts are mostly read-only (`--ro-bind .../bin/env /usr/bin/env`, `--bind ~/.local/share/jail.nix/home/agent ~`, `--ro-bind-try ~/.local/share/doctrine/bin /run/doctrine-bin`, `--ro-bind-try .../host-git-excludes-file ~/.config/git/ignore` — flake.nix:534-540). A policy therefore cannot declare a read-only bind, and the "policy file is never writable" rule over-refuses a legitimately read-only mount that happens to contain it, where a read-only *root* containing it is tolerated.
+- (b) Three places, not two. The same bind set is written in the policy schema (policy.ts:53), in the child-view check (childview.ts:124-125) and as a third literal in the flake probe `jailProbes.pi-mcp.shared` (flake.nix:534-540, consumed by `piMcpFormCheck` at flake.nix:683 and :753).
+- (c) The check does not close policy-vs-form. The flake check compares the built launcher against that literal; the recorded smoke policy declares one bind (`"child_binds":["/home/david/.local/share/jail.nix/home/agent"]`, .doctrine/slice/029/notes.md:709) and every test rig uses `child_binds: []`. So the loop closes form-vs-literal, never policy-vs-form: a bind the form adds and the policy omits is still outside the server's knowledge, and design sec-3 currently claims otherwise.
+
+Raised in R3 (finding 3, MEDIUM); the exposure half is also R2's design tension 3.
+
+Suggestion: make `child_binds` `{path, exposure}[]` (or a `{read, write}` split) so the policy can state the truth the child view checks against, and add one test asserting the documented example policy's bind set equals `jailProbes.pi-mcp.shared`; if the three-way duplication is accepted instead, say so where design sec-3 claims the loop is closed.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "answered"
+severity = "minor"
+title = "A duplicate in-flight request id evicts the first call from cancellation and the EOF sweep"
+detail = """
+Expected (DEC-103, PHASE-06 EX-11 "it never attempts to deliver a result down a closed channel, and it never leaves a child behind"): `inFlight` is the cancellation index and the EOF sweep's work list, so every running call is in it — `notifications/cancelled` resolves an entry via `callKey(requestId)` (pi/mcp/server.ts:551) and the EOF sweep collects `[...context.inFlight.values()]` (pi/mcp/server.ts:609-611).
+
+Observed: entries are keyed by `callKey(id)` at pi/mcp/server.ts:506. A second `tools/call` carrying the same id overwrites the entry, and the first call's `finally { context.inFlight.delete(key) }` (pi/mcp/server.ts:518) then removes the *second* call's entry. Both calls become invisible to cancellation and to the EOF sweep, which can therefore resolve while two children still run — so the "no child outlives the server" promise holds only for well-behaved ids. JSON-RPC requires unique ids, so this is a misbehaving-client case rather than a live bug, and it fails in the direction of an orphaned child rather than a protocol error.
+
+Raised in R1 (finding 2, LOW); R3's coverage note names duplicate ids as one of the two risks the suite leaves untested.
+
+Suggestion: refuse a second in-flight id (`-32600` / `request-invalid`) at registration, or keep `Map<string, InFlightCall[]>` and delete by entry identity instead of by key; either way add the one test with two calls sharing an id.
+"""
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/server.ts: inFlight is Map<string, InFlightCall[]> — a repeated wire id appends to the list under its key, the finally removes by entry identity and deletes the key only when the list empties, abortNamed aborts every entry under the id, and the EOF sweep flattens all lists. The invariant 'every running call is in the index' therefore holds for a misbehaving client's repeated id. Pinned by 'two tools/calls carrying one id are both in the index: a cancellation naming it aborts both, and each run records its abort' (spawn.test.ts; fails on HEAD — one call answered, the other run hung to the 10 s ceiling — and passes now)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/server.ts: inFlight is Map<string, InFlightCall[]> — a repeated wire id appends to the list under its key, the finally removes by entry identity and deletes the key only when the list empties, abortNamed aborts every entry under the id, and the EOF sweep flattens all lists. The invariant 'every running call is in the index' therefore holds for a misbehaving client's repeated id. Pinned by 'two tools/calls carrying one id are both in the index: a cancellation naming it aborts both, and each run records its abort' (spawn.test.ts; fails on HEAD — one call answered, the other run hung to the 10 s ceiling — and passes now)."
+
+[[finding]]
+id = "F-5"
+status = "open"
+severity = "minor"
+title = "The within/contains predicate has two independent implementations"
+detail = """
+Expected (DEC-095; design sec-2 step 4 "inside the allowlist by path components" and sec-3's disjointness-over-the-child-view): one predicate decides "is this path inside/containing that one by components", used by both the root allowlist and the child-view check, because the two are the two halves of one invariant — a hardening fix (mount-point comparison, case handling, a different canonicalisation) has to reach both.
+
+Observed: two independent implementations. pi/mcp/profiles.ts:256 `componentsOf` plus pi/mcp/profiles.ts:260 `canonicalForComparison` prefix-compare the component lists at pi/mcp/profiles.ts:304-306; pi/mcp/childview.ts:84 `canonicalPath` plus pi/mcp/childview.ts:106 `within` (longest-existing-ancestor) are used at pi/mcp/childview.ts:178-187. Both are correct today — R2 probed prefix sibling refused, symlink resolving to its target, `..` and trailing slash normalised, `/`-root refused — but they can diverge silently, and neither is the named owner of the rule.
+
+Raised in R2 (finding 4, LOW).
+
+Suggestion: one `pi/mcp/paths.ts` exporting `canonicalPath` and `within`, imported by both `resolveRoot` and `checkChildView`, with the probes moved to test the shared module.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "open"
+severity = "minor"
+title = "Two clampers for one concept, one of them living in the result module"
+detail = """
+Expected (design sec-2's step 6, the ceiling clamp; the reader's question "how are policy maxima applied" has one answer, in one place, with one stated reason per asymmetry): `clampCeilings` (pi/mcp/policy.ts:310) clamps the four maxima in `MAXIMA_FIELDS` (pi/mcp/policy.ts:108), refuses an above-maximum request with a token, and the refusal surfaces in the step-6 vocabulary.
+
+Observed: a second clamper for a second concept of "maximum", living in the result module. `transcriptBudget` at pi/mcp/result.ts:337 silently clamps `transcript_budget_bytes` — no refusal token, no `MAXIMA_FIELDS` membership, no refusal path — so a reader looking for "how are policy maxima applied" finds half the answer in `policy.ts` and half in `result.ts`, and a policy maximum that must-be-honoured versus one that may-be-clamped is a distinction made by module placement rather than by an argument anyone can read. The clamp itself is defensible (the transcript is a report, not a spend bound); the split module is not.
+
+Raised in R3 (finding 4, LOW-MEDIUM); R3's design-tension list (item 5, "refusal-vs-clamp asymmetry") asks for the same one sentence in the design.
+
+Suggestion: move `transcriptBudget` beside `clampCeilings` in `policy.ts` and record in one sentence why this maximum clamps where the others refuse.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "open"
+severity = "minor"
+title = "`Tally` is constructed in three places and the gate's idle poll depends on a caller priming it"
+detail = """
+Expected: one accumulator type with one constructor and one truth — `Tally`'s own docstring in pi/reduce/reduce.ts says "the single usage accumulator … one instance per run" — and a gate whose idle poll bounds a silent child on its own, which is what pi/mcp/gate.ts's header claims: "a child that has gone quiet … is exactly what a blocking result looks like, still reaches the switch and the wall clock".
+
+Observed, two coupled faults:
+- (a) `Tally` is constructed three times as three hand-copied literals: pi/reduce/reduce.ts:127, the local `emptyTally()` at pi/mcp/spawn.ts:414, and a second `emptyTally` at pi/mcp/gate.test.ts:97-98. When `Tally` grows a field the copies silently produce a partial accumulator (`countRecord` would mint `NaN`) and no compiler error points at them.
+- (b) The idle poll depends on a caller priming it. pi/mcp/gate.ts:155-156 skips `judge` while `last === null`, and `last` starts `null`, so before the first `tick` neither the wall clock nor the switch is evaluated; the gate isolates only because pi/mcp/spawn.ts:210 calls `control.onRecord?.(tally)` before the first byte — a precondition the gate's own type does not state. `wallClock()` needs no tally, so the coupling buys nothing.
+
+Raised in R3 (finding 6, LOW) for the three constructors and in R2 (finding 3, LOW) for the primed poll.
+
+Suggestion: export `createTally()` from `pi/reduce/reduce.ts`, delete the other two constructors, initialise `last` with it in `createGate`, and let the poll stand alone (with a test that a gate with no `tick` still fires the wall clock).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "answered"
+severity = "minor"
+title = "The session directory is created before ownership is decided"
+detail = """
+Expected (PHASE-04 EX-2/EX-9: the loser is refused `session-busy` "before any side effect"; design sec-6 "Ownership is conferred by exactly one act: an `O_EXCL` create of `<state>/sessions/<id>.lock`"): session state appears only for the call that took ownership.
+
+Observed: pi/mcp/session.ts:519-521 creates `home`, `sessions` and — the offending one — `paths.sessionDir` before `takeOwnership` at pi/mcp/session.ts:543. A caller that loses the `O_EXCL` race, or is refused for a root/capability mismatch under an otherwise valid claim, still materialises `<home>/<session-id>/`: no child, no lock, no binding, but a directory nothing removes and a session that "exists" for a call that never owned it. `home` and `sessions` must precede the lock; the session directory need not.
+
+Raised in R1 (finding 3, LOW) and R3 (finding 7, LOW).
+
+Suggestion: move the `paths.sessionDir` mkdir after `takeOwnership` succeeds (childview canonicalises it later, so the ordering is free), or remove it when the acquisition is refused and this call created it.
+"""
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/session.ts: acquireSession makes home and sessions before the lock (the lock lives in sessions) and <home>/<id> only after takeOwnership succeeds; a layout failure there releases the ownership before refusing, so no lock is left for the next caller to wait out. Pinned by 'a refused acquisition creates no session directory: the layout is made only once the lock is this call's (EX-2)' (session.test.ts; fails on HEAD where the refused caller materialises the directory)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/session.ts: acquireSession makes home and sessions before the lock (the lock lives in sessions) and <home>/<id> only after takeOwnership succeeds; a layout failure there releases the ownership before refusing, so no lock is left for the next caller to wait out. Pinned by 'a refused acquisition creates no session directory: the layout is made only once the lock is this call's (EX-2)' (session.test.ts; fails on HEAD where the refused caller materialises the directory)."
+
+[[finding]]
+id = "F-9"
+status = "answered"
+severity = "minor"
+title = "`reclaim` misdiagnoses a retryable race as `session-busy` and collapses unreadable liveness into alive"
+detail = """
+Expected (design sec-6: "each is a stable token plus a `detail` string" — a refusal names what actually happened; and design sec-6 "unknowable liveness (no `/proc`) resolves to `session-busy` — fail closed", which `unknownRefusal` already exists to say at pi/mcp/session.ts:328 and `reclaim` already uses at pi/mcp/session.ts:375).
+
+Observed, two fail-closed refusals whose `detail` misdescribes the state:
+- (a) Retryable race refused as busy. pi/mcp/session.ts:363-364: if the previous owner released between our failed `O_EXCL` create and the read, the call is refused `session-busy` with "disappeared between the create attempt and the read; ownership is decided by one create, so the call is refused rather than retried in place" — a spurious busy in a state where a plain re-attempt of the single create is both legal (creation needs an absent path) and correct.
+- (b) Unreadable liveness collapsed into alive. pi/mcp/session.ts:397-403: the re-confirm under the claim routes `unknown` into `aliveRefusal` (pi/mcp/session.ts:322-327), whose text asserts ownership "which is alive" for a liveness nobody could read.
+
+Both fail in the safe direction, so the cost is a wrong diagnosis and a spurious refusal, not a stolen lock.
+
+Raised in R1 (finding 4, LOW).
+
+Suggestion: on `before.missing`, retry the `O_EXCL` create once and otherwise keep the "disappeared" detail; on the re-confirm, branch `unknown` to `unknownRefusal(again.record, procDir)`.
+"""
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/session.ts, both diagnosis fixes, no policy change: (a) reclaim's before.missing branch now re-attempts the single create exactly once (a retried flag threaded through takeOwnership/reclaim, never recursive) — one vanished path is a race, two are a disagreement — and the surviving refusal's detail no longer claims the call was not retried in place; (b) the re-confirm under the claim branches on all three liveness answers, so unknown routes to unknownRefusal(again.record, procDir) instead of aliveRefusal's assertion about a liveness nobody could read. Tokens unchanged (session-busy both ways). No test: both paths are synchronous inside one fs sequence with no seam, and adding one would be new public surface, so the fix is code-only and reviewed by inspection."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Fixed in 80bb3ce. pi/mcp/session.ts, both diagnosis fixes, no policy change: (a) reclaim's before.missing branch now re-attempts the single create exactly once (a retried flag threaded through takeOwnership/reclaim, never recursive) — one vanished path is a race, two are a disagreement — and the surviving refusal's detail no longer claims the call was not retried in place; (b) the re-confirm under the claim branches on all three liveness answers, so unknown routes to unknownRefusal(again.record, procDir) instead of aliveRefusal's assertion about a liveness nobody could read. Tokens unchanged (session-busy both ways). No test: both paths are synchronous inside one fs sequence with no seam, and adding one would be new public surface, so the fix is code-only and reviewed by inspection."
+
+[[finding]]
+id = "F-10"
+status = "open"
+severity = "minor"
+title = "The posture-state branch is unreachable dead code that carries EX-11's claim"
+detail = """
+Expected (PHASE-02 EX-11: the posture is fixed for the process lifetime and a mode change between calls is refused by a process-lifetime check — a check whose claim is backed by a path that can fire).
+
+Observed: `validatePolicy` already refuses every `mode !== 'per-call'` at pi/mcp/policy.ts:201-206, and `Policy.mode` is the literal type `'per-call'` (pi/mcp/policy.ts:24), so whenever `acceptedMode !== null` the comparison at pi/mcp/policy.ts:371 is always false. The branch and its refusal text at pi/mcp/policy.ts:372-375 are unreachable; `createPostureState()` (pi/mcp/policy.ts:80) is threaded through `admitCall` only to be written at pi/mcp/policy.ts:383; and the test named for this behaviour — "a mode change between calls…" at pi/mcp/policy.test.ts:230 — actually exercises the schema refusal, not this branch. So EX-11's stated mechanism is dead code carrying its claim, and the suite's evidence for EX-11 points at a different mechanism.
+
+Raised in R2 (finding 1, LOW).
+
+Suggestion: delete `PostureState`/`createPostureState` and their plumbing, and let the design sec-1 comment say the schema refusal is what fixes the posture; or widen `PolicyMode` so the runtime check and its test are real.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-11"
+status = "open"
+severity = "minor"
+title = "Form `extensions` accept any token while only `builtin:mcp` is honoured"
+detail = """
+Expected (design sec-3, design.md:102: "The launch forms therefore pass no `-e` other than `builtin:mcp`."; and `readForm`'s own comment at pi/mcp/policy.ts:154, that a mistyped field must not "get a form that silently passes none"): the declared `extensions` set says what the form passes, and anything else is refused rather than accepted and ignored.
+
+Observed: pi/mcp/policy.ts:168 admits any non-empty string array — `['builtin:other']`, `['../x']`, arbitrary tokens. Nothing honours them: `checkProfileExtensions` (pi/mcp/profiles.ts:366-369) only asks `extensions.includes(MCP_EXTENSION)`, and `buildArgv` decides `-e builtin:mcp` from `profile.tools`, never from the form (pi/mcp/spawn.ts:151-152). Every other declared entry is accepted and inert — the same "silently loses the constraint they meant to declare" failure the function guards against for mistyped keys, one field over.
+
+Raised in R2 (finding 2, LOW); R3's design tension 6 makes the same observation from the other side (the field models a decision the server makes).
+
+Suggestion: refuse any `extensions` entry other than `MCP_EXTENSION` as `policy-invalid`; if the field is meant to be a pure declaration, document it as one and test the restriction, so an operator cannot believe they configured argv.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-12"
+status = "open"
+severity = "minor"
+title = "Assumption labels `A1`–`A6` resolve to no record, and `A1` means two different things"
+detail = """
+Expected: an assumption cited in code resolves to a record — a knowledge-corpus `ASM-` entry an auditor can read — so that a design claim resting on `A4` can be checked against the assumption it rests on.
+
+Observed: the labels `A1`–`A6` resolve to nothing, and `A1` means two different things. pi/mcp/childview.ts:27 uses `(A1)` for "every child_bind is writable"; pi/mcp/session.ts:67 and pi/mcp/session.ts:150, and pi/mcp/gate.ts:23 use `(A1)` for unrelated statements. The rest — pi/mcp/childview.ts:79 `(A2)`, pi/mcp/childview.ts:131 `(A3)`, pi/mcp/result.ts:417 `(A4)`, pi/mcp/result.ts:330 `(A5)`, pi/mcp/result.ts:223 `(A6)` — have the same problem. There is no `A1`–`A6` in `.doctrine/slice/029/` and none in the knowledge corpus, whose assumptions stop at `ASM-007` and say nothing about the child view, so an auditor following the citation finds no record at all.
+
+Raised in R2 (finding 5, LOW).
+
+Suggestion: record them as `ASM-` entries and cite the ids (which also gives F-3's exposure gap a place to be argued), or state each assumption inline in one sentence and drop the labels.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-13"
+status = "open"
+severity = "minor"
+title = "A source-text parentheses scan stands in for a behavioural transcript-budget test"
+detail = """
+Expected (design sec-5 "transcript is budgeted and the budget is soft"; PHASE-08 EX-6's carried obligation, which PHASE-09's smoke policy is written to exercise): a behavioural test that a call's `transcript_budget_bytes` reaches the reducer through the policy clamp and actually elides — the stub-launcher harness already drives `serve` end to end, so the seam is observable from outside.
+
+Observed: pi/mcp/result.test.ts:546-570 stands in for it with a source-text scan — it re-reads `server.ts`, finds `indexOf('reduce(run.lines')`, balances parentheses by hand and requires two literal expressions inside them. It fails for any reason other than the defect it names: extract that call into a helper, rename `admission`, or reformat the arguments, and the suite fails with a message about a "seam" that still works. Meanwhile it cannot tell whether the budget is correct — only that both identifiers appear inside the parens — and the clamp itself is already unit-tested in the same file, so the scan adds brittleness and no coverage.
+
+Raised in R3 (finding 9, LOW).
+
+Suggestion: delete the scan and add the one behavioural case the harness makes cheap: a call with `transcript_budget_bytes` set asserts `doc.status.transcript.elided > 0` and `status.transcript.bytes` below the same run without a budget.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-14"
+status = "open"
+severity = "minor"
+title = "The gate's trigger facts are computed and dropped, and `triggers()`/`cause()` serve only tests"
+detail = """
+Expected (design sec-4's gate and sec-6's audit: "`abort` (with usage at the gate and the cause)"; PHASE-07 EX-1 "the abort record carries the accumulator's usage at the crossing"): the audit is the record of a control decision, so it names the decision — which unit crossed, at what value, against which bound — and the gate's surface has a production consumer.
+
+Observed: the only fact that leaves the gate is the cause. `abort: (cause: GateCause) => void` at pi/mcp/gate.ts:55 passes the token alone, so spawn's abort record (pi/mcp/spawn.ts:365-366) carries `cause` plus the accumulator's totals but never `unit`, `observed` or `limit` — the gate computes all three in `GateTrigger` (pi/mcp/gate.ts:39-45) and drops them at `fire` (pi/mcp/gate.ts:126-130). Consequently `triggers()` and `cause()` (pi/mcp/gate.ts:163-164) have no production reader: grep finds them called only from `pi/mcp/gate.test.ts`, so `GateTrigger.observed/limit` exists purely for test observability and is not labelled as such.
+
+Raised in R3 (finding 5, LOW-MEDIUM); R2's design tension 7 records the same test-only surface.
+
+Suggestion: carry the trigger on the abort reason (`controller.abort({ cause, trigger })`) and write `unit`/`observed`/`limit` into the abort record, which gives the exports a production consumer and makes an overrun diagnosable from evidence rather than from the returned status alone.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-15"
+status = "open"
+severity = "minor"
+title = "Roughly 450 lines of test harness are duplicated between `spawn.test.ts` and `gate.test.ts`"
+detail = """
+Expected (design sec-7's delivery list: `pi/mcp/*.test.ts`, offline, one suite per mechanism): a fixture surface shared by the harness-driven suites, so a change to the stub launcher, the rig or the wire helpers is made once.
+
+Observed: pi/mcp/spawn.test.ts:116-352 and pi/mcp/gate.test.ts:130-330 are the same harness twice — `Env`, `line`, `callLine`, `emit`, `stubLauncher`, `Rig`, `newRig`, `killSurvivors`, `readText`, `jsonLines`, `marker`, `markerPids`, `isAlive`, `Session`, `openServer`, `document`, roughly 450 duplicated lines. `attemptLines` is repeated in four files and `emptyTally` in two (see F-7). They have already begun to drift: `gate.test.ts` carries `unitGate`/`patchPolicy`, `spawn.test.ts` carries `runDirs`/`waitForRunDir`, so the copy that a later fix reaches is decided by which file the author happened to edit.
+
+Raised in R3 (finding 10, LOW).
+
+Suggestion: one shared fixtures module for the five harness-driven files — with the wrinkle R3 names: the bwrap-token scan at pi/mcp/server.test.ts:370 reads every non-`*.test.ts` file in `pi/mcp`, so either name the module `*.test-helpers.ts` and widen the scan's exclusion, or place it under `pi/mcp/testing/` and exclude that directory, else the fixture module is treated as production source.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-16"
+status = "open"
+severity = "major"
+title = "Design-record divergences owed at reconcile: validation order, unbounded `maxima`, budget-0 inversion, pending→settled status divergence, `switch` mapping, `final` with no answer"
+detail = """
+Six divergences between the locked design record (design sec-1/2/4/5) and the implementation, raised by the reviews as "design tensions, not defects". Each is a decision owed at reconcile (a REV/QUE entry that settles the prose), not a code defect; they are grouped here as one ledger row so the list is not lost, and each bullet names its own site. Grouped for the ledger, not collapsed.
+
+- Validation order (R1, design tension 1). Expected: design sec-2's "Validation order (fail closed, first failure wins)" puts policy at step 1. Observed: the start-up snapshot refusal (pi/mcp/server.ts:263-269) and `readToolCall`'s `request-invalid` (pi/mcp/server.ts:276-277) both precede `admitCall`'s policy read at pi/mcp/server.ts:280, so two refusal tokens can be emitted ahead of the design's first failure. The deviation is justified in a comment at pi/mcp/server.ts:147-152 but absent from DEC-103 and from the plan.
+
+- Unbounded `maxima` (R2, design tension 1). Expected: design sec-1 "Absent or malformed refuses everything: a delegate with no ceiling is unbounded spend". Observed: `REQUIRED_FIELDS` requires only that the key is present (pi/mcp/policy.ts:100, :196-198), and the maxima loop accepts any subset of `MAXIMA_FIELDS` (pi/mcp/policy.ts:210-223), so `maxima: {}` — or any maxima without `wall_clock_s` — satisfies the schema and grants an unbounded delegate with no hard backstop. A negative maximum is likewise accepted, and turns every call into an instant `ceiling` abort.
+
+- Budget-0 inversion (R2, design tension 2). Expected: a `transcript_budget_bytes` maximum bounds the transcript. Observed: `0` or a negative value is accepted by the policy (pi/mcp/policy.ts:248-262) and then read as "no ceiling" by `transcriptBudget` (`policyMax > 0 ? policyMax : undefined`, pi/mcp/result.ts:338), inverting the clause: a maximum of 0 means unbounded rather than none.
+
+- `pending`→settled status divergence (R2, design tension 5). Expected: design sec-5 — a `message_end` carrying `pending` is "malformed rather than merely unfinished: it is counted as a request and the run reports `incomplete` with `termination: "eof"`", and `status.state` and `state` diverge only for out-of-stream causes. Observed: the reducer's stream verdict is `settled ? 'completed' : 'incomplete'` regardless of the terminal reason (`pi/reduce/reduce.ts:246-250`), so a settled stream whose last assistant message ended `pending` yields `status.state: "completed"` with `result: null`. The call-level verdict is right — `result.ts` derives `eof` — only the stream verdict diverges, and it needs a settled-after-pending stream to be seen.
+
+- `switch` mapping (R1, design tension 3). Expected: design sec-5 "Precedence among concurrent causes is order of discovery, and a later cause is never hidden behind an earlier one". Observed: `gate.fire` hands only the cause to `config.abort` (pi/mcp/gate.ts:126-130), `AbortController.abort()` on an already-aborted signal emits no second event, and spawn keeps the first trigger and returns (`pi/mcp/spawn.ts:365-366`), so a `switch`/`timeout` crossing during a cancellation's grace is recorded nowhere — the audit says `cancelled` while the operator's kill switch also fired. State impact is nil (`switch` → `cancelled` at pi/mcp/result.ts:80, `cancelled` → `cancelled`); the loss is audit fidelity against sec-5's rule.
+
+- `final: true` with no answer (R3, design tension 1). Expected: design sec-5 defines `final` by terminal reason + settled + exit 0, and withdraws `result` on a non-completed run. Observed: a textless terminal `stop` message completes with `final: true` and `result: null`, because `final` is derived from the state alone (`const final = state === 'completed'`, pi/mcp/result.ts:259, with `result: final ? reduced.result : null` at :268) and the case is codified by test at pi/mcp/result.test.ts:467. This is the letter of the contract; whether "final" should mean "an answer exists" is a design question the implementation inherits rather than answers.
+
+Suggestion: settle each in the design record at reconcile (the six are the right size for one REV or a QUE entry per item, as DEC-093's existing list of reconcile corrections does), and let the implementation follow the settled prose — except the `switch`-cause loss, which is cheap to fix in code either way (append an abort record per trigger, or record the extra cause).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-17"
+status = "open"
+severity = "minor"
+title = "Hardening observations: over-broad child env strip, unbounded line buffer, no server signal handler, stale-lock advice, undocumented audit-kind collapse"
+detail = """
+Five hardening observations raised as "design tensions, residual" rather than defects. Each fails in a safe direction today; each is a place where the stated boundary is narrower than the code's exposure. Grouped for the ledger, not collapsed — one bullet per observation, each with its site.
+
+- Over-broad child env strip (R1, design tension 5). Expected (PHASE-06 EX-5): the child inherits no environment variable naming the run directory. Observed: `childEnv` skips any variable whose value *contains* a run path (pi/mcp/spawn.ts:180-183), so a short `PI_MCP_RUN_DIR` (e.g. `/run/user/1000/satan`) can strip `XDG_RUNTIME_DIR` or a `PATH` entry and break the launch with a confusing `spawn` failure. Fails safe, over-broad.
+
+- Unbounded line buffer (R1, design tension 6). Expected: the wire reader and the stream capture are bounded by something other than RAM. Observed: `serve`'s `pending` accumulator grows without limit (pi/mcp/server.ts:589-600), and the child's whole stream is held in memory as `lines` (declared at pi/mcp/spawn.ts:204, pushed at pi/mcp/spawn.ts:302) while also being written to disk. Fine for the intended prompt sizes; a multi-hundred-MB prompt or a very long tool-output stream is bounded by nothing.
+
+- No server signal handler (R1, design tension 4). Expected: the counterpart of PHASE-06 EX-11 ("it never leaves a child behind"). Observed: neither `pi/mcp/main.ts` (7 lines, `await serve(process.stdin, process.stdout, process.env)`) nor `pi/mcp/server.ts` installs a SIGTERM/SIGINT handler, so a driver that kills the server rather than closing stdin leaves the child's session alive — the child is its own session, so nothing propagates. DEC-103 names stdin EOF as *the* shutdown, so this is a declared boundary, not a defect; it belongs in the slice's residual list.
+
+- Stale-lock advice (R1, design tension 2). Expected: an operator-facing `detail` describes a state an operator can safely act on. Observed: pi/mcp/session.ts:370 says the lock "carries no readable ownership record … it must be cleared by an operator", but between the `O_EXCL` create (pi/mcp/session.ts:301) and the record write the lock is legitimately empty, so a concurrent caller can read that advice about a lock that is about to become live. Fail-closed, but an operator acting on it would clear a live lock.
+
+- Undocumented audit-kind collapse (R3, finding 8). Expected: design sec-6 enumerates the audit vocabulary — "`spawn` (with the profile snapshot digest), `abort` (with usage at the gate and the cause), `timeout`, `exit`, `switch`, each with the policy digest" (design.md:221). Observed: `AuditKind` is `'spawn' | 'abort' | 'exit'` (pi/mcp/evidence.ts:179) and the code emits `abort` + `cause`, while the comment above it says later phases "add fields, not new files" — true of the file, not of the record vocabulary. Defensible (the cause names the outcome), but it reads as an oversight rather than a choice.
+
+Suggestion: state the audit-kind collapse in the comment (`timeout`/`switch` are `abort` records carrying a cause), narrow `childEnv`'s test to the variables the design actually names, bound the line buffer and the retained stream (or state the size limit), add the SIGTERM/SIGINT handler or record it in the slice's residual list, and replace the stale-lock advice with "owned, record not yet readable — retry".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding]]
+id = "F-18"
+status = "open"
+severity = "blocker"
+title = "PHASE-09's empirical criteria are unexecuted on this host"
+detail = """
+Expected (plan.toml PHASE-09's exit criteria and verification rows, which are the phase's authority): three criteria that can only be proven by executing the built forms, and their three agent-run verification rows.
+- EX-3: "A flake check asserts each form's actual bind set equals root + active session directory + the policy's `child_binds`; adding or dropping a bind fails the check rather than moving it (RV-043 F-1, the loop-closing half)."
+- EX-5: "One live per-call smoke run against deepseek-flash succeeds end to end: policy, profile, wrapped form, gate, result; the returned result, status and run directory are recorded in the slice notes as evidence, and the run is not a gate."
+- EX-7: "The hostile fixture runs through the real wrapped form, where the confinement exists: a child bash attempting truncate, unlink or replace of the run's audit from inside the call either cannot reach the path or the run reports a fail-closed `audit_failed` with evidence intact — never a clean success."
+- VA-1 (the flake's bind-set check passes on the real forms and fails when a bind is added or dropped), VA-2 (the live smoke run through the wrapped form with the gateway environment forwarded, recorded in `.doctrine/slice/029/notes.md`), VA-3 (the hostile truncation/unlink/replace fixture under the real wrapped form).
+
+Observed: none of the six has been executed on this host, and the tree says so rather than claiming otherwise — `.doctrine/slice/029/notes.md`, "What did not run, and is not claimed" (notes.md:677-731). The reasons, in the hand-back's words: this host has "no `nix` binary (`/nix/store` is a transplanted snapshot, `/nix/var/nix` is empty)", so the derivations cannot be built and EX-3/VA-1 exist only as a bash rehearsal "against a hand-built launcher text" with "expected shape → exit 0; one added bind → exit 1 … one dropped bind → exit 1" and, explicitly, "It has **not** run against a built launcher" (notes.md:672-675); and there is "no `/run/llm-gateway`" socket and no pi gateway key, so EX-5/VA-2 has no provider and EX-7/VA-3 cannot run under a real form — the hostile driver `bin/pi-mcp-hostile-audit` was exercised only "against a **stub form**", labelled by the hand-back itself as "**Plumbing, not EX-7**: a stub form has no jail" (notes.md:665-671). What is green is the nix-free half: `just check` exit 0 with 246 tests (the six static assertions in `pi/mcp/forms.test.ts` among them) plus PHASE-09 EX-6's bwrap-token scan (notes.md:655-664). The slice therefore sits at 8/9 phases with PHASE-09's empirical criteria unconcluded, and cannot claim design sec-3's "that is where the loop closes" property or RV-043 F-1's execution proof on this evidence.
+
+The operator sequence recorded in the PHASE-09 hand-back, one reproducible command each:
+1. EX-3 / VA-1 — `nix build --no-link -L .#checks.x86_64-linux.pi-mcp-forms` (wired into `just check-jails`); it reads the built launchers (form → gateway wrapper → the launcher carrying the bind args) and requires the actual `--bind`/`--ro-bind`/`-try` set to equal root + active session directory + the generator's binds, printing both sets and the residue on failure.
+2. EX-7 / VA-3 — `bin/pi-mcp-hostile-audit "$(nix build --no-link --print-out-paths .#pi-mcp-read)/bin/pi-mcp-read" "$PWD" "$HOME/.local/state/pi-mcp/sessions" "$HOME/.local/state/pi-mcp/runs"`, with the gateway running and `~/.config/llm-gateway/keys/pi` issued (`just system-switch`, then `llm-gateway issue pi …`).
+3. EX-5 / VA-2 — the recorded `bin/pi-mcp` smoke command with the published policy at notes.md:704-722 (`forms.read` naming the built form, `child_binds` the persisted jail home, `transcript_budget_bytes: 4096` so PHASE-08 EX-6's carried obligation is exercised), from which the returned `result`, `state`/`termination`/`causes`, `status.transcript.bytes`/`elided` and the run directory path are to be recorded in notes.md.
+
+Suggestion: do not close SL-029 on the nix-free half alone. Either run the three commands on a host with `nix` and a live gateway and append their output to the PHASE-09 evidence, or obtain an explicit operator waiver that records EX-3, EX-5 and EX-7 (and VA-1..VA-3) as unexecuted-in-environment, before audit→reconcile — the same way this slice already records its other unexecuted-and-not-claimed items.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
