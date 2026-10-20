@@ -17,6 +17,8 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 # and being called from this shell so `wait` can reach our own children.
 # shellcheck source=scripts/lib/pi-reap.sh
 . "$SCRIPT_DIR/lib/pi-reap.sh"
+# shellcheck source=scripts/lib/pi-report.sh
+. "$SCRIPT_DIR/lib/pi-report.sh"
 DOCTRINE=~/.cargo/bin/doctrine
 
 # Fork is orchestrator-classed: run it from the orchestrator root, never from a
@@ -59,8 +61,8 @@ PI=$!
 
 pi_await_and_reap "$OUT" "$PI" "$KEEP" "$D/.pi-session" "$BACKSTOP" "[spawn]"
 rm -f "$PI_FIFO"
-echo "----- worker tail -----"
-tail -40 "$OUT"
+echo "----- worker report -----"
+pi_report "$OUT" "[spawn]"
 echo "----- worker commit -----"
 git -C "$D" log --oneline -1 2>&1
 git -C "$D" rev-parse HEAD 2>&1

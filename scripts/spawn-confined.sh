@@ -113,6 +113,8 @@ if [ "$HARNESS" = pi ]; then
   # so the reap machinery is pi-specific by construction (EX-3, EX-4).
   # shellcheck source=scripts/lib/pi-reap.sh
   . "$SCRIPT_DIR/lib/pi-reap.sh"
+  # shellcheck source=scripts/lib/pi-report.sh
+  . "$SCRIPT_DIR/lib/pi-report.sh"
   # `set -m` (job control) is enabled HERE, before the FIRST background job, not
   # just before the pi spawn: it puts each `&` job in its OWN process group so the
   # reaps below can signal a whole group. It is load-bearing for BOTH jobs.
@@ -252,8 +254,14 @@ else
   [ "$RC" -eq 0 ] || echo "[spawn] claude exited $RC (124 = backstop timeout)" >&2
 fi
 
-echo "----- worker tail -----"
-tail -40 "$OUT"
+echo "----- worker report -----"
+# The claude arm speaks a different event schema, so only the pi arm reduces.
+if [ "$HARNESS" = pi ]; then
+  pi_report "$OUT" "[spawn]"
+else
+  echo "----- worker tail -----"
+  tail -40 "$OUT"
+fi
 # The worker hands back UNCOMMITTED (design §5.2.2, DEC-213) and the fork's
 # `.git` is read-only, so this tip should still be the base `$B` — printing it is
 # how the orchestrator confirms that, not a report of a commit the worker made.

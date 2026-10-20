@@ -14,6 +14,8 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 # and being called from this shell so `wait` can reach our own children.
 # shellcheck source=scripts/lib/pi-reap.sh
 . "$SCRIPT_DIR/lib/pi-reap.sh"
+# shellcheck source=scripts/lib/pi-report.sh
+. "$SCRIPT_DIR/lib/pi-report.sh"
 case "$D" in /*) ;; *) D="$ROOT/$D" ;; esac
 [ -d "$D" ] || { echo "fork dir missing: $D"; exit 1; }
 echo "[respawn] $D (HEAD $(git -C "$D" rev-parse --short HEAD))"
@@ -50,5 +52,5 @@ PI=$!
 
 pi_await_and_reap "$OUT" "$PI" "$KEEP" "$D/.pi-session" "$BACKSTOP" "[respawn]"
 rm -f "$PI_FIFO"
-echo "----- worker tail -----"
-tail -25 "$OUT"
+echo "----- worker report -----"
+pi_report "$OUT" "[respawn]"
