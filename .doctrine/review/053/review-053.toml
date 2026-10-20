@@ -499,7 +499,7 @@ note = "Verified against the tree at 0fc4022: the repaired mechanism is present,
 
 [[finding]]
 id = "F-15"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Roughly 450 lines of test harness are duplicated between `spawn.test.ts` and `gate.test.ts`"
 detail = """
@@ -529,6 +529,11 @@ route = "dedupe"
 response = """
 Deferred, not declined: `spawn.test.ts` and `gate.test.ts` each define the same `Env`, `line`, `callLine`, `emit`, `stubLauncher`, `Rig`, `newRig`, `killSurvivors`, `readText`, `jsonLines`, `marker`, `markerPids`, `isAlive`, `Session`, `openServer`, `document` (~450 lines), `attemptLines` is repeated in four files, and they have begun to drift. Extraction is cheap in principle but collides with `server.test.ts`'s source scan, which treats every non-`*.test.ts` file in `pi/mcp` as production source: a shared fixtures module needs either a `*.test-helpers.ts` exclusion or a `pi/mcp/testing/` directory carved out of the scan. That widens a security scan's rules and touches five test files — more than a review repair should do while a phase is still blocked. Follow-up after PHASE-09 closes; the drift is currently benign (each copy is correct in its own file).
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Follow-up captured as CHR-021 (extract the shared spawn/gate test rig); deferral accepted, not a defect."
 
 [[finding]]
 id = "F-16"
@@ -592,7 +597,7 @@ note = "All six settled in design.md at reconcile: (1) sec-2 states request-inva
 
 [[finding]]
 id = "F-17"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Hardening observations: over-broad child env strip, unbounded line buffer, no server signal handler, stale-lock advice, undocumented audit-kind collapse"
 detail = """
@@ -640,6 +645,11 @@ Accepted as residual risk for the audit's risk register, judged not worth a repa
 - Stale-lock advice. `reclaim`'s message tells the operator to clear a lock that, between `openSync('wx')` and the record write, may be about to become live.
 - `AuditKind` collapses design sec-6's `timeout`/`switch` record kinds into `abort` + `cause` without saying so; defensible, currently reads as an oversight.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Tolerated as dispositioned, carried into RV-055 Synthesis. The undocumented audit-kind collapse is now settled by text: design sec-6 states three record kinds, with timeout/switch as abort causes (reconcile, RV-055 F-4). The remaining hardening observations stay tolerated."
 
 [[finding]]
 id = "F-18"

@@ -296,7 +296,7 @@ note = "Verified the revision-56 design repair against materialised sec-5 and DE
 
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The gate and verbatim reducer status give different accounts of the same run's spend"
 detail = "Expected: the returned status and audit support the ceiling verdict with one defined accounting model, including compaction and precise request/token units. Observed: sec-4 counts message_end and compaction_end usage, while sec-5 embeds pi-run-status/1 verbatim and sec-7 only adds result/final to the reducer. The current reducer ignores compaction_end entirely, adds only usage.input/output/cacheRead, and turns missing cost into zero after an assistant message (pi/reduce/reduce.ts:109-112, absorb and totalCost). An isolated fixture with compaction cost 0.20 USD plus assistant cost 0.01 USD returns status.cost_usd=0.01; the designed gate would account 0.21 and could abort against 0.10 while returning a below-limit status. DEC-097 also correctly says assistant messages are not provider-request counts, but the request-count calculation for max_requests is not defined; retries and summarization attempts cannot simply be counted as assistant turns. Required correction: choose one authoritative usage accumulator or explicitly expose/reconcile separate accounting with their limitations; define request counting, cached-token treatment, missing/unpriced data and when compaction updates trigger checks. Tests must assert returned/audited spend agrees with enforcement inputs, including compaction and failed/retried requests."
@@ -486,9 +486,14 @@ Residual, stated rather than hidden: a summarization that aborts mid-response or
 **`toolUse` input mapping.** Also right, and worse than a naming preference: pi's wire token is `toolUse` (`docs/message-types.md`: `pending | stop | length | toolUse | error | aborted | deferred`), so the `tool_use` my tables used would have matched nothing while looking correct, and I never mapped `pending` at all. Corrected throughout sec-4, sec-5 and DEC-093: model-reason tokens are pi's stop reasons **verbatim**; `toolUse` and `deferred` are usage-bearing and not answers; `pending` at a `message_end` is counted and is not an answer; a reason pi adds later passes through verbatim, counted and usage-validated, never an answer, until the contract names it. sec-7 carries a wrong-spelling control so a matcher keyed on the wrong token fails the suite instead of silently classifying nothing.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: gate.test.ts:370 'the gate judges the numbers the status reports: a retry/compaction fixture through one accumulator (VT-2)'; one accumulator feeds both (design sec-4). pi suites 254/0 at 71d621b."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The proposed argv treats an agent launcher as a generic command-prefix wrapper"
 detail = "Expected: sec-3's flake-built forms and sec-4's argv contract connect without an extra command word or option terminator becoming part of pi's prompt. Observed: sec-4 specifies '<wrapper form> [--] pi --mode json ...'. The cited makeJailedAgent/makeJailedPi API takes agent=<derivation> and builds a launcher for that fixed executable, forwarding its arguments; it is not a generic wrapper that consumes an arbitrary executable argument (verified /workspace/flakes/agents/jailed-agents.nix:343-346, inner construction around 621, gatewayOuter exec and makeJailedPi). With that API, the server should pass pi's options to the already-bound pi executable: a literal 'pi' is an additional message, and '--' before '--mode' terminates pi option parsing. A separate generic exec launcher could make the sample valid, but none is specified. Static mode also needs the bare pi executable and its provider configuration in the server jail's closure/PATH: makeJailedAgent's piInJail test is false for agent=pi-mcp unless pi is supplied through the declared mechanism. Required correction: state the exact executable/argv/environment/path contract for both postures, including runtime bind variables and child-visible session paths. Verify a stub captures exactly pi's intended options and prompt, and a thin launcher integration confirms the selected executable/provider configuration is actually available."
@@ -506,6 +511,11 @@ role = "responder"
 disposition = "fix-now"
 route = "demonstrate"
 response = "Accepted. The argv is the launcher followed by pi's options: the executable is baked into the launcher, so there is no pi token and no double-dash. Static mode names its pi executable and provider configuration in the launch closure and PATH, handling piInJail explicitly. A stub asserts the exact argv; a launcher probe asserts the executable and provider config are reachable."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: spawn.test.ts:353 buildArgv (one positional, no pi token, no --), :383 (-e builtin:mcp exactly when needed); forms.test.ts:64; and the built forms' exec lines asserted by the pi-mcp-forms flake check (green 2026-10-21)."
 
 [[finding]]
 id = "F-8"
@@ -535,7 +545,7 @@ note = "Verified the design repair in revision 48 sec-5/sec-6 and DEC-094: serve
 
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The termination ladder has no process-group creation and ownership contract"
 detail = "Expected: sec-4/DEC-096's SIGTERM then SIGKILL ladder targets all of one call's work and cannot signal the MCP server or a different concurrent call. Observed: sec-4 always signals 'the child's process group' but never states how that group is created or identified. The cited jail generator includes no-new-session in baseJailOptions (/workspace/flakes/agents/jailed-agents.nix:183-186). A normal Node spawn inherits the parent's process group; neither a child PID nor a wrapper's existence establishes a new group. Killing minus-child-PID can therefore find no such group, while killing the inherited group can kill the server and other calls. 'Never detached' also leaves ambiguous whether group/session isolation is forbidden or only lifetime decoupling is forbidden. Required correction: explicitly own a per-call termination domain/group, establish it before execution, define wrapper/timeout PID transitions and waiting/reaping/stream-drain completion, and distinguish group creation from fire-and-forget detachment. Verification: two simultaneous calls plus a grandchild ignoring SIGTERM; cancel one and assert its subtree is gone after the grace, the other call and server remain alive, and results/session-lock release occur only after cleanup."
@@ -553,6 +563,11 @@ role = "responder"
 disposition = "fix-now"
 route = "demonstrate"
 response = "Accepted. Every call owns a termination domain: the child is spawned as a process-group leader (detached/setsid) so the ladder signals -pid and can never reach the server or a concurrent call, with reaping and stream drain completing before the result and before the session lock is released. 'Never detached' is restated as lifetime coupling - which is what it meant - not session isolation."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: spawn.test.ts:528 (child leads its own group), :502 (SIGTERM then SIGKILL after 2 s grace to the group), :551 (two calls + SIGTERM-ignoring grandchild; cancelled subtree gone, other call and server survive). Green at 71d621b."
 
 [[finding]]
 id = "F-10"

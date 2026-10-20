@@ -1039,48 +1039,44 @@ PHASE-09 decision lands.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-20 · status `audit`, 8/9 phases, PHASE-09 blocked · audit RV-055 · ad2988d
+fresh-as-of: 2026-10-21 · status `done` at close, 9/9 phases · RV-055 done · 71d621b
 
 ### Produced
-- nine phases implemented, one commit each (`47064a6` … `bba7d87`); PHASE-01..08
-  `completed`, PHASE-09 `blocked`
-- plan authored as nine phases, one mechanism each, then revised after an
-  independent adversarial review — commits 4c9221b, 546bdd7, 51dcb0e, 98659fa, d2c794f
-- nine runtime phase sheets materialised; `verify-vt` reports zero UNCHECKABLE rows
-- minted: DEC-103 (the three wire-contract additions the locked design left
-  unnamed), QUE-007 (the four design-record corrections owed at reconcile)
-- research baseline restamped with its scope stated (local only — `research/` is
-  gitignored)
-- RV-053 — implementation review (three reviewers, 18 findings, concluded);
-  thirteen repairs across `ab9ae66`, `a5abffc`, `8350a98`
-- RV-055 — reconciliation audit (five findings: one open blocker, four minors),
-  concluded; two new design-record divergences added to the reconcile set
-- new module `pi/mcp/paths.ts` (one canonicalisation + `within` predicate)
-- PHASE-09 evidence in `notes.md` § PHASE-09 evidence: the two forms, the probe,
-  the hostile-audit fixture, the operator sequence
+- nine phases (`47064a6` … `bba7d87`); PHASE-09 completed on the operator run,
+  delta `bba7d87`
+- operator-run repairs: `719c60e` (pi-mcp-forms against a derived generator
+  baseline, RV-055 F-6), `dedeb24` (a plain confinement probe, RV-055 F-7),
+  `02943cc`
+- reconcile `de36bec`: design record settled (QUE-007, RV-053 F-3/F-16, RV-055
+  F-3/F-4); REV-012 (ADR-017 ledger rows 1b/2b/3c/4c/5c/6c, REQ-004, REQ-016);
+  DEC-093 appended; QUE-007 answered; 3 design-target selectors
+- arc review `71d621b`: every maxima unit required (REV-013, REQ-004); sec-3
+  and sec-7 residuals stated
+- reviews: RV-043, RV-044, RV-046, RV-053, RV-055 all `done`
+- evidence: notes.md § PHASE-09 evidence (operator runs 1-3)
 
 ### Learned
-- mem.pattern.pi-subagents.charter-wall-clock — a blocking orchestrator dies at 30 min; charter ≤3 phases
-- mem.pattern.doctrine.review-verbs-serialise — `doctrine review` takes a per-review lock; parallel invocations refuse
-- mem.pattern.doctrine.vt-attribution-gap — `verify-vt` does not credit `flake.nix`
-- mem.pattern.doctrine.concurrent-tree-pollutes-conformance — a concurrent session's commit inside a recorded phase delta lands in `slice conformance`'s undeclared cell
-- mem.fact.satan.dev-host-lacks-nix-and-gateway — the verification host cannot build jails or reach the gateway
+- mem.pattern.review.equality-assertions-need-exhaustiveness — new
+- mem.pattern.testing.adversarial-probe-must-not-need-model-compliance — new
+- mem.pattern.pi-subagents.charter-wall-clock, mem.pattern.doctrine.review-verbs-serialise,
+  mem.pattern.doctrine.vt-attribution-gap, mem.pattern.doctrine.concurrent-tree-pollutes-conformance,
+  mem.fact.satan.dev-host-lacks-nix-and-gateway
 - (carried) mem.pattern.doctrine.phase-sheets-not-refreshed, mem.fact.satan.research-dir-gitignored,
   mem.pattern.pi-subagents.capsule-tiering, mem.pattern.doctrine.review-ledger-extraction,
   mem.fact.pi.codemode-sandbox-broken, mem.pattern.doctrine.knowledge-decision-edit
+- consciously not recorded as a memory: the derived-baseline technique for jail
+  checks — it lives in `flake.nix`'s `piMcpJail` comment and design sec-3, where
+  the next editor of the check reads it
 
-### Open
-- **RV-055 F-1 (blocker, undisposed)** — PHASE-09's empirical criteria; the
-  operator run or a human waiver decides it
-- QUE-007 (four corrections) + RV-053 F-16 (six) + RV-055 F-3/F-4 (three) — the
-  design-record correction set owed at reconcile; RV-055 § Reconciliation Brief
-  maps each to its write surface
-- RV-053 F-3 — `child_binds` exposure and the unclosed policy↔form check
-- RV-053 F-18 — PHASE-09's empirical criteria, unexecuted (host); same decision as RV-055 F-1
-- RV-053 F-15 — test-harness duplication, deferred
-- RV-053 F-17 — hardening observations, tolerated (carried into RV-055 § Synthesis)
-- RV-043 F-1 — blocker still `answered`; refuses audit→reconcile until PHASE-05/06/09 prove it
-- RV-046 F-1..F-6, RV-043 F-6/F-7/F-9 — answered on `demonstrate` routes; the plan carries their criteria
+### Open (follow-up, none gating)
+- IMP-048 — `child_binds` exposure per bind + policy-vs-baseline check (incl. the
+  run-dir-under-persisted-home trigger)
+- IMP-049 — operator-facing policy schema doc
+- ISS-054 — a second cause during a cancellation's grace is unrecorded
+- CHR-021 — shared spawn/gate test rig (RV-053 F-15)
+- RV-053 F-17's remaining hardening observations — tolerated
+- DEC-091..DEC-103 left at their recorded status; not in the brief
+- SPEC-001 REQ-004 and SPEC-002 REQ-016 stay `pending` (system-wide)
 
 ### Operator run 3 (host, 2026-10-21) — all three criteria GREEN
 

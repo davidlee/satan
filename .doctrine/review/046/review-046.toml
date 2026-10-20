@@ -37,7 +37,7 @@ ref   = "SL-029"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "The initial build has no fail-closed contract for the deferred static policy mode"
 detail = "Expected: the operator's accepted DEC-100 build-status note ships per-call only; a static policy must not activate an unbuilt or unconfined execution branch. Observed: revision 48 sec-3 and sec-7's file list label the static derivation deferred, but sec-1 still presents mode=per-call|static as supported, and sec-2 defines static admission branches. DEC-100's build note explicitly removes the posture switch and its policy-invalid cross-check from the build. No rule says what the actual initial server does when it reads mode=static, agent or the other static-only fields; it could silently ignore mode and run a different capability/posture, or choose a bare agent on the host. This is distinct from RV-043 F-11's stale delivery wording: it is the missing executable admission rule at a security boundary. Required correction: define the build's accepted policy shape explicitly (only per-call, with a stable refusal for static/unsupported posture and no downgrade), while keeping future static design clearly non-operative. Verification should present a valid-looking static policy to the initial server and assert refusal before spawn; test that no agent-only fallback path exists."
@@ -68,9 +68,14 @@ Fixed in design revision 60 (sec-1, sec-2 step 1) and DEC-100's appended amendme
 The demonstration is named in sec-7: a valid-looking static policy is presented to the initial server and must be refused before spawn, with a test asserting no agent-only fallback path exists. It binds the phase criterion that implements policy validation; this ledger entry stays unverified until then.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: policy.test.ts:208 (mode static → posture-unsupported, no downgrade), :215 (any static-only field), :232 (unrecognised mode). Green at 71d621b."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Active kill-switch polling has no failure rule when policy becomes unreadable or invalid"
 detail = "Expected: the new operator-controlled active halt remains fail-closed when its source disappears or becomes unreadable/malformed, not only when enabled=false is parsed successfully (ADR-017 §4; SPEC-001 REQ-005/REQ-010; DEC-097's missing-policy rule). Observed: revision 48 sec-1 snapshots policy per call and says absent/malformed policy refuses calls; sec-4 adds event/idle re-reading of enabled for active runs, but specifies only the successful false case. There is no active-run outcome for deletion, permission/read failure or TOML parse failure during a policy replacement. Retaining the last enabled=true snapshot would let an already-running delegate continue precisely when the control channel is unavailable, while throwing from the poll could lose cleanup/audit. Required correction: define active-run read/parse/validation failure, the operator publication/atomic replacement expectations, the mapped termination reason and the bounded shutdown behaviour. Keep other per-run maxima snapshot semantics separate if desired. Verification: begin a slow/idle delegate, then remove or corrupt the policy without sending a driver cancellation; assert a documented fail-closed result, cleanup and refusal of later calls. This does not undo RV-043 F-3's verified improvement from admission-only to active enabled polling."
@@ -113,9 +118,14 @@ Fixed in design revision 60 (sec-4's tick, sec-1's policy sentence) and DEC-097'
 sec-7 names the probe: delete, then separately corrupt, the policy during an idle run with no driver cancellation, asserting a documented fail-closed abort, cleanup and refusal of later calls. It is a phase criterion; RV-043 F-3's admission-to-active-halt improvement is untouched.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: gate.test.ts:415 / :426 (policy deleted / corrupted mid-run aborts switch), :596 / :616 (during an idle run, next call refused policy-unavailable / policy-invalid). Green at 71d621b."
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Session exclusion is not specified or tested across per-client MCP server processes"
 detail = "Expected: same-session concurrency is refused across the actual deployment topology, with a single atomic root/capability binding on first use. A stdio MCP server is per client; separate drivers can therefore run separate server processes using the same default PI_MCP_SESSION_HOME and the same bearer session id. Observed: revision 48 sec-6 declares session-busy and server-side lock/binding metadata, but does not state whether admission/binding is atomic across processes or only within one server. Sec-7's lifecycle verification covers two calls, not two servers, so an in-memory busy map can pass the specified test while both processes open/write the same pi session concurrently or race its first-use root/capability binding. Required correction: make the lock/binding scope explicit, including ownership through termination/reap/drain and crash recovery, or give each server a deliberately isolated session namespace and define its continuation implications. This need not prescribe a particular locking library. Verification must start two independent MCP server processes sharing state: exactly one of simultaneous same-session calls may spawn, including first use with conflicting root/capability; the loser is refused before side effects."
@@ -210,9 +220,14 @@ The property this buys: creation requires an absent path, replacement is atomic 
 Still a design rule with a named test, not evidence: the criterion is the phase's.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: session.test.ts:359 (two forked processes racing one session: exactly one owns it, the other session-busy), :384 (first-use race binds once), :473 (killed reclaimer leaves a live lock + orphan claim). Green at 71d621b."
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "A bash-capable delegate can incur model spend outside the sole event-stream accumulator"
 detail = "Expected: the declared scope of accounting is explicit, and the accepted retrospective-ceiling concession is not mistaken for complete attribution of all model spend caused by a delegate. Observed: revision 48 sec-4 treats the main pi event reader as the sole usage source, but sec-3 grants bash and pi's runtime/authentication environment. The reused jail generator includes curl (jailed-agents.nix:108), the bare agent executable on PATH (:635), and gateway URL/key forwarding (:472-475). A bash command can invoke another pi or call the reachable gateway directly; those requests share credentials/reach but do not produce top-level message_end/compaction_end events in the parent pi stream. Their usage may only be text inside a bash result, or nowhere at all. A read-only synthetic reducer fixture confirmed that nested message_end usage embedded in tool output is not attributed to the outer run; no billable request was made. Outer assistant messages can all have valid priced usage, so the new accounting_unknown check need never fire. This is an observability bypass, not merely overshoot caused by slow event observation, and is separate from RV-043 F-6's request-event mapping/deduplication problem. Required correction: state whether arbitrary subprocess provider use is outside the supported threat/accounting model and obtain an explicit concession if so, or identify an enforcement/attribution mechanism at the provider capability boundary. Do not automatically broaden scope or assume shared gateway insurance is a per-run ceiling. Verification should use a stub gateway/nested process to show whether extra calls are attributed, refused, or explicitly reported as outside the guarantee."
@@ -276,9 +291,14 @@ What I explicitly do not claim: that shared gateway credentials make the per-run
 **Added after the operator's decision, so this disposition matches the current design.** The limits this finding starts are now three, not two, and they are recorded together rather than in scattered sentences: retrospective accounting (the F-4 concession), nested spend outside attribution (this finding), and extension-mediated work outside observation — a `session_before_compact` handler can cancel a compaction or return its own `compaction` with its own `usage`, verified in the installed build and operator-accepted on 2026-10-20 (DEC-097). The launch forms pass no `-e` beyond `builtin:mcp`, which registers no such handler, and sec-7 asserts that no other `-e` ever appears. The REV to SPEC-001 REQ-004 at reconcile carries all three weaker properties as one statement about what the ceiling observes.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Settled by disclosure, as dispositioned: design sec-4 'Scope of accounting' names nested pi, direct gateway calls and tool-result-only spend as outside the accumulator; REQ-004's rationale records it through REV-012 (done), with IDE-015 as the mechanism for the rest."
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Writable source checkout is incorrectly equated with authority to change live profiles for other calls"
 detail = "Expected: an authorised write delegate may edit source in its allowed root without silently gaining control over the capability/tool authority granted to later calls on other roots. Observed in revision 56 sec-3's new protected-store table and DEC-095: the tracked profile directory is deliberately not protected because write access to the server's source/flake is said to make protecting profiles 'theatre'. But DEC-092 resolves profiles from the server's install location and the repo shim/no-build-step deployment is in scope; there is no immutable deployment boundary or startup profile snapshot. Policy only permits profile names, while DEC-098 takes filesystem authority from the profile document. Concrete admitted deployment: run bin/pi-mcp from the SATAN checkout, allow a write call in that checkout, and permit reviewer plus writer profiles in policy. The writer edits the LIVE reviewer profile from filesystem:read to filesystem:write (and widens its tools). A later reviewer call on another allowlisted root now selects wrapper_write, without any policy change or operator deployment act. Editing flake/source text is not the same as rebuilding/deploying that control plane; live profile reads make this escalation immediate. Required correction: separate editable source profiles from live authority (for example immutable installed copies, a validated startup snapshot, or policy-pinned profile capability/content), or explicitly ask the operator to accept that writers to this root administer later calls. Preserve repo-rooted source work rather than blanket-protecting every source file. Verification should mutate a source profile in an authorised write call and prove it cannot change the live reader capability for a second root without an explicit authority/deployment change. This is a new capability-integrity consequence of the revision-56 exclusion, separate from RV-043 F-1's evidence isolation proof."
@@ -323,9 +343,14 @@ sec-7 names the demonstration: mutate a tracked profile from inside an authorise
 Residual, stated: two server processes on the same checkout do not share a snapshot, so a profile edit plus a restart changes authority for the restarted process. That is the deployment act the finding asked for, not a hole in it — and it is why the plan should start one server per client from a known-good snapshot.
 """
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: profiles.test.ts:110 'the snapshot is frozen for the process: a mutated document is inert until a restart'; the snapshot digest is in every spawn audit record (design sec-3). Green at 71d621b."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "The timeout example violates the declared termination vocabulary"
 detail = "Revision 56 sec-5 declares termination as stop|length|error|aborted|tool_use|deferred|eof|exit|spawn|backstop|cancelled|switch|ceiling|accounting|audit|refused. The same section and DEC-093 then require a timeout to return termination='timeout', causes=['timeout','audit'], with termination always causes[0]. 'timeout' is a state name but not in the declared termination vocabulary. The improved latch/commit semantics resolve RV-043 F-12's substantive defect, but these wire-contract tokens still disagree. Choose one canonical cause token (backstop or timeout), use it consistently in the enum, cause/state table, examples and tests, and test that every mapped outcome satisfies the advertised result schema. This is a small schema reconciliation, not a reason to undo the new cause-list model."
@@ -355,6 +380,11 @@ Fixed in design revision 60 (sec-5) and DEC-093's appended amendment: `terminati
 
 sec-7 carries the conformance test the finding asks for: every mapped outcome must satisfy the advertised result schema, so a cause token outside the enum fails the suite rather than the reader.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Demonstrated: result.test.ts:417 'one vocabulary: timeout is the cause token, backstop is not, and every mapped outcome satisfies pi-agent-result/1'; design sec-5's residual backstop wording corrected at reconcile (QUE-007 item 2)."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
