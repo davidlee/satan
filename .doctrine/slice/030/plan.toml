@@ -9,7 +9,7 @@
 # node_modules; ~/.local/src/pi is the matching source checkout.
 #
 # Plan review: RV-052. Rounds 1-3 (2026-10-21) amended design sec-4/sec-6/sec-7
-# (run rev 46; re-lock pending the user's acceptance); rounds 1-5 amended this
+# (re-locked rev 52, user acceptance 2026-10-21); rounds 1-7 amended this
 # plan; criteria they changed cite `RV-052 F-n`. Execution order is the array order below:
 # PHASE-08 (split out of PHASE-04, F-7) runs after PHASE-04.
 #

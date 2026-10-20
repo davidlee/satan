@@ -1,7 +1,7 @@
 id = 30
 slug = "malebolge-many-conversations"
 title = "malebolge daemon: many conversations — thread the conversation through the interactive daemon"
-status = "plan"
+status = "ready"
 created = "2026-10-20"
 updated = "2026-10-20"
 tags = []

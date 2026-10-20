@@ -10,13 +10,19 @@ raiser    = "raiser"
 responder = "responder"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Seven rounds (pi-research ×5, pi-scout ×2), 57 findings all fix-now and verified; last three rounds confined to one test fixture's construction."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-030"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "PHASE-02 EX-2: `N as ConversationId` cannot pass lint"
 detail = "eslint.config.js:55-58 consistent-type-assertions never; repo has no assertions/eslint-disable; idFromNumber not exported. Lane B R-1. Resolution: user chose a type predicate isConversationKey (2026-10-21); design sec-4 amended (rev 44)."
@@ -33,9 +39,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-4 amended (run rev 44): isConversationKey type predicate, per user choice 2026-10-21. PHASE-02 EX-2, VT-3."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-02 EX-3: create agent literal fails tsc under exactOptionalPropertyTypes"
 detail = "tsconfig.json:8; `target.cwd ?? defaults.cwd` is string|null|undefined against AgentChange.cwd. Lane B R-2. Fix: ConversationDefaults = AgentChange & {cwd: string} (design sec-4 amended)."
@@ -52,9 +63,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-4 amended: ConversationDefaults = AgentChange & {cwd: string}. PHASE-02 EX-3, PHASE-04 EX-12."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-06: exit-code criteria have no test mechanism"
 detail = "src/attach-main.ts runs at import, excluded from coverage; test/fixtures.ts:66-69 childProcess ignores stdin. Lane B R-3. Fix: pure attachTargetOf in attach.ts (design sec-6 amended); attach-main exit mapping by VA read."
@@ -71,9 +87,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-6 amended: exported attachTargetOf in attach.ts. PHASE-06 EX-1/EX-2/EX-10, VT-1/VT-3, VA-1."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-4"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-02 EX-6: task-owned fixture throws without conversationId and gets scheduled"
 detail = "pi-durable transaction.js:190-192 requires options.conversationId in an unbound commit; scheduler kicks on commit. Lanes B R-4, A R-15. Fix: conversationId: root.id; passive harness {resume:false} (test/runner/durable-ids.test.ts:10-12)."
@@ -90,9 +111,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-02 EX-6: conversationId: root.id, passive harness {resume:false}."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-5"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-04: negative assertions (no stream, nothing created/submitted) lack a settle point"
 detail = "watched.next() is single-shot (test/daemon.test.ts:26-42). Lane B R-5. Fix: a control connection attached after ready is the settle point; assert counts against it."
@@ -109,9 +135,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-9: control connection as settle point; VT-4 keywords."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-6"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-05: abort under a held faux factory can deadlock"
 detail = "abort resolves when scope idle (harness/types.d.ts:624-628); faux checks signal only after factory resolves (faux.js:384-388, 228-242). Lane B R-6. Fix: spell the order — abort not awaited, B completes, release barrier, then assert."
@@ -128,9 +159,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-05 EX-3 spells the abort order."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-7"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-04 oversized: 15 EX, one gate; lint complexity 8 / max-lines 80"
 detail = "eslint.config.js:63-68. Lane B R-7. Fix: move V-15 (mid-bind departure with a barrier in the watchEvents mock) to its own phase after PHASE-04; note decomposed helpers."
@@ -147,9 +183,14 @@ role = "responder"
 disposition = "fix-now"
 response = "V-15 moved to new PHASE-08 (after PHASE-04); PHASE-04 EX-10 is a pointer; EX-1 notes lint bounds; plan.md rationale."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-8"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "V-1 resolution rows not verified end-to-end at the daemon"
 detail = "plan.md V-row table narrowed V-1's daemon half to refusals. Lane A R-1. Fix: PHASE-04 EX: attach by conversation:N and new+cwd over the wire; attached id and stored cwd asserted."
@@ -166,9 +207,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-6 and VT-1: conversation:N and new+cwd over the wire."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-9"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-04 VT-4 keyword `destroy` will not appear in test/daemon.test.ts"
 detail = "Tests disconnect through LineClient.close() (test/fixtures.ts:188-190). Lane A R-2. Fix: replace keyword."
@@ -185,9 +231,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 VT-4 keywords replaced (watched.streams, scanConversations, control)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-10"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "README one-conversation statements beyond :17-19 left false"
 detail = "README.md:35-36, :54, :70, :121-122. Lane A R-3. Fix: design sec-7 docs list extended (amended); PHASE-07 EX-1."
@@ -204,9 +255,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-7 docs list extended; PHASE-07 EX-1, EX-3."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-11"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "watchEvents must be imported from the package root or the daemon test mock is bypassed"
 detail = "test/daemon.test.ts:43-56 mocks exactly @earendil-works/pi-durable. Lane B R-8."
@@ -223,9 +279,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-02 EX-5 pins the package-root specifier."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-12"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-03: root cwd mechanism unspecified; 'unchanged in meaning' over-claims; root half cannot share the V-9 harness"
 detail = "openFauxHarness/openTestHarness root agent has no cwd; systemPromptSections closes the harness (test/harness-fixture.ts:137-148). Lanes A R-11, B R-9, R-10."
@@ -242,9 +303,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-03 EX-2..EX-4: root.configure({cwd}); root half by the EX-3 tests; one-arg callers unedited."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-13"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-04: EX-5 non-JSON first line and EX-11 have no verification"
 detail = "Lane B R-11. Fix: extend VT-1 expects; EX-11 into VA-1."
@@ -261,9 +327,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-5 and VT-1 cover the non-JSON first line; EX-11 checked by VA-1."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-14"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Invariants 4 (socket, persistence duty) and 5 never reach a header criterion"
 detail = "design sec-1 invariants; sec-7 'module headers carry the five invariants'. Lane A R-4."
@@ -280,9 +351,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-01 EX-5 (invariant 4 incl. socket and persistence), PHASE-02 EX-7 (invariant 5), PHASE-07 VA-1 header check."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-15"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-03: DaemonParts.cwd removal only in the objective"
 detail = "src/daemon-extensions.ts:12-18. Lane A R-5."
@@ -299,9 +375,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-03 EX-1 names DaemonParts.cwd removal and daemon-start."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-16"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-02 EX-4: session.test.ts site ambiguous"
 detail = "design V-8 names two sites. Lane A R-6."
@@ -318,9 +399,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-02 EX-4 states the split: session.test.ts:106-121 unedited for root; created half new."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-17"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-04 EX-1 'chain continues' reads as overriding the failed-attach rule"
 detail = "design sec-3 Failed attach. Lane A R-7."
@@ -337,9 +423,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-1 states the failed-attach exception."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-18"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Client behaviour for events before attached is unspecified (skew case)"
 detail = "old daemon writes snapshot at connect (src/daemon.ts:59). Lane A R-8. Fix: render as they arrive (design sec-6 amended)."
@@ -356,9 +447,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-6 amended: events before attached render as they arrive. PHASE-06 EX-3, EX-5."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-19"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-04 EX-14 drops raw lineClient uses"
 detail = "test/daemon.test.ts:139 late-client test. Lane A R-9."
@@ -375,9 +471,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-14 names the raw lineClient uses (:133-145)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-20"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "resume() staying in openSession has no criterion"
 detail = "src/session.ts:42; design sec-4. Lane A R-10."
@@ -394,9 +495,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-02 EX-9; PHASE-04 EX-12 resolves after openSession (after resume)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-21"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "AttachedMessage shape and 'sent once' unstated"
 detail = "design sec-2 Replies, sec-6. Lane A R-12."
@@ -413,9 +519,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-01 EX-4 shape; PHASE-04 EX-6 'exactly once'."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-22"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "inq-7 follow-through has no home in the plan"
 detail = "design sec-7. Lane A R-13."
@@ -432,9 +543,14 @@ role = "responder"
 disposition = "fix-now"
 response = "plan.md Notes: inq-7 reconcile-time, unphased."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-23"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "VT keywords pre-satisfied or fragile (barrier, split, FauxResponseFactory, abort, /quit, restart, attach)"
 detail = "Lanes A R-14, B R-12."
@@ -451,9 +567,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Keywords replaced across PHASE-04/05/06/07/08; each row keeps at least one keyword absent before the slice."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-24"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "attach.test.ts banners: exact-output form, rewritten in PHASE-04 and PHASE-06"
 detail = "test/attach.test.ts:96,118,121,131,155,166. Lane B R-13."
@@ -470,9 +591,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-14 keeps toBe form and notes PHASE-06 re-edits; PHASE-06 EX-7."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-25"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = 'PHASE-06: four until("[attached]\n") waits hang after the banner rename; F-24 inventory wrong'
 detail = "test/attach.test.ts:96,118,155,166 are until waits, :121,:131 toBe. Round 2 R-1."
@@ -489,9 +615,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-14 and PHASE-06 EX-7 inventory all six sites correctly."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-26"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "V-11/V-14 pass vacuously if the departing frame never reaches the daemon"
 detail = "LineClient.close() destroys (test/fixtures.ts:188-190); no receipt evidence. Round 2 R-2."
@@ -508,9 +639,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-9: close after write callback + one macrotask; V-13 as positive twin; LineClient.write returns Promise (EX-14)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-27"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-08 EX-2 'no attached or snapshot written' is unfalsifiable"
 detail = "writes to a destroyed socket are unobservable. Round 2 R-3."
@@ -527,9 +663,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Clause removed; EX-2 says so."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-28"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-07 VT-1 keyword malebolge-stop pre-satisfied"
 detail = "README.md:97. Round 2 R-4."
@@ -546,9 +687,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Keyword 'restart the daemon'."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-29"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "VT keywords pin `export function` forms the design does not require"
 detail = "repo idiom export const (src/cwd.ts:6). Round 2 R-5."
@@ -565,9 +711,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Identifier-only keywords in PHASE-01 VT-2, PHASE-06 VT-3."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-30"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Design sec-4 Configuration still says AgentChange where the plan says ConversationDefaults"
 detail = "design.md Configuration bullet. Round 2 R-6."
@@ -584,9 +735,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-4 Configuration amended (adopted)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-31"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-06 EX-5 old-daemon fake can drift from the real error text; empty snapshot renders nothing"
 detail = "src/protocol.ts:47; src/render.ts:163-164. Round 2 R-7."
@@ -603,9 +759,14 @@ role = "responder"
 disposition = "fix-now"
 response = "EX-5: error text from parseClientMessage; snapshot with one user entry."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-32"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "PHASE-04 EX-10 asserts nothing"
 detail = "Round 2 R-8."
@@ -622,9 +783,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Reworded as a checkable negative."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-33"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "plan.md overview still names rev 42 as the locked authority"
 detail = "Round 2 R-9."
@@ -641,9 +807,14 @@ role = "responder"
 disposition = "fix-now"
 response = "plan.md overview amended."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-34"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "PHASE-04 lands a branch only PHASE-08 exercises"
 detail = "Round 2 R-10."
@@ -660,9 +831,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Stated in PHASE-04 EX-10; coverage headroom 98% vs 85%."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-35"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-04 EX-9 receipt rule put the macrotask before the close and dropped the post-close wait"
 detail = "test/daemon.test.ts:191-194 waits after close, before resolve; otherwise the turn runs before the FIN and takes V-15's path. Round 3 R-1."
@@ -679,9 +855,14 @@ role = "responder"
 disposition = "fix-now"
 response = "EX-9 rewritten: await write, close, one macrotask, then resolve; 'immediate' dropped."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-36"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "PHASE-08 EX-2 cannot tell the destroyed branch from close-handler stop"
 detail = "both orders give one stopped stream. Round 3 R-2."
@@ -698,9 +879,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-08 EX-1 records start calls; EX-2 waits a macrotask after close before release and asserts start never called; VT keyword 'started'."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-37"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-04 EX-14 'every other test unedited' false: daemon.test.ts start helper changes"
 detail = "test/daemon.test.ts:82-87; ConversationDefaults needs cwd. Round 3 R-3."
@@ -717,9 +903,14 @@ role = "responder"
 disposition = "fix-now"
 response = "EX-14 names the start helper and its defaults; design sec-7 fixture list amended."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-38"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Design sec-7 fixture list says write(raw: string), not Promise<void>"
 detail = "design.md sec-7. Round 3 R-4."
@@ -736,9 +927,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-7 amended (adopted rev 46)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-39"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Design sec-4 says isConversationKey is sec-2's validation; the check has two homes"
 detail = "protocol.ts parses; conversations.ts narrows. Round 3 R-5."
@@ -755,9 +951,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-4 states both checks and the dependency direction."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-40"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "plan.md lists round-1 amendments only; header rev behind"
 detail = "Round 3 R-6."
@@ -774,9 +975,14 @@ role = "responder"
 disposition = "fix-now"
 response = "plan.md Notes and header updated."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-41"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Design sec-7 calls until waits exact-output"
 detail = "test/attach.test.ts:96,118,155,166. Round 3 R-7."
@@ -793,9 +999,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Design sec-7 distinguishes waits and toBe sites."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-42"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "PHASE-06 EX-7 options object vs exactOptionalPropertyTypes for wait"
 detail = "tsconfig.json:8. Round 3 R-8."
@@ -812,9 +1023,14 @@ role = "responder"
 disposition = "fix-now"
 response = "EX-7 notes {wait} only when defined."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-43"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "One macrotask does not guarantee the daemon has read the hang-up: V-11/V-14 and PHASE-08 would flake"
 detail = "Reviewer measured ~7/400 misses (node 24, unix sockets); assertions now depend on it. Round 4 R-1."
@@ -831,9 +1047,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-04 EX-9 and PHASE-08 EX-2 await the server-side socket's close, recorded by a vi.mock of serveUnix that delegates to the real one; VT-4 keyword serveUnix."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-44"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "F-37 recurrence: 'takes the options object' vs 'no other test changes'"
 detail = "test/daemon.test.ts:82-89 and four call sites. Round 4 R-2."
@@ -850,9 +1071,14 @@ role = "responder"
 disposition = "fix-now"
 response = "start keeps its signature and call sites; only its body changes."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-45"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-08 barrier has no entry signal"
 detail = "precedent test/daemon.test.ts:200-211 entered+gate. Round 4 R-3."
@@ -869,9 +1095,14 @@ role = "responder"
 disposition = "fix-now"
 response = "EX-1 entered + gate; EX-2 disconnects after entered."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-46"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "plan.toml header rev stale; F-42 enumerated only wait"
 detail = "Round 4 R-4 and F-42 note."
@@ -888,9 +1119,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Header rev 46; options object built with only defined members (target, wait)."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-47"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "serveUnix mock must spread importOriginal or fixtures' connectUnix/listenUnix vanish"
 detail = "test/fixtures.ts:13; src/unix-socket-transport.ts:15; probe confirmed. Round 5 R-1."
@@ -907,9 +1143,14 @@ role = "responder"
 disposition = "fix-now"
 response = "EX-9 names the importOriginal spread and serveUnix-only override returning actual.serveUnix unchanged."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-48"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "No selection rule or per-test reset for the recorded server sockets"
 detail = "hoisted state survives tests (test/daemon.test.ts:188 watched.reset). Round 5 R-2."
@@ -926,9 +1167,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Recorder reset in beforeEach; next() takes the first accept after the departing connect."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-49"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "once(serverSocket,'close') armed late can hang; rejects on error"
 detail = "Round 5 R-3."
@@ -945,9 +1191,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Armed before client.close(); destroyed read if already closed."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-50"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-08 cannot use the attach() helper (waits for a withheld snapshot)"
 detail = "test/daemon.test.ts:91-96. Round 5 R-4."
@@ -964,9 +1215,14 @@ role = "responder"
 disposition = "fix-now"
 response = "PHASE-08 EX-2 uses a raw lineClient with LineClient.write; same in PHASE-04 EX-9."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-51"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "Precedent range :200-211 misses the gate release; header round count"
 detail = "Round 5 R-5, R-6."
@@ -983,9 +1239,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Cited :200-212; header says rounds 1-5 amended the plan."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-52"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "PHASE-08 EX-2 rationale names the snapshot; the helper blocks on attached"
 detail = "bind order watch→attached→snapshot (PHASE-04 EX-3). Scout D1."
@@ -1002,9 +1263,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Rationale names attached; root and new are separate tests."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-53"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "'returns actual.serveUnix unchanged' contradicts wrapping onConnection"
 detail = "src/unix-socket.ts:110-116. Scout D2."
@@ -1021,9 +1287,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Override written out; only the returned UnixServer is actual's."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-54"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Removing :185-196 orphans the only watched.reset(); exact stream counts become order-dependent"
 detail = "test/daemon.test.ts:188, :101-106. Scout D3."
@@ -1040,9 +1311,14 @@ role = "responder"
 disposition = "fix-now"
 response = "beforeEach calls watched.reset() and refills the accepted recorder."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-55"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Dead 'already closed' clause; once() rejection unguarded; single-slot next()"
 detail = "Scout D4, D5."
@@ -1059,9 +1335,14 @@ role = "responder"
 disposition = "fix-now"
 response = "Clause dropped; rejection fails the test; recorder is fixtures' recorder (items, next(match)) refilled per test."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-56"
-status = "answered"
+status = "verified"
 severity = "nit"
 title = "LineClient.write on a destroyed socket; EX-14 'no other test changes' vs replaced tests"
 detail = "fixtures.ts:255-266. Scout minor + pre-existing."
@@ -1078,9 +1359,14 @@ role = "responder"
 disposition = "fix-now"
 response = "write resolves as writeLine does; EX-14 excepts the replaced tests."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the next RV-052 round's verification pass (rounds 2-7, raw in scratchpad)."
+
 [[finding]]
 id = "F-57"
-status = "answered"
+status = "verified"
 severity = "minor"
 title = "Recorder construction: unannotated override params; hoisted holder cannot call imported recorder; items[0] dead text; closed() arming; barrier reset; citations"
 detail = "Scout round 7: tsconfig strict/noUncheckedIndexedAccess; test/daemon.test.ts:47-49 precedent; fixtures.ts:254-265; test spans :185-197."
@@ -1096,6 +1382,11 @@ act = "dispose"
 role = "responder"
 disposition = "fix-now"
 response = "EX-9 points at the :47-49 typing model, holder Recorder|undefined read with ?., socket via next(); closed() armed at creation; reset re-arms barrier; citations corrected (design sec-7 too)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Repair confirmed by the orchestrator's read of plan.toml PHASE-04 EX-9/EX-14 and PHASE-08 EX-1 against test/daemon.test.ts:47-49,101-106,185-197 and test/fixtures.ts:127-164,254-265."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

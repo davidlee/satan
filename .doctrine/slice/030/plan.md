@@ -8,8 +8,8 @@ authored in the TOML. Use this for the plan's rationale and sequencing.
 ## Overview
 
 All code is in `~/dev/malebolge`. The design (`design.md`, run dr-01a15954;
-locked at rev 42, amended by plan review RV-052, re-lock pending — PHASE-01
-EN-1) is the authority; this plan orders its code impact
+locked at rev 42, amended by plan review RV-052, re-locked at rev 52) is the
+authority; this plan orders its code impact
 (sec-7) into eight phases, each ending with `just check` green, and maps its
 verification rows V-1..V-15 onto phase VT criteria.
 
@@ -87,8 +87,8 @@ behaviour they describe exists, and asserts that `test/structure.test.ts`,
   sec-4 Configuration names `ConversationDefaults`; sec-4 says protocol.ts
   and conversations.ts each check the id; sec-7's fixture list gains the
   `start` helper and `write(): Promise<void>`, and separates `until` waits
-  from exact-output banners. The run must
-  be re-locked before PHASE-01 starts (its EN-1).
+  from exact-output banners. Re-locked at
+  rev 52 on the user's acceptance (2026-10-21).
 - inq-7 follow-through is reconcile-time and unphased: malebolge RFC-002's
   table and wire sketch, the ISS-053 note, the ADR-017 §3 ledger confirmed
   untouched at audit (design sec-7).
