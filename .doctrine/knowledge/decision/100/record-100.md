@@ -28,3 +28,28 @@ Per-call wrapping is the part that is genuinely new relative to what `jailed-age
 ## Consequence
 
 DEC-098's `wrapper_read` / `wrapper_write` keys are per-call-mode keys. In static mode the same policy file carries `agent` and one `filesystem`, and the wrapper keys must be absent or ignored — the server refuses a policy that sets both (`policy-invalid`), so the two postures cannot be half-configured.
+
+
+## Build status (2026-10-20): static mode designed, not built
+
+The operator's call, made after the cost was measured: the initial build ships
+**per-call only**. DEC-100 stays as the design of record — `sec-3`'s static half
+and the second branch here are unaffected — but the slice's build scope excludes
+it.
+
+Reasoning, for whoever revisits:
+
+- The per-call overhead is negligible: bwrap launch is 3-4 ms, node ~16 ms, so
+  the marginal cost of a fresh jail per call is one pi process against model
+  latency.
+- Static mode is a convenience optimisation that pays with security: F-1/F-2 left
+  it unable to keep evidence out of a co-resident child's reach, and unable to
+  give per-session isolation, in a single-uid jail.
+- The convenience case is better served by cheap defaults than by a second
+  posture: a policy `default_profile` naming a read-only profile, and the launch
+  cwd as the default root. Both keep one authority story.
+
+What this removes from the build: the static derivation (`flake.nix`), the
+posture switch and its `policy-invalid` cross-check, the start-up validation of
+launch-bound dirs, and the memory-buffered evidence path. What it keeps: every
+contract in sec-2, sec-4, sec-5, sec-6 and the per-call half of sec-3.

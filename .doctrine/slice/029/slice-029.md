@@ -63,6 +63,15 @@ recorded as evidence, not as a gate.
 
 ## Non-Goals
 
+- **Static mode is designed but not built here.** DEC-100 keeps both postures as
+  the design; the initial build ships per-call only. Rationale: the per-call
+  overhead is negligible (measured: bwrap 3-4 ms, node ~16 ms, so the marginal
+  cost is one pi process against model latency), while static mode adds a second
+  policy shape, a second launcher derivation, and a security trade with nothing
+  to buy that a per-call jail does not already give. Its convenience case is
+  better served by cheap defaults (`default_profile`, launch-cwd as the default
+  root) than by a posture that weakens evidence isolation. `sec-3`'s static half
+  and DEC-100's second branch stand as the design of record if it is ever wanted.
 - Mid-run steering or follow-ups. That is RPC's reason to exist and nothing here
   needs it.
 - Job handles (`start`/`status`/`tail`). Revisit only if a real run outlives a
@@ -117,6 +126,12 @@ more than a clean page.
 
 ## Follow-Ups
 
+- **Static mode**, if per-call cost ever shows up in practice, or if a driver
+  needs one jail for a whole session for a reason the design did not anticipate.
+  The design is complete; only the build is deferred.
+- **Convenience defaults**, on evidence rather than speculation: a policy
+  `default_profile` (which must name a `filesystem: read` profile) and the
+  launch-cwd as the default root. Both are plan-time decisions.
 - Spawn-script transport migration (RPC → json) and the deletion of
   `lib/pi-reap.sh` plus `lib/pi-reap-test.sh` (that test is run by nothing and
   takes 94 s).

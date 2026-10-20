@@ -54,7 +54,10 @@ Two forms are declared, one per capability. Each binds:
 
 The server-owned evidence directory (events, stderr, transcript, status, audit) is bound into no child.
 
-## Static mode
+## Static mode — designed, not in the initial build
+
+(DEC-100 build-status note: the shape below stands as the design of record; the
+initial build ships per-call only. Read it as a specification, not a deliverable.)
 
 `makeJailedAgent { agent = pi-mcp; profile = … }`; the launch jail is the whole confinement. The policy restates what the jail decided — `root`, `filesystem`, `agent`, `session_home`, `run_dir`, `evidence_dir` — and the server validates at start-up that its own dirs are writable (`bind-unavailable`).
 
@@ -158,7 +161,7 @@ pi/mcp/profiles/*.md             tracked profile documents (filesystem capabilit
 pi/mcp/*.test.ts                 node --test, offline
 bin/pi-mcp                       shim → node pi/mcp/main.ts
 pi/reduce/reduce.ts              + result, final, terminalReason; one usage accumulator incl. compaction_end
-flake.nix                        two per-call wrapped forms; a pi-mcp derivation for static mode (pi in closure + PATH)
+flake.nix                        two per-call wrapped forms (the static-mode derivation is deferred)
 justfile                         node --test pi/mcp/*.test.ts
 ```
 
