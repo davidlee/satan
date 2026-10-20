@@ -149,6 +149,11 @@ correct facts.
     the GitHub input), with `JAIL_WORKSPACE_DEPS` set explicitly.
   - The `goad` flake input has no consumer once the goad grants go; removed
     with them (§5 "goad bindings removed").
+- PHASE-05 EX-4 (2026-10-20, user assent "agreed"): `durable/session.sqlite`
+  moved to `durable/host/` (no sidecars existed, no daemon running).
+- PHASE-05 for reconcile: §4.7 "devToolPkgs (incl. rg) removed" is satan's
+  grant only; flakes' base `commonPkgs` still puts `rg`, `curl`, `wget`,
+  `python3` on every jail's PATH (offline here, so no egress).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
