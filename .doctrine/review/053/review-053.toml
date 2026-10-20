@@ -633,7 +633,7 @@ Accepted as residual risk for the audit's risk register, judged not worth a repa
 
 [[finding]]
 id = "F-18"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "PHASE-09's empirical criteria are unexecuted on this host"
 detail = """
@@ -674,6 +674,11 @@ Unexecuted here, by host limitation rather than omission. PHASE-09 EX-3/EX-5/EX-
 
 PHASE-09 therefore stays `blocked`, deliberately: flipping it to `completed` would claim a verification nobody performed, and RV-043 F-1's execution proof depends on exactly this. Operator sequence to close it is recorded in the slice handover and in `notes.md` § PHASE-09 evidence: `just check-jails` → `bin/pi-mcp-hostile-audit` against the built read and write forms → the recorded smoke with `transcript_budget_bytes` set → append outcomes, flip to `completed`.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "EX-3/EX-5/EX-7, VA-1..VA-3 executed on a nix+gateway host on 2026-10-21: pi-mcp-forms green on a derived generator baseline with a mutation shown red (RV-055 F-6); hostile fixture PASS read+write (RV-055 F-7); live smoke PASS read (budget 4096) and write (budget 48, elided 1). notes.md § PHASE-09 evidence, Operator runs 1-3."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

@@ -1172,3 +1172,28 @@ After the run the published policy was restored to the packet's read-form shape
 repairs per the handover, so in no phase's delta): `719c60e` (flake.nix
 `piMcpJail` / `piMcpBaseline` and the residue check; `pi/mcp/forms.test.ts`) and
 this commit (`bin/pi-mcp-hostile-audit`). PHASE-09's delta stays `bba7d87`.
+
+### Close-out and obligations added for reconcile
+
+PHASE-09 is `completed`, with its delta forced to `bba7d87` (the status flip
+auto-bound `1a7a769..dedeb24`, which spans SL-030 and the review repairs). After
+that, `verify-vt 29` → 55 PASS with none UNATTRIBUTABLE, and `conformance 29` →
+0 undelivered and `flake.nix` conformant (the undeclared cell holds SL-030's
+paths, RV-055 F-2, tolerated). `just check` exit 0; `pi-mcp-forms` exit 0.
+Blockers verified: RV-043 F-1, RV-053 F-18, and RV-055 F-1 / F-6 / F-7. RV-053
+F-3 was left `answered`: this run discharged its `demonstrate` half only. Slice
+status `audit → reconcile`.
+
+Owed to `/reconcile`, in addition to RV-055 § Reconciliation Brief:
+
+1. **PHASE-09 EX-3 / design sec-3 bind-set wording.** Both say "root + active
+   session directory + the policy's `child_binds`". What is built and checked is
+   "the generator baseline (`piMcpBaseline`) + root + session", where the
+   baseline is the exposure `child_binds` declares. This merges with RV-053
+   F-3's `refresh` half. EX ids are immutable, so the correction is appended,
+   never renumbered. Still not proven by anything: that the policy's
+   `child_binds` covers the baseline's host-visible binds (policy-vs-form).
+2. **Design sec-7 verification / PHASE-09 EX-7 fixture wording.** The fixture is
+   now a plain confinement probe (one marker append, framed honestly), not an
+   attempt to truncate, unlink and forge the audit. The reason is RV-055 F-7: a
+   probe that depends on the model complying with an attack proves nothing.

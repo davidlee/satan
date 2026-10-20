@@ -42,7 +42,7 @@ ref   = "SL-029"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "blocker"
 title = "The delegate can truncate or replace the audit that is supposed to constrain it"
 detail = "Expected: SL-029 sec-6's fail-closed audit and single-writer claim must hold against the model's bash tool, not just cooperative server writes (ADR-017 §2; SPEC-001 REQ-003). Observed: sec-3 explicitly binds the run directory read-write into each child; sec-5 places audit.jsonl and events.jsonl there. Static mode likewise gives the child the server's writable run-directory view. The child therefore has another writable handle to its own evidence. O_APPEND/fsync on the server's handle does not protect against truncation, unlink or replacement by the child, and none need make the server's later append fail. Verified in an isolated Node fixture: parent appended+fsynced spawn, same-uid subprocess truncated the path, parent appended+fsynced exit successfully; only exit survived. This is stronger than the already-disclosed lack of host-admin immutability: the untrusted delegate itself is deliberately granted the write path. Required correction: distinguish server-owned evidence storage from child-writable runtime/session storage and prevent child alteration of the former in both postures, or explicitly withdraw the audit assurance and reconcile the governing invariant. Verification should attempt truncation/replacement from bash and assert either denial with intact evidence or a fail-closed termination; successful server appends alone are not sufficient."
@@ -122,6 +122,11 @@ Design revision 56 (48 → 49 → 51 → 53 → 56) answers it with a check over
 
 One point I do not concede, because it would overclaim: this does not restore an unconditional isolation promise. Allowlisting `$HOME` now costs something — the refusal names the overlapping path and the operator relocates the stores or narrows the root (DEC-095 amendment). It is a checked invariant with a stated price, not a promise, and static mode's residual is unchanged.
 """
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "EX-7/VA-3 under the real read and write forms on 2026-10-21: PASS both (plain confinement probe after RV-055 F-7) — the delegate's append to the run's audit.jsonl failed with No such file or directory, audit intact with spawn+exit. Run dirs ~/.local/state/pi-mcp/runs/hostile-GV2mG5, hostile-ynE6g9; notes.md § PHASE-09 evidence, Operator run 3."
 
 [[finding]]
 id = "F-2"
