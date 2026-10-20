@@ -5,10 +5,10 @@ id = 20
 slug = "malebolge-launch-dir"
 title = "Launch the malebolge daemon from a directory other than ~/notes"
 kind = "chore"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-10-19"
-updated = "2026-10-19"
+updated = "2026-10-20"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

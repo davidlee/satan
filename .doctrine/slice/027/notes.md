@@ -344,6 +344,7 @@ fresh-as-of: 2026-10-20 · PHASE-06 completed + audit RV-039 done, slice status 
 - vm-mode key ~/.ssh/malebolge-vm.key (public half in § Design errata)
 - PHASE-06: live VA-1..4 + VH-1 (§ PHASE-06 live verification); EX-4 egress audit: 0 off-host tools; satan 474d92d, a2f5fc6
 - RV-039 (audit, 2026-10-20): done, 7 findings verified (4 design-wrong, 1 fix-now ~/notes 945497e, 1 follow-up ISS-051, 1 tolerated); Reconciliation Brief RB-1..4, RB-G1..5; satan 285bab7
+- Reconcile (2026-10-20): design.md errata RB-1..4; REV-010 done (ADR-017 ledger row 3b `satan-flake`, SPEC-002, SPEC-004, REQ-016/017); DEC-075/DEC-072 amended; IMP-037 and CHR-020 resolved; malebolge IMP-002 progress note (uncommitted: untracked there); satan 798b064
 - ISS-051 (content_read rg without --), IDE-013 (interactive executor profiles + taint rule; user idea, related CON-005/RFC-019/ADR-017/RSK-019)
 - cross-repo: oubliette IMP-022 (9127afe); oubliette IMP-023 (repo readers, RV-035 F-2); flakes:SL-015 incl. PHASE-05 (03dc0f0a)
 
@@ -353,11 +354,11 @@ fresh-as-of: 2026-10-20 · PHASE-06 completed + audit RV-039 done, slice status 
 - verify-vt on cross-repo test_files reports UNATTRIBUTABLE (attribution reads satan's git range); keywords present = substantive pass (SL-026 precedent)
 - malebolge's flake (c8114ac) makes direnv copy flake inputs into .direnv/; tools with repo-wide globs must exclude it
 - mem.pattern.jail.live-probe-via-nsenter — probe a running jail via nsenter; launch from agent tools under setsid (PHASE-06)
+- mem.pattern.doctrine.reconcile-selectors-outside-phase-registry — governance selectors land at reconcile; conformance needs --against
 - mem.fact.jail.set-env-store-path-not-bound — set-env store path is not in the jail; ro-bind it and check it is bound (RV-038 F-1)
 - advice weighed: malebolge RFC-001 (module tier; gaps folded as RV-035 F-8..F-13), GPT second opinion (adopted points in DEC-075/078/079)
 
 ### Open
-- Next: /reconcile — consume RV-039's Reconciliation Brief (RB-1..4 direct edits to design.md, no adopt; RB-G1..5 governance). Then /close.
 - user to reject probe jobs pj-01M5BGB60JKD2AP1FJHCHS3K41, pj-01M5BGDP6RB7E63CE9YVG690CF (needs_review)
 - the devshell's `jailed-malebolge` lags HEAD until direnv reloads
 - standing (not this slice's to close): ISS-050 room-action audit gap (RV-035 F-5); RSK-019 egress-free MCP set by care; ISS-051; IDE-013

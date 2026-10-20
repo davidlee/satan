@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1572f0cc07483b276aa3c8507abb4"
+memory_key = "mem.pattern.doctrine.reconcile-selectors-outside-phase-registry"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Governance selectors land at reconcile, outside the phase delta registry"
+summary = "slice conformance reads only phase deltas, so selectors for governance files (ADR ledger, spec dirs) written at reconcile stay 'undelivered'; verify them with --against <reconcile commit>"
+created = "2026-10-20"
+updated = "2026-10-20"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["doctrine", "conformance"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "798b0647c3900d72e9f4ae692ae31c184a06d28d"
+tree = "29e3e94ced0953a9ace0d42e6e99b7caa3779136"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "798b0647c3900d72e9f4ae692ae31c184a06d28d"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "high"
+
+[ranking]
+severity = "low"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-027"
+
