@@ -19,8 +19,9 @@
 ;; inspect.  Reject is one report-disposition; no git.
 ;;
 ;; Commands `satan-patch-promote' / `satan-patch-reject' act on the
-;; inbox entry at point (its SATAN_PATCH_JOB property) and record the
-;; outcome in its STATE property.
+;; inbox entry at point (its SATAN_PATCH_JOB property), record the
+;; outcome in its STATE property, and mark the entry read (drop its
+;; `:unread:' tag, save the inbox).
 
 ;;; Code:
 
@@ -167,11 +168,16 @@ and that branch does not exist yet."
       (user-error "No patch job at point (no SATAN_PATCH_JOB property)")))
 
 (defun satan-patch-promote--settle (entry job-id outcome)
-  "Record OUTCOME for JOB-ID on the inbox ENTRY (a marker) and say so."
+  "Record OUTCOME for JOB-ID on the inbox ENTRY (a marker) and say so.
+A verdict also marks the entry read, saving the inbox so the
+file-reading `satan-inbox-unread-count' sees it."
   (pcase outcome
     (`(ok . ,state)
      (when (buffer-live-p (marker-buffer entry))
-       (org-entry-put entry "STATE" state))
+       (org-with-point-at entry
+         (org-entry-put nil "STATE" state)
+         (org-toggle-tag "unread" 'off)
+         (when buffer-file-name (save-buffer))))
      (message "Patch job %s %s" job-id state))
     (`(error . ,msg)
      (message "Patch job %s unchanged: %s" job-id msg))))

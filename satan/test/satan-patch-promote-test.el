@@ -10,6 +10,7 @@
 (require 'cl-lib)
 (require 'org)
 (require 'satan-patch-promote)
+(require 'satan-tools-inbox)
 (require 'satan-patch-fixture)
 
 (defconst satan-patch-promote-test--id "pj-T1")
@@ -211,32 +212,51 @@ is refused before any git runs."
                      "")))))
 
 (defmacro satan-patch-promote-test--in-entry (&rest body)
-  "Run BODY at an inbox entry for the test job, confirmations answered yes."
-  `(with-temp-buffer
-     (org-mode)
-     (insert "* Patch ready: fix goad-walk " satan-patch-promote-test--id "\n"
-             ":PROPERTIES:\n:SATAN_PATCH_JOB: " satan-patch-promote-test--id
-             "\n:STATE: needs_review\n:END:\nState: needs_review\n")
-     (goto-char (point-max))
-     (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) t)))
-       ,@body)))
+  "Run BODY at an unread entry for the test job in a visited inbox file,
+confirmations answered yes."
+  `(let* ((satan-inbox-file (make-temp-file "satan-inbox-" nil ".org"))
+          (buffer (progn
+                    (with-temp-file satan-inbox-file
+                      (insert "* Patch ready: fix goad-walk "
+                              satan-patch-promote-test--id
+                              "  :unread:satan:\n"
+                              ":PROPERTIES:\n:SATAN_PATCH_JOB: "
+                              satan-patch-promote-test--id
+                              "\n:STATE: needs_review\n:END:\n"
+                              "State: needs_review\n"))
+                    (find-file-noselect satan-inbox-file))))
+     (unwind-protect
+         (with-current-buffer buffer
+           (goto-char (point-max))
+           (cl-letf (((symbol-function 'y-or-n-p) (lambda (_prompt) t)))
+             ,@body))
+       (with-current-buffer buffer (set-buffer-modified-p nil))
+       (kill-buffer buffer)
+       (delete-file satan-inbox-file))))
 
-(ert-deftest satan-patch-promote/commands-record-the-outcome-on-the-entry ()
-  "The commands read the job at point and set the entry's STATE."
+(defun satan-patch-promote-test--settled-p (state)
+  "Whether the entry records STATE and the saved inbox counts it read."
+  (and (equal (org-entry-get (point-min) "STATE") state)
+       (eql (satan-inbox-unread-count) 0)))
+
+(ert-deftest satan-patch-promote/commands-settle-the-entry ()
+  "The commands read the job at point, set the entry's STATE, and mark
+it read in the saved inbox."
   (satan-patch-promote-test--with-repos (repo quarantine _base job)
     (satan-patch-fixture-with-runner
         (satan-patch-promote-test--runner repo quarantine job)
       (satan-patch-promote-test--in-entry
+       (should (eql (satan-inbox-unread-count) 1))
        (call-interactively #'satan-patch-promote)
        (should (satan-patch-fixture-wait-until
-                (lambda () (equal (org-entry-get (point-min) "STATE") "promoted"))
+                (lambda () (satan-patch-promote-test--settled-p "promoted"))
                 10))))
     (satan-patch-fixture-with-runner
         (satan-patch-promote-test--runner
          repo quarantine job :disposition '(:state "rejected"))
       (satan-patch-promote-test--in-entry
        (call-interactively #'satan-patch-reject)
-       (should (equal (org-entry-get (point-min) "STATE") "rejected"))))))
+       (should (satan-patch-promote-test--settled-p "rejected"))))))
 
 (ert-deftest satan-patch-promote/commands-need-a-job-at-point ()
   (with-temp-buffer
