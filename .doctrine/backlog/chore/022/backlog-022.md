@@ -27,3 +27,26 @@ Naming, from the same review:
 
 Rejected in that review: splitting test-rig.ts into wire, rig and driver modules.
 The claim that gate needs no rig is false: `unitGate` reads `rig.policyPath`.
+
+## Done 2026-10-22
+
+Added to `test-rig.ts`: `validPolicy`, `launchEnv`, `workspace`, `attempts`,
+`converse`, and `LiveServer.send`, which writes raw bytes. `converse` uses
+`send`, so an unterminated final record still reaches the server. Removed the
+local copies from server, policy, profiles and session. Renamed `Session` to
+`LiveServer` (its variables to `server`), `document` to `resultDocument`, and
+`marker` to `markerText`. Suites: 254 pass, 0 fail.
+
+Behaviour notes, all accepted:
+
+- `attempts` reads a missing ledger as `[]` where three of the old copies threw.
+  `server.test.ts`'s spawn-failure test no longer implies that the ledger
+  exists. Its stated intent is "no ledger line", which still holds.
+- `converse` now has `waitForReplies`' 10 s deadline, where the old helpers had
+  none. A lost reply now fails instead of hanging.
+
+Dogfooded as in CHR-021: a pi worker in a worktree, two `pi_agent` behaviour
+reviewers each given a diff slice, and pre-batched prompts to fit
+`requests: 6`. Both finished inside the budget. New friction:
+`.pi/agents/dispatch-worker.md` is a symlink into `.doctrine/agents/pi/`, which
+is also gitignored. A worktree needs `cp -L` of `.pi/agents`, not a plain copy.
