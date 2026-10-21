@@ -6,6 +6,8 @@
 
 **When:** after the try-it period shows `pi_agent` working well as the default
 delegation route (CLAUDE.md, commit 3fea833). Not before.
+Met 2026-10-21: the operator reports `pi_agent` working in SL-030.
+Remaining gate: IMP-049, IMP-050, CHR-021 (see Related).
 
 **Goal:** pi-mcp (`pi/mcp/` + `pi/reduce/` + `bin/pi-mcp` + `bin/pi-run-reduce`)
 lives in its own repo and is installable by someone with neither nix nor

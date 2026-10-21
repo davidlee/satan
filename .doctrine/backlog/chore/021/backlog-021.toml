@@ -5,10 +5,10 @@ id = 21
 slug = "pimcp-tests-extract-the-spawngate-test-harness-duplicated-across-spawntestts-and-gatetestts"
 title = "pi/mcp tests: extract the spawn/gate test harness duplicated across spawn.test.ts and gate.test.ts"
 kind = "chore"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-10-20"
-updated = "2026-10-20"
+updated = "2026-10-21"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
