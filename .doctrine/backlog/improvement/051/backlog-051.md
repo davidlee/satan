@@ -7,7 +7,10 @@
 **When:** after the try-it period shows `pi_agent` working well as the default
 delegation route (CLAUDE.md, commit 3fea833). Not before.
 Met 2026-10-21: the operator reports `pi_agent` working in SL-030.
-Remaining gate: IMP-049, IMP-050, CHR-021 (see Related).
+Prerequisites met 2026-10-22: CHR-021 (`450d456`), CHR-022 (`f04389e`), IMP-050
+(`c97140f`), IMP-049 (`4999773`). IMP-049's `pi/mcp/README.md` documents the
+`PI_MCP_*` launch environment as the server's configuration surface; whether that
+stays the published surface or discovery is added is still this card's call.
 
 **Goal:** pi-mcp (`pi/mcp/` + `pi/reduce/` + `bin/pi-mcp` + `bin/pi-run-reduce`)
 lives in its own repo and is installable by someone with neither nix nor
