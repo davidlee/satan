@@ -39,6 +39,12 @@ doctrine.
   generator or a documented "unconfined" form. That form must be explicit
   in the policy and never a silent fallback (DEC-097 refuses an absent
   policy; keep that posture).
+  - **v1 scope:** ship nix forms plus the explicit unconfined form only.
+  - **Follow-ups after v1:** native forms per platform. macOS: seatbelt
+    (`sandbox-exec` profiles); there is prior art in doctrine, and the
+    operator knows where. Linux: bwrap plus something for what mount
+    namespaces don't cover (e.g. Landlock or seccomp; undecided).
+    Capture each as its own backlog item when v1 ships.
 - Host-specific defaults: the profiles name `llm-gateway/deepseek-flash`.
   The live policy's `child_binds` names the jail.nix agent home. Ship
   example profiles and a policy example (IMP-049), not this host's values.
