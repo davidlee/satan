@@ -13,6 +13,39 @@ Remaining gate: IMP-049, IMP-050, CHR-021 (see Related).
 lives in its own repo and is installable by someone with neither nix nor
 doctrine.
 
+## Name (proposed 2026-10-22) — `quotient`, leaning; `narthex` the alternative
+
+`pi-mcp` names the wire, not the thing. MCP is how a client speaks to the
+process and will be replaced before the process is. The orbit names by *seat* —
+`satan`, `malebolge`, `panopticon`, `goad`, `attrd` — so the package should too,
+and the name is the one thing here that becomes permanent at first `npm publish`.
+
+**`quotient`.** The quotient map collapses a set onto one representative per
+equivalence class, which is what `pi/reduce` already does to a run: hundreds of
+thousands of tokens of child transcript go in, one bounded cited representative
+comes out. It names the admission half as well — the map *selects the
+representative*, and selecting one capability/profile/form out of the policy is
+the door's whole job. It also sits next to π as a symbol pair: the harness is
+irrational, the door rationalises (ℚ). The double-take has the right shape —
+`quotient` reads as a psychometric score, a villain's measure of intellect,
+until you look it up.
+
+**`narthex`.** The entry chamber a catechumen passes through before the nave,
+and where the uninitiated stop. It names the *crossing*, which is what this
+process actually is to a harness, and no maths candidate names the crossing as
+cleanly. Its double-take is the better joke — it sounds like an 80s supervillain
+and turns out to be part of a church. Rejected only because it names a room, not
+the reduction that is the package's substance.
+
+Constraints the name must satisfy. (1) It composes as a prefix: `flake.nix:335`
+mints one wrapper form per capability in `pi/mcp/profiles/`, so it must read as
+`quotient-read`, `quotient-write`, `quotient-research`. (2) It survives a
+registry where the name is permanent. (3) No collision in this tree — all
+shortlist survivors checked (`quotient`, `narthex`, `adjoint`, `aleph`, `sieve`,
+`cardinal`, `eta`): zero hits. The maths register is otherwise exhausted here:
+`kernel` (35 files — OS kernel, patch-job kernel) and `residue` (118) are the
+two best semantic fits and both are unusable.
+
 ## Distribution channels (all optional, not exclusive)
 
 - **npm package**: `npx`/global install gives the `pi-mcp` and `pi-run-reduce`
@@ -55,6 +88,42 @@ doctrine.
   doctrine corpus is that repo's choice.
 - `node` comes from the satan devshell today. The server fails to start if
   Claude Code is not launched under direnv. A packaged bin fixes this.
+
+## Found while surveying (2026-10-22)
+
+- **The name reaches outside the repo, into host state.** The operator policy at
+  `~/.config/pi-mcp/policy.json` names each form by absolute stable link,
+  `~/.local/state/pi-mcp/forms/<capability>/bin/pi-mcp-<capability>`; run
+  artifacts and sessions live under `~/.local/state/pi-mcp/{runs,sessions}`.
+  So renaming is a *host* migration, not a repo rename. Two options: keep
+  `pi-mcp` as the bin name the forms expose while the package is `quotient`, or
+  migrate the policy and both state roots with the rename. Prefer the first at
+  extraction — the operator's policy pins a path, and paths are the durable
+  interface.
+- **The launch environment is the entire config surface** (`pi/mcp/main.ts`: no
+  argv, no config discovery). Coherent for a nix-built form, in direct tension
+  with the npm/gallery ambition and with IMP-049: a stranger installing from npm
+  has no `PI_MCP_*` contract to read. Decide in this card whether to publish the
+  env contract *as* the documented config surface or to add discovery — not in
+  the extracted repo, where it will be too late.
+- **The wire contract is the public API, and it currently lives in comments plus
+  a doctrine-side design doc.** `server.ts` lists exactly one tool; a
+  `tools/call` always answers a tool result carrying a `pi-agent-result/1`
+  document; a refusal is a *successful* call that ran nothing, never a JSON-RPC
+  error (SL-029 design sec-5). A third-party consumer pins that document shape,
+  so the extracted repo needs it as its own versioned contract doc — not a
+  reference to a doctrine id.
+- **Rename census** (measured, in-repo): `bin/pi-mcp`, `bin/pi-mcp-hostile-audit`,
+  `bin/pi-run-reduce`, `.mcp.json` (the client entry `pi-agent`), `justfile`
+  (`pi-mcp-forms` recipe, `nix build -o … pi-mcp-read/write`), `CLAUDE.md`,
+  `flake.nix` (`pi-mcp-${capability}`, `pi-mcp-baseline`, the `pi-mcp-forms`
+  check), and the `pi/mcp/` sources themselves. Do the rename *at* extraction,
+  never before: half-renamed is worse than `pi-mcp`.
+- **Two bins, one name.** The package ships the server and the reduce CLI
+  (`bin/pi-run-reduce`). Whatever the package is called, decide the second bin's
+  name in the same act (`quotient` + `quotient-reduce`, or `reduce` as a
+  subcommand). Leaving it to drift produces a package whose two entry points do
+  not look related.
 
 ## Related
 
