@@ -70,7 +70,7 @@ A connection whose first line is not `attach` receives no `attached` reply. A le
 |---|---|---|
 | malformed or refused `attach` as the first line | `ErrorMessage` | closed |
 | unknown id, task-owned conversation | `ErrorMessage` | closed |
-| any line of type `attach` after the connection is bound, well-formed or not (the bound check precedes shape validation) | `ErrorMessage` (`already attached to conversation N`) | open; binding unchanged |
+| any line that parses as an `attach` frame after the connection is bound, valid or refused (a line that is not JSON or not an object falls under "any other bad line") | `ErrorMessage` (`already attached to conversation N`) | open; binding unchanged |
 | a first line that is not JSON, or not an `attach` and not a valid command | root is bound, then `ErrorMessage` | open (today's behaviour) |
 | any other bad line | `ErrorMessage` | open (today's behaviour) |
 
@@ -103,7 +103,7 @@ The id is a JSON number, as pi types `ConversationId`. It names a conversation o
   - `submit` returns on admission, but `beforeInput` precedes it. `coalesce` makes a caller that arrives during a read share the *next* read (`coalesce.ts:34-50`, DEC-086), so one input can wait up to two refresh deadlines (2 s each by default), serially for each queued input. Under a wedged `satan-mcp`, an `abort` queued behind k inputs waits up to 2k deadlines.
   - `abort` resolves only once the conversation's scope is idle (pi `Conversation.abort`), so a line after an `abort` waits for the aborted run to unwind.
 - **Failed attach** writes one `ErrorMessage`, ends the socket, and marks the connection closed; queued lines are dropped, never acted on root.
-- **No line after departure.** A line whose turn starts after its socket is destroyed is dropped, with every line behind it. A turn starts once `conversations` is ready and the previous line is done; the check is the turn's first step. Today a connection that has gone before the session opens is dropped with its lines (`daemon.ts:53-58` returns before the `data` handler is installed), while a still-open one has its lines acted on once the handler installs (`:66-75`); this keeps both, so an input followed by an immediate disconnect never starts an unwatched run, and an `attach` whose socket has gone before its turn creates nothing. Work already begun is not cancelled: an `attach` whose turn has started completes its resolution or create (the DEC-108 gap), acquires its stream and stops it at once; an `act` in flight finishes (today's behaviour). `serve`'s `close()` destroys every socket synchronously (`unix-socket.ts:131-141`), so `destroyed` is the only state the check reads; no closing flag is added.
+- **No line after departure.** A line whose turn starts after its socket is destroyed is dropped, with every line behind it. A turn starts once `conversations` is ready and the previous line is done; the check is the turn's first step. Today a connection that has gone before the session opens is dropped with its lines (`daemon.ts:53-58` returns before the `data` handler is installed), while a still-open one has its lines acted on once the handler installs (`:66-75`); this keeps both, so an input followed by an immediate disconnect never starts an unwatched run, and an `attach` whose socket has gone before its turn creates nothing. Work already begun is not cancelled: an `attach` whose turn has started completes its resolution or create (the DEC-108 gap), acquires its stream and stops it at once; an `act` in flight finishes (today's behaviour). `serve`'s `close()` destroys every socket synchronously (`unix-socket.ts:131-141`), so a departure shows as `destroyed`. The check also reads the connection's `ended` marker: a failed attach only ends its socket, so `destroyed` lags until the peer closes, and without the marker a queued line would arrive as an unbound first line (amended 2026-10-21, RV-057 F-4).
 - **Disconnect during resolution.** The close handler stops any stream already acquired; a stream acquired after the socket was destroyed is stopped immediately (today's check, kept, now inside bind). A create that commits after disconnect is the accepted create/acknowledge gap (DEC-108): the empty ownerless conversation remains.
 - **Passive clients.** A connection that never sends a line is never bound and receives nothing. Documented in the protocol header (sec-2 lists the in-repo cases).
 - **The input draft** passed to `submit` is built from the validated fields (`content`, `requestId`), never the parsed wire object (research X-5).
@@ -196,7 +196,7 @@ No code change. The `DaemonConnection`, its trust latch and the `faultLog` obser
 | `--new` | `{type:"attach", new: true}` |
 | `--new --cwd S` | `{type:"attach", new: true, cwd: S}` |
 
-Refused locally with a usage line and exit 2, mirroring the daemon's table: `--conversation` with `--new`; `--cwd` without `--new`; `--conversation` not a positive integer; any unknown flag or positional. The client does not interpret `S`.
+Refused locally with a usage line and exit 2, mirroring the daemon's table: `--conversation` with `--new`; `--cwd` without `--new`; `--conversation` not a positive integer written without leading zeros; any unknown flag or positional. The client does not interpret `S`.
 
 ## attach.ts
 
@@ -229,7 +229,7 @@ Docs, each verified by grep at design time:
 - `README.md:17-19`: "one ongoing conversation" and "a new client sees the conversation so far" become many conversations, root by default, a client seeing its conversation once attached; plus the upgrade note (restart the daemon).
 - `docs/internals.md:80-88` (§Protocol, the protocol reference): gains `attach`/`attached`, the error table's close rule and the passive-connection rule.
 - `docs/internals.md:116-119`: "cwd … are constants" becomes per conversation.
-- Module headers carry the five invariants of sec-1, saying "non-root" wherever DEC-104 excepts root.
+- Each module header carries the sec-1 invariants it owns (daemon, protocol: 1; conversations: 2–5), saying "non-root" wherever DEC-104 excepts root.
 
 ## Verification
 
@@ -242,14 +242,15 @@ Docs, each verified by grep at design time:
 | V-5 | `attach` and `input` in one `write`, and one frame split across two `write`s, are both handled in order | `test/daemon.test.ts` |
 | V-6 | a second `attach`, well-formed and malformed, errors with `already attached`, a non-attach garbage line still gets its own error, and the binding is unchanged | `test/daemon.test.ts` |
 | V-7 | unknown id, task-owned id refused | `test/conversations.test.ts` |
-| V-8 | a created conversation stores the daemon's model and its own `cwd` (or the default); reopening the session reconfigures root and leaves the created conversation unchanged | `test/conversations.test.ts`, `test/session.test.ts` |
+| V-8 | a created conversation stores the daemon's model and its own `cwd` (or the default); reopening the session reconfigures root and leaves the created conversation unchanged; a created conversation's tools run in its own `cwd` (added at audit, RV-057 F-2) | `test/conversations.test.ts`, `test/session.test.ts` |
 | V-9 | a created conversation's prompt states its own `cwd`, read with `systemPromptSections(test, created)` (not root, whose prompt is unchanged) | `test/daemon-sections.test.ts` |
-| V-10 | client flags: each valid combination sends its frame; each refused one exits 2 without connecting; typed lines are held until `attached`; a refused attach rejects with `NOT_ATTACHED` (exit 1, one error line, no stack trace); `/quit` before `attached` exits 0; an old daemon's `unknown message type "attach"` prints the restart hint | `test/attach.test.ts` |
+| V-10 | client flags: each valid combination sends its frame; each refused one is refused in-process by `attachTargetOf` before any connect (the usage print and exit 2 in `attach-main.ts` are checked by read, sec-6); typed lines are held until `attached`; a refused attach rejects with `NOT_ATTACHED` (exit 1, one error line, no stack trace); `/quit` before `attached` exits 0; an old daemon's `unknown message type "attach"` prints the restart hint | `test/attach.test.ts` |
 | V-11 | an `attach` (root, and `new`) sent, then a disconnect, before the session is ready: once it is, no stream is acquired and no conversation is created (with V-15, supersedes `:185-197`) | `test/daemon.test.ts` |
 | V-12 | `test/structure.test.ts` passes unchanged; `just check` green | suite |
 | V-13 | while the session is not ready a connection stays silent; its `attach` and `input`, sent in one `write`, are handled in order once it is (supersedes `:174-183`) | `test/daemon.test.ts` |
 | V-14 | an `input` written then followed at once by a disconnect, before the session is ready, is never submitted (no submission on root) | `test/daemon.test.ts` |
 | V-15 | an `attach` (root, and `new`) whose turn has started, with the socket destroyed while `open`/`watch` is pending (barrier on the `watchEvents` spy): `watched.streams` holds exactly one stream and its `closed` resolves stopped; for `new`, a `scanConversations` read finds the created ownerless conversation (the accepted DEC-108 strand) | `test/daemon.test.ts` |
+| V-16 | a connection that never sends is never bound and receives nothing, observed after a control connection's snapshot (added at audit, RV-057 F-1) | `test/daemon.test.ts` |
 
 Overlap tests drive the faux provider with transcript-aware factories or barriers (pi-ai 1.3.0 `faux.js:349-351`), never by scripted response order. Ordinary single-conversation tests may stay scripted.
 

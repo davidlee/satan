@@ -102,3 +102,28 @@ and already captured.
 - ISS-053 (SPEC-002 transport row), backlog edit: note that the interactive
   socket now carries a creating verb (`attach` with `new`).
 - No REV: no accepted ADR, policy or spec in this repo is contradicted.
+
+## Reconciliation Outcome
+
+User agreement: "agreed" (2026-10-21).
+
+### Direct edits applied
+- design.md sec-2 error table: bound connection answers `already attached` to any parsed attach frame (F-3).
+- design.md sec-3 "No line after departure": the check reads `destroyed` or `ended`; why the marker exists (F-4).
+- design.md sec-6 refused list: `--conversation` without leading zeros (F-7).
+- design.md sec-7 module headers: each carries the invariants it owns (F-9).
+- design.md V-10: refused flags are refused in-process; exit 2 checked by read (F-6).
+- design.md V-8 extended (created conversation's tools run in its cwd, F-2); V-16 added (passive connection, F-1).
+- The design run is locked; per the CLI, a reconcile edit is direct and not adopted, so `design show` reports design.md ahead of run revision 52 by design.
+
+### Governance / cross-repo (F-12)
+- ISS-053: shipped note appended (creating verb live, malebolge 2f84bce).
+- malebolge RFC-002: historical note on the assumption table; "Shipped mechanism (SL-030)" bullet in §Wire protocol (malebolge 54b0393). RFC stays open.
+- ISS-055: partial-fix note (at audit).
+- No REV: no accepted ADR, policy or spec in this repo is contradicted.
+
+### Tolerated
+- F-10: cross-repo conformance done by hand (as RV-050 F-2).
+- F-11: `_pi/` loss — unrecoverable, unattributed; with the user.
+
+Reconcile pass complete — handoff to /close.

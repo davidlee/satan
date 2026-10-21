@@ -16,3 +16,5 @@ create a conversation), so its absence becomes more costly. Per SPEC-002 D3
 that it is deliberately below the spec's altitude.
 
 Found in SL-030's research (Thread 1, governance).
+
+Shipped 2026-10-21: `attach` with `new:true` (malebolge `2f84bce`, SL-030).
