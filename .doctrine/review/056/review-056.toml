@@ -10,6 +10,12 @@ raiser    = "pi-reviewer"
 responder = "orchestrator"
 rounds_base = 0
 contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Per-phase pi (deepseek-flash) code review of every SL-030 phase commit, malebolge 71f1bed..11af256: 23 findings (1 major, 9 minor, 13 nit); 21 fixed and verified, 2 tolerated (F-4, F-11). Host gate green at 11af256: 1756 tests, 98.29% lines."
 
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-030"
@@ -205,6 +211,366 @@ response = "Valid; recorded in slice notes.md (durable) rather than the disposab
 act = "verify"
 role = "raiser"
 note = "Recorded in notes.md § Execution log."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "PHASE-05: abort test cannot detect a mis-scoped abort"
+detail = "malebolge 7d2f856 test/daemon.test.ts:779-833: A is root and B is created after the abort, so abort-on-root-instead-of-bound or a daemon-wide abort still pass. Fix: hold and abort a created (non-root) A while another conversation exists and runs."
+disposition = "fix-now"
+response = "Valid: the abort-isolation property is not exercised. Worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid: the abort-isolation property is not exercised. Worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 51bfff3; F-9 red shown by aborting root instead of the bound conversation; host gate green."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "PHASE-05: asserts pi-durable's absence of an aborted assistant entry"
+detail = "test/daemon.test.ts:812-815: whether an aborted partial is committed is pi's 100 ms flush detail; a pi upgrade would turn it red with no malebolge regression. Fix: drop, or require any pi.assistant entry to carry stopReason aborted."
+disposition = "fix-now"
+response = "Valid: assert malebolge behaviour, tolerate either pi outcome."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid: assert malebolge behaviour, tolerate either pi outcome."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 51bfff3; F-9 red shown by aborting root instead of the bound conversation; host gate green."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "nit"
+title = "PHASE-05: textOf is a third copy"
+detail = "test/daemon.test.ts:293-296 duplicates test/runner/steer-status.test.ts:26-29 and render.ts logic."
+disposition = "tolerated"
+response = "Helpers local by phase decision; a shared Message-level textOf belongs with the next harness-fixture change."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "Helpers local by phase decision; a shared Message-level textOf belongs with the next harness-fixture change."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Tolerated."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "major"
+title = "PHASE-06: typing after attached is never tested"
+detail = "malebolge fe935ed src/attach.ts:223-224 (direct write once attached) has 0 hits; every test types before attached, so a regression that keeps holding after attach silently drops all later input with the suite green."
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 67831a0; F-12 red shown by holding after attach; host gate green."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "minor"
+title = "PHASE-06: post-attach ErrorMessage handling untested"
+detail = "src/attach.ts:193 !state.attached gate: dropping it would exit 1 on the first daemon-side error of a healthy session; no test sends an error after attached."
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 67831a0; F-12 red shown by holding after attach; host gate green."
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "nit"
+title = "PHASE-06: held-lines-discarded assertion cannot fail"
+detail = "test/attach.test.ts:171 toHaveLength(1) holds whether or not held lines are cleared."
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 67831a0; F-12 red shown by holding after attach; host gate green."
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "nit"
+title = "PHASE-06: FakeDaemon.close is unused"
+detail = "test/attach.test.ts:440,478; teardown is onTestFinished(server.close)."
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 67831a0; F-12 red shown by holding after attach; host gate green."
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "nit"
+title = "PHASE-06: attach() doc comment omits NOT_ATTACHED"
+detail = "src/attach.ts:272-276 describes the pre-SL-030 contract only."
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; worker session resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 67831a0; F-12 red shown by holding after attach; host gate green."
+
+[[finding]]
+id = "F-17"
+status = "verified"
+severity = "minor"
+title = "PHASE-07: profiles table's working directory is now a default"
+detail = "malebolge 7cc688a README.md:146-149 'Working directory' column is the creation default; --new --cwd overrides it per conversation, resolved in that profile's environment."
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 11af256."
+
+[[finding]]
+id = "F-18"
+status = "verified"
+severity = "minor"
+title = "PHASE-07: 'saved conversation lives at …session.sqlite' singular"
+detail = "README.md:190; the store holds all the profile's conversations."
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 11af256."
+
+[[finding]]
+id = "F-19"
+status = "verified"
+severity = "minor"
+title = "PHASE-07: 'the interactive conversation' singular"
+detail = "README.md:76 heading and :261."
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 11af256."
+
+[[finding]]
+id = "F-20"
+status = "verified"
+severity = "minor"
+title = "PHASE-07: README says SL-026 additions not implemented"
+detail = "README.md:265-268 predates SL-030 but is false (project-context.ts, cwd.ts, grep.ts are wired) and contradicts internals.md in the same commit."
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 11af256."
+
+[[finding]]
+id = "F-21"
+status = "verified"
+severity = "nit"
+title = "PHASE-07: internals 'root is bound, the line is acted on' over-broad"
+detail = "docs/internals.md:109-110; an invalid first line binds root and answers the parse error."
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 11af256."
+
+[[finding]]
+id = "F-22"
+status = "verified"
+severity = "nit"
+title = "PHASE-07: refusal list omits new other than true"
+detail = "docs/internals.md:91-93 vs src/protocol.ts:65-67."
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 11af256."
+
+[[finding]]
+id = "F-23"
+status = "verified"
+severity = "nit"
+title = "PHASE-07: skew hint quoted without brackets"
+detail = "README.md:132-134 vs src/attach.ts:125."
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; docs worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 11af256."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.

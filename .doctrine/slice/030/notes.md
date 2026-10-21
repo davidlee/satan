@@ -52,4 +52,14 @@ Gate deviations (environmental, not slice work):
 | PHASE-03 | 2aac756, b2c37cf | RV-056 F-1 nit, fixed | ≈ $0.22; facts: an absent pi section writes no `pi.system` entry (`[]`, not `[{}]`); `configure` emits `agent_changed`, never a `pi.system` patch |
 | PHASE-04 | 2f84bce, cf5e304 | RV-056 F-2 minor, F-3/F-5 nits fixed; F-4 tolerated | ≈ $0.45; first worker run killed by the 10-min tool cap, resumed from its session. VA-1: sec-3 read recorded in the worker hand-back; the failed-attach `ended` marker is sec-3 :105's "marks the connection closed", while :106's "no closing flag" is about the departure check |
 | PHASE-08 | 7f0086c, 4232538 | RV-056 F-6/F-7 nits fixed; F-8 recorded here | ≈ $0.25; no src change. V-15 tests green on arrival; red proven by deleting the `bind` destroyed branch (`src/daemon.ts:129-134`): both V-15 tests time out on a never-closed stream. EX-4: V-11 covers pre-ready departure, V-15 mid-bind, so the removed `:185-197` property is covered in both states |
-| PHASE-05 | 7d2f856 | review pending (killed by gateway 402) | ≈ $0.20; no src change. A = root (`vi.spyOn(test.root,"abort")` spies the instance the daemon calls). A's abort is witnessed by `tx.submissionByRequest` → `unanswered`/`aborted` (no aborted assistant entry exists: the barrier holds before any partial commits); `scanSubmissions` is not public in pi-durable 1.3.0 |
+| PHASE-05 | 7d2f856, 51bfff3 | RV-056 F-9/F-10 minors fixed, F-11 nit tolerated | ≈ $0.25; review first died on gateway 402, resumed after top-up. A is now a created conversation (root B runs while A is held); abort receipt via a recording `Conversations` seam passed to `serve`. Red: aborting root instead of the bound conversation hangs the receipt. A's abort is witnessed by `tx.submissionByRequest` → `unanswered`/`aborted`; `scanSubmissions` is not public in pi-durable 1.3.0 |
+| PHASE-06 | fe935ed, 67831a0 | RV-056 F-12 major, F-13 minor, F-14..16 nits fixed | ≈ $0.25. Deviation from EX-7's literal text (orchestrator): the daemon-close test waits for `[attached to conversation N]`, since a close before `attached` now rejects NOT_ATTACHED (EX-4). Chosen texts: bare close `[the daemon closed before attach completed]`; skew prints the raw error, then the hint |
+| PHASE-07 | 7cc688a, 11af256 | RV-056 F-17..F-20 minors, F-21..F-23 nits fixed | ≈ $0.25. Docs review swept stale singulars and a pre-SL-030 false claim (README said SL-026's layer was unimplemented). V-12: `git diff 889551d -- test/structure.test.ts src/room src/runner` empty |
+
+Run total ≈ $2.2 of pi; RV-056 concluded (23 findings: 21 fixed, F-4/F-11 tolerated).
+Host gate at 11af256: 1756 tests, 98.29 % lines.
+
+**Open — for audit.** malebolge's untracked `_pi/` (present at session start,
+2026-10-21 ~09:30) is gone and not found under `~/dev`. No pi transcript has a
+command that touches it (only `--ignore-pattern '_pi/**'`); cause unknown — not
+attributed. `.agents/` and the modified `AGENTS.md`/`flake.*` are intact.
