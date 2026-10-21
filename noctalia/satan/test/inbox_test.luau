@@ -33,6 +33,13 @@ check("unread tooltip", unread.tooltip, "SATAN inbox: 3 unread")
 
 check("empty hidden", inbox.view(0).visible, false)
 
+-- view colour: unread blinks to the accent on lit ticks; nothing else does
+check("unread lit colour", inbox.view(3, true).color, "primary")
+check("unread dark colour", inbox.view(3, false).color, "on_surface")
+check("unread unphased colour", inbox.view(3).color, "on_surface")
+check("empty lit colour", inbox.view(0, true).color, "on_surface")
+check("down lit colour", inbox.view(nil, true).color, "on_surface")
+
 local down = inbox.view(nil)
 check("down visible", down.visible, true)
 check("down glyph", down.glyph, "inbox-off")

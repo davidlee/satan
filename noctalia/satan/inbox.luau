@@ -1,16 +1,26 @@
 --!nonstrict
--- Bar widget: SATAN inbox unread count, asked of Emacs every few seconds.
+-- Bar widget: SATAN inbox unread count, asked of Emacs every few seconds;
+-- while unread, it blinks to the accent colour on a 2 s cycle.
 -- Click opens the inbox. `noctalia msg plugin davidlee/satan:inbox all refresh`
 -- forces a poll.
 local inbox = require("./lib/inbox.luau")
 
+-- One tick per blink phase; Emacs is polled every POLL_TICKS ticks.
+local TICK_MS = 1000
+local POLL_TICKS = 10
+
+local ticks = 0
+local count = nil -- last polled count; nil while unknown
 local inFlight = false
 
-local function render(view)
+local function render()
+  local view = inbox.view(count, ticks % 2 == 1)
   barWidget.setVisible(view.visible)
   barWidget.setGlyph(view.glyph)
   barWidget.setText(view.text)
   barWidget.setTooltip(view.tooltip)
+  barWidget.setGlyphColor(view.color)
+  barWidget.setColor(view.color)
 end
 
 local function refresh()
@@ -19,17 +29,23 @@ local function refresh()
   end
   inFlight = noctalia.runAsync(inbox.query, function(result)
     inFlight = false
-    render(inbox.view(inbox.count(result)))
+    count = inbox.count(result)
+    render()
   end)
   if not inFlight then
-    render(inbox.view(nil))
+    count = nil
+    render()
   end
 end
 
-noctalia.setUpdateInterval(10000)
+noctalia.setUpdateInterval(TICK_MS)
 
 function update()
-  refresh()
+  if ticks % POLL_TICKS == 0 then
+    refresh()
+  end
+  render()
+  ticks += 1
 end
 
 -- Run argv steps in sequence, each after the previous exits.

@@ -15,7 +15,7 @@ Shows the SATAN inbox's unread count (`satan-inbox-unread-count`), polled over
 
 | State | Bar |
 | --- | --- |
-| unread > 0 | `inbox` glyph + count |
+| unread > 0 | `inbox` glyph + count, blinking to `primary` on a 2 s cycle (1 s per phase) |
 | 0 unread | hidden |
 | Emacs unreachable / bad reply | `inbox-off` glyph, no count |
 

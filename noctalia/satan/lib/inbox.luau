@@ -38,13 +38,24 @@ function M.count(result)
   return digits and tonumber(digits)
 end
 
--- Bar presentation for a count. Hidden at zero; visible-but-dim when the
--- count is unknown, so a broken query is noticed instead of passing for zero.
-function M.view(n)
+-- Palette roles: an unread inbox blinks between them; anything else stays normal.
+M.accent = "primary"
+M.normal = "on_surface"
+
+-- Bar presentation for a count; `lit' is the blink phase. Hidden at zero;
+-- visible-but-dim when the count is unknown, so a broken query is noticed
+-- instead of passing for zero.
+function M.view(n, lit)
   if n == nil then
-    return { visible = true, glyph = "inbox-off", text = "", tooltip = "SATAN inbox: unavailable" }
+    return { visible = true, glyph = "inbox-off", text = "", tooltip = "SATAN inbox: unavailable", color = M.normal }
   end
-  return { visible = n > 0, glyph = "inbox", text = tostring(n), tooltip = `SATAN inbox: {n} unread` }
+  return {
+    visible = n > 0,
+    glyph = "inbox",
+    text = tostring(n),
+    tooltip = `SATAN inbox: {n} unread`,
+    color = if n > 0 and lit then M.accent else M.normal,
+  }
 end
 
 return M
