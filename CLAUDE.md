@@ -11,7 +11,7 @@ pi on deepseek is ~20× cheaper than you, and every route below returns a reduce
 
 One blocking call: `pi_agent(prompt, profile)` → `{state, final, result, transcript, status, artifacts, refusal, session}`.
 
-- `profile`: `read` (read-only view of the root; tools `read, grep, find, ls, bash`) is the only one the policy enables. No thinking: use it for recon.
+- `profile`: `read` (read-only view of the root; tools `read, grep, find, ls, bash`; `thinking: off`) is for recon. `research` is the same with `thinking: low`, for judgement; it is callable only once the operator policy's `profiles` lists it.
 - Trust `result` only when `final` is true. Otherwise read `state`, `causes`, and `transcript`. `refused` means nothing ran; `refusal.reason` says why.
 - `session`: pass back the returned id to continue the conversation.
 - `cwd` defaults to this repo; other roots must be in the policy. `tools` and `ceilings` can only narrow.
@@ -26,7 +26,7 @@ Operator setup, outside the repo (DEC-097: absent or malformed policy refuses ev
 
 **Judgement — governance applicability, competing readings, tradeoffs**
 
-No MCP profile carries a thinking level yet, so judgement stays on the shell route:
+Use `pi_agent(profile: research)` when the policy enables it. Otherwise, or for custom flags, use the shell route:
 
 ```bash
 export PI_BIN=jailed-pi                     # host only: bare `pi` holds no gateway key

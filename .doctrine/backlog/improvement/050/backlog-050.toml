@@ -5,10 +5,10 @@ id = 50
 slug = "pi-mcp-profiles-carry-a-thinking-level-so-pi-agent-can-replace-pi-research"
 title = "pi-mcp profiles carry a thinking level, so pi_agent can replace pi-research"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "done"
 created = "2026-10-20"
-updated = "2026-10-20"
+updated = "2026-10-21"
 tags = []
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
