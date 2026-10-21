@@ -50,27 +50,6 @@ Gate deviations (environmental, not slice work):
 | PHASE-01 | 71f1bed | clean | planner/worker/reviewer ≈ $0.15 total |
 | PHASE-02 | 48af103 | clean | ≈ $0.22 |
 | PHASE-03 | 2aac756, b2c37cf | RV-056 F-1 nit, fixed | ≈ $0.22; facts: an absent pi section writes no `pi.system` entry (`[]`, not `[{}]`); `configure` emits `agent_changed`, never a `pi.system` patch |
-
-## Harvest
-<!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-21 · ready (design re-locked rev 52; plan reviewed; phases materialised; none started) · 5e55f00
-
-### Produced
-- scope authored (173f682), re-aligned to the decisions at inquiry and review; research round + architecture supplement (`research/`, gitignored)
-- malebolge RFC-002 — topics/conversations policy deliberation (malebolge c082433)
-- minted: ISS-053 — SPEC-002 transport row missing for the interactive daemon socket
-- design.md locked (7 sections); amended by plan review, re-locked rev 52
-- decisions: DEC-104..DEC-109 (DEC-108, DEC-109 amended 2026-10-21); ASM-007
-- RV-051 — design review, 28 findings verified, concluded
-- plan.toml / plan.md — 8 phases (order 01,02,03,04,08,05,06,07); runtime sheets materialised
-- RV-052 — plan review, 57 findings verified, concluded; RV-054 — design-amendment pass, concluded (basis RV-052)
-
-### Learned
-- mem.fact.pi-durable.agent-defaults-and-ids — no default model; root({agent}) ignored on an existing root; ConversationId has no parser; configure merges per key; resume() is scheduler-wide
-- user direction: keep cwd an opaque string, no path semantics (DEC-107)
-- user direction: wire id narrowed by type predicate, never assertion (design sec-4, 2026-10-21)
-- notes § Plan review RV-052 — lint/tsconfig constraints, unix-socket close timing, negative-assertion controls
-
-### Open
-- inq-7 follow-through (reconcile): malebolge RFC-002 table + wire sketch; ISS-053 note; REQ-004/REQ-010 deferral cited; ADR-017 §3 ledger untouched
-- PHASE-04 VA-1: implementation-time read of sec-3 against the daemon.ts rewrite (the RV-051 probe, now a criterion)
+| PHASE-04 | 2f84bce, cf5e304 | RV-056 F-2 minor, F-3/F-5 nits fixed; F-4 tolerated | ≈ $0.45; first worker run killed by the 10-min tool cap, resumed from its session. VA-1: sec-3 read recorded in the worker hand-back; the failed-attach `ended` marker is sec-3 :105's "marks the connection closed", while :106's "no closing flag" is about the departure check |
+| PHASE-08 | 7f0086c, 4232538 | RV-056 F-6/F-7 nits fixed; F-8 recorded here | ≈ $0.25; no src change. V-15 tests green on arrival; red proven by deleting the `bind` destroyed branch (`src/daemon.ts:129-134`): both V-15 tests time out on a never-closed stream. EX-4: V-11 covers pre-ready departure, V-15 mid-bind, so the removed `:185-197` property is covered in both states |
+| PHASE-05 | 7d2f856 | review pending (killed by gateway 402) | ≈ $0.20; no src change. A = root (`vi.spyOn(test.root,"abort")` spies the instance the daemon calls). A's abort is witnessed by `tx.submissionByRequest` → `unanswered`/`aborted` (no aborted assistant entry exists: the barrier holds before any partial commits); `scanSubmissions` is not public in pi-durable 1.3.0 |

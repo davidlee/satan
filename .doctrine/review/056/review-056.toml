@@ -38,5 +38,173 @@ act = "verify"
 role = "raiser"
 note = "Fixed in malebolge b2c37cf: toMatchObject on the cwd entry; host gate green."
 
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "PHASE-04: bound connection's departure stopping its stream is unasserted"
+detail = "malebolge 2f84bce src/daemon.ts:269 close handler stops state.stream, but no test asserts stream.closed after a bound client leaves; deleting the handler ships a stream leak with all tests green. Fix: attach, take the recorded stream, close client, expect stream.closed {reason:'stopped'} (EX-3)."
+disposition = "fix-now"
+response = "Valid; the EX-3 assertion is missing. Worker session resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; the EX-3 assertion is missing. Worker session resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge cf5e304 (test-only); F-2 red shown by removing the close handler; host gate green."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = "PHASE-04: V-6 'binding unchanged' test cannot see a re-bind"
+detail = "test/daemon.test.ts:446-455 re-attaches to the already-bound root id, so a re-bind is indistinguishable. Fix: attach to a different (new) conversation id, assert the already-attached error, watched.streams unchanged, next input stays on root."
+disposition = "fix-now"
+response = "Valid; same conversation can't distinguish re-bind. Worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; same conversation can't distinguish re-bind. Worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge cf5e304 (test-only); F-2 red shown by removing the close handler; host gate green."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "nit"
+title = "PHASE-04: watched.next hoist machinery has no consumer"
+detail = "test/daemon.test.ts:38-48: watched.next's only caller was the deleted macrotask test."
+disposition = "tolerated"
+response = "PHASE-08's sheet revives watched.next() to await the stream released by its barrier; the machinery gains its consumer in the next phase."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "PHASE-08's sheet revives watched.next() to await the stream released by its barrier; the machinery gains its consumer in the next phase."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Tolerated: watched.next() now consumed by the F-2 test and PHASE-08."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "nit"
+title = "PHASE-04: V-1 tests inline the conversationIds() helper"
+detail = "test/daemon.test.ts:320-364 repeat the scanConversations read that conversationIds() (:196-203) wraps."
+disposition = "fix-now"
+response = "Valid DRY. Worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid DRY. Worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge cf5e304 (test-only); F-2 red shown by removing the close handler; host gate green."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "PHASE-08: watched.hold() orphans the previous gate"
+detail = "malebolge 7f0086c test/daemon.test.ts:56-58: a second hold abandons the first gate; the first watchEvents awaits forever and the test dies on timeout without a message. Fix: release the outgoing gate in hold()/one rearm()."
+disposition = "fix-now"
+response = "Valid latent hazard; cheap. Worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid latent hazard; cheap. Worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 4232538; host gate green."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "PHASE-08: departure receipt duplicated in depart and midBindDepart"
+detail = "test/daemon.test.ts:203-217 and :225-242 both arm once(serverSocket,'close'), close, await. Extract one helper."
+disposition = "fix-now"
+response = "Valid DRY. Worker resumed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid DRY. Worker resumed."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fixed in malebolge 4232538; host gate green."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "nit"
+title = "PHASE-08: red evidence and EX-4 two-state coverage unrecorded"
+detail = "Phase sheet Findings empty; red and EX-4 reconciliation (V-11 pre-ready, V-15 mid-bind) exist only in the worker hand-back."
+disposition = "fix-now"
+response = "Valid; recorded in slice notes.md (durable) rather than the disposable sheet."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Valid; recorded in slice notes.md (durable) rather than the disposable sheet."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Recorded in notes.md § Execution log."
+
 # Findings are append-only `[[finding]]` tables, added by `review raise`.
 # Empty here at creation — a fresh review is Active, awaiting the raiser.
