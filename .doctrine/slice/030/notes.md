@@ -63,3 +63,11 @@ Host gate at 11af256: 1756 tests, 98.29 % lines.
 2026-10-21 ~09:30) is gone and not found under `~/dev`. No pi transcript has a
 command that touches it (only `--ignore-pattern '_pi/**'`); cause unknown — not
 attributed. `.agents/` and the modified `AGENTS.md`/`flake.*` are intact.
+
+## Audit RV-057 (2026-10-21)
+
+Conformance audit, self-run. Two pi-research lanes (design conformance; Done/EX/VT test mapping), ≈ deepseek-flash, medium thinking; one jailed pi repair worker via `.capsule-runs/run-pi.sh` (label `audit-repair`, $0.07). 12 findings, all verified: 4 fix-now (malebolge `8fa162c`: passive-client test, created-conversation tool cwd test, V-1 refused shapes through the daemon, vacuous render test dropped, internals/README wording), 6 design-wrong → brief, 2 tolerated (F-10 cross-repo conformance blind; F-11 `_pi/` loss). Host gate at `8fa162c`: 1765 tests, 98.29 % lines.
+
+- The `_pi/` open item above is closed as RV-057 F-11: unrecoverable, unattributed, surfaced to the user.
+- Lesson: a design "replaced, not deleted" claim for a removed test needs the replacement to assert the same property — V-13 kept only half of `:174-183` (F-1).
+- Lesson: the pi lanes earn their keep on negative findings ("no test for X") when the prompt demands a positive control for each.

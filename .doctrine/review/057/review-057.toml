@@ -1,0 +1,387 @@
+id    = 57
+slug  = "reconciliation-review-of-sl-030"
+title = "reconciliation review of SL-030"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-030 against design.md (sec-1..7), DEC-104..109, and the slice and plan criteria, over malebolge 889551d..11af256 plus the audit repair 8fa162c. Evidence: two pi-research lanes (design conformance; Done/EX/VT test mapping), each claim re-checked on the host; hand conformance (cross-repo); host gates (malebolge fmt, lint, tsc, vitest 1765 at 98.29 %; doctrine check gate); live daemon start time; ADR-017 ledger; RV-056 tolerated items; ISS-055/056.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-030"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Done criterion 'a client that never sends gets no snapshot' has no test"
+detail = """
+Expected: slice-030.md Done list ("A client that never sends gets no snapshot (DEC-108)") and design sec-7 ("test/daemon.test.ts:174-183 ... replaced, not deleted ... by V-13") give the passive-connection rule a test.
+Observed: no test opens a connection, sends nothing, lets the session resolve and asserts nothing arrives. V-13 (malebolge test/daemon.test.ts:442-458) asserts silence only before readiness, for a client that has already written attach+input. The predecessor 889551d:test/daemon.test.ts:174-183 was deleted. A regression would be invisible to malebolge-attach (always sends attach); only passive probers/legacy clients see it.
+Evidence: pi-research lane B; confirmed on host by reading both tests and grep over test/.
+"""
+disposition = "fix-now"
+response = """
+Fixed in malebolge 8fa162c: test/daemon.test.ts "a connection that never sends is never bound and receives nothing (DEC-108)" — passive client, control connection receipts readiness, then received() == [], one watched stream, no conversation created. Red shown by a scratch root-bind-on-connect mutation (snapshot received), source restored.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in malebolge 8fa162c: test/daemon.test.ts "a connection that never sends is never bound and receives nothing (DEC-108)" — passive client, control connection receipts readiness, then received() == [], one watched stream, no conversation created. Red shown by a scratch root-bind-on-connect mutation (snapshot received), source restored.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Done criterion 'a created conversation runs its tools in its cwd' is tested for the prompt only"
+detail = """
+Expected: slice-030.md Done: "A new conversation created with a cwd runs its tools there and states that directory in its prompt."
+Observed: prompt half tested (test/daemon-sections.test.ts:95-104, V-9). Tool half tested for root only (test/session.test.ts:123-143) and for the env hook in isolation (test/daemon-env.test.ts:103-110). Design V-9 (design.md:246) narrows verification to the prompt, so the Done bullet is broader than its verification. Code risk is low (conversations.ts create stores the one cwd the env hook receives), but the criterion is unverified end to end.
+"""
+disposition = "fix-now"
+response = """
+Fixed in malebolge 8fa162c: test/conversations.test.ts "runs a created conversation's tools in its own cwd, not the daemon's default" — env hook asked with the created cwd and pwd output contains it, neither holds the default. Red shown by a scratch create() that ignores target.cwd. The design's V-9/V-8 rows stay as they are; the Done bullet is now verified as written.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in malebolge 8fa162c: test/conversations.test.ts "runs a created conversation's tools in its own cwd, not the daemon's default" — env hook asked with the created cwd and pwd output contains it, neither holds the default. Red shown by a scratch create() that ignores target.cwd. The design's V-9/V-8 rows stay as they are; the Done bullet is now verified as written.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "nit"
+title = "Design sec-2 says a bound connection answers 'already attached' to any attach line well-formed or not; non-JSON gets its own error"
+detail = """
+Expected (design.md:73, docs/internals.md:112): "any line of type attach after the connection is bound, well-formed or not (the bound check precedes shape validation)" -> already attached.
+Observed: laterLine (malebolge src/daemon.ts:197-219) parses fully; AttachRefused maps to already attached, but a line that is not JSON or not an object gets "line is not JSON" / "message must be an object". A non-JSON line has no type, so the design sentence cannot be honoured literally; the code is right, the design over-specifies.
+"""
+disposition = "design-wrong"
+response = """
+Code is right. docs/internals.md bullet corrected in malebolge 8fa162c. design.md sec-2 errors table row (:73) goes to the reconciliation brief: "any line that parses as an attach frame, valid or refused" replaces "well-formed or not (the bound check precedes shape validation)".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code is right. docs/internals.md bullet corrected in malebolge 8fa162c. design.md sec-2 errors table row (:73) goes to the reconciliation brief: "any line that parses as an attach frame, valid or refused" replaces "well-formed or not (the bound check precedes shape validation)".
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Design sec-3 says 'no closing flag is added'; the code's Connection.ended flag is required by the failed-attach rule"
+detail = """
+Expected (design.md:106): "destroyed is the only state the check reads; no closing flag is added."
+Observed: Connection.ended (src/daemon.ts:40-41), set by fail() (:67-74) and the drop branch (:226-229), read with socket.destroyed (:227). It is required by design.md:105 (failed attach drops queued lines, never acting on root): fail() only end()s the socket, so destroyed stays false until the peer closes; without ended a queued line would reach firstLine as an unbound first line. A reader trusting :106 could delete ended and reopen that hole. Design wrong; code right.
+"""
+disposition = "design-wrong"
+response = """
+Code is right; the flag is load-bearing for the failed-attach rule. Reconciliation brief: design.md sec-3 (:106) — replace "destroyed is the only state the check reads; no closing flag is added" with: the turn check reads destroyed or the connection's ended marker, which a failed attach sets (it only ends the socket, so destroyed lags until the peer closes).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code is right; the flag is load-bearing for the failed-attach rule. Reconciliation brief: design.md sec-3 (:106) — replace "destroyed is the only state the check reads; no closing flag is added" with: the turn check reads destroyed or the connection's ended marker, which a failed attach sets (it only ends the socket, so destroyed lags until the peer closes).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "V-1 'every refused shape errors, creates nothing and closes' is exercised through the daemon for one shape"
+detail = """
+Expected (design.md:238, V-1): every refused attach shape (sec-2) errors, creates nothing, and closes, observed by LineClient.closed().
+Observed: through the daemon only {conversation, new} (test/daemon.test.ts:460-474), plus unknown id and task-owned. cwd-without-new, new != true, bad ids, non-string cwd, unknown key are asserted at parse level only (test/protocol.test.ts), where creates-nothing/closes is not observable. Behaviour is uniform (one fail() path), so a coverage gap, not a suspected defect.
+"""
+disposition = "fix-now"
+response = """
+Fixed in malebolge 8fa162c: the V-1 daemon test is an it.each over nine refused shapes (conversation+new, cwd without new, new 1 / "true", conversation 0 / "3" / 1.5, non-string cwd, unknown key); each errors with attach:, closes, sends no snapshot, calls no model, creates nothing.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed in malebolge 8fa162c: the V-1 daemon test is an it.each over nine refused shapes (conversation+new, cwd without new, new 1 / "true", conversation 0 / "3" / 1.5, non-string cwd, unknown key); each errors with attach:, closes, sends no snapshot, calls no model, creates nothing.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "V-10 claims a refused flag combination 'exits 2 without connecting' is tested; sec-6 says attach-main is outside coverage"
+detail = """
+Expected: design.md:247 (V-10) "each refused one exits 2 without connecting"; plan PHASE-06 EX-2 likewise.
+Observed: tests assert attachTargetOf throws UsageError (test/attach.test.ts:43-58); the usage print + exit 2 in src/attach-main.ts:12-27 is unexercised, and "without connecting" holds by evaluation order (targetOf is evaluated before attach()). Design sec-6 (design.md:189) itself says attach-main runs at import and is outside coverage. Design internally inconsistent.
+"""
+disposition = "design-wrong"
+response = """
+Reconciliation brief: design.md V-10 (:247) — "each refused one is refused in-process by attachTargetOf before any connect (UsageError); attach-main's usage print and exit 2 are checked by read, as sec-6 states". Plan PHASE-06 EX-2 is immutable and not edited; its exit-2 half was met by the PHASE-06 VA read (attach-main evaluates targetOf before attach()).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Reconciliation brief: design.md V-10 (:247) — "each refused one is refused in-process by attachTargetOf before any connect (UsageError); attach-main's usage print and exit 2 are checked by read, as sec-6 states". Plan PHASE-06 EX-2 is immutable and not edited; its exit-2 half was met by the PHASE-06 VA read (attach-main evaluates targetOf before attach()).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "nit"
+title = "Client refuses --conversation with leading zeros; design and README say only 'not a positive integer'"
+detail = """
+Expected (design.md:193-195, README): refused locally when --conversation is not a positive integer.
+Observed: conversationOf (src/attach.ts:66-75) requires /^[1-9][0-9]*$/, so --conversation 007 is a usage error though 7 is valid. Stricter than documented; no protocol consequence (the frame carries a number).
+"""
+disposition = "design-wrong"
+response = """
+Kept the stricter client (a launcher argument is text; leading zeros are a likely typo). README reworded in malebolge 8fa162c. Reconciliation brief: design.md sec-6 refused list (:193-195) — "--conversation not a positive integer without leading zeros".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Kept the stricter client (a launcher argument is text; leading zeros are a likely typo). README reworded in malebolge 8fa162c. Reconciliation brief: design.md sec-6 refused list (:193-195) — "--conversation not a positive integer without leading zeros".
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "nit"
+title = "Two assertions are vacuous: render 'accepts the attached reply' and the abort test's assistants.every"
+detail = """
+Expected: each assertion would fail with its feature removed.
+Observed: test/render.test.ts:220-226 passes with attached removed (toPrintable only checks a string type, src/render.ts:26-28); the real evidence is :209-212 plus Handlers exhaustiveness. test/daemon.test.ts:848 assistants.every(... "aborted") is vacuously true on an empty array; the row stands on :841, :855-861.
+"""
+disposition = "fix-now"
+response = """
+render half fixed in malebolge 8fa162c (vacuous toPrintable "attached" test deleted; :209-212 and the Handlers exhaustiveness are the evidence). daemon.test.ts:848 is deliberately tolerant ("Any assistant entry A did commit", RV-056 F-10: pi may commit no partial), and :841, :849, :855-861 carry the row — left as is.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+render half fixed in malebolge 8fa162c (vacuous toPrintable "attached" test deleted; :209-212 and the Handlers exhaustiveness are the evidence). daemon.test.ts:848 is deliberately tolerant ("Any assistant entry A did commit", RV-056 F-10: pi may commit no partial), and :841, :849, :855-861 carry the row — left as is.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "nit"
+title = "Design says module headers carry the five sec-1 invariants; they are spread across headers"
+detail = """
+Expected (design.md:232): "Module headers carry the five invariants of sec-1".
+Observed: invariant 1 in src/daemon.ts:1-5 and src/protocol.ts:9-15; 2-5 in src/conversations.ts:1-10; no single header holds all five. True collectively; the design sentence over-claims under a per-module reading.
+"""
+disposition = "design-wrong"
+response = """
+Reconciliation brief: design.md sec-7 (:232) — "Module headers carry the five invariants of sec-1" becomes "Each module header carries the sec-1 invariants it owns (daemon/protocol: 1; conversations: 2-5)".
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Reconciliation brief: design.md sec-7 (:232) — "Module headers carry the five invariants of sec-1" becomes "Each module header carries the sec-1 invariants it owns (daemon/protocol: 1; conversations: 2-5)".
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "slice conformance cannot see this cross-repo slice: 13 design-target selectors read as undelivered"
+detail = """
+Expected: doctrine slice conformance 30 reports the delivered paths.
+Observed: undelivered 13, conformant 0 — the registry reads satan's git; every design-target selector is in ~/dev/malebolge. By hand: git diff --stat 889551d..11af256 touches exactly the 13 design-target paths plus test files (scope-relevant test/**); no undeclared src path; src/room, src/runner, test/structure.test.ts untouched. Same limitation as RV-050 F-2.
+"""
+disposition = "tolerated"
+response = """
+The conformance and verify-vt verbs read one repo; this slice's code is all in malebolge. Conformance done by hand (detail) and clean: every design-target selector delivered, no undeclared src path. Same tolerance as RV-050 F-2; a cross-repo registry is doctrine tooling, not slice work.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+The conformance and verify-vt verbs read one repo; this slice's code is all in malebolge. Conformance done by hand (detail) and clean: every design-target selector delivered, no undeclared src path. Same tolerance as RV-050 F-2; a cross-repo registry is doctrine tooling, not slice work.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = "malebolge's untracked _pi/ disappeared during the capsule run; cause unknown"
+detail = """
+Expected: pre-existing untracked files in the code tree survive a slice run (worker contract: do not touch AGENTS.md, flake.*, .agents/, _pi/).
+Observed (notes.md "Open — for audit"): _pi/ present at session start 2026-10-21 ~09:30, gone after; not found under ~/dev. No pi transcript has a command touching it (only --ignore-pattern '_pi/**'). AGENTS.md, flake.*, .agents/ intact. Untracked, so git cannot restore it.
+"""
+disposition = "tolerated"
+response = """
+Unrecoverable (untracked) and unattributed: no captured pi command touches it, and the jail contract forbade it. No slice artefact or gate depends on it (the gate's _pi ignore pattern is now moot; host eslint . passes without it). Surfaced to the user at audit hand-off for their judgement; no further action from the slice.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Unrecoverable (untracked) and unattributed: no captured pi command touches it, and the jail contract forbade it. No slice artefact or gate depends on it (the gate's _pi ignore pattern is now moot; host eslint . passes without it). Surfaced to the user at audit hand-off for their judgement; no further action from the slice.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "Design sec-7 governance follow-through (RFC-002 sketch, ISS-053 note) and ISS-055 status not yet written"
+detail = """
+Expected (design.md:266-271): at reconcile, malebolge RFC-002's "where the assumption lives" table and wire sketch reflect the shipped attach frame; ISS-053 notes the interactive socket now carries a creating verb; ADR-017 §3 ledger untouched.
+Observed: ADR-017 ledger has no SL-030 row (confirmed, aligned). RFC-002 and ISS-053 edits pending. ISS-055 (version skew) proposes a handshake; PHASE-06 shipped the attach-specific restart hint (src/attach.ts:125, test/attach.test.ts:191-221), which covers the observed case but not future protocol changes — ISS-055 does not record that.
+"""
+disposition = "design-wrong"
+response = """
+Scheduled reconcile writes, not a design error in substance. Reconciliation brief: malebolge RFC-002 table + wire sketch to the shipped attach frame; ISS-053 note on the creating verb. ISS-055 updated now with the PHASE-06 partial fix (handshake option stands). ADR-017 §3 ledger confirmed untouched.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Scheduled reconcile writes, not a design error in substance. Reconciliation brief: malebolge RFC-002 table + wire sketch to the shipped attach frame; ISS-053 note on the creating verb. ISS-055 updated now with the PHASE-06 partial fix (handshake option stands). ADR-017 §3 ledger confirmed untouched.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

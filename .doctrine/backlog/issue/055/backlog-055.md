@@ -21,3 +21,11 @@ A unit restart fixed it.
   malebolge-room.service".
 - Process: restart the unit as part of landing any phase that changes
   `src/protocol.ts` (cheaper, easy to forget).
+
+## Partly addressed (SL-030 PHASE-06, malebolge fe935ed)
+
+`malebolge-attach` now recognises the old daemon's `unknown message type
+"attach"` error and prints a restart hint (`src/attach.ts` `SKEW_HINT`;
+`test/attach.test.ts` version-skew test). That covers this skew only: a later
+protocol change needs its own string match, so the handshake option stands.
+(RV-057 F-12.)
