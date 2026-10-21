@@ -71,3 +71,19 @@ Conformance audit, self-run. Two pi-research lanes (design conformance; Done/EX/
 - The `_pi/` open item above is closed as RV-057 F-11: unrecoverable, unattributed, surfaced to the user.
 - Lesson: a design "replaced, not deleted" claim for a removed test needs the replacement to assert the same property — V-13 kept only half of `:174-183` (F-1).
 - Lesson: the pi lanes earn their keep on negative findings ("no test for X") when the prompt demands a positive control for each.
+
+## Harvest
+<!-- single-copy: updated in place each harvest; ids only, never restated content -->
+fresh-as-of: 2026-10-21 · close · 009d697
+
+### Produced
+- PHASE-01..08 — conversation threaded through malebolge's daemon, protocol, attach and cwd seams (malebolge 71f1bed..11af256); audit repairs 8fa162c; docs 54b0393
+- no backlog minted: follow-up work is already captured below
+
+### Learned
+- mem.pattern.doctrine.pi-tiered-capsule-execution — run shape, outcome and RV-057 audit lessons (body repaired: the include line had not expanded)
+
+### Open
+- ISS-053 — SPEC-002 Transports lacks the malebolge client-socket row
+- ISS-055 — older daemon rejects a newer client with an opaque protocol error
+- malebolge RFC-002 — conversation organisation policy (topics, index, titles), deliberately undecided here
