@@ -388,7 +388,7 @@ shellcheck clean on both scripts.
     append; F8, timeouts SKIP rather than FAIL. Candidates for the
     probe-per-guarantee follow-up.
 
-## PHASE-10 execution (2026-10-23, in progress)
+## PHASE-10 execution (2026-10-23)
 
 satan `47f06e0` (step 2), `578d509` (step 3), `7b2970f` (step 4 profiles),
 `eaa15d6` (step 5). Steps 2-3 written by a Sonnet subagent (host nix);
@@ -448,10 +448,12 @@ committed and split by the orchestrator. The step-2 commit builds on its own
   - Re-run `codex exec` with the printed snippet's exact values
     (`command = ~/.local/state/quotient/bin/quotient`, cwd, timeout 360):
     completed, final true. EX-6 met.
+- **VH-1** given by the operator, 2026-10-23 ("confirmed": the step 6 smoke
+  results above, policy written via `install -D -m 0444`).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-23 · PHASE-10 smoke done · Q 6c31180 (v0.1.0)
+fresh-as-of: 2026-10-23 · PHASE-10 complete · Q 6c31180 (v0.1.0)
 
 ### Produced
 
@@ -498,10 +500,11 @@ From execution (PHASE-01..05):
 
 ### Open
 
-- Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
+- Uncommitted: CLAUDE.md (operator's staged edit). The operator's flake.nix
+  `typescript` line landed in `47f06e0` (step 2), by operator say-so.
 - License MIT by operator decision 2026-10-22 (Q 88da980).
-- PHASE-09 complete (Q ac7f729..c56a2a6, tag v0.1.0).
-- PHASE-10 steps 2-6 done; awaiting operator VH-1 (smoke confirmation), then PHASE-11.
+- PHASE-09 complete (Q ac7f729..c56a2a6); tag v0.1.0 now at Q 6c31180.
+- PHASE-10 complete (VH-1 given). Next: `/phase-plan` PHASE-11.
 - PHASE-08 choices to confirm at audit: `quotient help` exits 1 on an
   unreadable help layer (the design's table lists 0/2); a start-up-refused
   server's instructions and tool description name the failure; help/setup.md
@@ -510,7 +513,9 @@ From execution (PHASE-01..05):
   once this session; rerun green.
 - PHASE-10: write calls must not be rooted at, or above, the server's launch
   dir (EX-5 step 8).
-- Operator gates: PHASE-10
-  (policy write, smoke confirmation), PHASE-11 VH-1, PHASE-12 (push, publish:
-  separate go-aheads).
+- Audit: DEC-118 deviation (`help clients` no longer realpaths; wrapper
+  `QUOTIENT_LAUNCHER`) — reconcile into the design/DEC. Probe weaknesses F8/F9
+  (PHASE-09) — candidate backlog item.
+- Operator gates: PHASE-11 VH-1 (reissue policy without the scratch root),
+  PHASE-12 (push, publish: separate go-aheads).
 - No open QUE or ASM.
