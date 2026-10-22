@@ -840,6 +840,13 @@
           lib.optionalAttrs isLinux jailPkgs
           // {
             quotient = inputs.quotient.packages.${system}.default;
+            # The input's write-denial probe, run from its store source (it
+            # resolves its own src/cli.ts relative to the script).
+            quotient-hostile-audit = pkgs.writeShellApplication {
+              name = "quotient-hostile-audit";
+              runtimeInputs = [pkgs.nodejs_22];
+              text = ''exec ${inputs.quotient}/scripts/hostile-audit "$@"'';
+            };
             # The devshell's tool set as one closure, for out-of-tree consumers
             # that need the same tools without the devshell (the microvm
             # capsule's `toolsPackage`), so the VM and the devshell can't drift.

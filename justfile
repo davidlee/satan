@@ -73,6 +73,51 @@ pi-mcp-forms forms=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "pi-mc
     nix build -o {{forms}}/read .#pi-mcp-read
     nix build -o {{forms}}/write .#pi-mcp-write
 
+# Build the quotient forms and bin to fixed, GC-rooted links. The operator
+# policy names `<state>/forms/<capability>/bin/quotient-<capability>`, and
+# `<state>/bin/quotient` is the stable server path: a rebuild is picked up
+# without editing either, and a garbage collection cannot delete them.
+quotient-forms state=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "quotient"):
+    mkdir -p {{state}}/forms {{state}}/bin
+    nix build -o {{state}}/forms/read .#quotient-read
+    nix build -o {{state}}/forms/write .#quotient-write
+    nix build -o {{state}}/pkg .#quotient
+    ln -sfn ../pkg/bin/quotient {{state}}/bin/quotient
+
+# Quotient's write-denial probe against both built forms. Calls a model through
+# the LLM gateway, so it is not part of `check`. Exit 77 = prerequisite missing.
+quotient-hostile-audit state=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "quotient"): (quotient-forms state)
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # The forms run under the gateway (profile specDev, network) and their
+    # wrapper refuses to launch without both.
+    gateway_run_dir=/run/llm-gateway
+    gateway_key="$HOME/.config/llm-gateway/keys/pi"
+    if [ ! -d "$gateway_run_dir" ]; then
+      echo "quotient-hostile-audit: the LLM gateway is not running (no $gateway_run_dir); just system-switch, or systemctl status llm-gateway" >&2
+      exit 77
+    fi
+    if [ ! -r "$gateway_key" ] || [ ! -s "$gateway_key" ]; then
+      echo "quotient-hostile-audit: no gateway key at $gateway_key; llm-gateway issue pi --models <a,b> --budget <usd> --out \"$gateway_key\"" >&2
+      exit 77
+    fi
+    audit=$(nix build --no-link --print-out-paths .#quotient-hostile-audit)/bin/quotient-hostile-audit
+    base={{state}}/hostile-audit
+    mkdir -p "$base"
+    status=0
+    for capability in read write; do
+      dir=$(mktemp -d "$base/$capability-XXXXXX")
+      mkdir "$dir/root" "$dir/session-home" "$dir/run"
+      echo "quotient-hostile-audit: $capability evidence under $dir"
+      # The persisted jail home is the form's one writable host path beyond
+      # the call's root and session directory.
+      "$audit" --form {{state}}/forms/$capability/bin/quotient-$capability \
+        --capability "$capability" --model llm-gateway/deepseek-flash \
+        --exposure "$HOME/.local/share/jail.nix/home/agent" \
+        "$dir/root" "$dir/session-home" "$dir/run" || status=1
+    done
+    exit "$status"
+
 _require-test-dbs:
     #!/usr/bin/env bash
     set -euo pipefail
