@@ -86,13 +86,15 @@ probe, if one is wanted:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · design (reviewing, rev 24, RV-058 open) · bb9dc77 + uncommitted
+fresh-as-of: 2026-10-22 · ready (design locked rev 39; plan, 12 phases; none started) · d203626
 
 ### Produced
 
-SL-031 (scope, research, notes); DEC-110 through DEC-120, with amendments (incl. 2026-10-22b); IDE-016;
-IMP-051 § Operator decisions; design run `dr-01a160a3…`, sec-1 to sec-8;
-`design.md` materialised.
+SL-031 (scope, research, notes, plan.toml/plan.md, phase sheets PHASE-01..12);
+DEC-110 through DEC-120, with amendments (incl. 2026-10-22b); IDE-016;
+IMP-051 § Operator decisions; design run `dr-01a160a3…` locked; RV-058
+concluded, all 15 findings verified; memory
+`mem.pattern.review.codex-exec-hostile-reviewer`.
 
 ### Learned
 
@@ -101,14 +103,17 @@ IMP-051 § Operator decisions; design run `dr-01a160a3…`, sec-1 to sec-8;
   start-up.
 - Node refuses type stripping under `node_modules`.
 - satan's forms depend on the private `inputs.agents` flake.
+- Nothing type-checks `pi/` today (RV-058 F-2): expect `tsc --noEmit` errors
+  in PHASE-01.
 
-All of these are in `research/research.md` and the DECs.
+The first four are in `research/research.md` and the DECs; the last is in the
+plan.
 
 ### Open
 
-- Uncommitted: IMP-051 body; `.doctrine/slice/031/**`; DEC-110 through DEC-120;
-  IDE-016; RV-058; the design-run state. CLAUDE.md is a separate operator edit.
-- Review: RV-058 concluded; design accepted by the operator 2026-10-22.
-- Plan: 12 phases (plan.toml), sheets materialised, slice `ready`. Forms test goes to `test/flake/forms.test.ts`. RV-058 F-8 is transcribed to PHASE-07 EX-4/VT-2, and the reviewer verified the transcription.
+- Uncommitted: only CLAUDE.md, the operator's edit, not SL-031's.
 - Next: `/phase-plan` PHASE-01, then `/execute`.
+- Operator gates: PHASE-01 VH-1 (secret scan before any push), PHASE-10
+  (policy write, smoke confirmation), PHASE-11 VH-1, PHASE-12 (push, publish:
+  separate go-aheads).
 - No open QUE or ASM.

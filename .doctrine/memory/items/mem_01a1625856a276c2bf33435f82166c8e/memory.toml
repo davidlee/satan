@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1625856a276c2bf33435f82166c8e"
+memory_key = "mem.pattern.review.codex-exec-hostile-reviewer"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Hostile design review via codex exec, verify rounds via resume"
+summary = "External GPT design review without the codex MCP: codex exec -m gpt-6-sol -s read-only, then resume the same session for verify rounds"
+created = "2026-10-22"
+updated = "2026-10-22"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["review", "codex"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "9e905fdbdaed83e0775dd63cd7489c1686d9c587"
+ref_name = "refs/heads/main"
+checkout_state_id = "44a96022601e3b24189a495ed5e60a6c08418a21d798b8f24ac4fb7ecac488bf"
+base_commit = "d203626dc4028de20beb775aa80774223ec03517"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "review"
+ref = "RV-058"
+
