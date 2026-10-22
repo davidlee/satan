@@ -150,9 +150,34 @@ probe, if one is wanted:
   but doctrine attributes through satan's git history, which cannot see Q.
   Every Q-side VT will read this way; the keyword check is the evidence.
 
+## PHASE-02 execution (2026-10-22)
+
+- `src/cli.ts` (shebang; the only import-time side effect is its last line)
+  implements the sec-2 table. Bare argv serves; `serve` is not a verb
+  (DEC-111: "bare serves MCP"), so `quotient serve` exits 2. `help` is a stub
+  over the nine sec-2 section names until PHASE-08.
+- `src/root.ts`: `packageRoot` = parent of the module dir (pure URL math);
+  `packageVersion()` reads package.json per call, so no I/O at import.
+  Tested from src and from a tsc-built temp dist with a copied package.json.
+- serverInfo `{ quotient, packageVersion() }`; `SERVER_VERSION` gone.
+  `pi-mcp:` → `quotient:` (16 sites); now pinned by the unparsable-line test
+  (`/^quotient: unparsable/m`).
+- Reducer: guard deleted; usage and its three stderr prefixes say
+  `quotient reduce` (design names only the usage; prefix follows it).
+  reduce.test.ts and test-rig `serverCommand` drive `src/cli.ts`; main.ts
+  deleted. README line 26 retargeted to `src/cli.ts`.
+- 262 tests (256 + 2 root + 4 cli); tsc clean. Hand checks: TTY line under
+  `script -qec`, none on a pipe; built `dist/cli.js --version` → 0.1.0 and
+  answers initialize. The built server logs that `dist/server/profiles/` is
+  missing: `DEFAULT_PROFILES_DIR` is module-relative until PHASE-05.
+- Review (pi `f728c1b6…`): stdin stream error rejects `serve` before the
+  EOF shutdown runs (pre-existing, as in main.ts) → carried to PHASE-06.
+  Dismissed: version read on initialize (package.json always ships);
+  hostile-audit stale (EX-7); help stub output untested (PHASE-08).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-01 complete; Q b6d856c) · 7aedf30
+fresh-as-of: 2026-10-22 · started (PHASE-02 complete) · 7aedf30
 
 ### Produced
 
@@ -178,7 +203,9 @@ plan.
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-01 complete (Q `b6d856c`). Next: `/phase-plan` PHASE-02.
+- PHASE-02 complete. Next: `/phase-plan` PHASE-03.
+- PHASE-06: handle a stdin stream error through the same shutdown path as
+  EOF (PHASE-02 review).
 - PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
 - Operator gates: PHASE-10
   (policy write, smoke confirmation), PHASE-11 VH-1, PHASE-12 (push, publish:
