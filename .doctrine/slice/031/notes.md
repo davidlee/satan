@@ -481,6 +481,20 @@ committed and split by the orchestrator. The step-2 commit builds on its own
   `readPolicy` ok.
 - Orphaned on host after this phase: `~/.config/pi-mcp/policy.json`; the old
   form links `~/.local/state/pi-mcp/forms` go after EX-5.
+- **VH-1 / EX-6:** the operator installed `policy.final.json` with
+  `install -D -m 0444`. The scratch root is gone, and `~/.config/emacs` was
+  added. A `write` call with `cwd` set to `~/scratch/quotient-smoke` refused
+  `root-not-allowlisted`.
+- **EX-5** (after the restart, `.mcp.json` without `pi-agent`):
+  - The `read` call through `mcp__quotient__pi_agent` returned completed,
+    final true, run `run-20261022T234358494Z-2-f2a899b1227d`.
+  - The `codex exec` call used the printed snippet's values (command
+    `~/.local/state/quotient/bin/quotient`, cwd satan, `tool_timeout_sec`
+    360, each passed as `-c`). It returned completed, final true, run
+    `run-20261022T234425936Z-2-fcf878006a46`.
+- **After EX-5:** deleted `~/.local/state/pi-mcp/forms` (`read`, `write`
+  links) and, at the operator's request, `~/.config/pi-mcp/policy.json`.
+  `~/.local/state/pi-mcp/{runs,sessions}` are kept as historical evidence.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
