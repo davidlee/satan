@@ -678,8 +678,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1792706149,
-        "narHash": "sha256-F4A4eKGjJlnhxnp6qUFgh0mO2pJBVz44V8CVPZtYVK4=",
+        "lastModified": 1792710322,
+        "narHash": "sha256-YJVAlKlUw3GdMv4XbmDs/7VkNK+BvdtV/sNEhQHY0b8=",
         "path": "/home/david/dev/quotient",
         "type": "path"
       },

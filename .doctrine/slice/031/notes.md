@@ -413,11 +413,45 @@ committed and split by the orchestrator. The step-2 commit builds on its own
   Policy draft validated by quotient's `readPolicy`: the old roots plus the
   scratch root, profiles `{read: read, research: read, write: write}`, the
   quotient form links, exposure as above, the old maxima.
-- Step 5: `.mcp.json` `quotient` entry, no env. Restart pending.
+- Step 5: `.mcp.json` `quotient` entry, no env. Session restarted; the
+  server connected and served the profile table in its instructions.
+- **Step 6 smoke (VA-1), 2026-10-23**, all via `mcp__quotient__pi_agent`
+  unless stated; run dirs under `~/.local/state/quotient/runs/`:
+  - `read`: completed, final true (`run-20261022T224258939Z-2-…`).
+  - `research`: completed, final true (`run-20261022T224301814Z-3-…`).
+  - `write` at `~/scratch/quotient-smoke`: completed, final true;
+    `SMOKE.txt` present; spawn record `form_kind: confined`
+    (`run-20261022T224304769Z-4-…`).
+  - `write` at satan: refused `view-overlaps-protected` (the root contains
+    `.quotient/profiles`).
+  - `just quotient-hostile-audit`: PASS on both forms; each delegate ran the
+    real append loop and got `No such file or directory` (evidence under
+    `~/.local/state/quotient/hostile-audit/{read-wVxOwl,write-x6PYUL}`).
+  - `codex exec` (`-c` overrides, `tool_timeout_sec = 360`): completed,
+    final true, **but with the stable `~/.local/state/quotient/bin/quotient`
+    as `command`, not the printed one.**
+- **Finding: `quotient help clients` prints a fragile command.** The realpath
+  of `process.argv[1]` (DEC-118) under the nix wrapper is
+  `/nix/store/…-quotient-0.1.0/lib/node_modules/@davidlee/quotient/dist/cli.js`:
+  it bypasses the node-carrying wrapper (its shebang is `/usr/bin/env node`)
+  and dies with the store path at the next rebuild + GC. EX-6's "with the
+  printed snippet" was not met as written.
+  - **Fixed pre-publish (operator: "fix now"), Q `6c31180`:** `runningBin`
+    keeps symlinks (`path.resolve`, no realpath); the nix wrapper exports
+    `QUOTIENT_LAUNCHER` (its own `$0`, absolutised); `resolveLocations`
+    carries it as `launcher` (normalised; a relative or empty value is
+    ignored, never refuses — a hint, not a location); the snippets prefer it.
+    Documented in `quotient-policy-1.md`; 315 tests; pack-check PASS.
+    Deviation from DEC-118's "realpath'd": recorded here for reconcile.
+  - Local tag `v0.1.0` moved `c56a2a6` → `6c31180` (never pushed). satan
+    relocked (`nix flake update quotient`), `just quotient-forms` rebuilt.
+  - Re-run `codex exec` with the printed snippet's exact values
+    (`command = ~/.local/state/quotient/bin/quotient`, cwd, timeout 360):
+    completed, final true. EX-6 met.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-23 · PHASE-09 complete · Q c56a2a6 (v0.1.0)
+fresh-as-of: 2026-10-23 · PHASE-10 smoke done · Q 6c31180 (v0.1.0)
 
 ### Produced
 
@@ -467,7 +501,7 @@ From execution (PHASE-01..05):
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
 - License MIT by operator decision 2026-10-22 (Q 88da980).
 - PHASE-09 complete (Q ac7f729..c56a2a6, tag v0.1.0).
-- PHASE-10 steps 2-5 committed; next: operator policy file, restart, step 6 smoke.
+- PHASE-10 steps 2-6 done; awaiting operator VH-1 (smoke confirmation), then PHASE-11.
 - PHASE-08 choices to confirm at audit: `quotient help` exits 1 on an
   unreadable help layer (the design's table lists 0/2); a start-up-refused
   server's instructions and tool description name the failure; help/setup.md
