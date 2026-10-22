@@ -51,4 +51,4 @@ Superseded by the malebolge patch runner (SL-023); these predate it and describe
 - [refactor/extraction-policy](refactor/extraction-policy.md) — guiding policy + standing candidates for moving modules out of `.emacs.d/`
 
 ## pi delegation
-- [pi-mcp](../pi/mcp/README.md) — operator doc: launch env, policy schema, publishing, refusals
+- quotient — the external pi delegation server (`.mcp.json`, profiles in `.quotient/profiles/`); operator docs via `~/.local/state/quotient/bin/quotient help`. Setup and use: `CLAUDE.md`

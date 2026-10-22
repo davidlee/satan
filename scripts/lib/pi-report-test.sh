@@ -32,18 +32,32 @@ cat >"$STREAM" <<'JSONL'
 {"type":"agent_settled"}
 JSONL
 
-echo "1. reduces a pi event stream"
-out=$(pi_report "$STREAM" "[test]" 2>&1)
-contains "$out" "----- [test] report -----" "prints a tagged report header"
-contains "$out" "→ bash(wc -l big.txt)" "renders the tool call"
-contains "$out" "## Result" "renders the result section"
-missing "$out" "SYSTEM ECHO" "drops context echo"
-contains "$out" "transcript=" "status line names the transcript artefact"
+echo "1. reduces a pi event stream through the default reducer (quotient reduce)"
+if [ -x "$HOME/.local/state/quotient/bin/quotient" ]; then
+  out=$(pi_report "$STREAM" "[test]" 2>&1)
+  contains "$out" "----- [test] report -----" "prints a tagged report header"
+  contains "$out" "→ bash(wc -l big.txt)" "renders the tool call"
+  contains "$out" "## Result" "renders the result section"
+  missing "$out" "SYSTEM ECHO" "drops context echo"
+  contains "$out" "transcript=" "status line names the transcript artefact"
+else
+  echo "  skip — no quotient bin on this host (just quotient-forms)"
+fi
 
 echo "2. degrades to the raw tail when the reducer is unavailable"
-out=$(PI_REDUCE=/nonexistent/pi-run-reduce pi_report "$STREAM" "[test]" 2>&1)
+out=$(PI_REDUCE="/nonexistent/quotient reduce" pi_report "$STREAM" "[test]" 2>&1)
 contains "$out" "tail (no reducer" "says why it fell back"
 contains "$out" '{"type":"tool_execution_start"' "still shows the raw stream"
+
+echo "3. runs PI_REDUCE as a command, passing its words through"
+STUB=$(mktemp)
+trap 'rm -f "$STREAM" "$STUB"' EXIT
+# shellcheck disable=SC2016 # $1 is for the stub to expand
+printf '#!/usr/bin/env bash\necho "stub-called first=$1"\n' >"$STUB"
+chmod +x "$STUB"
+out=$(PI_REDUCE="$STUB reduce" pi_report "$STREAM" "[test]" 2>&1)
+contains "$out" "stub-called first=reduce" "the stub receives 'reduce' as its first argument"
+missing "$out" "tail (no reducer" "does not fall back"
 
 echo
 echo "pi-report: $PASS passed, $FAIL failed"

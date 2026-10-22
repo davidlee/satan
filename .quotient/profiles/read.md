@@ -27,7 +27,7 @@ profile that needed an MCP tool would require the form to re-enable
 
 ## Document format
 
-The grammar is specified in the header comment of `pi/mcp/profiles.ts`. The
+The grammar is specified by `quotient help profiles`. The
 server parses this header and nothing else, once at start-up, into a snapshot
 held for its lifetime — editing this file takes effect only when the server
 restarts, which is a deployment act.

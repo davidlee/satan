@@ -12,7 +12,7 @@ export SATAN_DB_HOST := PGHOST
 # create the DATABASE. Must match the suites' defconsts.
 test_dbs := "satan_memory_test trace_test patch_live_test"
 
-check: lint test pi-suites
+check: lint test forms-suite
 
 gate: check
 
@@ -22,7 +22,6 @@ check-jails: malebolge-unbound
     nix build --no-link -L .#checks.x86_64-linux.harness-jail-profile
     nix build --no-link -L .#checks.x86_64-linux.runner-socket-unjailed
     nix build --no-link -L .#checks.x86_64-linux.malebolge-jail-profile
-    nix build --no-link -L .#checks.x86_64-linux.pi-mcp-forms
     nix build --no-link -L .#checks.x86_64-linux.quotient-forms
 
 # RV-035 F-1: the jailed-malebolge an impure devshell builds binds no
@@ -60,18 +59,11 @@ test: _require-test-dbs
     for t in noctalia/*/test/*_test.luau; do luau "$t"; done
     (cd satan/harness && python3 -m unittest -q test_gptel_harness)
 
-# The offline pi suites (TS, run by node's type stripping — no build step). No
-# test database and no network, so `check` covers them without the DB gate.
-pi-suites:
-    node --test pi/reduce/*.test.ts pi/mcp/*.test.ts test/flake/*.test.ts
-
-# Build the pi-mcp wrapper forms to fixed, GC-rooted links. The operator policy
-# names `<forms>/<capability>/bin/pi-mcp-<capability>`, so a rebuild is picked up
-# without editing it and a garbage collection cannot delete a form in use.
-pi-mcp-forms forms=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "pi-mcp/forms"):
-    mkdir -p {{forms}}
-    nix build -o {{forms}}/read .#pi-mcp-read
-    nix build -o {{forms}}/write .#pi-mcp-write
+# The offline flake-form suites (TS, run by node's type stripping — no build
+# step). No test database and no network, so `check` covers them without the DB
+# gate.
+forms-suite:
+    node --test test/flake/*.test.ts
 
 # Build the quotient forms and bin to fixed, GC-rooted links. The operator
 # policy names `<state>/forms/<capability>/bin/quotient-<capability>`, and

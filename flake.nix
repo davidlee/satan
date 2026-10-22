@@ -15,7 +15,7 @@
     emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
-    # The extracted successor of the in-tree pi-mcp server (its own repo).
+    # The per-call pi delegation server (its own repo).
     quotient = {
       url = "path:/home/david/dev/quotient";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -308,10 +308,9 @@
         # home and the run directory are never bound. `~/.pi` is the
         # generator's persisted-home bind; a second bind for it would be a
         # second story about the same path.
-        # One launcher family per server: `prefix` names the forms and their
-        # baseline, `sessionVar` is the run-time variable the form exports,
-        # `dieWithParent` adds bwrap's `--die-with-parent` so the jailed child
-        # cannot outlive its server. `formFamilies` instantiates it per server.
+        # `prefix` names the forms and their baseline, `sessionVar` is the
+        # run-time variable the form exports, and `--die-with-parent` (below)
+        # keeps the jailed child from outliving its server.
         #
         # `jail` is the one generator call a family's forms share; `extraOptions`
         # is a form's own residue over it. `baseline` is the same call with
@@ -322,11 +321,9 @@
         # per-call policy declares as `child_binds` (design sec-3): what the
         # form adds beyond it is the call's root and session directory, nothing
         # else. Never a package: it exists to be compared against.
-        mkFormFamily = {
-          prefix,
-          sessionVar,
-          dieWithParent,
-        }: let
+        quotientFormFamily = let
+          prefix = "quotient";
+          sessionVar = "QUOTIENT_ACTIVE_SESSION_DIR";
           jail = name: extraOptions:
             jailLib.makeJailedPi {
               inherit name extraOptions;
@@ -348,17 +345,17 @@
             );
           mkForm = capability: let
             name = "${prefix}-${capability}";
-            formJail = jail name ([
-                (rootBindOption capability)
-                # The active session directory, and only it: rw in both
-                # capabilities, because pi writes the conversation there even
-                # under a read root (design sec-3).
-                (rawArg ("--bind \"$" + sessionVar + "\" \"$" + sessionVar + "\""))
-                (rawArg ''--tmpfs /tmp'')
-                # After the generator's own --chdir "$HOME": the later wins.
-                (rawArg ''--chdir "$PWD"'')
-              ]
-              ++ lib.optional dieWithParent (rawArg "--die-with-parent"));
+            formJail = jail name [
+              (rootBindOption capability)
+              # The active session directory, and only it: rw in both
+              # capabilities, because pi writes the conversation there even
+              # under a read root (design sec-3).
+              (rawArg ("--bind \"$" + sessionVar + "\" \"$" + sessionVar + "\""))
+              (rawArg ''--tmpfs /tmp'')
+              # After the generator's own --chdir "$HOME": the later wins.
+              (rawArg ''--chdir "$PWD"'')
+              (rawArg "--die-with-parent")
+            ];
           in
             pkgs.writeShellScriptBin name ''
               set -euo pipefail
@@ -390,19 +387,7 @@
             "${prefix}-write" = mkForm "write";
           };
         };
-        formFamilies = {
-          pi-mcp = mkFormFamily {
-            prefix = "pi-mcp";
-            sessionVar = "PI_MCP_ACTIVE_SESSION_DIR";
-            dieWithParent = false;
-          };
-          quotient = mkFormFamily {
-            prefix = "quotient";
-            sessionVar = "QUOTIENT_ACTIVE_SESSION_DIR";
-            dieWithParent = true;
-          };
-        };
-        piMcpForms = lib.foldl' (acc: f: acc // f.forms) {} (lib.attrValues formFamilies);
+        quotientForms = quotientFormFamily.forms;
 
         jailPkgs = lib.optionalAttrs isLinux ({
             jailed-pi = jailLib.makeJailedPi {
@@ -486,19 +471,18 @@
             };
             bubblewrap = pkgs.bubblewrap;
           }
-          # The per-call forms are `packages` (nix build .#pi-mcp-read) and are
+          # The per-call forms are `packages` (nix build .#quotient-read) and are
           # swept by runnerSocketUnjailed like every jail.
-          // piMcpForms);
+          // quotientForms);
 
         # Every probe string of the launcher checks, and no other binding:
         # the I1 closure sweep excludes this one by name. Written literally,
         # never derived from the jails' option lists, so dropping a forward
         # there fails a check instead of moving it.
-        formProbes = {
-          envPrefix,
-          dieWithParent,
-        }: {
-          inherit envPrefix dieWithParent;
+        formProbes = let
+          envPrefix = "QUOTIENT";
+        in {
+          inherit envPrefix;
           # Unquoted, as the check reads launchers with quotes stripped.
           session = "--bind $" + "${envPrefix}_ACTIVE_SESSION_DIR $" + "${envPrefix}_ACTIVE_SESSION_DIR";
           # The session home (all sessions, not just this call's), the run
@@ -587,22 +571,6 @@
             sshConfigPresent = [
               "ProxyCommand ${pkgs.socat}/bin/socat - UNIX-CONNECT:/run/capsule-room/%h/ssh.sock"
             ];
-          };
-          # SL-029's per-call forms (design sec-3, "Per-call mode"). The
-          # expected residue over a family's baseline — the same generator call
-          # with no extra options — is the root and the active session
-          # directory, nothing else. The generator's own binds are derived from
-          # the baseline, never listed: a family asserts what it adds, and
-          # carries no copy of jail.nix's or the generator's bind set.
-          # `envPrefix` is written here as a literal, never read from the form
-          # under test.
-          pi-mcp = formProbes {
-            envPrefix = "PI_MCP";
-            dieWithParent = false;
-          };
-          quotient = formProbes {
-            envPrefix = "QUOTIENT";
-            dieWithParent = true;
           };
         };
 
@@ -715,11 +683,11 @@
         # active session directory, so a bind the form adds or drops fails
         # here; what the generator binds is its own concern. Also the
         # positional contract and the run-time session path. Text only
-        # (DEC-046): nothing is launched. One check per family in
-        # `formFamilies`, named `<prefix>-forms`.
-        mkFormCheck = prefix: let
-          p = jailProbes.${prefix};
-          family = formFamilies.${prefix};
+        # (DEC-046): nothing is launched. The check is `quotient-forms`.
+        quotientFormsCheck = let
+          prefix = "quotient";
+          p = formProbes;
+          family = quotientFormFamily;
           checkName = "${prefix}-forms";
           sessionVar = "${p.envPrefix}_ACTIVE_SESSION_DIR";
           # One capability's half: pkg is the form package, whose exec line
@@ -771,11 +739,9 @@
             # (f) G7: the child dies with its parent. jail.nix also emits
             # `--die-with-parent`, so the family's own raw arg is a harmless
             # duplicate that states the guarantee on the form itself.
-            ${lib.optionalString p.dieWithParent ''
-              if ! grep -Fq -- ${lib.escapeShellArg "--die-with-parent"} "$launcher"; then
-                fail "(f) ${capability} launcher must contain '--die-with-parent'"
-              fi
-            ''}
+            if ! grep -Fq -- ${lib.escapeShellArg "--die-with-parent"} "$launcher"; then
+              fail "(f) ${capability} launcher must contain '--die-with-parent'"
+            fi
             # Quotes stripped once, so a raw arg and a generator-rendered bind
             # are read the same way.
             sed 's/"//g' "$launcher" > "$TMPDIR/$cap-unquoted"
@@ -863,8 +829,7 @@
         checks = lib.optionalAttrs isLinux {
           harness-jail-profile = harnessJailProfile;
           malebolge-jail-profile = malebolgeJailProfile;
-          pi-mcp-forms = mkFormCheck "pi-mcp";
-          quotient-forms = mkFormCheck "quotient";
+          quotient-forms = quotientFormsCheck;
           runner-socket-unjailed = runnerSocketUnjailed;
         };
 

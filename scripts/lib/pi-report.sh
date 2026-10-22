@@ -13,12 +13,15 @@
 #
 # Env:
 #   PI_ALERTS              space-separated regexes to warn about, e.g. 'FAIL|\.doctrine/'
-#   PI_REDUCE              reducer executable (default: <repo>/bin/pi-run-reduce)
+#   PI_REDUCE              reducer command, split on whitespace; its first word must
+#                          be executable, so paths with spaces are unsupported
+#                          (default: $HOME/.local/state/quotient/bin/quotient reduce)
 #   PI_REPORT_TAIL_LINES   fallback tail length (default 40)
 #
-# The reducer is TS run by node. Where either is unavailable (a jail without
-# node, a checkout without the agent tooling) this degrades to the old tail
-# rather than reporting nothing: a noisy report beats a silent one.
+# The reducer is quotient's `reduce` subcommand, a self-contained launcher (no
+# node needed on PATH). Where it is unavailable (a jail without the quotient
+# bin, a host that never ran `just quotient-forms`) this degrades to the old
+# tail rather than reporting nothing: a noisy report beats a silent one.
 #
 # Only pi `--mode json` / `--mode rpc` streams reduce. The claude arm emits a
 # different event schema, so spawn-confined.sh calls this on the pi arm only.
@@ -26,9 +29,10 @@
 
 pi_report() {
   local stream=$1 tag=${2:-[spawn]}
-  local reduce=${PI_REDUCE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)/bin/pi-run-reduce}
+  local -a reduce
+  read -ra reduce <<<"${PI_REDUCE:-$HOME/.local/state/quotient/bin/quotient reduce}"
 
-  if [ -x "$reduce" ] && command -v node >/dev/null 2>&1; then
+  if [ -x "${reduce[0]:-}" ]; then
     # Bash 3.2 (the macOS arm) errors on expanding an empty array under `set -u`,
     # hence the ${alerts[@]+...} form.
     local alerts=() pattern
@@ -36,10 +40,10 @@ pi_report() {
     echo "----- $tag report -----"
     # The reducer exits non-zero on a failed or incomplete run; that verdict is
     # the caller's to interpret, not a reason to abort the spawn script.
-    "$reduce" -v --out "$(mktemp -d)" ${alerts[@]+"${alerts[@]}"} "$stream" || true
+    "${reduce[@]}" -v --out "$(mktemp -d)" ${alerts[@]+"${alerts[@]}"} "$stream" || true
     return 0
   fi
 
-  echo "----- $tag tail (no reducer: $reduce or node unavailable) -----"
+  echo "----- $tag tail (no reducer: ${reduce[0]:-PI_REDUCE} not executable) -----"
   tail -"${PI_REPORT_TAIL_LINES:-40}" "$stream"
 }
