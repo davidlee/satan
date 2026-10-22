@@ -84,9 +84,75 @@ probe, if one is wanted:
 - the forms test's destination path, which the design leaves to the plan
   ("a satan-owned path").
 
+## PHASE-01 execution (2026-10-22)
+
+- **filter-repo** (`nix run nixpkgs#git-filter-repo`, 2.47.0) on a `--no-local`
+  scratch clone of `7aedf30`, two passes: keep the five paths with the three
+  renames and `--prune-empty always`, then drop
+  `src/server/forms.test.ts` (`--invert-paths`). 21 → 20 commits (the pruned
+  one touched only forms.test.ts). Pulled into the operator's empty
+  `~/dev/quotient` (origin preset; not pushed).
+- **History review / secret scan (EX-2, for VH-1).** `git log --stat`: 20
+  commits, `c0bd4e3` (pi-run-reduce) … `9e87257` (IMP-049). gitleaks 8.30.1
+  over all 20 commits: no leaks. Pattern grep (key/secret/token/password/
+  private-key/`sk-`/`ghp_`/`AKIA`): only the fixture literal
+  `LLM_GATEWAY_KEY: 'gateway-token'`. No `/home/david` in history. Authors:
+  `David Lee <dav@davlee.com>` (8), `Jailed agent <jailed-agent@localhost>`
+  (12) — public on push.
+- **Layout as moved.** `pi/mcp` moved whole, so `src/server/` also holds
+  `README.md`, `profiles/*.md`, `readme.test.ts` and `main.ts`; they keep
+  today's behaviour until PHASE-02 (main.ts), PHASE-05 (profiles → examples)
+  and PHASE-07 (readme.test.ts). `bin/pi-mcp`, `bin/pi-run-reduce` are
+  deleted in the bootstrap commit, history only (EX-1).
+  `scripts/hostile-audit` still execs `$here/bin/pi-mcp`: not runnable until
+  PHASE-09 (EX-7).
+- **Decision: two tsconfigs.** Design sec-5 asks for a tsconfig that excludes
+  tests from the emit *and* EX-5 asks `tsc --noEmit` to check the tests.
+  `tsconfig.json` checks all of `src`; `tsconfig.build.json` extends it and
+  excludes `**/*.test.ts` and `test-rig.ts`; `build`/`prepack` are
+  `tsc -p tsconfig.build.json` (design said `tsc`). Build checked: dist holds
+  the 13 modules, no tests, `.ts` specifiers rewritten.
+- **devDeps.** `typescript ^5.7` resolves 5.9.3; `erasableSyntaxOnly` needs
+  ≥ 5.8, so the floor is nominal. `@types/node ^22` per design (not the
+  operator's satan-local `^26`). satan's devshell tsc is 7.0.2; quotient uses
+  its lockfile's 5.9.3 via `npx`.
+- **tsc --noEmit: 18 errors, all type-only, fixed without behaviour change**
+  (triaged by pi, session `be62a541…`; no latent bug found):
+  - `profiles.ts` (6): `ReturnType<typeof readdirSync>` picks the last
+    overload (`Dirent<Buffer>`); runtime is `Dirent<string>` → annotate
+    `Dirent<string>[]`.
+  - `server.ts:434` (1): `RunOutcome.abort` typed `Termination` but only
+    ever an `AbortCause` → narrowed `abort` and `terminate(cause)` to
+    `AbortCause`.
+  - `spawn.ts:455` (1): `waitFor(done: Promise<unknown>)`, value discarded.
+  - `spawn.ts:475` (2): `exit` assigned in a promise callback, so TS narrows
+    it to `null` after `await` (TS#9998) → the exit audit reads through
+    `outcome()`, which builds the identical values.
+  - tests (8): `!` / one cast in gate, result, session tests; an
+    `async` wrapper for a `context.after` returning `Promise<void[]>`.
+- **Tests: 256, not 262.** The difference is `forms.test.ts`'s 6 tests, which
+  stay in satan (EX-6). Path-bound tests retargeted, test code only: a shared
+  `serverCommand` in `test-rig.ts` (`node src/server/main.ts`, what
+  `bin/pi-mcp` exec'd) replaces three `bin/pi-mcp` spawns; childview's
+  profiles path → `src/server/profiles`. PHASE-02 retargets `serverCommand` to
+  `cli.ts serve`.
+- **Node (EX-8):** satan devshell node v24.21.0.
+- **VA-1** (2026-10-22), on a file copy of the tracked + untracked tree (Q has
+  no commit yet, so no clone): `npm ci --no-audit --no-fund` → 3 packages;
+  `npx tsc --noEmit` clean; `npm test` 256/256. Plain `npm ci` hung on the
+  registry audit call; `--no-audit` sidesteps it (pack-check, PHASE-09,
+  should pass it too). Repeated from a real `git clone` of Q at `b6d856c`
+  (the bootstrap commit): same result, 256/256.
+- **VH-1** given by the operator, 2026-10-22 (history review and scan accepted).
+- **Per-phase review** skipped: 31-line type-only diff plus test-path
+  retargets, every change itemised above; no tripwire.
+- **verify-vt:** PHASE-01 VT-1/VT-2 report UNATTRIBUTABLE — keywords present,
+  but doctrine attributes through satan's git history, which cannot see Q.
+  Every Q-side VT will read this way; the keyword check is the evidence.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · ready (design locked rev 39; plan, 12 phases; none started) · d203626
+fresh-as-of: 2026-10-22 · started (PHASE-01 complete; Q b6d856c) · 7aedf30
 
 ### Produced
 
@@ -111,9 +177,10 @@ plan.
 
 ### Open
 
-- Uncommitted: only CLAUDE.md, the operator's edit, not SL-031's.
-- Next: `/phase-plan` PHASE-01, then `/execute`.
-- Operator gates: PHASE-01 VH-1 (secret scan before any push), PHASE-10
+- Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
+- PHASE-01 complete (Q `b6d856c`). Next: `/phase-plan` PHASE-02.
+- PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
+- Operator gates: PHASE-10
   (policy write, smoke confirmation), PHASE-11 VH-1, PHASE-12 (push, publish:
   separate go-aheads).
 - No open QUE or ASM.
