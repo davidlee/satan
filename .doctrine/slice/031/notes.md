@@ -496,6 +496,41 @@ committed and split by the orchestrator. The step-2 commit builds on its own
   links) and, at the operator's request, `~/.config/pi-mcp/policy.json`.
   `~/.local/state/pi-mcp/{runs,sessions}` are kept as historical evidence.
 
+## PHASE-12 execution (2026-10-23)
+
+- **Push (EX-1).** The operator pushed `main` ("i pushed"). The tag was
+  missing from the remote, so the agent pushed `v0.1.0` under the same
+  go-ahead. `ls-remote` shows `refs/heads/main` = `6c31180` and
+  `refs/tags/v0.1.0` = `1f87d70`, which peels to `6c31180`.
+  - Before the push: the GitHub repo already existed, public and empty.
+  - A key-pattern scan over `git log -p v0.1.0` found nothing; gitleaks is
+    not installed on the host.
+- **Pin (EX-2).** `quotient.url` is now `github:davidlee/quotient/v0.1.0`,
+  relocked with `nix flake update quotient`.
+  - Lock: `path:/home/david/dev/quotient` (narHash `YJVAlK…`) became
+    `github` rev `6c311801…` (narHash `gLMuv4…`).
+  - Same commit; the narHash differs because a `path:` input copies the
+    working directory.
+  - After `just quotient-forms`, the bin moved from
+    `/nix/store/k22yj3…-quotient-0.1.0` to `/nix/store/jgr1my…-quotient-0.1.0`.
+    `quotient --version` reads `0.1.0`.
+  - The live call ran from malebolge through `codex exec`, so a fresh server
+    on the new bin served it. It returned completed, final true, run
+    `run-20261022T235114159Z-2-bf61fef3aec9`, with `profile_source`
+    satan's `.quotient/profiles/read.md`, root malebolge and `form_kind`
+    confined.
+    - One earlier attempt printed `state=undefined`. Codex's model
+      (gpt-6-luna) failed to extract the fields; the tool call itself had
+      completed. A rerun printing the raw JSON showed final true.
+  - `just check` exit 0; `just check-jails` exit 0.
+- **Rollback (EX-3).** Set `quotient.url` back to `"path:/home/david/dev/quotient"`
+  and run `nix flake update quotient`. Then `just quotient-forms`, and repeat
+  one live `read` call (through `codex exec`, or after a session restart).
+- **malebolge Codex config** (operator request, outside SL-031's plan): malebolge
+  `1d3b7bb` adds `[mcp_servers.quotient]` to `.codex/config.toml`, with
+  `cwd` = satan so writes rooted in malebolge are not
+  `view-overlaps-protected`. Verified with a `read` call rooted at malebolge.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-23 · PHASE-10 complete · Q 6c31180 (v0.1.0)

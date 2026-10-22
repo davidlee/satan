@@ -17,7 +17,7 @@
     zig-overlay.url = "github:mitchellh/zig-overlay";
     # The per-call pi delegation server (its own repo).
     quotient = {
-      url = "path:/home/david/dev/quotient";
+      url = "github:davidlee/quotient/v0.1.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
