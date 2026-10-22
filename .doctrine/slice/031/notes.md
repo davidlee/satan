@@ -301,9 +301,57 @@ Q `505824a` (argv split + unconfined branch), `539cee5` (signal shutdown),
   is rejected: an unconfined `-e builtin:mcp` cannot be reached past step 5,
   and the new test pins this.
 
+## PHASE-07 execution (2026-10-22)
+
+Q `dae39fb` (contracts, docs, drift tests) and `5a032ed` (review fixes). 290
+tests, tsc clean.
+
+- `docs/contract/pi-agent-result-1.md` has four tables the drift test parses:
+  Fields (path, type, nullable, meaning; `x[]` names an array element),
+  States, Terminations (termination → state) and Refusals.
+  `quotient-policy-1.md` holds the content of the old `src/server/README.md`,
+  plus resolution, admission order, protected stores and the unconfined
+  section. `form-1.md` gives an evidence table in which only the sampled G6
+  write case is verified by quotient. `docs/design.md` ends with
+  "extracted from github.com/davidlee/satan". Also new: `README.md` and
+  `examples/policy.json`.
+- `src/drift.test.ts`: each check is a pure function from text to
+  violations, and each negative control runs the same function on a doctored
+  copy. There are four controls: wrong type, nullable doctored to no, wrong
+  termination row, and a Fields row missing a cell.
+- **Fixture source (interpretation).** A "rig-produced result per state" is
+  built by the real reducer with `resultFor`, `failedResult` and
+  `refusedResult` (`buildResult` in `test-rig.ts`, moved from
+  `result.test.ts`). These are the builders every server answer goes through;
+  no fixture runs a subprocess per state.
+- **Scope widened, stricter.** The doctrine-id scan covers `docs/`,
+  `examples/` and `README.md`. Its id set is the design's plus IMP, ISS,
+  SPEC, RFC, REV, CHR, IDE and RSK. A generic `[A-Z]+-\d{3}` pattern would
+  false-positive on `SHA-256`. `help/` joins in PHASE-08.
+- The README is written for the v0.1.0 end state: the nix install arrives in
+  PHASE-09 and `quotient help clients`/`profiles` in PHASE-08.
+- Corrected along the way:
+  - `REACHABILITY` prose said stdin EOF produces `cancelled`; it is `eof`
+    (`incomplete`).
+  - The example profiles cited "design sec-3" and `src/server/profiles.ts`
+    (not shipped). They now cite `quotient-policy-1.md` and
+    `quotient help profiles`.
+  - pi's upstream is `github.com/earendil-works/pi`.
+- The drift test caught the policy contract writing `$XDG_CONFIG_HOME`
+  rather than the variable name: fixed.
+- VA-1 (pi `read` cold read): all nine design topics, the origin pointer, and
+  the README's install, setup and links are present. The accepted gap was
+  undefined terms (pi, MCP, form, capability); the README now defines them.
+- pi review of the drift tests:
+  - accepted: F5 and latent F4 (malformed Fields rows are now violations);
+    F3 (each fixture is checked against its labelled state);
+  - partly accepted: F6 (the id set is extended);
+  - rejected: F1 (`childrenOf` keeps `alerts`, and `alerts[]` is checked
+    on the element walk); F7 (a spurious env-var match fails loudly).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-06 complete; Q 5459b29)
+fresh-as-of: 2026-10-22 · started (PHASE-07 complete; Q 5a032ed)
 
 ### Produced
 
@@ -347,7 +395,12 @@ From execution (PHASE-01..05):
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-06 complete. Next: `/phase-plan` PHASE-07.
+- PHASE-07 complete. Next: `/phase-plan` PHASE-08.
+- PHASE-08: add `help/` to the drift test's shipped-text scan, and make the
+  `profiles` help section carry the profile grammar (the example profiles
+  point to it).
+- Q has no `LICENSE` and package.json has no `license` field. This is the
+  operator's choice, needed before PHASE-12 publish.
 - PHASE-10: write calls must not be rooted at, or above, the server's launch
   dir (EX-5 step 8).
 - PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
