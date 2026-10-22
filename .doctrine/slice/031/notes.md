@@ -222,9 +222,53 @@ probe, if one is wanted:
   `unconfined`, `exposure`; its json block is v1.
 - 270 tests; tsc clean. No pi review this phase (handover point).
 
+## PHASE-05 execution (2026-10-22)
+
+Q `ac5f641` (feat), `c978df5` (F4 fix), `a8d383b` (wire audit test). 279 tests, tsc clean.
+
+- `profiles.ts`: `loadProfiles(layers)` reads each layer once (`readLayer`,
+  `readDocument`). An absent layer is empty. An unresolved entry, such as a
+  dangling symlink, an unreadable layer, or an invalid document in any layer
+  refuses. The highest layer wins per name. The digest is
+  `name\0source\0bytes\0` over the winners in name order. `Profile.path` →
+  `source`; `Snapshot.dir` → `layers`. The marker is `<!-- quotient-profile`,
+  with no alias.
+- Step 3: `resolveProfile(snapshot, name, policy.profiles)`. The order is
+  grammar → unknown → own-key map (`Object.hasOwn`) →
+  `profile-capability-mismatch`. `FILESYSTEMS`/`isFilesystem` in
+  `profiles.ts` replace policy's `FORM_FIELDS` as both vocabularies.
+- Step 8: `ChildViewInput.exposure`, `profileLayers` and `helpLayers`; the role
+  is `exposure`. Store kinds `profile-layer` and `help-layer` are
+  never-writable. **D2 (user agreed "Tighten")**: a never-writable store
+  refuses any read-write overlap, including a member *inside* it. The design
+  text says "is or contains".
+- `DEFAULT_PROFILES_DIR` and `ServeOptions.profilesDir` are removed. The docs
+  moved to `examples/profiles/`, with a usage paragraph.
+- `spawn` record gains `profile_source`.
+- Test rig: `launchEnv` sets `XDG_CONFIG_HOME` to the tree's own. `workspace`
+  and `newRig` seed `RIG_PROFILES` in the XDG layer. `newRig` has its own
+  `launchDir` (≠ root) and `serveRig`. The rig's `openServer` defaults to an
+  empty temp launch dir. Hermeticity was verified by planting a broken
+  profile in the ambient XDG layer and in the checkout's `.quotient/`; both
+  stayed green.
+- pi review: PHASE-04 policy found no violations, only the `FORM_FIELDS`
+  coupling, now fixed. PHASE-05 security review:
+  - F4 accepted and fixed: a dangling-symlink layer loaded as empty.
+  - F1 rejected: layer stores have no `except`, so `isExempt` cannot apply.
+  - F2 rejected: a symlinked layer canonicalises to its target and a
+    containing root refuses; symlinked documents are skipped by
+    `Dirent.isFile()`.
+  - F3 rejected: an absent layer canonicalises under the launch realpath, and
+    a test pins it.
+- Cutover consequence (EX-5): a write call cannot be rooted at the server's
+  launch dir or above it. satan's policy and smoke steps (PHASE-10) must root
+  write calls elsewhere.
+- Help snapshot loading is not this phase. Only the help layer *paths* are
+  protected.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-04 complete; Q f6c8f8f)
+fresh-as-of: 2026-10-22 · started (PHASE-05 complete; Q a8d383b)
 
 ### Produced
 
@@ -247,7 +291,7 @@ concluded, all 15 findings verified; memory
 The first four are in `research/research.md` and the DECs; the last is in the
 plan.
 
-From execution (PHASE-01..04):
+From execution (PHASE-01..05):
 
 - pi_agent policy maxima: 6 requests per call; cached tokens count toward
   `tokens` (now 320k), so a reused session is short-lived. Ask for batched
@@ -260,11 +304,17 @@ From execution (PHASE-01..04):
   attributes through satan's git); the keyword check is the evidence.
 - PHASE-04 was completed without first entering `in_progress`, so it has no
   conformance boundary recorded (warning at completion).
+- The pi `read` profile has no `node` on PATH: ask for review by reading, not
+  running.
+- pi reviews overclaim: 3 of the 4 PHASE-05 findings fell to a code read.
+  Adjudicate each finding against the code before acting on it.
 
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-04 complete. Next: `/phase-plan` PHASE-05 (see handover.md).
+- PHASE-05 complete. Next: `/phase-plan` PHASE-06.
+- PHASE-10: write calls must not be rooted at, or above, the server's launch
+  dir (EX-5 step 8).
 - PHASE-06: remove the interim unconfined refusal (server.ts) and
   `LaunchForm` (spawn.ts) when the spawn branches on the form kind.
 - PHASE-06: handle a stdin stream error through the same shutdown path as
