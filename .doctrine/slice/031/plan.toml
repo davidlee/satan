@@ -1,0 +1,287 @@
+# Implementation plan for SL-031 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# Q = /home/david/dev/quotient. Quotient-side VT rows name absolute paths there.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-031"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# ---------------------------------------------------------------- quotient ----
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Bootstrap the quotient repo"
+objective = "Create ~/dev/quotient with filtered history and the design sec-1 layout. Moved code behaves as in satan; the package type-checks and its suites run green from the new paths."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (SL-031 design run, rev 39); satan just pi-suites green at the starting commit." },
+  { id = "EN-2", text = "~/dev/quotient does not exist, or is empty." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "git filter-repo keeps only pi/mcp, pi/reduce, bin/pi-mcp, bin/pi-run-reduce and bin/pi-mcp-hostile-audit, renamed to src/server, src/reduce and scripts/hostile-audit, with --prune-empty (design sec-1 History). bin/pi-mcp and bin/pi-run-reduce survive only in history; cli.ts replaces them in PHASE-02." },
+  { id = "EX-2", text = "The rewritten history has been reviewed with git log --stat and secret-scanned, and the scan's result is recorded in notes. No remote is pushed." },
+  { id = "EX-3", text = "package.json is as in design sec-5: name @davidlee/quotient, version 0.1.0, bin quotient -> dist/cli.js, files, scripts, engines node >=22, devDependencies typescript ^5.7 and @types/node ^22, no runtime dependencies. package-lock.json is committed." },
+  { id = "EX-4", text = "tsconfig.json is as in design sec-5: nodenext, strict, rewriteRelativeImportExtensions, erasableSyntaxOnly, verbatimModuleSyntax, rootDir src, outDir dist; tests and test-rig.ts excluded from the emit." },
+  { id = "EX-5", text = "npx tsc --noEmit is clean over src, tests included. The moved suites pass with npm test, the 262 tests that just pi-suites ran in satan; any change in the count is explained in notes." },
+  { id = "EX-6", text = "Moved forms.test.ts is not in quotient: it stays in satan (design sec-1, What does not move)." },
+  { id = "EX-7", text = "scripts/hostile-audit is moved but not yet runnable: it still execs bin/pi-mcp. Notes record this; PHASE-09 generalises it." },
+  { id = "EX-8", text = "Until PHASE-09 adds quotient's devShell, the suites run on satan's devshell node (>= 22.6, type stripping). Notes record the node version used." },
+]
+verification = [
+  { id = "VT-1", expects = "package.json carries the design sec-5 fields, including version and @types/node", test_file = "/home/david/dev/quotient/package.json", keywords = ["@davidlee/quotient", "\"version\": \"0.1.0\"", "@types/node", "dist/cli.js"], waived = false },
+  { id = "VT-2", expects = "tsconfig carries the design sec-5 compiler options", test_file = "/home/david/dev/quotient/tsconfig.json", keywords = ["rewriteRelativeImportExtensions", "erasableSyntaxOnly", "verbatimModuleSyntax", "nodenext"], waived = false },
+  { id = "VA-1", text = "Agent runs npm ci, npx tsc --noEmit and npm test in Q from a clean checkout, and records the outputs and the test count in notes." },
+  { id = "VH-1", text = "Operator reviews the secret-scan result and the git log --stat summary before anything leaves the host." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Entry point: cli.ts, root.ts, reducer main"
+objective = "One bin, quotient, dispatching serve | reduce | help | --version (DEC-111, design sec-2). packageRoot comes from import.meta.url. The reducer becomes a callable main(argv)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "src/cli.ts has a node shebang, is the only module with import-time side effects, and implements the design sec-2 dispatch table, exit codes included. help is wired to a stub section list until PHASE-08." },
+  { id = "EX-2", text = "src/root.ts computes packageRoot once from import.meta.url; package.json and help/ resolve from it, both from src/ and from dist/." },
+  { id = "EX-3", text = "src/reduce/cli.ts exports main(argv): number. The import.meta.main self-execution guard is deleted, and the usage text says quotient reduce. reduce.ts has no package exports entry." },
+  { id = "EX-4", text = "serverInfo is { name: quotient, version: <package.json> }; the tool name stays pi_agent. The stderr prefix pi-mcp: becomes quotient: everywhere. src/server/main.ts is removed." },
+  { id = "EX-5", text = "With stdin a TTY, serve prints one stderr line saying it speaks MCP on stdio." },
+]
+verification = [
+  { id = "VT-1", expects = "cli dispatch: reduce exits 0/1/2 as before; an unknown verb exits 2; --version prints the package version", test_file = "/home/david/dev/quotient/src/cli.test.ts", keywords = ["reduce", "--version", "unknown"], waived = false },
+  { id = "VT-2", expects = "packageRoot resolves package.json from the source tree and from a tsc-built dist tree", test_file = "/home/david/dev/quotient/src/root.test.ts", keywords = ["packageRoot", "dist"], waived = false },
+  { id = "VT-3", expects = "serverInfo name is quotient, version from package.json", test_file = "/home/david/dev/quotient/src/server/server.test.ts", keywords = ["serverInfo", "quotient"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Configuration resolution and env rename"
+objective = "Add src/config.ts: one pure resolver over env and launch dir that owns every location (DEC-112, design sec-3 Resolution). Rename PI_MCP_* to QUOTIENT_*. Route request-boundary refusals and admission through the same resolved run dir."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "resolveLocations(env, launchDir) returns the design sec-3 Locations type, and is pure: no I/O, no process.env read." },
+  { id = "EX-2", text = "Lookup per the design sec-3 table. The policy is never resolved from the launch dir. Only an unset QUOTIENT_* var falls through; a set but empty or relative value is policy-unavailable. A relative XDG_* is ignored. No usable HOME or XDG gives policy-unavailable." },
+  { id = "EX-3", text = "QUOTIENT_POLICY, QUOTIENT_RUN_DIR and QUOTIENT_SESSION_HOME replace the PI_MCP_* vars. The child-env scrub prefix is QUOTIENT_. No PI_MCP_ string remains in src/." },
+  { id = "EX-4", text = "knownRunDir is removed. The request-boundary refusals (profile-invalid, request-invalid) and admission all record to resolveLocations(...).runDir (design sec-3; RV-058 F-4)." },
+]
+verification = [
+  { id = "VT-1", expects = "config: env beats XDG; unset falls through; set-but-relative refuses; the policy is never read from the launch dir even when .quotient/policy.json exists; a relative XDG_* is ignored; no usable HOME/XDG gives policy-unavailable", test_file = "/home/david/dev/quotient/src/config.test.ts", keywords = ["resolveLocations", "QUOTIENT_POLICY", "XDG_CONFIG_HOME", "policy-unavailable", ".quotient/policy.json"], waived = false },
+  { id = "VT-2", expects = "with every QUOTIENT_* unset, a malformed request and an invalid policy are each recorded in the XDG run dir's attempts.jsonl", test_file = "/home/david/dev/quotient/src/server/server.test.ts", keywords = ["attempts.jsonl", "XDG_STATE_HOME", "request-invalid"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Policy schema quotient-policy/1"
+objective = "Validate the v1 policy (DEC-113, DEC-114, design sec-3): a required schema tag, a profiles map, a forms union including unconfined, and exposure replacing child_binds. Every DEC-097 rule carries over."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "schema is required and checked first; a missing or unknown value is policy-invalid. child_binds is now an unknown field." },
+  { id = "EX-2", text = "profiles maps PROFILE_NAME to read | write. forms maps a capability to a path, to { path, extensions? }, or to { unconfined: <absolute pi path> }. path together with unconfined is policy-invalid, and read unconfined is policy-invalid. There is never a PATH lookup." },
+  { id = "EX-3", text = "Form is the design sec-3 union: { kind: confined, path, extensions } | { kind: unconfined, pi }." },
+  { id = "EX-4", text = "The DEC-097 rules carry over unchanged: fail-closed reading, unknown keys refused, all four maxima required, enabled re-read at each gate tick, mode per-call, the digest in the audit." },
+]
+verification = [
+  { id = "VT-1", expects = "policy v1: missing or unknown schema; child_binds unknown; path with unconfined; read unconfined is policy-invalid; a write unconfined is admitted", test_file = "/home/david/dev/quotient/src/server/policy.test.ts", keywords = ["quotient-policy/1", "child_binds", "unconfined", "exposure", "policy-invalid"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Layered profiles, capability pin, protected stores"
+objective = "Profiles load from the launch-dir and XDG layers into one start-up snapshot. The policy's profiles map pins each profile's capability at validation step 3. Step 8 protects both profile layers and both help layers (DEC-112, DEC-113, design sec-3)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "loadProfiles(layers) treats a missing layer dir as empty. An unreadable layer, or an invalid document in either layer (shadowed or not), refuses start-up, and every call is then profile-invalid. Per name, the launch-dir document wins. Each Profile carries source." },
+  { id = "EX-2", text = "The header marker is quotient-profile, with no pi-mcp-profile alias. DEFAULT_PROFILES_DIR is removed, and there is no built-in profile layer. The moved src/server/profiles/*.md become examples/profiles/{read,research,write}.md, and tests take their layers from fixtures." },
+  { id = "EX-3", text = "Step 3 runs grammar, then snapshot (profile-unknown), then map key (profile-not-allowed), then capability: a document filesystem that differs from the pinned capability is profile-capability-mismatch." },
+  { id = "EX-4", text = "profile_digest (sha256 over name, source and bytes, in name order) and profile_source are on the spawn record. Audit-only." },
+  { id = "EX-5", text = "ChildViewInput gains profileLayers and helpLayers, and the child_bind role becomes exposure. The four layers are never-writable protected stores whether or not they exist: a write call whose root or exposure path contains one refuses view-overlaps-protected, and read calls are admitted." },
+]
+verification = [
+  { id = "VT-1", expects = "profiles: launch-dir beats XDG per name; a missing layer is empty; an invalid shadowed document refuses start-up; the digest changes with the source path; the capability pin refuses mismatch; an unmapped name is profile-not-allowed", test_file = "/home/david/dev/quotient/src/server/profiles.test.ts", keywords = ["loadProfiles", "quotient-profile", "profile-capability-mismatch", "profile-not-allowed", "profile_digest"], waived = false },
+  { id = "VT-2", expects = "step 8: a write root containing the launch-dir .quotient/, existing or not, refuses view-overlaps-protected; a read root containing it is admitted; a sibling-repo write root is admitted", test_file = "/home/david/dev/quotient/src/server/childview.test.ts", keywords = ["profileLayers", "helpLayers", "view-overlaps-protected", "exposure"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Spawn: argv split, unconfined branch, shutdown on signal"
+objective = "buildArgv returns pi's argv only, and spawn branches once on the form kind (DEC-114, design sec-4). The server's SIGTERM and SIGINT run the same shutdown path as stdin EOF (DEC-118 amendment)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "buildArgv returns pi's argv with no session positional. The confined branch runs the form with the session dir followed by pi's argv. The unconfined branch runs pi with pi's argv. spawn carries form_kind." },
+  { id = "EX-2", text = "Both branches share the detached process group, the termination ladder, the child env and the audit." },
+  { id = "EX-3", text = "serve takes an AbortSignal option that runs the stdin-EOF shutdown path: stop admitting, abort every in-flight call with cause eof, await their ladders and audits, return. cli.ts wires SIGTERM and SIGINT to it. pi-agent-result/1 is unchanged." },
+]
+verification = [
+  { id = "VT-1", expects = "spawn argv: a stub records the exact argv on each path; the confined form gets the session dir then pi's argv, and unconfined pi gets pi's argv with no session positional; form_kind is audited (RV-058 F-1)", test_file = "/home/david/dev/quotient/src/server/spawn.test.ts", keywords = ["buildArgv", "unconfined", "form_kind", "sessionDir"], waived = false },
+  { id = "VT-2", expects = "shutdown: with a call in flight through a stub form whose pi sleeps, the shutdown signal kills the group, audits abort with cause eof, and leaves no process behind; EOF behaviour is unchanged", test_file = "/home/david/dev/quotient/src/server/server.test.ts", keywords = ["AbortSignal", "eof", "abort"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "Contracts, standalone docs, drift tests"
+objective = "Write the three normative contracts, docs/design.md, the README and examples/ (DEC-119, design sec-6), and the five drift tests that keep them true. readme.test.ts goes."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 exit criteria met: the result, policy, profile and form behaviour the contracts describe is final." },
+  { id = "EN-2", text = "The rig produces a result in every state (it does today, from satan)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "docs/contract/pi-agent-result-1.md, quotient-policy-1.md and form-1.md hold the design sec-6 content. The result contract has a field table (path, JSON type, nullable) that the drift test parses. form-1.md lists every guarantee except the sampled G6 write case as unverified by quotient." },
+  { id = "EX-2", text = "docs/design.md restates the design sec-6 rationale list with no doctrine ids, ending with the pointer 'extracted from github.com/davidlee/satan'. The README and examples/ (policy.json, profiles/{read,research,write}.md) follow design sec-6." },
+  { id = "EX-3", text = "The five drift tests of design sec-6 pass: refusal tokens; result keys and types; result semantics; policy; no doctrine ids, with no exception. src/server/readme.test.ts is removed." },
+  { id = "EX-4", text = "RV-058 F-8 negative controls. Each is a test case over a doctored copy of the result contract, never an edit of the real one, and each must be observed failing: (1) a field table giving one field a wrong JSON type, such as a string documented as a number, fails result keys and types; (2) a nullable field marked non-nullable fails result keys and types; (3) a termination-to-state row mapping one termination to the wrong state fails result semantics." },
+  { id = "EX-5", text = "Every nullable field in the result contract is null in at least one rig fixture." },
+]
+verification = [
+  { id = "VT-1", expects = "five drift tests: refusal tokens both ways; result keys and types per state against the parsed field table; CAUSE_STATE, RESULT_STATES and TERMINATIONS equal the contract's tables; policy keys and env vars documented, every fenced json block admitted; no doctrine ids under docs/", test_file = "/home/david/dev/quotient/src/drift.test.ts", keywords = ["CAUSE_STATE", "RESULT_STATES", "TERMINATIONS", "validatePolicy", "pi-agent-result-1.md", "nullable"], waived = false },
+  { id = "VT-2", expects = "RV-058 F-8 controls: doctored copies with a wrong type, a wrongly non-nullable field and a wrong termination-to-state row are each rejected", test_file = "/home/david/dev/quotient/src/drift.test.ts", keywords = ["doctored", "wrong type", "non-nullable", "wrong state"], waived = false },
+  { id = "VA-1", text = "Agent reads docs/design.md and the README cold against design sec-6, and confirms each listed topic is present and no doctrine-local term is left unexplained." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "Built-in help and MCP self-description"
+objective = "One sectioned help source serves quotient help, the MCP initialize instructions and the tool description (DEC-115, design sec-2), with the two override layers, a start-up snapshot and help_digest. quotient help clients prints both client snippets."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 exit criteria met: the contract sections help prints verbatim exist." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The sections, sources and consumers are as in the design sec-2 table. The contract sections (result, alias refusals; policy; form) print docs/contract verbatim and ignore overrides." },
+  { id = "EX-2", text = "Overridable sections resolve per section: ./.quotient/help, then the XDG help dir, then the built-in. Only an absent file falls through. An unreadable layer or section file, shadowed or not, refuses start-up: every call is then profile-invalid, with the help path in detail." },
+  { id = "EX-3", text = "The agent section carries the delegation guidance design sec-2 lists, and a rendered profile table (name, model, thinking, tools, source, pinned capability as read at initialize). An unreadable policy reads unknown (policy unavailable), and the server still starts." },
+  { id = "EX-4", text = "help_digest (sha256 over section, source path and bytes, in section order) is on every spawn record. Audit-only." },
+  { id = "EX-5", text = "quotient help clients prints the design sec-5 Claude Code JSON and Codex TOML snippets with the realpath of the running bin. tool_timeout_sec is maxima.wall_clock_s + 60, or a placeholder with a reason when no policy is readable." },
+  { id = "EX-6", text = "The cli help stub from PHASE-02 is replaced; help with an unknown section exits 2." },
+]
+verification = [
+  { id = "VT-1", expects = "help: instructions equals the assembled agent section; the tool description equals tool; a file override wins for agent; contract sections ignore overrides; an absent override falls through; an unreadable layer or section file, shadowed or not, refuses start-up; help_digest is on the spawn record", test_file = "/home/david/dev/quotient/src/help/help.test.ts", keywords = ["instructions", "help_digest", "override", "unreadable", "profile-invalid"], waived = false },
+  { id = "VT-2", expects = "clients: both snippets carry the absolute bin path; tool_timeout_sec is wall_clock_s + 60, or a placeholder with no policy", test_file = "/home/david/dev/quotient/src/help/help.test.ts", keywords = ["tool_timeout_sec", "mcp_servers.quotient", "mcpServers"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-09"
+name      = "Write-denial probe, pack gate, nix package, v0.1.0"
+objective = "Generalise scripts/hostile-audit (design sec-4), write scripts/pack-check (the publish gate) and quotient's flake.nix (design sec-5), then tag v0.1.0 locally."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-08 exit criteria met; npm test green." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "scripts/hostile-audit takes the design sec-4 arguments. It writes a temporary policy and launch dir with .quotient/profiles/probe.md, and runs the server from packageRoot. Exit is 0 PASS when the audit.jsonl write is refused and evidence is intact, 1 FAIL, 77 SKIP; ambient QUOTIENT_* vars give SKIP. Its usage says it samples one G6 case and does not establish form-1 conformance. It has no host prerequisites." },
+  { id = "EX-2", text = "scripts/pack-check starts from a clean checkout: npm ci, npm pack, install the tarball into an empty temp dir, then the four design sec-5 checks. It exits 0 only when all four pass." },
+  { id = "EX-3", text = "flake.nix exports packages.default (buildNpmPackage with npmDepsHash; the wrapper carries node) and a devShell with node and typescript, and no forms. nix build in Q succeeds, and the built quotient --version prints 0.1.0." },
+  { id = "EX-4", text = "Q is tagged v0.1.0. No push and no publish." },
+]
+verification = [
+  { id = "VT-1", expects = "pack-check runs npm ci and npm pack and the four design sec-5 checks", test_file = "/home/david/dev/quotient/scripts/pack-check", keywords = ["npm ci", "npm pack", "--version", "initialize", "final"], waived = false },
+  { id = "VT-2", expects = "hostile-audit takes --form, --capability and --exposure, and documents its single-case scope", test_file = "/home/david/dev/quotient/scripts/hostile-audit", keywords = ["--form", "--capability", "--exposure", "audit.jsonl"], waived = false },
+  { id = "VA-1", text = "Agent runs scripts/pack-check and nix build in Q and records both outputs in notes." },
+]
+specs        = []
+requirements = []
+
+# ------------------------------------------------------------------- satan ----
+
+[[phase]]
+id        = "PHASE-10"
+name      = "satan side by side: forms, links, profiles, policy, client entry, smoke"
+objective = "Run cutover steps 2-6 (DEC-120, design sec-7): quotient runs beside pi-agent, and the old route keeps working throughout. Each step is its own satan commit, on the operator's say."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-09 exit criteria met; Q tagged v0.1.0." },
+  { id = "EN-2", text = "The operator has agreed to start the host cutover." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Step 2: satan flake.nix has the quotient input (path:/home/david/dev/quotient) and package. The forms quotient-read and quotient-write sit alongside pi-mcp-*, read QUOTIENT_ACTIVE_SESSION_DIR and add --die-with-parent. The quotient-forms check and quotient jail-probe entry are added. nix build .#checks.x86_64-linux.quotient-forms is green." },
+  { id = "EX-2", text = "The satan forms test lives at test/flake/forms.test.ts (still reading ../../flake.nix). It asserts the quotient-* forms, plus the new --die-with-parent assertion (G7) and the three exit 64 guards (G8). The pi-mcp-* assertions stay until PHASE-11. pi-suites runs test/flake/*.test.ts beside the pi/ suites, so just check still covers it." },
+  { id = "EX-3", text = "Step 3: the justfile has quotient-forms, building GC-rooted links at ~/.local/state/quotient/forms/<cap>/bin/quotient-<cap> and ~/.local/state/quotient/bin/quotient, and quotient-hostile-audit, which checks the gateway prerequisites and runs the input's scripts/hostile-audit. pi-mcp-forms is kept." },
+  { id = "EX-4", text = "Step 4: pi/mcp/profiles/*.md are copied to .quotient/profiles/ with the marker renamed; the originals stay. The operator has written ~/.config/quotient/policy.json (quotient-policy/1, a profiles map, exposure, a scratch git repo in roots, mode 0444)." },
+  { id = "EX-5", text = "Step 5: .mcp.json has a quotient entry beside pi-agent, command ${HOME}/.local/state/quotient/bin/quotient, with no env; the session is restarted." },
+  { id = "EX-6", text = "Step 6 smoke, all through mcp__quotient__pi_agent unless stated. read and research return final: true. A write call rooted at the scratch repo creates one named file, with final: true, the file present and form_kind confined on the spawn record. just quotient-hostile-audit passes on both forms. A codex exec call with the printed snippet returns final: true. A write call rooted at satan's launch dir refuses view-overlaps-protected." },
+]
+verification = [
+  { id = "VT-1", expects = "satan forms test: quotient-* forms, --die-with-parent and the exit 64 guards", test_file = "test/flake/forms.test.ts", keywords = ["quotient-read", "quotient-write", "--die-with-parent", "exit 64", "QUOTIENT_ACTIVE_SESSION_DIR"], waived = false },
+  { id = "VT-2", expects = "justfile builds the quotient form and bin links and the audit recipe", test_file = "justfile", keywords = ["quotient-forms", "quotient-hostile-audit", "quotient/bin/quotient"], waived = false },
+  { id = "VA-1", text = "Agent runs the step 6 smoke calls and records each result's state, final and run dir in notes." },
+  { id = "VH-1", text = "Operator writes the policy file (step 4) and confirms the smoke results before PHASE-11." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-11"
+name      = "satan removal: the old route goes"
+objective = "Run cutover step 7 (design sec-7): remove pi-mcp from satan, retarget its consumers, prove the final route live, then revoke the scratch root."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-10 exit criteria met, and the operator has confirmed the smoke (PHASE-10 VH-1)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "These are removed: the pi-agent .mcp.json entry; pi/; bin/pi-mcp, bin/pi-run-reduce, bin/pi-mcp-hostile-audit; piMcpJail, piMcpBaseline, piMcpForms; the pi-mcp-forms check and jail-probe entry; the pi-mcp-forms recipe. The forms test drops its pi-mcp-* assertions, and pi-suites becomes forms-suite, running test/flake/*.test.ts." },
+  { id = "EX-2", text = "scripts/lib/pi-report.sh: PI_REDUCE is a command, word-split with read -ra and defaulting to $HOME/.local/state/quotient/bin/quotient reduce. The first word must be executable. The usage comment says paths with spaces are unsupported (RV-058 F-3)." },
+  { id = "EX-3", text = "CLAUDE.md and docs/INDEX.md are retargeted to quotient. Run grep -rIn 'pi-mcp|PI_MCP|pi/mcp|pi-run-reduce' --exclude-dir=.doctrine; every hit left is intentional history, listed in notes." },
+  { id = "EX-4", text = "just check is green." },
+  { id = "EX-5", text = "After a Claude Code restart, one read call through the final .mcp.json and one codex exec call each return final: true. Only then are the old form links deleted (RV-058 F-6, F-13)." },
+  { id = "EX-6", text = "The operator reissues the policy without the scratch root. A write call rooted there refuses root-not-allowlisted (RV-058 F-11)." },
+]
+verification = [
+  { id = "VT-1", expects = "pi-report-test.sh keeps the fallback case and adds a stub reducer given as PI_REDUCE='<stub> reduce' that receives reduce as its first argument and whose output is printed", test_file = "scripts/lib/pi-report-test.sh", keywords = ["PI_REDUCE=", " reduce", "stub"], waived = false },
+  { id = "VT-2", expects = "pi-report.sh word-splits PI_REDUCE and checks the first word", test_file = "scripts/lib/pi-report.sh", keywords = ["read -ra", "quotient/bin/quotient reduce"], waived = false },
+  { id = "VA-1", text = "Agent runs just check and the residual grep, makes the post-removal live calls, and records the outputs in notes." },
+  { id = "VH-1", text = "Operator reissues the policy without the scratch root (EX-6)." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-12"
+name      = "Publish: GitHub, flake input, npm"
+objective = "Run cutover step 8 (design sec-7), plus the publish. Push quotient to GitHub, pin satan to the v0.1.0 tag, rebuild, prove it live, and publish to npm. Every outward act waits for the operator's explicit go-ahead."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-11 exit criteria met." },
+  { id = "EN-2", text = "The operator has given an explicit go-ahead for the GitHub push and, separately, for the npm publish." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Q is pushed to github.com/davidlee/quotient with the v0.1.0 tag." },
+  { id = "EX-2", text = "The satan input is github:davidlee/quotient/v0.1.0, relocked. After just quotient-forms, quotient --version reads 0.1.0, and one live read call returns final: true." },
+  { id = "EX-3", text = "Rollback is recorded in notes: restore the path: input, relock, rerun just quotient-forms, and repeat the live call (RV-058 F-15)." },
+  { id = "EX-4", text = "npm whoami confirms the @davidlee scope. npm publish --access public runs from a pack-check-green checkout of the tag, and npx @davidlee/quotient help runs." },
+]
+verification = [
+  { id = "VA-1", text = "Agent records the push, the lock diff, the --version output, the live call result and the npx output in notes." },
+  { id = "VH-1", text = "Operator gives the push go-ahead and the publish go-ahead, separately." },
+]
+specs        = []
+requirements = []

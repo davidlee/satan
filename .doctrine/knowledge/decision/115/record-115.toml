@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 115
+slug = "quotient-built-in-help-one-sectioned-source-for-model-and-human"
+title = "quotient built-in help: one sectioned source for model and human"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-22"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The operator wants help that suffices without an installed skill, overridable per section. Today help is split between PI_AGENT_TOOL (server.ts:45) and the reducer USAGE (cli.ts:25-31); initialize carries no instructions."
+choice = "Sections: `agent` -> MCP initialize `instructions` (when to delegate, reading results, trust result only when final; plus the start-up profile snapshot with pinned capabilities), `tool` -> pi_agent description, and `policy`, `profiles`, `refusals`, `clients`, `reduce`, `setup` for `quotient help <section>`. Overrides per DEC-112; help digest recorded in the spawn audit. README links to `quotient help`; the drift test checks refusal tokens against the `refusals` section."
+alternatives = ["model-facing help only", "README as the source"]
+rationale    = ""
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

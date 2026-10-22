@@ -1,0 +1,696 @@
+id    = 58
+slug  = "design-review-of-sl-031"
+title = "design review of SL-031"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Hostile external pass by gpt-6-sol (codex exec), three rounds 2026-10-22: 15 findings raised, all dispositioned design-wrong and verified by the reviewer; round 3 raised no new defects. Operator: 'review conducted'."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Hostile external pass by gpt-6-sol (codex exec), three rounds on 2026-10-22, over design.md, slice-031.md, DEC-110..120 and the cited pi/mcp code. 15 findings, all design-wrong. The reviewer verified 14 repairs; reopens only attached routes. F-8 is routed control and stays answered until slice phases. Round 3 found no new defects. Operator: 'review conducted'."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-031"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "blocker"
+title = "Unconfined spawn passes a form-only argument"
+detail = """
+severity: blocker
+location: .doctrine/slice/031/design.md:376–384
+claim: The proposed unconfined branch passes `piArgv` unchanged, although its first element is the session directory. Bare `pi` would receive an unwanted positional argument.
+evidence: `pi/mcp/spawn.ts:144–165` builds argv with `plan.sessionDir` first; design.md:383 passes that array directly to `plan.form.pi`.
+repair: Construct pi’s argv separately from the form invocation, and test the exact arguments received by both paths.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F1 
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct: buildArgv (pi/mcp/spawn.ts:144-165) puts plan.sessionDir first, and the design's snippet passed that array to unconfined pi. Severity is closer to major than blocker, because sec-8's 'no session positional' test would have caught it. Integrated: sec-4 says buildArgv returns pi's argv only, and the confined branch prepends the session dir. sec-8 has an exact-argv test for both paths, and the spawn.ts code-impact row is updated."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "blocker"
+title = "The published package specification cannot build as written"
+detail = """
+severity: blocker
+location: .doctrine/slice/031/design.md:454–468
+claim: The shown `package.json` lacks a version for `--version` and publishing, and declares only TypeScript as a development dependency despite compiling Node APIs and Node types.
+evidence: design.md:456–462; `pi/mcp/spawn.ts:24–28,112` imports `node:` modules and uses `NodeJS.Signals`; `pi/mcp/profiles.ts:224` uses `Buffer`.
+repair: Specify `version` and `@types/node`, then make a clean `npm ci && npm pack` build the publish gate.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F2 
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct: version was missing, and nothing type-checks the sources today (Node only strips types), so tsc needs @types/node. Integrated: version 0.1.0 and @types/node ^22 are in the package.json sample. pack-check now starts from a clean checkout with npm ci, then npm pack (prepack runs tsc)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "The reducer cutover breaks its shell consumer"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:600–606
+claim: Setting `PI_REDUCE` to `"…/quotient reduce"` makes `pi_report` take its fallback path: it tests the entire string as one executable path.
+evidence: `scripts/lib/pi-report.sh:29–39` uses `[ -x "$reduce" ]` and then `"$reduce"`. DEC-120’s amendment calls for a command with a subcommand.
+repair: Represent the executable and arguments separately, preserve a clear override contract, and test a successful report through `quotient reduce`.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F3 
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """Correct: pi-report.sh:29-39 runs [ -x "$reduce" ] on the whole value. Repaired within DEC-120's 'a command rather than a path': the value is word-split with read -ra, the first word must be executable, and the array is run. Paths with spaces are documented as unsupported. pi-report-test.sh gains a stub-reducer command case beside the fallback case."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "Default XDG refusals can lose their audit record"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:174–212, 644–650
+claim: The design adds an XDG run-directory default without specifying the request-boundary audit path that must use it. A straightforward migration of admission alone leaves early refusals unrecorded.
+evidence: `pi/mcp/server.ts:247–279` calls `knownRunDir(context.env)` before admission; `pi/mcp/policy.ts:91–93` knows only the env variable; `pi/mcp/evidence.ts:131–135` drops the record for a null directory.
+repair: Route both early refusals and admission through the same resolved run directory. Test a malformed request and an invalid policy with all `QUOTIENT_*` variables unset.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F4 
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct: server.ts refused() records via knownRunDir(env), which reads only the env var (policy.ts:91-93), and appendAttempt drops a null dir (evidence.ts:131-135). Integrated: sec-3 replaces knownRunDir with resolveLocations(...).runDir for the early refusals and admission alike. sec-8 config tests check that, with every QUOTIENT_* unset, a malformed request and an invalid policy are each recorded in the XDG attempts.jsonl."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "The conformance probe does not establish the form contract"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:319–374
+claim: A passing `hostile-audit` can coexist with violations of G1–G5, G7, G8, and G6’s read-denial requirement. Calling it a conformance probe overstates what passes.
+evidence: design.md:368–374 asks only for an attempted append to `audit.jsonl` and explicitly leaves the other guarantees to implementer assertion. The current flake check compares binds against a generator baseline, not the complete G5 write boundary (`flake.nix:730–750`).
+repair: Define separate executable probes or reviewable evidence for each guarantee, including read denial, parent death, and extra writable paths; label any untested guarantees as unverified.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F5 
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Observation correct; the design was already explicit that only G6 write denial is probed, so the defect was the label and the missing evidence. Integrated: renamed to 'write-denial probe'. form-1.md lists the other guarantees as unverified by quotient. A G1-G8 table maps each guarantee to satan's evidence: forms test, the quotient-forms flake check, hostile-audit. New forms-test assertions cover --die-with-parent (G7) and the exit-64 guards (G8). slice-031 is reconciled. The repair's call for an executable probe per guarantee is not taken in v1: it is recorded as a slice follow-up (generic per-guarantee form-1 probe)."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "Reviewer (gpt-6-sol, verify round): not resolved. The renamed probe still claims G6 write denial, but it attempts only an audit.jsonl write; G6 also covers the session home, the policy, and the profile and help paths."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Contest upheld: 'proves G6 write denial' overclaimed. The probe writes one G6 store, the run's audit.jsonl. Now: sec-4 says it samples that one case. In the evidence table, G6 write rests on G5's bind-set check plus step 8's disjointness of root, session dir and exposure from the protected stores, with hostile-audit as the sample. The per-guarantee probe remains the slice follow-up."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "No live proof follows removal of the old route"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:589–598, 687–691
+claim: The live smoke calls occur at step 6, while both servers exist. Step 7 removes the old server and rewires the client, but specifies only `just check` afterward. The final route can fail despite all stated gates passing.
+evidence: design.md:595–597; `justfile:15,62–65` shows `just check` runs suites, not a live MCP call.
+repair: Restart each client after step 7 and repeat a live quotient call through the final configuration before deleting old host links.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F6 
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct: step 7 ended at just check, which runs suites only (justfile). Integrated: after step 7, restart Claude Code, then make one read call through the final .mcp.json and one codex exec call, both final: true. Only then are the old form links deleted. slice-031's risk mitigation, which still said 'one commit' and contradicted DEC-120, is corrected with it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "The write form has no positive cutover smoke"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:596, 689–691
+claim: Step 6 proves read and research calls succeed and one write call is refused. It never proves an allowed write root can run through `quotient-write`.
+evidence: design.md:596 names only `read` and `research` as `final: true`; its write case expects `view-overlaps-protected`.
+repair: Add a bounded write call in an allowed worktree and check its result, evidence, and actual filesystem effect.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F7 
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct: step 6 had only a refused write. Integrated: step 4's policy lists a scratch git repo in roots. In step 6, a write call rooted there creates a named file, and the smoke checks final: true, that the file exists, and form_kind: confined on the spawn record. slice-031's verification gains the case."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "major"
+title = "The result drift test checks shape, not the promised contract"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:520–566
+claim: Equality of keys from one produced result per state cannot verify field types, nullability, the `state × termination × causes` table, or branches the fixtures do not produce. The normative document can be wrong while the test passes.
+evidence: design.md:524 promises those semantics; design.md:566 specifies only key-set equality from rig-produced results.
+repair: Add explicit contract cases for each semantic row and nullable branch, alongside the key-set test.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F8 
+"""
+disposition = "design-wrong"
+response = """
+Route control: the question is whether the planned drift test would notice a contract doc that misstates the result. The repair (verified this pass) adds a parsed field table to the result contract and a result keys and types drift test.
+Negative controls the criterion must observe rejected: (1) a copy of the result contract whose field table gives a wrong JSON type for one field, for example a string field documented as a number, must fail the result keys and types test; (2) a copy that marks a nullable field non-nullable must fail it; (3) a copy whose termination to state table maps one termination to the wrong state must fail the result semantics test.
+Host-phase constraint: the phase that writes the drift tests and the result contract doc, after the rig can produce results in every state. The controls run as test cases over doctored copies of the doc, not by editing the real one.
+"""
+route = "control"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Partly correct. Integrated: a fifth drift test checks the contract's termination-to-state table against CAUSE_STATE (result.ts:68), both ways, and the state and termination vocabularies against RESULT_STATES and TERMINATIONS. The repair's per-field type and nullability cases are not taken: those are governed by the AgentResult type the tests compile against. sec-6 now states that limit, so the doc does not overclaim."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = "Reviewer (gpt-6-sol, verify round): not resolved. The AgentResult types do not check the contract's prose; a wrong documented field type or nullability still passes the drift tests."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Contest upheld: my earlier response leaned on the AgentResult type, which cannot check the contract's prose. Now: pi-agent-result-1.md carries a parsed field table (path, JSON type, nullable). The renamed 'result keys and types' drift test checks every rig-produced value against it: null only where marked nullable, and every nullable field null in at least one fixture. Remaining limit, stated in sec-6: branches no fixture reaches are not type-checked."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "control"
+response = """
+Route control: the question is whether the planned drift test would notice a contract doc that misstates the result. The repair (verified this pass) adds a parsed field table to the result contract and a result keys and types drift test.
+Negative controls the criterion must observe rejected: (1) a copy of the result contract whose field table gives a wrong JSON type for one field, for example a string field documented as a number, must fail the result keys and types test; (2) a copy that marks a nullable field non-nullable must fail it; (3) a copy whose termination to state table maps one termination to the wrong state must fail the result semantics test.
+Host-phase constraint: the phase that writes the drift tests and the result contract doc, after the rig can produce results in every state. The controls run as test cases over doctored copies of the doc, not by editing the real one.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "The doctrine-ID rule contradicts its own exception"
+detail = """
+severity: minor
+location: .doctrine/slice/031/design.md:533–568
+claim: `docs/design.md` is required to contain no doctrine IDs, then required to end with “SL-029”; the drift test permits that exception while DEC-119’s current amendment does not.
+evidence: design.md:535,548,568; DEC-119 amendment at `.doctrine/knowledge/decision/119/record-119.md:12–14`.
+repair: Choose one rule and make the document requirement and test identical.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F9 
+"""
+disposition = "design-wrong"
+response = "Correct: the design contradicted DEC-119's 2026-10-22b amendment. Integrated in DEC-119's favour: the origin pointer carries no id ('extracted from github.com/davidlee/satan'), and the drift test has no exception."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct: the design contradicted DEC-119's 2026-10-22b amendment. Integrated in DEC-119's favour: the origin pointer carries no id ('extracted from github.com/davidlee/satan'), and the drift test has no exception."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Unreadable help-layer behavior is unresolved"
+detail = """
+severity: minor
+location: .doctrine/slice/031/design.md:156–169, 197–204
+claim: The design says help falls through to a lower layer, but does not distinguish an absent file from an unreadable layer or document. That leaves the amended fail-closed rule open to incompatible implementations.
+evidence: design.md:160–165,203; DEC-112’s 2026-10-22b amendment at `.doctrine/knowledge/decision/112/record-112.md:12–16` says unreadable layers and invalid documents refuse start-up.
+repair: State the outcome for missing, unreadable, and invalid help files in both layers, including shadowed files, and test each case.
+Reviewer: gpt-6-sol via codex exec (hostile external pass, 2026-10-22). Reviewer id F10
+"""
+disposition = "design-wrong"
+response = "Correct: help said only 'falls through'. Integrated, mirroring the profile rule in DEC-112 2026-10-22b: an absent file or layer falls through, while an unreadable layer or section file, shadowed or not, refuses start-up. Help has no grammar, so there is no 'invalid' case. sec-8 help tests cover each case. Open for the operator: the refusal reuses profile-invalid, with the help path in detail, rather than minting a new token."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct: help said only 'falls through'. Integrated, mirroring the profile rule in DEC-112 2026-10-22b: an absent file or layer falls through, while an unreadable layer or section file, shadowed or not, refuses start-up. Help has no grammar, so there is no 'invalid' case. sec-8 help tests cover each case. Open for the operator: the refusal reuses profile-invalid, with the help path in detail, rather than minting a new token."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "major"
+title = "Smoke-test root remains authorized"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:636–640
+claim: The operator adds a scratch repo to the production policy’s `roots` for the write smoke, but no cutover step removes that grant.
+evidence: Step 4 adds the root; steps 7 and 8 specify no policy reissue or check that it is gone.
+repair: Use a temporary smoke policy, then have the operator restore the intended roots and verify the scratch root is refused.
+Reviewer: gpt-6-sol, verify round (2026-10-22). Reviewer id F11
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct. Step 7 now ends with the operator reissuing the policy without the scratch root, and a write call rooted there must refuse root-not-allowlisted. sec-8 verification lists that check. The proposed separate smoke policy is not taken: one reissue does the same job and keeps one policy file."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "major"
+title = "Final flake-input switch has no verification"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:639–640,747–752
+claim: The final switch from the tested local input to GitHub has no build, link refresh, or live call afterward. The shipped host can differ from the state that passed the step-7 smoke.
+evidence: All listed post-removal checks precede step 8; step 8 only changes the input.
+repair: Pin the intended tagged revision, rebuild the package and forms from that input, refresh their links, and repeat a live call.
+Reviewer: gpt-6-sol, verify round (2026-10-22). Reviewer id F12
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct. Step 8 now pins github:davidlee/quotient/v0.1.0 and relocks, rebuilds with just quotient-forms, checks quotient --version reads 0.1.0, and repeats one live read call (final: true). Rollback is to switch back to the path: input. The cutover diagram and sec-8 verification are updated to match."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "minor"
+title = "Old-link deletion has two positions in step 7"
+detail = """
+severity: minor
+location: .doctrine/slice/031/design.md:639
+claim: Step 7 says to remove the old form links in its opening list and again says to delete them only after the live calls. The order is contradictory.
+evidence: Both instructions appear in the same step-7 row.
+repair: Remove link deletion from the opening list and state it solely after successful live checks.
+Reviewer: gpt-6-sol, verify round (2026-10-22). Reviewer id F13
+"""
+disposition = "design-wrong"
+response = "Correct. 'the old form links' is removed from step 7's opening list; the step deletes them only after the live calls."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct. 'the old form links' is removed from step 7's opening list; the step deletes them only after the live calls."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "minor"
+title = "GitHub input is specified two ways"
+detail = """
+severity: minor
+location: .doctrine/slice/031/design.md:526–528,642
+claim: The packaging section specifies the untagged `github:davidlee/quotient` input, while the cutover step requires `github:davidlee/quotient/v0.1.0`. An implementer following the first instruction can select a different revision.
+evidence: Both input strings appear in the edited design.
+repair: Use the tagged input in both places.
+Reviewer: gpt-6-sol, verify round 2 (2026-10-22). Reviewer id F14
+"""
+disposition = "design-wrong"
+response = "Correct; this sibling was missed in the F-12 repair. sec-5 now names github:davidlee/quotient/v0.1.0, matching step 8."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct; this sibling was missed in the F-12 repair. sec-5 now names github:davidlee/quotient/v0.1.0, matching step 8."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "major"
+title = "Step-8 rollback leaves GitHub-built links active"
+detail = """
+severity: major
+location: .doctrine/slice/031/design.md:642
+claim: Switching the flake input back to `path:` does not restore the bin and form links rebuilt from GitHub in step 8. The stated rollback leaves the host running those outputs.
+evidence: Step 8 rebuilds links with `just quotient-forms`; its rollback says only to switch the input back.
+repair: After restoring and relocking the path input, rebuild the links and repeat the live call.
+Reviewer: gpt-6-sol, verify round 2 (2026-10-22). Reviewer id F15
+"""
+disposition = "design-wrong"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Correct. Step 8's rollback now restores the path: input, relocks, reruns just quotient-forms, and repeats the live call."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Procedural: reopened only to attach the route the design-run lock requires; the reviewer's verdict on the repair is unchanged."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+route = "review"
+response = "Route review: the defect was in the design and is repaired in prose this pass; the earlier response describes the repair, and the reviewer verified it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

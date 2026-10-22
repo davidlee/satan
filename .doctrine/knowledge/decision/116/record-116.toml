@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 116
+slug = "quotient-ships-the-form-contract-satan-keeps-this-hosts-forms"
+title = "quotient ships the form contract; satan keeps this host's forms"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-22"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Today's forms (flake.nix piMcpJail) build on the operator's private agents flake (inputs.agents mkJailedAgents), so they cannot ship to strangers."
+choice = "quotient ships form-1, a mechanism-neutral form contract: an executable invoked with argv = session dir then pi argv, cwd = the call's root; it must guarantee root not writable under read and writable under write, session dir writable, private temp, and nothing reachable beyond the policy's declared exposure. Mechanism (bwrap, seatbelt, Landlock, ...) is the implementation's choice; hostile-audit is the form-agnostic conformance probe that defines conformance. quotient's flake exports the package only. satan keeps building this host's bwrap forms, renamed quotient-<capability>; ADR-017 ledger row 3c stays with satan-flake. The policy's bwrap-flavoured child_binds is renamed exposure in quotient-policy/1. Generic and native forms (seatbelt, bwrap+Landlock) are follow-ups implementing form-1 without contract change."
+alternatives = ["generic bwrap forms + lib.mkForms in quotient"]
+rationale = "Today's forms depend on the operator's private agents flake; and confinement beyond NixOS (macOS seatbelt etc.) is an open thread, so the contract states guarantees, not bwrap binds (operator, 2026-10-22)."
+consequences = ["slice scope: nix forms are not a quotient flake output in v1"]
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

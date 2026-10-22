@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 119
+slug = "quotient-standalone-docs-and-contract-drift-tests"
+title = "quotient standalone docs and contract drift tests"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-22"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The wire contract and design live in satan doctrine records (SL-029, DEC-089..103)."
+choice = "docs/contract/ holds normative versioned contracts pi-agent-result-1.md, quotient-policy-1.md and form-1.md (mechanism-neutral, per DEC-116). docs/design.md restates DEC-089..100 and DEC-103 without ids. Help sections summarise and point at the contracts. Drift tests: every refusal token appears in the refusals help section; every key of a rig-produced result appears in the result contract."
+alternatives = []
+rationale    = ""
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 110
+slug = "quotient-repo-layout-and-history-import"
+title = "quotient repo layout and history import"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-031 extracts pi/mcp, pi/reduce and their bins from satan into ~/dev/quotient."
+choice = "Layout: src/cli.ts (single entry), src/server/ (from pi/mcp), src/reduce/ (from pi/reduce), src/help/ (built-in sections), tests colocated *.test.ts, examples/ (profiles, policy, client configs), docs/ (design, contract), scripts/hostile-audit. History carried with git-filter-repo with path renames."
+alternatives = ["Fresh import commit citing satan@sha as origin"]
+rationale = "History keeps the reasoning in ~20 commit messages and makes git blame useful; doctrine ids in old messages are accepted as history."
+consequences = ["Old commit messages cite SL-029/DEC ids that do not resolve in quotient"]
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

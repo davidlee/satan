@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 111
+slug = "quotient-entry-point-one-bin-serve-reduce-help"
+title = "quotient entry point: one bin, serve | reduce | help"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "pi-mcp ships two bins (bin/pi-mcp, bin/pi-run-reduce); the reducer self-executes via an import.meta.main guard (pi/reduce/cli.ts:119)."
+choice = "One bin `quotient`: bare serves MCP on stdio (one-line stderr note when stdin is a TTY); `quotient reduce` keeps pi-run-reduce's argv and exit codes 0/1/2; `quotient help [section]`; `--version`; unknown verb prints usage, exit 2. The reducer exports main(argv) instead of self-executing. reduce.ts is not a published library API in v1."
+alternatives = ["Two bins quotient + quotient-reduce", "Export reduce() as library API"]
+rationale = "A second bin would share the quotient-<capability> form namespace; a subcommand leaves room for later verbs. Exporting a library API is a permanent commitment with no current consumer."
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

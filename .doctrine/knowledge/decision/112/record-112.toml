@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 112
+slug = "quotient-configuration-resolution-split-by-authority"
+title = "quotient configuration resolution, split by authority"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-22"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "pi-mcp takes every path from PI_MCP_* env with no defaults (pi/mcp/policy.ts:20-22). A published package needs discovery; profiles are live authority (DEC-092, RV-046 F-5)."
+choice = "Policy: QUOTIENT_POLICY else $XDG_CONFIG_HOME/quotient/policy.json, never project-local, re-resolved per call. Profiles: per-name overlay of ./.quotient/profiles/ (server launch dir) over $XDG_CONFIG_HOME/quotient/profiles/, snapshotted at start-up, digest over the merged set and each source path; the policy pins each profile's capability. Help: per-section files ./.quotient/help/<section>.md, then XDG, then built-in, snapshotted with digest; no config file beyond the directories. State: QUOTIENT_RUN_DIR / QUOTIENT_SESSION_HOME else $XDG_STATE_HOME/quotient/{runs,sessions}. All PI_MCP_* become QUOTIENT_*, including the child-env scrub prefix and the form's ACTIVE_SESSION_DIR. Missing XDG and HOME fails closed."
+alternatives = ["Env as the only contract", "Profiles XDG-only", "First profile dir wins wholesale", "Help text in the policy or a new config.json"]
+rationale = "Local-first where it is not authority; the authority (policy, capability) stays out of reach of write-capable delegates."
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 120
+slug = "quotient-cutover-and-host-migration-side-by-side-then-remove"
+title = "quotient cutover and host migration: side by side, then remove"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-22"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Cutover breaks pi_agent until forms, policy and client config agree."
+choice = "1 quotient green and tagged v0.1.0 (GitHub push on operator go-ahead). 2 satan adds the flake input; forms renamed quotient-<cap>, reading QUOTIENT_ACTIVE_SESSION_DIR. 3 `just quotient-forms` builds links at ~/.local/state/quotient/forms/<cap>/bin/quotient-<cap>. 4 satan's tracked profiles move to satan/.quotient/profiles/; the operator writes ~/.config/quotient/policy.json (schema v1, profiles map, exposure) at 0444. 5 .mcp.json gains a `quotient` entry beside `pi-agent`. 6 Smoke: read and research final:true, hostile-audit on both forms, a Codex call. 7 Remove the old entry, pi/, the pi-mcp bins, piMcp* and old form links; retarget CLAUDE.md. Old run history stays at ~/.local/state/pi-mcp/runs. Rollback before step 7 is deleting the new entry. The tool keeps the name pi_agent."
+alternatives = []
+rationale    = ""
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 118
+slug = "quotient-clients-claude-code-and-codex-blocking-calls-in-v1"
+title = "quotient clients: Claude Code and Codex, blocking calls in v1"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-22"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Codex limits MCP tool calls to tool_timeout_sec, default 60 s; pi_agent blocks for minutes. Claude Code CLI's default is long."
+choice = "v1 keeps blocking calls. `quotient help clients` prints the Claude .mcp.json entry (command quotient) and the Codex [mcp_servers.quotient] table with cwd and tool_timeout_sec derived from the policy's wall_clock_s plus a margin. Both clients are smoke-tested live (Codex via codex exec). A wait-then-handle job shape is a follow-up backlog item."
+alternatives = ["start/status/result/cancel job family in v1", "wait N seconds then return a handle"]
+rationale = "Client configuration suffices for v1; a job shape changes the result contract and adds durable state."
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

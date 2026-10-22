@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 117
+slug = "quotient-build-and-npm-packaging"
+title = "quotient build and npm packaging"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Node refuses to strip types under node_modules (verified 2026-10-22, Node 24.21). Every relative import carries a .ts extension."
+choice = "tsc with module nodenext, rewriteRelativeImportExtensions, erasableSyntaxOnly, verbatimModuleSyntax; emit to dist/, tests and test rig not emitted; dev and tests run .ts directly. Help sections live in help/*.md at the package root, resolved relative to the module. package.json: @davidlee/quotient, type module, bin quotient -> dist/cli.js, files dist help examples docs, prepack tsc, no runtime deps, typescript the only devDependency, engines node >=22; pi is a documented prerequisite. SERVER_VERSION read from package.json. Verification: npm pack, install the tarball into an empty dir, run --version, help, reduce on a fixture, and an MCP initialize handshake. Publish: npm publish --access public, only on the operator's explicit go-ahead. satan builds it from its flake input with buildNpmPackage."
+alternatives = ["no build step (impossible under node_modules)", "bundling with esbuild"]
+rationale    = ""
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

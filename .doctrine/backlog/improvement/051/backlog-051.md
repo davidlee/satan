@@ -128,6 +128,60 @@ two best semantic fits and both are unusable.
   subcommand). Leaving it to drift produces a package whose two entry points do
   not look related.
 
+## Operator decisions (2026-10-22)
+
+The open decisions above are settled.
+
+- **Name: `quotient`.** One bin. Bare `quotient` serves MCP, and
+  `quotient reduce <events.jsonl>` replaces `pi-run-reduce`. A second bin
+  `quotient-reduce` was rejected. It would share the `quotient-<capability>`
+  form namespace (it reads like a form, and a profile named `reduce` would
+  collide), and the subcommand leaves room for later verbs such as policy
+  validation (IMP-048) and form generation. The repo is `~/dev/quotient`.
+- **Config: split by authority, local preferred.** The policy comes from an env
+  path, else XDG (`$XDG_CONFIG_HOME/quotient/policy.json`). It is never
+  discovered in the project tree, because confined workers can write there and
+  could widen their own ceiling. Profiles and other non-authority config are
+  looked up project-local first (`./.quotient/`), then XDG. State defaults to
+  `$XDG_STATE_HOME/quotient/{runs,sessions}`. Env overrides remain.
+- **Profiles: the policy pins each profile's capability (2026-10-22).**
+  Research (SL-031) found that local-first profiles break DEC-092 and
+  RV-046 F-5, because a write-capable delegate could rewrite a local `read`
+  profile into a `write` one. Profile lookup stays local first, but the
+  policy's `profiles` becomes a map from name to capability. A profile whose
+  document declares a different capability is refused, so a local profile can
+  never hold more capability than the policy grants. DEC-092 and DEC-097 are
+  revised.
+- **Host: migrate at cutover.** Forms, policy and state roots move from `pi-mcp`
+  to `quotient` in one act when satan switches to the package. The operator
+  re-issues the policy.
+- **npm: publish as `@davidlee/quotient`.** The installed bin is still
+  `quotient`. The unscoped name `quotient` is taken on npm ("Rational numbers
+  for Javascript", 0.1.4; checked 2026-10-22). Publishing is in v1, but the act
+  itself still needs the operator's go-ahead at the time.
+- **Clients: Claude Code and Codex.** Both are first-class MCP clients. Each
+  gets a documented config, and each is smoke-tested.
+- **Built-in help, one source for both model and human.** Sectioned help text
+  ships with the package, so no installed skill is needed.
+  - For the model, the MCP `instructions` and the tool description are
+    assembled from it.
+  - For people, `quotient help [section]` prints it.
+  - Any section can be overridden by a file (`./.quotient/help/<section>.md`,
+    then XDG) or by a config entry.
+- **pi package: nothing in v1.** v1 is the npm package and the nix flake. Raise
+  the pi-side resource as a follow-up backlog item.
+- **Build: verified, and required.** Node v24.21 refuses `.ts` under
+  `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`, reproduced
+  2026-10-22). The published package emits `.js` with `tsc` when packed, and
+  in-repo dev still runs the `.ts` directly.
+- **Taken as stated in this card:**
+  - The `pi-agent-result/1` contract becomes a versioned doc in the new repo.
+  - The design doc is standalone, with no doctrine ids.
+  - The rename happens at extraction, never before.
+  - v1 confinement is the nix forms plus an explicit unconfined form declared
+    in the policy.
+  - Native forms are follow-ups, one backlog item per platform.
+
 ## Related
 
 IMP-048 (child_binds exposure check), IMP-049 (policy schema doc),

@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 113
+slug = "quotient-policy-schema-v1-versioned-profiles-pin-capability-forms-or-unconfined"
+title = "quotient policy schema v1: versioned, profiles pin capability, forms or unconfined"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-097 defines the pi-mcp policy; DEC-092/RV-046 F-5 require that a delegate cannot raise a profile's capability; DEC-112 makes profiles project-local first."
+choice = 'Policy JSON carries a required `schema: "quotient-policy/1"` (absent or unknown: policy-invalid). `profiles` is a map name -> capability; a profile document declaring a different filesystem capability refuses `profile-capability-mismatch`. Each `forms` value is an absolute form path or `{ "unconfined": <absolute pi path> }`; PATH lookup is never used. All other DEC-097 fields and semantics carry over.'
+alternatives = ["profiles as a list (today)", "per-profile digest pins"]
+rationale = "Capability is authority and belongs in the operator's artefact; a name->capability map is the smallest change that closes the elevation path while letting local profiles vary tools, model and prompt."
+consequences = ["DEC-097 and DEC-092 need revision in satan", "the operator re-issues the policy at cutover"]
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"

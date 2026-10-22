@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 114
+slug = "quotient-unconfined-form-declared-write-only-never-a-fallback"
+title = "quotient unconfined form: declared, write-only, never a fallback"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-21"
+updated = "2026-10-21"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-100: never a bare agent on the host by fallback. Non-nix users need some form in v1."
+choice = "The unconfined form exists only where the policy names it (`forms.<cap> = { unconfined: <abs pi> }`). A policy that serves `read` unconfined is policy-invalid. README and `quotient help setup` state what it voids: no read-only guarantee, no reach limit beyond pi's cwd."
+alternatives = ["advisory read marked in status"]
+rationale = "Read-only without a jail is an unenforced claim; refusing keeps the word `read` meaning enforced."
+consequences = []
+decided_by = "operator"
+decided_on = "2026-10-22"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-031"
