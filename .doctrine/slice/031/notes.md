@@ -351,7 +351,7 @@ tests, tsc clean.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-07 complete; Q 88da980)
+fresh-as-of: 2026-10-22 · PHASE-08 complete · Q 514c4b1
 
 ### Produced
 
@@ -389,17 +389,21 @@ From execution (PHASE-01..05):
   conformance boundary recorded (warning at completion).
 - The pi `read` profile has no `node` on PATH: ask for review by reading, not
   running.
-- pi reviews overclaim: 3 of the 4 PHASE-05 findings fell to a code read.
+- pi reviews overclaim: 3 of the 4 PHASE-05 findings and all 6 PHASE-08 ones
+  fell to a code read.
   Adjudicate each finding against the code before acting on it.
 
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-07 complete; license MIT by operator decision 2026-10-22 (Q 88da980).
-  Next: `/phase-plan` PHASE-08.
-- PHASE-08: add `help/` to the drift test's shipped-text scan, and make the
-  `profiles` help section carry the profile grammar (the example profiles
-  point to it).
+- License MIT by operator decision 2026-10-22 (Q 88da980).
+- PHASE-08 complete (Q 2908625..514c4b1). Next: `/phase-plan` PHASE-09.
+- PHASE-08 choices to confirm at audit: `quotient help` exits 1 on an
+  unreadable help layer (the design's table lists 0/2); a start-up-refused
+  server's instructions and tool description name the failure; help/setup.md
+  replaces the README's setup steps.
+- ISS-044 (intermittent sentinel error in `just test`) hit the satan gate
+  once this session; rerun green.
 - PHASE-10: write calls must not be rooted at, or above, the server's launch
   dir (EX-5 step 8).
 - PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
