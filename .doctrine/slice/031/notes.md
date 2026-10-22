@@ -451,6 +451,37 @@ committed and split by the orchestrator. The step-2 commit builds on its own
 - **VH-1** given by the operator, 2026-10-23 ("confirmed": the step 6 smoke
   results above, policy written via `install -D -m 0444`).
 
+## PHASE-11 execution (2026-10-23)
+
+- Removal delegated to one Sonnet subagent (main tree, no commit); reviewed and
+  committed as `a1cea43` by explicit paths (the operator's staged CLAUDE.md line
+  is subsumed by the retargeted block, intent kept: only profile edits need a
+  restart).
+- Form family: with one instance left the abstraction was dropped —
+  `quotientFormFamily` / `formProbes` / `quotientFormsCheck` are plain lets;
+  `--die-with-parent` is unconditional and check (f) always asserts it.
+- pi-report (EX-2, VT-1/2): `read -ra` over `PI_REDUCE`, default
+  `$HOME/.local/state/quotient/bin/quotient reduce`, `-x "${reduce[0]:-}"`;
+  the `command -v node` guard is gone (the bin is a nix-wrapped launcher).
+  Test case 3 is the stub reducer (`PI_REDUCE="$STUB reduce"`, asserts
+  `first=reduce`). Review caught two defects in the hand-back: case 2 passed
+  `PI_REDUCE=/nonexistent/quotient reduce` unquoted (ran `reduce` as the
+  command; 2 FAIL, while the worker reported 9/9), and case 1 now needed the
+  host bin, so it skips when `~/.local/state/quotient/bin/quotient` is absent.
+  Result 9/0 on host, 4/0 with `HOME=/nonexistent`; shellcheck clean.
+  Gap, pre-existing: `pi-report-test.sh` is not run by `just check`.
+- EX-3 residual grep (`pi-mcp|PI_MCP|pi/mcp|pi-run-reduce`, excluding
+  `.doctrine`, `node_modules`, `.git`, `.capsule-runs` — the last is in
+  `.git/info/exclude`): one hit, `test/flake/forms.test.ts:53`, the
+  `doesNotMatch(flake, /pi-mcp/)` guard — intentional. The three
+  `.quotient/profiles/*.md` pointed at `pi/mcp/profiles.ts`; now
+  `quotient help profiles` (profile digest is recorded, not pinned).
+- EX-4: `just check` exit 0 (forms-suite 10/10); `just check-jails` exit 0.
+- Policy draft without the scratch root: `~/.local/state/quotient/policy.final.json`,
+  `readPolicy` ok.
+- Orphaned on host after this phase: `~/.config/pi-mcp/policy.json`; the old
+  form links `~/.local/state/pi-mcp/forms` go after EX-5.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-23 · PHASE-10 complete · Q 6c31180 (v0.1.0)
