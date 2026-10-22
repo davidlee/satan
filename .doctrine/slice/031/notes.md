@@ -349,9 +349,48 @@ tests, tsc clean.
   - rejected: F1 (`childrenOf` keeps `alerts`, and `alerts[]` is checked
     on the element walk); F7 (a spurious env-var match fails loudly).
 
+## PHASE-09 execution (2026-10-23)
+
+Q `ac7f729` (hostile-audit), `a1104d0` (pack-check), `c56a2a6` (flake);
+tagged `v0.1.0` (annotated, local, not pushed). 312 tests, tsc clean,
+shellcheck clean on both scripts.
+
+- **Delegation.** Two pi workers (`scripts/pi-agent dispatch-worker`,
+  `jailed-pi`, deepseek-flash, thinking medium) in two Q worktrees, in
+  parallel; the host ran pack-check, `nix build`, tests and commits.
+- **Preflight decisions (operator: no preference).** pack-check owns its
+  bash stub form and fake pi (the rig stays test-only); one canned stream it
+  writes is both check 2's fixture and the fake pi's output; a real probe
+  PASS is left to PHASE-10 (`just quotient-hostile-audit` on the real forms).
+- **`serve` is bare.** `quotient` with no verb serves (design sec-2 names
+  `serve`; PHASE-02's cli.ts has no such verb). Both scripts run it bare.
+- hostile-audit: `--form --capability --model [--exposure]... <root>
+  <session-home> <run-dir>`; gateway checks removed (host recipe's,
+  PHASE-10 EX-3). The verdict block is byte-identical to SL-029's. SKIP 77
+  checked: no args, missing form, ambient `QUOTIENT_POLICY`. A stub form
+  reaches the server and FAILs (no attempt), as it should.
+- **VA-1 pack-check:** all four PASS from a clone of `514c4b1` (the tarball
+  comes from HEAD; the scripts themselves are not packed). After review, check 2
+  also asserts the reduced `status.json` is `state: completed`; rerun PASS.
+- **VA-1 nix build:** one hash-from-failure round
+  (`sha256-7oIHeV7WcQZoQ7SzB78hEEBUtiYTb8T4HhPUJ0iWwrU=`); then green.
+  `result/bin/quotient --version` → `0.1.0`; the wrapper execs nodejs 22.23.3;
+  the output's `node_modules/` is empty (no devDeps). `result` added to Q's
+  `.gitignore` (it was ignored only by the global gitignore).
+- pi review (read profile, 17 findings), adjudicated against the code:
+  - accepted: F4 (reduce check asserted only a non-empty status.json).
+  - rejected: F1 (`pipefail` is set, so `|| fatal` fires); F10 (the
+    `!attempt` fail precedes the fallback PASS); F11 (fail-closed is an
+    admissible shape by design); F6, F15, F16 (out of the probe's scope /
+    evidence kept by design / built bin verified).
+  - noted, pre-existing (verdict logic unchanged from SL-029): F9, the
+    attempt test matches any bash naming the run root, not specifically the
+    append; F8, timeouts SKIP rather than FAIL. Candidates for the
+    probe-per-guarantee follow-up.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · PHASE-08 complete · Q 514c4b1
+fresh-as-of: 2026-10-23 · PHASE-09 complete · Q c56a2a6 (v0.1.0)
 
 ### Produced
 
@@ -383,6 +422,9 @@ From execution (PHASE-01..05):
 - pi run with `cwd: ~/dev/quotient` cannot see satan's `.doctrine/` (jail
   view): paste design text into the prompt.
 - `npm ci` hangs on the registry audit call here: use `--no-audit`.
+- Writing pi workers: `scripts/pi-agent dispatch-worker` under `jailed-pi`
+  in a `git worktree` of Q. The jail has node and npm but no nix, and git
+  is unusable there (the worktree's `.git` points outside the mount).
 - `doctrine slice verify-vt` reports Q-side VT rows UNATTRIBUTABLE (it
   attributes through satan's git); the keyword check is the evidence.
 - PHASE-04 was completed without first entering `in_progress`, so it has no
@@ -397,7 +439,7 @@ From execution (PHASE-01..05):
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
 - License MIT by operator decision 2026-10-22 (Q 88da980).
-- PHASE-08 complete (Q 2908625..514c4b1). Next: `/phase-plan` PHASE-09.
+- PHASE-09 complete (Q ac7f729..c56a2a6, tag v0.1.0). Next: `/phase-plan` PHASE-10 (needs operator go-ahead, EN-2).
 - PHASE-08 choices to confirm at audit: `quotient help` exits 1 on an
   unreadable help layer (the design's table lists 0/2); a start-up-refused
   server's instructions and tool description name the failure; help/setup.md
@@ -406,7 +448,6 @@ From execution (PHASE-01..05):
   once this session; rerun green.
 - PHASE-10: write calls must not be rooted at, or above, the server's launch
   dir (EX-5 step 8).
-- PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
 - Operator gates: PHASE-10
   (policy write, smoke confirmation), PHASE-11 VH-1, PHASE-12 (push, publish:
   separate go-aheads).
