@@ -388,6 +388,33 @@ shellcheck clean on both scripts.
     append; F8, timeouts SKIP rather than FAIL. Candidates for the
     probe-per-guarantee follow-up.
 
+## PHASE-10 execution (2026-10-23, in progress)
+
+satan `47f06e0` (step 2), `578d509` (step 3), `7b2970f` (step 4 profiles),
+`eaa15d6` (step 5). Steps 2-3 written by a Sonnet subagent (host nix);
+committed and split by the orchestrator. The step-2 commit builds on its own
+(`nix build git+file://…?rev=47f06e0#checks…quotient-forms`).
+
+- **One form family, two instances.** `mkFormFamily { prefix, sessionVar,
+  dieWithParent }`, `formProbes`, `mkFormCheck`; pi-mcp store paths are
+  unchanged. Step 7 deletes the pi-mcp instance in each.
+- **`--die-with-parent` is already emitted by jail.nix.** The quotient
+  family adds it explicitly anyway (the form states its own G7; the duplicate
+  is harmless). The check asserts it is present in each built launcher; a
+  negative control (nonsense probe) goes red. A first count-based check was
+  vacuous against the generator's copy and was replaced.
+- The quotient-forms check also asserts three `exit 64` guards per form (G8).
+- `just quotient-forms`: `~/.local/state/quotient/{forms/<cap>,pkg}` GC roots,
+  `bin/quotient -> ../pkg/bin/quotient`; `--version` → 0.1.0.
+- `quotient-hostile-audit` runs the input's script via
+  `packages.quotient-hostile-audit` (nodejs_22, store source), exposure
+  `~/.local/share/jail.nix/home/agent` (the old `child_binds`).
+- Step 4: scratch root `~/scratch/quotient-smoke` (git, one empty commit).
+  Policy draft validated by quotient's `readPolicy`: the old roots plus the
+  scratch root, profiles `{read: read, research: read, write: write}`, the
+  quotient form links, exposure as above, the old maxima.
+- Step 5: `.mcp.json` `quotient` entry, no env. Restart pending.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-23 · PHASE-09 complete · Q c56a2a6 (v0.1.0)
@@ -439,7 +466,8 @@ From execution (PHASE-01..05):
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
 - License MIT by operator decision 2026-10-22 (Q 88da980).
-- PHASE-09 complete (Q ac7f729..c56a2a6, tag v0.1.0). Next: `/phase-plan` PHASE-10 (needs operator go-ahead, EN-2).
+- PHASE-09 complete (Q ac7f729..c56a2a6, tag v0.1.0).
+- PHASE-10 steps 2-5 committed; next: operator policy file, restart, step 6 smoke.
 - PHASE-08 choices to confirm at audit: `quotient help` exits 1 on an
   unreadable help layer (the design's table lists 0/2); a start-up-refused
   server's instructions and tool description name the failure; help/setup.md
