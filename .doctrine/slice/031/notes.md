@@ -175,9 +175,36 @@ probe, if one is wanted:
   Dismissed: version read on initialize (package.json always ships);
   hostile-audit stale (EX-7); help stub output untested (PHASE-08).
 
+## PHASE-03 execution (2026-10-22)
+
+- `src/config.ts`: pure `resolveLocations(env, launchDir)` per design sec-3;
+  owns the `QUOTIENT_*` names and `usable(resolved)` (path or null, the
+  shape the evidence writers take). Details distinguish "unset and neither
+  XDG_* nor HOME", "set but empty", "set but not an absolute path". With no
+  XDG config base the layer lists hold only the launch layer.
+- Locations resolved once per process in `serve` (`Context.locations`): env
+  and launch dir are fixed for its life; the policy file is still read every
+  call. `admitCall(locations, callId)`; `refused` and admission both record
+  to `usable(locations.runDir)`. `absoluteVar`/`knownRunDir` deleted.
+- `PI_MCP_` → `QUOTIENT_` across src, including the scrub prefix, the
+  session-test helper vars and the README env table (now documents the XDG
+  defaults; PHASE-07 replaces the README). evidence.ts's stderr note says
+  "no usable run dir".
+- Tests: config.test.ts (6); policy.test's four env cases folded into one
+  admission-level case (lookup semantics are config's); test-rig `admit(env,
+  id)` resolves then admits. VT-2: `{XDG_CONFIG_HOME, XDG_STATE_HOME}` only,
+  invalid policy → request-invalid and policy-invalid both in
+  `<state>/quotient/runs/attempts.jsonl`. 266 tests; tsc clean.
+- Hermeticity checked: the rig spreads `process.env` but always sets all
+  three `QUOTIENT_*`; no test deletes one over an inherited HOME.
+- Review (pi `c582178b…`): fixed — run-dir/session-home details unasserted;
+  empty vs relative conflated. Dismissed — layers computed but unwired
+  (PHASE-05/08); the launch-dir policy test "cannot fail" (it is the
+  regression guard VT-1 names).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-02 complete) · 7aedf30
+fresh-as-of: 2026-10-22 · started (PHASE-03 complete) · 7aedf30
 
 ### Produced
 
@@ -203,7 +230,7 @@ plan.
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-02 complete. Next: `/phase-plan` PHASE-03.
+- PHASE-03 complete. Next: `/phase-plan` PHASE-04.
 - PHASE-06: handle a stdin stream error through the same shutdown path as
   EOF (PHASE-02 review).
 - PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
