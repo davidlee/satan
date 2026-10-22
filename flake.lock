@@ -671,6 +671,23 @@
         "type": "github"
       }
     },
+    "quotient": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792706149,
+        "narHash": "sha256-F4A4eKGjJlnhxnp6qUFgh0mO2pJBVz44V8CVPZtYVK4=",
+        "path": "/home/david/dev/quotient",
+        "type": "path"
+      },
+      "original": {
+        "path": "/home/david/dev/quotient",
+        "type": "path"
+      }
+    },
     "root": {
       "inputs": {
         "agents": "agents",
@@ -679,6 +696,7 @@
         "emacs": "emacs",
         "flake-parts": "flake-parts_4",
         "nixpkgs": "nixpkgs_10",
+        "quotient": "quotient",
         "zig-overlay": "zig-overlay"
       }
     },

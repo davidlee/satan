@@ -23,6 +23,7 @@ check-jails: malebolge-unbound
     nix build --no-link -L .#checks.x86_64-linux.runner-socket-unjailed
     nix build --no-link -L .#checks.x86_64-linux.malebolge-jail-profile
     nix build --no-link -L .#checks.x86_64-linux.pi-mcp-forms
+    nix build --no-link -L .#checks.x86_64-linux.quotient-forms
 
 # RV-035 F-1: the jailed-malebolge an impure devshell builds binds no
 # /workspace/ path, even with JAIL_WORKSPACE_DEPS set. `nix flake check` is
@@ -62,7 +63,7 @@ test: _require-test-dbs
 # The offline pi suites (TS, run by node's type stripping — no build step). No
 # test database and no network, so `check` covers them without the DB gate.
 pi-suites:
-    node --test pi/reduce/*.test.ts pi/mcp/*.test.ts
+    node --test pi/reduce/*.test.ts pi/mcp/*.test.ts test/flake/*.test.ts
 
 # Build the pi-mcp wrapper forms to fixed, GC-rooted links. The operator policy
 # names `<forms>/<capability>/bin/pi-mcp-<capability>`, so a rebuild is picked up

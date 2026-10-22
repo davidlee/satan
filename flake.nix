@@ -15,6 +15,11 @@
     emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
+    # The extracted successor of the in-tree pi-mcp server (its own repo).
+    quotient = {
+      url = "path:/home/david/dev/quotient";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs @ {
@@ -71,6 +76,7 @@
           jq
           python3 # `just test`: satan/harness unittest
           ripgrep # content_read search scope (and its tests)
+          typescript
 
           coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           luau # noctalia/ plugin tests + lint
@@ -302,47 +308,57 @@
         # home and the run directory are never bound. `~/.pi` is the
         # generator's persisted-home bind; a second bind for it would be a
         # second story about the same path.
-        # The one generator call both forms share; `extraOptions` is a form's
-        # own residue over it. `piMcpBaseline` is the same call with none: the
-        # `pi-mcp-forms` check subtracts its binds, so whatever the generator
-        # (jail.nix base, network, persisted home, gateway) binds cancels
-        # rather than being listed here — a generator bump neither fails nor
-        # moves the check. The baseline is the host exposure a per-call policy
-        # declares as `child_binds` (design sec-3): what the form adds beyond
-        # it is the call's root and session directory, nothing else. Never a
-        # package: it exists to be compared against.
-        piMcpJail = name: extraOptions:
-          jailLib.makeJailedPi {
-            inherit name extraOptions;
-            # The tracked profiles name `llm-gateway/deepseek-flash`, so the
-            # form carries the same gateway the other pi jails do.
-            profile = "specDev";
-            gateway = piGateway;
-            mountLaunchDir = false;
-            workspaceDepsFromEnv = false;
-          };
-        piMcpBaseline = piMcpJail "pi-mcp-baseline" [];
-        piMcpForms = let
+        # One launcher family per server: `prefix` names the forms and their
+        # baseline, `sessionVar` is the run-time variable the form exports,
+        # `dieWithParent` adds bwrap's `--die-with-parent` so the jailed child
+        # cannot outlive its server. `formFamilies` instantiates it per server.
+        #
+        # `jail` is the one generator call a family's forms share; `extraOptions`
+        # is a form's own residue over it. `baseline` is the same call with
+        # none: the `<prefix>-forms` check subtracts its binds, so whatever the
+        # generator (jail.nix base, network, persisted home, gateway) binds
+        # cancels rather than being listed here — a generator bump neither
+        # fails nor moves the check. The baseline is the host exposure a
+        # per-call policy declares as `child_binds` (design sec-3): what the
+        # form adds beyond it is the call's root and session directory, nothing
+        # else. Never a package: it exists to be compared against.
+        mkFormFamily = {
+          prefix,
+          sessionVar,
+          dieWithParent,
+        }: let
+          jail = name: extraOptions:
+            jailLib.makeJailedPi {
+              inherit name extraOptions;
+              # The tracked profiles name `llm-gateway/deepseek-flash`, so the
+              # form carries the same gateway the other pi jails do.
+              profile = "specDev";
+              gateway = piGateway;
+              mountLaunchDir = false;
+              workspaceDepsFromEnv = false;
+            };
+          rawArg = jailLib.combinators.unsafe-add-raw-args;
           # Read-only or writable at the same absolute path: the capability is
           # one word here and nowhere else.
           rootBindOption = capability:
-            jailLib.combinators.unsafe-add-raw-args (
+            rawArg (
               if capability == "read"
               then ''--ro-bind "$PWD" "$PWD"''
               else ''--bind "$PWD" "$PWD"''
             );
           mkForm = capability: let
-            name = "pi-mcp-${capability}";
-            jail = piMcpJail name [
-              (rootBindOption capability)
-              # The active session directory, and only it: rw in both
-              # capabilities, because pi writes the conversation there even
-              # under a read root (design sec-3).
-              (jailLib.combinators.unsafe-add-raw-args ''--bind "$PI_MCP_ACTIVE_SESSION_DIR" "$PI_MCP_ACTIVE_SESSION_DIR"'')
-              (jailLib.combinators.unsafe-add-raw-args ''--tmpfs /tmp'')
-              # After the generator's own --chdir "$HOME": the later wins.
-              (jailLib.combinators.unsafe-add-raw-args ''--chdir "$PWD"'')
-            ];
+            name = "${prefix}-${capability}";
+            formJail = jail name ([
+                (rootBindOption capability)
+                # The active session directory, and only it: rw in both
+                # capabilities, because pi writes the conversation there even
+                # under a read root (design sec-3).
+                (rawArg ("--bind \"$" + sessionVar + "\" \"$" + sessionVar + "\""))
+                (rawArg ''--tmpfs /tmp'')
+                # After the generator's own --chdir "$HOME": the later wins.
+                (rawArg ''--chdir "$PWD"'')
+              ]
+              ++ lib.optional dieWithParent (rawArg "--die-with-parent"));
           in
             pkgs.writeShellScriptBin name ''
               set -euo pipefail
@@ -364,13 +380,29 @@
                 echo "${name}: no active session directory at $session_dir" >&2
                 exit 64
               fi
-              export PI_MCP_ACTIVE_SESSION_DIR="$session_dir"
-              exec ${jail}/bin/jailed-${name} "$@"
+              export ${sessionVar}="$session_dir"
+              exec ${formJail}/bin/jailed-${name} "$@"
             '';
         in {
-          pi-mcp-read = mkForm "read";
-          pi-mcp-write = mkForm "write";
+          baseline = jail "${prefix}-baseline" [];
+          forms = {
+            "${prefix}-read" = mkForm "read";
+            "${prefix}-write" = mkForm "write";
+          };
         };
+        formFamilies = {
+          pi-mcp = mkFormFamily {
+            prefix = "pi-mcp";
+            sessionVar = "PI_MCP_ACTIVE_SESSION_DIR";
+            dieWithParent = false;
+          };
+          quotient = mkFormFamily {
+            prefix = "quotient";
+            sessionVar = "QUOTIENT_ACTIVE_SESSION_DIR";
+            dieWithParent = true;
+          };
+        };
+        piMcpForms = lib.foldl' (acc: f: acc // f.forms) {} (lib.attrValues formFamilies);
 
         jailPkgs = lib.optionalAttrs isLinux ({
             jailed-pi = jailLib.makeJailedPi {
@@ -462,6 +494,32 @@
         # the I1 closure sweep excludes this one by name. Written literally,
         # never derived from the jails' option lists, so dropping a forward
         # there fails a check instead of moving it.
+        formProbes = {
+          envPrefix,
+          dieWithParent,
+        }: {
+          inherit envPrefix dieWithParent;
+          # Unquoted, as the check reads launchers with quotes stripped.
+          session = "--bind $" + "${envPrefix}_ACTIVE_SESSION_DIR $" + "${envPrefix}_ACTIVE_SESSION_DIR";
+          # The session home (all sessions, not just this call's), the run
+          # directory and the policy file are bound into no form.
+          absent = [
+            "/workspace/"
+            "${envPrefix}_SESSION_HOME"
+            "${envPrefix}_RUN_DIR"
+            "${envPrefix}_POLICY"
+          ];
+          # At its own absolute path, read-only for the read capability. Each
+          # form must not carry the other's.
+          read = {
+            root = ''--ro-bind "$PWD" "$PWD"'';
+            otherRoot = ''--bind "$PWD" "$PWD"'';
+          };
+          write = {
+            root = ''--bind "$PWD" "$PWD"'';
+            otherRoot = ''--ro-bind "$PWD" "$PWD"'';
+          };
+        };
         jailProbes = {
           harness = {
             # The 1Password wrapper execs `"$op" run`, so the literal `op run`
@@ -531,38 +589,20 @@
             ];
           };
           # SL-029's per-call forms (design sec-3, "Per-call mode"). The
-          # expected residue over `piMcpBaseline` — the same generator call
+          # expected residue over a family's baseline — the same generator call
           # with no extra options — is the root and the active session
           # directory, nothing else. The generator's own binds are derived from
-          # the baseline, never listed: pi-mcp asserts what it adds, and
+          # the baseline, never listed: a family asserts what it adds, and
           # carries no copy of jail.nix's or the generator's bind set.
-          pi-mcp = {
-            # Unquoted, as the check reads launchers with quotes stripped.
-            session = "--bind $PI_MCP_ACTIVE_SESSION_DIR $PI_MCP_ACTIVE_SESSION_DIR";
-            read = {
-              # At its own absolute path, read-only for this capability. The
-              # write form must not carry this one, and vice versa.
-              root = ''--ro-bind "$PWD" "$PWD"'';
-              otherRoot = ''--bind "$PWD" "$PWD"'';
-              # The session home (all sessions, not just this call's), the run
-              # directory and the policy file are bound into no form.
-              absent = [
-                "/workspace/"
-                "PI_MCP_SESSION_HOME"
-                "PI_MCP_RUN_DIR"
-                "PI_MCP_POLICY"
-              ];
-            };
-            write = {
-              root = ''--bind "$PWD" "$PWD"'';
-              otherRoot = ''--ro-bind "$PWD" "$PWD"'';
-              absent = [
-                "/workspace/"
-                "PI_MCP_SESSION_HOME"
-                "PI_MCP_RUN_DIR"
-                "PI_MCP_POLICY"
-              ];
-            };
+          # `envPrefix` is written here as a literal, never read from the form
+          # under test.
+          pi-mcp = formProbes {
+            envPrefix = "PI_MCP";
+            dieWithParent = false;
+          };
+          quotient = formProbes {
+            envPrefix = "QUOTIENT";
+            dieWithParent = true;
           };
         };
 
@@ -671,13 +711,17 @@
           '';
 
         # SL-029 (design sec-3's per-call mode, sec-7's verification): each
-        # form's bind set equals the generator baseline's (`piMcpBaseline`)
-        # plus root + active session directory, so a bind the form adds or
-        # drops fails here; what the generator binds is its own concern. Also
-        # the positional contract and the run-time session path. Text only
-        # (DEC-046): nothing is launched.
-        piMcpFormCheck = let
-          p = jailProbes.pi-mcp;
+        # form's bind set equals its family's generator baseline plus root +
+        # active session directory, so a bind the form adds or drops fails
+        # here; what the generator binds is its own concern. Also the
+        # positional contract and the run-time session path. Text only
+        # (DEC-046): nothing is launched. One check per family in
+        # `formFamilies`, named `<prefix>-forms`.
+        mkFormCheck = prefix: let
+          p = jailProbes.${prefix};
+          family = formFamilies.${prefix};
+          checkName = "${prefix}-forms";
+          sessionVar = "${p.envPrefix}_ACTIVE_SESSION_DIR";
           # One capability's half: pkg is the form package, whose exec line
           # names the gateway wrapper, whose exec line names the bwrap launcher
           # that carries the bind args.
@@ -687,7 +731,7 @@
             execLabel = "(e) ${capability} form exec";
           in ''
             cap=${capability}
-            form=${pkg}/bin/pi-mcp-${capability}
+            form=${pkg}/bin/${prefix}-${capability}
             test -f "$form" || fail "$cap: no form at $form"
 
             # (e) The positional contract: exactly one positional is consumed
@@ -696,14 +740,16 @@
             # names no jail flag: the confinement is the generator's.
             must ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "session_dir=$1"}
             must ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "shift"}
-            must ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "export PI_MCP_ACTIVE_SESSION_DIR=\"$session_dir\""}
+            must ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "export ${sessionVar}=\"$session_dir\""}
             must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "$2"}
             must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "--bind"}
             must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "--ro-bind"}
             must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "--tmpfs"}
+            # The three argument guards each exit 64 (EX_USAGE).
+            test "$(grep -Fc -- 'exit 64' "$form")" -eq 3 || fail "$cap: the form must carry exactly three 'exit 64' guards"
             sed -n '/^exec /p' "$form" > "$TMPDIR/$cap-form-exec"
             test -s "$TMPDIR/$cap-form-exec" || fail "$cap: the form has no exec line"
-            must ${lib.escapeShellArg execLabel} "$TMPDIR/$cap-form-exec" ${lib.escapeShellArg "/bin/jailed-pi-mcp-${capability} \"$@\""}
+            must ${lib.escapeShellArg execLabel} "$TMPDIR/$cap-form-exec" ${lib.escapeShellArg "/bin/jailed-${prefix}-${capability} \"$@\""}
             must_not ${lib.escapeShellArg execLabel} "$TMPDIR/$cap-form-exec" ${lib.escapeShellArg " -- "}
             must_not ${lib.escapeShellArg execLabel} "$TMPDIR/$cap-form-exec" ${lib.escapeShellArg "$1"}
 
@@ -721,8 +767,15 @@
             must_not ${lib.escapeShellArg "(b) ${capability} root flag"} "$launcher" ${lib.escapeShellArg cap.otherRoot}
             # (d) The session home, the run directory, the policy file and
             # /workspace/ are bound into no child.
-            ${lib.concatMapStringsSep "\n" (s: "must_not ${lib.escapeShellArg "(d) ${capability} launcher"} \"$launcher\" ${lib.escapeShellArg s}") cap.absent}
-
+            ${lib.concatMapStringsSep "\n" (s: "must_not ${lib.escapeShellArg "(d) ${capability} launcher"} \"$launcher\" ${lib.escapeShellArg s}") p.absent}
+            # (f) G7: the child dies with its parent. jail.nix also emits
+            # `--die-with-parent`, so the family's own raw arg is a harmless
+            # duplicate that states the guarantee on the form itself.
+            ${lib.optionalString p.dieWithParent ''
+              if ! grep -Fq -- ${lib.escapeShellArg "--die-with-parent"} "$launcher"; then
+                fail "(f) ${capability} launcher must contain '--die-with-parent'"
+              fi
+            ''}
             # Quotes stripped once, so a raw arg and a generator-rendered bind
             # are read the same way.
             sed 's/"//g' "$launcher" > "$TMPDIR/$cap-unquoted"
@@ -739,7 +792,7 @@
             comm -23 "$TMPDIR/baseline-set" "$TMPDIR/$cap-actual-set" > "$TMPDIR/$cap-dropped"
             if ! cmp -s "$TMPDIR/$cap-expected-set" "$TMPDIR/$cap-added" || [ -s "$TMPDIR/$cap-dropped" ]; then
               {
-                echo "pi-mcp-forms: $cap: the residue over the generator baseline is not root + active session directory"
+                echo "${checkName}: $cap: the residue over the generator baseline is not root + active session directory"
                 echo "--- expected residue ---"
                 cat "$TMPDIR/$cap-expected-set"
                 echo "--- added over the baseline ---"
@@ -755,7 +808,7 @@
 
           '';
         in
-          launcherCheck "pi-mcp-forms" ''
+          launcherCheck checkName ''
             # Every bind word-pair in a launcher, one per line, quotes already
             # stripped and store hashes folded: a nixpkgs bump is not drift.
             bind_words() {
@@ -766,7 +819,7 @@
 
             # The baseline's bind set, once: same generator call, no extra
             # options. Its gateway wrapper execs the bwrap launcher.
-            baseline_outer=${piMcpBaseline}/bin/jailed-pi-mcp-baseline
+            baseline_outer=${family.baseline}/bin/jailed-${prefix}-baseline
             test -f "$baseline_outer" || fail "no baseline at $baseline_outer"
             baseline=$(sed -n 's|^exec \(/nix/store/[^ ]*/bin/jailed-[^ ]*\) .*|\1|p' "$baseline_outer")
             if [ -z "$baseline" ] || [ ! -f "$baseline" ]; then
@@ -775,8 +828,8 @@
             sed 's/"//g' "$baseline" > "$TMPDIR/baseline-unquoted"
             bind_words "$TMPDIR/baseline-unquoted" > "$TMPDIR/baseline-set"
 
-            ${formCheck "read" "${jailPkgs.pi-mcp-read}"}
-            ${formCheck "write" "${jailPkgs.pi-mcp-write}"}
+            ${formCheck "read" "${jailPkgs."${prefix}-read"}"}
+            ${formCheck "write" "${jailPkgs."${prefix}-write"}"}
           '';
       in {
         _module.args.pkgs = import inputs.nixpkgs {
@@ -786,6 +839,7 @@
         packages =
           lib.optionalAttrs isLinux jailPkgs
           // {
+            quotient = inputs.quotient.packages.${system}.default;
             # The devshell's tool set as one closure, for out-of-tree consumers
             # that need the same tools without the devshell (the microvm
             # capsule's `toolsPackage`), so the VM and the devshell can't drift.
@@ -802,7 +856,8 @@
         checks = lib.optionalAttrs isLinux {
           harness-jail-profile = harnessJailProfile;
           malebolge-jail-profile = malebolgeJailProfile;
-          pi-mcp-forms = piMcpFormCheck;
+          pi-mcp-forms = mkFormCheck "pi-mcp";
+          quotient-forms = mkFormCheck "quotient";
           runner-socket-unjailed = runnerSocketUnjailed;
         };
 
