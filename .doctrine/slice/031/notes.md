@@ -202,9 +202,29 @@ probe, if one is wanted:
   (PHASE-05/08); the launch-dir policy test "cannot fail" (it is the
   regression guard VT-1 names).
 
+## PHASE-04 execution (2026-10-22)
+
+- `policy.ts`: `schema` required and checked first — before the static-only
+  posture check and the unknown-key check (`POLICY_SCHEMA`). `profiles` is a
+  name → `read`|`write` map (`PROFILE_NAME` grammar; `FORM_FIELDS` doubles as
+  the capability list). `forms` accepts `{ unconfined: <abs pi> }`: write
+  only; exclusive with `path`; takes no `extensions` (pi runs
+  `--no-extensions`, design sec-4); no PATH lookup. `Form` is the sec-3
+  union. `child_binds` → `exposure` (now an unknown field).
+- Server, interim: step 3 checks map keys (`Object.keys(policy.profiles)`);
+  the capability pin is PHASE-05 EX-3. An unconfined form refuses
+  `wrapper-unavailable` ("this build cannot yet launch an unconfined form")
+  until PHASE-06; `spawn.ts` types its plan as the confined arm
+  (`LaunchForm`). Both are marked "Interim" / PHASE-06 in code.
+- ChildView input still says `childBinds`/role `child_bind`: PHASE-05 EX-5
+  renames them; server maps `policy.exposure` into it.
+- README (src/server, replaced in PHASE-07) documents `schema`, the map,
+  `unconfined`, `exposure`; its json block is v1.
+- 270 tests; tsc clean. No pi review this phase (handover point).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-03 complete) · 7aedf30
+fresh-as-of: 2026-10-22 · started (PHASE-04 complete; Q f6c8f8f)
 
 ### Produced
 
@@ -227,10 +247,26 @@ concluded, all 15 findings verified; memory
 The first four are in `research/research.md` and the DECs; the last is in the
 plan.
 
+From execution (PHASE-01..04):
+
+- pi_agent policy maxima: 6 requests per call; cached tokens count toward
+  `tokens` (now 320k), so a reused session is short-lived. Ask for batched
+  reads and a capped answer; on a ceiling, continue the session with
+  `tools: ["read"]` and "answer now, no tool calls".
+- pi run with `cwd: ~/dev/quotient` cannot see satan's `.doctrine/` (jail
+  view): paste design text into the prompt.
+- `npm ci` hangs on the registry audit call here: use `--no-audit`.
+- `doctrine slice verify-vt` reports Q-side VT rows UNATTRIBUTABLE (it
+  attributes through satan's git); the keyword check is the evidence.
+- PHASE-04 was completed without first entering `in_progress`, so it has no
+  conformance boundary recorded (warning at completion).
+
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-03 complete. Next: `/phase-plan` PHASE-04.
+- PHASE-04 complete. Next: `/phase-plan` PHASE-05 (see handover.md).
+- PHASE-06: remove the interim unconfined refusal (server.ts) and
+  `LaunchForm` (spawn.ts) when the spawn branches on the form kind.
 - PHASE-06: handle a stdin stream error through the same shutdown path as
   EOF (PHASE-02 review).
 - PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
