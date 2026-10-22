@@ -266,9 +266,44 @@ Q `ac5f641` (feat), `c978df5` (F4 fix), `a8d383b` (wire audit test). 279 tests, 
 - Help snapshot loading is not this phase. Only the help layer *paths* are
   protected.
 
+## PHASE-06 execution (2026-10-22)
+
+Q `505824a` (argv split + unconfined branch), `539cee5` (signal shutdown),
+`5459b29` (review fix). 285 tests, tsc clean.
+
+- `spawn.ts`: `buildArgv` is pi's argv only and no longer takes `form`.
+  `launchCommand(form, sessionDir, piArgv)` is the one branch (DEC-114).
+  `LaunchForm` is removed and `SpawnPlan.form` is `Form`. The `spawn` record
+  carries `form` (the command: launcher or pi path), `form_kind`, and `argv`
+  (what the command received; the confined form's argv starts with the
+  session dir).
+- `policy.ts`: `formExtensions(form)`. An unconfined form has `[]`, so an
+  `mcp__*` profile on an unconfined write form refuses `profile-invalid`.
+  This follows from the policy rejecting `extensions` beside `unconfined`.
+  The interim `wrapper-unavailable` refusal in `server.ts` is removed.
+- `server.ts`: `ServeOptions.signal`. `inputChunks(input, diagnostics,
+  signal)` calls `addAbortSignal` on the input, so the signal ends the read
+  loop. A failed input writes `quotient: the input failed: …` and ends the
+  loop too. All three endings reach the existing EOF sweep unchanged. Only
+  the iterator's errors are caught: a `handleLine` throw propagates, as
+  before. No test pins that, because no test can make `handleLine` throw.
+- `cli.ts`: `shutdownSignal()` uses `process.once` for SIGTERM and SIGINT.
+  A second signal takes the default action, so the operator can escape a
+  stuck shutdown. Exit is 0, as on EOF.
+- Rig: `LiveServer.fail(error)`. `runDirs` and `onlyRunDir` moved into
+  `test-rig.ts`.
+- VT-2 covers the in-process signal, a failed input, a pre-aborted signal
+  (admits nothing), and a real SIGTERM to the subprocess server (exit 0,
+  group dead, `abort` record with cause `eof`). The subprocess case takes
+  about 2 s at the contract grace, because the CLI exposes no grace knob.
+- pi review (`read`): F1 was partly valid and is fixed by `5459b29`; the catch
+  had covered `handleLine`, though the error was not silent as pi claimed. F2
+  is rejected: an unconfined `-e builtin:mcp` cannot be reached past step 5,
+  and the new test pins this.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-05 complete; Q a8d383b)
+fresh-as-of: 2026-10-22 · started (PHASE-06 complete; Q 5459b29)
 
 ### Produced
 
@@ -312,13 +347,9 @@ From execution (PHASE-01..05):
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-05 complete. Next: `/phase-plan` PHASE-06.
+- PHASE-06 complete. Next: `/phase-plan` PHASE-07.
 - PHASE-10: write calls must not be rooted at, or above, the server's launch
   dir (EX-5 step 8).
-- PHASE-06: remove the interim unconfined refusal (server.ts) and
-  `LaunchForm` (spawn.ts) when the spawn branches on the form kind.
-- PHASE-06: handle a stdin stream error through the same shutdown path as
-  EOF (PHASE-02 review).
 - PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
 - Operator gates: PHASE-10
   (policy write, smoke confirmation), PHASE-11 VH-1, PHASE-12 (push, publish:
