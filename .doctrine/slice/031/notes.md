@@ -351,7 +351,7 @@ tests, tsc clean.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-22 · started (PHASE-07 complete; Q 5a032ed)
+fresh-as-of: 2026-10-22 · started (PHASE-07 complete; Q 88da980)
 
 ### Produced
 
@@ -395,12 +395,11 @@ From execution (PHASE-01..05):
 ### Open
 
 - Uncommitted: CLAUDE.md and flake.nix (operator's edits, not SL-031's).
-- PHASE-07 complete. Next: `/phase-plan` PHASE-08.
+- PHASE-07 complete; license MIT by operator decision 2026-10-22 (Q 88da980).
+  Next: `/phase-plan` PHASE-08.
 - PHASE-08: add `help/` to the drift test's shipped-text scan, and make the
   `profiles` help section carry the profile grammar (the example profiles
   point to it).
-- Q has no `LICENSE` and package.json has no `license` field. This is the
-  operator's choice, needed before PHASE-12 publish.
 - PHASE-10: write calls must not be rooted at, or above, the server's launch
   dir (EX-5 step 8).
 - PHASE-09 pack-check: `npm ci --no-audit` (audit call hangs).
