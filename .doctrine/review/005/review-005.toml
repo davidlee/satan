@@ -8,6 +8,8 @@ title = "SL-015 reconciliation audit: the three-root corpus relocation"
 facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
 raiser    = "auditor"
 responder = "author"
+rounds_base = 33
+contests_base = 0
 
 [target]                   # the outbound `reviews` edge (ADR-004): RV-NNN ──reviews──▶ <ref>
 ref   = "SL-015"
@@ -110,6 +112,166 @@ title = "every ground-truth exit criterion verified independently today"
 detail = """Not read out of the notes — checked directly at `7f8969d`. `~/notes/satan` absent, no symlink (D4 / P03 EX-9). `satan-corpus-root` = literal `"~/satan"`, no derivation (D2 / P03 EX-2). `~/satan`: 832K, 32 commits with pre-split history back to `e894637`, remote `satan-corpus`, HEAD == origin/main (P03 EX-1, VA-2). State root holds `runs/`, `log/`, four sensor JSONs and 70 tick traces (P02 EX-1/EX-3). `flake.nix` binds `$HOME/satan/hippocampus` at :141 and `$HOME/satan` → `/workspace/corpus` at :96 (P03 EX-5, R7). Both workarounds gone: no `satan/**` glob in `satan-tools-atsatan.el`, no `denote-excluded-directories-regexp` in `dl-denote.el` (D8 / P03 EX-8). All six state modules carry `(require 'satan-custom)` (P01 EX-4); `satan-prompts-dir` is a defcustom (EX-8); the `behaviour/` class is untouched at all three sites (EX-9 / §2.2b); the D10 allowlist survives exactly twice (`satan-mcp.el:43`, `satan-patch-worktree.el:51`). Corpus names no old path (P03 VA-1); the `satan/` package carries none either (D9 subset); `docs/` residue is 16 files, filed as CHR-006. `doctrine memory validate` clean; `verify-vt` 9/9 PASS; suite 1044/1040/1/3 at the documented invocation. Governance untouched: zero `notes/satan` references under `.doctrine/{adr,policy,standard}` — ADR-017 §3 ledger and POL-001 unaffected as the slice declared."""
 disposition = "aligned"
 response = "Observation correct, no change needed. This is the positive evidence the closure rests on: every filesystem, repo, defcustom and jail fact re-derived from the ground at `7f8969d` rather than read out of the slice's own notes, plus a clean suite at the documented invocation and 9/9 VT. Recorded so the next reader can see what was checked, not just that it passed."
+
+[[finding]]
+id = "F-12"
+status = "withdrawn"
+severity = "major"
+title = "Bound-connection refusal text contradicts DEC-007 and leaves laterLine unspecified"
+detail = "Sec-3 and sec-6 fixed the text as `list: already attached to conversation N`, while DEC-007's Choice says the *existing* (unprefixed) message and `docs/internals.md:112-114` documents it. `alreadyAttached` (src/daemon.ts:51-54) takes no frame, so a prefixed variant has no signature. Sec-2 replaced AttachRefused with FrameRefused but never said what laterLine's `error instanceof AttachRefused ? alreadyAttached(...) : errorMessage(...)` branch (src/daemon.ts:197-219) becomes; a mechanical rename would ship `attach: conversation must be a positive integer` where test/daemon.test.ts:624-629 requires `already attached to conversation 1`."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-13"
+status = "withdrawn"
+severity = "major"
+title = "`truncated` had no consumer, and the docs duty it licensed could not be supported"
+detail = "Sec-6 required `--list` to print ids and no notices, and the picker read ids only, so nothing read the wire key. Worse, ids ascend and the scan descends (pi-durable dist/types.d.ts:867-870), so a full page trims the oldest conversation -- possibly root, the client's default target -- while the docs claimed older conversations stay attachable by id."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-14"
+status = "withdrawn"
+severity = "major"
+title = "DEC-009's smoke obligation had no home and the gate could not reach it"
+detail = "DEC-009 Consequences requires test/emacs-attach-smoke.ts to gain a targeted attach, but sec-5 never mentioned it and sec-6's gate was `just check` and `just ert` only, while the smoke is `just smoke` (justfile:23-25). Its fake daemon answers only an attach frame (test/emacs-attach-smoke.ts:129-140), so a targeted attach needs a `list` reply there too."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-15"
+status = "withdrawn"
+severity = "major"
+title = "The list client's failure contract was unstated, so 'exits 1 with one message' had no implementation"
+detail = "src/attach-main.ts:28-32 exits 1 only for an error carrying a `code` and rethrows everything else. The design named no rejection type, no dispatch from attach-main to the list mode, and no owner for ending the socket against an old daemon that binds root and stays open (src/daemon.ts:176-185)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-16"
+status = "withdrawn"
+severity = "major"
+title = "The Emacs switch order was unspecified, and a failed second attach could strand the user"
+detail = "Sec-5 put the detach before the draft refusal without saying the listing, prompt and draft check settle first, so one implementer would refuse with the client intact and another detach then refuse. It also did not say what happens when the second attach fails after a successful detach -- `open` rejects `no conversation N` (src/conversations.ts:44) because an id is a snapshot of the store."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-17"
+status = "withdrawn"
+severity = "minor"
+title = "Three governing texts still gave the listing ten seconds"
+detail = "DEC-008's Choice ('the same waiting budget as an attach (10 s)') and DEC-009's Choice ('bounded by the client's own 10 s connect wait') survived unamended while only their amendments said about a second; sec-4 asserted the short wait without saying which text governs or naming the constant, and DEFAULT_WAIT (src/attach.ts:203) is precisely what is not used."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-18"
+status = "withdrawn"
+severity = "minor"
+title = "Sec-6's following case could not distinguish the fix it claimed to test"
+detail = "Comint follows a *window* whose point is at the process mark (emacs/malebolge.el:161-163), so an assertion on buffer point at point-max passes with the remedy deleted; and goto-char (point-max) on a freshly erased buffer is a no-op, so the cited lines (:218-222) do not establish the stated cause."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-19"
+status = "withdrawn"
+severity = "minor"
+title = "Sec-4's signature could not call the seam it named, and the renderer's presentation was undecided"
+detail = "`listConversations(socketPath, output, wait)` was said to connect through connectOrExplain, which is (socketPath, output, render, wait) (src/attach.ts:247-262) and needs a renderer whose presentation was never chosen in a mode that refuses --emacs. The hosting module and the shape AttachInvocation (src/attach.ts:91-95) grows were likewise unnamed."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-20"
+status = "withdrawn"
+severity = "minor"
+title = "Two shipped README claims would have been left false"
+detail = "README.md:123-124 says 'just attach and M-x malebolge-attach accept none, so both stay on root', which the prefix-argument prompt falsifies; README.md:165-172 documents the skew hint for attach alone with the literal message, which the generalised rule makes incomplete. Sec-6's doc duty required neither correction."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
+
+[[finding]]
+id = "F-21"
+status = "withdrawn"
+severity = "nit"
+title = "Three stale citations would have become plan touch points"
+detail = "Sec-3 cited fail at src/daemon.ts:96-110 (it is :67-74); sec-4 cited SKEW at src/attach.ts:220-232 (SKEW/SKEW_HINT are :205-206, failBeforeAttach :271-281) and connectOrExplain at :280-300 (it is :247-262); DEC-007 and research/research.md:57 repeat the first."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "withdraw"
+role = "raiser"
+note = "Raised in error. This pass is SL-015's reconciliation audit; the findings concern malebolge SL-002 and were written here because the doctrine MCP server resolves the project root from the session's cwd (/workspace/satan), not the repo under work. Withdrawn here, re-raised on malebolge RV-005 via its own CLI."
 
 # Findings are append-only `[[finding]]` tables, added by `review raise` (PHASE-03).
 # Empty here at creation — a fresh review is Active, awaiting the raiser (D-C8).
