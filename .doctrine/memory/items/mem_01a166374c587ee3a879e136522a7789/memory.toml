@@ -1,0 +1,50 @@
+memory_uid = "mem_01a166374c587ee3a879e136522a7789"
+memory_key = "mem.pattern.quotient.npm-publish"
+schema_version = 1
+memory_type = "pattern"
+status = "active"
+title = "Publishing quotient to npm: scope, worktree deps, browser 2FA"
+summary = "Check npm scope ownership when naming; npm ci in the publish checkout; publish from a real TTY, not a ! run"
+created = "2026-10-23"
+updated = "2026-10-23"
+
+[scope]
+paths = []
+globs = []
+commands = ["npm publish"]
+tags = ["quotient", "npm", "release"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "fb2cb08998054b8d43470fcbf03c4e2d7f294503"
+ref_name = "refs/heads/main"
+checkout_state_id = "1102425fb440e12a09b170a9fa7896c96cd4a2419930955fbcb4badde594742b"
+base_commit = "409b54aff9df0827a7a104411b7e9cf8fd22362f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-031"
+
+[[source]]
+kind = "review"
+ref = "RV-059"
+
