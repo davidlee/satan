@@ -5,7 +5,7 @@ pi-mcp is two things in satan today: an MCP stdio server exposing one tool,
 `pi_agent`, which admits a call against an operator policy and runs one
 confined `pi` child; and the reducer, which turns the child's event stream into
 a bounded, cited result. Both move to `~/dev/quotient` (remote
-`github.com/davidlee/quotient`), published to npm as `@davidlee/quotient` with
+`github.com/davidlee/quotient`), published to npm as `@davlee/quotient` with
 one bin, `quotient`.
 
 What moves is **mechanism**. What stays in satan is **this host's confinement
@@ -103,7 +103,7 @@ effects at import. It dispatches on its first argument:
 |---|---|---|
 | (none) | `serve(stdin, stdout, env, stderr, { launchDir: cwd })`. If stdin is a TTY, it first prints one stderr line saying the server speaks MCP on stdio. It installs the SIGTERM/SIGINT handlers of sec-4. | 0 after shutdown |
 | `reduce …` | `reduce/cli.ts` `main(argv.slice(1))` with today's `pi-run-reduce` arguments | 0 completed, 1 failed or incomplete, 2 usage |
-| `help [section]` | prints one section, or the list of sections | 0, or 2 for an unknown section |
+| `help [section]` | prints one section, or the list of sections | 0; 2 for an unknown section; 1 when the help layer is unreadable |
 | `--version` | the version from `package.json` | 0 |
 | anything else | usage on stderr | 2 |
 
@@ -488,7 +488,7 @@ ships `.js`. In the repo, dev and tests keep running the `.ts` directly
 ## package.json
 
 ```json
-{ "name": "@davidlee/quotient", "version": "0.1.0", "type": "module",
+{ "name": "@davlee/quotient", "version": "0.1.1", "type": "module",
   "bin": { "quotient": "dist/cli.js" },
   "files": ["dist", "help", "docs", "examples"],
   "scripts": { "build": "tsc", "prepack": "tsc", "test": "node --test 'src/**/*.test.ts'" },
@@ -525,12 +525,14 @@ after `npm whoami` confirms the `@davidlee` scope.
   `npmDepsHash`; the wrapper carries node) and a devShell with node and
   typescript. It exports no forms (DEC-116).
 - satan consumes it as a flake input, `path:/home/david/dev/quotient` until the
-  GitHub push, then `github:davidlee/quotient/v0.1.0` (sec-7).
+  GitHub push, then `github:davidlee/quotient/v0.1.1` (sec-7).
 
 ## Clients (DEC-118)
 
 Calls stay blocking in v1. `quotient help clients` prints both snippets with
-the absolute path of the running bin (`process.argv[1]`, realpath'd):
+the absolute path the bin was run as, symlinks kept; under the nix wrapper,
+`QUOTIENT_LAUNCHER` (its own `$0`, made absolute; a relative or empty value is
+ignored):
 
 ```json
 { "mcpServers": { "quotient": { "command": "/abs/bin/quotient" } } }
@@ -620,7 +622,7 @@ run side by side because their tools resolve to different names:
 
 ```mermaid
 flowchart TD
-  S1["1 quotient green, pack-check, tag v0.1.0"] --> S2["2 flake input (path:); quotient-* forms beside pi-mcp-*"]
+  S1["1 quotient green, pack-check, tag v0.1.1"] --> S2["2 flake input (path:); quotient-* forms beside pi-mcp-*"]
   S2 --> S3["3 just quotient-forms: form links + bin link"]
   S3 --> S4["4 copy profiles to .quotient/profiles; operator writes policy"]
   S4 --> S5["5 .mcp.json: quotient beside pi-agent"]
@@ -632,14 +634,18 @@ flowchart TD
 
 | step | where | change | rollback |
 |---|---|---|---|
-| 1 | quotient | Suites green; `scripts/pack-check` passes; tagged `v0.1.0`. The GitHub push needs the operator's go-ahead. | — |
+| 1 | quotient | Suites green; `scripts/pack-check` passes; tagged `v0.1.1`. The GitHub push needs the operator's go-ahead. | — |
 | 2 | satan `flake.nix` | Add the `quotient` input (`path:`) and package. Add forms `quotient-read` / `quotient-write` **alongside** `pi-mcp-*`, reading `QUOTIENT_ACTIVE_SESSION_DIR` and adding `--die-with-parent`. Add the `quotient-forms` check and the `quotient` jail-probe entry. | revert the commit |
 | 3 | satan `justfile` | Add `quotient-forms`: GC-rooted links at `~/.local/state/quotient/forms/<cap>/bin/quotient-<cap>`, and `~/.local/state/quotient/bin/quotient` (the nix-built bin, node wrapped). Keep `pi-mcp-forms`. Add a `quotient-hostile-audit` recipe that checks the gateway prerequisites and runs `scripts/hostile-audit` from the input. | — |
 | 4 | satan + host | **Copy** `pi/mcp/profiles/*.md` to `.quotient/profiles/`, marker renamed `quotient-profile`; the originals stay until step 7 because the old server reads them. The operator writes `~/.config/quotient/policy.json` (`quotient-policy/1`, a profiles map, `exposure`, mode 0444), with a scratch git repo in `roots` for step 6's write smoke. | delete the new files |
 | 5 | satan `.mcp.json` | Add a `quotient` entry, `command: "${HOME}/.local/state/quotient/bin/quotient"`, no env (XDG defaults), **beside** `pi-agent`. Restart the session. | delete the entry |
 | 6 | smoke | Through `mcp__quotient__pi_agent`: `read` and `research` return `final: true`. A `write` call rooted at a scratch git repo listed in `roots` (outside satan) creates one named file: `final: true`, the file exists, and the `spawn` record says `form_kind: confined`. hostile-audit passes against both forms. A Codex `codex exec` call with the printed snippet returns `final: true`. A write call rooted at satan's launch dir refuses `view-overlaps-protected`. | — |
 | 7 | satan | Remove the `pi-agent` entry, `pi/`, `bin/pi-mcp`, `bin/pi-run-reduce`, `bin/pi-mcp-hostile-audit`, `piMcpJail`, `piMcpBaseline`, `piMcpForms`, the `pi-mcp-forms` check and jail-probe entry, and the `pi-mcp-forms` recipe. Move `pi/mcp/forms.test.ts` to a satan-owned path, retargeted to the `quotient*` forms, and point the `pi-suites` recipe at it (renamed `forms-suite`). Retarget `scripts/lib/pi-report.sh`, `CLAUDE.md` and `docs/INDEX.md`. `just check` is green. Restart the Claude Code session and repeat one `read` call through the final `.mcp.json`, and one `codex exec` call; both return `final: true`. Only then delete the old form links. The operator reissues the policy without the scratch root, and a write call rooted there refuses `root-not-allowlisted`. | revert; `just pi-mcp-forms` at the reverted commit rebuilds the old links |
-| 8 | satan | After the push, switch the input to the tag, `github:davidlee/quotient/v0.1.0`, and relock. Rebuild with `just quotient-forms`, confirm `quotient --version` reads `0.1.0`, and repeat one live `read` call; it returns `final: true`. | switch back to the `path:` input, relock, rerun `just quotient-forms`, and repeat the live call |
+| 8 | satan | After the push, switch the input to the tag, `github:davidlee/quotient/v0.1.1`, and relock. Rebuild with `just quotient-forms`, confirm `quotient --version` reads `0.1.1`, and repeat one live `read` call; it returns `final: true`. | switch back to the `path:` input, relock, rerun `just quotient-forms`, and repeat the live call |
+
+`v0.1.0` (`6c31180`) was tagged and pushed but never published. The `@davidlee`
+npm scope is held by another account, so the first publish is
+`@davlee/quotient` 0.1.1 (`v0.1.1`, `3395eab`); RV-059 F-1.
 
 ## `scripts/lib/pi-report.sh`
 

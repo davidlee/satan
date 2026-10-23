@@ -95,3 +95,37 @@ Accepted tradeoffs:
   symlink-kept path and `QUOTIENT_LAUNCHER`, and the reason (a store
   realpath bypasses the node wrapper and dies at GC).
 
+
+## Reconciliation Outcome
+
+The operator confirmed the proposed writes ("proceed with reconcile",
+2026-10-23).
+
+### Direct edits applied
+- design.md, for F-1:
+  - l.8: npm name is `@davlee/quotient`;
+  - the package.json sketch: `@davlee/quotient` 0.1.1;
+  - l.528, sec-7 diagram S1, row 1 and row 8: `v0.1.1`, and `--version`
+    reads 0.1.1;
+  - a note under the sec-7 table: `v0.1.0` is GitHub-only, plus why the
+    scope moved.
+- design.md § Clients, for F-2: snippets name the path the bin was run as,
+  with symlinks kept, or `QUOTIENT_LAUNCHER` under the nix wrapper.
+- design.md CLI table, the `help` row, for F-3: exit 1 when the help layer is
+  unreadable.
+- F-4: the registry fix was made during the audit
+  (`slice selector add … 'test/flake/*.test.ts'`). design.md lists no
+  selectors, so it needs no mirror edit.
+
+### Knowledge amendments (no REV: no ADR, spec, requirement, policy or standard is touched)
+- DEC-117: Amendment 2026-10-23, `@davlee/quotient` 0.1.1, and the lesson
+  that the scope check came late (F-1).
+- DEC-118: Amendment 2026-10-23, the symlink-kept snippet path and
+  `QUOTIENT_LAUNCHER`, with the reason (F-2).
+
+### Fixed in audit / tolerated / follow-up
+- F-6: fixed (`shell-suite` in `just check`).
+- F-5: tolerated (PHASE-04 was quotient-only; see its disposition).
+- F-7: follow-up IMP-052.
+
+Reconcile pass complete; handoff to /close.

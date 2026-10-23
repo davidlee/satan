@@ -12,3 +12,8 @@ The server kills its child process groups on stdin EOF, SIGTERM and SIGINT (toda
 ## Amendment 2026-10-22b (design synthesis, operator: "accept")
 
 Correction: stdin EOF already aborts every in-flight call through the ladder with cause eof (pi/mcp/server.ts serve, post-loop). The gap is SIGTERM/SIGINT only. They take the same shutdown path and record cause eof ('client gone'); no new termination token, pi-agent-result/1 unchanged. Server SIGKILL with an unconfined form orphans the child: documented limitation.
+
+
+## Amendment 2026-10-23 (SL-031 reconcile, RV-059 F-2; operator "fix now" in PHASE-10, Q `6c31180`)
+
+The printed client snippets name the absolute path the bin was run as, with symlinks kept (`path.resolve`, not realpath). Under the nix wrapper, that path is `QUOTIENT_LAUNCHER`: the wrapper's own `$0`, made absolute. A relative or empty value is ignored, never refused, because it is a hint, not a location. Reason: under nix, the realpath of `process.argv[1]` is a store path to `dist/cli.js`. Its `/usr/bin/env node` shebang bypasses the node-carrying wrapper, and the path disappears at the next rebuild and GC.
