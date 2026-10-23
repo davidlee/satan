@@ -39,7 +39,7 @@ conversations are organised, not cost or authority.
 - IMP-014 (budget-breach sensor alert), ISS-050 (no append-only audit of the
   daemon's tool calls).
 
-## Proposed direction (user, 2026-10-23)
+## Direction (proposed by the user, accepted 2026-10-23)
 
 Use the gateway as the ceiling of record. Each task-running surface gets its
 own LiteLLM (`llm-gateway`) key with its own budget cap, topped up by hand by
