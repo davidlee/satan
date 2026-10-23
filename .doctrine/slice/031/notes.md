@@ -551,6 +551,17 @@ committed and split by the orchestrator. The step-2 commit builds on its own
     copy, not in the caller's checkout. Nothing was uploaded.
   - After `npm ci`, the publish stopped at `EOTP` (2FA by browser), so the
     operator runs it interactively.
+  - The operator published from a real terminal with browser auth
+    ("+ @davlee/quotient@0.1.1"). `!` runs have no TTY, so npm's web-auth
+    prompt cannot complete there.
+  - The public registry returned 404 for ~195 s after the publish while
+    npm processed it; `npm access list packages davlee` already listed it.
+  - Then `npx -y @davlee/quotient@0.1.1 --version` printed `0.1.1`, and
+    `npx -y @davlee/quotient help` listed the help sections (exit 0).
+    EX-4 met.
+- **VH-1:** push go-ahead, "i pushed" (`main`) and then "ran this" (`main`
+  + `v0.1.1`); publish go-ahead, "logged into npm. proceed", and the
+  operator ran the publish.
 - **malebolge Codex config** (operator request, outside SL-031's plan): malebolge
   `1d3b7bb` adds `[mcp_servers.quotient]` to `.codex/config.toml`, with
   `cwd` = satan so writes rooted in malebolge are not
