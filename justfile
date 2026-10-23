@@ -12,7 +12,7 @@ export SATAN_DB_HOST := PGHOST
 # create the DATABASE. Must match the suites' defconsts.
 test_dbs := "satan_memory_test trace_test patch_live_test"
 
-check: lint test forms-suite
+check: lint test forms-suite shell-suite
 
 gate: check
 
@@ -64,6 +64,10 @@ test: _require-test-dbs
 # gate.
 forms-suite:
     node --test test/flake/*.test.ts
+
+# The offline shell-script suites: every `scripts/**/*-test.sh`, each exit 0 = pass.
+shell-suite:
+    for t in scripts/*-test.sh scripts/lib/*-test.sh; do [ -e "$t" ] || continue; bash "$t" || exit 1; done
 
 # Build the quotient forms and bin to fixed, GC-rooted links. The operator
 # policy names `<state>/forms/<capability>/bin/quotient-<capability>`, and

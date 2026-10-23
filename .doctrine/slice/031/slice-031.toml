@@ -66,6 +66,10 @@ intent = "design-target"
 selector = "scripts/lib/pi-report-test.sh"
 intent = "design-target"
 
+[[selector]]
+selector = "test/flake/*.test.ts"
+intent = "design-target"
+
 [[relation]]
 label = "related"
 target = "SL-029"

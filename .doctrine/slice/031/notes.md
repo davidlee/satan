@@ -569,7 +569,7 @@ committed and split by the orchestrator. The step-2 commit builds on its own
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-23 · PHASE-10 complete · Q 6c31180 (v0.1.0)
+fresh-as-of: 2026-10-23 · audit RV-059 concluded · Q 3395eab (v0.1.1)
 
 ### Produced
 
@@ -616,22 +616,18 @@ From execution (PHASE-01..05):
 
 ### Open
 
-- Uncommitted: CLAUDE.md (operator's staged edit). The operator's flake.nix
-  `typescript` line landed in `47f06e0` (step 2), by operator say-so.
-- License MIT by operator decision 2026-10-22 (Q 88da980).
-- PHASE-09 complete (Q ac7f729..c56a2a6); tag v0.1.0 now at Q 6c31180.
-- PHASE-10 complete (VH-1 given). Next: `/phase-plan` PHASE-11.
-- PHASE-08 choices to confirm at audit: `quotient help` exits 1 on an
-  unreadable help layer (the design's table lists 0/2); a start-up-refused
-  server's instructions and tool description name the failure; help/setup.md
-  replaces the README's setup steps.
-- ISS-044 (intermittent sentinel error in `just test`) hit the satan gate
-  once this session; rerun green.
-- PHASE-10: write calls must not be rooted at, or above, the server's launch
-  dir (EX-5 step 8).
-- Audit: DEC-118 deviation (`help clients` no longer realpaths; wrapper
-  `QUOTIENT_LAUNCHER`) — reconcile into the design/DEC. Probe weaknesses F8/F9
-  (PHASE-09) — candidate backlog item.
-- Operator gates: PHASE-11 VH-1 (reissue policy without the scratch root),
-  PHASE-12 (push, publish: separate go-aheads).
+- Uncommitted: CLAUDE.md, if the operator stages further edits. The PHASE-11
+  retarget (`a1cea43`) took in the operator's staged line with its intent
+  kept.
+- Published: Q `v0.1.1` = `3395eab`, npm `@davlee/quotient@0.1.1`; satan
+  pins `github:davidlee/quotient/v0.1.1`. `v0.1.0` (`6c31180`) is a
+  GitHub-only tag.
+- Audit RV-059 concluded with 7 findings (`doctrine show RV-059`). Its
+  reconciliation brief covers F-1/F-2/F-3, the design.md + DEC-117/118
+  edits. Fixed in the audit: the `test/flake/*.test.ts` selector and the
+  `shell-suite` recipe. Follow-up: IMP-052 (hostile-audit probes).
+- ISS-044 (intermittent sentinel error in `just test`): rerun once.
+- Write calls must not be rooted at, or above, the server's launch dir
+  (`view-overlaps-protected`). malebolge's Codex therefore launches with
+  `cwd` = satan.
 - No open QUE or ASM.

@@ -1,0 +1,251 @@
+id    = 59
+slug  = "reconciliation-review-of-sl-031"
+title = "reconciliation review of SL-031"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Examined:
+- the satan SL-031 range `d203626^..HEAD`, via `slice conformance --against`;
+- the gates: just check, just check-jails, doctrine check gate;
+- the live-call evidence in notes § PHASE-10..12;
+- design.md and DEC-117/118 against the implementation (Q 3395eab);
+- the harvest's open audit items.
+
+Seven findings, all verified:
+- 3 design-wrong, carried in the reconciliation brief;
+- 2 fix-now, applied (selector, shell-suite);
+- 1 tolerated (PHASE-04 registry row);
+- 1 follow-up (IMP-052).
+
+No blocker.
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-031"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Published identity matches design: expected @davidlee/quotient at v0.1.0; observed @davlee/quotient 0.1.1 (tag v0.1.1)"
+detail = """
+Expected (design.md l.8, l.491, sec-7 rows 1 and 8; DEC-117; plan PHASE-12 EX-1/EX-2/EX-4): npm name `@davidlee/quotient`, version 0.1.0, satan pinned to `github:davidlee/quotient/v0.1.0`.
+Observed: the operator's npm user is `davlee` and the `@davidlee` scope belongs to someone else. Q `3395eab` renamed the package to `@davlee/quotient` and bumped it to 0.1.1, updating the lockfile, the README and `npmDepsHash`. Tag `v0.1.1` was pushed, and `v0.1.0` stays on GitHub at `6c31180`. satan pins `github:davidlee/quotient/v0.1.1` (`70594f4`). npm has `@davlee/quotient@0.1.1`, and `npx -y @davlee/quotient help` exits 0.
+DEC-117 already required "npm scope ownership is checked before publish". The check ran only at publish time, after the name was tagged and pushed, so the fix cost a re-tag. Evidence: notes.md § PHASE-12 execution.
+"""
+disposition = "design-wrong"
+response = """
+The design, DEC-117 and the plan named a scope the operator does not own, so the design is what's wrong. Reconcile design.md (l.8, l.491, sec-7 rows 1 and 8, § Clients l.528) and amend DEC-117 to `@davlee/quotient`, with first publish 0.1.1 at tag `v0.1.1` and `v0.1.0` left as a GitHub-only tag. The plan's PHASE-12 criteria are immutable: notes.md records the deviation, and the brief does not edit plan.toml. Lesson for DEC-117's "scope ownership is checked before publish": the check belongs at design time, before the name is tagged.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The design, DEC-117 and the plan named a scope the operator does not own, so the design is what's wrong. Reconcile design.md (l.8, l.491, sec-7 rows 1 and 8, § Clients l.528) and amend DEC-117 to `@davlee/quotient`, with first publish 0.1.1 at tag `v0.1.1` and `v0.1.0` left as a GitHub-only tag. The plan's PHASE-12 criteria are immutable: notes.md records the deviation, and the brief does not edit plan.toml. Lesson for DEC-117's "scope ownership is checked before publish": the check belongs at design time, before the name is tagged.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "Clients snippet path: expected realpath of argv[1] (design § Clients, DEC-118); observed symlink-preserving path plus QUOTIENT_LAUNCHER"
+detail = """
+Expected: design.md § Clients (DEC-118) says `quotient help clients` prints "the absolute path of the running bin (`process.argv[1]`, realpath'd)".
+Observed (Q `6c31180`, operator "fix now" in PHASE-10): `runningBin` keeps symlinks (`path.resolve`, not realpath). The nix wrapper exports `QUOTIENT_LAUNCHER`, its own `$0` made absolute, and the snippets prefer it.
+Why: under nix, the realpath is a store path to `dist/cli.js` whose shebang is `/usr/bin/env node`. It bypasses the node-carrying wrapper and disappears at the next GC. Documented in Q `docs/contract/quotient-policy-1.md`. Evidence: notes.md § PHASE-10 execution.
+"""
+disposition = "design-wrong"
+response = """
+The operator ordered the change ("fix now", PHASE-10), and the implementation is the correct one: a realpath'd store path dies at GC and bypasses the wrapper that supplies node. Reconcile design.md § Clients, and amend DEC-118, to say that the snippets name the path the bin was run as (symlinks kept). Under the nix wrapper that path is `QUOTIENT_LAUNCHER`; a relative or empty value is ignored.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+The operator ordered the change ("fix now", PHASE-10), and the implementation is the correct one: a realpath'd store path dies at GC and bypasses the wrapper that supplies node. Reconcile design.md § Clients, and amend DEC-118, to say that the snippets name the path the bin was run as (symlinks kept). Under the nix wrapper that path is `QUOTIENT_LAUNCHER`; a relative or empty value is ignored.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "help exit codes: expected 0, or 2 for an unknown section (design CLI table); observed exit 1 when the help layer is unreadable"
+detail = """
+Expected: design.md l.106, the `help [section]` row: "0, or 2 for an unknown section".
+Observed: a PHASE-08 choice. `quotient help` exits 1 when the help layer itself cannot be read; `src/cli.ts` documents 0 / 2 / 1. The other PHASE-08 choices the harvest flagged match the design: help/setup.md is listed as the `setup` section (design l.139), and a server refused at start-up names the failure in its instructions and tool description (server.ts row, l.706). Only the exit code is undocumented.
+"""
+disposition = "design-wrong"
+response = """
+Exit 1 is the right code for an unreadable help layer: it's an install fault, distinct from a usage error (2). Reconcile the design.md CLI table (l.106) to "0; 2 unknown section; 1 unreadable help layer". The other PHASE-08 choices already match the design.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Exit 1 is the right code for an unreadable help layer: it's an install fault, distinct from a usage error (2). Reconcile the design.md CLI table (l.106) to "0; 2 unknown section; 1 unreadable help layer". The other PHASE-08 choices already match the design.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Conformance: expected every satan path SL-031 edits to be declared; observed test/flake/forms.test.ts undeclared"
+detail = """
+Expected: design sec-7 row 7 moves the forms test to a satan-owned path (`test/flake/forms.test.ts`, PHASE-10 EX-2), so it belongs in the design-target selectors.
+Observed: `doctrine slice conformance 31 --against d203626^..HEAD` lists it as the only undeclared non-`.doctrine/` path (A test/flake/forms.test.ts), with 0 undelivered and 43 conformant. The undeclared `.doctrine/` paths are SL-031's own DEC/IDE/memory records.
+"""
+disposition = "fix-now"
+response = """
+Fixed: `doctrine slice selector add --intent design-target 31 'test/flake/*.test.ts'`. Conformance over `d203626^..HEAD` now has no undeclared non-`.doctrine/` path. Mirror the selector in design.md's selector prose at reconcile.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: `doctrine slice selector add --intent design-target 31 'test/flake/*.test.ts'`. Conformance over `d203626^..HEAD` now has no undeclared non-`.doctrine/` path. Mirror the selector in design.md's selector prose at reconcile.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Conformance registry: expected a source-delta row for every completed phase; observed none for PHASE-04"
+detail = """
+Expected: each completed phase has a boundary row, so that `slice conformance 31` is complete.
+Observed: "conformance incomplete — completed phase PHASE-04 has no recorded source-delta row". PHASE-04 went to completed without entering in_progress (`started = ""`; harvest § Learned records it). Its work was entirely in quotient, so satan has no code delta for it. Recording `--start == --end` would be a no-op row that conformance reads as covered (memory footgun mem_01a0d7f2…).
+"""
+disposition = "tolerated"
+response = """
+PHASE-04 touched no satan source: its whole delta is in quotient, which satan's registry cannot attribute. A `--start == --end` row would falsely read as covered, which is a known footgun. The full satan range, `conformance 31 --against d203626^..HEAD`, is the substitute evidence: 0 undelivered, and no undeclared code path after F-4. The process slip (completed without entering in_progress) is already recorded in harvest § Learned.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+PHASE-04 touched no satan source: its whole delta is in quotient, which satan's registry cannot attribute. A `--start == --end` row would falsely read as covered, which is a known footgun. The full satan range, `conformance 31 --against d203626^..HEAD`, is the substitute evidence: 0 undelivered, and no undeclared code path after F-4. The process slip (completed without entering in_progress) is already recorded in harvest § Learned.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "Shell tests in the gate: expected pi-report-test.sh to run under just check; observed it runs nowhere automatically"
+detail = """
+Expected: PHASE-11 VT-1 rests on `scripts/lib/pi-report-test.sh`, and the operator's checklist wants passing coverage in the gate.
+Observed: `just check` = lint, test and forms-suite; no recipe runs `pi-report-test.sh` (`grep test.sh justfile` finds nothing). In PHASE-11 the delegate reported it 9/9 while case 2 actually failed: the unquoted `PI_REDUCE=/nonexistent/quotient reduce` ran `reduce` as the command. Review caught it; the gate would not have. This gap predates SL-031.
+"""
+disposition = "fix-now"
+response = """
+Fixed: a new `shell-suite` recipe runs every `scripts/*-test.sh` and `scripts/lib/*-test.sh`, and `check` now depends on it. Green: pi-report 9 passed, 0 failed. Red-proven: a temporary failing `scripts/zz-red-test.sh` made `just shell-suite` exit 1. `just check` exits 0.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Fixed: a new `shell-suite` recipe runs every `scripts/*-test.sh` and `scripts/lib/*-test.sh`, and `check` now depends on it. Green: pi-report 9 passed, 0 failed. Red-proven: a temporary failing `scripts/zz-red-test.sh` made `just shell-suite` exit 1. `just check` exits 0.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "Hostile-audit probes: expected each probe to fail on its guarantee's violation; observed F8 (timeouts SKIP, not FAIL) and F9 (attempt match is loose)"
+detail = """
+Expected: the hostile audit (Q `scripts/hostile-audit`, `just quotient-hostile-audit`) proves the read-only and append guarantees.
+Observed (PHASE-09 pi review, adjudicated against the code; verdict logic unchanged from SL-029): F8, a delegate timeout is reported SKIP rather than FAIL; F9, the attempt test matches any bash command naming the run root, not specifically the append. Both are pre-existing weaknesses of the probe, not regressions. Evidence: notes.md § PHASE-09 execution.
+"""
+disposition = "follow-up"
+response = """
+The defect is in probe code (quotient `scripts/hostile-audit`), not in spec or governance, and it predates SL-031. Captured as IMP-052 (`doctrine show IMP-052`).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+The defect is in probe code (quotient `scripts/hostile-audit`), not in spec or governance, and it predates SL-031. Captured as IMP-052 (`doctrine show IMP-052`).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
