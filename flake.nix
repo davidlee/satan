@@ -331,6 +331,9 @@
               # form carries the same gateway the other pi jails do.
               profile = "specDev";
               gateway = piGateway;
+              # The project toolchain (node, just, emacs, …) so a delegate can
+              # run the root's tests, as `jailed-pi` can.
+              extraPkgs = projectPkgs;
               mountLaunchDir = false;
               workspaceDepsFromEnv = false;
             };

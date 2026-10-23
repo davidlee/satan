@@ -1,3 +1,5 @@
+node_modules
+
 /elpa
 /emacs-backup
 /eln-cache
