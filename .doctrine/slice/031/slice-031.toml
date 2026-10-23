@@ -1,7 +1,7 @@
 id = 31
 slug = "extract-quotient"
 title = "Extract pi-mcp as quotient: standalone package, satan cuts over"
-status = "reconcile"
+status = "done"
 created = "2026-10-21"
 updated = "2026-10-23"
 tags = []

@@ -5,10 +5,10 @@ id = 51
 slug = "extract-pi-mcp-as-a-standalone-package-nix-and-doctrine-optional-npm-pi-package-gallery"
 title = "Extract pi-mcp as a standalone package: nix and doctrine optional, npm + pi package gallery"
 kind = "improvement"
-status = "open"
-resolution = ""                 # seeded empty so `backlog edit` sets it in place
+status = "resolved"
+resolution = "fixed"
 created = "2026-10-20"
-updated = "2026-10-21"
+updated = "2026-10-23"
 tags = ["extraction", "mcp", "refactor", "satan"]
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role
