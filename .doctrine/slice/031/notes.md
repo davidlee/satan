@@ -526,6 +526,31 @@ committed and split by the orchestrator. The step-2 commit builds on its own
 - **Rollback (EX-3).** Set `quotient.url` back to `"path:/home/david/dev/quotient"`
   and run `nix flake update quotient`. Then `just quotient-forms`, and repeat
   one live `read` call (through `codex exec`, or after a session restart).
+- **Rename to `@davlee/quotient` 0.1.1** (operator decision; deviates from
+  the plan's `@davidlee/quotient` at `v0.1.0` — for reconcile).
+  - Why: the operator's npm user is `davlee`, and `@davidlee` belongs to a
+    squatter. Unscoped `quotient` is taken (v0.1.4, 2022). `quotient-mcp` was
+    considered and rejected, because quotient is a CLI as well as a server.
+  - Q `3395eab` renames the package, bumps the version and updates the
+    lockfile, the README and `npmDepsHash`. The deps hash moved with the
+    lockfile's root name.
+  - Q's 315 tests pass, tsc is clean and `pack-check` passes on the tag.
+    `v0.1.0` stays where it is.
+  - The operator pushed `main` and `v0.1.1`; `v0.1.1` = `b3a3da3`, which
+    peels to `3395eab`.
+  - satan is re-pinned to `github:davidlee/quotient/v0.1.1`; the lock moved
+    `6c31180` → `3395eab`.
+  - After `just quotient-forms`, the bin is `/nix/store/30xq7a…-quotient-0.1.1`
+    and `--version` reads 0.1.1.
+  - Live call through `codex exec` from malebolge: completed, final true,
+    run `run-20261023T000138887Z-2-7cc745bc49de`. `just check-jails` exit 0.
+  - Rollback is as above, with the earlier pin `v0.1.0` as an option.
+- **npm (EX-4).** `npm whoami` returns `davlee`.
+  - The first publish attempt from the tag worktree failed in `prepack`:
+    there was no `node_modules`, and `pack-check` runs `npm ci` in its own
+    copy, not in the caller's checkout. Nothing was uploaded.
+  - After `npm ci`, the publish stopped at `EOTP` (2FA by browser), so the
+    operator runs it interactively.
 - **malebolge Codex config** (operator request, outside SL-031's plan): malebolge
   `1d3b7bb` adds `[mcp_servers.quotient]` to `.codex/config.toml`, with
   `cwd` = satan so writes rooted in malebolge are not
