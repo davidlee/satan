@@ -1,4 +1,4 @@
-;;; satan-patch-promote.el --- promote or reject a reviewed patch job -*- lexical-binding: t; -*-
+;;; satan-patch-promote.el --- show, promote or reject a reviewed patch job -*- lexical-binding: t; -*-
 
 ;; SL-023 (DEC-061): the human's verdict on a needs_review job.  Emacs,
 ;; not the runner, writes the branch in the real repo; the runner only
@@ -18,10 +18,17 @@
 ;; receipt_mismatch from the runner leaves the branch for the user to
 ;; inspect.  Reject is one report-disposition; no git.
 ;;
-;; Commands `satan-patch-promote' / `satan-patch-reject' act on the
-;; inbox entry at point (its SATAN_PATCH_JOB property), record the
-;; outcome in its STATE property, and mark the entry read (drop its
-;; `:unread:' tag, save the inbox).
+;; Show (IMP-043) takes the same fetch and check, needs baseOid too,
+;; and stops there: it deletes the incoming ref, reports nothing, and
+;; diffs baseOid..reviewedOid in the real repo (magit when available).
+;; The fetched objects outlive the ref until git prunes them.  Git
+;; never runs inside the quarantine, whose config is not Emacs's.
+;;
+;; Commands `satan-patch-show' / `satan-patch-promote' /
+;; `satan-patch-reject' act on the inbox entry at point (its
+;; SATAN_PATCH_JOB property).  A verdict records the outcome in its
+;; STATE property and marks the entry read (drops its `:unread:' tag,
+;; saves the inbox); show leaves the entry alone.
 
 ;;; Code:
 
@@ -31,9 +38,15 @@
 (require 'org)
 (require 'satan-patch-rpc)
 
+(declare-function magit-diff-range "magit-diff" (rev-or-range &optional args files))
+
 (defconst satan-patch-promote--required
   '(:reviewed_oid :quarantine :quarantine_ref :repo_path)
   "Projected `result' fields promotion cannot proceed without.")
+
+(defconst satan-patch-show--required
+  (cons :base_oid satan-patch-promote--required)
+  "Projected `result' fields showing a job cannot proceed without.")
 
 (defun satan-patch-promote-branch (job-id)
   "The branch JOB-ID is promoted to: satan/patch/JOB-ID."
@@ -59,15 +72,15 @@ Returns `(ok . DISPOSITION)' or `(error . MSG)'."
     (`(ok . ,_) (cons 'ok disposition))
     (refusal refusal)))
 
-(defun satan-patch-promote--reviewable (job-id)
-  "JOB-ID's `result', projected, if it can be promoted.
+(defun satan-patch-promote--reviewable (job-id required)
+  "JOB-ID's `result', projected, if it is needs_review with REQUIRED fields.
 Returns `(ok . JOB)' or `(error . MSG)'."
   (pcase (satan-patch-rpc-call "result" (list :jobId job-id))
     (`(ok . ,body)
      (let* ((job (satan-patch-rpc-project body t))
             (state (plist-get job :state))
             (missing (seq-remove (lambda (key) (satan-patch-rpc-field job key))
-                                 satan-patch-promote--required)))
+                                 required)))
        (cond
         ((not (equal state "needs_review"))
          (cons 'error (format "job %s is %s, not needs_review" job-id state)))
@@ -78,37 +91,41 @@ Returns `(ok . JOB)' or `(error . MSG)'."
         (t (cons 'ok job)))))
     (refusal refusal)))
 
-(defun satan-patch-promote--create-branch (job repo fetch-exit fetch-output)
-  "Create JOB's branch in REPO from the fetched incoming ref.
-FETCH-EXIT and FETCH-OUTPUT are the fetch's.  The incoming ref is
-deleted whatever happens.  Returns `(ok . BRANCH)' or `(error . MSG)'."
-  (let* ((id (plist-get job :job_id))
-         (oid (plist-get job :reviewed_oid))
-         (incoming (satan-patch-promote--incoming id))
-         (branch (satan-patch-promote-branch id)))
-    (unwind-protect
-        (if (/= fetch-exit 0)
-            (cons 'error (format "git fetch from the quarantine failed (exit %s): %s"
-                                 fetch-exit fetch-output))
-          (let ((fetched (cdr (satan-patch-promote--git
-                               repo "rev-parse" "--verify" "--quiet"
-                               (concat incoming "^{commit}")))))
-            (if (not (equal fetched oid))
-                (cons 'error (format "quarantine ref moved: %s is %s, reviewed %s"
-                                     (plist-get job :quarantine_ref)
-                                     (if (string-empty-p fetched) "unresolvable" fetched)
-                                     oid))
-              (pcase (satan-patch-promote--git
-                      repo "update-ref" (concat "refs/heads/" branch) oid "")
-                (`(0 . ,_) (cons 'ok branch))
-                (`(,_ . ,output)
-                 (cons 'error (format "cannot create %s: %s" branch output)))))))
-      (satan-patch-promote--git repo "update-ref" "-d" incoming))))
+(defun satan-patch-promote--verify-incoming (job repo fetch-exit fetch-output)
+  "Whether the fetch into REPO brought JOB's reviewed commit.
+FETCH-EXIT and FETCH-OUTPUT are the fetch's.  Returns `(ok . OID)' or
+`(error . MSG)'."
+  (let ((oid (plist-get job :reviewed_oid)))
+    (if (/= fetch-exit 0)
+        (cons 'error (format "git fetch from the quarantine failed (exit %s): %s"
+                             fetch-exit fetch-output))
+      (let ((fetched (cdr (satan-patch-promote--git
+                           repo "rev-parse" "--verify" "--quiet"
+                           (concat (satan-patch-promote--incoming
+                                    (plist-get job :job_id))
+                                   "^{commit}")))))
+        (if (equal fetched oid)
+            (cons 'ok oid)
+          (cons 'error (format "quarantine ref moved: %s is %s, reviewed %s"
+                               (plist-get job :quarantine_ref)
+                               (if (string-empty-p fetched) "unresolvable" fetched)
+                               oid)))))))
 
-(defun satan-patch-promote--land (job repo fetch-exit fetch-output)
-  "After JOB's fetch into REPO: create the branch, then report it.
-FETCH-EXIT and FETCH-OUTPUT are the fetch's.  Returns the outcome."
-  (pcase (satan-patch-promote--create-branch job repo fetch-exit fetch-output)
+(defun satan-patch-promote--create-branch (job repo)
+  "Create JOB's branch in REPO at its verified reviewed commit.
+Returns `(ok . BRANCH)' or `(error . MSG)'."
+  (let ((branch (satan-patch-promote-branch (plist-get job :job_id))))
+    (pcase (satan-patch-promote--git
+            repo "update-ref" (concat "refs/heads/" branch)
+            (plist-get job :reviewed_oid) "")
+      (`(0 . ,_) (cons 'ok branch))
+      (`(,_ . ,output)
+       (cons 'error (format "cannot create %s: %s" branch output))))))
+
+(defun satan-patch-promote--report-branch (job outcome)
+  "Report JOB promoted when OUTCOME, a branch creation's, succeeded.
+Returns the final outcome."
+  (pcase outcome
     (`(ok . ,branch)
      (pcase (satan-patch-promote--report (plist-get job :job_id) "promoted" branch)
        (`(error . ,msg)
@@ -116,13 +133,15 @@ FETCH-EXIT and FETCH-OUTPUT are the fetch's.  Returns the outcome."
        (reported reported)))
     (refusal refusal)))
 
-(defun satan-patch-promote--fetch (job callback)
-  "Fetch JOB's quarantine ref into its incoming ref; then land it.
-The fetch is asynchronous; CALLBACK receives the outcome."
+(defun satan-patch-promote--with-incoming (job then callback)
+  "Fetch JOB's quarantine ref into its incoming ref; verify it; call THEN.
+THEN takes JOB and the real repo and returns an outcome, which CALLBACK
+receives; a failed fetch or check reaches CALLBACK instead.  The
+incoming ref is deleted whatever happens.  The fetch is asynchronous."
   (let* ((id (plist-get job :job_id))
          (repo (expand-file-name (plist-get job :repo_path)))
-         (refspec (format "+%s:%s" (plist-get job :quarantine_ref)
-                          (satan-patch-promote--incoming id)))
+         (incoming (satan-patch-promote--incoming id))
+         (refspec (format "+%s:%s" (plist-get job :quarantine_ref) incoming))
          (buffer (generate-new-buffer " *satan-patch-fetch*")))
     (condition-case err
         (make-process
@@ -137,8 +156,13 @@ The fetch is asynchronous; CALLBACK receives the outcome."
                              (string-trim (buffer-string)))))
                (kill-buffer buffer)
                (funcall callback
-                        (satan-patch-promote--land
-                         job repo (process-exit-status proc) output))))))
+                        (unwind-protect
+                            (pcase (satan-patch-promote--verify-incoming
+                                    job repo (process-exit-status proc) output)
+                              (`(ok . ,_) (funcall then job repo))
+                              (refusal refusal))
+                          (satan-patch-promote--git
+                           repo "update-ref" "-d" incoming)))))))
       (error
        (kill-buffer buffer)
        (funcall callback
@@ -150,8 +174,23 @@ Asynchronous: CALLBACK receives `(ok . \"promoted\")' or `(error . MSG)'.
 Refuses, touching nothing, unless the runner's result says the job is
 needs_review with a reviewed commit that its quarantine ref still holds
 and that branch does not exist yet."
-  (pcase (satan-patch-promote--reviewable job-id)
-    (`(ok . ,job) (satan-patch-promote--fetch job callback))
+  (pcase (satan-patch-promote--reviewable job-id satan-patch-promote--required)
+    (`(ok . ,job)
+     (satan-patch-promote--with-incoming
+      job #'satan-patch-promote--create-branch
+      (lambda (outcome)
+        (funcall callback (satan-patch-promote--report-branch job outcome)))))
+    (refusal (funcall callback refusal))))
+
+(defun satan-patch-show-job (job-id callback)
+  "Bring JOB-ID's reviewed commit into its real repo, to be diffed.
+Asynchronous: CALLBACK receives `(ok . JOB)', the projected `result'
+whose :base_oid..:reviewed_oid is now resolvable in :repo_path, or
+`(error . MSG)'.  Creates no ref and reports nothing."
+  (pcase (satan-patch-promote--reviewable job-id satan-patch-show--required)
+    (`(ok . ,job)
+     (satan-patch-promote--with-incoming
+      job (lambda (job _repo) (cons 'ok job)) callback))
     (refusal (funcall callback refusal))))
 
 (defun satan-patch-reject-job (job-id)
@@ -181,6 +220,45 @@ file-reading `satan-inbox-unread-count' sees it."
      (message "Patch job %s %s" job-id state))
     (`(error . ,msg)
      (message "Patch job %s unchanged: %s" job-id msg))))
+
+;; The magit test is its own function so tests can take the plain path.
+(defun satan-patch-promote--magit-p ()
+  "Whether magit can show the diff."
+  (require 'magit nil t))
+
+(defun satan-patch-promote--display (job)
+  "Show JOB's base_oid..reviewed_oid diff from its real repo."
+  (let* ((repo (file-name-as-directory
+                (expand-file-name (plist-get job :repo_path))))
+         (range (format "%s..%s" (plist-get job :base_oid)
+                        (plist-get job :reviewed_oid))))
+    (if (satan-patch-promote--magit-p)
+        (let ((default-directory repo))
+          (magit-diff-range range))
+      (let ((buffer (get-buffer-create
+                     (format "*satan-patch %s*" (plist-get job :job_id)))))
+        (with-current-buffer buffer
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (call-process "git" nil t nil "-C" repo "diff" "--stat" "--patch" range))
+          (goto-char (point-min))
+          (diff-mode)
+          (setq buffer-read-only t))
+        (display-buffer buffer)))))
+
+(defun satan-patch-promote--shown (job-id outcome)
+  "Display OUTCOME of showing JOB-ID, or say why not."
+  (pcase outcome
+    (`(ok . ,job) (satan-patch-promote--display job))
+    (`(error . ,msg) (message "Patch job %s not shown: %s" job-id msg))))
+
+;;;###autoload
+(defun satan-patch-show ()
+  "Show the diff of the patch job of the inbox entry at point."
+  (interactive)
+  (let ((id (satan-patch-promote--job-at-point)))
+    (message "Fetching patch job %s..." id)
+    (satan-patch-show-job id (apply-partially #'satan-patch-promote--shown id))))
 
 ;;;###autoload
 (defun satan-patch-promote ()

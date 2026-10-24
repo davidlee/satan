@@ -167,6 +167,32 @@ notice shows its failure reason, message and offending paths."
                           "End reason: cancelled"))
         (should (string-search expected text))))))
 
+(ert-deftest satan-patch-inbox/review-entry-shows-diffstat-and-commits ()
+  "A review entry carries the runner's diffstat and commits, from
+`result': a commit's full message when sent (indented), else its subject."
+  (let ((runner (satan-patch-inbox-test--runner
+                 (list (list :frames
+                             (mapcar #'satan-patch-inbox-test--frame
+                                     (list satan-patch-inbox-test--review)))))))
+    (satan-patch-inbox-test--watching
+        (lambda (request)
+          (if (equal (plist-get request :op) "result")
+              (list :jobId "pj-R" :state "needs_review"
+                    :diffstat (list :files 2 :insertions 10 :deletions 3)
+                    :commits (vector (list :oid "669249f7c0ffee" :subject "fix the walk")
+                                     (list :oid "77aa00bb11cc" :subject "add a test"
+                                           :message "add a test\n\n* not a heading\n")))
+            (funcall runner request)))
+      (should (satan-patch-fixture-wait-until
+               (lambda () (= 1 (satan-patch-inbox-test--entries "pj-R")))))
+      (should (equal (plist-get (car (satan-patch-fixture-requests-for "result"))
+                                :jobId)
+                     "pj-R"))
+      (let ((text (satan-patch-inbox-test--text)))
+        (dolist (expected '("Diffstat: 2 files, +10 -3"
+                            "Commits:\n- 669249f fix the walk\n- 77aa00b add a test\n\n  * not a heading\n"))
+          (should (string-search expected text)))))))
+
 (ert-deftest satan-patch-inbox/unreachable-runner-is-retried ()
   "A watch that cannot connect keeps retrying until the runner answers."
   (satan-patch-inbox-test--watching

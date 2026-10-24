@@ -5,7 +5,9 @@
 ;; unacknowledged failed/cancelled job on each new watch, then streams
 ;; transitions; this module turns those frames into inbox entries.
 ;;
-;;   needs_review                       review entry (promote/reject:
+;;   needs_review                       review entry, with the diffstat
+;;                                      and commits from `result'
+;;                                      (show/promote/reject:
 ;;                                      satan-patch-promote)
 ;;   failed/cancelled, not announced    notice, then `ack'
 ;;   anything else                      ignored
@@ -24,6 +26,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'seq)
 (require 'subr-x)
 (require 'satan-patch-rpc)
 (require 'satan-tools-inbox)
@@ -71,6 +74,35 @@ before the next reconnect, T the pending reconnect timer.")
           (mapcar (lambda (path) (concat "- " path))
                   (satan-patch-rpc-field failure :offending)))))
 
+(defun satan-patch-inbox--diffstat-lines (diffstat)
+  "Body lines for a job's DIFFSTAT record."
+  (when diffstat
+    (list (format "Diffstat: %s files, +%s -%s"
+                  (plist-get diffstat :files) (plist-get diffstat :insertions)
+                  (plist-get diffstat :deletions)))))
+
+(defun satan-patch-inbox--commit-lines (commits)
+  "Body lines for a job's COMMITS, oldest first.
+Each commit's full message when the runner sends one, else its
+subject; continuation lines are indented, so a message cannot open
+an Org heading."
+  (unless (seq-empty-p commits)
+    (cons "Commits:"
+          (seq-mapcat
+           (lambda (commit)
+             (pcase-let ((`(,first . ,rest)
+                          (split-string
+                           (string-trim-right
+                            (or (satan-patch-rpc-field commit :message)
+                                (plist-get commit :subject)))
+                           "\n")))
+               (cons (format "- %s %s"
+                             (substring (plist-get commit :oid) 0 7) first)
+                     (mapcar (lambda (line)
+                               (if (string-empty-p line) "" (concat "  " line)))
+                             rest))))
+           commits))))
+
 (defconst satan-patch-inbox--body-fields
   '(("State" . :state) ("Repo" . :repo) ("Base" . :base_ref) ("Class" . :class)
     ("Partial" . :partial) ("Reviewed oid" . :reviewed_oid)
@@ -87,6 +119,8 @@ before the next reconnect, T the pending reconnect timer.")
               when value
               collect (format "%s: %s" label
                               (pcase value ('t "yes") (:false "no") (_ value))))
+     (satan-patch-inbox--diffstat-lines (satan-patch-rpc-field job :diffstat))
+     (satan-patch-inbox--commit-lines (satan-patch-rpc-field job :commits))
      (satan-patch-inbox--failure-lines (satan-patch-rpc-field job :failure)))
     "\n")
    "\n"))
@@ -119,6 +153,23 @@ before the next reconnect, T the pending reconnect timer.")
                          :reviewed_oid (satan-patch-rpc-field
                                         job :reviewed_oid))))))
 
+(defun satan-patch-inbox--append-reviewed (job)
+  "Append needs_review JOB's entry with the diffstat and commits.
+They come from `result' (a watch summary lacks them); a refused
+`result' appends the entry without them."
+  (unless (satan-patch-inbox--present-p (plist-get job :job_id))
+    (satan-patch-inbox--append
+     (pcase (satan-patch-rpc-call "result" (list :jobId (plist-get job :job_id)))
+       (`(ok . ,body)
+        (let ((result (satan-patch-rpc-project body)))
+          (append (list :diffstat (plist-get result :diffstat)
+                        :commits (plist-get result :commits))
+                  job)))
+       (`(error . ,msg)
+        (message "satan-patch-inbox: result %s: %s (entry without its diff summary)"
+                 (plist-get job :job_id) msg)
+        job)))))
+
 (defun satan-patch-inbox--ack (job-id)
   "Acknowledge JOB-ID's notice to the runner; report a refusal."
   (pcase (satan-patch-rpc-call "ack" (list :jobIds (vector job-id)))
@@ -129,14 +180,14 @@ before the next reconnect, T the pending reconnect timer.")
 (defun satan-patch-inbox-handle (wire-job)
   "Bring WIRE-JOB, a runner job summary, into the inbox.
 A needs_review job gets a review entry; a failed or cancelled job not
-yet announced gets a notice and is acked.  The ack runs from a timer:
-this is called from the watch's filter, which must not wait on another
-connection."
+yet announced gets a notice and is acked.  The review entry's `result'
+call and the ack run from a timer: this is called from the watch's
+filter, which must not wait on another connection."
   (let* ((job (satan-patch-rpc-project wire-job t))
          (state (plist-get job :state)))
     (cond
      ((equal state "needs_review")
-      (satan-patch-inbox--append job))
+      (run-at-time 0 nil #'satan-patch-inbox--append-reviewed job))
      ((and (member state '("failed" "cancelled"))
            (not (satan-patch-rpc-field job :announced_at)))
       (satan-patch-inbox--append job)

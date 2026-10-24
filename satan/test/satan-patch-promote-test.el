@@ -80,13 +80,16 @@ bare quarantine holding commit JOB at the job's quarantine ref."
          (delete-directory root t)))))
 
 (cl-defun satan-patch-promote-test--runner
-    (repo quarantine reviewed &key (state "needs_review") (repo-path repo) disposition)
+    (repo quarantine reviewed
+          &key (state "needs_review") (repo-path repo) (base :absent) disposition)
   "A fake runner whose job, in STATE, was reviewed at REVIEWED.
-Its result names QUARANTINE and REPO-PATH (default REPO; :absent omits
-it).  DISPOSITION answers report-disposition (default ok)."
+Its result names QUARANTINE, REPO-PATH (default REPO; :absent omits
+it) and BASE (default :absent, omitted).  DISPOSITION answers
+report-disposition (default ok)."
   (satan-patch-fixture-answering
    `(("result" . (:jobId ,satan-patch-promote-test--id :state ,state
                          :reviewedOid ,reviewed :quarantine ,quarantine
+                         ,@(unless (eq base :absent) (list :baseOid base))
                          :quarantineRef ,satan-patch-promote-test--quarantine-ref
                          ,@(unless (eq repo-path :absent) (list :repoPath repo-path))))
      ("report-disposition" . ,(or disposition '(:state "promoted"))))))
@@ -96,6 +99,13 @@ it).  DISPOSITION answers report-disposition (default ok)."
   (let (result)
     (satan-patch-promote-job satan-patch-promote-test--id
                              (lambda (outcome) (setq result outcome)))
+    (satan-patch-fixture-wait-until (lambda () result) 10)))
+
+(defun satan-patch-promote-test--show ()
+  "Show the test job; wait for and return the callback's result."
+  (let (result)
+    (satan-patch-show-job satan-patch-promote-test--id
+                          (lambda (outcome) (setq result outcome)))
     (satan-patch-fixture-wait-until (lambda () result) 10)))
 
 (defun satan-patch-promote-test--dispositions ()
@@ -211,6 +221,34 @@ is refused before any git runs."
                       repo "for-each-ref" "refs/satan" "refs/heads/satan")
                      "")))))
 
+(ert-deftest satan-patch-show/fetches-the-reviewed-commit-and-leaves-no-refs ()
+  "Show brings reviewed_oid's objects into the real repo and answers
+the job; no incoming ref, no branch, nothing reported."
+  (satan-patch-promote-test--with-repos (repo quarantine base job)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner repo quarantine job :base base)
+      (pcase (satan-patch-promote-test--show)
+        (`(ok . ,shown)
+         (should (equal (plist-get shown :base_oid) base))
+         (should (equal (plist-get shown :reviewed_oid) job)))
+        (other (ert-fail (format "expected the job, got %S" other))))
+      (should (satan-patch-promote-test--git repo "cat-file" "-e" job))
+      (should (equal (satan-patch-promote-test--git
+                      repo "for-each-ref" "refs/satan" "refs/heads/satan")
+                     ""))
+      (should-not (satan-patch-promote-test--dispositions)))))
+
+(ert-deftest satan-patch-show/refuses-a-moved-quarantine-or-no-base ()
+  "Show verifies the fetched commit like promotion does, and needs the
+base oid to diff against."
+  (satan-patch-promote-test--with-repos (repo quarantine base job)
+    (dolist (case (list (list base :base base) (list job)))
+      (satan-patch-fixture-with-runner
+          (apply #'satan-patch-promote-test--runner repo quarantine case)
+        (should (eq 'error (car (satan-patch-promote-test--show))))
+        (should-not (satan-patch-promote-test--ref
+                     repo satan-patch-promote-test--incoming))))))
+
 (defmacro satan-patch-promote-test--in-entry (&rest body)
   "Run BODY at an unread entry for the test job in a visited inbox file,
 confirmations answered yes."
@@ -257,6 +295,28 @@ it read in the saved inbox."
       (satan-patch-promote-test--in-entry
        (call-interactively #'satan-patch-reject)
        (should (satan-patch-promote-test--settled-p "rejected"))))))
+
+(ert-deftest satan-patch-show/command-shows-the-diff-and-leaves-the-entry ()
+  "Without magit, the command shows base..reviewed in a diff buffer;
+the entry stays unread and unsettled."
+  (satan-patch-promote-test--with-repos (repo quarantine base job)
+    (satan-patch-fixture-with-runner
+        (satan-patch-promote-test--runner repo quarantine job :base base)
+      (satan-patch-promote-test--in-entry
+       (cl-letf (((symbol-function 'satan-patch-promote--magit-p) #'ignore))
+         (call-interactively #'satan-patch-show)
+         (let ((shown (satan-patch-fixture-wait-until
+                       (lambda () (get-buffer (concat "*satan-patch "
+                                                      satan-patch-promote-test--id
+                                                      "*")))
+                       10)))
+           (should shown)
+           (with-current-buffer shown
+             (should (derived-mode-p 'diff-mode))
+             (should (string-search "+job" (buffer-string))))
+           (kill-buffer shown)))
+       (should (equal (org-entry-get (point-min) "STATE") "needs_review"))
+       (should (eql (satan-inbox-unread-count) 1))))))
 
 (ert-deftest satan-patch-promote/commands-need-a-job-at-point ()
   (with-temp-buffer
