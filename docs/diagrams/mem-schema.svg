@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1460 1320" width="1460" height="1320">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1520 1540" width="1520" height="1540">
 <defs>
 <style>
-  .tname { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 14px; font-weight: 600; letter-spacing: .3px; }
+  .tname { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 13.5px; font-weight: 600; letter-spacing: .2px; }
   .tsub  { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 9.5px; letter-spacing: .9px; text-transform: uppercase; }
   .col   { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 12.2px; }
   .type  { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 10.6px; }
   .key   { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 9px; letter-spacing: .7px; }
-  .foot  { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 9.6px; }
+  .foot  { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 9.4px; }
   .chip  { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 10px; }
   .chips { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 8.6px; letter-spacing: .3px; }
   .notelabel { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 9.6px; letter-spacing: 1.5px; text-transform: uppercase; }
@@ -18,6 +18,7 @@
   .legend { font-family: Charter, DejaVu Serif, serif; font-size: 12.2px; }
   .legendname { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 10px; letter-spacing: 1.7px; text-transform: uppercase; }
   .rule { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 9.5px; letter-spacing: 2.8px; text-transform: uppercase; }
+  .framelabel { font-family: Fira Mono, DejaVu Sans Mono, monospace; font-size: 10px; letter-spacing: .6px; }
 </style>
 <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
   <circle cx="1" cy="1" r="0.9" fill="#1c1a17" opacity="0.10"/>
@@ -25,257 +26,340 @@
 <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
         orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#63508c"/></marker>
 </defs>
-<rect width="1460" height="1320" fill="#f7f3ea"/>
-<rect width="1460" height="1320" fill="url(#dots)"/>
-<text x="80" y="70" class="eyebrow" fill="#a9a294">001-init.sql · schema mem · postgres</text>
-<text x="1380" y="70" class="rule" fill="#a9a294" text-anchor="end">6 tables · one schema · every claim carries a source</text>
+<rect width="1520" height="1540" fill="#f7f3ea"/>
+<rect width="1520" height="1540" fill="url(#dots)"/>
+<text x="80" y="70" class="eyebrow" fill="#a9a294">001-init.sql · schema mem · postgres 18</text>
+<text x="1440" y="70" class="rule" fill="#a9a294" text-anchor="end">eight tables · one view · one write function</text>
 <text x="80" y="118" class="title" fill="#1c1a17">Two organs of a memory</text>
-<text x="80" y="150" class="subtitle" fill="#7c766a">What I hold, and what I am doing — joined by a hinge into the prose.</text>
+<text x="80" y="150" class="subtitle" fill="#7c766a">What I hold, what I am doing, and the words I am allowed to say it in.</text>
 <text x="80" y="176" class="principle" fill="#9b3d2c">provenance is mandatory: nothing asserts knowledge without a source</text>
-<line x1="80" y1="194" x2="1380" y2="194" stroke="#1c1a17" stroke-width="0.7" opacity="0.25"/>
-<path d="M520 376.5 L420 376.5" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
-<path d="M505 376.5 L520 368.5 M505 376.5 L520 376.5 M505 376.5 L520 384.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
-<line x1="429" y1="369.5" x2="429" y2="383.5" stroke="#1c1a17" stroke-width="1.7"/>
-<rect x="436" y="356" width="68" height="16" rx="2" fill="#f7f3ea" opacity="0.95"/>
-<text x="443" y="368.5" class="chip" fill="#9b3d2c">source_id</text>
-<path d="M860 376.5 L940 376.5" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
-<path d="M875 376.5 L860 368.5 M875 376.5 L860 376.5 M875 376.5 L860 384.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
-<line x1="931" y1="369.5" x2="931" y2="383.5" stroke="#1c1a17" stroke-width="1.7"/>
-<rect x="863" y="356" width="62" height="16" rx="2" fill="#f7f3ea" opacity="0.95"/>
-<text x="870" y="368.5" class="chip" fill="#9b3d2c">claim_id</text>
-<path d="M250.0 638.0 L250.0 483" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
-<path d="M250.0 623.0 L242.0 638.0 M250.0 623.0 L250.0 638.0 M250.0 623.0 L258.0 638.0" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
-<line x1="243.0" y1="492" x2="257.0" y2="492" stroke="#1c1a17" stroke-width="1.7"/>
-<rect x="222" y="550" width="68" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
-<text x="229" y="561.5" class="chip" fill="#1b6a63">source_id</text>
-<text x="229" y="571.5" class="chips" fill="#a9a294">set null</text>
-<path d="M420 745.5 L940 745.5" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
-<path d="M435 745.5 L420 737.5 M435 745.5 L420 745.5 M435 745.5 L420 753.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
-<line x1="931" y1="738.5" x2="931" y2="752.5" stroke="#1c1a17" stroke-width="1.7"/>
-<rect x="646" y="716" width="68" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
-<text x="653" y="726.5" class="chip" fill="#1b6a63">intent_id</text>
-<text x="653" y="736.5" class="chips" fill="#a9a294">set null</text>
-<path d="M1280 376.5 L1385.0 376.5 Q1394 376.5 1394.0 385.5 L1394.0 1011.5 Q1394 1020.5 1385.0 1020.5 L1280 1020.5" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
-<path d="M1295 1020.5 L1280 1012.5 M1295 1020.5 L1280 1020.5 M1295 1020.5 L1280 1028.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
-<line x1="1289" y1="369.5" x2="1289" y2="383.5" stroke="#1c1a17" stroke-width="1.7"/>
-<rect x="1306" y="346" width="62" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
-<text x="1313" y="357.5" class="chip" fill="#63508c">claim_id</text>
-<text x="1313" y="367.5" class="chips" fill="#a9a294">cascade</text>
-<path d="M1110.0 891 L1110.0 950" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
-<path d="M1110.0 935 L1102.0 950 M1110.0 935 L1110.0 950 M1110.0 935 L1118.0 950" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
-<line x1="1103.0" y1="900" x2="1117.0" y2="900" stroke="#1c1a17" stroke-width="1.7"/>
-<rect x="1082" y="910" width="68" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
-<text x="1089" y="921.5" class="chip" fill="#63508c">intent_id</text>
-<text x="1089" y="931.5" class="chips" fill="#a9a294">cascade</text>
-<path d="M1110.0 1091 L1110.0 1153" fill="none" stroke="#63508c" stroke-width="1.35" stroke-linecap="round" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
-<rect x="1050" y="1109" width="131" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
-<text x="1058" y="1121.0" class="chip" fill="#63508c">filename</text>
-<text x="1058" y="1131.0" class="chips" fill="#a9a294">points, never copies</text>
-<rect x="83" y="273" width="340" height="213" rx="3" fill="#1c1a17" opacity="0.06"/>
-<rect x="80" y="270" width="340" height="213" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
-<path d="M80 304 V273 a3 3 0 0 1 3 -3 H417 a3 3 0 0 1 3 3 V304 Z" fill="#a3711b" opacity="0.13"/>
-<line x1="80" y1="304" x2="420" y2="304" stroke="#a3711b" stroke-width="1.1"/>
-<path d="M80.6 282 V471" stroke="#a3711b" stroke-width="3.4" stroke-linecap="round"/>
-<text x="96" y="292" class="tname" fill="#1c1a17">mem.source</text>
-<text x="404" y="292" class="tsub" fill="#a3711b" text-anchor="end">what I saw</text>
-<text x="96" y="317.5" class="col" fill="#1c1a17">id</text>
-<text x="404" y="317.5" class="key" fill="#a3711b" text-anchor="end">PK</text>
-<text x="380" y="317.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
-<text x="96" y="336.5" class="col" fill="#1c1a17">kind</text>
-<text x="380" y="336.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="96" y="355.5" class="col" fill="#1c1a17">ref</text>
-<text x="380" y="355.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="96" y="374.5" class="col" fill="#1c1a17">detail</text>
-<text x="380" y="374.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="96" y="393.5" class="col" fill="#1c1a17">seen_at</text>
-<text x="380" y="393.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<line x1="90" y1="402" x2="410" y2="402" stroke="#a3711b" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
-<text x="96" y="417" class="foot" fill="#7c766a">kind ∈ file · commit · conversation ·</text>
-<text x="96" y="434" class="foot" fill="#7c766a">    observation · inference · user · web · spec</text>
-<text x="96" y="451" class="foot" fill="#7c766a">ref = path · sha · conversation id · url · slug</text>
-<text x="96" y="468" class="foot" fill="#7c766a">unique (kind, ref, detail)</text>
-<rect x="943" y="217.0" width="340" height="325" rx="3" fill="#1c1a17" opacity="0.06"/>
-<rect x="940" y="214.0" width="340" height="325" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
-<path d="M940 248.0 V217.0 a3 3 0 0 1 3 -3 H1277 a3 3 0 0 1 3 3 V248.0 Z" fill="#9b3d2c" opacity="0.13"/>
-<line x1="940" y1="248.0" x2="1280" y2="248.0" stroke="#9b3d2c" stroke-width="1.1"/>
-<path d="M940.6 226.0 V527.0" stroke="#9b3d2c" stroke-width="3.4" stroke-linecap="round"/>
-<text x="956" y="236.0" class="tname" fill="#1c1a17">mem.claim</text>
-<text x="1264" y="236.0" class="tsub" fill="#9b3d2c" text-anchor="end">what I hold</text>
-<text x="956" y="261.5" class="col" fill="#1c1a17">id</text>
-<text x="1264" y="261.5" class="key" fill="#9b3d2c" text-anchor="end">PK</text>
-<text x="1240" y="261.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
-<text x="956" y="280.5" class="col" fill="#1c1a17">subject</text>
-<text x="1240" y="280.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="299.5" class="col" fill="#1c1a17">predicate</text>
-<text x="1240" y="299.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="318.5" class="col" fill="#1c1a17">object</text>
-<text x="1240" y="318.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="337.5" class="col" fill="#1c1a17">confidence</text>
-<text x="1240" y="337.5" class="type" fill="#7c766a" text-anchor="end">numeric</text>
-<text x="956" y="356.5" class="col" fill="#1c1a17">status</text>
-<text x="1240" y="356.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="375.5" class="col" fill="#1c1a17">asserted_at</text>
-<text x="1240" y="375.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<text x="956" y="394.5" class="col" fill="#1c1a17">valid_from</text>
-<text x="1240" y="394.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<text x="956" y="413.5" class="col" fill="#1c1a17">valid_to</text>
-<text x="1240" y="413.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<text x="956" y="432.5" class="col" fill="#1c1a17">note</text>
-<text x="1240" y="432.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<line x1="950" y1="441.0" x2="1270" y2="441.0" stroke="#9b3d2c" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
-<text x="956" y="456.0" class="foot" fill="#7c766a">status ∈ held · confirmed · refuted · stale</text>
-<text x="956" y="473.0" class="foot" fill="#7c766a">confidence 0.00–1.00 · default 0.50</text>
-<text x="956" y="490.0" class="foot" fill="#7c766a">idx (subject, predicate) where valid_to is null</text>
-<text x="956" y="507.0" class="foot" fill="#7c766a">idx gin trgm (subject ‖ predicate ‖ object)</text>
-<text x="956" y="524.0" class="foot" fill="#7c766a">&#x27;repo:doctrine&#x27; · &#x27;builds_without_network&#x27; · value</text>
-<rect x="523" y="300.5" width="340" height="158" rx="3" fill="#1c1a17" opacity="0.06"/>
-<rect x="520" y="297.5" width="340" height="158" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
-<path d="M520 331.5 V300.5 a3 3 0 0 1 3 -3 H857 a3 3 0 0 1 3 3 V331.5 Z" fill="#9b3d2c" opacity="0.13"/>
-<line x1="520" y1="331.5" x2="860" y2="331.5" stroke="#9b3d2c" stroke-width="1.1"/>
-<path d="M520.6 309.5 V443.5" stroke="#9b3d2c" stroke-width="3.4" stroke-linecap="round"/>
-<text x="536" y="319.5" class="tname" fill="#1c1a17">mem.claim_source</text>
-<text x="844" y="319.5" class="tsub" fill="#9b3d2c" text-anchor="end">the receipt</text>
-<text x="536" y="345.0" class="col" fill="#1c1a17">claim_id</text>
-<text x="844" y="345.0" class="key" fill="#9b3d2c" text-anchor="end">FK</text>
-<text x="820" y="345.0" class="type" fill="#7c766a" text-anchor="end">bigint</text>
-<text x="536" y="364.0" class="col" fill="#1c1a17">source_id</text>
-<text x="844" y="364.0" class="key" fill="#9b3d2c" text-anchor="end">FK</text>
-<text x="820" y="364.0" class="type" fill="#7c766a" text-anchor="end">bigint</text>
-<text x="536" y="383.0" class="col" fill="#1c1a17">relation</text>
-<text x="820" y="383.0" class="type" fill="#7c766a" text-anchor="end">text</text>
-<line x1="530" y1="391.5" x2="850" y2="391.5" stroke="#9b3d2c" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
-<text x="536" y="406.5" class="foot" fill="#7c766a">relation ∈ supports · contradicts · derived_from</text>
-<text x="536" y="423.5" class="foot" fill="#7c766a">PK (claim_id, source_id, relation)</text>
-<text x="536" y="440.5" class="foot" fill="#7c766a">claim cascade · source restrict</text>
-<rect x="943" y="603" width="340" height="291" rx="3" fill="#1c1a17" opacity="0.06"/>
-<rect x="940" y="600" width="340" height="291" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
-<path d="M940 634 V603 a3 3 0 0 1 3 -3 H1277 a3 3 0 0 1 3 3 V634 Z" fill="#1b6a63" opacity="0.13"/>
-<line x1="940" y1="634" x2="1280" y2="634" stroke="#1b6a63" stroke-width="1.1"/>
-<path d="M940.6 612 V879" stroke="#1b6a63" stroke-width="3.4" stroke-linecap="round"/>
-<text x="956" y="622" class="tname" fill="#1c1a17">mem.intent</text>
-<text x="1264" y="622" class="tsub" fill="#1b6a63" text-anchor="end">what I&#x27;m doing</text>
-<text x="956" y="647.5" class="col" fill="#1c1a17">id</text>
-<text x="1264" y="647.5" class="key" fill="#1b6a63" text-anchor="end">PK</text>
-<text x="1240" y="647.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
-<text x="956" y="666.5" class="col" fill="#1c1a17">slug</text>
-<text x="1264" y="666.5" class="key" fill="#1b6a63" text-anchor="end">UQ</text>
-<text x="1240" y="666.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="685.5" class="col" fill="#1c1a17">title</text>
-<text x="1240" y="685.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="704.5" class="col" fill="#1c1a17">status</text>
-<text x="1240" y="704.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="723.5" class="col" fill="#1c1a17">waiting_for</text>
-<text x="1240" y="723.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="742.5" class="col" fill="#1c1a17">next_step</text>
-<text x="1240" y="742.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="761.5" class="col" fill="#1c1a17">plan</text>
-<text x="1240" y="761.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="956" y="780.5" class="col" fill="#1c1a17">created_at</text>
-<text x="1240" y="780.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<text x="956" y="799.5" class="col" fill="#1c1a17">updated_at</text>
-<text x="1240" y="799.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<text x="956" y="818.5" class="col" fill="#1c1a17">closed_at</text>
-<text x="1240" y="818.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<line x1="950" y1="827" x2="1270" y2="827" stroke="#1b6a63" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
-<text x="956" y="842" class="foot" fill="#7c766a">status ∈ active · blocked · done · abandoned</text>
-<text x="956" y="859" class="foot" fill="#7c766a">waiting_for = the question I need answered</text>
-<text x="956" y="876" class="foot" fill="#7c766a">idx (updated_at desc) where status in (active, blocked)</text>
-<rect x="83" y="641.0" width="340" height="215" rx="3" fill="#1c1a17" opacity="0.06"/>
-<rect x="80" y="638.0" width="340" height="215" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
-<path d="M80 672.0 V641.0 a3 3 0 0 1 3 -3 H417 a3 3 0 0 1 3 3 V672.0 Z" fill="#1b6a63" opacity="0.13"/>
-<line x1="80" y1="672.0" x2="420" y2="672.0" stroke="#1b6a63" stroke-width="1.1"/>
-<path d="M80.6 650.0 V841.0" stroke="#1b6a63" stroke-width="3.4" stroke-linecap="round"/>
-<text x="96" y="660.0" class="tname" fill="#1c1a17">mem.log</text>
-<text x="404" y="660.0" class="tsub" fill="#1b6a63" text-anchor="end">what came of it</text>
-<text x="96" y="685.5" class="col" fill="#1c1a17">id</text>
-<text x="404" y="685.5" class="key" fill="#1b6a63" text-anchor="end">PK</text>
-<text x="380" y="685.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
-<text x="96" y="704.5" class="col" fill="#1c1a17">at</text>
-<text x="380" y="704.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
-<text x="96" y="723.5" class="col" fill="#1c1a17">intent_id</text>
-<text x="404" y="723.5" class="key" fill="#1b6a63" text-anchor="end">FK</text>
-<text x="380" y="723.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
-<text x="96" y="742.5" class="col" fill="#1c1a17">kind</text>
-<text x="380" y="742.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="96" y="761.5" class="col" fill="#1c1a17">body</text>
-<text x="380" y="761.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<text x="96" y="780.5" class="col" fill="#1c1a17">source_id</text>
-<text x="404" y="780.5" class="key" fill="#1b6a63" text-anchor="end">FK</text>
-<text x="380" y="780.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
-<line x1="90" y1="789.0" x2="410" y2="789.0" stroke="#1b6a63" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
-<text x="96" y="804.0" class="foot" fill="#7c766a">kind ∈ action · finding · error · decision ·</text>
-<text x="96" y="821.0" class="foot" fill="#7c766a">    question · wakeup · sleep</text>
-<text x="96" y="838.0" class="foot" fill="#7c766a">append-only · idx (at desc) · idx (intent_id, at desc)</text>
-<rect x="943" y="953" width="340" height="141" rx="3" fill="#1c1a17" opacity="0.06"/>
-<rect x="940" y="950" width="340" height="141" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
-<path d="M940 984 V953 a3 3 0 0 1 3 -3 H1277 a3 3 0 0 1 3 3 V984 Z" fill="#63508c" opacity="0.13"/>
-<line x1="940" y1="984" x2="1280" y2="984" stroke="#63508c" stroke-width="1.1"/>
-<path d="M940.6 962 V1079" stroke="#63508c" stroke-width="3.4" stroke-linecap="round"/>
-<text x="956" y="972" class="tname" fill="#1c1a17">mem.hippocampus_ref</text>
-<text x="1264" y="972" class="tsub" fill="#63508c" text-anchor="end">the hinge</text>
-<text x="956" y="997.5" class="col" fill="#1c1a17">claim_id</text>
-<text x="1264" y="997.5" class="key" fill="#63508c" text-anchor="end">FK</text>
-<text x="1240" y="997.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
-<text x="956" y="1016.5" class="col" fill="#1c1a17">intent_id</text>
-<text x="1264" y="1016.5" class="key" fill="#63508c" text-anchor="end">FK</text>
-<text x="1240" y="1016.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
-<text x="956" y="1035.5" class="col" fill="#1c1a17">filename</text>
-<text x="1264" y="1035.5" class="key" fill="#63508c" text-anchor="end">PK</text>
-<text x="1240" y="1035.5" class="type" fill="#7c766a" text-anchor="end">text</text>
-<line x1="950" y1="1044" x2="1270" y2="1044" stroke="#63508c" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
-<text x="956" y="1059" class="foot" fill="#7c766a">check (claim_id is not null or intent_id is not null)</text>
-<text x="956" y="1076" class="foot" fill="#7c766a">a hinge row must hang off a belief or a thread</text>
-<rect x="910.0" y="1153" width="400" height="74" rx="3" fill="#63508c" opacity="0.07"/>
-<rect x="910.0" y="1153" width="400" height="74" rx="3" fill="none" stroke="#63508c" stroke-width="1.1" stroke-dasharray="6 5"/>
-<text x="1110.0" y="1183" class="tname" fill="#63508c" text-anchor="middle">hippocampus/&lt;file&gt;.md</text>
-<text x="1110.0" y="1205" class="foot" fill="#7c766a" text-anchor="middle">narrative memory · git-versioned prose, not rows</text>
-<line x1="520" y1="487" x2="546" y2="487" stroke="#7c766a" stroke-width="1.6"/>
-<text x="520" y="502" class="notelabel" fill="#1c1a17">contradiction is citable</text>
-<text x="520" y="523" class="notebody" fill="#7c766a">A citation carries its relation, so evidence that argues</text>
-<text x="520" y="539" class="notebody" fill="#7c766a">against a belief is stored the same way as evidence for</text>
-<text x="520" y="555" class="notebody" fill="#7c766a">it. A claim can hold its own counter-source without</text>
-<text x="520" y="571" class="notebody" fill="#7c766a">leaving the table.</text>
-<line x1="520" y1="787" x2="546" y2="787" stroke="#7c766a" stroke-width="1.6"/>
-<text x="520" y="802" class="notelabel" fill="#1c1a17">superseded, not overwritten</text>
-<text x="520" y="823" class="notebody" fill="#7c766a">A belief is retired by closing valid_to, never by</text>
-<text x="520" y="839" class="notebody" fill="#7c766a">deleting the row. valid_to is null is the live set, and</text>
-<text x="520" y="855" class="notebody" fill="#7c766a">the partial index keeps that the cheap query; history</text>
-<text x="520" y="871" class="notebody" fill="#7c766a">survives because nothing edits the past.</text>
-<line x1="520" y1="937" x2="546" y2="937" stroke="#7c766a" stroke-width="1.6"/>
-<text x="520" y="952" class="notelabel" fill="#1c1a17">acts are append-only</text>
-<text x="520" y="973" class="notebody" fill="#7c766a">mem.log has no valid_to and no update path: the record</text>
-<text x="520" y="989" class="notebody" fill="#7c766a">of what was done only grows. Beliefs may be revised; the</text>
-<text x="520" y="1005" class="notebody" fill="#7c766a">doing of them may not.</text>
-<line x1="520" y1="1069" x2="546" y2="1069" stroke="#7c766a" stroke-width="1.6"/>
-<text x="520" y="1084" class="notelabel" fill="#1c1a17">what it can answer</text>
-<text x="520" y="1108" class="notebody" fill="#7c766a">what do I believe, and on what?</text>
-<text x="520" y="1123" class="chiptrail" fill="#9b3d2c">claim ▸ claim_source ▸ source</text>
-<text x="520" y="1146" class="notebody" fill="#7c766a">what am I doing about it?</text>
-<text x="520" y="1161" class="chiptrail" fill="#1b6a63">intent ▸ log</text>
-<text x="520" y="1184" class="notebody" fill="#7c766a">where did I write it down?</text>
-<text x="520" y="1199" class="chiptrail" fill="#63508c">hippocampus_ref ▸ hippocampus/*.md</text>
-<text x="80" y="880" class="rule" fill="#1c1a17" letter-spacing="2.6">legend</text>
-<rect x="80" y="900" width="16" height="16" rx="2" fill="#a3711b" opacity="0.16"/>
-<rect x="80" y="900" width="16" height="16" rx="2" fill="none" stroke="#a3711b" stroke-width="1.2"/>
-<line x1="80" y1="908" x2="96" y2="908" stroke="#a3711b" stroke-width="3"/>
-<text x="108" y="906" class="legendname" fill="#a3711b">what I saw</text>
-<text x="108" y="922" class="legend" fill="#7c766a">one row per distinct citation, so citing stays cheap</text>
-<rect x="80" y="942" width="16" height="16" rx="2" fill="#9b3d2c" opacity="0.16"/>
-<rect x="80" y="942" width="16" height="16" rx="2" fill="none" stroke="#9b3d2c" stroke-width="1.2"/>
-<line x1="80" y1="950" x2="96" y2="950" stroke="#9b3d2c" stroke-width="3"/>
-<text x="108" y="948" class="legendname" fill="#9b3d2c">what I hold</text>
-<text x="108" y="964" class="legend" fill="#7c766a">each claim reaches its sources through claim_source</text>
-<rect x="80" y="984" width="16" height="16" rx="2" fill="#1b6a63" opacity="0.16"/>
-<rect x="80" y="984" width="16" height="16" rx="2" fill="none" stroke="#1b6a63" stroke-width="1.2"/>
-<line x1="80" y1="992" x2="96" y2="992" stroke="#1b6a63" stroke-width="3"/>
-<text x="108" y="990" class="legendname" fill="#1b6a63">what I&#x27;m doing</text>
-<text x="108" y="1006" class="legend" fill="#7c766a">one row per live thread, with the log of its acts</text>
-<rect x="80" y="1026" width="16" height="16" rx="2" fill="#63508c" opacity="0.16"/>
-<rect x="80" y="1026" width="16" height="16" rx="2" fill="none" stroke="#63508c" stroke-width="1.2"/>
-<line x1="80" y1="1034" x2="96" y2="1034" stroke="#63508c" stroke-width="3"/>
-<text x="108" y="1032" class="legendname" fill="#63508c">where the prose lives</text>
-<text x="108" y="1048" class="legend" fill="#7c766a">the hinge into hippocampus; it points, never copies</text>
-<line x1="80" y1="1272" x2="1380" y2="1272" stroke="#1c1a17" stroke-width="0.7" opacity="0.22"/>
-<text x="80" y="1294" class="foot" fill="#a9a294">crow's foot = many · tick = exactly one · sub-label = on delete action · dashed = filename, not a foreign key</text>
-<text x="1380" y="1294" class="foot" fill="#a9a294" text-anchor="end">owned by user satan · database satan</text>
+<line x1="80" y1="196" x2="1440" y2="196" stroke="#1c1a17" stroke-width="0.7" opacity="0.25"/>
+<rect x="868" y="380" width="404" height="389" rx="6" fill="#9b3d2c" opacity="0.04"/>
+<rect x="868" y="380" width="404" height="389" rx="6" fill="none" stroke="#9b3d2c" stroke-width="1" stroke-dasharray="7 6" opacity="0.75"/>
+<text x="1286" y="360" class="framelabel" fill="#9b3d2c">mem.asserted</text>
+<text x="1286" y="374" class="chips" fill="#7c766a">the read surface:</text>
+<text x="1286" y="386" class="chips" fill="#7c766a">retired_at IS NULL</text>
+<text x="1286" y="398" class="chips" fill="#7c766a">∧ some source supports it</text>
+<text x="1286" y="410" class="chips" fill="#7c766a">+ two citation counts</text>
+<path d="M960 327 L960 392" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M960 377 L952 392 M960 377 L960 392 M960 377 L968 392" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="953" y1="336" x2="967" y2="336" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="938" y="354" width="56" height="16" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="945" y="365.5" class="chip" fill="#5b6068">subject</text>
+<path d="M1200 346 L1200 392" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M1200 377 L1192 392 M1200 377 L1200 392 M1200 377 L1208 392" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="1193" y1="355" x2="1207" y2="355" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="1172" y="363" width="68" height="16" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="1179" y="375.0" class="chip" fill="#5b6068">predicate</text>
+<path d="M500 585.0 L440 585.0" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M485 585.0 L500 577.0 M485 585.0 L500 585.0 M485 585.0 L500 593.0" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="449" y1="578.0" x2="449" y2="592.0" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="436" y="565" width="68" height="16" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="443" y="577.0" class="chip" fill="#9b3d2c">source_id</text>
+<path d="M810 585.0 L880 585.0" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M825 585.0 L810 577.0 M825 585.0 L810 585.0 M825 585.0 L810 593.0" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="871" y1="578.0" x2="871" y2="592.0" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="814" y="565" width="62" height="16" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="821" y="577.0" class="chip" fill="#9b3d2c">claim_id</text>
+<path d="M1260 625.5 L1308 625.5 Q1316 625.5 1316 633.5 L1316 427.5 Q1316 435.5 1308 435.5 L1260 435.5" fill="none" stroke="#9b3d2c" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M1275 625.5 L1260 617.5 M1275 625.5 L1260 625.5 M1275 625.5 L1260 633.5" stroke="#9b3d2c" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="1251" y1="428.5" x2="1251" y2="442.5" stroke="#9b3d2c" stroke-width="1.7"/>
+<rect x="1322" y="508" width="93" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="1329" y="519.5" class="chip" fill="#9b3d2c">superseded_by</text>
+<text x="1329" y="529.5" class="chips" fill="#a9a294">the successor</text>
+<path d="M500 941.5 L469.0 941.5 Q460 941.5 460.0 932.5 L460.0 912.5 Q460 903.5 451.0 903.5 L420 903.5" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M485 941.5 L500 933.5 M485 941.5 L500 941.5 M485 941.5 L500 949.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="429" y1="896.5" x2="429" y2="910.5" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="426" y="892" width="68" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="433" y="903.5" class="chip" fill="#1b6a63">intent_id</text>
+<text x="433" y="913.5" class="chips" fill="#a9a294">set null</text>
+<path d="M500 998.5 L489.0 998.5 Q480 998.5 480.0 989.5 L480.0 771.0 Q480 762 471.0 762.0 L409.0 762.0 Q400 762 400.0 753.0 L400 720" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M485 998.5 L500 990.5 M485 998.5 L500 998.5 M485 998.5 L500 1006.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="393" y1="729" x2="407" y2="729" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="406" y="732" width="68" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="413" y="743" class="chip" fill="#1b6a63">source_id</text>
+<text x="413" y="753" class="chips" fill="#a9a294">set null</text>
+<path d="M700 860 L700.0 799.0 Q700 790 709.0 790.0 L931.0 790.0 Q940 790 940.0 781.0 L940 757" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M700 845 L692 860 M700 845 L700 860 M700 845 L708 860" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="933" y1="766" x2="947" y2="766" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="739" y="795" width="62" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="746" y="804" class="chip" fill="#1b6a63">claim_id</text>
+<text x="746" y="814" class="chips" fill="#a9a294">set null</text>
+<path d="M1260 1212.5 L1307.0 1212.5 Q1316 1212.5 1316.0 1203.5 L1316.0 811.0 Q1316 802 1307.0 802.0 L1189.0 802.0 Q1180 802 1180.0 793.0 L1180 757" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M1275 1212.5 L1260 1204.5 M1275 1212.5 L1260 1212.5 M1275 1212.5 L1260 1220.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="1173" y1="766" x2="1187" y2="766" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="1216" y="994" width="62" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="1223" y="1006.25" class="chip" fill="#63508c">claim_id</text>
+<text x="1223" y="1016.25" class="chips" fill="#a9a294">restrict</text>
+<path d="M880 1231.5 L871.0 1231.5 Q862 1231.5 862.0 1222.5 L862.0 1189.0 Q862 1180 853.0 1180.0 L389.0 1180.0 Q380 1180 380.0 1171.0 L380 1151" fill="none" stroke="#1c1a17" stroke-width="1.35" stroke-linecap="round"/>
+<path d="M865 1231.5 L880 1223.5 M865 1231.5 L880 1231.5 M865 1231.5 L880 1239.5" stroke="#1c1a17" stroke-width="1.35" fill="none" stroke-linecap="round"/>
+<line x1="373" y1="1160" x2="387" y2="1160" stroke="#1c1a17" stroke-width="1.7"/>
+<rect x="586" y="1150" width="68" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="593" y="1161" class="chip" fill="#63508c">intent_id</text>
+<text x="593" y="1171" class="chips" fill="#a9a294">restrict</text>
+<path d="M1070.0 1327 L1070.0 1380" fill="none" stroke="#63508c" stroke-width="1.35" stroke-linecap="round" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<rect x="1022" y="1340" width="108" height="26" rx="2" fill="#f7f3ea" opacity="0.95"/>
+<text x="1029" y="1352.5" class="chip" fill="#63508c">filename</text>
+<text x="1029" y="1362.5" class="chips" fill="#a9a294">one file, n rows</text>
+<rect x="83" y="453" width="360" height="270" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="80" y="450" width="360" height="270" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M80 484 V453 a3 3 0 0 1 3 -3 H437 a3 3 0 0 1 3 3 V484 Z" fill="#a3711b" opacity="0.13"/>
+<line x1="80" y1="484" x2="440" y2="484" stroke="#a3711b" stroke-width="1.1"/>
+<path d="M80.6 462 V708" stroke="#a3711b" stroke-width="3.4" stroke-linecap="round"/>
+<text x="96" y="472" class="tname" fill="#1c1a17">mem.source</text>
+<text x="424" y="472" class="tsub" fill="#a3711b" text-anchor="end">what I saw</text>
+<text x="96" y="493.5" class="col" fill="#1c1a17">id</text>
+<text x="424" y="493.5" class="key" fill="#a3711b" text-anchor="end">PK</text>
+<text x="398" y="493.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
+<text x="96" y="512.5" class="col" fill="#1c1a17">ref</text>
+<text x="398" y="512.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="531.5" class="col" fill="#1c1a17">detail</text>
+<text x="398" y="531.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="550.5" class="col" fill="#1c1a17">modality</text>
+<text x="398" y="550.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="569.5" class="col" fill="#1c1a17">epistemic</text>
+<text x="398" y="569.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="588.5" class="col" fill="#1c1a17">authority</text>
+<text x="398" y="588.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="607.5" class="col" fill="#1c1a17">seen_at</text>
+<text x="398" y="607.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<text x="96" y="626.5" class="col" fill="#1c1a17">last_seen_at</text>
+<text x="398" y="626.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<line x1="90" y1="639" x2="430" y2="639" stroke="#a3711b" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
+<text x="96" y="654" class="foot" fill="#7c766a">modality : file · commit · conversation · web</text>
+<text x="96" y="671" class="foot" fill="#7c766a">epistemic: observation · inference · spec · testimony</text>
+<text x="96" y="688" class="foot" fill="#7c766a">authority: user · agent · upstream · third_party</text>
+<text x="96" y="705" class="foot" fill="#7c766a">unique (modality, ref, detail)</text>
+<rect x="883" y="395" width="380" height="365" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="880" y="392" width="380" height="365" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M880 426 V395 a3 3 0 0 1 3 -3 H1257 a3 3 0 0 1 3 3 V426 Z" fill="#9b3d2c" opacity="0.13"/>
+<line x1="880" y1="426" x2="1260" y2="426" stroke="#9b3d2c" stroke-width="1.1"/>
+<path d="M880.6 404 V745" stroke="#9b3d2c" stroke-width="3.4" stroke-linecap="round"/>
+<text x="896" y="414" class="tname" fill="#1c1a17">mem.claim</text>
+<text x="1244" y="414" class="tsub" fill="#9b3d2c" text-anchor="end">what I hold</text>
+<text x="896" y="435.5" class="col" fill="#1c1a17">id</text>
+<text x="1244" y="435.5" class="key" fill="#9b3d2c" text-anchor="end">PK</text>
+<text x="1218" y="435.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
+<text x="896" y="454.5" class="col" fill="#1c1a17">subject</text>
+<text x="1244" y="454.5" class="key" fill="#9b3d2c" text-anchor="end">FK</text>
+<text x="1218" y="454.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="896" y="473.5" class="col" fill="#1c1a17">predicate</text>
+<text x="1244" y="473.5" class="key" fill="#9b3d2c" text-anchor="end">FK</text>
+<text x="1218" y="473.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="896" y="492.5" class="col" fill="#1c1a17">object</text>
+<text x="1218" y="492.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="896" y="511.5" class="col" fill="#1c1a17">confidence</text>
+<text x="1218" y="511.5" class="type" fill="#7c766a" text-anchor="end">numeric</text>
+<text x="896" y="530.5" class="col" fill="#1c1a17">status</text>
+<text x="1218" y="530.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="896" y="549.5" class="col" fill="#1c1a17">asserted_at</text>
+<text x="1218" y="549.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<text x="896" y="568.5" class="col" fill="#1c1a17">valid_from</text>
+<text x="1218" y="568.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<text x="896" y="587.5" class="col" fill="#1c1a17">valid_to</text>
+<text x="1218" y="587.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<text x="896" y="606.5" class="col" fill="#1c1a17">note</text>
+<text x="1218" y="606.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="896" y="625.5" class="col" fill="#1c1a17">superseded_by</text>
+<text x="1244" y="625.5" class="key" fill="#9b3d2c" text-anchor="end">FK</text>
+<text x="1218" y="625.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="896" y="644.5" class="col" fill="#1c1a17">search_text</text>
+<text x="1244" y="644.5" class="key" fill="#9b3d2c" text-anchor="end">GEN</text>
+<text x="1218" y="644.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="896" y="663.5" class="col" fill="#1c1a17">retired_at</text>
+<text x="1218" y="663.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<line x1="890" y1="676" x2="1250" y2="676" stroke="#9b3d2c" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
+<text x="896" y="691" class="foot" fill="#7c766a">status ∈ held · confirmed · refuted · stale · superseded</text>
+<text x="896" y="708" class="foot" fill="#7c766a">held/confirmed ⇔ retired_at NULL · idx (superseded_by)</text>
+<text x="896" y="725" class="foot" fill="#7c766a">one live triple: unique (subject, predicate, object)</text>
+<text x="896" y="742" class="foot" fill="#7c766a">  where retired_at IS NULL · gin trgm (search_text)</text>
+<rect x="503" y="509.0" width="310" height="158" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="500" y="506.0" width="310" height="158" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M500 540.0 V509.0 a3 3 0 0 1 3 -3 H807 a3 3 0 0 1 3 3 V540.0 Z" fill="#9b3d2c" opacity="0.13"/>
+<line x1="500" y1="540.0" x2="810" y2="540.0" stroke="#9b3d2c" stroke-width="1.1"/>
+<path d="M500.6 518.0 V652.0" stroke="#9b3d2c" stroke-width="3.4" stroke-linecap="round"/>
+<text x="516" y="528.0" class="tname" fill="#1c1a17">mem.claim_source</text>
+<text x="794" y="528.0" class="tsub" fill="#9b3d2c" text-anchor="end">the receipt</text>
+<text x="516" y="549.5" class="col" fill="#1c1a17">claim_id</text>
+<text x="794" y="549.5" class="key" fill="#9b3d2c" text-anchor="end">FK</text>
+<text x="768" y="549.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="516" y="568.5" class="col" fill="#1c1a17">source_id</text>
+<text x="794" y="568.5" class="key" fill="#9b3d2c" text-anchor="end">FK</text>
+<text x="768" y="568.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="516" y="587.5" class="col" fill="#1c1a17">relation</text>
+<text x="768" y="587.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<line x1="510" y1="600.0" x2="800" y2="600.0" stroke="#9b3d2c" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
+<text x="516" y="615.0" class="foot" fill="#7c766a">relation ∈ supports · contradicts · derived_from</text>
+<text x="516" y="632.0" class="foot" fill="#7c766a">PK (claim_id, source_id, relation)</text>
+<text x="516" y="649.0" class="foot" fill="#7c766a">claim cascade · source restrict</text>
+<rect x="883" y="239" width="200" height="91" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="880" y="236" width="200" height="91" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M880 270 V239 a3 3 0 0 1 3 -3 H1077 a3 3 0 0 1 3 3 V270 Z" fill="#5b6068" opacity="0.13"/>
+<line x1="880" y1="270" x2="1080" y2="270" stroke="#5b6068" stroke-width="1.1"/>
+<path d="M880.6 248 V315" stroke="#5b6068" stroke-width="3.4" stroke-linecap="round"/>
+<text x="896" y="258" class="tname" fill="#1c1a17">mem.subject</text>
+<text x="1064" y="258" class="tsub" fill="#5b6068" text-anchor="end">vocab</text>
+<text x="896" y="279.5" class="col" fill="#1c1a17">slug</text>
+<text x="1064" y="279.5" class="key" fill="#5b6068" text-anchor="end">PK</text>
+<text x="1038" y="279.5" class="type" fill="#7c766a" text-anchor="end"></text>
+<text x="896" y="298.5" class="col" fill="#1c1a17">title</text>
+<text x="1038" y="298.5" class="type" fill="#7c766a" text-anchor="end"></text>
+<text x="896" y="317.5" class="col" fill="#1c1a17">domain</text>
+<text x="1064" y="317.5" class="key" fill="#5b6068" text-anchor="end">GEN</text>
+<text x="1038" y="317.5" class="type" fill="#7c766a" text-anchor="end"></text>
+<rect x="1113" y="239" width="200" height="110" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="1110" y="236" width="200" height="110" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M1110 270 V239 a3 3 0 0 1 3 -3 H1307 a3 3 0 0 1 3 3 V270 Z" fill="#5b6068" opacity="0.13"/>
+<line x1="1110" y1="270" x2="1310" y2="270" stroke="#5b6068" stroke-width="1.1"/>
+<path d="M1110.6 248 V334" stroke="#5b6068" stroke-width="3.4" stroke-linecap="round"/>
+<text x="1126" y="258" class="tname" fill="#1c1a17">mem.predicate</text>
+<text x="1294" y="258" class="tsub" fill="#5b6068" text-anchor="end">vocab</text>
+<text x="1126" y="279.5" class="col" fill="#1c1a17">slug</text>
+<text x="1294" y="279.5" class="key" fill="#5b6068" text-anchor="end">PK</text>
+<text x="1268" y="279.5" class="type" fill="#7c766a" text-anchor="end"></text>
+<text x="1126" y="298.5" class="col" fill="#1c1a17">scope</text>
+<text x="1268" y="298.5" class="type" fill="#7c766a" text-anchor="end"></text>
+<text x="1126" y="317.5" class="col" fill="#1c1a17">defn</text>
+<text x="1268" y="317.5" class="type" fill="#7c766a" text-anchor="end"></text>
+<text x="1126" y="336.5" class="col" fill="#1c1a17">created_at</text>
+<text x="1268" y="336.5" class="type" fill="#7c766a" text-anchor="end"></text>
+<rect x="83" y="863" width="340" height="291" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="80" y="860" width="340" height="291" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M80 894 V863 a3 3 0 0 1 3 -3 H417 a3 3 0 0 1 3 3 V894 Z" fill="#1b6a63" opacity="0.13"/>
+<line x1="80" y1="894" x2="420" y2="894" stroke="#1b6a63" stroke-width="1.1"/>
+<path d="M80.6 872 V1139" stroke="#1b6a63" stroke-width="3.4" stroke-linecap="round"/>
+<text x="96" y="882" class="tname" fill="#1c1a17">mem.intent</text>
+<text x="404" y="882" class="tsub" fill="#1b6a63" text-anchor="end">what I&#x27;m doing</text>
+<text x="96" y="903.5" class="col" fill="#1c1a17">id</text>
+<text x="404" y="903.5" class="key" fill="#1b6a63" text-anchor="end">PK</text>
+<text x="378" y="903.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
+<text x="96" y="922.5" class="col" fill="#1c1a17">slug</text>
+<text x="404" y="922.5" class="key" fill="#1b6a63" text-anchor="end">UQ</text>
+<text x="378" y="922.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="941.5" class="col" fill="#1c1a17">title</text>
+<text x="378" y="941.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="960.5" class="col" fill="#1c1a17">status</text>
+<text x="378" y="960.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="979.5" class="col" fill="#1c1a17">waiting_for</text>
+<text x="378" y="979.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="998.5" class="col" fill="#1c1a17">next_step</text>
+<text x="378" y="998.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="1017.5" class="col" fill="#1c1a17">plan</text>
+<text x="378" y="1017.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="96" y="1036.5" class="col" fill="#1c1a17">created_at</text>
+<text x="378" y="1036.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<text x="96" y="1055.5" class="col" fill="#1c1a17">updated_at</text>
+<text x="378" y="1055.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<text x="96" y="1074.5" class="col" fill="#1c1a17">closed_at</text>
+<text x="378" y="1074.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<line x1="90" y1="1087" x2="410" y2="1087" stroke="#1b6a63" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
+<text x="96" y="1102" class="foot" fill="#7c766a">status ∈ active · blocked · done · abandoned</text>
+<text x="96" y="1119" class="foot" fill="#7c766a">done/abandoned ⇔ closed_at NOT NULL</text>
+<text x="96" y="1136" class="foot" fill="#7c766a">idx (updated_at desc) where active/blocked</text>
+<rect x="503" y="863" width="340" height="253" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="500" y="860" width="340" height="253" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M500 894 V863 a3 3 0 0 1 3 -3 H837 a3 3 0 0 1 3 3 V894 Z" fill="#1b6a63" opacity="0.13"/>
+<line x1="500" y1="894" x2="840" y2="894" stroke="#1b6a63" stroke-width="1.1"/>
+<path d="M500.6 872 V1101" stroke="#1b6a63" stroke-width="3.4" stroke-linecap="round"/>
+<text x="516" y="882" class="tname" fill="#1c1a17">mem.journal</text>
+<text x="824" y="882" class="tsub" fill="#1b6a63" text-anchor="end">what came of it</text>
+<text x="516" y="903.5" class="col" fill="#1c1a17">id</text>
+<text x="824" y="903.5" class="key" fill="#1b6a63" text-anchor="end">PK</text>
+<text x="798" y="903.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
+<text x="516" y="922.5" class="col" fill="#1c1a17">at</text>
+<text x="798" y="922.5" class="type" fill="#7c766a" text-anchor="end">timestamptz</text>
+<text x="516" y="941.5" class="col" fill="#1c1a17">intent_id</text>
+<text x="824" y="941.5" class="key" fill="#1b6a63" text-anchor="end">FK</text>
+<text x="798" y="941.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="516" y="960.5" class="col" fill="#1c1a17">kind</text>
+<text x="798" y="960.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="516" y="979.5" class="col" fill="#1c1a17">body</text>
+<text x="798" y="979.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<text x="516" y="998.5" class="col" fill="#1c1a17">source_id</text>
+<text x="824" y="998.5" class="key" fill="#1b6a63" text-anchor="end">FK</text>
+<text x="798" y="998.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="516" y="1017.5" class="col" fill="#1c1a17">claim_id</text>
+<text x="824" y="1017.5" class="key" fill="#1b6a63" text-anchor="end">FK</text>
+<text x="798" y="1017.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="516" y="1036.5" class="col" fill="#1c1a17">created_by</text>
+<text x="798" y="1036.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<line x1="510" y1="1049" x2="830" y2="1049" stroke="#1b6a63" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
+<text x="516" y="1064" class="foot" fill="#7c766a">kind ∈ action · finding · error · decision ·</text>
+<text x="516" y="1081" class="foot" fill="#7c766a">     question · wakeup · sleep</text>
+<text x="516" y="1098" class="foot" fill="#7c766a">decision ⇒ a claim or an intent · append-only</text>
+<rect x="883" y="1153" width="380" height="177" rx="3" fill="#1c1a17" opacity="0.06"/>
+<rect x="880" y="1150" width="380" height="177" rx="3" fill="#fffdf7" stroke="#1c1a17" stroke-width="1.1"/>
+<path d="M880 1184 V1153 a3 3 0 0 1 3 -3 H1257 a3 3 0 0 1 3 3 V1184 Z" fill="#63508c" opacity="0.13"/>
+<line x1="880" y1="1184" x2="1260" y2="1184" stroke="#63508c" stroke-width="1.1"/>
+<path d="M880.6 1162 V1315" stroke="#63508c" stroke-width="3.4" stroke-linecap="round"/>
+<text x="896" y="1172" class="tname" fill="#1c1a17">mem.hippocampus_ref</text>
+<text x="1244" y="1172" class="tsub" fill="#63508c" text-anchor="end">the hinge</text>
+<text x="896" y="1193.5" class="col" fill="#1c1a17">id</text>
+<text x="1244" y="1193.5" class="key" fill="#63508c" text-anchor="end">PK</text>
+<text x="1218" y="1193.5" class="type" fill="#7c766a" text-anchor="end">bigserial</text>
+<text x="896" y="1212.5" class="col" fill="#1c1a17">claim_id</text>
+<text x="1244" y="1212.5" class="key" fill="#63508c" text-anchor="end">FK</text>
+<text x="1218" y="1212.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="896" y="1231.5" class="col" fill="#1c1a17">intent_id</text>
+<text x="1244" y="1231.5" class="key" fill="#63508c" text-anchor="end">FK</text>
+<text x="1218" y="1231.5" class="type" fill="#7c766a" text-anchor="end">bigint</text>
+<text x="896" y="1250.5" class="col" fill="#1c1a17">filename</text>
+<text x="1218" y="1250.5" class="type" fill="#7c766a" text-anchor="end">text</text>
+<line x1="890" y1="1263" x2="1250" y2="1263" stroke="#63508c" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.8"/>
+<text x="896" y="1278" class="foot" fill="#7c766a">check (claim_id is not null or intent_id is not null)</text>
+<text x="896" y="1295" class="foot" fill="#7c766a">unique (filename, claim_id) · (filename, intent_id)</text>
+<text x="896" y="1312" class="foot" fill="#7c766a">narrative memory · git-versioned prose</text>
+<rect x="880.0" y="1380" width="380" height="64" rx="3" fill="#63508c" opacity="0.07"/>
+<rect x="880.0" y="1380" width="380" height="64" rx="3" fill="none" stroke="#63508c" stroke-width="1.1" stroke-dasharray="6 5"/>
+<text x="1070.0" y="1408" class="tname" fill="#63508c" text-anchor="middle">hippocampus/&lt;file&gt;.md</text>
+<text x="1070.0" y="1428" class="foot" fill="#7c766a" text-anchor="middle">git-versioned prose · the hinge only points at it</text>
+<line x1="80" y1="237" x2="106" y2="237" stroke="#7c766a" stroke-width="1.6"/>
+<text x="80" y="252" class="notelabel" fill="#1c1a17">the words are registered</text>
+<text x="80" y="273" class="notebody" fill="#7c766a">A subject and a predicate must exist before a claim</text>
+<text x="80" y="289" class="notebody" fill="#7c766a">can name them. mem.assert_claim() does the</text>
+<text x="80" y="305" class="notebody" fill="#7c766a">registration, the claim, the citation and the receipt</text>
+<text x="80" y="321" class="notebody" fill="#7c766a">in one transaction.</text>
+<line x1="80" y1="345" x2="106" y2="345" stroke="#7c766a" stroke-width="1.6"/>
+<text x="80" y="360" class="notelabel" fill="#1c1a17">contradiction is citable</text>
+<text x="80" y="381" class="notebody" fill="#7c766a">A citation carries its relation, so evidence against a</text>
+<text x="80" y="397" class="notebody" fill="#7c766a">belief is stored the same way as evidence for it: a</text>
+<text x="80" y="413" class="notebody" fill="#7c766a">claim can hold its own counter-source.</text>
+<line x1="500" y1="1202" x2="526" y2="1202" stroke="#7c766a" stroke-width="1.6"/>
+<text x="500" y="1217" class="notelabel" fill="#1c1a17">retired, not overwritten</text>
+<text x="500" y="1238" class="notebody" fill="#7c766a">A belief leaves the live set by gaining retired_at. It</text>
+<text x="500" y="1254" class="notebody" fill="#7c766a">keeps its row, keeps its citations, and names its</text>
+<text x="500" y="1270" class="notebody" fill="#7c766a">successor; the chain is walked, never inferred.</text>
+<line x1="500" y1="1312" x2="526" y2="1312" stroke="#7c766a" stroke-width="1.6"/>
+<text x="500" y="1327" class="notelabel" fill="#1c1a17">acts are append-only</text>
+<text x="500" y="1348" class="notebody" fill="#7c766a">The journal has no retired_at and no update path.</text>
+<text x="500" y="1364" class="notebody" fill="#7c766a">Beliefs may be revised; the doing of them may not.</text>
+<text x="80" y="1200" class="rule" fill="#1c1a17" letter-spacing="2.6">legend</text>
+<rect x="80" y="1220" width="16" height="16" rx="2" fill="#a3711b" opacity="0.16"/>
+<rect x="80" y="1220" width="16" height="16" rx="2" fill="none" stroke="#a3711b" stroke-width="1.2"/>
+<line x1="80" y1="1228" x2="96" y2="1228" stroke="#a3711b" stroke-width="3"/>
+<text x="108" y="1226" class="legendname" fill="#a3711b">what I saw</text>
+<text x="108" y="1242" class="legend" fill="#7c766a">one row per citation, not per document</text>
+<rect x="80" y="1262" width="16" height="16" rx="2" fill="#9b3d2c" opacity="0.16"/>
+<rect x="80" y="1262" width="16" height="16" rx="2" fill="none" stroke="#9b3d2c" stroke-width="1.2"/>
+<line x1="80" y1="1270" x2="96" y2="1270" stroke="#9b3d2c" stroke-width="3"/>
+<text x="108" y="1268" class="legendname" fill="#9b3d2c">what I hold</text>
+<text x="108" y="1284" class="legend" fill="#7c766a">reached through claim_source, read through the view</text>
+<rect x="80" y="1304" width="16" height="16" rx="2" fill="#5b6068" opacity="0.16"/>
+<rect x="80" y="1304" width="16" height="16" rx="2" fill="none" stroke="#5b6068" stroke-width="1.2"/>
+<line x1="80" y1="1312" x2="96" y2="1312" stroke="#5b6068" stroke-width="3"/>
+<text x="108" y="1310" class="legendname" fill="#5b6068">the words allowed</text>
+<text x="108" y="1326" class="legend" fill="#7c766a">subject + predicate must be registered first</text>
+<rect x="80" y="1346" width="16" height="16" rx="2" fill="#1b6a63" opacity="0.16"/>
+<rect x="80" y="1346" width="16" height="16" rx="2" fill="none" stroke="#1b6a63" stroke-width="1.2"/>
+<line x1="80" y1="1354" x2="96" y2="1354" stroke="#1b6a63" stroke-width="3"/>
+<text x="108" y="1352" class="legendname" fill="#1b6a63">what I&#x27;m doing</text>
+<text x="108" y="1368" class="legend" fill="#7c766a">one live thread, with its journal of acts</text>
+<rect x="80" y="1388" width="16" height="16" rx="2" fill="#63508c" opacity="0.16"/>
+<rect x="80" y="1388" width="16" height="16" rx="2" fill="none" stroke="#63508c" stroke-width="1.2"/>
+<line x1="80" y1="1396" x2="96" y2="1396" stroke="#63508c" stroke-width="3"/>
+<text x="108" y="1394" class="legendname" fill="#63508c">where the prose lives</text>
+<text x="108" y="1410" class="legend" fill="#7c766a">the hinge into hippocampus; it points, never copies</text>
+<line x1="80" y1="1496" x2="1440" y2="1496" stroke="#1c1a17" stroke-width="0.7" opacity="0.22"/>
+<text x="80" y="1518" class="foot" fill="#a9a294">crow's foot = many · tick = exactly one · sub-label = on delete action · GEN = generated · dashed = filename, not a foreign key</text>
+<text x="1440" y="1518" class="foot" fill="#a9a294" text-anchor="end">owned by user satan · database satan</text>
 </svg>
