@@ -25,7 +25,7 @@ Raised 2026-10-19 after the SL-023 PHASE-14 closure run.
 ## Implementation (2026-10-24)
 
 Design sketch agreed with the user in-session (proposals 1–3 above, with
-adjustments). Uncommitted at time of writing.
+adjustments). Committed: satan f8e0a83, malebolge b895f5a.
 
 - `satan-patch-show` / `satan-patch-show-job` (`satan/satan-patch-promote.el`):
   `result` (needs_review + `base_oid` and the promote fields) → fetch into
@@ -45,7 +45,7 @@ adjustments). Uncommitted at time of writing.
   `Commits:` (short oid + subject; continuation lines indented so a message
   cannot open an Org heading).
 - Full commit messages: the renderer prefers a commit's `message` field,
-  falling back to `subject`. Malebolge side (same day, uncommitted):
+  falling back to `subject`. Malebolge side (b895f5a):
   `commitsIn` (`src/runner/git.ts`) now logs `%H %s%x00%B` and each
   `CommitInfo` carries `message` (full, as git stores it; empty allowed),
   recorded in the `collected` event and so in `result`. Additive: SPEC-004
