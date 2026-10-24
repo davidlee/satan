@@ -11,7 +11,7 @@ pi on deepseek is ~20× cheaper than you, and every route below returns a reduce
 
 One blocking call: `pi_agent(prompt, profile)` → `{state, final, result, transcript, status, artifacts, refusal, session}`. `quotient help result` is the full contract.
 
-- `profile`, defined in `.quotient/profiles/`: `read` (read-only view of the root; tools `read, grep, find, ls, bash`; `thinking: off`) is for recon. `research` is the same with `thinking: low`, for judgement. `write` adds `edit, write` and a writable root. Each is callable only while the operator policy's `profiles` lists it.
+- `profile`, defined in `~/.config/quotient/profiles/` (quotient ≥ 0.3.0 reads no launch-dir layer): `read` (read-only view of the root; tools `read, grep, find, ls, bash`; `thinking: off`) is for recon. `research` is the same with `thinking: low`, for judgement. `write` adds `edit, write` and a writable root. Each is callable only while the operator policy's `profiles` lists it.
 - Trust `result` only when `final` is true. Otherwise read `state`, `causes`, and `transcript`. `refused` means nothing ran; `refusal.reason` says why.
 - `session`: pass back the returned id to continue the conversation.
 - `cwd` defaults to this repo; other roots must be in the policy. `tools` and `ceilings` can only narrow.
@@ -22,7 +22,7 @@ Operator setup, outside the repo (an absent or malformed policy refuses every ca
 - Policy: `~/.config/quotient/policy.json` (mode 0444; schema `quotient-policy/1`, see `quotient help policy`). It names the forms by stable link, `~/.local/state/quotient/forms/<capability>/bin/quotient-<capability>`.
 - `just quotient-forms` rebuilds those links and `~/.local/state/quotient/bin/quotient` (GC-rooted). Run it after changing the forms in `flake.nix` or bumping the `quotient` input.
 - The server is the `quotient` entry in `.mcp.json`, run from that bin link; `quotient help clients` prints the client snippets.
-- Profiles are read once at start-up. Restart the session after editing `.quotient/profiles/`.
+- Profiles are read once at start-up. Restart the session after editing `~/.config/quotient/profiles/`.
 
 **Judgement — governance applicability, competing readings, tradeoffs**
 
