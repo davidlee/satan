@@ -705,7 +705,7 @@ pop a desktop alert).  The bundle is verify-clean."
      (let* ((root (make-temp-file "satan-session-perceive-" t))
             (satan-runs-dir root)
             (satan-budget-daily-tokens 2500000) ; under ceiling: no spend
-            (satan-run--session-active t)        ; interactive session open
+            (satan-run--interactive-calls 1)     ; interactive call in flight
             (satan-trace-enabled nil)  ; SL-011: keep the real trace dir clean
             (announced nil))
        (unwind-protect
@@ -749,8 +749,9 @@ pop a desktop alert).  The bundle is verify-clean."
 (cl-defun satan-broker-test--gate-run
     (&key busy session perceive-error setup)
   "Run `satan-broker-run' \"morning\" through the pre-spawn gates.
-BUSY binds `satan-run--spawn-running', SESSION `satan-run--session-active';
-PERCEIVE-ERROR non-nil makes perceive signal.  SETUP, a function of the
+BUSY binds `satan-run--spawn-running'; SESSION non-nil puts one call
+in `satan-run--interactive-calls'.  PERCEIVE-ERROR non-nil makes
+perceive signal.  SETUP, a function of the
 runs root, runs first.  `--spawn' is stubbed.
 
 Returns (:reason R :dir DIR :run-id ID :spawned BOOL :announced
@@ -764,7 +765,7 @@ afterwards, so DIR is for its name only."
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000)
               (satan-run--spawn-running busy)
-              (satan-run--session-active session)
+              (satan-run--interactive-calls (if session 1 0))
               (satan-trace-enabled nil)
               (spawned nil))
          (unwind-protect
@@ -857,7 +858,7 @@ the stage wraps inside the shared perceive fn record onto the tick."
        (let* ((root (make-temp-file "satan-tick-spawn-" t))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000) ; under ceiling
-              (satan-run--session-active nil))
+              (satan-run--interactive-calls 0))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-percept-build)
                         #'satan-broker-test--fixture-percept)
@@ -889,7 +890,7 @@ row, and the run's transcript names the error (RV-012 F-6)."
        (let* ((root (make-temp-file "satan-tick-perc-" t))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000)
-              (satan-run--session-active nil))
+              (satan-run--interactive-calls 0))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         (lambda (&rest _) (error "sensor exploded")))
@@ -918,7 +919,7 @@ row, and the run's transcript names the error (RV-012 F-6)."
        (let* ((root (make-temp-file "satan-tick-sess-" t))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000)
-              (satan-run--session-active t))
+              (satan-run--interactive-calls 1))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         #'satan-broker-test--minimal-perceive))
@@ -941,7 +942,7 @@ row, and the run's transcript names the error (RV-012 F-6)."
               (existing (expand-file-name (concat today "080000-x-eeeeee") root))
               (satan-runs-dir root)
               (satan-budget-daily-tokens 400000)
-              (satan-run--session-active nil))
+              (satan-run--interactive-calls 0))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         #'satan-broker-test--minimal-perceive))

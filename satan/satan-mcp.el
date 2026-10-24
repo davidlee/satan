@@ -199,8 +199,6 @@ Signals if a scheduled run is live (DEC-8 mutual exclusion)."
               :status 'running))
           (tool-ctx (satan-run-tool-ctx run-struct))
           (bufs (make-hash-table :test 'eq)))
-    ;; DEC-8: mark broker busy while this session lives.
-    (setq satan-run--session-active t)
     (make-satan-mcp-session
       :proc proc
       :run-id run-id
@@ -219,9 +217,6 @@ Without a synthetic final, audit-close writes :status \"invalid\"."
     (list :summary "interactive session" :status "completed")
     (list :applied [] :staged [] :rejected [] :failed [])
     'completed)
-  ;; DEC-8: clear the mutual-exclusion flag so the scheduler can
-  ;; spawn runs again.
-  (setq satan-run--session-active nil)
   ;; Clear the bufs hash
   (clrhash (satan-mcp-session-bufs session)))
 
@@ -302,10 +297,12 @@ SESSION carries the tool-ctx and audit handle."
           (satan-mcp--current-session session))
       ;; Audit the inbound tool_call (mimics membrane :dir in)
       (satan-audit-record audit 'in 'tool-call call)
-      (let ((res (satan-tool-dispatch
-                   call
-                   (plist-get mode :tools)
-                   tool-ctx)))
+      ;; DEC-8: hold the scheduler for the dispatch, not the connection.
+      (let ((res (progn
+                   (cl-incf satan-run--interactive-calls)
+                   (unwind-protect
+                       (satan-tool-dispatch call (plist-get mode :tools) tool-ctx)
+                     (cl-decf satan-run--interactive-calls)))))
         ;; Audit the outbound tool-result
         (satan-audit-record audit 'out 'tool-result res)
         (if (eq (plist-get res :ok) t)
@@ -411,9 +408,6 @@ does not error the session)."
       (message "satan-mcp: session %s connected"
         (satan-mcp-session-run-id session)))
     (error
-      ;; DEC-8: if the session was minted but wiring failed, clear the
-      ;; mutual-exclusion flag so the scheduler is not permanently blocked.
-      (setq satan-run--session-active nil)
       (message "satan-mcp: rejecting connection — %s" (error-message-string err))
       (delete-process client-proc))))
 

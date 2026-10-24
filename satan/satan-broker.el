@@ -664,8 +664,8 @@ Single allocation site for `run_id' + `time_now': calls
 returned run_ctx plist is threaded into context assembly, tool
 dispatch, and audit.
 
-Refuses to spawn when an interactive MCP session is open (DEC-8
-mutual exclusion), or when today's spend has met or exceeded
+Refuses to spawn while an interactive MCP tool call is mid-dispatch
+(DEC-8 mutual exclusion), or when today's spend has met or exceeded
 `satan-budget-daily-tokens'.  In both cases writes a minimal
 audit bundle with the appropriate status and returns the run-id
 without launching the child."
@@ -695,14 +695,15 @@ without launching the child."
            mode prepare dir "perceive_failed" perceive-error)
           (satan-trace-outcome "perceive_failed")
           run-id)
-         ;; DEC-8: refuse to spawn while an interactive session is open.
+         ;; DEC-8: refuse to spawn while an interactive tool call is
+         ;; mid-dispatch (ISS-058: calls, not connections).
          ;; ISSUE-001: now perceives first.  No rename, no announce — the
          ;; deferral must not pollute the failure-streak counter or alert.
-         (satan-run--session-active
-          (message "SATAN broker: interactive session active — refusing scheduled run (DEC-8)")
+         ((cl-plusp satan-run--interactive-calls)
+          (message "SATAN broker: interactive tool call in flight — refusing scheduled run (DEC-8)")
           (satan-broker--write-silent-run
            mode prepare dir "session_blocked"
-           "Scheduled run blocked by active interactive session (DEC-8)"))
+           "Scheduled run blocked by an interactive tool call in flight (DEC-8)"))
          ;; DEC-023: refuse while another run's child is live — the memory
          ;; store's current-run state is process-global and would race.
          (satan-run--spawn-running

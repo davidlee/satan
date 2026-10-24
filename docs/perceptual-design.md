@@ -139,7 +139,7 @@ broker-run
       ↳ probe read-snapshot (curiosity/content/wpm) → native high-water, frozen onto prepare
       ↳ ingest-cursor.heads                → per-source heads, frozen onto prepare
       ↳ on error → no-child terminal close (shared --write-no-child-run), return
-  ↳ if session-active  → write blocked bundle (MIRRORS :percept), return
+  ↳ if interactive call in flight → write blocked bundle (MIRRORS :percept), return
   ↳ if budget-exceeded → write-denied bundle (MIRRORS :percept), return   ← ISSUE-001 fixed
   ↳ else CONSUME (effects + tokens):
       ↳ observer.process(run_ctx)          → outcome accrual, DB writes

@@ -10,7 +10,7 @@ The SATAN tick (`satan-broker-run`) is cut into **perceive** and **consume**
 ```
 broker-run: prepare (alloc run_id, freeze time_now) → mkdir run-dir
   → PERCEIVE (unconditional, pure)
-  → if session-active  → no-child blocked bundle, return
+  → if MCP call in flight → no-child blocked bundle, return   ← ISS-058: calls, not connections
   → if budget-exceeded → no-child denied bundle, return   ← ISSUE-001 fixed
   → else CONSUME (effects + tokens)
 ```

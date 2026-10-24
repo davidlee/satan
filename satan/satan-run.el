@@ -306,20 +306,21 @@ other outcome ends the walk.  SKIPS-P is tested before COUNTS-P."
     streak))
 
 ;; ── Lifecycle state (DEC-8) ─────────────────────────────────────────────────
-;; DEC-8 is a two-flag mutual-exclusion protocol between a scheduled broker
-;; run and an interactive MCP session: each side refuses to start while the
-;; other's flag is truthy.  Both flags live here so neither module has to
-;; reach into the other to read or write its counterpart (D6).
+;; DEC-8 is a mutual-exclusion protocol between a scheduled broker run and
+;; interactive MCP work: each side refuses to start while the other's state
+;; is held.  Both live here so neither module has to reach into the other to
+;; read or write its counterpart (D6).
 
 (defvar satan-run--spawn-running nil
   "Truthy while a scheduled broker run is live.
 MCP reads this to refuse a new interactive session while a scheduled
 run is in progress.")
 
-(defvar satan-run--session-active nil
-  "Truthy while an interactive MCP session is open.
-The broker's scheduler reads this to refuse spawning a scheduled run
-while a session is active.")
+(defvar satan-run--interactive-calls 0
+  "Number of interactive MCP tool calls mid-dispatch.
+The broker's scheduler refuses to spawn a scheduled run while it is
+positive.  It counts calls, not connections: a client such as the
+malebolge daemon holds one connection open for its lifetime (ISS-058).")
 
 ;; ── Tool context plist ──────────────────────────────────────────────────────
 

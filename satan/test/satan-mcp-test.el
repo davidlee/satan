@@ -491,8 +491,7 @@ session's run_ctx exactly as they do onto a scheduled run's."
                              (plist-get prepare :run_id)))
      (should (equal (plist-get prepare :time_now)
                     (format-time-string satan-run--iso-time-format
-                                        (plist-get prepare :start_time))))
-     (setq satan-run--session-active nil))))
+                                        (plist-get prepare :start_time)))))))
 
 (ert-deftest satan-mcp/dec8-session-refuses-when-spawn-running ()
   "DEC-8: connection is rejected when satan-run--spawn-running is t.
@@ -509,8 +508,6 @@ client process."
        (accept-process-output nil 0.5)
        ;; accept-filter catches the error and deletes the client proc
        (should-not (process-live-p proc)))
-     ;; Session-active flag should NOT be set (mint-session errored before reaching setq)
-     (should-not satan-run--session-active)
      (setq satan-run--spawn-running nil)
      (satan-mcp-test--stop))))
 
@@ -525,25 +522,42 @@ client process."
    (setq satan-run--spawn-running nil)
    (setq satan-mcp-enabled nil)))
 
-(ert-deftest satan-mcp/dec8-flag-cleared-on-disconnect ()
-  "DEC-8: session-active flag is set on connect and cleared on disconnect."
+(ert-deftest satan-mcp/dec8-holds-scheduler-only-during-a-call ()
+  "DEC-8 (ISS-058): a tool call in flight holds the scheduler; an idle
+connection does not.  The malebolge daemon keeps one connection open for
+its lifetime, so keying on the connection blocked every scheduled run."
   (satan-mcp-test--with-tmp-env
-   (satan-mcp-test--write-desc "stub.a" "desc")
-   (satan-mcp-test--register-stub "stub.a")
-   (let* ((sock (satan-mcp-test--start))
-          (proc (satan-mcp-test--connect sock))
-          (_init (satan-mcp-test--request proc "initialize"
-                                             (list :protocolVersion "2025-06-18"
-                                                   :capabilities (make-hash-table)
-                                                   :clientInfo (list :name "test" :version "0")))))
-     ;; Flag should be set while session is active
-     (should satan-run--session-active)
-     ;; Close the connection — need to pump events for sentinel in batch mode
-     (delete-process proc)
-     (accept-process-output nil 0.5)
-     ;; Flag should be cleared after close-session runs in sentinel
-     (should-not satan-run--session-active)
-     (satan-mcp-test--stop))))
+   (satan-mcp-test--write-desc "stub.probe" "desc")
+   (let ((during nil))
+     (satan-tool-register
+      (list :name "stub.probe" :risk 'read :args-schema nil
+            :handler (lambda (_args _ctx)
+                       (setq during satan-run--interactive-calls)
+                       (cons 'ok "probed"))))
+     (let* ((sock (satan-mcp-test--start))
+            (proc (satan-mcp-test--connect sock)))
+       (satan-mcp-test--request proc "initialize"
+                                (list :protocolVersion "2025-06-18"
+                                      :capabilities (make-hash-table)
+                                      :clientInfo (list :name "test" :version "0")))
+       (should (= satan-run--interactive-calls 0))
+       (satan-mcp-test--request proc "tools/call"
+                                (list :name "stub.probe" :arguments nil))
+       (should (= during 1))
+       (should (= satan-run--interactive-calls 0))
+       (delete-process proc)
+       (satan-mcp-test--stop)))))
+
+(ert-deftest satan-mcp/dec8-call-releases-scheduler-on-error ()
+  "DEC-8 (ISS-058): a dispatch that signals still releases the scheduler."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-register-interactive-mode)
+   (let ((session (satan-mcp--mint-session nil)))
+     (cl-letf (((symbol-function 'satan-tool-dispatch)
+                (lambda (&rest _) (error "dispatch boom"))))
+       (should-error (satan-mcp--tools-call
+                      (list :name "stub.a" :arguments nil) 1 session nil)))
+     (should (= satan-run--interactive-calls 0)))))
 
 (ert-deftest satan-mcp/boot-context-caches-per-session ()
   "AUD-008 F-002/F-003: boot-context serves the per-session cache on a second
