@@ -77,6 +77,7 @@
           python3 # `just test`: satan/harness unittest
           ripgrep # content_read search scope (and its tests)
           typescript
+          biome
 
           coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           luau # noctalia/ plugin tests + lint

@@ -39,4 +39,4 @@ commit = ["just","check"]
 gate   = ["just","check"]
 
 [install]
-installed-version = "0.46.10"
+installed-version = "0.47.0"
