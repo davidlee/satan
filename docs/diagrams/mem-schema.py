@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Generate an ER-style diagram for SATAN's `mem` operating-memory schema.
 
-Renders docs/diagrams/mem-schema.svg (+ .png). Regenerate after a schema change:
+Renders docs/diagrams/mem-schema.svg (+ .png). The layout and every label here
+are a point-in-time snapshot of the `mem` schema, so they may be stale: after
+any migration, update this script and regenerate:
 
     python3 mem-schema.py && inkscape mem-schema.svg --export-type=png \
         --export-width=2500 --export-filename=mem-schema.png
@@ -220,6 +222,7 @@ claim = Box("mem.claim", [
     "status ∈ held · confirmed · refuted · stale · superseded",
     "held/confirmed ⇔ retired_at NULL · idx (superseded_by)",
     "one live triple: unique (subject, predicate, object)",
+    "object: NULL == '' for the live-triple index",
     "  where retired_at IS NULL · gin trgm (search_text)",
 ], 880, 392, BELIEF, w=380, sub="what I hold")
 
@@ -274,7 +277,7 @@ hip = Box("mem.hippocampus_ref", [
     ("intent_id", "bigint", "FK"),
     ("filename", "text", ""),
 ], [
-    "check (claim_id is not null or intent_id is not null)",
+    "check: exactly one of claim_id, intent_id",
     "unique (filename, claim_id) · (filename, intent_id)",
     "narrative memory · git-versioned prose",
 ], 880, 1150, NARR, w=380, sub="the hinge")
