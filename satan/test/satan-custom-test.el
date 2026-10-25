@@ -175,16 +175,17 @@ default that derives from another variable or from the environment."
     satan-tools-descriptions-dir)
   "The 11 defaults that must derive from `satan-corpus-root' (13 call sites —
 `satan-self-edit-mind-roots' spans three).
-SL-015 PHASE-02 moved `satan-runs-dir' and `satan-sensor-wpm-log-dir' to
-`satan-custom-test--state-vars': run bundles and wpm telemetry are runtime
-state, not authored corpus (design D3).")
+SL-015 PHASE-02 moved `satan-runs-dir' to `satan-custom-test--state-vars':
+run bundles are runtime state, not authored corpus (design D3).")
 
 (defconst satan-custom-test--state-vars
   '(satan-sensor-state-file satan-sensor-wpm-state-file
     satan-ingest-cursor-state-file satan-sensor-content-state-file
     satan-sensor-curiosity-state-file satan-trace-dir
-    satan-runs-dir satan-sensor-wpm-log-dir)
-  "The 8 defaults that must derive from `satan-state-root'.")
+    satan-runs-dir)
+  "The 7 defaults that must derive from `satan-state-root'.
+The WPM TSV directory left this list with the TSV (IMP-055): the sensor
+now reads panopticon's behaviour root, which no SATAN root owns.")
 
 (defun satan-custom-test--require-all ()
   (mapc #'require

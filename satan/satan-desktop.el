@@ -64,10 +64,12 @@ in EVENT stays absent."
           ((equal name "compositor_disconnected")
            (list "disconnected")))))
 
-(defun satan-desktop--parse-line (line)
+(defun satan-desktop-parse-raw-line (line)
   "LINE as (INSTANT . EVENT), or nil when it is not a usable event.
 Usable means a JSON object whose `ts' the strict instant parser
-accepts; anything else (a torn append, garbage, an array) is nil."
+accepts; anything else (a torn append, garbage, an array) is nil.
+Any panopticon raw stream shares this envelope; `satan-keyrate' reads
+its lines through here too."
   (let* ((event (condition-case nil
                     (json-parse-string line
                                        :object-type 'plist
@@ -96,7 +98,7 @@ before INSTANT decides)."
                        (line-beginning-position) (line-end-position))))
             (unless (string-blank-p line)
               (setq seen t)
-              (when-let* ((entry (satan-desktop--parse-line line)))
+              (when-let* ((entry (satan-desktop-parse-raw-line line)))
                 (setq parsed t)
                 (unless (time-less-p instant (car entry))
                   (setq decision (satan-desktop--decide (cdr entry)))))))

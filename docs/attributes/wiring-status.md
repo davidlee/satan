@@ -31,7 +31,7 @@ metadata:
 | `hippocampus` | implemented   | T-attr-1e-hc | 6 reasons (incl. `trace_marked`), binary (no confidence weighting) |
 | `percept`     | reserved      | T-attr-1e | novel/weak/contradictory percept signals |
 | `resonance`   | reserved      | T-attr-1e | memory_resonate hit signals |
-| `sensor`      | implemented   | T-attr-1e-sensor | segment_backlog, typing_active, typing_idle, ask_suppressed, ask_uncorrelated (SL-016 PHASE-05; nothing emits the last two yet) |
+| `sensor`      | implemented   | T-attr-1e-sensor | segment_backlog, typing_active, reading, typing_idle, ask_suppressed, ask_uncorrelated (SL-016 PHASE-05; nothing emits the last two yet) |
 | `tool_error`  | reserved      | T-attr-1e | tool execution failure signals |
 | `manual`      | reserved      | post T-attr-1 | interactive command / notes directive |
 
@@ -69,8 +69,9 @@ Outcome deltas:
 - `worked` → −0.05
 
 Sensor deltas:
-- `typing_active` → +0.05 (WPM activity detection — user is producing)
-- `typing_idle` → +0.025 (WPM idle detection — user present but not producing)
+- `typing_active` → +0.05 (keyrate presence — user is producing)
+- `reading` → +0.025 (keyrate presence — few keys, pointer active; IMP-055)
+- `typing_idle` → +0.025 (keyrate presence — neither keys nor pointer)
 
 Hippocampus deltas: all zero.
 
@@ -318,3 +319,4 @@ and architectural readiness:
 | 2026-05-25 | Curiosity and Hunger wired to active. Sensor source implemented (segment_backlog, typing_active, typing_idle). Curiosity also wired to hippocampus trace_marked. Roadmap updated — sensor done, percept + resonance remain for Suspicion. | T-attr-1e-sensor. |
 | 2026-05-29 | `trace_marked` Curiosity delta reduced from −0.05 to −0.025 — production observation showed perfect daily cancellation against sensor `segment_backlog` (+0.05). See design-contract §6H footnote 6. Per-segment backlog scaling deferred to `T-attr-1e-percept` companion work. | Post-T-attr-1e snapshot review. |
 | 2026-09-24 | Sensor source gains `ask_suppressed` (curiosity +0.025, metamorphosis +0.025) and `ask_uncorrelated` (doubt +0.025, metamorphosis +0.025) — the goad-ask surface's suppression/no-correlation signals. Sensor row, Curiosity/Doubt/Metamorphosis sections, and the summary matrix updated. Both are provisional (the user expects to iterate) and unemitted — no producer exists yet; attrd must be redeployed (PHASE-08) before `satan-goad-enabled`. | SL-016 PHASE-05. |
+| 2026-10-26 | Sensor source gains `reading` (hunger +0.025), split out of `typing_idle` by pointer input; the probe reads panopticon's keyrate minutes instead of the WPM TSV. attrd must be redeployed before the broker emits it. | IMP-055. |

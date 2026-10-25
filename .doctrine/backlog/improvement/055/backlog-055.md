@@ -85,3 +85,66 @@ Once this has shipped and the sensor runs off the raw stream:
 
 Not in scope: panopticon RSK-002 (user in the `input` group), which stays
 open on its own.
+
+## Decisions (2026-10-26, agreed with the user)
+
+Prompted by a SATAN inbox entry (run `20261025T182137-tick-pulse-b2c7d3`):
+five ticks read a closed focus segment followed by nothing as one unbroken
+five-hour session. `activity_read` should give a self-contained view, so
+SATAN doesn't need several calls to interpret activity.
+
+- **Scope widened.** The keyrate presence also goes into `activity_read`,
+  not only the sensor. One shared reader/classifier (`satan-keyrate.el`,
+  modelled on `satan-desktop.el`: behaviour root passed in, reads at most
+  the day files the interval spans, compares instants not strings).
+- **Presence vocabulary**, over an interval of length S, with
+  K = Σ key_seconds, P = Σ pointer_seconds (minute rows prorated by overlap):
+  `typing` (K/S ≥ 0.5), `reading` (K/S ≤ 0.05, P/S ≥ 0.1),
+  `idle` (K/S ≤ 0.05, P/S < 0.1), else `mixed`. Shares, not seconds, so the
+  same rule classifies a 10-minute window or a 40-second segment.
+- **New sensor reason `reading`**, Hunger +0.025 (the old meaning of
+  `typing_idle`: present, not producing). `typing_idle` narrows to "neither
+  keys nor pointer" and keeps +0.025. Needs a variant in satan-attrd first.
+- **Gotchas fixed:** read yesterday's file when the window crosses midnight;
+  an empty window counts as `idle` when a keyrate file exists for the span
+  (a dead daemon also reads as idle, accepted); `metric_value` carries the
+  measured seconds, not the threshold constant.
+- **attrd:** changed and committed locally; the user pushes, bumps flakes and
+  switches. attrd must deploy before the broker emits `reading`.
+- **Out of scope, captured separately:** moving non-Emacs tools out of the
+  editor (the user floated TypeScript behind an MCP shim; POL-001 currently
+  names Rust for daemons).
+
+## Progress (2026-10-26)
+
+Step 2 code is done and committed; it is **not deployed**.
+
+- `satan/satan-keyrate.el` (new): reader over `raw/keyrate-*.jsonl` (spans
+  day files, instants not strings, torn lines skipped), prorated
+  `describe`, `presence`, `recent` (the 10-minute window), `per-hour`.
+  `satan-desktop-parse-raw-line` is now public and shared.
+- `satan-sensor-wpm.el`: reads through `satan-keyrate-recent`; emits
+  `typing_active` / `reading` / `typing_idle` with measured seconds. The
+  module and `sensor_type "wpm_activity"` keep their names (renaming would
+  touch broker wiring, attrd evidence and audit history for no behaviour
+  change). The first tick after deploy may re-emit once: stored states were
+  `active`/`idle`, new ones are `typing`/`reading`/`idle`.
+- `activity_read`: presence on every scope; `recent_focus` is a timeline
+  with `gap` entries, the last one `:open`. Corpus description updated
+  (`~/satan-corpus/tools/activity_read.md`).
+- `satan-audit.el` allowlist, design-contract §6S, `wiring-status.md`,
+  `data-collection.md` updated.
+- satan-attrd: `SensorReason::Reading` (Hunger TINY), committed locally,
+  not pushed.
+
+Verification: elisp suite 1209 pass, 130 skipped, 1 failure, all for lack of
+a database (podman was not running, so `just db-start` failed). The failure
+is the DB-availability probe. attrd: clippy, fmt and 72 unit tests green;
+the integration tests also need the DB and did not run.
+
+### Deploy order
+
+1. Push satan-attrd, bump it in `~/flakes`, switch (attrd must accept
+   `reading` first, or it drops those rows as in ISS-011).
+2. Push satan, bump, switch / reload the broker.
+3. Then step 3 below.

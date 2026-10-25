@@ -1,27 +1,32 @@
-;;; satan-sensor-wpm.el --- Hunger probe — WPM activity state -*- lexical-binding: t; -*-
+;;; satan-sensor-wpm.el --- Hunger probe — presence from keyrate -*- lexical-binding: t; -*-
 
-;; Emits `typing_active' or `typing_idle' sensor attribute signals based
-;; on WPM log data (design-contract §6S).
+;; Emits a sensor attribute signal on each change of the user's presence
+;; over the last `satan-keyrate-window-minutes' (design-contract §6S):
 ;;
-;; Reads the per-minute TSV log at `satan-sensor-wpm-log-dir'/YYYY-MM-DD.tsv
-;; (below `satan-state-root'; written by wpm-daemon.service, not by SATAN).
-;; Format: <iso8601>\t<keys>\t<peak_5s_wpm>\t<active_seconds>
+;;   typing  -> typing_active   (metric: key seconds)
+;;   reading -> reading         (metric: pointer seconds)
+;;   idle    -> typing_idle     (metric: key + pointer seconds)
+;;   mixed   -> no signal
 ;;
-;; Classifies last 10 minutes: active (>50% active_seconds), idle (<5%),
-;; or ambiguous (no signal).  Emits only on state transitions to avoid
-;; repeated signals on consecutive ticks.
+;; Presence comes from panopticon's raw keyrate minutes through
+;; `satan-keyrate' (IMP-055), read below the behaviour root (panopticon's,
+;; not SATAN's: spelled out here, SL-015 D1).  No keyrate file for the
+;; window means no producer output, and no signal.  The name keeps its
+;; WPM history; the TSV it once read is gone.
 
 (require 'cl-lib)
 (require 'json)
 (require 'satan-custom)
+(require 'satan-keyrate)
+(require 'satan-memory-canon)
 
 (declare-function satan-attribute-build-sensor-payload "satan-attribute")
 (declare-function satan-attribute-enqueue "satan-attribute")
 
-(defcustom satan-sensor-wpm-log-dir
-  (satan-state-path "log" "wpm")
-  "Directory containing per-day WPM TSV logs."
-  :type 'string :group 'satan-attribute)
+(defcustom satan-sensor-wpm-behaviour-dir
+  (expand-file-name "behaviour" (satan-state-home))
+  "Panopticon's behaviour root, holding `raw/keyrate-YYYY-MM-DD.jsonl'."
+  :type 'directory :group 'satan-attribute)
 
 (defcustom satan-sensor-wpm-state-file
   (satan-state-path "sensor-wpm.json")
@@ -29,19 +34,11 @@
 Tracks last emitted state to avoid duplicate signals."
   :type 'string :group 'satan-attribute)
 
-(defcustom satan-sensor-wpm-window-minutes 10
-  "Number of recent minutes to consider for activity classification."
-  :type 'integer :group 'satan-attribute)
-
-(defcustom satan-sensor-wpm-active-threshold 300
-  "Sum of active_seconds in window above which state is `active'.
-Default 300 = 50% of a 10-minute window."
-  :type 'integer :group 'satan-attribute)
-
-(defcustom satan-sensor-wpm-idle-threshold 30
-  "Sum of active_seconds in window below which state is `idle'.
-Default 30 = 5% of a 10-minute window."
-  :type 'integer :group 'satan-attribute)
+(defconst satan-sensor-wpm--signals
+  '(("typing"  "typing_active" "key_seconds")
+    ("reading" "reading"       "pointer_seconds")
+    ("idle"    "typing_idle"   "input_seconds"))
+  "Presence -> (REASON METRIC-UNIT); a presence not listed emits nothing.")
 
 ;; -----------------------------------------------------------------
 ;; state file
@@ -64,68 +61,25 @@ Default 30 = 5% of a 10-minute window."
       (insert (json-serialize plist)))))
 
 ;; -----------------------------------------------------------------
-;; TSV parsing
-;; -----------------------------------------------------------------
-
-(defun satan-sensor-wpm--today-file ()
-  "Return today's WPM TSV log path."
-  (expand-file-name
-   (format "%s.tsv" (format-time-string "%Y-%m-%d"))
-   satan-sensor-wpm-log-dir))
-
-(defun satan-sensor-wpm--parse-recent-rows (window-minutes)
-  "Parse TSV rows from the last WINDOW-MINUTES minutes.
-Returns list of plists (:ts :keys :peak_wpm :active_seconds)."
-  (let ((file (satan-sensor-wpm--today-file))
-        (cutoff (format-time-string
-                 "%Y-%m-%dT%T"
-                 (time-subtract nil (* window-minutes 60))))
-        (rows nil))
-    (when (file-readable-p file)
-      (with-temp-buffer
-        (insert-file-contents file)
-        (goto-char (point-max))
-        (while (and (not (bobp))
-                    (zerop (forward-line -1)))
-          (let* ((line (buffer-substring-no-properties
-                        (line-beginning-position) (line-end-position)))
-                 (fields (split-string line "\t")))
-            (when (>= (length fields) 4)
-              (let ((ts (nth 0 fields)))
-                (if (string< ts cutoff)
-                    (goto-char (point-min))
-                  (push (list :ts ts
-                              :keys (string-to-number (nth 1 fields))
-                              :peak_wpm (string-to-number (nth 2 fields))
-                              :active_seconds (string-to-number (nth 3 fields)))
-                        rows))))))))
-    rows))
-
-;; -----------------------------------------------------------------
 ;; classification
 ;; -----------------------------------------------------------------
 
-(defun satan-sensor-wpm--classify ()
-  "Classify recent WPM activity.
-Returns \"active\", \"idle\", or nil (ambiguous)."
-  (let* ((rows (satan-sensor-wpm--parse-recent-rows
-                satan-sensor-wpm-window-minutes))
-         (total-active (cl-reduce #'+ rows
-                                  :key (lambda (r) (plist-get r :active_seconds))
-                                  :initial-value 0)))
-    (cond
-     ((null rows) nil)
-     ((>= total-active satan-sensor-wpm-active-threshold) "active")
-     ((<= total-active satan-sensor-wpm-idle-threshold) "idle")
-     (t nil))))
+(defun satan-sensor-wpm--metric (unit description)
+  "DESCRIPTION's seconds for metric UNIT."
+  (let ((key (plist-get description :key_seconds))
+        (pointer (plist-get description :pointer_seconds)))
+    (pcase unit
+      ("key_seconds" key)
+      ("pointer_seconds" pointer)
+      (_ (+ key pointer)))))
 
 ;; -----------------------------------------------------------------
 ;; probe
 ;; -----------------------------------------------------------------
 
 (cl-defun satan-sensor-wpm-probe-read (&key run-id ts)
-  "Pure read-snapshot for the WPM activity probe (perceive-side).
-Classifies the recent window (pure `--classify'), reads the previous
+  "Pure read-snapshot for the presence probe (perceive-side).
+Classifies the window ending at TS (or now), reads the previous
 emitted state, and builds (but does NOT enqueue) the would-be attribute
 payload on a state transition.  Zero mutation: no enqueue, no state write.
 
@@ -136,17 +90,18 @@ Returns (:emit t :payload PAYLOAD :state STATE :emitted-at TS) when the
 state changed, else (:emit nil)."
   (condition-case err
       (when (and run-id (bound-and-true-p satan-attribute-updates-enabled))
-        (let* ((state (satan-sensor-wpm--classify))
+        (let* ((emitted-at (or ts (format-time-string "%Y-%m-%dT%T%:z")))
+               (description (satan-keyrate-recent
+                             satan-sensor-wpm-behaviour-dir
+                             (or (satan-memory-canon-parse-instant emitted-at)
+                                 (current-time))))
+               (state (plist-get description :presence))
+               (signal (cdr (assoc state satan-sensor-wpm--signals)))
                (prev (plist-get (satan-sensor-wpm--read-state) :last_state))
                (prev-str (if (stringp prev) prev nil)))
-          (when (and state (not (equal state prev-str)))
+          (when (and signal (not (equal state prev-str)))
             (require 'satan-attribute)
-            (let* ((reason (if (equal state "active") "typing_active" "typing_idle"))
-                   (metric (if (equal state "active")
-                               satan-sensor-wpm-active-threshold
-                             satan-sensor-wpm-idle-threshold))
-                   (unit (if (equal state "active") "active_seconds" "idle_seconds"))
-                   (emitted-at (or ts (format-time-string "%Y-%m-%dT%T%:z"))))
+            (pcase-let ((`(,reason ,unit) signal))
               (list :emit t
                     :state state
                     :emitted-at emitted-at
@@ -155,7 +110,8 @@ state changed, else (:emit nil)."
                               :ts emitted-at
                               :reason reason
                               :sensor-type "wpm_activity"
-                              :metric-value metric
+                              :metric-value (satan-sensor-wpm--metric
+                                             unit description)
                               :metric-unit unit))))))
     (error
      (message "[satan-sensor-wpm] probe-read soft-failed: %S" err)
@@ -179,7 +135,7 @@ Returns non-nil iff a signal was emitted."
      nil)))
 
 (cl-defun satan-sensor-wpm-probe (&key run-id ts)
-  "Check WPM activity state and emit signal on state transition.
+  "Check presence and emit a signal on a state transition.
 Preserved wrapper: read-snapshot then commit.  Returns non-nil if a
 signal was emitted."
   (satan-sensor-wpm-probe-commit

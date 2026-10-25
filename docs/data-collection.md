@@ -462,51 +462,27 @@ behavioural final reducer is tracked as ISS-001. The evidence is stored in
 
 ---
 
-## 6. Typing speed analytics (unconsumed)
+## 6. Keyrate presence
 
-Added 2026-05-21. Not yet consumed by any SATAN mode, tool, or prompt.
-Discovered in the notes tree; it lives in the state root now:
+Since IMP-055 (2026-10-26), panopticon's `panopticon-keyrate` service writes
+one row per minute with any input to
+`~/.local/state/behaviour/raw/keyrate-<date>.jsonl` (`keyrate_minute`:
+`keys`, `key_seconds`, `pointer_seconds`, `peak_5s_cpm`; schema in
+panopticon `docs/schema.md`). Key codes and per-event timing are never
+recorded. Quiet minutes are not written.
 
-```
-~/.local/state/satan/log/wpm/
-  2026-05-21.tsv
-  2026-05-22.tsv
-```
+SATAN reads it through `satan-keyrate.el`, which classifies an interval as
+typing, reading, idle or mixed by share of its seconds:
 
-### 6.1 Data format
+- the presence sensor (`satan-sensor-wpm.el`) emits `typing_active`,
+  `reading` or `typing_idle` on a change over the last 10 minutes
+  (design-contract §6S);
+- `activity_read` adds presence to every scope: per hour (`today`), per
+  segment and per gap (`recent_focus`, `recent_browser`), and over the last
+  10 minutes (`current`).
 
-**Pre-2026-05-22 (5 columns, tab-separated):**
-```
-tsv columns:  timestamp  total_chars  total_keystrokes  total_seconds  peak_wpm
-```
-
-**2026-05-22 onward (4 columns, tab-separated):**
-```
-tsv columns:  timestamp  raw_wpm  net_wpm  accuracy_pct
-```
-
-Minute-granularity timestamps (~100 rows/day for active periods).
-Today's file is 2026-05-22 at ~3 KB, growing.
-
-### 6.2 Producer
-
-Unknown (not under this workspace). Presumably an Emacs hook, a systemd
-timer, or a standalone binary that reads keystroke events. The data is
-emitted to this path at regular intervals.
-
-### 6.3 Consumption status
-
-**Not consumed.** No SATAN mode prompt references it, no tool reads it,
-no memory rule canonicalizer rules handle it. It sits in the notes tree
-alongside other data (like the activity histogram) that SATAN could
-read if a tool and a prompt directive were added.
-
-### 6.4 Integration surface
-
-To consume it, a simple tool (e.g. `activity_read_typing`) would read
-the TSV aggressively into a histogram or summary shape. The existing
-`activity_read` pattern (scope-enum, file-backed, read-only, risk read)
-is the natural model.
+It replaces the WPM TSV (`~/.local/state/satan/log/wpm/<date>.tsv`, written
+by the retired `wpm-daemon`), which counted keys only.
 
 ---
 
@@ -521,7 +497,7 @@ tools but currently sit as raw files:
 | Behaviour browser segments | `~/.local/state/behaviour/segments/browser-<date>.jsonl` | panopticon | Via `activity_read` |
 | Behaviour histograms | `~/.local/state/behaviour/histograms/daily-<date>.json` | panopticon | Via `activity_read` |
 | Desktop event log (current window) | `~/.local/state/behaviour/raw/desktop-<date>.jsonl` | panopticon | Via `activity_read` + evidence replay |
-| **Typing speed** | `~/.local/state/satan/log/wpm/<date>.tsv` | Unknown | **None** |
+| Keyrate minutes (presence) | `~/.local/state/behaviour/raw/keyrate-<date>.jsonl` | panopticon | Via `activity_read` + presence sensor |
 | Memory substrate | PostgreSQL `satan_memory` | SATAN itself | Via `psql` subprocess |
 
 ---
@@ -656,4 +632,4 @@ These write to durable state that is never re-read by any tool:
 | **@satan directives** | Probe | User-authored triggers | Yes — notes_at_satan_done |
 | **SATAN docs** | Probe | Doc chunks | Only via self-edit proposals |
 | **Memory substrate** | Probe | Prior marked traces | Yes — memory_mark |
-| **Typing speed** | **Unconsumed** | Keystroke analytics | Not yet |
+| **Keyrate presence** | Probe + sensor | Key and pointer seconds per minute (typing / reading / idle) | No (sensor; user's behaviour) |

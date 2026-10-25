@@ -45,7 +45,12 @@ title from being inserted as raw eight-bit bytes."
 DAY is \"YYYY-MM-DD\".  Overwrites the file, creating `raw/' as
 needed.  Each element is an event plist or a string written verbatim.
 Return the file's path."
-  (let ((path (expand-file-name (format "raw/desktop-%s.jsonl" day) root))
+  (satan-desktop-fixture-write-raw root "desktop" day events))
+
+(defun satan-desktop-fixture-write-raw (root source day events)
+  "Write EVENTS as ROOT/raw/SOURCE-DAY.jsonl, as `satan-desktop-fixture-write'.
+SOURCE names the raw stream (\"desktop\", \"keyrate\")."
+  (let ((path (expand-file-name (format "raw/%s-%s.jsonl" source day) root))
         (coding-system-for-write 'utf-8))
     (make-directory (file-name-directory path) t)
     (with-temp-file path

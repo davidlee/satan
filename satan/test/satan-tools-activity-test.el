@@ -10,6 +10,7 @@
 (require 'satan-tools)
 (require 'satan-tools-activity)
 (require 'satan-desktop-fixture)
+(require 'satan-keyrate-fixture)
 (require 'seq)
 
 (defmacro satan-tools-activity-test--with-root (&rest body)
@@ -216,6 +217,125 @@
               '("activity_read") nil)))
     (should (equal (plist-get res :ok) :false))
     (should (string-match-p "must be one of" (plist-get res :error)))))
+
+;; ── keyrate presence (IMP-055) ──────────────────────────────────────────────
+
+(defun satan-tools-activity-test--segment (event start-ago end-ago app)
+  "A segment line of EVENT for APP from START-AGO to END-AGO seconds ago."
+  (json-encode
+   `((v . 1) (event . ,event) (app_id . ,app)
+     (start_ts . ,(satan-tools-activity-test--ago start-ago))
+     (end_ts . ,(satan-tools-activity-test--ago end-ago))
+     (duration_s . ,(- start-ago end-ago)))))
+
+(defun satan-tools-activity-test--keyrate (&rest minutes)
+  "Write MINUTES, each (AGO KEY POINTER), to today's keyrate file."
+  (satan-keyrate-fixture-write
+   satan-tools-activity-dir (satan-tools-activity-test--today)
+   (mapcar (pcase-lambda (`(,ago ,key ,pointer))
+             (satan-keyrate-fixture-minute
+              (satan-tools-activity-test--ago ago) key pointer))
+           minutes)))
+
+(defun satan-tools-activity-test--three-focus-segments ()
+  "A 10 s hop from A to B, then 200 s of nothing, then C until 300 s ago."
+  (make-directory (expand-file-name "segments" satan-tools-activity-dir) t)
+  (satan-tools-activity-test--write-focus-jsonl
+   satan-tools-activity-dir
+   (list (satan-tools-activity-test--segment "focus_segment" 900 840 "a")
+         (satan-tools-activity-test--segment "focus_segment" 830 600 "b")
+         (satan-tools-activity-test--segment "focus_segment" 400 300 "c"))))
+
+(defun satan-tools-activity-test--shape (segments)
+  "SEGMENTS as (EVENT APP PRESENCE) triples."
+  (mapcar (lambda (s) (list (plist-get s :event) (plist-get s :app_id)
+                            (plist-get s :presence)))
+          segments))
+
+(ert-deftest satan-activity/recent-focus-is-a-timeline-with-presence ()
+  "Segments carry key/pointer seconds and presence; a gap of a minute or
+more between segments, or after the last one until now, is an entry of
+its own, so a closed segment followed by nothing never reads as ongoing."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (satan-tools-activity-test--three-focus-segments)
+    (satan-tools-activity-test--keyrate '(900 60 0) '(400 0 50))
+    (let* ((p (cdr (satan-tool/activity-read '(:scope "recent_focus") nil)))
+           (segs (plist-get p :segments)))
+      (should (equal (plist-get p :keyrate) "ok"))
+      (should (equal (satan-tools-activity-test--shape segs)
+                     '(("focus_segment" "a" "typing")
+                       ("focus_segment" "b" "idle")
+                       ("gap" nil "idle")
+                       ("focus_segment" "c" "reading")
+                       ("gap" nil "idle"))))
+      (should (equal (plist-get (nth 0 segs) :key_seconds) 60))
+      (should (equal (plist-get (nth 3 segs) :pointer_seconds) 50))
+      (should (equal (plist-get (nth 2 segs) :duration_s) 200))
+      (should-not (plist-get (nth 2 segs) :open))
+      (should (eq (plist-get (nth 4 segs) :open) t))
+      (should (equal (plist-get (nth 2 segs) :start_ts)
+                     (plist-get (nth 1 segs) :end_ts))))))
+
+(ert-deftest satan-activity/recent-focus-gaps-without-keyrate ()
+  "With no keyrate file, gaps still show; nothing carries a presence."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (satan-tools-activity-test--three-focus-segments)
+    (let ((p (cdr (satan-tool/activity-read '(:scope "recent_focus") nil))))
+      (should (equal (plist-get p :keyrate) "missing"))
+      (should (equal (satan-tools-activity-test--shape (plist-get p :segments))
+                     '(("focus_segment" "a" nil) ("focus_segment" "b" nil)
+                       ("gap" nil nil) ("focus_segment" "c" nil)
+                       ("gap" nil nil)))))))
+
+(ert-deftest satan-activity/recent-browser-segments-carry-presence ()
+  "Browser segments are annotated too, without gaps: leaving the browser
+is not a gap in attention."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (make-directory (expand-file-name "segments" satan-tools-activity-dir) t)
+    (satan-tools-activity-test--write-browser-jsonl
+     satan-tools-activity-dir
+     (list (satan-tools-activity-test--segment "browser_tab_segment" 900 840 "f")
+           (satan-tools-activity-test--segment "browser_tab_segment" 400 340 "f")))
+    (satan-tools-activity-test--keyrate '(400 0 30))
+    (should (equal (satan-tools-activity-test--shape
+                    (plist-get (cdr (satan-tool/activity-read
+                                     '(:scope "recent_browser") nil))
+                               :segments))
+                   '(("browser_tab_segment" "f" "idle")
+                     ("browser_tab_segment" "f" "reading"))))))
+
+(ert-deftest satan-activity/today-carries-presence-per-hour ()
+  "Scope `today' adds today's key and pointer seconds, per hour and in total."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (let ((day (satan-tools-activity-test--today)))
+      (satan-keyrate-fixture-write
+       satan-tools-activity-dir day
+       (list (satan-keyrate-fixture-minute (format "%sT09:00:00.000+10:00" day) 10 1)
+             (satan-keyrate-fixture-minute (format "%sT09:30:00.000+10:00" day) 5 2)))
+      (let ((presence (plist-get (cdr (satan-tool/activity-read
+                                       '(:scope "today") nil))
+                                 :presence)))
+        (should (equal (plist-get presence :status) "ok"))
+        (should (equal (plist-get presence :key_seconds) 15))
+        (should (equal (plist-get presence :pointer_seconds) 3))
+        (should (equal (nth 9 (plist-get presence :per_hour_key_seconds)) 15))))))
+
+(ert-deftest satan-activity/today-presence-missing-without-keyrate ()
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (should (equal (plist-get (cdr (satan-tool/activity-read '(:scope "today") nil))
+                              :presence)
+                   '(:status "missing")))))
+
+(ert-deftest satan-activity/current-carries-recent-presence ()
+  "Scope `current' adds presence over the last `satan-keyrate-window-minutes'."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (satan-tools-activity-test--keyrate '(120 1 60))
+    (let ((presence (plist-get (cdr (satan-tool/activity-read
+                                     '(:scope "current") nil))
+                               :presence)))
+      (should (equal (plist-get presence :presence) "reading"))
+      (should (equal (plist-get presence :key_seconds) 1))
+      (should (equal (plist-get presence :window_minutes) 10)))))
 
 (provide 'satan-tools-activity-test)
 ;;; satan-tools-activity-test.el ends here
