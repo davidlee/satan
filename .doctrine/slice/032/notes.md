@@ -288,7 +288,7 @@ only an implementation can settle. If one ran, it would probe:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-27 · PHASE-01..08 completed, audit next · malebolge 5775ac5
+fresh-as-of: 2026-10-27 · audit done (RV-061), reconcile next · malebolge c3cdcaf
 
 ### Produced
 
@@ -305,6 +305,8 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
 - ISS-059, ISS-060; malebolge IMP-012 (own quotient forms, deferred),
   IMP-013 (keep last good tool list), IDE-002 note.
 - PHASE-08 V13 live: VH-1 confirmed by user (Execution log PHASE-08).
+- Audit RV-061 (9 findings, all verified; Reconciliation Brief).
+  ISS-061 (activity tests host-time flake); malebolge IMP-014.
 
 ### Learned
 
@@ -320,15 +322,8 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
 
 ### Open
 
-- RV-060 F-1/F-2/F-3 discharged by PHASE-05/06/07 VA (Execution log).
-- At audit: PHASE-07 VTs UNATTRIBUTABLE (cross-repo delta, user-accepted).
-- malebolge Emacs client per-conversation buffers → malebolge IMP-014.
-- At reconcile, design sec-7: the first call of a new entry awaits the
-  refresh (VA-1); the idle default lives in `satan-pool.ts`;
-  `MALEBOLGE_SATAN_IDLE_MS`.
-- At reconcile, design sec-3 amendments: DEC-126 (exit closes like quit);
-  phase choices in Execution log PHASE-05 (D1 verifier "knows" =
-  docstring + test; reason "exit") and PHASE-06 (in-flight as id list;
-  nested-filter quit deferral; V15 quit propagation unobservable in batch).
-- At reconcile: SPEC-001 REQ-007 and QUE-001, SPEC-002 transports row,
-  memory mem_eb8e5cff… (malebolge IDE-002 note done in a737928).
+- Reconcile: RV-061 `## Reconciliation Brief` is the work list (selectors
+  F-1; design sec-3/7/9 F-3..F-5; SPEC-001 REQ-007 vs QUE-001 F-6, user
+  choice; SPEC-002 F-7; memory mem_eb8e5cff F-8 before close).
+- Tolerated: PHASE-07 VTs UNATTRIBUTABLE (RV-061 F-2).
+- Not SL-032: ISS-061; malebolge IMP-013, IMP-014.

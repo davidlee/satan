@@ -65,7 +65,7 @@ ref   = "SL-032"
 
 [[finding]]
 id = "F-1"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Closing does not prevent already-buffered calls from dispatching after finalisation"
 detail = """
@@ -91,9 +91,14 @@ disposition = "fix-now"
 route = "probe"
 response = "Verified: satan-mcp--filter (satan-mcp.el:365-385) decodes every complete line of a chunk and dolist-dispatches them against the session captured at entry; nothing re-checks state between lines. Repair in sec-3: admission rule — handle-message answers nothing and dispatches nothing once the session is closing/closed (the transport is gone, so no response is deliverable); remaining decoded lines are dropped and counted in a single call-interrupted-free log line. in-flight is decremented only after tool-result/call-interrupted audit and delivery handling. V5/V9 extended: two requests in one chunk, close during A; assert B never starts and no record follows finalisation."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = 'Discharged by PHASE-06 (aad0d4c): admission gate in --handle-message; VA-1 probe (satan-mcp-stop during nested wait, sibling decoded in same chunk dropped "on closed session", single deferred finalise, verify t); VA-2 negative control. verify-vt PHASE-06 PASS. RV-061 audit.'
+
 [[finding]]
 id = "F-2"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "An escaped dispatch or Emacs quit leaves a tool-call without the result I4 requires"
 detail = """
@@ -138,9 +143,14 @@ disposition = "fix-now"
 route = "probe"
 response = "Contest accepted on both points. (1) quit: sec-3 now closes the session's transport (delete-process) after settling and before re-signalling, so a live uncancelled caller sees a disconnect rather than a timeout, decoded siblings meet a closing session and are dropped by Admission, and both fall under I2's existing transport-closed exception; I2 is not broadened. (2) The synthetic tool-result now names :id explicitly ({:id <call id> :ok false :error ...}; satan-audit.el:647-648). V15 extended: live uncancelled request sees close; second request in the same chunk never starts; call-interrupted carries the :id."
 
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Discharged by PHASE-05 (3d066e9) + DEC-126 in PHASE-06: settle writes tool-result (:id) + call-interrupted on error/quit/exit; VA-1 live probe and VA-2 negative control (removing the interrupted write fails 3 tests). Live I4 check on two MCP runs passed (PHASE-08). RV-061 audit."
+
 [[finding]]
 id = "F-3"
-status = "answered"
+status = "verified"
 severity = "major"
 title = "Idle eviction erases the reconnect history needed to refresh the shared tool registry"
 detail = """
@@ -165,6 +175,11 @@ role = "responder"
 disposition = "fix-now"
 route = "demonstrate"
 response = "Verified: lost is per-handle closure state (malebolge reconnecting-client.ts:120-148); a fresh handle starts lost=false, so a pool entry created after eviction never fires onReconnect. Repair in sec-7: the pool owns discovery invalidation — the first successful connection of every new entry triggers the shared coalesced refresh (one tools/list per conversation window; windows are >=15 min apart), in addition to same-handle onReconnect. Call not replayed. V12 extended to use the real reconnectingClient with a fake server: restart with no surviving entry, fresh entry, assert the registry is replaced. Sibling fixed: design described reconnectingClient(socket, {capabilities}); the real signature is (socketPath, log, onReconnect) — sec-7 now states the added parameter exactly."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Discharged by PHASE-07 (malebolge a737928): VA-1 demonstrated the stale-registry gap with the real reconnectingClient and fixed it by awaiting the new-entry refresh; now pinned by the V12 test. Design sec-7 update tracked as RV-061 F-4."
 
 [[finding]]
 id = "F-4"

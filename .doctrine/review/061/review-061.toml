@@ -1,0 +1,270 @@
+id    = 61
+slug  = "reconciliation-review-of-sl-032"
+title = "reconciliation review of SL-032"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Conformance audit of SL-032 at satan 4aa5c51 (code aad0d4c) and malebolge c3cdcaf (code a737928): slice conformance + verify-vt; satan just check (host TZ red on 3 unrelated activity tests → ISS-061; green under TZ=Australia/Brisbane) and doctrine check gate; malebolge just check 2105/2105; V1-V16 mapping to VT/VA/VH evidence in notes.md; design sec-3/7/9/91 against landed code and phase decisions; SPEC-001 REQ-007/QUE-001, SPEC-002, memory mem_eb8e5cff; RV-060 F-1..F-3 closed against VA evidence."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-032"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "Selector registry omits files the design names: conformance reports 2 sources + 7 tests undeclared"
+detail = """
+Expected: every path SL-032 edited matches a selector (design-target for sources the design names, scope-relevant for tests).
+Observed (`doctrine slice conformance 32`): undeclared satan/satan-intervention-mark.el and satan/satan-tools-atsatan.el (both PHASE-01, 49b144d, named in design sec-4's attribution table at :186-187), and tests satan-intervention-mark-test, satan-memory-store-test, satan-observer-test, satan-tools-atsatan-test, satan-tools-memory-test (PHASE-01), plus satan-audit-test / satan-broker-test / satan-mcp-test listed though scope-relevant (conformance counts only design-target). Undelivered: 0. Conformant: 9.
+The work is in scope; the registry is incomplete."""
+disposition = "design-wrong"
+response = "The registry, not the code, is incomplete. Reconcile: `doctrine slice selector add 32` design-target for satan/satan-intervention-mark.el, satan/satan-tools-atsatan.el and the eight edited test files (conformance counts only design-target, so scope-relevant tests still read undeclared). Mirror in design sec-8 code impact. Brief: Per-slice F-1."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "The registry, not the code, is incomplete. Reconcile: `doctrine slice selector add 32` design-target for satan/satan-intervention-mark.el, satan/satan-tools-atsatan.el and the eight edited test files (conformance counts only design-target, so scope-relevant tests still read undeclared). Mirror in design sec-8 code impact. Brief: Per-slice F-1."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Brief entry exists (Per-slice F-1, names the selector verb)."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "PHASE-07 code lives in malebolge: verify-vt UNATTRIBUTABLE and satan boundary records doctrine-only commits"
+detail = """
+Expected: PHASE-07 VT-1..3 attributable to a recorded source delta.
+Observed: `slice verify-vt 32` PHASE-07 VT-1..3 UNATTRIBUTABLE ("keyword present but ~/dev/malebolge/test/satan-{tools,pool}.test.ts not modified by this slice"). boundaries.toml PHASE-07 = satan fc02838..ada2b15 (doctrine notes/memory commits only), which is why conformance lists 4 undeclared .doctrine paths (mem.fact.doctrine.record-delta-single-repo, mem_01a1784a…, notes.md).
+Cause: record-delta is single-repo (mem.fact.doctrine.record-delta-single-repo). Evidence the VTs hold: malebolge a737928, `just check` EXIT 0, 72 files / 2105 tests (re-run in this audit, 2026-10-27); VA-1 and negative controls in notes.md Execution log PHASE-07. User accepted completion with this gap at PHASE-07."""
+disposition = "tolerated"
+response = "Tool limit, not a delivery gap: record-delta cannot attribute a foreign-repo commit (mem.fact.doctrine.record-delta-single-repo). The VTs are evidenced out of band: malebolge a737928 named in notes, `just check` 2105/2105 re-run green in this audit, VA-1 and four negative controls recorded. The user accepted this at PHASE-07. The 4 undeclared .doctrine paths are the PHASE-07 satan boundary capturing notes/memory commits; they are not code. No registry change: adding .doctrine selectors would hide the signal for a real undeclared edit."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = "Tool limit, not a delivery gap: record-delta cannot attribute a foreign-repo commit (mem.fact.doctrine.record-delta-single-repo). The VTs are evidenced out of band: malebolge a737928 named in notes, `just check` 2105/2105 re-run green in this audit, VA-1 and four negative controls recorded. The user accepted this at PHASE-07. The 4 undeclared .doctrine paths are the PHASE-07 satan boundary capturing notes/memory commits; they are not code. No registry change: adding .doctrine selectors would hide the signal for a real undeclared edit."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Rationale is real: tool limit, out-of-band evidence re-run green, user-accepted."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "Design sec-3 lifecycle no longer describes the landed close/settle mechanics (DEC-126, id list, nested quit deferral)"
+detail = """
+Expected: design.md sec-3 (canonical) matches satan-mcp.el at aad0d4c.
+Observed divergences (notes.md Execution log PHASE-05/06):
+1. DEC-126 (accepted): any non-error non-local exit (e.g. `throw`) settles with reason "exit" and closes the transport like quit. Sec-3 Settle names only error|quit.
+2. `in-flight` is the list of in-flight request ids (count = length), not a count; `cancelled` membership is checked against it. Sec-3's slot table says "count".
+3. Nested-filter quit: a quit inside a nested filter is deferred to `quit-flag` (`satan-mcp--filter-depth`, `--resignal-quit`) because a quit cannot cross the C process reader (mem.fact.satan.quit-in-process-filter). Absent from sec-3.
+4. Settle helpers named `--begin-close` / `--finalise` / `--release` / `--deliver`; `--deliver` records cancelled / disconnected instead of sending; -32603 only on an open, live session.
+5. Verifier: "gains call-interrupted as a known record" landed as a `calls-match-results` docstring line + VT-2 (PHASE-05 D1); the verifier has no event registry."""
+disposition = "design-wrong"
+response = 'Code is right (VTs green, VA probes in notes); sec-3 is stale. Reconcile direct edit of design.md sec-3: slot table `in-flight` = list of request ids; Settle covers non-error non-local exits per DEC-126 (reason "exit", transport closes like quit); nested-filter quit deferral to quit-flag with the reason; -32603 only on an open live session; deliver records cancelled/disconnected; verifier change as a docstring + VT (no registry). Brief: Per-slice F-3.'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = 'Code is right (VTs green, VA probes in notes); sec-3 is stale. Reconcile direct edit of design.md sec-3: slot table `in-flight` = list of request ids; Settle covers non-error non-local exits per DEC-126 (reason "exit", transport closes like quit); nested-filter quit deferral to quit-flag with the reason; -32603 only on an open live session; deliver records cancelled/disconnected; verifier change as a docstring + VT (no registry). Brief: Per-slice F-3.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Brief entry exists (Per-slice F-3)."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "Design sec-7 refresh and idle config diverge from malebolge a737928"
+detail = """
+Expected: sec-7 describes the pool as landed.
+Observed (notes.md PHASE-07; malebolge src/satan-pool.ts, src/config.ts):
+1. The first call of a new entry AWAITS the coalesced refresh before answering (bounded by the refresh deadline, ≤ 2 s; not replayed). Sec-7 lists the new-entry trigger as calling `refresh` with no ordering. VA-1 showed the fire-and-forget form leaves the restarted tool "not available" for one step (pi-durable resolves tools at step start). User chose await.
+2. The idle default `DEFAULT_SATAN_IDLE_MS = 900_000` lives in satan-pool.ts (de-duplicated from config/satan-tools); configured by env `MALEBOLGE_SATAN_IDLE_MS` (strict integer parse). Sec-7 says only "config, default 15 min".
+3. Shutdown closes pooled connections (`closeAll`, isolated per entry) — present in sec-7; aligned.
+Live (PHASE-08): both runs finalised exactly 15 min after their last call (00:31:57, 00:34:49), consistent with 900_000."""
+disposition = "design-wrong"
+response = "The await was a user-chosen fix of a defect VA-1 demonstrated (RV-060 F-3). Reconcile direct edit of design.md sec-7: the first call of a new entry awaits the coalesced refresh (bounded by the refresh deadline, not replayed), with the VA-1 reason; idle default lives in satan-pool.ts, set by MALEBOLGE_SATAN_IDLE_MS (strict integer). Note the known risk deferred as malebolge IMP-013 (a failed refresh empties the extension). Brief: Per-slice F-4."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "The await was a user-chosen fix of a defect VA-1 demonstrated (RV-060 F-3). Reconcile direct edit of design.md sec-7: the first call of a new entry awaits the coalesced refresh (bounded by the refresh deadline, not replayed), with the VA-1 reason; idle default lives in satan-pool.ts, set by MALEBOLGE_SATAN_IDLE_MS (strict integer). Note the known risk deferred as malebolge IMP-013 (a failed refresh empties the extension). Brief: Per-slice F-4."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Brief entry exists (Per-slice F-4)."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "V15 claims quit propagation to the caller's wait; batch tests cannot observe it"
+detail = """
+Expected (design sec-9 V15): "quit closes the transport, then propagates: an uncancelled live caller sees the connection close".
+Observed (notes.md PHASE-05): a quit re-signalled from a real process filter is caught by read_process_output's handler and kills batch Emacs, so the quit test hands the chunk to `satan-mcp--filter` directly over a live socket pair. Transport close and sibling-never-starts are verified; propagation to an enclosing caller's wait is not observable in batch. PHASE-06 adds the nested deferral to quit-flag. Live PHASE-08 did not exercise quit.
+The VT passes; the design's V15 text overstates what is verified."""
+disposition = "design-wrong"
+response = "Reconcile direct edit of design.md sec-9 V15: state that propagation of quit to an enclosing caller's wait is not observable in batch (read_process_output catches it); the test drives `satan-mcp--filter` over a live socket pair and verifies settle, transport close and sibling drop. plan.toml VT text is immutable and is not touched. Brief: Per-slice F-5."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Reconcile direct edit of design.md sec-9 V15: state that propagation of quit to an enclosing caller's wait is not observable in batch (read_process_output catches it); the test drives `satan-mcp--filter` over a live socket pair and verifies settle, transport close and sibling drop. plan.toml VT text is immutable and is not touched. Brief: Per-slice F-5."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Brief entry exists (Per-slice F-5); plan.toml left immutable."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "major"
+title = "SPEC-001 REQ-007 says run lifecycle is request/response; SL-032 runs open on first call and close on transport close"
+detail = """
+Expected (design sec-91): REQ-007 reconciled explicitly at reconcile.
+Observed: REQ-007 (SPEC-001 FR-007, pending): "Control-plane operations (capability decision, run lifecycle, ledger handoff, kill) are request/response". DEC-122 (accepted): an MCP run opens implicitly on the first tools/call and finalises when the connection closes — no lifecycle request/response. QUE-001 (open): SPEC-001 has no invariant for run-lifecycle/arrival authority that ADR-017 §3 lists. Either REQ-007 admits transport-scoped lifecycle, or the divergence is recorded against QUE-001. Design sec-91: transport cleanup must not be cited as ADR-017 §4 evidence."""
+disposition = "design-wrong"
+response = "Governance item named by the design for reconcile. Reconcile via REV on SPEC-001: either amend REQ-007 to admit transport-scoped run lifecycle for MCP (open on first call, close on transport close), or record the divergence against QUE-001. Which one is the user's choice at reconcile. Do not cite transport cleanup as ADR-017 §4 evidence. Brief: Governance F-6."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = "Governance item named by the design for reconcile. Reconcile via REV on SPEC-001: either amend REQ-007 to admit transport-scoped run lifecycle for MCP (open on first call, close on transport close), or record the divergence against QUE-001. Which one is the user's choice at reconcile. Do not cite transport cleanup as ADR-017 §4 evidence. Brief: Governance F-6."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Brief entry exists (Governance F-6); the REQ-007 vs QUE-001 choice is left to the user at reconcile."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "SPEC-002 MCP transport row does not state one connection per conversation window with identity in initialize"
+detail = """
+Expected (design sec-91): SPEC-002's transports row gains "one connection per conversation window; identity in `initialize`".
+Observed: .doctrine/spec/tech/002 transports table row "MCP (JSON-RPC over UDS) | interactive agent → broker | control |" — no connection cardinality or identity. Landed: DEC-121 (identity in initialize capabilities.experimental.satan), DEC-125 (one pooled connection per active conversation beside the shared tool-list connection)."""
+disposition = "design-wrong"
+response = 'Reconcile via REV on SPEC-002: the MCP (JSON-RPC over UDS) transports row gains "one connection per conversation window (plus one shared tool-list connection); identity in `initialize`" (DEC-121, DEC-125). Brief: Governance F-7.'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = 'Reconcile via REV on SPEC-002: the MCP (JSON-RPC over UDS) transports row gains "one connection per conversation window (plus one shared tool-list connection); identity in `initialize`" (DEC-121, DEC-125). Brief: Governance F-7.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Brief entry exists (Governance F-7)."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Memory mem.fact.satan.perceive-consume-seam still says an in-flight MCP call blocks the tick (DEC-8)"
+detail = """
+Expected (design sec-91): mem_eb8e5cff… corrected to "DEC-8 retired (DEC-124)".
+Observed: its control-flow block reads "→ if MCP call in flight → no-child blocked bundle, return ← ISS-058: calls, not connections" and later "session-blocked is verify-clean (intentional DEC-8 deferral …)". PHASE-02 (7ca34df) removed the block; V8 (`tick-spawns-while-mcp-call-mid-dispatch`) and live PHASE-08 (tick 00:20:00 during two open MCP runs) show the tick spawns."""
+disposition = "fix-now"
+response = 'Correct mem_eb8e5cff (mem.fact.satan.perceive-consume-seam) at reconcile, before close: drop the "MCP call in flight → blocked bundle" step; say DEC-8 was retired by DEC-124 (SL-032 PHASE-02), session_blocked is historical in old run dirs only. Brief: Memory F-8.'
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = 'Correct mem_eb8e5cff (mem.fact.satan.perceive-consume-seam) at reconcile, before close: drop the "MCP call in flight → blocked bundle" step; say DEC-8 was retired by DEC-124 (SL-032 PHASE-02), session_blocked is historical in old run dirs only. Brief: Memory F-8.'
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Brief entry exists (Memory F-8); to be applied before close."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "Gate red at host time: 3 satan-activity tests fail 00:00-01:00 AEDT (unrelated to SL-032)"
+detail = """
+Expected: `just check` / `doctrine check gate` green.
+Observed (2026-10-27 ~00:35 AEDT): 3 unexpected / 1378 — satan-activity/{current-carries-recent-presence, recent-browser-segments-carry-presence, recent-focus-is-a-timeline-with-presence}. Same instant under TZ=Australia/Brisbane: 1378 tests, 0 unexpected, 4 skipped, plus harness 55 OK (EXIT 0). The activity tests and fixtures are untouched by SL-032 (no SL-032 commit modifies satan-tools-activity* or satan-desktop-fixture). Root cause hypothesis and evidence captured as ISS-061 (related ISS-036). Gate was green at aad0d4c (1378 tests) in daytime."""
+disposition = "follow-up"
+response = "Outside SL-032's surface: no slice commit touches the activity tool, its tests or the desktop/keyrate fixtures (git log eaf7d4f..HEAD on those paths is empty). Captured as ISS-061 (linked related ISS-036). SL-032's gate evidence: 1378 tests, 0 unexpected under TZ=Australia/Brisbane at the same instant, and green at aad0d4c."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = "Outside SL-032's surface: no slice commit touches the activity tool, its tests or the desktop/keyrate fixtures (git log eaf7d4f..HEAD on those paths is empty). Captured as ISS-061 (linked related ISS-036). SL-032's gate evidence: 1378 tests, 0 unexpected under TZ=Australia/Brisbane at the same instant, and green at aad0d4c."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "ISS-061 exists; untouched-path claim checked with git log."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
