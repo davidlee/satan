@@ -1,0 +1,200 @@
+# Implementation plan for SL-032 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+#
+# M = /home/david/dev/malebolge. malebolge-side VT rows name absolute paths there.
+# "design secN" = .doctrine/slice/032/design.md section; "Vn" = its sec-9 rows.
+# Severe-finding route criteria (RV-060 F-1 probe, F-2 probe, F-3 demonstrate)
+# are read from the RV-060 ledger and land in PHASE-05, PHASE-06 and PHASE-07.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-032"
+
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# ------------------------------------------------------------------ satan ----
+
+[[phase]]
+id        = "PHASE-01"
+name      = "Explicit memory-write attribution"
+objective = "Memory-write attribution becomes an explicit argument (DEC-123, design sec-4, I5). satan-memory-store-mark takes &key run-id; the dynamic var satan-memory-store--current-run-id and its defvar copies are deleted; every caller passes the run it acts for."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (SL-032 design run, rev 35); just check green at the starting commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-memory-store-mark accepts &key run-id and passes it to satan-memory-store--emit-trace-marked, which emits only when run-id is non-nil and attribute updates are enabled." },
+  { id = "EX-2", text = "satan-memory-store--current-run-id no longer appears anywhere under satan/ (defvar copies in satan-mcp.el and satan-broker.el, the broker setq/clear at spawn and finalise, and the MCP let-binding all gone). grep proves it." },
+  { id = "EX-3", text = "Callers per design sec-4: memory_mark and hippocampus write pass (plist-get ctx :id); the observer's --persist-positive passes the broker run id threaded from satan-observer-process's ctx; satan-intervention-write-manual-outcome gains &key run-id and forwards it to its mark-fn; the @satan directive passes the consuming tick's run id; the M-x mark passes nil." },
+  { id = "EX-4", text = "Tests that bound the deleted var are rewritten to pass :run-id; just check green, lint zero warnings." },
+]
+verification = [
+  { id = "VT-1", expects = "V7: a broker-ctx memory_mark dispatched inside a differently attributed MCP wait emits trace_marked with the broker run id; the emitter emits nothing for nil run-id", test_file = "satan/test/satan-memory-store-test.el", keywords = ["satan-memory-store-mark", ":run-id", "trace_marked"], waived = false },
+  { id = "VT-2", expects = "V7: an observer positive verdict emits trace_marked with the observer's broker run id", test_file = "satan/test/satan-observer-test.el", keywords = [":run-id", "trace_marked"], waived = false },
+  { id = "VT-3", expects = "V7: an @satan directive's counter-memory attributes to the consuming tick's run, not the intervention's historical run", test_file = "satan/test/satan-tools-atsatan-test.el", keywords = [":run-id", "consuming"], waived = false },
+  { id = "VT-4", expects = "V7: an M-x manual mark emits no trace_marked", test_file = "satan/test/satan-intervention-mark-test.el", keywords = ["trace_marked"], waived = false },
+  { id = "VA-1", text = "Agent runs grep -rn satan-memory-store--current-run-id satan/ (expect no hits) with a positive control on a symbol that must still exist, and records both in notes." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Retire DEC-8"
+objective = "Remove the MCP/broker mutual exclusion (DEC-124, design sec-5): satan-run--interactive-calls, the DEC-8 comment block, both MCP refusals and the broker's session_blocked gate. Keep satan-run--spawn-running and the run_busy gate."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 exit criteria met: attribution no longer depends on the exclusion DEC-8 provided." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The sites listed in design sec-5 'Removed' are gone; satan-run--interactive-calls appears nowhere under satan/." },
+  { id = "EX-2", text = "session_blocked stays in satan-broker--streak-transparent-reasons with a comment marking it historical." },
+  { id = "EX-3", text = "satan-run--spawn-running and the run_busy gate are unchanged." },
+  { id = "EX-4", text = "Tests asserting the old refusals are removed or inverted; just check green, lint zero warnings." },
+]
+verification = [
+  { id = "VT-1", expects = "V8: a scheduled broker run spawns while an MCP call is in flight", test_file = "satan/test/satan-broker-test.el", keywords = ["satan-broker--spawn", "satan-mcp--tools-call"], waived = false },
+  { id = "VT-2", expects = "V8: an MCP connection and call succeed while satan-run--spawn-running is set", test_file = "satan/test/satan-mcp-test.el", keywords = ["satan-run--spawn-running"], waived = false },
+  { id = "VA-1", text = "Agent greps satan/ for satan-run--interactive-calls (expect none) and session_blocked (expect only the historical streak reason and its tests), with a positive control, and records results in notes." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Lazy, failure-atomic run mint"
+objective = "The run is minted on the first tools/call, not at accept (DEC-122, design sec-3 Mint). satan-mcp--ensure-run publishes run slots only after satan-audit-open returns and deletes a partly written run dir on failure. Every request with an id is answered (-32603 on an uncaught error). Finalise writes status done."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 exit criteria met (the mint's DEC-8 refusal is already gone)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-mcp-session's run-id, run-dir, audit, tool-ctx and prepare slots are nil until the first tools/call; satan-mcp--ensure-run runs at the top of tools/call using the existing mint body (DEC-001 unchanged)." },
+  { id = "EX-2", text = "On mint error ensure-run deletes the run dir if one was created, answers that request -32603, and leaves the session able to retry." },
+  { id = "EX-3", text = "satan-mcp--handle-message answers -32603 for an uncaught error in any request with an id (design sec-3 'Every request is answered')." },
+  { id = "EX-4", text = "A session with no run finalises nothing; a finalised MCP bundle's status is done and passes satan-audit-verify-run." },
+  { id = "EX-5", text = "The line buffer moves from the session's bufs slot to a process property; the bufs slot is dropped." },
+]
+verification = [
+  { id = "VT-1", expects = "V2: a legacy connection has no run dir before its first call; a connection that only lists tools leaves no dir; after a call its bundle verifies clean with status done", test_file = "satan/test/satan-mcp-test.el", keywords = ["satan-mcp--ensure-run", "satan-audit-verify-run", "tools/list"], waived = false },
+  { id = "VT-2", expects = "V4: satan_boot_context as the first call mints and answers; a failure on the second file write inside satan-audit-open answers -32603 and leaves no dir; the next call mints exactly one dir; a disconnect after a failed mint leaves no dir", test_file = "satan/test/satan-mcp-test.el", keywords = ["satan_boot_context", "satan-audit--write-json", "-32603"], waived = false },
+  { id = "VT-3", expects = "V16: an uncaught error in a stubbed non-tool request handler answers -32603", test_file = "satan/test/satan-mcp-test.el", keywords = ["satan-mcp--handle-message", "-32603"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Conversation identity on the wire"
+objective = "initialize carries capabilities.experimental.satan {conversation, kind} (DEC-121, design sec-2). A pure satan-mcp--parse-identity validates it; the session records it; the manifest and bundle carry :conversation and :kind (design sec-6); the finalise summary names the identity."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 exit criteria met (the -32600 after-mint rule needs lazy mint)." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-mcp--parse-identity is pure: params -> (:conversation C :kind K) or (error . MSG), implementing the design sec-2 field table." },
+  { id = "EX-2", text = "Repeated initialize: same identity answers normally; a different identity answers -32602; any initialize after mint answers -32600 (I1). A malformed identity answers -32602 and the session stays uninitialised." },
+  { id = "EX-3", text = "The manifest and bundle.json gain :conversation (string or JSON null) and :kind; :mode stays interactive; the server's initialize result is unchanged." },
+  { id = "EX-4", text = "The finalise summary reads 'interactive conversation C' or 'interactive session'. satan-mcp.el's header states I1-I5." },
+]
+verification = [
+  { id = "VT-1", expects = "parse-identity table: absent -> legacy; valid -> plist; each malformed case (non-object, wrong types, unknown kind, empty, >128 chars, control chars) -> error", test_file = "satan/test/satan-mcp-test.el", keywords = ["satan-mcp--parse-identity", "scheduled"], waived = false },
+  { id = "VT-2", expects = "V3: malformed -> -32602; repeated with different identity -> -32602; after a mint -> -32600; same identity again -> ok", test_file = "satan/test/satan-mcp-test.el", keywords = ["-32602", "-32600", "experimental"], waived = false },
+  { id = "VT-3", expects = "V1: two connections with different identities produce distinct run dirs, manifests carrying :conversation/:kind, distinct boot caches and distinct trace_marked run ids; each bundle verifies clean", test_file = "satan/test/satan-mcp-test.el", keywords = [":conversation", ":kind", "boot-cache", "trace_marked"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "Call settling and the interruption record"
+objective = "Every audited call settles on every exit path before releasing the session's in-flight count (design sec-3 Settle, I4). Non-local exits write an :id-bearing tool-result plus call-interrupted; quit closes the transport before re-signalling. The verifier knows call-interrupted."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 exit criteria met." },
+  { id = "EN-2", text = "RV-060 F-2 route criteria (probe) re-read from the ledger: doctrine review show RV-060 -f F-2." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-mcp-session gains in-flight; satan-mcp--tools-call increments it, records the tool-call, dispatches inside unwind-protect, and decrements only after the call's last audit write (the release-before-record order at satan-mcp.el:301-307 is gone)." },
+  { id = "EX-2", text = "Non-local exit writes tool-result {:id <call id> :ok :false :error \"interrupted: <signal>\"} then call-interrupted (:reason error|quit); an error answers -32603 on a live transport; quit calls delete-process on the session's transport, then re-signals." },
+  { id = "EX-3", text = "satan-audit-verify-run accepts call-interrupted as a known record needing no result; calls-match-results still requires a tool-result per tool-call." },
+]
+verification = [
+  { id = "VT-1", expects = "V15: after the tool-call is appended, an escaped error and separately quit each write a tool-result and call-interrupted carrying the call's :id; the bundle verifies clean; the error answers -32603 live; quit closes the transport and propagates; a second request in the same chunk never starts; live session (the closing-session variant is PHASE-06/VT-5)", test_file = "satan/test/satan-mcp-test.el", keywords = ["call-interrupted", "quit", "interrupted:", "delete-process"], waived = false },
+  { id = "VT-2", expects = "verifier: call-interrupted is a known record; a tool-call with no tool-result still fails calls-match-results", test_file = "satan/test/satan-audit-test.el", keywords = ["call-interrupted", "calls-match-results"], waived = false },
+  { id = "VA-1", text = "F-2 probe. Adversary: a tool that exits non-locally (error outside the dispatcher guard, quit, throw to an outer catch) after its tool-call is appended, on a live and on a closing session, with a sibling request decoded in the same chunk. Agent runs the hostile probe against the implementation and records in notes: every tool-call has a matching tool-result, no sibling dispatched after quit, the live caller sees close, bundle verifies. The closing-session half of the probe runs in PHASE-06/VA-1." },
+  { id = "VA-2", text = "Negative control: temporarily drop the non-local-exit tool-result write; observe VT-1 fail; restore. Recorded in notes." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "Close lifecycle, admission and cancellation"
+objective = "The session moves open -> closing -> closed; finalisation is deferred until in-flight reaches 0 and happens exactly once (I3). A closing/closed session admits nothing. notifications/cancelled suppresses the response and records call-interrupted. Correct under nested dispatch on one session."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 exit criteria met." },
+  { id = "EN-2", text = "RV-060 F-1 route criteria (probe) and F-6's negative control re-read from the ledger." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-mcp-session gains state (open|closing|closed) and cancelled. The sentinel sets closing and finalises at once if in-flight is 0; otherwise the settle path finalises when the count reaches 0. closed makes a second sentinel event a no-op; satan-mcp-stop takes the same path." },
+  { id = "EX-2", text = "satan-mcp--handle-message dispatches and answers nothing on a closing or closed session; dropped decoded lines are logged." },
+  { id = "EX-3", text = "notifications/cancelled for an in-flight id adds it to cancelled; on return the result is audited, call-interrupted :reason cancelled is recorded, no response is sent. Unknown ids are ignored. Undeliverable responses record call-interrupted :reason disconnected." },
+  { id = "EX-4", text = "satan-mcp--current-session stays let-bound per dispatch; the boot cache is per session." },
+]
+verification = [
+  { id = "VT-1", expects = "V5: disconnect during a nested wait records result and call-interrupted, finalises once afterwards, verifies clean; two requests in one chunk with close during the first: the second never starts and nothing is appended after finalisation", test_file = "satan/test/satan-mcp-test.el", keywords = ["accept-process-output", "closing", "disconnected"], waived = false },
+  { id = "VT-2", expects = "V6: notifications/cancelled during a nested wait sends no response, records call-interrupted :reason cancelled, session stays usable", test_file = "satan/test/satan-mcp-test.el", keywords = ["notifications/cancelled", "cancelled"], waived = false },
+  { id = "VT-3", expects = "V9: a sentinel event plus satan-mcp-stop finalises once", test_file = "satan/test/satan-mcp-test.el", keywords = ["satan-mcp-stop", "satan-mcp--sentinel"], waived = false },
+  { id = "VT-4", expects = "V14: same-session nesting, in-flight 2 -> 1 -> 0; close during B finalises once at 0, never at 1; live transport gives A and B exactly one response each", test_file = "satan/test/satan-mcp-test.el", keywords = ["in-flight", "nested"], waived = false },
+  { id = "VT-5", expects = "V15 closing-session variant: an escaped error and quit on a closing session each settle (tool-result + call-interrupted with :id) before the deferred finalise, which runs once; quit's own transport close does not finalise early", test_file = "satan/test/satan-mcp-test.el", keywords = ["call-interrupted", "closing", "quit"], waived = false },
+  { id = "VA-1", text = "F-1 probe, plus F-2's closing-session half. Adversary: a close (sentinel or satan-mcp-stop) arriving during a nested satan-patch-rpc-style wait while further requests sit decoded in the filter's dolist, on the same session; and a non-local exit of a call on that closing session. Agent runs the hostile probe and records in notes: no handler starts on a closing/closed session, no transcript record follows finalisation, finalisation happens once, every tool-call has a tool-result." },
+  { id = "VA-2", text = "F-6 negative control: temporarily replace the in-flight count with a boolean busy flag; observe VT-4 fail; restore. Recorded in notes." },
+]
+specs        = []
+requirements = []
+
+# -------------------------------------------------------------- malebolge ----
+
+[[phase]]
+id        = "PHASE-07"
+name      = "malebolge: per-conversation pool"
+objective = "malebolge opens one SATAN MCP connection per (conversation, kind) carrying the identity capability, beside the shared discovery connection (DEC-125, design sec-7). Pool entries expire after satanIdleMs at zero in-flight; the pool owns tool-list refresh across entry lifetimes."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 exit criteria met; the satan server change is committed (rollout R1: satan lands first)." },
+  { id = "EN-2", text = "RV-060 F-3 route criteria (demonstrate) re-read from the ledger; M is clean apart from unrelated files, and just check is green there at the starting commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "reconnectingClient(socketPath, log, onReconnect, capabilities?) passes capabilities through connect to every McpClient it creates." },
+  { id = "EX-2", text = "conversation-context.ts exports satanIdentity(conversationId, kind) returning {experimental: {satan: {conversation: String(id), kind}}}; kind is interactive." },
+  { id = "EX-3", text = "src/satan-pool.ts: synchronous acquire(key) shares one entry across concurrent acquires; release arms satanIdleMs (config, default 15 min) at zero; expiry deletes then closes; closeAll at shutdown; a new entry's first successful connection, and any pooled onReconnect, trigger the shared coalesced refresh." },
+  { id = "EX-4", text = "satan-tools.ts execute acquires by key(api.conversationId, kind) and releases in finally; the discovery connection makes no tools/call. M's just check green." },
+]
+verification = [
+  { id = "VT-1", expects = "V10: each (conversation, kind) gets its own connection carrying the capability; a replacement connection repeats it", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["experimental", "satan", "conversation"], waived = false },
+  { id = "VT-2", expects = "V11: return after idle gets a fresh entry; overlapping calls keep the entry alive; expiry racing an acquire yields a new entry, not a closed one; 50 conversations -> 50 entries, all closed by idle", test_file = "/home/david/dev/malebolge/test/satan-pool.test.ts", keywords = ["acquire", "release", "satanIdleMs"], waived = false },
+  { id = "VT-3", expects = "V12: with the real reconnectingClient and fake server, a restart with no surviving entry plus a new entry's first call replaces the registry, both triggers together cause at most two tools/list reads; a pooled reconnect triggers a coalesced refresh", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["reconnectingClient", "tools/list", "restart"], waived = false },
+  { id = "VA-1", text = "F-3 demonstrate: agent shows, with the real reconnectingClient, discovery and coalesce (no mocked reconnect callback), that a conversation returning after all entries expired across a server restart sees the new tool set within the running turn. Recorded in notes with the output." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "Live verification"
+objective = "Exercise the change end to end in the room (V13)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 exit criteria met; the room daemon runs the PHASE-07 malebolge revision and Emacs has loaded the PHASE-06 satan." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "Notes record the malebolge and satan revisions exercised (RSK-020) and the run dirs observed." },
+]
+verification = [
+  { id = "VH-1", text = "V13: two malebolge conversations produce two interactive run dirs whose manifests name their conversations, and a broker tick spawns while both are active. Operator confirms." },
+]
+specs        = []
+requirements = []
