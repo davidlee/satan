@@ -281,8 +281,10 @@ only an implementation can settle. If one ran, it would probe:
     `status` done 00:20:12, while both interactive runs were open (no
     `final.json`/`status` yet).
 - VH-1: user replied "confirmed" (2026-10-27).
-- Not checked here: I4 (`satan-audit-verify-run` on the two bundles once
-  they idle-close, ≈ 00:32/00:35).
+- I4: both runs finalised on pool idle close, 15 min after their last
+  call (600808 at 00:31:57, 6c77b6 at 00:34:49; `status` done, `final.json`
+  "interactive conversation <id>"). `satan-audit-verify-run` → `t` for
+  both (emacsclient, 00:35).
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
@@ -320,9 +322,7 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
 
 - RV-060 F-1/F-2/F-3 discharged by PHASE-05/06/07 VA (Execution log).
 - At audit: PHASE-07 VTs UNATTRIBUTABLE (cross-repo delta, user-accepted).
-- At audit: I4 not checked live (PHASE-08 runs still open at VH-1).
-- malebolge Emacs client: one fixed transcript/draft buffer pair, so
-  conversations cannot be viewed side by side. Not captured; user to decide.
+- malebolge Emacs client per-conversation buffers → malebolge IMP-014.
 - At reconcile, design sec-7: the first call of a new entry awaits the
   refresh (VA-1); the idle default lives in `satan-pool.ts`;
   `MALEBOLGE_SATAN_IDLE_MS`.
