@@ -1,0 +1,46 @@
+memory_uid = "mem_01a1784ae2707283a722d424698d5418"
+memory_key = "mem.fact.doctrine.record-delta-single-repo"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "record-delta cannot record a commit from another repo"
+summary = "A slice phase whose code lands in a sibling repo (e.g. malebolge) gets no delta row; verify-vt reports its VTs UNATTRIBUTABLE even when keywords are present."
+created = "2026-10-26"
+updated = "2026-10-26"
+
+[scope]
+paths = []
+globs = []
+commands = ["doctrine slice record-delta", "doctrine slice verify-vt"]
+tags = ["doctrine", "cross-repo"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "57631d6063f56aa36b789cca017d0752e5393cf6"
+ref_name = "refs/heads/main"
+checkout_state_id = "c4e542436136f6022cbbcf5d5a2f8067a5d181ea3c903242aa41f68f56be83a5"
+base_commit = "fc028389e3b27d67d6b198b698626732bcfa34cb"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-032 PHASE-07"
+

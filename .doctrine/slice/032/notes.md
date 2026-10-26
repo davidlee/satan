@@ -210,9 +210,58 @@ only an implementation can settle. If one ran, it would probe:
   passes a live pipe process.
 - Gate: `just check` exit 0 — 1378 tests, 0 unexpected, 4 skipped; lint clean.
 
+### PHASE-07 (2026-10-26, malebolge)
+
+- Code: malebolge a737928 (cwd `~/dev/malebolge`). `record-delta` refuses a
+  foreign-repo commit ("does not resolve to a commit"), so verify-vt reports
+  PHASE-07 VT-1..3 UNATTRIBUTABLE (keywords present). User chose: complete
+  with notes; /audit dispositions it. PHASE-08 will hit the same limit.
+- EN-2: RV-060 F-3 re-read. M clean apart from IMP-012 + SL-004 research.
+  `just check` EXIT 0 at 9ed4202 (2083 tests). IMP-012 deferred (user).
+- Pass A: pi `implement`, tests (red). $0.083, 52 requests. Fixture records
+  each connection's initialize capabilities. Red for the right reasons.
+- Pass B: pi `implement`, code. $0.109 + $0.009 (hit the 60-request ceiling
+  while linting; session continued). It added `'end'` → closed in
+  `unix-socket-transport.ts` to fix a "deterministic" failure. Orchestrator
+  found the real cause in the test helper: `stopServer` waited on
+  `logs.next`, which matches the FIRST "closed" line ever logged (and only
+  discovery's). It now waits for one close per open connection. Without
+  the helper race the transport change was unneeded, so it was reverted.
+  Defaults duplicated in config/satan-tools were de-duplicated into
+  `satan-pool.ts`.
+- Negative controls: no new-entry refresh fails 3 tests (V12 idle among
+  them); expiry without delete-first fails 2 pool tests; fire-and-forget
+  refresh fails the in-turn V12 test; `Promise.all` in `closeAll` fails
+  the isolation test.
+- VA-1 (orchestrator probe, real reconnectingClient + discovery + coalesce,
+  fake server, no mocked callback). All entries expired, server restarted
+  with {notes_read, notes_archive}; one turn: notes_read, then
+  notes_archive. As first built (fire-and-forget refresh):
+  `[{notes_read, "note 2"}, {notes_archive, isError, "Tool notes_archive is
+  not available"}]`, registry still old. With a 6 ms think time the refresh
+  landed mid-step, still "not available"; a third step succeeded. So
+  pi-durable resolves tools at step start, and the gap was one step. User
+  chose: the first call of a new entry awaits the coalesced refresh before
+  answering (bounded by the refresh deadline; not replayed). After:
+  `["note 2", "archived"]` in one turn, ≤ 2 tools/list on the restarted
+  server; that is now the V12 test "offers the restarted tool set within
+  the running turn once the old entry idled out". F-3 demonstrated.
+- Review: pi `review`. $0.057, 12 findings, no blocker. Accepted: shutdown
+  closes pooled connections, two calls share one connection, closeAll
+  isolation, discovery picked by identity, strict integer env parse (pi
+  `implement` $0.028). Deferred: #1 MAJOR, a failed refresh empties the
+  extension and per-entry refreshes make that more reachable →
+  malebolge IMP-013 (user). Declined with reasons: unguarded release (only
+  paired in finally), duplicate closed gate (message only), satanIdentity
+  placement (sec-7/DEC-125 put it in conversation-context.ts), `void
+  refresh()` (existing pattern; read is total), unreachable expiry guard,
+  polling `waitFor`.
+- Gate: M `just check` EXIT 0, 72 files, 2105 tests. satan-tools +
+  satan-pool 3× green.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-26 · PHASE-06 completed, PHASE-07 next · aad0d4c
+fresh-as-of: 2026-10-26 · PHASE-07 completed, PHASE-08 next · malebolge a737928
 
 ### Produced
 
@@ -224,7 +273,10 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
   wire (308a7b0); PHASE-05 settle (3d066e9); DEC-126 (721e107);
   PHASE-06 close lifecycle/admission/cancellation (aad0d4c). Deltas
   recorded; verify-vt PASS 01-06. Satan side complete; 07-08 malebolge.
-- ISS-059, ISS-060; malebolge IMP-012 (own quotient forms, before PHASE-07).
+- PHASE-07 per-conversation pool: malebolge a737928 (no satan delta;
+  VT-1..3 UNATTRIBUTABLE by design, see Execution log).
+- ISS-059, ISS-060; malebolge IMP-012 (own quotient forms, deferred),
+  IMP-013 (keep last good tool list), IDE-002 note.
 
 ### Learned
 
@@ -240,12 +292,14 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
 
 ### Open
 
-- RV-060 F-3 (demonstrate) → PHASE-07 VA; F-1/F-2 discharged by
-  PHASE-05/06 VA (Execution log).
-- IMP-012 (malebolge) — land before PHASE-07 or not: user decision.
+- RV-060 F-1/F-2/F-3 discharged by PHASE-05/06/07 VA (Execution log).
+- At audit: PHASE-07 VTs UNATTRIBUTABLE (cross-repo delta, user-accepted).
+- At reconcile, design sec-7: the first call of a new entry awaits the
+  refresh (VA-1); the idle default lives in `satan-pool.ts`;
+  `MALEBOLGE_SATAN_IDLE_MS`.
 - At reconcile, design sec-3 amendments: DEC-126 (exit closes like quit);
   phase choices in Execution log PHASE-05 (D1 verifier "knows" =
   docstring + test; reason "exit") and PHASE-06 (in-flight as id list;
   nested-filter quit deferral; V15 quit propagation unobservable in batch).
 - At reconcile: SPEC-001 REQ-007 and QUE-001, SPEC-002 transports row,
-  memory mem_eb8e5cff…, malebolge IDE-002 note (design sec-91).
+  memory mem_eb8e5cff… (malebolge IDE-002 note done in a737928).
