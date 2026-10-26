@@ -92,6 +92,32 @@ only an implementation can settle. If one ran, it would probe:
   `defvar satan-run--spawn-running` → 1 hit.
 - Gate: `just check` exit 0 — 1344 tests, 0 unexpected, 4 skipped; lint clean.
 
+### PHASE-03 (2026-10-26)
+
+- Research advisory reported drift (plan.md/plan.toml added since the
+  baseline) — plan files, not research content; no refresh.
+- Pass A — pi `implement`, tests: 9 new `lazy-mint-*`/`mint-failure-*`/
+  `request-error-*` tests; `session-creates-run-dir` and
+  `session-disconnect-closes-audit` replaced; prepare test moved to
+  `ensure-run`. Added a bounded `--request-response` (the old `--request`
+  could hang), a fail-on-Nth `satan-audit--write-json` macro, and
+  `(require 'satan-context)` at file top (a lazy require clobbered stubs).
+  $0.103, 60 requests. 10 red for the right reason (host-confirmed).
+- Orchestrator test review: `--run-dirs` counted only manifest-bearing
+  dirs, so a cleanup that emptied the run dir but left it would pass —
+  widened to any dir.
+- Pass B — pi `implement`, code: `satan-mcp--ensure-run` (+ pure
+  `--interactive-manifest`/`--interactive-bundle`), bare session at accept,
+  -32603 wrapper in `--handle-message`, close finalises nothing without a
+  run, status `done`, line buffer → `satan-mcp-buf` process property.
+  $0.035, 20 requests. Wrong: cleanup in `condition-case error` (misses
+  `quit`), and a filter comment claiming only decoding was guarded while it
+  still wrapped dispatch. Orchestrator replaced the cleanup with
+  `unwind-protect` + published flag; fixed comment and log text.
+- Negative control: cleanup replaced by `(ignore run-dir)` → both
+  `mint-failure-*` tests fail; restored.
+- Gate: `just check` exit 0 — 1351 tests, 0 unexpected, 4 skipped; lint clean.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-26 · PHASE-02 completed, PHASE-03 next · 7ca34df
