@@ -1,0 +1,48 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = 20
+slug = "mail-jmap-mirror"
+title = "Belphegor: read-only mail for SATAN through a JMAP mirror outside the agent"
+status = "open"
+created = "2026-10-25"
+updated = "2026-10-25"
+tags = ["architecture", "authority", "belphegor", "jmap", "mail", "screwtape", "trust-boundary"]
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+
+[[relation]]
+label = "related"
+target = "ADR-017"
+
+[[relation]]
+label = "related"
+target = "ADR-018"
+
+[[relation]]
+label = "related"
+target = "POL-001"
+
+[[relation]]
+label = "related"
+target = "SPEC-001"
+
+[[relation]]
+label = "related"
+target = "SPEC-002"
+
+[[relation]]
+label = "related"
+target = "RFC-018"
+
+[[relation]]
+label = "related"
+target = "RFC-019"
+
+[[relation]]
+label = "related"
+target = "ISS-028"
+
