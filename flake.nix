@@ -255,7 +255,7 @@
             ProxyCommand ${pkgs.socat}/bin/socat - UNIX-CONNECT:/run/capsule-room/%h/ssh.sock
         '';
         # The gateway's client socket; gatewaySocketOptions binds its directory.
-        gatewayClientSocket = (import "${inputs.agents}/gateway.nix").clientSocket;
+        gatewayClientSocket = jailLib.gatewayFacts.clientSocket;
         # The profile's own state and runtime dirs. Besides these the jail can
         # write only its persisted home and /tmp (RV-038 F-3).
         malebolgeStateDir = "/home/david/.local/state/satan/durable/room";
