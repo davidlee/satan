@@ -24,3 +24,19 @@ gate.)
 A future run-lifecycle invariant should state that each gate fails closed
 (SPEC-001 REQ-010) and records a no-child run with a typed reason, so that
 every non-spawn is visible in the run bundles.
+
+## Extension (2026-10-27, SL-032 / RV-061 F-6): transport-scoped MCP runs; DEC-8 retired
+
+- DEC-8 `session_blocked` (listed above) is retired by DEC-124 (SL-032
+  PHASE-02). An open MCP session or in-flight call no longer gates a
+  scheduled run; `session_blocked` survives only in old run dirs. The
+  remaining pre-spawn gates are `perceive_failed`, `run_busy` and
+  `budget_denied`.
+- MCP runs now have a lifecycle with no control-plane request at all
+  (DEC-122): a run is minted on a connection's first `tools/call` and
+  finalised when the connection closes (after in-flight calls settle). This
+  diverges from SPEC-001 REQ-007 ("run lifecycle … request/response").
+  REQ-007 is deliberately left unchanged (user choice at SL-032 reconcile):
+  whether connection-scoped lifecycle is admissible, and who holds authority
+  over it, belongs to the invariant this question asks for. Transport
+  cleanup is not ADR-017 §4 evidence.

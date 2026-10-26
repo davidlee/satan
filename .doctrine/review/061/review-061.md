@@ -108,3 +108,43 @@ two conversations at once (malebolge IMP-014); V13 worked around it.
 - F-8 — mem_eb8e5cff (mem.fact.satan.perceive-consume-seam): remove the
   "MCP call in flight → blocked bundle" step; DEC-8 retired by DEC-124
   (SL-032 PHASE-02); session_blocked survives only in old run dirs.
+
+## Reconciliation Outcome
+
+User agreed the proposals and chose option 2 for F-6 (2026-10-27: "agreed,
+option 2").
+
+### Direct edits applied
+
+- Selector registry (F-1): `slice selector add 32 --intent design-target`
+  for the two PHASE-01 sources and eight tests. `slice conformance 32` now
+  reads 19 conformant, 0 undelivered, 4 undeclared (the .doctrine paths
+  tolerated by F-2). design.md sec-8 mirrors the two sources and three
+  tests.
+- design.md sec-3 (F-3): `in-flight` as id list, `cancelled` as in-flight
+  ids; settle covers "exit" (DEC-126); -32603 only on an open live
+  session; non-error exits close the transport after release; nested quit
+  deferral to quit-flag; verifier change as docstring + test.
+- design.md sec-7 (F-4): idle default and `MALEBOLGE_SATAN_IDLE_MS`; the
+  new-entry refresh runs after the first call and its result waits for it
+  (2 s deadline), with the VA-1 reason and malebolge IMP-013.
+- design.md sec-9 V15 (F-5): quit propagation not batch-observable; how
+  the test drives the filter.
+- Memory mem_eb8e5cff (F-8): control flow and no-child table now show the
+  `run_busy` gate (DEC-023); DEC-8 retired by DEC-124.
+- QUE-001 (F-6, option 2): extension appended — DEC-8 retired; MCP runs
+  are transport-scoped (DEC-122) and diverge from REQ-007, which stays
+  unchanged pending the invariant QUE-001 asks for.
+
+### REVs completed
+
+- REV-014 (`reconcile-sl-032`): done — SPEC-002 transports table, MCP row
+  (F-7). Landed by hand; `spec validate SPEC-002` clean. Rationale in
+  revision-014.md.
+
+### Withdrawn / tolerated
+
+- F-2: tolerated — PHASE-07 VTs unattributable (cross-repo delta).
+- F-9: follow-up — ISS-061.
+
+Reconcile pass complete — handoff to /close.

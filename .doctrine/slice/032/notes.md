@@ -288,7 +288,7 @@ only an implementation can settle. If one ran, it would probe:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-27 · audit done (RV-061), reconcile next · malebolge c3cdcaf
+fresh-as-of: 2026-10-27 · reconciled (RV-061 outcome, REV-014), close next · malebolge c3cdcaf
 
 ### Produced
 
@@ -322,8 +322,9 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
 
 ### Open
 
-- Reconcile: RV-061 `## Reconciliation Brief` is the work list (selectors
-  F-1; design sec-3/7/9 F-3..F-5; SPEC-001 REQ-007 vs QUE-001 F-6, user
-  choice; SPEC-002 F-7; memory mem_eb8e5cff F-8 before close).
+- Close: confirm rollup; RV-061 `## Reconciliation Outcome` lists what
+  reconcile wrote (design sec-3/7/8/9, selectors, memory, QUE-001,
+  REV-014 SPEC-002).
 - Tolerated: PHASE-07 VTs UNATTRIBUTABLE (RV-061 F-2).
-- Not SL-032: ISS-061; malebolge IMP-013, IMP-014.
+- Not SL-032: ISS-061; malebolge IMP-013, IMP-014; QUE-001 (now carries
+  the REQ-007 divergence).

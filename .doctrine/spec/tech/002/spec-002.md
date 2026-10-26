@@ -83,7 +83,7 @@ reaches models only through the gateway's client socket.
 |---|---|---|---|
 | Process + JSONL stdio | broker ⇄ harness | control | protocol: `docs/protocol.md` |
 | HTTP, OpenAI-compatible | harness → LLM gateway, jailed pi → LLM gateway | data | per-client gateway key, passed by fd from the jail launcher; the gateway is host deployment, not a SATAN container (`~/flakes/SATAN.md`) |
-| MCP (JSON-RPC over UDS) | interactive agent → broker | control | |
+| MCP (JSON-RPC over UDS) | interactive agent → broker | control | one connection per conversation window, plus one shared tool-list connection; the client names its conversation and kind in `initialize` (DEC-121, DEC-125); a run per connection, minted on the first `tools/call`, finalised on close (DEC-122) |
 | `emacsclient --eval` | scheduler → broker | control | unauthenticated beyond socket permissions |
 | Postgres tables + `pg_notify` | broker ⇄ attrd | control, carried by the data store | retired by ADR-018 D3 |
 | NDJSON over UDS (control socket) | broker ⇄ patch runner | control | same-uid, never jailed; Emacs submits, watches and reports dispositions (SPEC-004) |

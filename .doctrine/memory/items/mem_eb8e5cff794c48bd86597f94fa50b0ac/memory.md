@@ -10,7 +10,9 @@ The SATAN tick (`satan-broker-run`) is cut into **perceive** and **consume**
 ```
 broker-run: prepare (alloc run_id, freeze time_now) → mkdir run-dir
   → PERCEIVE (unconditional, pure)
-  → if MCP call in flight → no-child blocked bundle, return   ← ISS-058: calls, not connections
+  → if perceive failed → no-child failed bundle, return
+  → if another run's child is live (`satan-run--spawn-running`, DEC-023)
+      → silent no-child `run_busy` bundle, return
   → if budget-exceeded → no-child denied bundle, return   ← ISSUE-001 fixed
   → else CONSUME (effects + tokens)
 ```
@@ -40,11 +42,12 @@ read it THERE, not the sidecar):
 | caller | status | reason | .FAILED? | announce? |
 |---|---|---|---|---|
 | budget-denied | `budget-exceeded` | — | yes | yes |
-| **session-blocked** | `failed` | `session_blocked` | **NO** | **NO** |
+| **run-busy** (`--write-silent-run`) | `failed` | `run_busy` | **NO** | **NO** |
 | perceive-failed | `failed` | `perceive_failed` | yes | yes |
 
-session-blocked is verify-clean (intentional DEC-8 deferral — it must not pop
-desktop alerts). Since SL-017 PHASE-07 there is no global failure-streak counter:
+run-busy is verify-clean and silent (it must not pop desktop alerts). An
+in-flight MCP call no longer gates the tick: DEC-8 was retired by DEC-124
+(SL-032 PHASE-02); `session_blocked` appears only in old run dirs. Since SL-017 PHASE-07 there is no global failure-streak counter:
 `satan-broker--failure-streak` walks the per-mode, same-cause streak from run
 outcomes (`satan-run-outcome-streak`), and `session_blocked` /
 `credential_deferred` are transparent (`satan-broker--streak-transparent-reasons`)

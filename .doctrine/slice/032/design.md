@@ -77,8 +77,8 @@ slots:
 |---|---|
 | `identity` | `(:conversation C :kind K)`; legacy identity until `initialize` sets it |
 | `run-id`, `run-dir`, `audit`, `tool-ctx`, `prepare` | nil until the first `tools/call` |
-| `in-flight` | count of `tools/call` dispatches on this session not yet settled (below) |
-| `cancelled` | set of request ids the client cancelled |
+| `in-flight` | list of the ids of `tools/call` requests on this session not yet settled; its length is the count (below) |
+| `cancelled` | the in-flight ids the client cancelled |
 | `state` | `open` → `closing` → `closed` |
 | `bufs` | dropped; the line buffer becomes a process property (it is connection-scoped) |
 
@@ -115,15 +115,23 @@ accept ─▶ open(no run) ─initialize─▶ open(identity) ─tools/call─�
   `--tools-call` records the `tool-call`, then dispatches inside
   `unwind-protect`:
   - normal return → the `tool-result` as today;
-  - non-local exit (an error that escapes `satan-tool-dispatch`'s guard, or
-    `quit`, which that guard does not catch, `satan-tools.el:191-199`) → a
-    `tool-result` `{:id <call id> :ok false :error "interrupted: <signal>"}`
-    (the verifier pairs on `:id`, `satan-audit.el:647-648`), then
-    `call-interrupted` (`:reason "error"` or `"quit"`). An error then
-    answers -32603 if the transport is live.
-  - `quit` closes the session's transport (`delete-process`) after settling
-    and before it is re-signalled. The caller sees a disconnect, not a
-    silent timeout. Decoded sibling lines meet a `closing` session and are
+  - non-local exit (an error that escapes `satan-tool-dispatch`'s guard;
+    `quit`, which that guard does not catch, `satan-tools.el:191-199`; or
+    any other exit, such as a `throw` from a `while-no-input` in an
+    enclosing wait) → a `tool-result`
+    `{:id <call id> :ok false :error "interrupted: <reason>"}` (the verifier
+    pairs on `:id`, `satan-audit.el:647-648`), then `call-interrupted`
+    (`:reason "error"`, `"quit"` or `"exit"`). An error then answers -32603
+    if the session is `open` and its transport live.
+  - `quit`, and any non-error exit (DEC-126), closes the session's
+    transport (`delete-process`) after settling and releasing, and before a
+    quit is re-signalled. The caller sees a disconnect, not a
+    silent timeout. A quit inside a nested filter
+    (`satan-mcp--filter-depth` > 1) is deferred to `quit-flag`
+    (`satan-mcp--resignal-quit`): the C process reader between the filters
+    cannot carry a Lisp quit ("error in process filter: Quit";
+    mem.fact.satan.quit-in-process-filter), so the enclosing wait raises it
+    and the enclosing call settles on it as a quit. Decoded sibling lines meet a `closing` session and are
     dropped (Admission). Both cases fall under I2's transport-closed
     exception. The client reconnects on its next call, and that call mints
     a new run.
@@ -153,8 +161,10 @@ accept ─▶ open(no run) ─initialize─▶ open(identity) ─tools/call─�
   `satan_boot_context`. It is let-bound per dispatch, and a nested dispatch
   rebinds it, so it is correct under nesting.
 
-The verifier gains `call-interrupted` as a known transcript record that
-needs no matching result. `calls-match-results` still requires a
+The verifier has no event registry and already ignores transcript events
+other than calls and results, so `call-interrupted` needs no new
+predicate: a `calls-match-results` docstring line documents it, and a test
+pins both halves. `calls-match-results` still requires a
 `tool-result` for each `tool-call`; the settle rule writes one on every exit
 path, so the check still catches a call that was never settled.
 
@@ -265,8 +275,9 @@ satanTools(socket)
     already shares a pending attempt), so concurrent acquires share one
     entry.
   - `inFlight++`, and the idle timer is cleared.
-  - `release(entry)`: `inFlight--`. At 0 it arms `satanIdleMs` (config,
-    default 15 min).
+  - `release(entry)`: `inFlight--`. At 0 it arms `satanIdleMs`
+    (`DEFAULT_SATAN_IDLE_MS` = 15 min in `satan-pool.ts`, overridable by
+    `MALEBOLGE_SATAN_IDLE_MS`, a positive integer of milliseconds).
   - **Expiry:** delete the entry from the map, then `close()` it. A later
     call creates a fresh entry.
   - `closeAll()` at daemon shutdown.
@@ -281,8 +292,13 @@ satanTools(socket)
   running turn. Two triggers call the existing `refresh`, shared and
   coalesced as now:
   - a pooled client's `onReconnect`;
-  - the first successful connection of a new entry (`announced` false →
-    true).
+  - the first call through a new entry (`announced` false → true). The
+    refresh runs after that call, and the call's result waits for it
+    (bounded by the 2 s refresh deadline); the call is neither held back
+    nor replayed. Without the wait, a restarted tool stays "not available"
+    for one more step, because pi resolves tools at step start (PHASE-07
+    VA-1). A failed refresh empties the satan extension: malebolge
+    IMP-013.
 
   The cost is one `tools/list` per conversation window. A discovery
   reconnect that lands during that read adds one more, because `coalesce`
@@ -309,11 +325,15 @@ satan:
   run-id `setq`/clear; pass the run id to the observer.
 - `satan/satan-memory-store.el` — the `:run-id` key; delete the variable.
 - `satan/satan-tools-memory.el`, `satan/satan-tools-hippocampus.el`,
-  `satan/satan-observer.el`, `satan/satan-intervention.el` — pass `:run-id`.
+  `satan/satan-observer.el`, `satan/satan-intervention.el`,
+  `satan/satan-intervention-mark.el`, `satan/satan-tools-atsatan.el` — pass
+  `:run-id` (sec-4).
 - `satan/satan-audit.el` — the verifier knows `call-interrupted`.
 - Tests: `satan/test/satan-mcp-test.el`, `satan-broker-test.el`,
   `satan-memory-store-test.el`, `satan-observer-test.el`,
-  `satan-audit-test.el`, and any test that binds the deleted variable.
+  `satan-audit-test.el`, `satan-intervention-mark-test.el`,
+  `satan-tools-atsatan-test.el`, `satan-tools-memory-test.el`, and any test
+  that binds the deleted variable.
 
 malebolge (separate repo, after satan):
 
@@ -372,7 +392,11 @@ satan (ert, `just check`):
   clean. On a live transport the error answers -32603. `quit` closes the
   transport, then propagates: an uncancelled live caller sees the
   connection close, and a second request in the same chunk never starts.
-  Both cases run on a live and on a closing session.
+  Both cases run on a live and on a closing session. Whether the quit
+  reaches an enclosing caller's wait cannot be observed in batch
+  (`read_process_output` catches a quit raised in a real filter and kills
+  batch Emacs); the test drives `satan-mcp--filter` directly over a live
+  socket pair.
 - **V16.** An uncaught error in a non-tool request handler (stubbed) answers
   -32603.
 
