@@ -1314,8 +1314,6 @@ precedence — the Risks section's named regression)."
 
 ;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
 
-(defvar satan-memory-store--current-run-id) ; `--spawn' sets it; tests bind it
-
 (defmacro satan-broker-test--with-spawn-collaborators (root dir &rest body)
   "Evaluate BODY with `satan-broker--spawn''s side collaborators stubbed.
 ROOT is bound to a tmp `satan-runs-dir' and DIR to a run dir under it
@@ -1323,17 +1321,16 @@ ROOT is bound to a tmp `satan-runs-dir' and DIR to a run dir under it
 alerts), the frontier commits a child's `ready' makes (probe commits,
 ingest cursor — so a stub child never writes the live state root), env
 shaping and the `most-recent' symlink; the record path (manifest,
-audit, finalize) stays real.  Binds `satan-run--spawn-running',
-`satan-memory-store--current-run-id', a tmp `satan-hippocampus-dir' and
-a tmp `satan-tools-descriptions-dir' holding only `satan_final', so the
-real manifest build never reads the live corpus.  Deletes ROOT
-afterwards, so a `.FAILED'-renamed DIR goes with it."
+audit, finalize) stays real.  Binds `satan-run--spawn-running', a tmp
+`satan-hippocampus-dir' and a tmp `satan-tools-descriptions-dir' holding
+only `satan_final', so the real manifest build never reads the live
+corpus.  Deletes ROOT afterwards, so a `.FAILED'-renamed DIR goes with
+it."
   (declare (indent 2))
   `(let* ((,root (make-temp-file "satan-spawn-" t))
           (,dir (expand-file-name "run" ,root))
           (satan-runs-dir ,root)
           (satan-run--spawn-running nil)
-          (satan-memory-store--current-run-id nil)
           (satan-hippocampus-dir (expand-file-name "hippocampus" ,root)))
      (make-directory ,dir)
      (unwind-protect
@@ -1642,7 +1639,6 @@ pre-child failure of the run in DIR.  Returns the `.FAILED' dir."
         (run-id satan-broker-test--spawn-run-id))
     (should (equal run-id (plist-get result :run-id)))
     (should-not satan-run--spawn-running)
-    (should-not satan-memory-store--current-run-id)
     (should-not (get-buffer (format " *satan-stderr-%s*" run-id)))
     (should-not (get-process (format "satan-%s stderr" run-id)))
     (should (equal "spawn_failed" (plist-get result :outcome)))

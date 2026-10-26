@@ -133,6 +133,8 @@ toggles whether :stale interventions appear in the completion list."
                    :evidence-pointer evidence-pointer
                    :notes notes
                    :marked-by "interactive-command"
+                   ;; DEC-123 — a manual mark acts for no run.
+                   :run-id nil
                    :maturity maturity
                    :next-revisit-at next-revisit-at
                    :classified-at now)))

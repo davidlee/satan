@@ -401,6 +401,23 @@ evidence assembler so the window can't reach behind the run."
         (should (equal (plist-get opts :run_started_at)
                        "2026-05-19T09:55:00+10:00"))))))
 
+(ert-deftest satan-tools-memory/mark-forwards-run-id-from-tool-ctx ()
+  "V7/DEC-123 — `memory_mark' passes the calling run's id (`:id' of the
+tool-ctx) as `:run-id' to the store, so a mark issued inside a nested
+dispatch attributes to the run that acted, not to whatever encloses it."
+  (satan-tools-memory-test--stub-evidence
+    (satan-tools-memory-test--capture captured satan-memory-store-mark
+      (let ((res (satan-tool-dispatch
+                  '(:type "tool_call" :id "c1" :name "memory_mark"
+                    :args (:payload "p"))
+                  '("memory_mark")
+                  '(:id "R-broker" :mode-name motd
+                    :capabilities (memory-write)
+                    :time-now "2026-05-19T10:00:00+10:00"))))
+        (should (eq (plist-get res :ok) t))
+        (should captured)
+        (should (equal "R-broker" (plist-get captured :run-id)))))))
+
 (ert-deftest satan-tools-memory/mark-capability-required ()
   "`memory_mark' is refused by the dispatcher when the run-ctx lacks
 the `memory-write' capability (spec `:capability').  Guards the gap

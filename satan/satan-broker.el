@@ -42,8 +42,6 @@
 ;; resolve at call-site instead; precedent: `satan-sensor-alerts.el:20'.
 (declare-function satan-tick-quiet-p "satan-tick" (&optional time window))
 
-(defvar satan-memory-store--current-run-id)
-
 (defun satan-broker--tee-stdout (path chunk)
   (let ((coding-system-for-write 'utf-8))
     (write-region chunk nil path 'append 'silent)))
@@ -258,8 +256,7 @@ Pure data assembly from run-ctx and mode spec — no I/O."
                             :reason (satan-run-failure-reason run-ctx))))))
         (satan-audit-close
          (satan-run-audit run-ctx) final-for-audit actions status)))
-    (satan-broker--mark-failed-on-disk run-ctx)
-    (setq satan-memory-store--current-run-id nil)))
+    (satan-broker--mark-failed-on-disk run-ctx)))
 
 (defun satan-broker--mark-failed-on-disk (run-ctx)
   "If RUN-CTX's status is not `done', rename its dir adding `.FAILED'.
@@ -754,7 +751,6 @@ before `ready' without sending `error' also ends `spawn_failed' (see
                             (format " *satan-stderr-%s*" run-id)))
           (unless (file-directory-p dir) (make-directory dir t))
           (satan-broker--update-most-recent run-id)
-          (setq satan-memory-store--current-run-id run-id)
           (unless (file-directory-p satan-hippocampus-dir)
             (make-directory satan-hippocampus-dir t))
           ;; DR-010 §3 — consume-only spawn.  Perceive (percept.build +
@@ -947,10 +943,7 @@ announced, and the tick trace stops calling it spawned."
               (satan-run-status run-ctx) 'failed)
         (satan-broker--finalize run-ctx))
     (satan-broker--write-failed-no-child-run
-     mode prepare dir "spawn_failed" err)
-    ;; `--finalize' clears it on the other branch; the no-child writer
-    ;; does not, and `--spawn' set it before the manifest.
-    (setq satan-memory-store--current-run-id nil)))
+     mode prepare dir "spawn_failed" err)))
 
 (provide 'satan-broker)
 ;;; satan-broker.el ends here

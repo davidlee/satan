@@ -149,5 +149,116 @@
              (should (equal "negative" (plist-get kvs :valence)))))
        (delete-directory root t)))))
 
+;; ---------- attribution: manual marks carry no run (SL-032 / DEC-123) ----------
+
+;; The M-x path marks an intervention from outside any run: it must say so
+;; explicitly (nil run-id) rather than inherit whatever run happens to
+;; enclose the command, so no trace_marked signal is ever attributed to a
+;; live broker run.  Only the DB-touching collaborators are stubbed.
+
+(defmacro satan-intervention-mark-test--stub-projection (&rest body)
+  "Run BODY with the projection readers/writers the manual path consults
+stubbed, so no DB is reached."
+  (declare (indent 0))
+  `(cl-letf (((symbol-function 'satan-intervention-recent)
+              (lambda (&rest _)
+                (list (list :intervention_id
+                            "20260523T120000-morning-aaaaaa.iv01"
+                            :kind "notify"
+                            :ts "2026-05-23T12:00:00+1000"
+                            :message "m"))))
+            ((symbol-function 'satan-intervention-lookup)
+             (lambda (iv-id &optional _db)
+               (list :intervention
+                     (list :intervention_id iv-id
+                           :kind "notify"
+                           :ts "2026-05-23T12:00:00+1000"
+                           :outcome_window_minutes 30
+                           :cue_handles '("project:emacs.d")))))
+            ((symbol-function 'satan-intervention-classify)
+             (lambda (&rest _) "intervention.outcome_classified")))
+     ,@body))
+
+(defmacro satan-intervention-mark-test--stub-interactive-input (&rest body)
+  "Run BODY with the interactive prompt surface of the M-x mark stubbed."
+  (declare (indent 0))
+  `(cl-letf (((symbol-function 'satan-intervention-mark--now-iso)
+              (lambda () "2026-05-23T13:00:00+1000"))
+            ((symbol-function 'completing-read)
+             (lambda (prompt collection &optional _p _r _i _h def)
+               (cond
+                ((string-prefix-p "Intervention" prompt)
+                 (car collection))
+                ((string-prefix-p "Confidence" prompt) "high")
+                (t (or def "")))))
+            ((symbol-function 'read-string)
+             (lambda (prompt &optional _i _h def &rest _)
+               (cond
+                ((string-prefix-p "Reason" prompt) "interrupted focus")
+                ((string-prefix-p "Evidence pointer" prompt)
+                 (or def "/notes/x.org:1"))
+                ((string-prefix-p "Notes" prompt) "deep work")
+                (t "")))))
+     ,@body))
+
+(ert-deftest satan-intervention-mark/mx-mark-passes-nil-run-id ()
+  "DEC-123 — the M-x mark hands the counter-memory writer a nil `:run-id'
+(an explicit absence), never the intervention's historical run nor an
+ambient broker run."
+  (let ((root (make-temp-file "satan-iv-mx-run-id-" t))
+        (mark-calls nil))
+    (unwind-protect
+        (cl-letf* (((symbol-function 'satan-run-locate-dir)
+                    (lambda (_rid &optional _runs-dir) root))
+                   ((symbol-function 'satan-audit-reopen)
+                    (lambda (_dir) (list :stub-audit t)))
+                   ((symbol-function 'satan-memory-store-mark)
+                    (lambda (&rest kvs)
+                      (push kvs mark-calls)
+                      (cons 'ok "trace_stub"))))
+          (satan-intervention-mark-test--stub-projection
+           (satan-intervention-mark-test--stub-interactive-input
+            (should (equal "intervention.outcome_classified"
+                           (satan-mark-intervention-harmful nil)))
+            (should (= 1 (length mark-calls)))
+            (let ((kvs (car mark-calls)))
+              (should (plist-member kvs :run-id))
+              (should (null (plist-get kvs :run-id)))))))
+      (delete-directory root t))))
+
+(ert-deftest satan-intervention-mark/manual-nil-run-id-emits-no-trace_marked ()
+  "V7/DEC-123 — the M-x shape (no run behind the mark) drives the real
+store and emitter, yet no trace_marked is enqueued: a manual mark
+attributes to nothing."
+  (let* ((satan-attribute-updates-enabled t)
+         (real-db-query (symbol-function 'satan-db-query))
+         (enqueued nil))
+    (cl-letf* (((symbol-function 'satan-db-query)
+                (lambda (db host program sql &optional variables)
+                  (if (equal db satan-memory-store-database)
+                      (cons 'ok "tid-x")
+                    (funcall real-db-query db host program sql variables))))
+               ((symbol-function 'satan-attribute-enqueue)
+                (lambda (payload &optional _db)
+                  (push payload enqueued)
+                  (cons 'ok 1))))
+      (satan-intervention-mark-test--stub-projection
+       (satan-intervention-write-manual-outcome
+        :ctx (list :id "20260523T120000-morning-aaaaaa"
+                   :mode-name "manual-mark"
+                   :time-now "2026-05-23T13:00:00+1000"
+                   :capabilities '())
+        :intervention-id "20260523T120000-morning-aaaaaa.iv01"
+        :classification "harmful"
+        :confidence "high"
+        :reason "interrupted focus"
+        :evidence-pointer nil
+        :marked-by "interactive-command"
+        :maturity "mature"
+        :next-revisit-at "2026-05-23T12:30:00+1000"
+        :classified-at "2026-05-23T13:00:00+1000"
+        :run-id nil)
+       (should (null enqueued))))))
+
 (provide 'satan-intervention-mark-test)
 ;;; satan-intervention-mark-test.el ends here

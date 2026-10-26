@@ -40,6 +40,36 @@ only an implementation can settle. If one ran, it would probe:
 - whether closing the transport on `quit` is the right user-facing response
   (a design judgement the user may revisit at section review).
 
+## Execution log
+
+### PHASE-01 (2026-10-26)
+
+- EN-1: `just check` at `eaf7d4f` in a clean worktree: 1340 tests, 2
+  unexpected — `satan-pattern/{real-eld-parses-all-seeds,editor-commit-is-matchable}`,
+  which read gitignored `satan/patterns.eld` (absent in a fresh worktree; pass in
+  the main tree). Worktree artefact, not a red baseline. They do depend on a
+  private file — a tests-independent-of-prod-data smell, outside SL-032.
+- Test DB had to be rebuilt first: `.envrc` points `DOCKER_HOST` at a podman
+  socket this host does not have; rootless docker's store had a corrupt shared
+  base layer (`exec /usr/bin/tini: no such file`); fixed by
+  `docker system prune -a` with user assent, then `supabase start` + `just db-setup`.
+- Pass A — pi `implement` (deepseek-flash), tests only: 7 tests across 5 files,
+  6 red for the right reason, 1 negative control green by construction
+  (no-run-id ⇒ no emit). $0.071, 39 requests. Wrong: reported 3
+  `satan-motive/capsule-*` failures as "pre-existing" — sandbox artefact
+  (no `SATAN_DB_HOST` in the form), not red on the host.
+- Pass B — pi `implement`, code: all callers per design sec-2; also dropped
+  the dead `run-id` local in `satan-mcp--tools-call`. $0.048, 51 requests.
+  Self-corrected: `satan-tools-memory` must read `tool-ctx :id`, not the
+  canonical `ctx` (which carries `:run_id`) — the VT caught it.
+- VA-1: `grep -rn satan-memory-store--current-run-id satan/` → no hits (exit 1);
+  positive control `grep -rn satan-memory-store--emit-trace-marked satan/` →
+  2 hits (exit 0).
+- Gate (orchestrator): `just check` exit 0 — 1347 tests, 0 unexpected, 4
+  skipped; lint clean. 19 `Warning (satan-attribute)` log lines are identical
+  at baseline (test-run noise, not lint).
+- Not caught by VT: an impl keeping the dynamic var as a fallback — VA-1 covers it.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-26 · ready, PHASE-01 next (phases materialised) · b30b00a

@@ -19,9 +19,6 @@
 (require 'satan-audit)
 (require 'satan-jsonl)
 
-;; Defined in satan-memory-store.el; re-declared for byte-compiler reference.
-(defvar satan-memory-store--current-run-id)
-
 ;; Dynamically bound during tools/call dispatch so handlers can
 ;; access the current session (e.g. boot-context needs the prepare plist).
 (defvar satan-mcp--current-session nil)
@@ -290,11 +287,8 @@ SESSION carries the tool-ctx and audit handle."
           (call (list :id id :name tool-name :args arguments))
           (mode (satan-mode-resolve "interactive"))
           (tool-ctx (satan-mcp-session-tool-ctx session))
-          (audit (satan-mcp-session-audit session))
-          (run-id (satan-mcp-session-run-id session)))
-    ;; DEC-7: bind current-run-id around dispatch for memory-write attribution
-    (let ((satan-memory-store--current-run-id run-id)
-          (satan-mcp--current-session session))
+          (audit (satan-mcp-session-audit session)))
+    (let ((satan-mcp--current-session session))
       ;; Audit the inbound tool_call (mimics membrane :dir in)
       (satan-audit-record audit 'in 'tool-call call)
       ;; DEC-8: hold the scheduler for the dispatch, not the connection.

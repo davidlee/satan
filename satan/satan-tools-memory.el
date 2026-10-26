@@ -146,6 +146,7 @@ cannot express yet."
            :kind kind
            :trace-origin "llm_mark"
            :source (format "memory_mark@%s" (or mode-name "unknown"))
+           :run-id (plist-get tool-ctx :id)
            :observed-start-at (plist-get evidence :window_start_at)
            :observed-end-at   (plist-get evidence :window_end_at)
            :payload payload

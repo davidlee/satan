@@ -117,7 +117,10 @@ an `observation' / `auto_rule' trace via
 
 NOW is the ISO timestamp (frozen `:time_now') used as the new
 `:last_intervention_at'.  OPTS may contain `:motive-path',
-`:touch-footer-fn', `:memory-mark-fn' for test injection.
+`:touch-footer-fn', `:memory-mark-fn' for test injection, and `:ctx'
+\(the broker tool-ctx `satan-observer-process' threads down), whose
+`:id' is the run the counter-trace and its `trace_marked' signal
+attribute to.
 
 Returns `(:motive_written BOOL :trace_result CONS :new_worked_count
 N)'."
@@ -165,6 +168,7 @@ N)'."
                    :kind "observation"
                    :trace-origin "auto_rule"
                    :source "observer"
+                   :run-id (plist-get (plist-get opts :ctx) :id)
                    :observed-start-at
                    (plist-get intervention :intervention_emitted_at)
                    :observed-end-at

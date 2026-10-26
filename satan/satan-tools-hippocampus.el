@@ -76,6 +76,7 @@ substrate error is logged and does not affect the caller."
                :trace-origin "auto_rule"
                :source (format "hippocampus_write@%s"
                                (or mode-str "unknown"))
+               :run-id (plist-get tool-ctx :id)
                :observed-start-at (plist-get evidence :window_start_at)
                :observed-end-at   (plist-get evidence :window_end_at)
                :payload (format "hippocampus entry: %s" title)

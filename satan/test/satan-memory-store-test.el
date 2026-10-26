@@ -12,6 +12,7 @@
 (require 'cl-lib)
 (require 'satan-memory-store)
 (require 'satan-memory-migrate)
+(require 'satan-attribute)            ; payload builder + `updates-enabled'
 
 (defconst satan-memory-store-test--db "satan_memory_test")
 
@@ -80,6 +81,66 @@
   (should (equal (satan-memory-store--format-pg-array
                   '("app:firefox" "mode:motd"))
                  "{app:firefox,mode:motd}")))
+
+;; ---------------------------------------------------------------------
+;; Attribution (SL-032 PHASE-01 / DEC-123)
+;; ---------------------------------------------------------------------
+;; The run a memory write acts for is an explicit argument.  No ambient
+;; dynamic state participates, so these tests stub the DB and the enqueue
+;; and assert on the payload that reaches the enqueue.
+
+(defun satan-memory-store-test--mark-kwargs (&rest extra)
+  "Minimal `satan-memory-store-mark' keyword pairs plus EXTRA."
+  (append (list :kind "observation"
+                :trace-origin "llm_mark"
+                :source "memory_mark@motd"
+                :observed-start-at "2026-05-19T09:50:00+10:00"
+                :observed-end-at   "2026-05-19T10:00:00+10:00"
+                :payload "user pivoted from terminal to docs"
+                :grammar-version 1
+                :handles '())
+          extra))
+
+(defmacro satan-memory-store-test--capture-traces (&rest body)
+  "Stub `satan-db-query' to a successful mark and `satan-attribute-enqueue'
+into `enqueued'; return that list.  BODY runs with those stubs."
+  (declare (indent 0))
+  `(let ((enqueued nil))
+     (cl-letf (((symbol-function 'satan-db-query)
+                (lambda (&rest _) (cons 'ok "tid-x")))
+               ((symbol-function 'satan-attribute-enqueue)
+                (lambda (payload &optional _db)
+                  (push payload enqueued)
+                  (cons 'ok 1))))
+       ,@body)
+     enqueued))
+
+(ert-deftest satan-memory-store/mark-with-run-id-emits-trace-marked ()
+  "V7/DEC-123 — `-mark :run-id STR' enqueues exactly one hippocampus
+`trace_marked' signal carrying that run id, with the stored trace id in
+`:filename'."
+  (let* ((satan-attribute-updates-enabled t)
+         (stored (satan-memory-store-test--capture-traces
+                  (should (equal '(ok . "tid-x")
+                                 (apply #'satan-memory-store-mark
+                                        (satan-memory-store-test--mark-kwargs
+                                         :run-id "R-broker")))))))
+    (should (= 1 (length stored)))
+    (let ((payload (car stored)))
+      (should (equal "hippocampus" (plist-get payload :source)))
+      (should (equal "R-broker" (plist-get payload :run_id)))
+      (should (equal "trace_marked" (plist-get payload :reason)))
+      (should (equal "tid-x" (plist-get payload :filename))))))
+
+(ert-deftest satan-memory-store/mark-without-run-id-emits-no-trace-marked ()
+  "V7/DEC-123 — a mark with no `:run-id' emits nothing: absence of a run
+is absence of attribution, not a fallback to ambient state."
+  (let* ((satan-attribute-updates-enabled t)
+         (stored (satan-memory-store-test--capture-traces
+                  (should (equal '(ok . "tid-x")
+                                 (apply #'satan-memory-store-mark
+                                        (satan-memory-store-test--mark-kwargs)))))))
+    (should (null stored))))
 
 ;; ---------------------------------------------------------------------
 ;; Mark + show round trip

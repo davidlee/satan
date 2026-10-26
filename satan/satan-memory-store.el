@@ -24,11 +24,6 @@
 (declare-function satan-attribute-build-hippocampus-payload "satan-attribute")
 (declare-function satan-attribute-enqueue "satan-attribute")
 
-(defvar satan-memory-store--current-run-id nil
-  "Run-id for the currently active SATAN run, if any.
-Set by the broker during tick processing.  Used by the trace_marked
-attribute signal emitter.  Nil outside of a run.")
-
 ;; ---------------------------------------------------------------------
 ;; Configuration
 ;; ---------------------------------------------------------------------
@@ -89,7 +84,7 @@ suffix for testability; defaults to a 6-char base36 random string."
 ;; ---------------------------------------------------------------------
 
 (cl-defun satan-memory-store-mark
-    (&key trace-id kind trace-origin source
+    (&key trace-id kind trace-origin source run-id
           observed-start-at observed-end-at
           payload valence outcome
           (schema-version 1)
@@ -105,9 +100,11 @@ OBSERVED-END-AT (ISO8601 strings), PAYLOAD (display prose),
 GRAMMAR-VERSION, HANDLES (list of plists
   (:handle STR :source PLIST [:grammar_version N])).
 
-Optional: TRACE-ID (else minted from OBSERVED-END-AT), VALENCE,
-OUTCOME, METADATA-JSON (any JSON-serializable value), RETENTION-JSON,
-LINKS (list of (:relation STR :target_trace_id STR)).
+Optional: TRACE-ID (else minted from OBSERVED-END-AT), RUN-ID (the
+run this write acts for; nil means no attribution and no
+`trace_marked' signal), VALENCE, OUTCOME, METADATA-JSON (any
+JSON-serializable value), RETENTION-JSON, LINKS (list of
+\(:relation STR :target_trace_id STR)).
 
 If OUTCOME is non-nil the caller must include a matching
 `outcome:<value>' handle (§9.12 invariant; enforced server-side)."
@@ -128,22 +125,22 @@ If OUTCOME is non-nil the caller must include a matching
     (pcase result
       (`(ok . ,out)
        (let ((result-tid (if (string-empty-p out) tid out)))
-         (satan-memory-store--emit-trace-marked result-tid)
+         (satan-memory-store--emit-trace-marked result-tid run-id)
          (cons 'ok result-tid)))
       (err err))))
 
-(defun satan-memory-store--emit-trace-marked (trace-id)
+(defun satan-memory-store--emit-trace-marked (trace-id run-id)
   "Emit a hippocampus trace_marked attribute signal for TRACE-ID.
-Soft-fail: errors are logged but do not affect the mark result.
-Only emits when `satan-memory-store--current-run-id' is set
-\(i.e., during an active SATAN run)."
+RUN-ID is the run the mark acts for; a nil RUN-ID means no
+attribution, so nothing is emitted.  Soft-fail: errors are logged
+but do not affect the mark result."
   (condition-case err
-      (when (and satan-memory-store--current-run-id
+      (when (and run-id
                  (bound-and-true-p satan-attribute-updates-enabled))
         (require 'satan-attribute)
         (let* ((ts (format-time-string "%Y-%m-%dT%T%:z"))
                (payload (satan-attribute-build-hippocampus-payload
-                         :run-id satan-memory-store--current-run-id
+                         :run-id run-id
                          :ts ts
                          :reason "trace_marked"
                          :tool-name "memory_mark"

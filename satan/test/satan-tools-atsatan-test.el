@@ -368,6 +368,52 @@ parses + rewrites; rescan filters it (now claimed-re matches)."
         (should (eq 'error (car done)))
         (should (string-match-p "capability" (cdr done)))))))
 
+(ert-deftest notes-at-satan-intervention/consuming-tick-run-id-wins ()
+  "V7/DEC-123 — a consumed outcome directive's counter-memory attributes
+to the CONSUMING tick's run (`:id' of the tool ctx), never to the
+intervention's historical authoring run.  Only the DB-touching
+collaborators are stubbed; the real directive writer and counter-memory
+path run, and the mark is recorded by the store stub."
+  (satan-tools-atsatan-test--with-root root
+    (let* ((file (expand-file-name "iv-consume.org" root))
+           (iv-run "R-iv")
+           (consume-ctx (list :id "R-consume"
+                              :capabilities '(write-notes)
+                              :time-now "2026-05-23T13:00:00+1000"))
+           (mark-calls nil))
+      (let ((coding-system-for-write 'utf-8))
+        (write-region
+         (format
+          "* heading\n@satan-intervention-harmful: iv_id=%s.iv01 reason=\"interrupted\" conf=medium\n"
+          iv-run)
+         nil file))
+      (cl-letf*
+          (((symbol-function 'satan-intervention-lookup)
+            (lambda (iv-id &optional _db)
+              (list :intervention
+                    (list :intervention_id iv-id
+                          :ts "2026-05-23T12:00:00+1000"
+                          :outcome_window_minutes 30
+                          :cue_handles '("project:emacs.d")))))
+           ((symbol-function 'satan-intervention-classify)
+            (lambda (&rest _) "intervention.outcome_classified"))
+           ((symbol-function 'satan-run-locate-dir)
+            (lambda (_run-id &optional _runs-dir) root))
+           ((symbol-function 'satan-audit-reopen)
+            (lambda (_dir) (list :stub-audit t)))
+           ((symbol-function 'satan-memory-store-mark)
+            (lambda (&rest kvs)
+              (push kvs mark-calls)
+              (cons 'ok "trace_stub"))))
+        (let* ((scan (satan-tool/notes-at-satan-scan nil consume-ctx))
+               (id (plist-get (car (plist-get (cdr scan) :matches)) :id))
+               (done (satan-tool/notes-at-satan-intervention-done
+                      (list :match-id id) consume-ctx)))
+          (should (eq 'ok (car done)))
+          (should (= 1 (length mark-calls)))
+          (should (equal "R-consume" (plist-get (car mark-calls) :run-id)))
+          (should-not (equal iv-run (plist-get (car mark-calls) :run-id))))))))
+
 ;; ---------- live-broker smoke (follow-up #3) ----------
 ;;
 ;; Exercises `notes_at_satan_intervention_done' against:

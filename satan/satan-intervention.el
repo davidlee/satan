@@ -744,16 +744,20 @@ memory back to the manual mark."
                                                                     marked-by
                                                                     classified-at
                                                                     cue-handles
-                                                                    mark-fn)
+                                                                    mark-fn
+                                                                    run-id)
   "Write the §3.4 counter-memory trace for a manual mark.
 Returns the result of MARK-FN (cons of `ok|error . VALUE') so callers
 can surface failures.  Trace handles are CUE-HANDLES verbatim — per
 the PR 4 decision the counter-memory inherits the intervention's cue
-handles so resonance can later surface it on the same cue."
+handles so resonance can later surface it on the same cue.  RUN-ID is
+forwarded verbatim as `:run-id' — always present, nil for the M-x mark
+shape which attributes to no run."
   (funcall mark-fn
            :kind "observation"
            :trace-origin "auto_rule"
            :source "intervention.manual_mark"
+           :run-id run-id
            :observed-start-at classified-at
            :observed-end-at   classified-at
            :payload (satan-intervention--counter-memory-payload
@@ -772,7 +776,7 @@ handles so resonance can later surface it on the same cue."
     (&key ctx intervention-id classification confidence
           reason evidence-pointer notes marked-by
           classified-at maturity next-revisit-at
-          memory-mark-fn
+          memory-mark-fn run-id
           (db satan-memory-migrate-database))
   "Write a manual outcome verdict for INTERVENTION-ID.
 
@@ -799,7 +803,10 @@ Counter-memory trace (§3.4 of attributes.brief) is written via
 trace inherits the intervention's `:cue_handles' so resonance can
 later surface the counter-memory when the same cue re-fires.
 MEMORY-MARK-FN is the function used to write the trace; defaults to
-`satan-memory-store-mark'.  Override for tests."
+`satan-memory-store-mark'.  Override for tests.  RUN-ID is the run the
+counter-memory attributes to — the consuming tick's run for a
+`@satan' directive, nil for the `M-x' mark (no run acts); never the
+intervention's historical run."
   (unless (member classification satan-intervention--manual-classifications)
     (user-error "manual writer: classification must be one of %S, got %S"
                 satan-intervention--manual-classifications classification))
@@ -829,7 +836,7 @@ MEMORY-MARK-FN is the function used to write the trace; defaults to
     (satan-intervention--write-counter-memory
      intervention-id classification confidence
      reason evidence-pointer marked-by classified-at
-     cue-handles mark-fn)
+     cue-handles mark-fn run-id)
     event))
 
 ;; --- query helpers ---

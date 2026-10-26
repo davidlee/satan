@@ -498,9 +498,12 @@ into the QUOTE header) and the body lands on its own line."
             cls
             (if (and trim (not (string-empty-p trim))) trim ""))))
 
-(defun satan-tools-atsatan--intervention-do-write (parsed now)
+(defun satan-tools-atsatan--intervention-do-write (parsed now run-id)
   "Half-2 of the directive handler: write the manual outcome.
 PARSED is the directive plist; NOW is the audit-boundary ISO timestamp.
+RUN-ID is the CONSUMING tick's run — the counter-memory attributes to
+the tick that processed the directive, never the intervention's
+authoring run.
 Returns (ok . PLIST) carrying `:audit-event' and the parsed shape,
 or (error . STR) on lookup / run-dir failure."
   (let* ((iv-id (plist-get parsed :iv-id))
@@ -532,6 +535,7 @@ or (error . STR) on lookup / run-dir failure."
                      :reason reason
                      :evidence-pointer evidence
                      :marked-by "notes-directive"
+                     :run-id run-id
                      :maturity maturity
                      :next-revisit-at revisit
                      :classified-at now)))
@@ -581,7 +585,8 @@ authoring run for projection rebuild."
           (pcase (satan-tools-atsatan--parse-intervention-directive content)
             (`(error . ,msg) (cons 'error msg))
             (`(ok . ,parsed)
-             (pcase (satan-tools-atsatan--intervention-do-write parsed now)
+             (pcase (satan-tools-atsatan--intervention-do-write
+                     parsed now consuming-run-id)
                (`(error . ,msg) (cons 'error msg))
                (`(ok . ,write-plist)
                 (let* ((cls (plist-get write-plist :classification))

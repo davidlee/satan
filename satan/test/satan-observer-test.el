@@ -1006,6 +1006,27 @@ no answer trace, whether the observer runs before or after the answer."
               (should (<= (string-bytes (encode-coding-string note 'utf-8 t))
                           satan-goad-truncate-bytes))))))))))
 
+(ert-deftest satan-observer/persist-positive-forwards-ctx-run-id ()
+  "V7/DEC-123 — a positive verdict's counter-trace carries the observer's
+broker run id: `:id' of the OPTS `:ctx' that `satan-observer-process'
+threads down, so the trace_marked signal lands on the run that acted."
+  (satan-observer-test--capture-mark captured
+    (let ((iv (list :intervention_id "20260523T120000-morning-aaaaaa.iv01"
+                    :kind "notify"
+                    :ts "2026-05-23T12:00:00+1000"
+                    :intervention_emitted_at "2026-05-23T12:00:00+1000"
+                    :outcome_window_minutes 30
+                    :cue '("project:emacs.d")))
+          (motive (satan-observer-test--full-motive))
+          (verdict (satan-observer-test--positive-verdict)))
+      (satan-observer--persist-positive
+       iv motive verdict "2026-05-23T12:30:00+1000"
+       (list :ctx (list :id "R-obs")
+             :touch-footer-fn (lambda (&rest _) t)
+             :memory-mark-fn mark-fn))
+      (should (= 1 (length captured)))
+      (should (equal "R-obs" (plist-get (car captured) :run-id))))))
+
 (ert-deftest satan-observer/ask-evidence-label-persisted ()
   "VT-18 — an ask's evidence label reaches the persisted outcome row: a
 dismissed ask persists classification=ignored with evidence.reason =
