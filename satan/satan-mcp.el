@@ -103,7 +103,6 @@ Excludes internal test stubs (names prefixed `test.')."
   prepare       ; the run_ctx prepare plist (for boot context)
   bufs          ; hash table of per-conn line buffers (keyed by proc)
   boot-cache    ; cached boot-context text, or nil (DEC-13)
-  ;; DEC-8 mutual exclusion: mark the broker busy while this session lives.
   )
 
 ;; ── Internal: R7 fail-fast precondition ────────────────────────────────────
@@ -152,10 +151,7 @@ Enforces 0700 permissions."
 ;; ── Internal: run lifecycle (DEC-5: one run per connection) ─────────────────
 
 (defun satan-mcp--mint-session (proc)
-  "Create run directory, open audit with synthetic bundle, return session.
-Signals if a scheduled run is live (DEC-8 mutual exclusion)."
-  (when satan-run--spawn-running
-    (error "SATAN MCP: scheduled run in progress — refuse session (DEC-8)"))
+  "Create run directory, open audit with synthetic bundle, return session."
   (let* ((mode (satan-mode-resolve "interactive"))
           ;; F5: one constructor for run_ctx.  The canonical 10-key shape,
           ;; not a hand-rolled 4-key clone — the six v0 placeholders reach
@@ -291,12 +287,7 @@ SESSION carries the tool-ctx and audit handle."
     (let ((satan-mcp--current-session session))
       ;; Audit the inbound tool_call (mimics membrane :dir in)
       (satan-audit-record audit 'in 'tool-call call)
-      ;; DEC-8: hold the scheduler for the dispatch, not the connection.
-      (let ((res (progn
-                   (cl-incf satan-run--interactive-calls)
-                   (unwind-protect
-                       (satan-tool-dispatch call (plist-get mode :tools) tool-ctx)
-                     (cl-decf satan-run--interactive-calls)))))
+      (let ((res (satan-tool-dispatch call (plist-get mode :tools) tool-ctx)))
         ;; Audit the outbound tool-result
         (satan-audit-record audit 'out 'tool-result res)
         (if (eq (plist-get res :ok) t)
@@ -414,16 +405,14 @@ does not error the session)."
 (defun satan-mcp-start ()
   "Start the SATAN MCP server on a unix-domain socket.
 Returns the socket path.  No-op when already running.  Refuses to start
-if disabled, if a scheduled run is live (DEC-8), if a tool lacks a
-description (R7 fail-fast), or if socket hardening checks fail (DEC-10)."
+if disabled, if a tool lacks a description (R7 fail-fast), or if socket
+hardening checks fail (DEC-10)."
   (interactive)
   (unless satan-mcp-enabled
     (user-error "SATAN MCP: disabled (set `satan-mcp-enabled' non-nil)"))
   (if (and satan-mcp--server-process
         (process-live-p satan-mcp--server-process))
     (process-contact satan-mcp--server-process :service)
-    (when satan-run--spawn-running
-      (user-error "SATAN MCP: scheduled run in progress — refuse to start (DEC-8)"))
     ;; Always re-register interactive mode — picks up newly-registered tools
     ;; (satan-mode-register replaces existing entries by name).
     (satan-mcp-register-interactive-mode)

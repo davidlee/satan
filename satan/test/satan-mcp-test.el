@@ -493,71 +493,50 @@ session's run_ctx exactly as they do onto a scheduled run's."
                     (format-time-string satan-run--iso-time-format
                                         (plist-get prepare :start_time)))))))
 
-(ert-deftest satan-mcp/dec8-session-refuses-when-spawn-running ()
-  "DEC-8: connection is rejected when satan-run--spawn-running is t.
-The accept-filter catches the error from mint-session and deletes the
-client process."
+(ert-deftest satan-mcp/dec124-connection-succeeds-while-spawn-running ()
+  "V8 (DEC-124, retires DEC-8): an MCP connection mints its session and a
+`tools/call' round-trips while `satan-run--spawn-running' is t.
+DEC-8 refused the connection here; what a scheduled run and an MCP call
+contend for is attribution, not exclusion (DEC-123)."
   (satan-mcp-test--with-tmp-env
    (satan-mcp-test--write-desc "stub.a" "desc")
    (satan-mcp-test--register-stub "stub.a")
-   ;; Start server without the spawn flag first, then set flag
    (let ((sock (satan-mcp-test--start)))
-     (setq satan-run--spawn-running t)
-     (let ((proc (satan-mcp-test--connect sock)))
-       ;; Let the accept-filter callback fire in batch mode
-       (accept-process-output nil 0.5)
-       ;; accept-filter catches the error and deletes the client proc
-       (should-not (process-live-p proc)))
-     (setq satan-run--spawn-running nil)
-     (satan-mcp-test--stop))))
+     (let ((satan-run--spawn-running t))
+       (unwind-protect
+           (let ((proc (satan-mcp-test--connect sock)))
+             ;; Let the accept-filter callback fire in batch mode.
+             (accept-process-output nil 0.5)
+             ;; DEC-8's mint refusal deleted the client proc here.
+             (should (process-live-p proc))
+             ;; Guard: a refused connection would hang the response wait.
+             (when (process-live-p proc)
+               (should (satan-mcp-test--request
+                        proc "initialize"
+                        (list :protocolVersion "2025-06-18"
+                              :capabilities (make-hash-table)
+                              :clientInfo (list :name "test" :version "0"))))
+               (let* ((res (satan-mcp-test--request
+                            proc "tools/call"
+                            (list :name "stub.a" :arguments nil)))
+                      (text (plist-get
+                             (car (plist-get (plist-get res :result) :content))
+                             :text)))
+                 (should-not (plist-get res :error))
+                 (should (string-match-p "stub:stub.a" text)))
+               (delete-process proc)))
+         (satan-mcp-test--stop))))))
 
-(ert-deftest satan-mcp/dec8-startup-refuses-when-spawn-running ()
-  "DEC-8: startup refuses when satan-run--spawn-running is t."
+(ert-deftest satan-mcp/dec124-startup-succeeds-while-spawn-running ()
+  "V8 (DEC-124, retires DEC-8): startup proceeds while
+`satan-run--spawn-running' is t — the server no longer refuses."
   (satan-mcp-test--with-tmp-env
    (satan-mcp-test--write-desc "stub.a" "desc")
    (satan-mcp-test--register-stub "stub.a")
-   (setq satan-mcp-enabled t)
-   (setq satan-run--spawn-running t)
-   (should-error (satan-mcp-start) :type 'user-error)
-   (setq satan-run--spawn-running nil)
-   (setq satan-mcp-enabled nil)))
-
-(ert-deftest satan-mcp/dec8-holds-scheduler-only-during-a-call ()
-  "DEC-8 (ISS-058): a tool call in flight holds the scheduler; an idle
-connection does not.  The malebolge daemon keeps one connection open for
-its lifetime, so keying on the connection blocked every scheduled run."
-  (satan-mcp-test--with-tmp-env
-   (satan-mcp-test--write-desc "stub.probe" "desc")
-   (let ((during nil))
-     (satan-tool-register
-      (list :name "stub.probe" :risk 'read :args-schema nil
-            :handler (lambda (_args _ctx)
-                       (setq during satan-run--interactive-calls)
-                       (cons 'ok "probed"))))
-     (let* ((sock (satan-mcp-test--start))
-            (proc (satan-mcp-test--connect sock)))
-       (satan-mcp-test--request proc "initialize"
-                                (list :protocolVersion "2025-06-18"
-                                      :capabilities (make-hash-table)
-                                      :clientInfo (list :name "test" :version "0")))
-       (should (= satan-run--interactive-calls 0))
-       (satan-mcp-test--request proc "tools/call"
-                                (list :name "stub.probe" :arguments nil))
-       (should (= during 1))
-       (should (= satan-run--interactive-calls 0))
-       (delete-process proc)
-       (satan-mcp-test--stop)))))
-
-(ert-deftest satan-mcp/dec8-call-releases-scheduler-on-error ()
-  "DEC-8 (ISS-058): a dispatch that signals still releases the scheduler."
-  (satan-mcp-test--with-tmp-env
-   (satan-mcp-register-interactive-mode)
-   (let ((session (satan-mcp--mint-session nil)))
-     (cl-letf (((symbol-function 'satan-tool-dispatch)
-                (lambda (&rest _) (error "dispatch boom"))))
-       (should-error (satan-mcp--tools-call
-                      (list :name "stub.a" :arguments nil) 1 session nil)))
-     (should (= satan-run--interactive-calls 0)))))
+   (let ((satan-run--spawn-running t))
+     (should (stringp (satan-mcp-test--start)))
+     (should (process-live-p satan-mcp--server-process)))
+   (satan-mcp-test--stop)))
 
 (ert-deftest satan-mcp/boot-context-caches-per-session ()
   "AUD-008 F-002/F-003: boot-context serves the per-session cache on a second

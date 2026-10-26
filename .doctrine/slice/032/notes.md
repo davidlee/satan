@@ -70,6 +70,28 @@ only an implementation can settle. If one ran, it would probe:
   at baseline (test-run noise, not lint).
 - Not caught by VT: an impl keeping the dynamic var as a fallback — VA-1 covers it.
 
+### PHASE-02 (2026-10-26)
+
+- Pass A — pi `implement`, tests: VT-2 inverted the two MCP refusal tests
+  (`dec124-{connection,startup}-succeeds-while-spawn-running`); VT-1
+  `tick-spawns-while-mcp-call-mid-dispatch` drives a real
+  `satan-mcp--tools-call` whose tool runs `satan-broker-run` (a bare
+  `--spawn` inside the call would pass vacuously — `--spawn` has no gate).
+  Deleted the ISS-058 counter tests and the session-stamps-session_blocked
+  tick-row test. $0.062, 43 requests. Registries are alists rebuilt by
+  `setq`, so its `let`-scoped stub registration does not leak (checked).
+- Pass B — pi `implement`, code: sites per design sec-5; DEC-8 comments that
+  justified `spawn-running` rewritten to DEC-023 (including the run_busy
+  rationale that cited the global PHASE-01 deleted); `session_blocked` kept
+  as a historical streak reason. $0.045, 52 requests. Wrote its own notes
+  entry (doctrine state is the orchestrator's) — replaced by this one.
+- VA-1: `satan-run--interactive-calls` → no hits (exit 1); `session_blocked` →
+  only `satan-broker.el:317,319` (streak reason + comment), its streak test
+  (`satan-broker-test.el:279,290`), the VT-1 prose (`:701,750`) and the
+  `satan-run-test.el:396,401` historical fixture; positive control
+  `defvar satan-run--spawn-running` → 1 hit.
+- Gate: `just check` exit 0 — 1344 tests, 0 unexpected, 4 skipped; lint clean.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-26 · ready, PHASE-01 next (phases materialised) · b30b00a

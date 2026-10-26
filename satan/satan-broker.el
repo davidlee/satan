@@ -315,7 +315,9 @@ switch and happens for every failure regardless of this one."
 
 (defconst satan-broker--streak-transparent-reasons
   '("session_blocked" "run_busy")
-  "Reasons of runs that neither extend nor break a failure streak.")
+  "Reasons of runs that neither extend nor break a failure streak.
+`session_blocked' is historical: DEC-8 produced it, and old run dirs
+still carry it (DEC-124).")
 
 (defun satan-broker--failure-streak (mode-slug newest)
   "MODE-SLUG's same-cause failure streak ending at outcome NEWEST.
@@ -403,9 +405,8 @@ is not worth failing finalize over."
     (when (string-match-p "\\(finished\\|exited\\|signal\\|broken\\|killed\\|deleted\\)" event)
       (let ((tt (satan-run-timeout-timer run-ctx)))
         (when tt (cancel-timer tt)))
-      ;; DEC-8: clear the mutual-exclusion flag on async completion so
-      ;; a crashed/killed process does not permanently block MCP sessions
-      ;; or, via `run_busy' (DEC-023), every scheduled run.  An unwind
+      ;; DEC-023: clear the flag on async completion so a crashed/killed
+      ;; process does not permanently block every scheduled run.  An unwind
       ;; form, so a signal from either step still clears it (ISS-020);
       ;; the signal itself propagates.
       (unwind-protect
@@ -574,8 +575,8 @@ When RENAME-ANNOUNCE is non-nil: `.FAILED'-renames the run dir, repoints
 `most-recent', and dispatches `satan-broker--announce-failure' with
 ANNOUNCE-REASON (defaulting to REASON).  Otherwise the dir is left in
 place and the run stays silent (no rename, no notification — so a
-session-blocked tick does not pollute the failure-streak counter or pop a
-desktop alert; DEC-8 deferral)."
+silent refusal does not pollute the failure-streak counter or pop a
+desktop alert)."
   (unless (file-directory-p dir) (make-directory dir t))
   (let* ((run-id (plist-get prepare :run_id))
          (manifest (satan-broker--manifest-or-stub mode run-id))
@@ -661,18 +662,17 @@ Single allocation site for `run_id' + `time_now': calls
 returned run_ctx plist is threaded into context assembly, tool
 dispatch, and audit.
 
-Refuses to spawn while an interactive MCP tool call is mid-dispatch
-(DEC-8 mutual exclusion), or when today's spend has met or exceeded
-`satan-budget-daily-tokens'.  In both cases writes a minimal
-audit bundle with the appropriate status and returns the run-id
-without launching the child."
+Refuses to spawn while another run's child is live (DEC-023), or when
+today's spend has met or exceeded `satan-budget-daily-tokens'.  In both
+cases writes a minimal audit bundle with the appropriate status and
+returns the run-id without launching the child."
   (let* ((mode (satan-mode-resolve name))
          (prepare (satan-run-new-ctx mode))
          (run-id (plist-get prepare :run_id))
          (dir (satan-run-dir-for-id run-id)))
     ;; ISSUE-001 (DR-010 §3): perceive runs UNCONDITIONALLY before both
-    ;; gates so a session-blocked / budget-denied tick still senses the
-    ;; world and persists `percept.json'.  The run dir must exist before
+    ;; gates so a refused tick still senses the world and persists
+    ;; `percept.json'.  The run dir must exist before
     ;; perceive (it writes `percept.json' there).  Perceive's only write
     ;; is `percept.json'; any error routes through the no-child path with
     ;; status `failed' + reason "perceive_failed" (a terminal status the
@@ -692,17 +692,8 @@ without launching the child."
            mode prepare dir "perceive_failed" perceive-error)
           (satan-trace-outcome "perceive_failed")
           run-id)
-         ;; DEC-8: refuse to spawn while an interactive tool call is
-         ;; mid-dispatch (ISS-058: calls, not connections).
-         ;; ISSUE-001: now perceives first.  No rename, no announce — the
-         ;; deferral must not pollute the failure-streak counter or alert.
-         ((cl-plusp satan-run--interactive-calls)
-          (message "SATAN broker: interactive tool call in flight — refusing scheduled run (DEC-8)")
-          (satan-broker--write-silent-run
-           mode prepare dir "session_blocked"
-           "Scheduled run blocked by an interactive tool call in flight (DEC-8)"))
-         ;; DEC-023: refuse while another run's child is live — the memory
-         ;; store's current-run state is process-global and would race.
+         ;; DEC-023: refuse while another run's child is live — one live
+         ;; child at a time.
          (satan-run--spawn-running
           (message "SATAN broker: a run's child is live — refusing scheduled run (DEC-023)")
           (satan-broker--write-silent-run
@@ -731,10 +722,10 @@ An error after `make-process' is re-signalled; the child's sentinel
 owns that run's finalisation and its stderr buffer.  A child that dies
 before `ready' without sending `error' also ends `spawn_failed' (see
 `satan-broker--wrap-sentinel'); its frontiers commit only on `ready'."
-  ;; DEC-8: set the mutual-exclusion flag so the MCP server refuses new
-  ;; sessions while this scheduled run is live.  Cleared by the child
-  ;; sentinel on exit (`satan-broker--make-sentinel') and by this
-  ;; function's error handler if the synchronous launch itself throws.
+  ;; DEC-023: set the flag so the next scheduled run is refused while this
+  ;; one's child is live.  Cleared by the child sentinel on exit
+  ;; (`satan-broker--make-sentinel') and by this function's error handler
+  ;; if the synchronous launch itself throws.
   (setq satan-run--spawn-running t)
   ;; SL-017: bound OUTSIDE the `condition-case' so its handler can tell
   ;; how far the spawn got.  The body assigns them with `setq' and must
@@ -756,7 +747,7 @@ before `ready' without sending `error' also ends `spawn_failed' (see
           ;; DR-010 §3 — consume-only spawn.  Perceive (percept.build +
           ;; percept.persist, threading `:percept'/`:evidence'/`:sensor_status'
           ;; onto PREPARE) ran UNCONDITIONALLY upstream in `satan-broker-run'
-          ;; before the session/budget gates.  This path runs only on consume,
+          ;; before the `run_busy'/budget gates.  This path runs only on consume,
           ;; so it derives the model-facing enrichment (resonance + motive) via
           ;; `satan-run-enrich' over the already-built percept rather than
           ;; rebuilding it (single percept-builder invariant).
@@ -909,7 +900,7 @@ before `ready' without sending `error' also ends `spawn_failed' (see
                                (setf (satan-run-status run-ctx) 'timed-out)
                                (delete-process proc)))))))
                 run-id))))
-      ;; The one pre-child handler (SL-017 I7).  DEC-8 (AUD-008 F-001): the
+      ;; The one pre-child handler (SL-017 I7).  DEC-023 (AUD-008 F-001): the
       ;; flag must persist for the *live* run, not just the synchronous
       ;; launch window.  make-process is async, so the only correct clear
       ;; points are the child sentinel (normal/abnormal/killed exit — see

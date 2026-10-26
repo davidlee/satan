@@ -1,7 +1,7 @@
 ;;; satan-run.el --- Shared SATAN run infrastructure (id, dirs, struct, tool-ctx) -*- lexical-binding: t; -*-
 
-;; Sole owner of run identity, run-directory layout, and DEC-8 run-lifecycle
-;; state (SL-013 DEC-001, ADR-018 D4.1).
+;; Sole owner of run identity, run-directory layout, and the one-live-child
+;; flag (DEC-023; SL-013 DEC-001, ADR-018 D4.1).
 ;;
 ;; Deliberately a leaf: its requires are exactly cl-lib, subr-x and
 ;; satan-custom, and must stay that way.  That is what lets satan-mcp mint
@@ -305,22 +305,12 @@ other outcome ends the walk.  SKIPS-P is tested before COUNTS-P."
            (t (cl-return-from satan-run-outcome-streak))))))
     streak))
 
-;; ── Lifecycle state (DEC-8) ─────────────────────────────────────────────────
-;; DEC-8 is a mutual-exclusion protocol between a scheduled broker run and
-;; interactive MCP work: each side refuses to start while the other's state
-;; is held.  Both live here so neither module has to reach into the other to
-;; read or write its counterpart (D6).
+;; ── Lifecycle state (DEC-023) ───────────────────────────────────────────────
 
 (defvar satan-run--spawn-running nil
   "Truthy while a scheduled broker run is live.
-MCP reads this to refuse a new interactive session while a scheduled
-run is in progress.")
-
-(defvar satan-run--interactive-calls 0
-  "Number of interactive MCP tool calls mid-dispatch.
-The broker's scheduler refuses to spawn a scheduled run while it is
-positive.  It counts calls, not connections: a client such as the
-malebolge daemon holds one connection open for its lifetime (ISS-058).")
+The broker refuses to spawn a second run while it is set: one live child
+at a time (DEC-023).")
 
 ;; ── Tool context plist ──────────────────────────────────────────────────────
 

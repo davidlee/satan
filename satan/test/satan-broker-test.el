@@ -12,6 +12,7 @@
 (require 'satan-audit)
 (require 'satan-announce)
 (require 'satan-broker)
+(require 'satan-mcp)                    ; VT-1: real MCP dispatch entry (SL-032)
 (require 'satan-budget)               ; budget gating cross-cutter
 (require 'cl-macs)                       ; cl-letf used in tool-ctx tests
 (require 'satan-mode)                 ; manifest-tools-shape resolves "morning"
@@ -691,66 +692,84 @@ existing transcript) but asserts the perceive artifacts, not the gate."
                               "budget-exceeded"))))
          (delete-directory root t))))))
 
-(ert-deftest satan-broker/session-blocked-still-perceives ()
-  "ISSUE-001 regression: a session-blocked tick perceives FIRST and stays silent.
-With an interactive session active and budget UNDER ceiling,
-`satan-broker-run' still writes `percept.json' + a `:percept'-bearing
-`bundle.json'; status is `failed' with reason \"session_blocked\".  The
-run dir is NOT `.FAILED'-renamed and `satan-broker--announce-failure'
-is NOT called (DEC-8: the deferral must not pollute the failure streak or
-pop a desktop alert).  The bundle is verify-clean."
+(ert-deftest satan-broker/tick-spawns-while-mcp-call-mid-dispatch ()
+  "VT-1 (V8; DEC-124 retires DEC-8): a scheduled tick spawns while an MCP
+`tools/call' is mid-dispatch.
+
+The MCP entry is real (`satan-mcp--tools-call') and its tool handler
+drives `satan-broker-run', so the tick runs with the call still on the
+stack.  DEC-8 refused exactly this with a silent `session_blocked'
+no-child run; the tick must now reach `satan-broker--spawn'."
   (satan-broker-test--with-tool-descriptions
    satan-broker-test--morning-tool-descriptions
    (lambda ()
-     (let* ((root (make-temp-file "satan-session-perceive-" t))
+     (let* ((root (make-temp-file "satan-vt1-" t))
             (satan-runs-dir root)
-            (satan-budget-daily-tokens 2500000) ; under ceiling: no spend
-            (satan-run--interactive-calls 1)     ; interactive call in flight
-            (satan-trace-enabled nil)  ; SL-011: keep the real trace dir clean
-            (announced nil))
+            (satan-budget-daily-tokens 2500000)
+            (satan-trace-enabled nil)
+            ;; Scoped registry: the stub tool and the interactive mode
+            ;; registration must not leak into other tests.
+            (satan-tools satan-tools)
+            (satan-modes satan-modes)
+            (tick-run-id nil)
+            (spawned nil)
+            (sent nil))
        (unwind-protect
-           (cl-letf (((symbol-function 'satan-run-perceive)
-                      #'satan-broker-test--minimal-perceive)
-                     ((symbol-function 'satan-broker--announce-failure)
-                      (lambda (&rest _) (setq announced t))))
-             (let* ((run-id (satan-broker-run "morning"))
-                    (dir (satan-run-locate-dir run-id root))
-                    (status-path (expand-file-name "status" dir))
-                    (percept-path (expand-file-name "percept.json" dir))
-                    (bundle (satan-broker-test--read-bundle dir)))
-               ;; Perceived before the session gate fired.
-               (should (file-readable-p percept-path))
-               (should bundle)
-               (should (plist-get bundle :percept))
-               ;; Terminal status + reason.
-               (should (equal (string-trim
-                               (with-temp-buffer
-                                 (insert-file-contents status-path)
-                                 (buffer-string)))
-                              "failed"))
-               (let* ((final-path (expand-file-name "final.json" dir))
-                      (final (with-temp-buffer
-                               (insert-file-contents final-path)
-                               (goto-char (point-min))
-                               (json-parse-buffer :object-type 'plist
-                                                  :array-type 'list
-                                                  :null-object :null
-                                                  :false-object :false))))
-                 (should (equal (plist-get final :reason) "session_blocked")))
-               ;; DEC-8: no rename, no announce — silent deferral.
-               (should-not (string-suffix-p ".FAILED" dir))
-               (should-not announced)
-               ;; Bundle remains verify-clean.
-               (should (eq (satan-audit-verify-run dir) t))))
+           (progn
+             (satan-tool-register
+              (list :name "vt1_tick" :risk 'read :args-schema nil
+                    :handler (lambda (_args _ctx)
+                               (setq tick-run-id (satan-broker-run "morning"))
+                               (cons 'ok "ticked"))))
+             (satan-mode-register
+              (list :name "interactive" :harness nil :capabilities nil
+                    :tools '("vt1_tick")))
+             (let* ((mcp-dir (expand-file-name "mcp-session" root))
+                    (audit (progn
+                             (make-directory mcp-dir t)
+                             (satan-audit-open
+                              mcp-dir
+                              '(:run_id "mcp-rid" :mode (:name "interactive"))
+                              '(:bundle t)
+                              (list :run_id "mcp-rid"
+                                    :time_now "2026-06-03T00:00:00+1000"))))
+                    (session (make-satan-mcp-session
+                              :run-id "mcp-rid" :run-dir mcp-dir
+                              :audit audit)))
+               (cl-letf (((symbol-function 'satan-run-perceive)
+                          #'satan-broker-test--minimal-perceive)
+                         ((symbol-function 'satan-broker--spawn)
+                          (lambda (_mode prepare _dir)
+                            (setq spawned t)
+                            (plist-get prepare :run_id)))
+                         ((symbol-function 'satan-mcp--send)
+                          (lambda (_proc obj) (push obj sent))))
+                 (satan-mcp--tools-call
+                  (list :name "vt1_tick" :arguments nil) 1 session nil)))
+             (should tick-run-id)
+             ;; The tick was not silently deferred as `session_blocked'.
+             (should (equal nil (let ((dir (satan-run-locate-dir tick-run-id
+                                                                 root)))
+                                  (and dir
+                                       (file-exists-p
+                                        (expand-file-name "final.json" dir))
+                                       (plist-get
+                                        (satan-broker-test--run-json
+                                         dir "final.json")
+                                        :reason)))))
+             ;; …and it reached the normal spawn path instead.
+             (should spawned)
+             ;; The MCP call itself succeeded.
+             (should (= 1 (length sent)))
+             (should-not (plist-get (car sent) :error)))
          (delete-directory root t))))))
 
 ;; ---------- SL-018 PHASE-03: run_busy gate (DEC-023) ----------
 
 (cl-defun satan-broker-test--gate-run
-    (&key busy session perceive-error setup)
+    (&key busy perceive-error setup)
   "Run `satan-broker-run' \"morning\" through the pre-spawn gates.
-BUSY binds `satan-run--spawn-running'; SESSION non-nil puts one call
-in `satan-run--interactive-calls'.  PERCEIVE-ERROR non-nil makes
+BUSY binds `satan-run--spawn-running'.  PERCEIVE-ERROR non-nil makes
 perceive signal.  SETUP, a function of the
 runs root, runs first.  `--spawn' is stubbed.
 
@@ -765,7 +784,6 @@ afterwards, so DIR is for its name only."
               (satan-runs-dir root)
               (satan-budget-daily-tokens 2500000)
               (satan-run--spawn-running busy)
-              (satan-run--interactive-calls (if session 1 0))
               (satan-trace-enabled nil)
               (spawned nil))
          (unwind-protect
@@ -806,14 +824,11 @@ afterwards, so DIR is for its name only."
     (should-not (plist-get r :announced))))
 
 (ert-deftest satan-broker/run-busy-gate-precedence ()
-  "VT-22: real failures outrank run_busy: perceive_failed, then session_blocked."
+  "VT-22: a real failure outranks run_busy — perceive_failed wins."
   (should (equal (plist-get (satan-broker-test--gate-run
                              :busy t :perceive-error t)
                             :reason)
                  "perceive_failed"))
-  (should (equal (plist-get (satan-broker-test--gate-run :busy t :session t)
-                            :reason)
-                 "session_blocked"))
   (should (plist-get (satan-broker-test--gate-run) :spawned)))
 
 ;; ---------- VT-1 (SL-011): one tick trace row per satan-broker-run ----------
@@ -857,8 +872,7 @@ the stage wraps inside the shared perceive fn record onto the tick."
      (satan-broker-test--with-trace-dir trace-dir
        (let* ((root (make-temp-file "satan-tick-spawn-" t))
               (satan-runs-dir root)
-              (satan-budget-daily-tokens 2500000) ; under ceiling
-              (satan-run--interactive-calls 0))
+              (satan-budget-daily-tokens 2500000)) ; under ceiling
          (unwind-protect
              (cl-letf (((symbol-function 'satan-percept-build)
                         #'satan-broker-test--fixture-percept)
@@ -889,8 +903,7 @@ row, and the run's transcript names the error (RV-012 F-6)."
      (satan-broker-test--with-trace-dir trace-dir
        (let* ((root (make-temp-file "satan-tick-perc-" t))
               (satan-runs-dir root)
-              (satan-budget-daily-tokens 2500000)
-              (satan-run--interactive-calls 0))
+              (satan-budget-daily-tokens 2500000))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         (lambda (&rest _) (error "sensor exploded")))
@@ -910,26 +923,6 @@ row, and the run's transcript names the error (RV-012 F-6)."
                                          :error))))
            (delete-directory root t)))))))
 
-(ert-deftest satan-broker/run-tick-row-outcome-session-blocked ()
-  "VT-1: an active interactive session stamps `outcome' \"session_blocked\"."
-  (satan-broker-test--with-tool-descriptions
-   satan-broker-test--morning-tool-descriptions
-   (lambda ()
-     (satan-broker-test--with-trace-dir trace-dir
-       (let* ((root (make-temp-file "satan-tick-sess-" t))
-              (satan-runs-dir root)
-              (satan-budget-daily-tokens 2500000)
-              (satan-run--interactive-calls 1))
-         (unwind-protect
-             (cl-letf (((symbol-function 'satan-run-perceive)
-                        #'satan-broker-test--minimal-perceive))
-               (satan-broker-run "morning")
-               (let ((ticks (satan-broker-test--tick-rows trace-dir)))
-                 (should (= 1 (length ticks)))
-                 (should (equal "session_blocked"
-                                (plist-get (car ticks) :outcome)))))
-           (delete-directory root t)))))))
-
 (ert-deftest satan-broker/run-tick-row-outcome-budget-denied ()
   "VT-1: an over-ceiling day stamps `outcome' \"budget_denied\"."
   (satan-broker-test--with-tool-descriptions
@@ -941,8 +934,7 @@ row, and the run's transcript names the error (RV-012 F-6)."
               (today (format-time-string "%Y%m%dT" now))
               (existing (expand-file-name (concat today "080000-x-eeeeee") root))
               (satan-runs-dir root)
-              (satan-budget-daily-tokens 400000)
-              (satan-run--interactive-calls 0))
+              (satan-budget-daily-tokens 400000))
          (unwind-protect
              (cl-letf (((symbol-function 'satan-run-perceive)
                         #'satan-broker-test--minimal-perceive))
@@ -1312,7 +1304,10 @@ precedence — the Risks section's named regression)."
                            "auth"))))
       (delete-directory dir t))))
 
-;; ── DEC-8 mutual exclusion: producer side (AUD-008 F-001) ──────────────────
+;; ── One run at a time: the spawn-running flag (DEC-023; AUD-008 F-001) ─────
+;; DEC-8's MCP-facing half is retired (DEC-124).  What remains here is the
+;; `satan-run--spawn-running' flag and its `run_busy' gate: one broker child
+;; at a time, because the memory store's current-run state is process-global.
 
 (defmacro satan-broker-test--with-spawn-collaborators (root dir &rest body)
   "Evaluate BODY with `satan-broker--spawn''s side collaborators stubbed.
