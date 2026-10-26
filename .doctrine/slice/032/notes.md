@@ -42,12 +42,13 @@ only an implementation can settle. If one ran, it would probe:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-26 · design reviewing (rev 31) · cb96d9e (SL-032 work uncommitted)
+fresh-as-of: 2026-10-26 · ready, PHASE-01 next (phases materialised) · b30b00a
 
 ### Produced
 
-research/research.md; DEC-121, DEC-122, DEC-123, DEC-124, DEC-125; design.md
-(materialised rev 20); 9 design-target selectors; RV-060 (pass concluded, 7 findings).
+research/research.md; DEC-121, DEC-122, DEC-123 (amended, RV-060 F-5),
+DEC-124, DEC-125; design.md (locked, run rev 35); 9 design-target selectors;
+RV-060 (pass conducted, 7 findings); plan.toml / plan.md (PHASE-01..08).
 
 ### Learned
 
@@ -56,9 +57,14 @@ research/research.md; DEC-121, DEC-122, DEC-123, DEC-124, DEC-125; design.md
 - MCP close status `completed` fails `satan-audit-verify-run` (pre-existing;
   DEC-122).
 - `satan-patch-rpc.el:137` permits nested dispatch (DEC-123).
+- `@satan` directives run as a broker-tick tool and emit `trace_marked`
+  against the consuming run today (DEC-123 amendment).
+- quotient pi workers see only their `cwd` root: malebolge work needs
+  `cwd: ~/dev/malebolge` (a satan-rooted worker reports it empty).
 
 ### Open
 
-- User section review; pass disposition; lock. F-1..F-3 route criteria feed /plan.
+- RV-060 F-1/F-2 (probe), F-3 (demonstrate): answered; discharged by
+  PHASE-05/06/07 VA rows.
 - At reconcile: SPEC-001 REQ-007 and QUE-001, SPEC-002 transports row,
   memory mem_eb8e5cff…, malebolge IDE-002 note (design sec-91).
