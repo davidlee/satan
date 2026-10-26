@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 121
+slug = "mcp-conversation-in-initialize"
+title = "An MCP client names its conversation and kind once per connection, in initialize capabilities.experimental.satan"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-26"
+updated = "2026-10-26"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-032 / IMP-054: malebolge multiplexes N pi-durable conversations over one satan-mcp connection; MCP and pi tie identity to the session/connection (research; pi coding-agent mcp/runtime.ts:360)."
+choice = 'initialize params carry capabilities.experimental.satan = {conversation: opaque string 1-128 chars; kind: "interactive"|"scheduled"}. Identity is fixed for the connection once initialize succeeds; a repeated initialize with different identity is refused. Absent -> legacy behaviour with kind interactive. Malformed -> JSON-RPC -32602 on initialize. Kind describes the activity on that connection: the client opens separate connections for interactive and scheduled activity of one conversation (DEC-125 pool key). malebolge sends String(api.conversationId), the SATAN_CONVERSATION value (malebolge DEC-020).'
+alternatives = ["Per-call params._meta (pi-mcp callTool cannot send it; needs an upstream change)", "Conversation in tool arguments", "clientInfo name encoding"]
+rationale = "Follows MCP's session model and pi's own (one McpClient per session); experimental capabilities are the spec's per-session extension slot and pi-mcp already passes McpClientOptions.capabilities into initialize (mcp/src/client.ts:217-224)."
+consequences = ["One connection per (conversation; kind) on the client side", "Ids and kind are descriptive attribution and never authority (RSK-018/019)", "No pi-mcp change"]
+decided_by = "agent proposal; user assent 2026-10-26"
+decided_on = "2026-10-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-032"

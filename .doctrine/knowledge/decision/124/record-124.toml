@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 124
+slug = "dec8-retired"
+title = "No mutual exclusion between scheduled broker runs and MCP calls (DEC-8 retired)"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-26"
+updated = "2026-10-26"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-8 (code comments only: satan-run.el:308-321, satan-mcp.el:109,159-161,431-432) excluded scheduled broker runs and interactive MCP work; ISS-058 narrowed the broker side to in-flight calls."
+choice = "No exclusion in either direction. Remove satan-run--interactive-calls, the broker's session_blocked gate, and the MCP refusals at accept and satan-mcp-start. Readers of historical run dirs keep recognising session_blocked."
+alternatives = ["Broker-side only (ISS-058 rule)", "Per-call refusal both ways"]
+rationale = "Simplest; since ISS-058 the exclusion already held only for the instant of a call, and attribution-from-tool-ctx removes the shared-state reason."
+consequences = ["Broker ticks run while the user works", "IMP-053 may later bound scheduled conversations"]
+decided_by = "agent proposal; user assent 2026-10-26"
+decided_on = "2026-10-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-032"

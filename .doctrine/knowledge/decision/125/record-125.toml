@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 125
+slug = "malebolge-connection-per-conversation"
+title = "malebolge opens one satan-mcp connection per active conversation, beside its shared tool-list connection"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-26"
+updated = "2026-10-26"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-032 / IMP-054: malebolge multiplexes N pi-durable conversations over one satan-mcp connection; MCP and pi tie identity to the session/connection (research; pi coding-agent mcp/runtime.ts:360)."
+choice = "satan-tools.ts keeps the shared reconnecting client for tools/list and refresh (SL-028). Tool calls go through a pool keyed by (api.conversationId; kind). Pool contract: acquisition is atomic and shares a pending connect; each entry owns a fresh reconnecting client whose factory sends the initialize capability on every replacement connection; an entry counts in-flight calls and arms its idle timer only at zero; eviction removes the entry before closing it so a later call creates a new one; daemon shutdown closes every entry. A reconnect of any pooled connection triggers the shared tool-list refresh without replaying the failed call. Payload built in conversation-context.ts (malebolge DEC-018; always-present fields per DEC-021). Rollout: satan first; an older server ignores experimental capabilities. RSK-020 noted for the live check."
+alternatives = ["Per-call _meta via an upstream pi-mcp option", "request('tools/call') with re-implemented result validation"]
+rationale = "Matches the server decision (inq-1/inq-2) with no dependency change."
+consequences = ["reconnecting-client.ts gains a capabilities option", "Client tests cover return-after-idle; overlapping calls; init/expiry races; many conversations; reconnect-triggered refresh", "malebolge IDE-002 premise to update (api.taskId exists)"]
+decided_by = "agent proposal; user assent 2026-10-26"
+decided_on = "2026-10-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-032"

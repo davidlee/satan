@@ -1,0 +1,288 @@
+id    = 60
+slug  = "design-review-of-sl-032"
+title = "design review of SL-032"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Concluded the adversarial raiser pass on SL-032 design.md, as role raiser. Read RV-060 --full first, primed its reviewer context, and reviewed slice scope, notes (including prior informal integrations), research, DEC-121..125, ADR-017, ADR-018, POL-001, SPEC-001 and SPEC-002 against the cited SATAN and malebolge source. Read back all six raises to verify their text and role. Raised F-1..F-3 major and F-4..F-6 minor; no blocker. The raiser pass is complete; findings remain open for the responder, not self-disposed.
+
+Examined all six requested axes: re-entrant filter/session lifecycle; call-interrupted and verifier pairing; initialize identity/error rules and experimental-capability shape; all four emitter call paths and manual nil attribution; pool acquisition/expiry/refresh; and V1-V13 discrimination against I1-I5. Preserved settled design B and DEC-8 retirement. No new exclusion or transport redesign is proposed. The ordinary synchronous acquire/increment/clear-timer and delete-before-close ordering has no verified race defect in the stated single-event-loop contract. The concrete pool defect is history loss across entry replacement (F-3). Caller enumeration is complete; nil is compatible with explicit attribution, but accepted DEC-123 disagrees (F-5). Transport cleanup is correctly not claimed as ADR-017 section 4 evidence, and REQ-007 reconciliation remains explicitly planned.
+
+Protocol sources checked against the server's configured 2025-06-18 revision: https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle (Initialization, Capability Negotiation, Operation), https://modelcontextprotocol.io/specification/2025-06-18/schema (InitializeRequest, ClientCapabilities), and https://www.jsonrpc.org/specification (sections 4, 4.1, 5.1). The experimental satan object fits the capability extension shape. Neither an absent reciprocal server capability advertisement nor the chosen -32600/-32602 values alone provided a sufficiently supported independent finding; permissive repeated/pre-initialize behavior is a local compatibility contract rather than evidence of compliant client behavior.
+
+Focused probes only: real filter with simulated close and two buffered requests; real audit/dispatch with injected native quit followed by the proposed done close; partial audit-open failure after manifest creation; real malebolge reconnectingClient against a temporary local MCP server across idle-handle destruction and restart. Probe outputs are embedded in F-1..F-4; all test storage was temporary, with the reusable TypeScript refresh probe at /tmp/rv060-pool-refresh.ts. The draft is unimplemented, so full proposed lifecycle schedules are marked inference rather than passed integration tests. No full ERT suite, just check, deployment or V13 live run was performed.
+
+Verification assessment is recorded in F-6: every invariant has nominal rows, but nested same-session I2/I3, generic exception responses and observer attribution lack discriminating checks; F-2/F-3/F-4 additionally identify concrete false-positive rows. Repository edits were confined to RV-060 through Doctrine review verbs; design, notes, code and decisions were left unchanged."""
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Concluded the follow-up raiser round on all six responder dispositions against materialised design revision 29, DEC-123 (choice and amendment), reconciled slice scope, and the cited SATAN/malebolge source. Only RV-060 was written through review verbs; no design, notes, decision, scope or code edits.
+
+F-1: the design repair is accepted. design.md:107-113 now checks admission per message and drops decoded siblings after close; 114-128 retains in-flight ownership through result/interruption audit and delivery handling; V5:337-341 checks two complete requests in a chunk with close during the first; V14:356-360 discriminates nested depth. Formal review verify remains deferred, with F-1 answered, because its route is probe and there are no SL-032 phase criteria yet. This is not a claim that the hostile lifecycle probe has run.
+
+F-2: CONTESTED. The new quit rule explicitly abandons an uncancelled request on a live transport, contrary to I2, and re-signalling can also discard decoded siblings from the outer filter. The contest records precise lines, a current-filter reproduction, the inferred proposed failure schedule, required response-or-close policy, and the fallback result-id ambiguity/probe. This stays with F-2 rather than accumulating another routed finding against the same settle mechanism.
+
+F-3: the repair of the original stale-registry mechanism is accepted at design level. design.md:270-279 adds the first successful connection of every fresh entry as a refresh trigger independent of that handle's lost history; 247-250 corrects the actual constructor signature; V12:376-380 uses the real reconnecting client and checks registry replacement after restart with no live entry. Formal review verify remains deferred, with F-3 answered, because demonstrate is an instrument route whose obligation must first reach a host phase criterion. A distinct minor error in the new one-read cardinality claim is raised as F-7, with a focused reproduction.
+
+F-4, F-5 and F-6: VERIFIED at the design/governance/check-specification level, with evidence recorded on each verify turn. F-4 now cleans partial mint storage and tests actual post-write failure; F-5 now consistently distinguishes @satan consuming-run attribution, M-x nil and historical outcome auditing across DEC/design/scope/V7; F-6 now has same-session depth/response discrimination (V14), generic error handling (V16), and observer attribution (V7).
+
+Route handling follows lib:design-prompts/reviewing.md, delivered by the design skill: on an instrument-routed finding, verify asserts correct transcription onto a phase criterion, and happens after slice phases, not during this review; conclude with those findings answered. Read-only target file census shows only design/scope/notes/slice metadata and design state for SL-032, with no plan or phase criteria to attest. Neither the rewritten design nor passing probes of retained pieces constitute that missing phase transcription or implementation proof.
+
+New finding F-7 is minor: actual discovery reconnect plus the new-entry announcement causes two tools/list reads through the existing coalescer, contradicting the one-read cost/verification assertion. Reproduced in /tmp/rv060-refresh-repair.ts with real malebolge components and a local fake server. Additional temporary Emacs probes exercised quit escaping the current filter with two decoded requests on a live process, and verifier failure for the literal fallback result without an id. No full suite, builds, deployment or live V13 verification was run. Original design B, exclusion retirement, capability wire choice and all settled findings outside these repairs were not reopened."""
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Concluded this narrowly scoped raiser round on the re-disposed F-2 and F-7 against materialised SL-032 design revision 31. F-1/F-3 were left unchanged as requested; F-4/F-5/F-6 were not reopened. No new findings.
+
+F-2: DESIGN REPAIR ACCEPTED; no further contest. design.md:120-121 now puts the call id on the synthetic tool-result, matching satan-audit.el:647-648. design.md:124-129 now deletes the transport before re-signalling quit; the request and buffered sibling therefore fall under I2's existing transport-close exception (31-33) instead of being abandoned on a live connection. Admission (107-113) and the audit-before-in-flight-release rule (114-134) remain intact. V15 at 369-375 now explicitly checks id-bearing result/interruption records, clean bundle verification, closure seen by an uncancelled live caller, and no execution of a second complete request in that chunk, on live and closing sessions.
+
+Fresh focused probes: writing the revised id-bearing synthetic result and interruption record into a real temporary audit, then closing done, gives satan-audit-verify-run=t. In the existing filter, a substituted handler doing delete-process before signalling quit yields escaped=t, live=nil, dispatched=(1) for a chunk containing requests 1 and 2. These verify the correlation primitive and the close-before-propagation behavior, not the unimplemented end-to-end session settle mechanism. The complete proposed lifecycle remains design reasoning/inference pending implementation.
+
+F-2 stays answered, with route probe: lib:design-prompts/reviewing.md requires terminal verify of instrument-routed findings only after their obligations are transcribed onto phase criteria. The SL-032 file census still contains no plan/phase criteria, so no such transcription is being falsely attested. This is the same route treatment already applied to F-1/F-3, which remain unchanged. The prior contest is substantively resolved by the new disposition/design; its instrument obligation is pending.
+
+F-7: VERIFIED, with evidence on its verify turn. sec-7 now admits the extra discovery-reconnect read; V12 tests both triggers together and permits at most two reads in the specified schedule while requiring registry replacement. Re-running the real-component refresh probe gives exactly two tools/list reads for one fresh-entry announcement, consistent with the revised assertion.
+
+Only RV-060 was changed through Doctrine review verbs. Probes used temporary storage/local fake processes and server; no design, notes, source, decisions or scope were edited. No full suite, implementation proof or deployment/live check was claimed."""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-032"
+
+[[finding]]
+id = "F-1"
+status = "answered"
+severity = "major"
+title = "Closing does not prevent already-buffered calls from dispatching after finalisation"
+detail = """
+Expected: the open -> closing -> closed lifecycle must stop admitting new tool dispatches once close begins, and finalisation must cover the entire last call, including result/interruption audit writes. Observed: .doctrine/slice/032/design.md:79-89,109-114 specifies an active-dispatch count and deferred finalisation, but no admission rule for closing/closed sessions or disposition of complete lines already held by the outer filter. satan/satan-mcp.el:367-382 captures session once and dispatches every complete line from that chunk. satan/satan-patch-rpc.el:132-137 permits another filter/sentinel to run during the first call.
+
+Failure schedule (inference for the proposed implementation): one chunk contains calls A and B. A waits; its connection closes and becomes closing. A returns, records its result/interruption, decrements the count to zero, and finalises closed. The original filter then resumes its dolist and dispatches B using the captured session and its existing run/audit. Thus new side effects and transcript appends occur after terminal finalisation; B can also leave a supposedly finalised bundle temporarily failing calls-match-results. Merely moving the line buffer to a process property does not remove the captured complete-line list. This is an incomplete integration of the earlier disconnect finding, not a request to restore exclusion.
+
+Verified focused probe against the existing filter: fed two complete request lines, replaced handle-message with a recorder whose first invocation simulates close by clearing the process session, and observed ((:id 1 :after-close nil) (:id 2 :after-close t)). The deferred finaliser itself is proposed, not implemented, so the full schedule remains an inference. Also satan-mcp.el:301-307 currently releases the old counter before recording tool-result: design.md:171's replacement must not preserve that lifetime boundary.
+
+Repair: define admission on closing/closed and treatment of already-decoded lines; retain the in-flight ownership through all result/interruption auditing and delivery handling. Extend V5/V9 with A+B in one chunk and closure during A. A hostile lifecycle probe should assert that no subsequent handler starts on the terminal session and no tool record is appended after its finalisation. Suggested severe-finding route for the responder: probe."""
+disposition = "fix-now"
+route = "probe"
+response = "Verified: satan-mcp--filter (satan-mcp.el:365-385) decodes every complete line of a chunk and dolist-dispatches them against the session captured at entry; nothing re-checks state between lines. Repair in sec-3: admission rule — handle-message answers nothing and dispatches nothing once the session is closing/closed (the transport is gone, so no response is deliverable); remaining decoded lines are dropped and counted in a single call-interrupted-free log line. in-flight is decremented only after tool-result/call-interrupted audit and delivery handling. V5/V9 extended: two requests in one chunk, close during A; assert B never starts and no record follows finalisation."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = "Verified: satan-mcp--filter (satan-mcp.el:365-385) decodes every complete line of a chunk and dolist-dispatches them against the session captured at entry; nothing re-checks state between lines. Repair in sec-3: admission rule — handle-message answers nothing and dispatches nothing once the session is closing/closed (the transport is gone, so no response is deliverable); remaining decoded lines are dropped and counted in a single call-interrupted-free log line. in-flight is decremented only after tool-result/call-interrupted audit and delivery handling. V5/V9 extended: two requests in one chunk, close during A; assert B never starts and no record follows finalisation."
+
+[[finding]]
+id = "F-2"
+status = "answered"
+severity = "major"
+title = "An escaped dispatch or Emacs quit leaves a tool-call without the result I4 requires"
+detail = """
+Expected: I4 (.doctrine/slice/032/design.md:35) and SPEC-001 REQ-003 require complete audit evidence on the interrupted paths this slice adds. Observed: design.md:99-107,109-126 specifies an outer -32603 response for an uncaught error, but writes the audited result and call-interrupted only when dispatch returns. It asserts that every tool-call always has a tool-result without defining an unwind path that makes this true. An error response on the socket is not a tool-result in transcript.jsonl. A native Emacs quit is a nonlocal exit outside condition-case's error class, including the handler guard at satan/satan-tools.el:191-199.
+
+Verified fault-injection reproduction, entirely in temporary storage: load satan-mcp; construct an audit and session; replace satan-tool-dispatch with a function signalling quit; invoke satan-mcp--tools-call and catch quit in the probe; then close the audit using the draft's status done and empty action partitions. Output: dispatch escaped: (quit); verification after prescribed done close: ((calls-match-results)). Existing tool-call/result ordering is satan/satan-mcp.el:299-307; verifier pairing is satan/satan-audit.el:635-651. The result demonstrates the retained audit/dispatch mechanism, not an already-implemented SL-032 change. An escaped ordinary dispatcher error similarly skips the audit result even if the proposed outer handler answers -32603.
+
+Adding call-interrupted as a known event does not repair that hole: the current verifier already ignores non-call/result events (satan-audit.el:641-648), and the design explicitly keeps requiring a result. V5 and V6 return normally from their stub tool; V4 fails before recording a tool-call, so all three can pass while this path remains broken.
+
+Repair: define how every admitted, audited call settles on error and nonlocal unwind before relinquishing its in-flight ownership; preserve any known actual outcome and record an explicit unknown/interrupted outcome when execution cannot establish one. Define the response/cleanup behavior for quit separately from cancellation notifications, and keep calls-match-results meaningful rather than treating interruption alone as success. Probe an escaped error and native quit after tool-call append, both with a live and closing transport. Suggested severe-finding route for the responder: probe."""
+disposition = "fix-now"
+route = "probe"
+response = "Contest accepted on both points. (1) quit: sec-3 now closes the session's transport (delete-process) after settling and before re-signalling, so a live uncancelled caller sees a disconnect rather than a timeout, decoded siblings meet a closing session and are dropped by Admission, and both fall under I2's existing transport-closed exception; I2 is not broadened. (2) The synthetic tool-result now names :id explicitly ({:id <call id> :ok false :error ...}; satan-audit.el:647-648). V15 extended: live uncancelled request sees close; second request in the same chunk never starts; call-interrupted carries the :id."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = """Verified: satan-tool-dispatch's condition-case catches only error (satan-tools.el:191-199), so quit escapes; satan-mcp--tools-call records tool-result only after dispatch returns (satan-mcp.el:299-307). Repair in sec-3: tools-call settles every audited call in an unwind-protect — if dispatch exits non-locally (error or quit) a tool-result {:ok false :error "interrupted: <signal>"} is recorded before call-interrupted (:reason "error"/"quit"), then in-flight is released; an error answers -32603 when the transport is live; quit is re-signalled after settling, never answered as success. I4's calls-match-results thus stays meaningful. New V row probes error and quit after tool-call append, live and closing."""
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """
+The revised settle rule addresses the original missing-audit-result path in principle, but introduces an explicit violation of the revised response contract. design.md:31-33 promises exactly one response for each open-session request unless the client cancelled or the transport closed; design.md:118-123 instead says native quit is re-signalled and never answered, with no rule closing the live transport. V15 at 361-365 requires propagation but no response or connection closure. Thus an uncancelled live caller still waits for timeout. Settling its audit is insufficient.
+
+The same repair also needs to account for already-decoded sibling requests when quit propagates. Existing satan/satan-mcp.el:367-382 stores only the incomplete tail, then walks complete lines in a local dolist; its error guard does not catch quit. Verified focused probe: feed two complete requests and have the first handler signal quit. Output was quit escaped=t, transport-live non-nil, dispatched-ids=(1), buffered-tail="". The second request was neither dispatched nor retained. The probe establishes the current filter behavior; its consequence under the proposed re-signal rule is an inference, because the repair is not implemented.
+
+Repair: define a quit policy that preserves I2 and the remaining decoded requests. For example, settle and close the session/transport before re-signalling (so both requests have the declared transport-close exception), or respond with an error and preserve/drain the buffered requests before propagating quit. Do not simply broaden I2 to tolerate silently abandoned live requests. Extend V15 with a live uncancelled request and two complete requests in one chunk, checking the chosen response-or-close outcome as well as clean audit finalisation.
+
+Also make the synthetic result's matching id explicit: the literal payload at design.md:120 contains only ok/error, whereas satan-audit.el:647-648 matches tool-result via payload.id. A separate temporary probe writing exactly that fallback plus an id-bearing call-interrupted and a done close returned ((calls-match-results)). If the payload was intended as an abbreviated shape, state the required id rather than leaving this implementation-critical field implicit. The probe/demonstration obligations remain unexecuted; this contest is against the revised design and its checks, not a runtime regression claim."""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = "Contest accepted on both points. (1) quit: sec-3 now closes the session's transport (delete-process) after settling and before re-signalling, so a live uncancelled caller sees a disconnect rather than a timeout, decoded siblings meet a closing session and are dropped by Admission, and both fall under I2's existing transport-closed exception; I2 is not broadened. (2) The synthetic tool-result now names :id explicitly ({:id <call id> :ok false :error ...}; satan-audit.el:647-648). V15 extended: live uncancelled request sees close; second request in the same chunk never starts; call-interrupted carries the :id."
+
+[[finding]]
+id = "F-3"
+status = "answered"
+severity = "major"
+title = "Idle eviction erases the reconnect history needed to refresh the shared tool registry"
+detail = """
+Expected: DEC-125's refresh integration must preserve SL-028 recovery when a server restarts and tools change, including a conversation returning after idle. Observed: .doctrine/slice/032/design.md:224-239 deletes and closes an expired entry, constructs a fresh reconnectingClient for its replacement, and relies exclusively on each handle's onReconnect to refresh discovery. In malebolge/src/reconnecting-client.ts:120-124,142-148, onReconnect requires that this same handle previously observed a lost client; a new handle starts with lost=false. The discovery connection is lazy too (169-190), so its close does not itself re-list tools.
+
+Failure schedule: discovery installs tool set S1; all pooled entries expire, or the next tool call belongs to a previously unseen conversation; satan-mcp restarts serving S2 while an existing model turn is still running; that turn makes its next SATAN call through a fresh pool entry. Its connection succeeds but onReconnect does not run, discovery stays disconnected, and the registry keeps S1. A continuing turn can keep offering removed tools and cannot see newly added ones. malebolge/src/daemon-start.ts:102 does refresh before external input, which mitigates the next input but does not cover calls later in a turn that is already running. This is the missing edge of the earlier refresh-coupling integration, not a repeat of the already-addressed same-handle reconnect.
+
+Verified standalone probe /tmp/rv060-pool-refresh.ts uses the real malebolge reconnectingClient and a local fake MCP server: connect discovery and an entry; close the entry to represent idle eviction; restart the server; create a fresh entry and call a common tool. Output: {"refreshCallbacks":0,"replacementServerMethods":["initialize","tools/call"]}. No tools/list reaches the replacement server. The pool module is not implemented, so its use of these handles follows the draft.
+
+Repair: retain discovery invalidation/recovery knowledge at the satanTools/pool owner, across entry lifetimes, and ensure a successful new entry after that invalidation triggers coalesced refresh without replaying the tool call. V12 must include restart with no surviving pool entry and an already-running turn, in addition to same-entry replacement. Suggested severe-finding route for the responder: demonstrate; the criterion must use the real reconnecting client plus discovery and assert registry replacement, not merely invocation of a mocked callback."""
+disposition = "fix-now"
+route = "demonstrate"
+response = "Verified: lost is per-handle closure state (malebolge reconnecting-client.ts:120-148); a fresh handle starts lost=false, so a pool entry created after eviction never fires onReconnect. Repair in sec-7: the pool owns discovery invalidation — the first successful connection of every new entry triggers the shared coalesced refresh (one tools/list per conversation window; windows are >=15 min apart), in addition to same-handle onReconnect. Call not replayed. V12 extended to use the real reconnectingClient with a fake server: restart with no surviving entry, fresh entry, assert the registry is replaced. Sibling fixed: design described reconnectingClient(socket, {capabilities}); the real signature is (socketPath, log, onReconnect) — sec-7 now states the added parameter exactly."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = "Verified: lost is per-handle closure state (malebolge reconnecting-client.ts:120-148); a fresh handle starts lost=false, so a pool entry created after eviction never fires onReconnect. Repair in sec-7: the pool owns discovery invalidation — the first successful connection of every new entry triggers the shared coalesced refresh (one tools/list per conversation window; windows are >=15 min apart), in addition to same-handle onReconnect. Call not replayed. V12 extended to use the real reconnectingClient with a fake server: restart with no surviving entry, fresh entry, assert the registry is replaced. Sibling fixed: design described reconnectingClient(socket, {capabilities}); the real signature is (socketPath, log, onReconnect) — sec-7 now states the added parameter exactly."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Failed lazy minting leaves a published partial run directory that the retry abandons"
+detail = """
+Expected: lazy mint failure and retry (.doctrine/slice/032/design.md:92-98,287-289) should leave one owned activity-window run, or an explicitly accounted failed attempt. Observed: the design publishes session slots only after satan-audit-open succeeds but specifies no rollback or retention of its partially written run directory. satan/satan-audit.el:61-68 creates the final directory and writes manifest, bundle and transcript sequentially. An error after manifest write leaves a visible run directory but no audit handle on the session; the next ensure-run repeats satan-run-new-ctx and opens another directory. A subsequent no-run disconnect finalises nothing (design.md:118), so the first attempt is permanently ownerless.
+
+Verified temporary fault injection: fail satan-audit--write-json on its second call during satan-audit-open. Output: audit-open escaped: injected bundle write failure; visible run dirs after failure: ("2026-10-26/20261026T120000-interactive-aabbcc"); orphan contents: ("manifest.json"). satan-run-list-dirs enumerates it (satan/satan-run.el:184-205). Recent-run readers also select directories by name, not complete-audit state (satan/satan-context.el:277-289), so repeated attempts can occupy their capped window. No tool action had to succeed for this failure, hence minor rather than a claim of lost enacted-action evidence.
+
+Repair: define failure-atomic publication/cleanup, or retain and explicitly account for the failed attempt before retrying. Extend V4 to fail after actual file creation and assert the final directory census, including disconnect after the failed attempt. A stub that throws at the entrance to audit-open cannot catch this."""
+disposition = "fix-now"
+response = "Verified: satan-audit-open writes manifest, bundle and transcript sequentially into the final dir (satan-audit.el:61-67). Repair in sec-3: ensure-run is failure-atomic — on error after the run dir exists it deletes that dir before answering -32603, so a retry leaves exactly one run. V4 extended: fail the second write inside audit-open; assert the dir census after failure, after retry, and after a no-run disconnect."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: satan-audit-open writes manifest, bundle and transcript sequentially into the final dir (satan-audit.el:61-67). Repair in sec-3: ensure-run is failure-atomic — on error after the run dir exists it deletes that dir before answering -32603, so a retry leaves exactly one run. V4 extended: fail the second write inside audit-open; assert the dir census after failure, after retry, and after a no-run disconnect."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design level: design.md:93-102 now makes mint failure cleanup explicit before the -32603 response and retry, conditional on the attempt creating the directory. V4 at 333-336 injects failure at the second actual audit-open file write and checks no directory after failure/disconnect and exactly one after retry. This addresses the demonstrated partial-manifest leak rather than merely stubbing failure before I/O. Code impact at 294-297 names failure-atomic ensure-run. No implementation or runtime success is claimed."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "DEC-123 and the design give @satan counter-memory attribution different owners"
+detail = """
+Expected: the accepted decision and the implementing design must agree on the explicit attribution policy. Observed: doctrine show DEC-123, facet.choice, says '@satan directives keep the historical run they already construct a context for' and that manual counter-memories pass their run explicitly. .doctrine/slice/032/design.md:153-157 instead gives nil to both M-x marks and @satan directives and explicitly rejects using that historical run; slice-032.md:67-70 agrees with nil. Both accounts cannot govern the implementation simultaneously.
+
+Code confirms this is a real distinction, not different names for the same context: satan/satan-intervention-mark.el:118-128 and satan/satan-tools-atsatan.el:524-528 build a historical-run manual context, while satan/satan-tools-atsatan.el:559 separately has the consuming run id. The four production memory-store emitter call paths listed in the design are otherwise complete; I am not re-raising the earlier missing-writer finding, nor asserting that nil itself violates I5. The concrete defect is the contradictory accepted record, which another implementer could faithfully follow and emit the signal the draft forbids.
+
+Repair: reconcile DEC-123's choice to the policy the owner actually intends, including the distinction between the outcome event's historical audit context and counter-memory attribute emission. If nil is confirmed, retain it and refresh the contradictory decision rather than silently implementing against accepted text."""
+disposition = "fix-now"
+response = "Accepted, and the finding was wider than raised: today @satan directives run as a broker-tick tool (satan-tick.el:121), so they emit trace_marked against the consuming tick run; the design's nil and its 'same as today' claim were both wrong, as was DEC-123's historical-run text. User ruling 2026-10-26: @satan passes the consuming run (ctx :id, satan-tools-atsatan.el:559); M-x marks pass nil. DEC-123 choice amended; design sec-4 table split into the two paths, satan-intervention-write-manual-outcome gains &key run-id; V7 asserts the @satan case; slice-032.md items 6 and acceptance reconciled."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted, and the finding was wider than raised: today @satan directives run as a broker-tick tool (satan-tick.el:121), so they emit trace_marked against the consuming tick run; the design's nil and its 'same as today' claim were both wrong, as was DEC-123's historical-run text. User ruling 2026-10-26: @satan passes the consuming run (ctx :id, satan-tools-atsatan.el:559); M-x marks pass nil. DEC-123 choice amended; design sec-4 table split into the two paths, satan-intervention-write-manual-outcome gains &key run-id; V7 asserts the @satan case; slice-032.md items 6 and acceptance reconciled."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design/governing-record level: re-read doctrine show DEC-123, including facet.choice and the amendment body. It now assigns @satan counter-memory emission to the consuming tick's run and M-x marks to nil, while retaining historical-run outcome auditing. design.md:175-188 states the same distinction and adds the explicit run-id argument to satan-intervention-write-manual-outcome; V7 at 345-350 checks consuming versus historical run plus M-x suppression. slice-032.md:67-71 and 137-139 agree. Source confirms the two contexts are distinct: satan-tools-atsatan.el:524-528 supplies the historical manual ctx and :559 holds consuming-run-id; satan-tick.el:118-121 registers the consuming tool. The amended choice supersedes both prior contradictory accounts. No implementation claim."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "The verification matrix has false positives for reentry, generic responses and observer attribution"
+detail = """
+Expected: V1-V13 must discriminate the invariant violations they claim to exercise. Observed: .doctrine/slice/032/design.md:325-327 says V5-V7 exercise nested dispatch on the same connection, but V5 has one tools/call plus a sentinel, V6 one tools/call plus a cancellation notification, and V7 an MCP call plus a broker-context memory tool (290-299). None nests two tools/call handlers on one MCP session.
+
+Concrete incorrect candidate: use a boolean busy flag rather than the specified in-flight count. It passes V5, V6 and V9's single-call/double-close scenarios, V7's broker nesting, and V1's distinct sessions. With outer call A and nested call B on the SAME session, close during B and B's unwind can clear busy and finalise while A is still running. Thus the nested-depth part of I3, and simultaneous-response correlation under I2, have no discriminating row. Add a controlled two-call same-session schedule, observe depth two then one then zero, and assert no finalisation at depth one plus separate exactly-once responses when the transport stays live.
+
+Other uncovered clauses: I2's generic uncaught-error response has no row; V4 tests only a mint-specific failure, so handling that error locally while omitting the proposed handle-message guard still passes it. I5 has tool-dispatch and nil-manual assertions in V7, but no observer write: satan/satan-observer.el:112-129,291-329,428-435 threads that production path via opts. An implementation that migrates the two tool writers and drops observer trace_marked entirely still passes every listed attribution assertion. Add an observer positive verdict during a differently attributed MCP wait and assert that its trace_marked is emitted with the observer's broker run id.
+
+Coverage assessment: every named invariant has at least one nominal row (I1 V3; I2 V3/V4/V6; I3 V5/V9; I4 V1/V5; I5 V1/V7). None is wholly unmentioned. The defects are missing discriminating branches, not a claim that the matrix literally contains no tests for an entire invariant. I4's abnormal-unwind hole and V12's fresh-entry refresh false positive are separately evidenced in F-2 and F-3. This finding requests concrete negative controls rather than another restatement of the invariants."""
+disposition = "fix-now"
+response = "Accepted: V5-V7 do not nest two tools/call on one session, no row covers the generic -32603 guard, and no row covers observer attribution. Added rows: same-session nesting (depth 2->1->0, no finalise at depth 1, both responses exactly once when live; rejects a boolean busy flag); a generic uncaught handler error answers -32603 (not mint-specific); an observer positive verdict during a differently attributed MCP wait emits trace_marked with the broker run id. sec-91's claim about V5-V7 corrected."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted: V5-V7 do not nest two tools/call on one session, no row covers the generic -32603 guard, and no row covers observer attribution. Added rows: same-session nesting (depth 2->1->0, no finalise at depth 1, both responses exactly once when live; rejects a boolean busy flag); a generic uncaught handler error answers -32603 (not mint-specific); an observer positive verdict during a differently attributed MCP wait emits trace_marked with the broker run id. sec-91's claim about V5-V7 corrected."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at verification-design level: V14 (design.md:356-360) now requires two nested calls on the SAME session, count transitions 2->1->0, no finalisation at depth one, exactly-once correlated responses when live, and rejection of a boolean busy replacement. V16 (366-367) separately exercises the generic non-tool handler -32603 guard. V7 (345-350) now requires an observer positive verdict nested in a differently attributed MCP wait to emit trace_marked with the broker run id; it also distinguishes @satan consuming-run attribution and M-x nil. These are the specific missing discriminators raised in F-6. sec-91:391-393 now includes V14/V15 in its reentry coverage claim. This accepts the authored checks, not their execution or their completeness against unrelated faults. The distinct quit-policy defect in V15 is contested under F-2 rather than re-raised here."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "The new-entry refresh repair can issue two discovery reads despite V12's one-refresh claim"
+detail = """
+Expected: the refresh cost and verification assertion must match the existing discovery/reconnect/coalesce behavior the repair retains. Observed: design.md:270-281 adds a refresh on the first successful connection of every new pool entry, keeps discovery wired to refresh on its own reconnect (241), and claims one tools/list per conversation window. V12 at 376-380 requires the fresh-entry restart scenario to trigger one refresh. The existing discovery callback in malebolge/src/satan-tools.ts:128-130 calls refresh during its reconnect; read awaits that same discovery connection at 134-137,170-179. coalesce.ts:9-12,34-39 explicitly queues another read for a refresh requested while one is already running, rather than absorbing it into the active read.
+
+Verified focused probe /tmp/rv060-refresh-repair.ts uses the real satanTools, reconnectingClient and coalesce with a local fake MCP server and a stub registry. Populate discovery, restart the server while no pool entry survives, create a fresh entry, and call discovery.refresh once to model the specified first-success announcement. Discovery's own reconnect requests another refresh while that read is in progress. Output: {"newEntryAnnouncements":1,"replacementServerMethods":["initialize","initialize","tools/list","tools/list"],"listRequests":2}. There was only one new-entry announcement, but two discovery reads. This probes the retained components and the proposed trigger, not an implemented satan-pool module.
+
+The new-entry trigger does address F-3's lost-history/stale-registry path; this finding concerns the new cardinality promise and a test that can fail against that otherwise successful repair. Repair: either make V12 assert eventual registry replacement with the documented coalescer's allowed follow-on read, and correct the one-list cost statement, or explicitly design deduplication across the discovery-reconnect and new-entry triggers if a single wire read is required. Exercise both triggers together in the test rather than mocking the discovery reconnect callback away."""
+disposition = "fix-now"
+response = "Verified: coalesce queues exactly one follow-on run by design (coalesce.ts:9-12, SL-028 §4.3), so a discovery reconnect during the new-entry refresh yields a second read. Chose correcting the claim over adding deduplication: sec-7 cost statement now notes the possible follow-on read; V12 now runs both triggers together with discovery's reconnect left real and asserts registry replacement with at most two tools/list reads."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Verified: coalesce queues exactly one follow-on run by design (coalesce.ts:9-12, SL-028 §4.3), so a discovery reconnect during the new-entry refresh yields a second read. Chose correcting the claim over adding deduplication: sec-7 cost statement now notes the possible follow-on read; V12 now runs both triggers together with discovery's reconnect left real and asserts registry replacement with at most two tools/list reads."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED at design/check-specification level. design.md:287-291 now explicitly permits the discovery reconnect's follow-on tools/list read and preserves the existing coalescer instead of promising deduplication. V12 at 386-393 runs the fresh-entry and real discovery-reconnect triggers together, requires registry replacement, and allows at most two reads for that stated schedule. Re-read malebolge/src/coalesce.ts:9-12,34-39: a request during the active read queues the following read. Re-ran /tmp/rv060-refresh-repair.ts using real satanTools/reconnectingClient/coalesce with a local fake server: newEntryAnnouncements=1; replacementServerMethods=[initialize,initialize,tools/list,tools/list]; listRequests=2. The revised cost and test assertions accommodate the previously demonstrated successful repair. This verifies the authored contract against retained component behavior, not an implemented pool or full V12 execution."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

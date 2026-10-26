@@ -1,0 +1,113 @@
+id = 32
+slug = "mcp-run-identity-per-conversation"
+title = "MCP run identity per conversation, not per connection"
+status = "plan"
+created = "2026-10-24"
+updated = "2026-10-26"
+tags = ["audit", "malebolge", "mcp", "satan"]
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "satan/satan-mcp.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-run.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-broker.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-audit.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-mcp-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-broker-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/test/satan-audit-test.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/protocol.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/architecture.md"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-memory-store.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tools-memory.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-tools-hippocampus.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-observer.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-intervention.el"
+intent = "design-target"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "IMP-054"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "MCP protocol change reconciled into the trust-boundary spec at close"
+target = "SPEC-001"
+
+[[relation]]
+label = "references"
+role = "concerns"
+descriptor = "client→SATAN MCP transport row"
+target = "SPEC-002"
+
+[[relation]]
+label = "related"
+target = "IMP-053"
+
+[[relation]]
+label = "related"
+target = "ISS-050"
+
+[[relation]]
+label = "related"
+target = "QUE-001"
+
+[[relation]]
+label = "related"
+target = "ISS-058"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

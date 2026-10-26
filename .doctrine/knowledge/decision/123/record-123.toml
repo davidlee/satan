@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 123
+slug = "attribution-from-tool-ctx"
+title = "Memory writes attribute their run from the tool-ctx, not the satan-memory-store--current-run-id dynamic var"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-26"
+updated = "2026-10-26"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "satan-patch-rpc.el:137 deliberately serves other processes while waiting, so a broker harness tool call can run inside an MCP call's let-binding of satan-memory-store--current-run-id and be mis-attributed; the broker also setq's it globally (satan-broker.el:262,757,953)."
+choice = "Run attribution is an explicit argument to the memory-store emitter; satan-memory-store--current-run-id is removed. Every writer passes the run it acts for, which is the run whose call made the write: tool dispatch passes the tool-ctx :id (the existing run-ctx field; no new :run-id); observer verdicts pass the broker run; @satan directives pass the consuming tick run that processed the directive (as today), not the intervention historical run whose audit receives the outcome event; M-x manual marks run outside any run and pass nil, so emit no trace_marked. MCP drops its let-binding; the broker drops its global setq."
+alternatives = ["Keep the dynamic var and file an issue", "Pass JUST-THIS-ONE in satan-patch-rpc (breaks its in-process test peer)"]
+rationale = "Attribution follows the call that made the write, whatever runs nested."
+consequences = ["Every emitter caller is threaded; the full list is enumerated in the design", "Attribution follows the call that made the write whatever runs nested"]
+decided_by = "agent proposal; user assent 2026-10-26; @satan attribution amended on user assent 2026-10-26 (RV-060 F-5)"
+decided_on = "2026-10-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-032"

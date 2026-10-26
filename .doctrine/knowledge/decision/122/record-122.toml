@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 122
+slug = "mcp-run-minted-on-first-call"
+title = "An MCP run is minted on a connection's first tools/call and finalised when the connection closes"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-26"
+updated = "2026-10-26"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-032 / IMP-054: malebolge multiplexes N pi-durable conversations over one satan-mcp connection; MCP and pi tie identity to the session/connection (research; pi coding-agent mcp/runtime.ts:360)."
+choice = "DEC-5 (one run per connection) stands, refined. The session is created at accept without a run. Its run (id; dir; audit) is minted on the first tools/call from the initialize metadata; a mint failure answers that call with a JSON-RPC error and the connection stays usable. Calls before initialize keep legacy identity. Finalisation happens on connection close but is deferred while the session has calls in flight; a call cut off by close or by notifications/cancelled is recorded as interrupted and never replayed. The synthetic final writes status done; so every MCP bundle passes satan-audit-verify-run. The client idle close of a per-conversation connection gives the activity window."
+alternatives = ["Mint at accept (empty runs for tool-list-only connections)", "Mint at initialize", "Server-side idle expiry", "Explicit open/close notifications (pi-durable has no conversation-end hook)"]
+rationale = "No empty bundles for connections that only list tools; the lifecycle stays the one the transport already gives. Transport cleanup is not ADR-017 s4 evidence: that section concerns Emacs being absent; and SPEC-001 REQ-007 (lifecycle as request/response) is reconciled explicitly in the SPEC-001 revision at close."
+consequences = ["Legacy clients get no run dir until their first call", "Tests asserting a run dir on connect change", "Pre-existing defects fixed: close during a nested wait and status completed failing status-terminal"]
+decided_by = "agent proposal; user assent 2026-10-26"
+decided_on = "2026-10-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-032"
