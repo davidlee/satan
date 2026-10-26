@@ -212,37 +212,40 @@ only an implementation can settle. If one ran, it would probe:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-26 · PHASE-02 completed, PHASE-03 next · 7ca34df
+fresh-as-of: 2026-10-26 · PHASE-06 completed, PHASE-07 next · aad0d4c
 
 ### Produced
 
-research/research.md; DEC-121, DEC-122, DEC-123 (amended, RV-060 F-5),
-DEC-124, DEC-125; design.md (locked, run rev 35); 9 design-target selectors;
-RV-060 (pass conducted, 7 findings); plan.toml / plan.md (PHASE-01..08).
-- PHASE-01 explicit attribution (49b144d); PHASE-02 DEC-8 retired (7ca34df).
-- ISS-059 (pattern tests read gitignored patterns.eld), ISS-060 (.envrc
-  DOCKER_HOST drift); malebolge IMP-012 (own quotient forms, before PHASE-07).
-- mem.fact.satan.pi-worker-sandbox-lacks-test-db-host,
-  mem.fact.satan.test-db-on-rootless-docker.
+research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
+9 design-target selectors; RV-060 (7 findings); plan.toml / plan.md
+(PHASE-01..08).
+- PHASE-01 attribution (49b144d); PHASE-02 DEC-8 retired (7ca34df);
+  PHASE-03 lazy failure-atomic mint (0cff2ce); PHASE-04 identity on the
+  wire (308a7b0); PHASE-05 settle (3d066e9); DEC-126 (721e107);
+  PHASE-06 close lifecycle/admission/cancellation (aad0d4c). Deltas
+  recorded; verify-vt PASS 01-06. Satan side complete; 07-08 malebolge.
+- ISS-059, ISS-060; malebolge IMP-012 (own quotient forms, before PHASE-07).
 
 ### Learned
 
+- mem.fact.satan.quit-in-process-filter — a quit cannot cross the C
+  process reader; nested filters defer via quit-flag.
+- mem.fact.satan.pi-worker-sandbox-lacks-test-db-host,
+  mem.fact.satan.test-db-on-rootless-docker.
 - pi/MCP tie identity to the connection; pi-mcp passes
   `capabilities.experimental` (research Thread 3; DEC-121).
-- MCP close status `completed` fails `satan-audit-verify-run` (pre-existing;
-  DEC-122).
-- `satan-patch-rpc.el:137` permits nested dispatch (DEC-123).
-- `@satan` directives run as a broker-tick tool and emit `trace_marked`
-  against the consuming run today (DEC-123 amendment).
 - quotient pi workers see only their `cwd` root: malebolge work needs
-  `cwd: ~/dev/malebolge` (a satan-rooted worker reports it empty).
-- pi worker DB-test claims are not evidence
-  (mem.fact.satan.pi-worker-sandbox-lacks-test-db-host); per-phase log in
-  `## Execution log`.
+  `cwd: ~/dev/malebolge`.
+- Per-phase pass log and what pi got wrong: `## Execution log`.
 
 ### Open
 
-- RV-060 F-1/F-2 (probe), F-3 (demonstrate): answered; discharged by
-  PHASE-05/06/07 VA rows.
+- RV-060 F-3 (demonstrate) → PHASE-07 VA; F-1/F-2 discharged by
+  PHASE-05/06 VA (Execution log).
+- IMP-012 (malebolge) — land before PHASE-07 or not: user decision.
+- At reconcile, design sec-3 amendments: DEC-126 (exit closes like quit);
+  phase choices in Execution log PHASE-05 (D1 verifier "knows" =
+  docstring + test; reason "exit") and PHASE-06 (in-flight as id list;
+  nested-filter quit deferral; V15 quit propagation unobservable in batch).
 - At reconcile: SPEC-001 REQ-007 and QUE-001, SPEC-002 transports row,
   memory mem_eb8e5cff…, malebolge IDE-002 note (design sec-91).

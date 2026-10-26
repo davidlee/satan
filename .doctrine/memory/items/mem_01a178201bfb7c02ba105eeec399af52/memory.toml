@@ -1,0 +1,46 @@
+memory_uid = "mem_01a178201bfb7c02ba105eeec399af52"
+memory_key = "mem.fact.satan.quit-in-process-filter"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A quit signalled inside an Emacs process filter does not cross the C reader"
+summary = "read_process_output reports a filter quit as 'error in process filter: Quit' (batch Emacs dies); defer with quit-flag in nested filters, drive the filter directly in tests"
+created = "2026-10-26"
+updated = "2026-10-26"
+
+[scope]
+paths = ["satan/satan-mcp.el", "satan/test/satan-mcp-test.el"]
+globs = []
+commands = []
+tags = ["mcp", "emacs"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "b1821e3da659e72700c3ac52e5f83f717693fe10"
+ref_name = "refs/heads/main"
+checkout_state_id = "95ee04ad813d4e17bf5802eb99b1940bf0a4059359343a2d51bfac7f53154664"
+base_commit = "aad0d4cfb54f9c3465cfef44fb3efcfc22ae0bcb"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "medium"
+weight = 0
+
+[[source]]
+kind = "commit"
+ref = "aad0d4c"
+
