@@ -1,0 +1,42 @@
+memory_uid = "mem_01a177e594d372c3bb8353b7c7d94c86"
+memory_key = "mem.fact.satan.test-db-on-rootless-docker"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "satan test DB runs on rootless docker, not the podman socket .envrc names"
+summary = "satan .envrc exports DOCKER_HOST=podman.sock, which this host lacks; Supabase runs on rootless docker (systemctl --user start docker; DOCKER_HOST=unix:///run/user/1000/docker.sock)."
+created = "2026-10-26"
+updated = "2026-10-26"
+
+[scope]
+paths = [".envrc", "justfile"]
+globs = []
+commands = ["just db-start"]
+tags = ["satan", "testing", "supabase"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "83f7fe0805c279288dcdc2730a9adf6c6641e9c7"
+ref_name = "refs/heads/main"
+checkout_state_id = "42f2f0265a5fb9494eb38645053c3c18b3a8fbd9bd0203371a433fb9afc5757b"
+base_commit = "7ca34df0064ff8efcc97f71441419004ee42ea88"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

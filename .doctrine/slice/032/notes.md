@@ -94,13 +94,18 @@ only an implementation can settle. If one ran, it would probe:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-26 · ready, PHASE-01 next (phases materialised) · b30b00a
+fresh-as-of: 2026-10-26 · PHASE-02 completed, PHASE-03 next · 7ca34df
 
 ### Produced
 
 research/research.md; DEC-121, DEC-122, DEC-123 (amended, RV-060 F-5),
 DEC-124, DEC-125; design.md (locked, run rev 35); 9 design-target selectors;
 RV-060 (pass conducted, 7 findings); plan.toml / plan.md (PHASE-01..08).
+- PHASE-01 explicit attribution (49b144d); PHASE-02 DEC-8 retired (7ca34df).
+- ISS-059 (pattern tests read gitignored patterns.eld), ISS-060 (.envrc
+  DOCKER_HOST drift); malebolge IMP-012 (own quotient forms, before PHASE-07).
+- mem.fact.satan.pi-worker-sandbox-lacks-test-db-host,
+  mem.fact.satan.test-db-on-rootless-docker.
 
 ### Learned
 
@@ -113,6 +118,9 @@ RV-060 (pass conducted, 7 findings); plan.toml / plan.md (PHASE-01..08).
   against the consuming run today (DEC-123 amendment).
 - quotient pi workers see only their `cwd` root: malebolge work needs
   `cwd: ~/dev/malebolge` (a satan-rooted worker reports it empty).
+- pi worker DB-test claims are not evidence
+  (mem.fact.satan.pi-worker-sandbox-lacks-test-db-host); per-phase log in
+  `## Execution log`.
 
 ### Open
 

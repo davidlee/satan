@@ -1,0 +1,42 @@
+memory_uid = "mem_01a177e594b174d19f416e79c37b2639"
+memory_key = "mem.fact.satan.pi-worker-sandbox-lacks-test-db-host"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi workers' quotient form has no SATAN_DB_HOST: DB tests skip or fail there"
+summary = "Inside quotient pi_agent forms, satan DB-gated tests skip and some (satan-motive capsule, satan-mcp boot-context) fail with 'refusing production host'; workers call these pre-existing. Only the host just check is evidence."
+created = "2026-10-26"
+updated = "2026-10-26"
+
+[scope]
+paths = ["satan/test"]
+globs = []
+commands = []
+tags = ["satan", "quotient", "testing"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "83f7fe0805c279288dcdc2730a9adf6c6641e9c7"
+ref_name = "refs/heads/main"
+checkout_state_id = "772d43d9d50bd765f4c4ee1c1b349737c2cf4a5af9acf4decafd414d5b0f7bb2"
+base_commit = "7ca34df0064ff8efcc97f71441419004ee42ea88"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
