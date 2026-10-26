@@ -16,6 +16,8 @@
 (require 'satan-mode)
 (require 'satan-audit)
 (require 'satan-mcp)
+;; Dynamic variables and the `trace_marked' enqueue the identity tests stub.
+(require 'satan-attribute)
 ;; `satan-mcp-tool/boot-context' requires satan-context lazily.  Load it here,
 ;; before any env binds `satan-tools' to nil: a later require would both
 ;; clobber a stubbed `satan-context-interactive' and register tools the temp
@@ -165,6 +167,70 @@ request reddens the test instead of hanging the batch run."
                                        :null-object :null
                                        :false-object :false)
                                       "\n"))))
+
+;; ── Identity helpers (SL-032 PHASE-04) ──────────────────────────────────────
+
+(defun satan-mcp-test--identity (conversation &optional kind)
+  "Return the identity plist an initialising client claims.
+KIND defaults to \"interactive\", the wire rule for an absent kind."
+  (list :conversation conversation :kind (or kind "interactive")))
+
+(defun satan-mcp-test--initialize (proc &optional identity)
+  "Send `initialize' to PROC claiming IDENTITY; return the response.
+IDENTITY is the `capabilities.experimental.satan' object, e.g.
+\='(:conversation \"7\" :kind \"interactive\").  A nil IDENTITY sends the
+legacy capabilities with no `experimental' member at all."
+  (satan-mcp-test--request
+   proc "initialize"
+   (list :protocolVersion "2025-06-18"
+         :clientInfo (list :name "test" :version "0")
+         :capabilities (if identity
+                           (list :experimental (list :satan identity))
+                         (make-hash-table)))))
+
+(defun satan-mcp-test--identity-params (satan)
+  "Return initialize params (server-parsed shape) claiming SATAN.
+SATAN may be anything: `satan-mcp--parse-identity' must reject the
+malformed shapes, so the helper must be able to build them."
+  (list :protocolVersion "2025-06-18"
+        :clientInfo (list :name "test" :version "0")
+        :capabilities (list :experimental (list :satan satan))))
+
+(defun satan-mcp-test--session-procs ()
+  "Return every process that carries a server-side MCP session."
+  (cl-loop for proc in (process-list)
+           when (process-get proc 'satan-mcp-session) collect proc))
+
+(defun satan-mcp-test--connect-session (socket-path)
+  "Connect to SOCKET-PATH; return (CLIENT . SERVER-SESSION) for that pair.
+Several sessions may be live at once, so the session is the one that
+appeared across the connection rather than the first on `process-list'."
+  (let* ((known (satan-mcp-test--session-procs))
+         (client (satan-mcp-test--connect socket-path))
+         (server nil)
+         (deadline (+ (float-time) 5)))
+    (while (and (not server) (< (float-time) deadline))
+      (accept-process-output client 0.05)
+      (setq server (cl-find-if (lambda (p) (not (memq p known)))
+                               (satan-mcp-test--session-procs))))
+    (cons client (and server (process-get server 'satan-mcp-session)))))
+
+(defun satan-mcp-test--open-identified (socket-path identity)
+  "Connect to SOCKET-PATH and initialize it with IDENTITY.
+Return (CLIENT . SERVER-SESSION)."
+  (let* ((pair (satan-mcp-test--connect-session socket-path))
+         (res (satan-mcp-test--initialize (car pair) identity)))
+    (should-not (plist-get res :error))
+    pair))
+
+(defun satan-mcp-test--register-memory-tools ()
+  "Register the memory_* tools in the per-test tool registry.
+`satan-tools' is bound to nil per test, so the load-time registration is
+gone.  Re-running the file's own registration block is the only way to
+get the real specifications rather than a copy of them."
+  (dolist (name '("memory_mark" "memory_resonate" "memory_show_trace"))
+    (satan-mcp-test--write-desc name (format "%s description." name)))
+  (load "satan-tools-memory" nil t))
 
 ;; ── VT-mcp-jsonrpc ──────────────────────────────────────────────────────────
 
@@ -842,6 +908,353 @@ call and delegates capsule building to `satan-context-interactive'.
       (should (equal (satan-mcp-tool/boot-context '(:refresh t) nil)
                      '(ok . "capsule-2")))
       (should (= calls 2)))))
+
+;; ── VT-mcp-identity: pure parsing (SL-032 PHASE-04) ────────────────────────
+
+(ert-deftest satan-mcp/identity-parse-identity-table ()
+  "VT-1/EX-1: `satan-mcp--parse-identity' maps initialize params to
+\(:conversation C :kind K) or (error . MSG), and is pure.
+
+An absent satan capability is the legacy identity (conversation nil,
+kind \"interactive\").  A conversation is 1-128 chars with no control
+characters, opaque to SATAN.  Kind is \"interactive\" or \"scheduled\";
+absent means \"interactive\".  Everything else is malformed: `satan'
+that is not an object, wrong types, an unknown kind, an empty or
+over-long conversation."
+  (let* ((ok-max (make-string 128 ?a))
+         (too-long (make-string 129 ?a))
+         (cases
+          (list
+           ;; Legacy: no capabilities, no experimental, no satan.
+           (list "no capabilities"
+                 '(:protocolVersion "2025-06-18")
+                 '(:conversation nil :kind "interactive"))
+           (list "no experimental"
+                 '(:capabilities (:tools ()))
+                 '(:conversation nil :kind "interactive"))
+           (list "no satan"
+                 (satan-mcp-test--identity-params nil)
+                 '(:conversation nil :kind "interactive"))
+           ;; Well-formed identities.
+           (list "scheduled identity"
+                 (satan-mcp-test--identity-params
+                  '(:conversation "7" :kind "scheduled"))
+                 '(:conversation "7" :kind "scheduled"))
+           (list "kind absent defaults to interactive"
+                 (satan-mcp-test--identity-params '(:conversation "7"))
+                 '(:conversation "7" :kind "interactive"))
+           (list "128-char conversation"
+                 (satan-mcp-test--identity-params (list :conversation ok-max))
+                 (list :conversation ok-max :kind "interactive"))
+           ;; Malformed identities.
+           (list "satan is a string"
+                 (satan-mcp-test--identity-params "7")
+                 'error)
+           (list "satan is an array"
+                 (satan-mcp-test--identity-params '("7"))
+                 'error)
+           (list "conversation is a number"
+                 (satan-mcp-test--identity-params '(:conversation 7))
+                 'error)
+           (list "kind is a number"
+                 (satan-mcp-test--identity-params '(:conversation "7" :kind 7))
+                 'error)
+           (list "unknown kind"
+                 (satan-mcp-test--identity-params
+                  '(:conversation "7" :kind "batch"))
+                 'error)
+           (list "empty conversation"
+                 (satan-mcp-test--identity-params '(:conversation ""))
+                 'error)
+           (list "129-char conversation"
+                 (satan-mcp-test--identity-params (list :conversation too-long))
+                 'error)
+           (list "conversation with a newline"
+                 (satan-mcp-test--identity-params '(:conversation "7\n8"))
+                 'error)
+           (list "conversation with DEL"
+                 (satan-mcp-test--identity-params
+                  (list :conversation (string ?7 127 ?8)))
+                 'error)
+           ;; Opaque: non-ASCII is not a control character.
+           (list "non-ASCII conversation"
+                 (satan-mcp-test--identity-params '(:conversation "über-7"))
+                 '(:conversation "über-7" :kind "interactive")))))
+    (dolist (case cases)
+      (let* ((label (nth 0 case))
+             (params (nth 1 case))
+             (want (nth 2 case))
+             (got (satan-mcp--parse-identity params)))
+        (ert-info ((format "%s" label))
+          (if (eq want 'error)
+              (progn
+                (should (eq (car-safe got) 'error))
+                (should (stringp (cdr got))))
+            (should (equal got want)))
+          ;; Pure: the same params answer the same way.
+          (should (equal (satan-mcp--parse-identity params) got)))))))
+
+;; ── VT-mcp-identity: the initialize wire (SL-032 PHASE-04) ────────────────
+
+(ert-deftest satan-mcp/identity-malformed-initialize-is-invalid-params ()
+  "EX-2/VT-2: a malformed identity answers -32602 and leaves the session
+uninitialised, so a following valid initialize succeeds.
+
+-32602 is `invalid params'; the session's identity stays nil until an
+initialize parses."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "desc")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (pair (satan-mcp-test--connect-session sock))
+          (proc (car pair))
+          (session (cdr pair)))
+     (should session)
+     (dolist (bad (list (satan-mcp-test--identity "")
+                        (satan-mcp-test--identity "7" "batch")
+                        '(:conversation 7 :kind "interactive")))
+       (should (equal (satan-mcp-test--error-code
+                       (satan-mcp-test--initialize proc bad))
+                      -32602))
+       (should-not (satan-mcp-session-identity session)))
+     (should-not (plist-get (satan-mcp-test--initialize
+                             proc (satan-mcp-test--identity "7"))
+                            :error))
+     (should (equal (satan-mcp-session-identity session)
+                    '(:conversation "7" :kind "interactive")))
+     (satan-mcp-test--disconnect proc)
+     (satan-mcp-test--stop))))
+
+(ert-deftest satan-mcp/identity-repeated-initialize-is-idempotent ()
+  "EX-2/VT-2 (I1): the same identity again is answered as normal; a
+different identity answers -32602 and the first identity stands."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "desc")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (pair (satan-mcp-test--connect-session sock))
+          (proc (car pair))
+          (session (cdr pair)))
+     (should session)
+     (should-not (plist-get (satan-mcp-test--initialize
+                             proc (satan-mcp-test--identity "7" "scheduled"))
+                            :error))
+     (let ((res (satan-mcp-test--initialize
+                 proc (satan-mcp-test--identity "7" "scheduled"))))
+       (should-not (plist-get res :error))
+       (should (plist-get res :result)))
+     (should (equal (satan-mcp-test--error-code
+                     (satan-mcp-test--initialize
+                      proc (satan-mcp-test--identity "8" "scheduled")))
+                    -32602))
+     (should (equal (satan-mcp-session-identity session)
+                    '(:conversation "7" :kind "scheduled")))
+     (satan-mcp-test--disconnect proc)
+     (satan-mcp-test--stop))))
+
+(ert-deftest satan-mcp/identity-initialize-after-mint-is-invalid-request ()
+  "EX-2/VT-2 (I1): once the run is minted the identity is fixed, so any
+initialize answers -32600 `invalid request' — even the same identity."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "desc")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (pair (satan-mcp-test--open-identified
+                 sock (satan-mcp-test--identity "7")))
+          (proc (car pair))
+          (session (cdr pair)))
+     (should-not (plist-get (satan-mcp-test--request
+                             proc "tools/call"
+                             (list :name "stub.a" :arguments nil))
+                            :error))
+     (should (satan-mcp-session-run-id session))
+     (should (equal (satan-mcp-test--error-code
+                     (satan-mcp-test--initialize
+                      proc (satan-mcp-test--identity "7")))
+                    -32600))
+     (should (equal (satan-mcp-session-identity session)
+                    '(:conversation "7" :kind "interactive")))
+     (satan-mcp-test--disconnect proc)
+     (satan-mcp-test--stop))))
+
+(ert-deftest satan-mcp/identity-initialize-result-is-unchanged ()
+  "EX-3: accepting an identity adds no server capability — the result's
+capabilities carries only `:tools'."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "desc")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (proc (satan-mcp-test--connect sock))
+          (res (satan-mcp-test--initialize proc (satan-mcp-test--identity "7")))
+          (caps (plist-get (plist-get res :result) :capabilities)))
+     (should (equal (cl-loop for (k _v) on caps by #'cddr collect k)
+                    '(:tools)))
+     (satan-mcp-test--disconnect proc)
+     (satan-mcp-test--stop))))
+
+;; ── VT-mcp-identity: identity on the artefacts (SL-032 PHASE-04) ──────────
+
+(ert-deftest satan-mcp/identity-two-connections-write-distinct-runs ()
+  "EX-3/VT-1: two live connections with different identities mint two
+runs; each manifest and bundle carries that connection's
+:conversation and :kind with :mode \"interactive\"; each session keeps
+its own boot-cache; both runs verify after disconnect."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--register-boot-context)
+   (let* ((sock (satan-mcp-test--start))
+          (pair-a (satan-mcp-test--open-identified
+                   sock (satan-mcp-test--identity "7")))
+          (pair-b (satan-mcp-test--open-identified
+                   sock (satan-mcp-test--identity "8" "scheduled")))
+          (calls 0))
+     ;; `satan_boot_context' mints the run and caches a per-session capsule.
+     (cl-letf (((symbol-function 'satan-context-interactive)
+                (lambda (&rest _)
+                  (list :prompt (format "capsule-%d"
+                                        (setq calls (1+ calls)))))))
+       (dolist (pair (list pair-a pair-b))
+         (should-not (plist-get (satan-mcp-test--request
+                                 (car pair) "tools/call"
+                                 (list :name "satan_boot_context"
+                                       :arguments nil))
+                                :error))))
+     (should (= 2 (satan-mcp-test--run-dir-count satan-mcp-test--runs-dir)))
+     (let* ((session-a (cdr pair-a))
+            (session-b (cdr pair-b))
+            (dir-a (satan-mcp-session-run-dir session-a))
+            (dir-b (satan-mcp-session-run-dir session-b)))
+       (should (and dir-a dir-b))
+       (should-not (equal dir-a dir-b))
+       (should (satan-mcp-session-boot-cache session-a))
+       (should (satan-mcp-session-boot-cache session-b))
+       (should-not (equal (satan-mcp-session-boot-cache session-a)
+                          (satan-mcp-session-boot-cache session-b)))
+       (dolist (want (list (list dir-a "7" "interactive")
+                           (list dir-b "8" "scheduled")))
+         (dolist (file '("manifest.json" "bundle.json"))
+           (let ((obj (satan-mcp-test--read-json
+                       (expand-file-name file (nth 0 want)))))
+             (should (equal (plist-get obj :conversation) (nth 1 want)))
+             (should (equal (plist-get obj :kind) (nth 2 want)))
+             (should (equal (plist-get obj :mode) "interactive")))))
+       (dolist (pair (list pair-a pair-b))
+         (satan-mcp-test--disconnect (car pair)))
+       (should (eq (satan-audit-verify-run dir-a) t))
+       (should (eq (satan-audit-verify-run dir-b) t)))
+     (satan-mcp-test--stop))))
+
+(ert-deftest satan-mcp/identity-legacy-conversation-is-json-null ()
+  "EX-3/A3: a client claiming no identity writes :conversation as JSON
+null — the raw text says \"conversation\":null, not an empty string and
+not an omitted key — with :kind \"interactive\"."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "desc")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (pair (satan-mcp-test--connect-session sock))
+          (proc (car pair))
+          (session (cdr pair)))
+     (should session)
+     (should-not (plist-get (satan-mcp-test--initialize proc) :error))
+     (should-not (plist-get (satan-mcp-test--request
+                             proc "tools/call"
+                             (list :name "stub.a" :arguments nil))
+                            :error))
+     (let ((dir (satan-mcp-session-run-dir session)))
+       (should dir)
+       (dolist (file '("manifest.json" "bundle.json"))
+         (let ((path (expand-file-name file dir)))
+           (should (string-match-p "\"conversation\":null"
+                                   (satan-mcp-test--read-file path)))
+           (should (equal (plist-get (satan-mcp-test--read-json path) :kind)
+                          "interactive")))))
+     (should (equal (satan-mcp-session-identity session)
+                    '(:conversation nil :kind "interactive")))
+     (satan-mcp-test--disconnect proc)
+     (satan-mcp-test--stop))))
+
+(ert-deftest satan-mcp/identity-trace-marked-carries-session-run-id ()
+  "EX-3/VT-1 (A5): `memory_mark' through each connection emits one
+`trace_marked' payload whose :run_id is that connection's session run
+id.  Two connections, two run ids: attribution is not ambient."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--register-memory-tools)
+   (let* ((sock (satan-mcp-test--start))
+          (pair-a (satan-mcp-test--open-identified
+                   sock (satan-mcp-test--identity "7")))
+          (pair-b (satan-mcp-test--open-identified
+                   sock (satan-mcp-test--identity "8" "scheduled")))
+          (enqueued nil)
+          (satan-attribute-updates-enabled t)
+          (satan-tools-activity-dir
+           (expand-file-name "activity" satan-mcp-test--tmp))
+          (satan-goad-queue-file
+           (expand-file-name "goad-queue.json" satan-mcp-test--tmp))
+          (satan-goad-data-dir
+           (expand-file-name "goad" satan-mcp-test--tmp)))
+     ;; Only the DB-touching primitive and the enqueue are stubbed: the run
+     ;; id has to travel the real handler path.
+     (cl-letf (((symbol-function 'satan-db-query)
+                (lambda (&rest _) (cons 'ok "tid-x")))
+               ((symbol-function 'satan-attribute-enqueue)
+                (lambda (payload &optional _db)
+                  (push payload enqueued)
+                  (cons 'ok 1))))
+       (dolist (pair (list pair-a pair-b))
+         (should-not (plist-get (satan-mcp-test--request
+                                 (car pair) "tools/call"
+                                 (list :name "memory_mark"
+                                       :arguments
+                                       (list :payload "identity attribution")))
+                                :error))))
+     (should (= 2 (length enqueued)))
+     (let ((run-ids (mapcar (lambda (p) (plist-get p :run_id)) enqueued)))
+       (should (= 2 (length (delete-dups run-ids))))
+       (dolist (pair (list pair-a pair-b))
+         (let* ((session (cdr pair))
+                (run-id (satan-mcp-session-run-id session))
+                (payload (cl-find-if
+                          (lambda (p) (equal (plist-get p :run_id) run-id))
+                          enqueued)))
+           (should run-id)
+           (should payload)
+           (should (equal (plist-get payload :reason) "trace_marked")))))
+     (dolist (pair (list pair-a pair-b))
+       (satan-mcp-test--disconnect (car pair)))
+     (satan-mcp-test--stop))))
+
+(ert-deftest satan-mcp/identity-final-summary-names-conversation ()
+  "EX-4: finalisation names the identity — \"interactive conversation 7\"
+for an identified session, \"interactive session\" for a legacy one."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "desc")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (pair-a (satan-mcp-test--open-identified
+                   sock (satan-mcp-test--identity "7")))
+          (pair-b (satan-mcp-test--connect-session sock))
+          (_legacy-init (satan-mcp-test--initialize (car pair-b))))
+     (should (cdr pair-b))
+     (dolist (pair (list pair-a pair-b))
+       (should-not (plist-get (satan-mcp-test--request
+                               (car pair) "tools/call"
+                               (list :name "stub.a" :arguments nil))
+                              :error)))
+     (let ((dir-a (satan-mcp-session-run-dir (cdr pair-a)))
+           (dir-b (satan-mcp-session-run-dir (cdr pair-b))))
+       (should (and dir-a dir-b))
+       (should-not (equal dir-a dir-b))
+       (dolist (pair (list pair-a pair-b))
+         (satan-mcp-test--disconnect (car pair)))
+       (should (equal (plist-get (satan-mcp-test--read-json
+                                  (expand-file-name "final.json" dir-a))
+                                 :summary)
+                      "interactive conversation 7"))
+       (should (equal (plist-get (satan-mcp-test--read-json
+                                  (expand-file-name "final.json" dir-b))
+                                 :summary)
+                      "interactive session")))
+     (satan-mcp-test--stop))))
 
 (provide 'satan-mcp-test)
 ;;; satan-mcp-test.el ends here

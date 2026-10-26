@@ -118,6 +118,25 @@ only an implementation can settle. If one ran, it would probe:
   `mint-failure-*` tests fail; restored.
 - Gate: `just check` exit 0 — 1351 tests, 0 unexpected, 4 skipped; lint clean.
 
+### PHASE-04 (2026-10-26)
+
+- Pass A — pi `implement`, tests: 9 `identity-*` tests (parse table, wire
+  -32602/-32600, two-identity V1, legacy JSON null on the raw file text,
+  final summary) plus `--initialize`/`--connect-session` helpers.
+  $0.075, 38 requests. `identity-trace-marked-carries-session-run-id` is
+  green by construction (PHASE-01 landed explicit attribution) — kept as
+  the V1 trace_marked guard.
+- Pass B — pi `implement`, code: `--parse-identity`, `--initialize`,
+  `--identity-fields` (nil → `:null`), `--final-summary`, header I1-I5.
+  $0.031, 21 requests. It caught a pass-A test bug: `"7\x7f8"` reads as
+  U+07F8, not DEL — and "fixed" it by narrowing conversations to printable
+  ASCII, contrary to design sec-2 ("opaque", no control chars). Orchestrator
+  fixed the test (`(string ?7 127 ?8)`), added a non-ASCII positive row, and
+  restored the design predicate (< 32 or 127).
+- Negative control: predicate without the 127 check → parse-table fails;
+  restored.
+- Gate: `just check` exit 0 — 1360 tests, 0 unexpected, 4 skipped; lint clean.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-26 · PHASE-02 completed, PHASE-03 next · 7ca34df

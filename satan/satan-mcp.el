@@ -6,6 +6,18 @@
 ;; Methods: initialize, notifications/initialized (no-op), ping, tools/list, tools/call.
 ;; Transport: newline-delimited JSON-RPC 2.0.
 ;;
+;; Invariants (DEC-121, DEC-122):
+;; I1. A session's identity is fixed once `initialize' succeeds or its run
+;;     is minted, whichever comes first.
+;; I2. A session has at most one run; every request with an id that arrives
+;;     while its session is open gets exactly one response, unless the client
+;;     cancelled it or the transport closed first.
+;; I3. A run is finalised exactly once, and only when no call is in flight on
+;;     its session.
+;; I4. Every finalised MCP bundle passes `satan-audit-verify-run'.
+;; I5. Memory-write attribution comes from an explicit argument, never
+;;     ambient state.
+;;
 ;; Trust boundary (POL-001): the socket speaks MCP only — no eval path.
 ;; Every tools/call flows through satan-tool-dispatch (name look-up,
 ;; mode allowlist, capability guard, schema validation, handler).
@@ -99,6 +111,7 @@ The run slots are nil until the first `tools/call' mints the run
 (DEC-122).  The line buffer is connection-scoped, so it lives on the
 connection process, not here."
   proc          ; the network connection process (UDS peer)
+  identity      ; (:conversation C :kind K) — nil until initialize succeeds
   run-id        ; minted run identifier — nil until the first tools/call
   run-dir       ; absolute run directory — nil until the first tools/call
   audit         ; satan-audit-handle — nil until the first tools/call
@@ -106,6 +119,61 @@ connection process, not here."
   prepare       ; the run_ctx prepare plist — nil until the first tools/call
   boot-cache    ; cached boot-context text, or nil (DEC-13)
   )
+
+;; ── Internal: conversation identity (DEC-121) ───────────────────────────────
+
+(defconst satan-mcp--identity-kinds '("interactive" "scheduled")
+  "Conversation kinds a client may claim (DEC-121).
+Descriptive only: nothing grants scope, budget or supervision status from
+kind or conversation (RSK-018, RSK-019).")
+
+(defconst satan-mcp--identity-legacy '(:conversation nil :kind "interactive")
+  "The identity of a client that claims none (DEC-121).")
+
+(defun satan-mcp--valid-conversation-p (c)
+  "Return non-nil when C is a well-formed conversation id (DEC-121).
+A string of 1-128 characters with no control character (below 32, or
+127).  Otherwise opaque to SATAN."
+  (and (stringp c)
+    (<= 1 (length c) 128)
+    (cl-loop for ch across c never (or (< ch 32) (= ch 127)))))
+
+(defun satan-mcp--parse-identity (params)
+  "Return the identity PARAMS claims: (:conversation C :kind K) or (error . MSG).
+PARAMS is the parsed `initialize' params plist.  An absent
+`capabilities.experimental.satan' is the legacy identity; a `satan' that is
+not an object, or a malformed conversation or kind, is an error — the
+session then stays uninitialised."
+  (let ((satan (plist-get (plist-get (plist-get params :capabilities)
+                              :experimental)
+                  :satan)))
+    (cond
+     ((null satan) satan-mcp--identity-legacy)
+     ((not (and (consp satan) (keywordp (car satan))))
+      (cons 'error "invalid params: satan is not an object"))
+     (t
+      (let ((conversation (plist-get satan :conversation))
+             (kind (or (plist-get satan :kind) "interactive")))
+        (cond
+         ((and conversation (not (satan-mcp--valid-conversation-p conversation)))
+          (cons 'error "invalid params: malformed conversation"))
+         ((not (member kind satan-mcp--identity-kinds))
+          (cons 'error "invalid params: unknown kind"))
+         (t (list :conversation conversation :kind kind))))))))
+
+(defun satan-mcp--identity-fields (identity)
+  "Return the IDENTITY fields a run artefact carries (DEC-121, design sec-6).
+`:conversation' is JSON null when the client claimed none; `json-serialize'
+encodes nil as {}, so the null must be spelled `:null'."
+  (list :conversation (or (plist-get identity :conversation) :null)
+    :kind (plist-get identity :kind)))
+
+(defun satan-mcp--final-summary (identity)
+  "Return the finalisation summary naming IDENTITY (DEC-121)."
+  (let ((conversation (plist-get identity :conversation)))
+    (if conversation
+      (format "interactive conversation %s" conversation)
+      "interactive session")))
 
 ;; ── Internal: R7 fail-fast precondition ────────────────────────────────────
 
@@ -152,23 +220,24 @@ Enforces 0700 permissions."
 
 ;; ── Internal: run lifecycle (DEC-5: one run per connection) ─────────────────
 
-(defun satan-mcp--interactive-manifest (run-id)
-  "Return the manifest plist for an interactive RUN-ID."
+(defun satan-mcp--interactive-manifest (run-id identity)
+  "Return the manifest plist for an interactive RUN-ID claimed by IDENTITY."
   (let ((tools-list nil))
     (dolist (name (satan-mcp--interactive-tools))
       (let ((spec (satan-tool-lookup name)))
         (when spec
           (push (satan-tool-json-schema spec) tools-list))))
-    (list :mode "interactive"
-      :run_id run-id
-      :tools (vconcat (nreverse tools-list)))))
+    (append (list :mode "interactive")
+      (satan-mcp--identity-fields identity)
+      (list :run_id run-id
+        :tools (vconcat (nreverse tools-list))))))
 
-(defun satan-mcp--interactive-bundle (run-id)
-  "Return the synthetic bundle plist for an interactive RUN-ID."
-  (list :run_id run-id
-    :mode "interactive"
-    :prompt "interactive MCP session (DEC-6: no satan_final in A)"
-    :context "human-supervised pi.dev session"))
+(defun satan-mcp--interactive-bundle (run-id identity)
+  "Return the synthetic bundle plist for an interactive RUN-ID claimed by IDENTITY."
+  (append (list :run_id run-id :mode "interactive")
+    (satan-mcp--identity-fields identity)
+    (list :prompt "interactive MCP session (DEC-6: no satan_final in A)"
+      :context "human-supervised pi.dev session")))
 
 (defun satan-mcp--ensure-run (session)
   "Mint SESSION's run on first use and publish its run slots (DEC-122).
@@ -181,6 +250,9 @@ run dir is deleted and the session stays run-less, so the next tools/call
 retries."
   (unless (satan-mcp-session-run-id session)
     (let* ((mode (satan-mode-resolve "interactive"))
+            ;; A1: the claim, or the legacy one when the client claimed none.
+            (identity (or (satan-mcp-session-identity session)
+                          satan-mcp--identity-legacy))
             ;; F5: one constructor for run_ctx.  The canonical 10-key shape,
             ;; not a hand-rolled 4-key clone — the six v0 placeholders reach
             ;; no on-disk artifact, since `satan-audit-open' stores run-ctx on
@@ -192,8 +264,8 @@ retries."
       (unwind-protect
         (let* ((audit (satan-audit-open
                         run-dir
-                        (satan-mcp--interactive-manifest run-id)
-                        (satan-mcp--interactive-bundle run-id)
+                        (satan-mcp--interactive-manifest run-id identity)
+                        (satan-mcp--interactive-bundle run-id identity)
                         prepare))
                 (run-struct (make-satan-run
                               :id run-id
@@ -230,7 +302,10 @@ writes :status \"invalid\"."
   (when (satan-mcp-session-run-id session)
     (satan-audit-close
       (satan-mcp-session-audit session)
-      (list :summary "interactive session" :status "done")
+      (list :summary (satan-mcp--final-summary
+                       (or (satan-mcp-session-identity session)
+                           satan-mcp--identity-legacy))
+        :status "done")
       (list :applied [] :staged [] :rejected [] :failed [])
       'done)))
 
@@ -250,6 +325,39 @@ writes :status \"invalid\"."
   (list :jsonrpc "2.0" :id id
     :error (list :code code :message message)))
 
+(defun satan-mcp--initialize (id session proc params)
+  "Handle `initialize': fix SESSION's identity, then answer ID as today.
+The identity is fixed once it parses or once the run is minted, whichever
+comes first (I1): after the mint every initialize is -32600.  A malformed
+identity is -32602 and the session stays uninitialised; the same identity
+again is answered as normal, a different one is -32602.
+
+The result body is unchanged — the server advertises nothing new about the
+identity (DEC-121)."
+  (if (satan-mcp-session-run-id session)
+      (satan-mcp--send proc
+        (satan-mcp--error id -32600
+          "invalid request: identity is fixed once the run is minted"))
+    (let ((identity (satan-mcp--parse-identity params))
+           (known (satan-mcp-session-identity session)))
+      (cond
+       ((eq (car-safe identity) 'error)
+        (satan-mcp--send proc (satan-mcp--error id -32602 (cdr identity))))
+       ((and known (not (equal identity known)))
+        (satan-mcp--send proc
+          (satan-mcp--error id -32602
+            "invalid params: identity already fixed for this session")))
+       (t
+        (setf (satan-mcp-session-identity session) identity)
+        (satan-mcp--send
+          proc
+          (satan-mcp--result
+            id
+            (list :protocolVersion satan-mcp-protocol-version
+              :capabilities (list :tools (make-hash-table :test 'eq))
+              :serverInfo (list :name satan-mcp-server-name
+                            :version "0")))))))))
+
 (defun satan-mcp--handle-message (parsed session proc)
   "Dispatch one parsed JSON-RPC message PARSED (plist) from PROC.
 SESSION is the satan-mcp-session.
@@ -264,15 +372,7 @@ delivered, the send signals on to the caller."
           (params (plist-get parsed :params)))
     (condition-case err
       (pcase method
-        ("initialize"
-          (satan-mcp--send
-            proc
-            (satan-mcp--result
-              id
-              (list :protocolVersion satan-mcp-protocol-version
-                :capabilities (list :tools (make-hash-table :test 'eq))
-                :serverInfo (list :name satan-mcp-server-name
-                              :version "0")))))
+        ("initialize" (satan-mcp--initialize id session proc params))
         ;; notification — no response
         ("notifications/initialized" nil)
         ("ping"
