@@ -288,7 +288,7 @@ only an implementation can settle. If one ran, it would probe:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-27 · reconciled (RV-061 outcome, REV-014), close next · malebolge c3cdcaf
+fresh-as-of: 2026-10-27 · closed (done); IMP-054 resolved · malebolge c3cdcaf
 
 ### Produced
 
@@ -322,9 +322,10 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
 
 ### Open
 
-- Close: confirm rollup; RV-061 `## Reconciliation Outcome` lists what
-  reconcile wrote (design sec-3/7/8/9, selectors, memory, QUE-001,
-  REV-014 SPEC-002).
+- Closed 2026-10-27: rollup 8/8, RV-061 + REV-014 done, gate green
+  (1378, 0 unexpected, host TZ at 08:43). Harvest: nothing further —
+  the session's durable items went to IMP-014, ISS-061, QUE-001 and the
+  perceive-consume memory.
 - Tolerated: PHASE-07 VTs UNATTRIBUTABLE (RV-061 F-2).
 - Not SL-032: ISS-061; malebolge IMP-013, IMP-014; QUE-001 (now carries
   the REQ-007 divergence).

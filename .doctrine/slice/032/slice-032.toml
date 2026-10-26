@@ -1,7 +1,7 @@
 id = 32
 slug = "mcp-run-identity-per-conversation"
 title = "MCP run identity per conversation, not per connection"
-status = "reconcile"
+status = "done"
 created = "2026-10-24"
 updated = "2026-10-26"
 tags = ["audit", "malebolge", "mcp", "satan"]
