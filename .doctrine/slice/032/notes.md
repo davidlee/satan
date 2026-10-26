@@ -174,6 +174,42 @@ only an implementation can settle. If one ran, it would probe:
   restored.
 - Gate: `just check` exit 0 — 1366 tests, 0 unexpected, 4 skipped; lint clean.
 
+### PHASE-06 (2026-10-26)
+
+- EN-2: RV-060 F-1 (admission, already-decoded lines) and F-6 (boolean busy
+  flag must fail V14) re-read. DEC-126 folded in (user, 2026-10-26).
+- Phase decisions (sheet A1-A8; reconcile notes): `in-flight` is the list
+  of in-flight request ids (count = length; cancellation needs membership,
+  one source of truth); `satan-mcp--begin-close`/`--finalise`/`--release`;
+  admission gate in `--handle-message`; `--deliver` records `cancelled` /
+  `disconnected` instead of sending; -32603 only on an open, live session.
+- Pass A — pi `implement`, tests: 10 close/cancel/nested/admission/dec126
+  tests + PHASE-05 tests moved to `--in-flight-count`; missed VT-3 (V9),
+  added on session continue. $0.074 + $0.008. Its fail-fast
+  `--require-phase-06-api` guard was red-phase scaffolding — removed by the
+  orchestrator after green.
+- Pass B — pi `implement`, code. $0.082, 40 requests, 3 consecutive green
+  runs. Added beyond the sheet: `satan-mcp--filter-depth` +
+  `--resignal-quit` — a quit inside a NESTED filter is deferred to
+  `quit-flag`. Orchestrator probe confirmed the need: without it the C
+  process reader reports "error in process filter: Quit" (batch dies;
+  interactively the quit would be swallowed at that boundary and the outer
+  call would not settle as quit). Accepted; reconcile note.
+- VA-1 (orchestrator probe, closing half): `satan-mcp-stop` during a nested
+  wait, sibling decoded in the same chunk, call then escapes with an error
+  → state closing in the wait, settle (tool-result "interrupted: error" +
+  call-interrupted) before the single deferred finalise at in-flight 0,
+  sibling dropped ("dropped tools/call id 32 on closed session"), no -32603
+  sent, no record after finalise, verify t, client closed. Sentinel-path
+  variants are the close-* tests.
+- VA-2: in-flight replaced by a boolean busy flag → `nested-call-in-flight-counts`
+  and `nested-close-finalises-only-at-zero` fail; restored.
+- Gate caught `satan-broker/tick-spawns-while-mcp-call-mid-dispatch`
+  (PHASE-02 test) calling `--tools-call` with a nil proc and expecting a
+  send; under A5 a dead transport records `disconnected`. Fixture now
+  passes a live pipe process.
+- Gate: `just check` exit 0 — 1378 tests, 0 unexpected, 4 skipped; lint clean.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-26 · PHASE-02 completed, PHASE-03 next · 7ca34df

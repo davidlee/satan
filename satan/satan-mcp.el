@@ -109,7 +109,11 @@ Excludes internal test stubs (names prefixed `test.')."
   "Per-connection session state (DEC-5: one run per connection).
 The run slots are nil until the first `tools/call' mints the run
 (DEC-122).  The line buffer is connection-scoped, so it lives on the
-connection process, not here."
+connection process, not here.
+
+Lifecycle (I3): `state' goes `open' -> `closing' -> `closed'.  An open
+session admits messages; a closing one admits nothing and finalises its
+run once its in-flight list empties; `closed' means finalised, once."
   proc          ; the network connection process (UDS peer)
   identity      ; (:conversation C :kind K) — nil until initialize succeeds
   run-id        ; minted run identifier — nil until the first tools/call
@@ -118,7 +122,9 @@ connection process, not here."
   tool-ctx      ; plist passed to satan-tool-dispatch — nil until first call
   prepare       ; the run_ctx prepare plist — nil until the first tools/call
   boot-cache    ; cached boot-context text, or nil (DEC-13)
-  (in-flight 0) ; tools/call dispatches on this session not yet settled (I3)
+  (state 'open) ; open | closing | closed — the connection lifecycle (I3)
+  (in-flight nil) ; ids of tools/call requests not yet settled (I3, VT-4)
+  cancelled     ; in-flight ids the client cancelled (notifications/cancelled)
   )
 
 ;; ── Internal: conversation identity (DEC-121) ───────────────────────────────
@@ -310,6 +316,52 @@ writes :status \"invalid\"."
       (list :applied [] :staged [] :rejected [] :failed [])
       'done)))
 
+;; ── Internal: close lifecycle (I2, I3) ─────────────────────────────────────
+
+(defun satan-mcp--without-id (ids id)
+  "Return IDS without one occurrence of ID (compared with `equal')."
+  (cl-remove id ids :count 1 :test #'equal))
+
+(defun satan-mcp--in-flight-count (session)
+  "Return how many tools/call requests on SESSION are not yet settled (I3)."
+  (length (satan-mcp-session-in-flight session)))
+
+(defun satan-mcp--finalise (session)
+  "Finalise SESSION's run exactly once (I3).
+`closed' is the guard: a second close request finalises nothing, so the
+sentinel, `satan-mcp-stop' and a deferred release cannot finalise twice."
+  (unless (eq (satan-mcp-session-state session) 'closed)
+    (setf (satan-mcp-session-state session) 'closed)
+    (satan-mcp--close-session session)))
+
+(defun satan-mcp--begin-close (session)
+  "Close SESSION: it admits nothing from here on (I2, I3).
+An `open' session becomes `closing' and finalises at once when nothing is
+in flight; a `closing' or `closed' session is left alone."
+  (when (eq (satan-mcp-session-state session) 'open)
+    (setf (satan-mcp-session-state session) 'closing)
+    (when (= 0 (satan-mcp--in-flight-count session))
+      (satan-mcp--finalise session))))
+
+(defun satan-mcp--release (session id)
+  "Release ID from SESSION's in-flight list.
+A closing session finalises when its last request is released (I3).  The
+release follows the call's last audit write, so the run never closes
+under an unfinished settle."
+  (setf (satan-mcp-session-in-flight session)
+    (satan-mcp--without-id (satan-mcp-session-in-flight session) id))
+  (when (and (eq (satan-mcp-session-state session) 'closing)
+          (= 0 (satan-mcp--in-flight-count session)))
+    (satan-mcp--finalise session)))
+
+(defun satan-mcp--cancel (session id)
+  "Mark the in-flight request ID cancelled on SESSION.
+An unknown id is ignored.  Dispatch is not interrupted — Emacs dispatch
+is synchronous and the tool may already have acted — so the settle drops
+the response instead (A6)."
+  (when (member id (satan-mcp-session-in-flight session))
+    (push id (satan-mcp-session-cancelled session))))
+
 ;; ── Internal: MCP method handlers ───────────────────────────────────────────
 
 (defun satan-mcp--send (proc obj)
@@ -382,23 +434,51 @@ identity (DEC-121)."
               :serverInfo (list :name satan-mcp-server-name
                             :version "0")))))))))
 
+(defun satan-mcp--admits-p (session)
+  "Return non-nil when SESSION is still open and admits work (I2).
+A `closing' or `closed' session dispatches nothing: its transport is gone."
+  (and session (eq (satan-mcp-session-state session) 'open)))
+
 (defun satan-mcp--handle-message (parsed session proc)
   "Dispatch one parsed JSON-RPC message PARSED (plist) from PROC.
 SESSION is the satan-mcp-session.
 
+Admission comes first (I2): a session that is not `open' dispatches
+nothing, answers nothing and logs the drop.  That matters because the
+filter decodes every complete line of a chunk before dispatching any, so
+a sibling line decoded behind the line that closed the connection meets a
+`closing' session rather than a finalised run.
+
 This is the single answer-if-it-fails point (EX-3): an uncaught error in a
 request (one with an id) is answered -32603 and logged; a notification is
 only logged.  A failed mint (see `satan-mcp--ensure-run') gets its -32603
-here, so no handler needs a bespoke response code.  If the error cannot be
-delivered, the send signals on to the caller."
+here, so no handler needs a bespoke response code.  The -32603 goes out
+only on a still-open, live transport (A8); a throw or quit that closed it
+finds it closed here."
+  (let* ((id (plist-get parsed :id))
+          (method (plist-get parsed :method)))
+    (cond
+     ((not (satan-mcp--admits-p session))
+      (message "satan-mcp: dropped %s id %s on %s session"
+        (or method "message") id
+        (if session (satan-mcp-session-state session) 'closed)))
+     (t
+      (satan-mcp--dispatch parsed session proc)))))
+
+(defun satan-mcp--dispatch (parsed session proc)
+  "Run PARSED on the admitted SESSION, answering PROC.
+The answer-if-it-fails half of `satan-mcp--handle-message'; kept apart so
+admission reads as the single gate it is."
   (let* ((id (plist-get parsed :id))
           (method (plist-get parsed :method))
           (params (plist-get parsed :params)))
     (condition-case err
       (pcase method
         ("initialize" (satan-mcp--initialize id session proc params))
-        ;; notification — no response
+        ;; notifications — no response
         ("notifications/initialized" nil)
+        ("notifications/cancelled"
+          (satan-mcp--cancel session (plist-get params :requestId)))
         ("ping"
           (satan-mcp--send
             proc
@@ -429,9 +509,19 @@ delivered, the send signals on to the caller."
         (message "satan-mcp: %s failed: %s"
           (or method "message")
           (error-message-string err))
-        (when id
+        (when (and id
+                (process-live-p proc)
+                (satan-mcp--admits-p session))
           (satan-mcp--send proc
             (satan-mcp--error id -32603 (error-message-string err))))))))
+
+(defun satan-mcp--record-call-interrupted (audit id reason)
+  "Record `call-interrupted' for ID with REASON.
+The half of the settle that a call which already has a real tool-result
+needs: cancelled and disconnected calls ran, so only the transcript record
+that says the client never got the answer is missing."
+  (satan-audit-record audit 'broker 'call-interrupted
+    (list :id id :reason reason)))
 
 (defun satan-mcp--record-interrupted (audit id reason)
   "Settle the interrupted call ID: a tool-result, then `call-interrupted'.
@@ -444,19 +534,58 @@ so an interrupted call never reads as an unsettled one."
     'tool-result
     (list :type "tool_result" :id id :ok :false
       :error (format "interrupted: %s" reason)))
-  (satan-audit-record audit 'broker 'call-interrupted
-    (list :id id :reason reason)))
+  (satan-mcp--record-call-interrupted audit id reason))
+
+(defun satan-mcp--deliver (session proc id res)
+  "Answer ID with RES on PROC, or record why the client gets nothing (I2).
+RES is already audited, so only the `call-interrupted' half is written.  A
+cancelled id is dropped from `cancelled' and recorded as such; a session
+that is no longer `open', a dead transport, or a send that signals is
+recorded \"disconnected\".  The result is never replayed."
+  (let ((audit (satan-mcp-session-audit session)))
+    (cond
+     ((member id (satan-mcp-session-cancelled session))
+      (setf (satan-mcp-session-cancelled session)
+        (satan-mcp--without-id (satan-mcp-session-cancelled session) id))
+      (satan-mcp--record-call-interrupted audit id "cancelled"))
+     ((or (not (eq (satan-mcp-session-state session) 'open))
+        (not (process-live-p proc)))
+      (satan-mcp--record-call-interrupted audit id "disconnected"))
+     (t
+      (condition-case nil
+          (satan-mcp--send-tool-result proc id res)
+        (error
+          (satan-mcp--record-call-interrupted audit id "disconnected")))))))
+
+(defvar satan-mcp--filter-depth 0
+  "Number of `satan-mcp--filter' invocations on the stack.
+Zero outside one.  A handler that pumps the connection has the peer's
+next line dispatched from inside the line already being dispatched, and
+that inner invocation is entered from the C process reader.")
+
+(defun satan-mcp--resignal-quit ()
+  "Re-raise the quit that `satan-mcp--tools-call' caught while settling.
+At the outermost filter the quit is signalled: it crosses into whatever
+called the dispatch.  Inside a nested filter that boundary is the C
+process reader, which cannot carry a Lisp quit (`read_process_output'
+reports \"error in process filter: Quit\"); there the quit is deferred to
+`quit-flag' instead, so the enclosing wait raises it and the enclosing
+dispatch settles on it as the quit it is."
+  (if (> satan-mcp--filter-depth 1)
+      (setq quit-flag t)
+    (signal 'quit nil)))
 
 (defun satan-mcp--tools-call (params id session proc)
   "Handle `tools/call': validate + dispatch through the shared dispatcher.
 PARAMS is the MCP params plist (already parsed with :object-type 'plist).
 SESSION carries the tool-ctx and audit handle, minted here on first use.
 
-Every audited call is settled before it releases the session in-flight
-count (I3): the dispatch sits inside `unwind-protect', so an error that
-escapes the guard inside `satan-tool-dispatch', `quit', or a `throw' to an
-outer catch still writes a tool-result for the call and a
-`call-interrupted' record first."
+Every audited call is settled before it releases its in-flight id (I3):
+the dispatch sits inside `unwind-protect', so an error that escapes the
+guard inside `satan-tool-dispatch', `quit', or a `throw' to an outer
+catch still writes a tool-result for the call and a `call-interrupted'
+record first.  The settle then delivers the response — or records why it
+cannot be delivered — and only then releases."
   (satan-mcp--ensure-run session)
   (let* ((tool-name (plist-get params :name))
           (arguments (plist-get params :arguments))
@@ -465,18 +594,18 @@ outer catch still writes a tool-result for the call and a
           (tool-ctx (satan-mcp-session-tool-ctx session))
           (audit (satan-mcp-session-audit session))
           (res nil)       ; the dispatch result, when dispatch returned
-          (reason nil)    ; "error" | "quit" — set when dispatch escaped
+          (reason nil)    ; "error" | "quit" | "exit" — set on an escape
           (escaped nil)   ; the escaped error condition, re-signalled below
           (recorded nil)) ; guards against a second tool-result
     (let ((satan-mcp--current-session session))
-      (setf (satan-mcp-session-in-flight session)
-        (1+ (satan-mcp-session-in-flight session)))
+      (push id (satan-mcp-session-in-flight session))
       ;; Audit the inbound tool_call (mimics membrane :dir in)
       (satan-audit-record audit 'in 'tool-call call)
       (unwind-protect
         (progn
-          ;; Only the dispatch sits inside the catcher: the response send
-          ;; stays outside it, so a failed send writes no second result.
+          ;; Only the dispatch sits inside the catcher: delivery and the
+          ;; release stay outside it, so a failed send writes no second
+          ;; result and never masks the exit.
           (condition-case err
               (setq res (satan-tool-dispatch
                           call (plist-get mode :tools) tool-ctx))
@@ -485,23 +614,29 @@ outer catch still writes a tool-result for the call and a
           (when res
             ;; Audit the outbound tool-result
             (satan-audit-record audit 'out 'tool-result res)
-            (setq recorded t)
-            (satan-mcp--send-tool-result proc id res)))
+            (setq recorded t)))
         ;; Settle: a non-local exit past the body leaves no tool-result, so
         ;; the cleanup writes one — a `throw' out of the body arrives here
-        ;; as "exit".  The decrement follows the call's last audit write.
+        ;; as "exit".  Then delivery, then release: the id drops only after
+        ;; the call's last audit write.
         (unless recorded
-          (satan-mcp--record-interrupted audit id (or reason "exit")))
-        (setf (satan-mcp-session-in-flight session)
-          (1- (satan-mcp-session-in-flight session))))
+          (setq reason (or reason "exit"))
+          (satan-mcp--record-interrupted audit id reason))
+        (when res
+          (satan-mcp--deliver session proc id res))
+        (satan-mcp--release session id)
+        ;; DEC-126: an error-free exit closes the transport too, so the
+        ;; client sees a disconnect instead of a timeout.  After the
+        ;; release, so the sentinel's close finalises at in-flight 0; a
+        ;; close already in progress makes it a no-op (I3).
+        (when (and reason (not (equal reason "error")))
+          (when (process-live-p (satan-mcp-session-proc session))
+            (delete-process (satan-mcp-session-proc session)))))
       ;; The escape is re-raised once settled: an error reaches the -32603
-      ;; wrapper in `satan-mcp--handle-message'; a quit closes the
-      ;; transport first, so the client sees a disconnect not a timeout.
+      ;; wrapper in `satan-mcp--handle-message'; a quit is re-signalled
+      ;; after the transport close; a `throw' just continues unwinding.
       (cond
-       ((equal reason "quit")
-        (when (process-live-p (satan-mcp-session-proc session))
-          (delete-process (satan-mcp-session-proc session)))
-        (signal 'quit nil))
+       ((equal reason "quit") (satan-mcp--resignal-quit))
        (escaped (signal (car escaped) (cdr escaped)))))))
 
 
@@ -542,8 +677,10 @@ does not error the session)."
 (defun satan-mcp--filter (proc chunk)
   "Accumulate CHUNK, dispatch each complete newline-delimited JSON-RPC line.
 The partial line is a process property (EX-5): it is connection-scoped,
-not session state."
-  (let* ((session (process-get proc 'satan-mcp-session))
+not session state.  `satan-mcp--filter-depth' records the re-entrancy a
+handler that pumps the connection causes."
+  (let* ((satan-mcp--filter-depth (1+ satan-mcp--filter-depth))
+          (session (process-get proc 'satan-mcp-session))
           (buf (concat (or (process-get proc 'satan-mcp-buf) "") chunk))
           (lines (split-string buf "\n")))
     (process-put proc 'satan-mcp-buf (car (last lines)))
@@ -567,17 +704,18 @@ not session state."
                 (error-message-string err)))))))))
 
 (defun satan-mcp--sentinel (proc event)
-  "Handle connection close — finalise the session's run, if it has one."
+  "Handle connection close — close the session, finalising its run if it has one.
+The session stays bound to PROC: `closed' is what stops further work, and
+keeping it lets the admission path name the state a dropped line met."
   (when (string-match-p "\\(closed\\|deleted\\|finished\\|exited\\|broken\\)" event)
     (let ((session (process-get proc 'satan-mcp-session)))
       (when session
         (condition-case err
-          (satan-mcp--close-session session)
+          (satan-mcp--begin-close session)
           (error
             (message "satan-mcp: close-session failed for %s: %s"
               (or (satan-mcp-session-run-id session) "a run-less session")
-              (error-message-string err))))
-        (process-put proc 'satan-mcp-session nil)))))
+              (error-message-string err))))))))
 
 (defun satan-mcp--accept-filter (_server-proc client-proc &optional _conn-info)
   "Accept a new UDS connection — bind a run-less session to CLIENT-PROC.
@@ -635,12 +773,15 @@ Also closes any open client connections synchronously to ensure
 sessions are finalized before cleanup."
   (interactive)
   ;; Close all client connections first so their sentinels fire
-  ;; synchronously before we tear down the server.
+  ;; synchronously before we tear down the server.  Same close path as the
+  ;; sentinel: whichever arrives first finalises, the other is a no-op (I3).
   (when satan-mcp--server-process
     (dolist (child (process-list))
-      (when (and (not (eq child satan-mcp--server-process))
-              (process-get child 'satan-mcp-session))
-        (delete-process child))))
+      (let ((session (and (not (eq child satan-mcp--server-process))
+                       (process-get child 'satan-mcp-session))))
+        (when session
+          (satan-mcp--begin-close session)
+          (delete-process child)))))
   (when (and satan-mcp--server-process
           (process-live-p satan-mcp--server-process))
     (delete-process satan-mcp--server-process))

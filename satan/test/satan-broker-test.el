@@ -733,8 +733,11 @@ no-child run; the tick must now reach `satan-broker--spawn'."
                               '(:bundle t)
                               (list :run_id "mcp-rid"
                                     :time_now "2026-06-03T00:00:00+1000"))))
+                    ;; A live transport: a dead one records the call
+                    ;; `disconnected' instead of answering (SL-032 A5).
+                    (proc (make-pipe-process :name "vt1-mcp" :noquery t))
                     (session (make-satan-mcp-session
-                              :run-id "mcp-rid" :run-dir mcp-dir
+                              :proc proc :run-id "mcp-rid" :run-dir mcp-dir
                               :audit audit)))
                (cl-letf (((symbol-function 'satan-run-perceive)
                           #'satan-broker-test--minimal-perceive)
@@ -744,8 +747,10 @@ no-child run; the tick must now reach `satan-broker--spawn'."
                             (plist-get prepare :run_id)))
                          ((symbol-function 'satan-mcp--send)
                           (lambda (_proc obj) (push obj sent))))
-                 (satan-mcp--tools-call
-                  (list :name "vt1_tick" :arguments nil) 1 session nil)))
+                 (unwind-protect
+                     (satan-mcp--tools-call
+                      (list :name "vt1_tick" :arguments nil) 1 session proc)
+                   (delete-process proc))))
              (should tick-run-id)
              ;; The tick was not silently deferred as `session_blocked'.
              (should (equal nil (let ((dir (satan-run-locate-dir tick-run-id
