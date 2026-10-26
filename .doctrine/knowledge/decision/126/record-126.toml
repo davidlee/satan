@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 126
+slug = "nonlocal-exit-closes-transport"
+title = "A non-error non-local exit from a tool call closes the transport, like quit"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-26"
+updated = "2026-10-26"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-032 PHASE-05 VA-1 probe: a throw out of satan-tool-dispatch to an outer catch (e.g. while-no-input in an enclosing wait) settles the audit (tool-result + call-interrupted :reason exit) but leaves the transport open; that request and siblings decoded in the same chunk are never answered, breaking I2. Design sec-3 closes the transport only on quit."
+choice = "Any non-local exit from a tools/call dispatch other than an error (quit, throw) settles, then closes the session transport with delete-process, then continues the exit. Errors still answer -32603 on a live transport."
+alternatives = ["Close only on quit (design as written); backlog the throw gap", "Answer -32603 for a throw and keep the transport"]
+rationale = "I2's transport-closed exception then covers every unanswered request; a throw cannot be answered in-band without swallowing the caller's exit."
+consequences = ["Design sec-3 Settle amended at reconcile (exit joins quit)", "Lands in PHASE-06 with a live-filter throw test"]
+decided_by = "agent proposal; user assent 2026-10-26"
+decided_on = "2026-10-26"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-032"

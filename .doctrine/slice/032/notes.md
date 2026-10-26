@@ -167,6 +167,7 @@ only an implementation can settle. If one ran, it would probe:
   not run; verify t. BUT the transport stays open, so 21 and 22 are never
   answered — an I2 gap for non-error, non-quit exits (e.g. a
   `while-no-input` throw in an enclosing wait). Raised with the user.
+  User chose: close on any non-error exit → DEC-126, lands in PHASE-06.
   Closing-session half → PHASE-06/VA-1.
 - VA-2: removed the interrupted tool-result write → `settle-escaped-error-live`,
   `settle-quit-closes-transport`, `settle-throw-to-outer-catch-direct` fail;
