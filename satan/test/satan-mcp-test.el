@@ -15,6 +15,7 @@
 (require 'satan-tools)
 (require 'satan-mode)
 (require 'satan-audit)
+(require 'satan-jsonl)
 (require 'satan-mcp)
 ;; Dynamic variables and the `trace_marked' enqueue the identity tests stub.
 (require 'satan-attribute)
@@ -510,6 +511,56 @@ prepare are all nil until the first tools/call."
                      :array-type 'list
                      :null-object nil
                      :false-object :false))
+
+;; ── Settle helpers (SL-032 PHASE-05) ────────────────────────────────────────
+
+(defun satan-mcp-test--transcript (dir)
+  "Return the transcript records of run dir DIR, as a list of plists.
+`:null-object :null' matches the writer, so a JSON null reads as `:null'."
+  (satan-jsonl-read-file (expand-file-name "transcript.jsonl" dir)
+                         :null-object :null))
+
+(defun satan-mcp-test--records-for-event (dir event)
+  "Return DIR's transcript records whose `:event' names EVENT.
+EVENT is a symbol such as `tool-call' or a bare event-name string such
+as the settle's `call-interrupted'."
+  (let ((name (if (symbolp event) (symbol-name event) event)))
+    (cl-remove-if-not (lambda (rec) (equal (plist-get rec :event) name))
+                      (satan-mcp-test--transcript dir))))
+
+(defun satan-mcp-test--payload-for (dir event)
+  "Return the `:payload' of DIR's one record for EVENT.
+Fails with the event name when the record is absent or duplicated, so a
+missing settle record reads as such rather than as a nil payload."
+  (let* ((name (if (symbolp event) (symbol-name event) event))
+         (recs (satan-mcp-test--records-for-event dir name)))
+    (unless (= 1 (length recs))
+      (ert-fail (format "expected one %s record, got %d"
+                        name (length recs))))
+    (plist-get (car recs) :payload)))
+
+(defun satan-mcp-test--wait-for (pred &optional timeout)
+  "Call PRED until it returns non-nil, or TIMEOUT (default 5) seconds pass.
+Pumps `accept-process-output' so process filters and sentinels run.
+Always bounded: returns nil on timeout."
+  (let ((deadline (+ (float-time) (or timeout 5)))
+        (res nil))
+    (while (and (not res) (< (float-time) deadline))
+      (accept-process-output nil 0.05)
+      (setq res (funcall pred)))
+    res))
+
+(defun satan-mcp-test--direct-call-session ()
+  "Return a session with a minted run and a dead dummy transport.
+The direct-call tests (no socket) stub `satan-mcp--send', so nothing is
+written to the transport.  `satan-mcp-test--with-tmp-env' supplies the
+runs dir; the interactive mode must already be registered so
+`satan-mcp--ensure-run' can resolve it."
+  (let* ((proc (make-pipe-process :name "satan-mcp-test-dummy" :noquery t))
+         (session (make-satan-mcp-session :proc proc)))
+    (delete-process proc)
+    (satan-mcp--ensure-run session)
+    session))
 
 (ert-deftest satan-mcp/lazy-mint-no-run-before-first-call ()
   "VT-1/EX-1: connect, initialize and tools/list leave no run dir.
@@ -1255,6 +1306,217 @@ for an identified session, \"interactive session\" for a legacy one."
                                  :summary)
                       "interactive session")))
      (satan-mcp-test--stop))))
+
+;; ── VT-settle (SL-032 PHASE-05) ─────────────────────────────────────────────
+
+(ert-deftest satan-mcp/settle-escaped-error-live ()
+  "V15/EX-2: an error escaping the dispatcher's guard settles the call.
+The stub replaces `satan-tool-dispatch' wholesale, so the error is raised
+outside its `error'-only handler guard.  Over a live connection the
+response is -32603 carrying the request id (the PHASE-03 wrapper); the
+transcript holds the tool-call, an :id-bearing tool-result whose :ok is
+false and whose :error starts \"interrupted: error\", then
+`call-interrupted' with :reason \"error\" for the same id.  After
+disconnect the bundle verifies clean and in-flight is 0."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "Stub A description.")
+   (satan-mcp-test--register-stub "stub.a")
+   (let* ((sock (satan-mcp-test--start))
+          (pair (satan-mcp-test--connect-session sock))
+          (client (car pair))
+          (session (cdr pair)))
+     (should session)
+     (satan-mcp-test--initialize client)
+     (let ((call-id
+            (cl-letf (((symbol-function 'satan-tool-dispatch)
+                       (lambda (&rest _) (error "boom"))))
+              (let ((res (satan-mcp-test--request
+                          client "tools/call"
+                          (list :name "stub.a" :arguments nil))))
+                (should (= (satan-mcp-test--error-code res) -32603))
+                (should (equal (plist-get res :id)
+                               satan-mcp-test--last-request-id))
+                (plist-get res :id)))))
+       (let ((run-dir (satan-mcp-session-run-dir session)))
+         (should run-dir)
+         (should (= 1 (length (satan-mcp-test--records-for-event
+                               run-dir 'tool-call))))
+         (let ((result (satan-mcp-test--payload-for run-dir 'tool-result)))
+           (should (equal (plist-get result :id) call-id))
+           (should (eq (plist-get result :ok) :false))
+           (should (string-prefix-p "interrupted: error"
+                                    (plist-get result :error))))
+         (let ((interrupted (satan-mcp-test--payload-for
+                             run-dir "call-interrupted")))
+           (should (equal (plist-get interrupted :id) call-id))
+           (should (equal (plist-get interrupted :reason) "error")))
+         (should (= 0 (satan-mcp-session-in-flight session)))
+         (satan-mcp-test--disconnect client)
+         (should (eq (satan-audit-verify-run run-dir) t))
+         (should (= 0 (satan-mcp-session-in-flight session)))))
+     (satan-mcp-test--stop))))
+
+(ert-deftest satan-mcp/settle-quit-closes-transport ()
+  "D2/V15/EX-2: quit settles, closes the transport, then re-signals.
+`dispatch' signals `quit', which the dispatcher's guard (and the filter's
+`error'-only guard) does not catch.  The settle writes the :id-bearing
+tool-result (\"interrupted: quit\") and `call-interrupted' (:reason
+\"quit\"), closes the session's transport (the settle's `delete-process'
+on the session proc), then re-signals — the test's `condition-case' sees
+the quit.  The decoded sibling request in the same chunk never starts (its
+stub never runs), the client sees the connection close rather than waiting
+out a timeout, in-flight is 0 and the run verifies clean.
+
+The chunk is handed to `satan-mcp--filter' directly rather than through
+`process-send-string': a quit re-signalled from a real process filter is
+caught by `read_process_output's own handler (\"error in process filter:
+Quit\"), which is fatal to a batch Emacs and would abort the whole ERT
+run.  The chunk, the filter, the handler, the transport and the
+`delete-process' close are otherwise the production path."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "Stub A description.")
+   (satan-mcp-test--write-desc "stub.b" "Stub B description.")
+   (satan-mcp-test--register-stub "stub.a")
+   (let ((sibling-ran nil))
+     (satan-tool-register
+      (list :name "stub.b"
+            :risk 'read
+            :args-schema nil
+            :handler (lambda (_args _ctx)
+                       (setq sibling-ran t)
+                       (cons 'ok "b"))))
+     (let* ((sock (satan-mcp-test--start))
+            (pair (satan-mcp-test--connect-session sock))
+            (client (car pair))
+            (session (cdr pair))
+            (saw-quit nil))
+       (should session)
+       (satan-mcp-test--initialize client)
+       (let ((chunk (concat
+                     (json-serialize
+                      (list :jsonrpc "2.0" :id 11 :method "tools/call"
+                            :params (list :name "stub.a" :arguments nil))
+                      :null-object :null :false-object :false)
+                     "\n"
+                     (json-serialize
+                      (list :jsonrpc "2.0" :id 12 :method "tools/call"
+                            :params (list :name "stub.b" :arguments nil))
+                      :null-object :null :false-object :false)
+                     "\n")))
+         (cl-letf (((symbol-function 'satan-tool-dispatch)
+                    (lambda (&rest _) (signal 'quit nil))))
+           (condition-case nil
+               (satan-mcp--filter (satan-mcp-session-proc session) chunk)
+             (quit (setq saw-quit t))))
+         (should saw-quit)
+         (should-not sibling-ran)
+         (let ((run-dir (satan-mcp-session-run-dir session)))
+           (should run-dir)
+           (let ((result (satan-mcp-test--payload-for run-dir 'tool-result)))
+             (should (equal (plist-get result :id) 11))
+             (should (eq (plist-get result :ok) :false))
+             (should (string-prefix-p "interrupted: quit"
+                                      (plist-get result :error))))
+           (let ((interrupted (satan-mcp-test--payload-for
+                               run-dir "call-interrupted")))
+             (should (equal (plist-get interrupted :id) 11))
+             (should (equal (plist-get interrupted :reason) "quit")))
+           ;; The transport close must reach the caller: status `closed',
+           ;; never a silent timeout.
+           (should (satan-mcp-test--wait-for
+                    (lambda ()
+                      (memq (process-status client)
+                            '(closed failed exit signal)))))
+           (should (= 0 (satan-mcp-session-in-flight session)))
+           (should (satan-mcp-test--wait-for
+                    (lambda ()
+                      (file-exists-p (expand-file-name "status" run-dir)))))
+           (should (eq (satan-audit-verify-run run-dir) t))))
+       (when (process-live-p client) (delete-process client))
+       (satan-mcp-test--stop)))))
+
+(ert-deftest satan-mcp/settle-throw-to-outer-catch-direct ()
+  "D2/EX-2: a `throw' to an outer catch also settles the call.
+`satan-mcp--tools-call' is called directly (no socket) on a minted session
+with a dead dummy transport, `satan-mcp--send' stubbed: the settle is the
+only writer.  The cleanup writes the :id-bearing tool-result
+(\"interrupted: exit\") and `call-interrupted' (:reason \"exit\"), and the
+in-flight count is back to 0."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "Stub A description.")
+   (satan-mcp-test--register-stub "stub.a")
+   (satan-mcp-register-interactive-mode)
+   (let* ((session (satan-mcp-test--direct-call-session))
+          (proc (satan-mcp-session-proc session))
+          (call-id "call-throw"))
+     (should (eq (catch 'satan-mcp-test-outer
+                   (cl-letf (((symbol-function 'satan-mcp--send)
+                              (lambda (&rest _) nil))
+                             ((symbol-function 'satan-tool-dispatch)
+                              (lambda (&rest _)
+                                (throw 'satan-mcp-test-outer 'x))))
+                     (satan-mcp--tools-call
+                      (list :name "stub.a" :arguments nil)
+                      call-id session proc))
+                   'returned)
+                 'x))
+     (let ((run-dir (satan-mcp-session-run-dir session)))
+       (let ((result (satan-mcp-test--payload-for run-dir 'tool-result)))
+         (should (equal (plist-get result :id) call-id))
+         (should (eq (plist-get result :ok) :false))
+         (should (string-prefix-p "interrupted: exit"
+                                  (plist-get result :error))))
+       (let ((interrupted (satan-mcp-test--payload-for
+                           run-dir "call-interrupted")))
+         (should (equal (plist-get interrupted :id) call-id))
+         (should (equal (plist-get interrupted :reason) "exit"))))
+     (should (= 0 (satan-mcp-session-in-flight session))))))
+
+(ert-deftest satan-mcp/settle-in-flight-outlives-the-last-audit-write ()
+  "EX-1: the in-flight count is held through the call's whole settle.
+The stubbed handler reads the count during dispatch (1), and
+`satan-audit-record' is wrapped to read it at every audit write of the
+call — every write, including the last one, sees 1.  Once the call has
+returned (or the escaped error has been caught) the count is 0.  Checked
+on the normal path and on the escaped-error path."
+  (satan-mcp-test--with-tmp-env
+   (satan-mcp-test--write-desc "stub.a" "Stub A description.")
+   (satan-mcp-test--register-stub "stub.a")
+   (satan-mcp-register-interactive-mode)
+   (let* ((session (satan-mcp-test--direct-call-session))
+          (proc (satan-mcp-session-proc session))
+          (params (list :name "stub.a" :arguments nil))
+          (original-record (symbol-function 'satan-audit-record))
+          (seen nil)
+          (during-dispatch nil))
+     (cl-letf (((symbol-function 'satan-mcp--send) (lambda (&rest _) nil))
+               ((symbol-function 'satan-audit-record)
+                (lambda (handle dir event payload)
+                  ;; Pushed in write order reversed: the last write is the
+                  ;; first element, so `car' is the write closest to release.
+                  (push (satan-mcp-session-in-flight session) seen)
+                  (funcall original-record handle dir event payload))))
+       ;; normal path
+       (cl-letf (((symbol-function 'satan-tool-dispatch)
+                  (lambda (&rest _)
+                    (setq during-dispatch
+                          (satan-mcp-session-in-flight session))
+                    (list :type "tool_result" :id "call-ok" :ok t
+                          :result "ok"))))
+         (satan-mcp--tools-call params "call-ok" session proc))
+       (should (= 1 during-dispatch))
+       (should (>= (length seen) 2))
+       (should (cl-every (lambda (n) (equal n 1)) seen))
+       (should (= 0 (satan-mcp-session-in-flight session)))
+       ;; escaped-error path
+       (setq seen nil during-dispatch nil)
+       (cl-letf (((symbol-function 'satan-tool-dispatch)
+                  (lambda (&rest _) (error "boom"))))
+         (should-error (satan-mcp--tools-call params "call-err" session proc)
+                       :type 'error))
+       (should (>= (length seen) 2))
+       (should (cl-every (lambda (n) (equal n 1)) seen))
+       (should (= 0 (satan-mcp-session-in-flight session)))))))
 
 (provide 'satan-mcp-test)
 ;;; satan-mcp-test.el ends here

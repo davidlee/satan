@@ -137,6 +137,42 @@ only an implementation can settle. If one ran, it would probe:
   restored.
 - Gate: `just check` exit 0 — 1360 tests, 0 unexpected, 4 skipped; lint clean.
 
+### PHASE-05 (2026-10-26)
+
+- EN-2: RV-060 F-2 re-read (settle on error and quit; quit → delete-process
+  then re-signal; tool-result carries :id).
+- Phase decisions (runtime sheet, flagged for reconcile): D1 — the verifier
+  has no event registry and already ignores non-call/result events, so EX-3
+  "knows call-interrupted" = a `calls-match-results` docstring line + VT-2
+  pinning both halves, no new predicate. D2 — a non-local exit that is
+  neither error nor quit (a `throw`) settles with reason `"exit"`, outside
+  the design's error|quit enum.
+- Pass A — pi `implement`, tests: 4 `settle-*` tests + 2 verifier tests
+  (green by D1). $0.105, 58 requests. Found: a `quit` re-signalled from a
+  real process filter is caught by `read_process_output`'s handler and kills
+  batch Emacs, so the quit test hands the two-line chunk to
+  `satan-mcp--filter` directly over a live socket pair. V15's "quit
+  propagates to the caller's wait" is not observable in batch — reconcile
+  note.
+- Pass B — pi `implement`, code: `in-flight` slot; `--tools-call` with
+  `condition-case` around dispatch only, `unwind-protect` cleanup that
+  settles (`--record-interrupted`) then decrements; quit → delete-process
+  then re-signal; `--send-tool-result` extracted. $0.066, 45 requests. No
+  defects found in review.
+- VA-1 (orchestrator probe, live half): error outside the guard and quit
+  with a sibling in the same chunk — covered by the settle tests (pair,
+  sibling never starts, close, verifies). Extra probe: `throw` through the
+  live filter with a sibling in the same chunk → tool-call 21, tool-result
+  21 "interrupted: exit", call-interrupted 21 "exit"; in-flight 0; sibling
+  not run; verify t. BUT the transport stays open, so 21 and 22 are never
+  answered — an I2 gap for non-error, non-quit exits (e.g. a
+  `while-no-input` throw in an enclosing wait). Raised with the user.
+  Closing-session half → PHASE-06/VA-1.
+- VA-2: removed the interrupted tool-result write → `settle-escaped-error-live`,
+  `settle-quit-closes-transport`, `settle-throw-to-outer-catch-direct` fail;
+  restored.
+- Gate: `just check` exit 0 — 1366 tests, 0 unexpected, 4 skipped; lint clean.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-26 · PHASE-02 completed, PHASE-03 next · 7ca34df

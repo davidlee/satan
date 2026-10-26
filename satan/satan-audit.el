@@ -633,7 +633,9 @@ success or an error string on failure."
     ok))
 
 (defun satan-audit-p/calls-match-results (dir)
-  "Every tool-call id has a matching tool-result id."
+  "Every tool-call id has a matching tool-result id.
+`call-interrupted' records are known and need no result; they never stand
+in for a tool-result."
   (let ((records (satan-jsonl-read-file
                   (expand-file-name "transcript.jsonl" dir) :null-object :null))
         (calls (make-hash-table :test 'equal))

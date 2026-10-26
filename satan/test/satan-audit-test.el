@@ -215,6 +215,47 @@ Asserts the suite is non-empty so a fixture-file regression is loud."
             (should (assq 'calls-match-results res))))
       (delete-directory dir t))))
 
+;; ---------- call-interrupted (SL-032 PHASE-05, D1/EX-3) ----------
+
+(ert-deftest satan-audit/verifier-accepts-call-interrupted ()
+  "D1/EX-3: `call-interrupted' is a known record that needs no result.
+A run whose transcript pairs tool-call X with tool-result X and then
+records `call-interrupted' (:id X :reason \"quit\") — the settle written by
+a quit — verifies clean."
+  (let ((dir (make-temp-file "satan-interrupted-ok-" t)))
+    (unwind-protect
+        (progn
+          (satan-audit-test--write-run
+           dir
+           '(:summary "s" :actions ())
+           '(:applied () :staged () :rejected () :failed ())
+           'done
+           '((in tool-call (:id "x"))
+             (out tool-result (:id "x" :ok :false :error "interrupted: quit"))
+             (broker call-interrupted (:id "x" :reason "quit"))))
+          (should (eq (satan-audit-verify-run dir) t)))
+      (delete-directory dir t))))
+
+(ert-deftest satan-audit/calls-match-results-interrupted-is-not-a-result ()
+  "`call-interrupted' does not stand in for a tool-result.
+A run with tool-call Y and only `call-interrupted' for Y fails
+`satan-audit-p/calls-match-results' — and therefore the verifier."
+  (let ((dir (make-temp-file "satan-interrupted-orphan-" t)))
+    (unwind-protect
+        (progn
+          (satan-audit-test--write-run
+           dir
+           '(:summary "s" :actions ())
+           '(:applied () :staged () :rejected () :failed ())
+           'done
+           '((in tool-call (:id "y"))
+             (broker call-interrupted (:id "y" :reason "quit"))))
+          (should-not (satan-audit-p/calls-match-results dir))
+          (let ((res (satan-audit-verify-run dir)))
+            (should (consp res))
+            (should (assq 'calls-match-results res))))
+      (delete-directory dir t))))
+
 ;; ---------- reopen (T1.5b PR 4 — manual-mark append path) ----------
 
 (ert-deftest satan-audit/reopen-appends-without-truncating ()

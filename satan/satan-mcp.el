@@ -118,6 +118,7 @@ connection process, not here."
   tool-ctx      ; plist passed to satan-tool-dispatch — nil until first call
   prepare       ; the run_ctx prepare plist — nil until the first tools/call
   boot-cache    ; cached boot-context text, or nil (DEC-13)
+  (in-flight 0) ; tools/call dispatches on this session not yet settled (I3)
   )
 
 ;; ── Internal: conversation identity (DEC-121) ───────────────────────────────
@@ -325,6 +326,29 @@ writes :status \"invalid\"."
   (list :jsonrpc "2.0" :id id
     :error (list :code code :message message)))
 
+(defun satan-mcp--send-tool-result (proc id res)
+  "Answer ID with the MCP body rendering dispatch result RES to PROC."
+  (if (eq (plist-get res :ok) t)
+    (satan-mcp--send
+      proc
+      (satan-mcp--result
+        id
+        (list :content
+          (vector
+            (list :type "text"
+              :text (prin1-to-string (plist-get res :result)))))))
+    ;; Error path
+    (satan-mcp--send
+      proc
+      (satan-mcp--result
+        id
+        (list :content
+          (vector
+            (list :type "text"
+              :text (or (plist-get res :error)
+                      "unknown error")))
+          :isError t)))))
+
 (defun satan-mcp--initialize (id session proc params)
   "Handle `initialize': fix SESSION's identity, then answer ID as today.
 The identity is fixed once it parses or once the run is minted, whichever
@@ -409,44 +433,76 @@ delivered, the send signals on to the caller."
           (satan-mcp--send proc
             (satan-mcp--error id -32603 (error-message-string err))))))))
 
+(defun satan-mcp--record-interrupted (audit id reason)
+  "Settle the interrupted call ID: a tool-result, then `call-interrupted'.
+REASON is \"error\", \"quit\" or \"exit\".  The tool-result carries the call
+id because the verifier pairs on it (`satan-audit-p/calls-match-results'),
+so an interrupted call never reads as an unsettled one."
+  (satan-audit-record
+    audit
+    'out
+    'tool-result
+    (list :type "tool_result" :id id :ok :false
+      :error (format "interrupted: %s" reason)))
+  (satan-audit-record audit 'broker 'call-interrupted
+    (list :id id :reason reason)))
+
 (defun satan-mcp--tools-call (params id session proc)
   "Handle `tools/call': validate + dispatch through the shared dispatcher.
 PARAMS is the MCP params plist (already parsed with :object-type 'plist).
-SESSION carries the tool-ctx and audit handle, minted here on first use."
+SESSION carries the tool-ctx and audit handle, minted here on first use.
+
+Every audited call is settled before it releases the session in-flight
+count (I3): the dispatch sits inside `unwind-protect', so an error that
+escapes the guard inside `satan-tool-dispatch', `quit', or a `throw' to an
+outer catch still writes a tool-result for the call and a
+`call-interrupted' record first."
   (satan-mcp--ensure-run session)
   (let* ((tool-name (plist-get params :name))
           (arguments (plist-get params :arguments))
           (call (list :id id :name tool-name :args arguments))
           (mode (satan-mode-resolve "interactive"))
           (tool-ctx (satan-mcp-session-tool-ctx session))
-          (audit (satan-mcp-session-audit session)))
+          (audit (satan-mcp-session-audit session))
+          (res nil)       ; the dispatch result, when dispatch returned
+          (reason nil)    ; "error" | "quit" — set when dispatch escaped
+          (escaped nil)   ; the escaped error condition, re-signalled below
+          (recorded nil)) ; guards against a second tool-result
     (let ((satan-mcp--current-session session))
+      (setf (satan-mcp-session-in-flight session)
+        (1+ (satan-mcp-session-in-flight session)))
       ;; Audit the inbound tool_call (mimics membrane :dir in)
       (satan-audit-record audit 'in 'tool-call call)
-      (let ((res (satan-tool-dispatch call (plist-get mode :tools) tool-ctx)))
-        ;; Audit the outbound tool-result
-        (satan-audit-record audit 'out 'tool-result res)
-        (if (eq (plist-get res :ok) t)
-          (let ((result-val (plist-get res :result)))
-            (satan-mcp--send
-              proc
-              (satan-mcp--result
-                id
-                (list :content
-                  (vector
-                    (list :type "text"
-                      :text (prin1-to-string result-val)))))))
-          ;; Error path
-          (satan-mcp--send
-            proc
-            (satan-mcp--result
-              id
-              (list :content
-                (vector
-                  (list :type "text"
-                    :text (or (plist-get res :error)
-                            "unknown error")))
-                :isError t))))))))
+      (unwind-protect
+        (progn
+          ;; Only the dispatch sits inside the catcher: the response send
+          ;; stays outside it, so a failed send writes no second result.
+          (condition-case err
+              (setq res (satan-tool-dispatch
+                          call (plist-get mode :tools) tool-ctx))
+            (quit (setq reason "quit"))
+            (error (setq reason "error" escaped err)))
+          (when res
+            ;; Audit the outbound tool-result
+            (satan-audit-record audit 'out 'tool-result res)
+            (setq recorded t)
+            (satan-mcp--send-tool-result proc id res)))
+        ;; Settle: a non-local exit past the body leaves no tool-result, so
+        ;; the cleanup writes one — a `throw' out of the body arrives here
+        ;; as "exit".  The decrement follows the call's last audit write.
+        (unless recorded
+          (satan-mcp--record-interrupted audit id (or reason "exit")))
+        (setf (satan-mcp-session-in-flight session)
+          (1- (satan-mcp-session-in-flight session))))
+      ;; The escape is re-raised once settled: an error reaches the -32603
+      ;; wrapper in `satan-mcp--handle-message'; a quit closes the
+      ;; transport first, so the client sees a disconnect not a timeout.
+      (cond
+       ((equal reason "quit")
+        (when (process-live-p (satan-mcp-session-proc session))
+          (delete-process (satan-mcp-session-proc session)))
+        (signal 'quit nil))
+       (escaped (signal (car escaped) (cdr escaped)))))))
 
 
 
