@@ -259,9 +259,34 @@ only an implementation can settle. If one ran, it would probe:
 - Gate: M `just check` EXIT 0, 72 files, 2105 tests. satan-tools +
   satan-pool 3× green.
 
+### PHASE-08 (2026-10-27, live verification, V13)
+
+- Revisions exercised (RSK-020): `malebolge-room` restarted 00:14:10 on
+  malebolge live tree HEAD 5775ac5 (= a737928 + memories; tracked tree
+  clean). Emacs loaded `satan-mcp.elc` compiled 00:14:22 from satan HEAD
+  85fab44 (≥ aad0d4c).
+- Obstacle: the malebolge Emacs client writes every attach to the fixed
+  `*malebolge*` / `*malebolge-draft*` buffers (`emacs/malebolge.el:78-79`),
+  so two conversations cannot be shown at once. Consulted; user chose
+  sequential attach within the 15 min pool idle window
+  (`DEFAULT_SATAN_IDLE_MS`): the per-conversation connection, and its run,
+  outlive the detached buffer.
+- Run dirs (`~/.local/state/satan/runs/2026-10-27/`):
+  - `20261027T001655-interactive-600808` — `:kind` interactive,
+    `:conversation` "1"; `speak` + `notify_send` ok; iv001/iv002 attributed
+    to this run.
+  - `20261027T001949-interactive-6c77b6` — `:kind` interactive,
+    `:conversation` "1519"; `notify_send` ok; iv001 attributed to this run.
+  - `20261027T002000-tick-pulse-0c94b1` — broker tick spawned 00:20:00,
+    `status` done 00:20:12, while both interactive runs were open (no
+    `final.json`/`status` yet).
+- VH-1: user replied "confirmed" (2026-10-27).
+- Not checked here: I4 (`satan-audit-verify-run` on the two bundles once
+  they idle-close, ≈ 00:32/00:35).
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-27 · PHASE-07 completed, PHASE-08 next · satan ada2b15, malebolge 5775ac5
+fresh-as-of: 2026-10-27 · PHASE-01..08 completed, audit next · malebolge 5775ac5
 
 ### Produced
 
@@ -277,6 +302,7 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
   VT-1..3 UNATTRIBUTABLE by design, see Execution log).
 - ISS-059, ISS-060; malebolge IMP-012 (own quotient forms, deferred),
   IMP-013 (keep last good tool list), IDE-002 note.
+- PHASE-08 V13 live: VH-1 confirmed by user (Execution log PHASE-08).
 
 ### Learned
 
@@ -294,6 +320,9 @@ research/research.md; DEC-121..DEC-126; design.md (locked, run rev 35);
 
 - RV-060 F-1/F-2/F-3 discharged by PHASE-05/06/07 VA (Execution log).
 - At audit: PHASE-07 VTs UNATTRIBUTABLE (cross-repo delta, user-accepted).
+- At audit: I4 not checked live (PHASE-08 runs still open at VH-1).
+- malebolge Emacs client: one fixed transcript/draft buffer pair, so
+  conversations cannot be viewed side by side. Not captured; user to decide.
 - At reconcile, design sec-7: the first call of a new entry awaits the
   refresh (VA-1); the idle default lives in `satan-pool.ts`;
   `MALEBOLGE_SATAN_IDLE_MS`.
