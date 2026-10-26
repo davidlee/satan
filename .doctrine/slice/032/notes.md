@@ -261,7 +261,7 @@ only an implementation can settle. If one ran, it would probe:
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-26 · PHASE-07 completed, PHASE-08 next · malebolge a737928
+fresh-as-of: 2026-10-27 · PHASE-07 completed, PHASE-08 next · satan ada2b15, malebolge 5775ac5
 
 ### Produced
 
