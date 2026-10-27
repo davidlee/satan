@@ -118,6 +118,10 @@ unchanged, re-concluded) examined nothing new and changes none of this.
 | 05 | pi implement (tests) | $0.079, 19 req | 11 tests drafted; red for the right reasons once fixed | never released the failing foreground turn (every stuck case hung); topic added to the heartbeat-unanswered line against the sec-4 table; a ceiling loop that would pass a 3-ceiling bound (replaced with an exact armed-bound helper) |
 | 05 | Opus sub-orchestrator (code + fixture refactor) | — | bounded wait + withdraw ~170 lines; green after one lint fix (switch exhaustiveness) | — |
 | 05 | pi review | $0.061, 22 req | 9 findings: 6 accepted (settled-branch test, restart re-race, discriminating asserts, timer disarm), 3 rejected (crash window as PHASE-04 F5; W9-permitted overstatement; journal-in-catch as PHASE-04 F2) | — |
+| 06 | pi implement (tests) | ceiling, 30 req | 12 tests drafted (611 lines); never answered (ceiling) — read the file instead | conversations without a model (`no_model`); "abort first" by moving the clock is not deterministic (any scheduling pass runs a due task); faux queue replaced inside a tool call |
+| 06 | pi read (deadline recon) | $0.010, 13 req | per-tool deadline table → RSK-022 | missed pi-mcp's 30 s default request timeout (claimed satan-mcp calls unbounded) |
+| 06 | Opus sub-orchestrator (code) | — | tools.ts ~210 lines; green after lint fixes (no type assertions: `isWakeInput`, `Type.Unsafe<JsonObject>`, `isConversationKey`) | — |
+| 06 | pi review | $0.037, 27+1 req | 10 findings: 4 accepted (default topic, ms, no-hang pin, stub typing), 6 rejected | first call spent its ceiling in malebolge's own .doctrine; answered on a 1-request continuation |
 
 Form constraint: the quotient `write`/`implement` form has no node, so pi cannot run malebolge's gate. Build loops are the orchestrator's or a Bash-capable sub-agent's.
 
