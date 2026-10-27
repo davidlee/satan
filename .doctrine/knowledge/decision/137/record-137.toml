@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 137
+slug = "malebolge-wake-turns-carry-no-spend-rate-or-concurrency-limit-in-v0"
+title = "Malebolge wake turns carry no spend, rate or concurrency limit in v0"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 makes unattended SATAN turns. REQ-004/REQ-010 and IMP-053 frame a ceiling as a prerequisite; the gateway key cap sits outside the ADR-017 ledger (DEC-043)."
+choice = "v0 wake turns have no owned spend, rate or concurrency ceiling. The gateway key cap is the backstop. REQ-004's non-coverage of wake turns is deliberate; limits arrive through IMP-053, plugging into WakePolicy (DEC-128)."
+alternatives = ["A per-wake or daily token ceiling now (ledger row 5d)"]
+rationale = "Nothing to limit yet; the user ruled it out of v0 (2026-10-27). WakePolicy's env is where a budget factor plugs in later."
+consequences = ["Unattended spend risk accepted for v0", "No ledger row 5d until IMP-053"]
+decided_by = "user (2026-10-27)"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

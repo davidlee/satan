@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 135
+slug = "sl-034-pre-compaction-before-a-wake-not-in-v0-rely-on-pi-durable-auto-compaction-imp-056"
+title = "SL-034 pre-compaction before a wake: not in v0; rely on pi-durable auto-compaction (IMP-056)"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 inq-9 / OQ-5. pi-durable auto-compacts in the background above contextWindow-32k and blocking above contextWindow-16k; a host pre-check would recompute the estimate (estimator not exported)."
+choice = "No pre-compaction in v0. Wake turns rely on pi-durable's auto-compaction. IMP-056 holds the threshold-and-compact follow-up."
+alternatives = ["Estimate context before submit and compact() above X% of the window"]
+rationale = "A wake turn is unattended, so a mid-turn compaction costs only latency nobody waits on. Simplest approach that works."
+consequences = ["A wake into a heavy conversation may compact mid-turn"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

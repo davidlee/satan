@@ -5,7 +5,7 @@ id = 132
 slug = "sl-034-wake-off-switch-malebolge-wakeson-read-at-start-fail-closed-off-defers-never-drops"
 title = "SL-034 wake off switch: MALEBOLGE_WAKES=on read at start, fail closed; off defers, never drops"
 record_kind = "decision"
-status = "proposed"
+status = "accepted"
 created = "2026-10-27"
 updated = "2026-10-27"
 tags = []

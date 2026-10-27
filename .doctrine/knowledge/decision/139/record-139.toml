@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 139
+slug = "sl-034-daemon-wiring-late-bound-tasks-extension-harness-armed-timer-heartbeat-ensured-after-resume"
+title = "SL-034 daemon wiring: late-bound tasks extension, harness-armed timer, heartbeat ensured after resume, five env keys"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 inq-11. startDaemon builds the registry before satanTools (which installs into it), refreshes SATAN's tools, then openSession: Harness.open, root, backfillIndex, resume() (src/daemon-start.ts:57-133, src/session.ts:41-53)."
+choice = "The `tasks` extension joins daemonExtensions with a late-bound deps object (satan-mcp call, beforeInput = satan.refresh) filled after satanTools is constructed. No onWake: the harness arms its own timer. SessionOptions gains optional `now` for tests (harness-fixture). Overdue wakes fire at resume(), after refresh and backfill. ensureHeartbeat runs after openSession under the instance lock: write the heartbeat topic record, create the heartbeat unless one is live. stop is unchanged and cancels nothing durable; an interrupted fire re-runs on restart and requestId wake:<taskId>:<at> dedupes it. SatanKind = interactive | scheduled; the pool key is already (conversation, kind). No jail change. Env keys: MALEBOLGE_WAKES (off unless `on`), MALEBOLGE_WAKE_FLOOR_MS (300000), MALEBOLGE_WAKE_CEILING_MS (7200000), MALEBOLGE_WAKE_QUIET (23:20-07:00), MALEBOLGE_WAKE_TOPIC (room). Code constants (host-owned, not model-editable): jitter ±10%, retry step = floor, presence weight 0.4, percept deadline 10s. The unit env (MALEBOLGE_WAKES=on) is set in ~/flakes features/satan/malebolge.nix as a plan step, with user confirmation."
+alternatives = ["onWake with a host-armed timer (no need; the daemon is long-running)", "Every policy parameter as env config (more parsing code; nothing to tune yet)"]
+rationale = "Fits the existing start order with no reordering; fewest new keys."
+consequences = ["Narrows DEC-128: jitter, retry step, presence weight and percept deadline are code constants, not config", "A flakes-repo change is part of rollout"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

@@ -12,17 +12,19 @@ task that resumes a conversation. A periodic wakeup is the degenerate case:
 one task always pending, aimed at one thread.
 
 ```
- SATAN ── task_schedule{topic, intent, payload?, when?, priority?} ──► task table
-                                                                        │
-                     decide(tasks, now, policy) → (task, fire_at)  ◄────┘   pure; tuned later
-                                                                        │
-                     one timer at the earliest fire_at ─────────────────┘
-                                │
- fire(task) ── percept ← satan_boot_context{refresh:true}   (degrades: one line if unavailable)
-            ── wake entry → topic's conversation:
-                 resume fragment (corpus) + intent + payload + percept + fire metadata
-            ── turn runs: SATAN's own retrieval, room + satan-mcp tools, maybe task_schedule
-            ── turn ends with nothing pending → decider adds a heartbeat at the ceiling
+ SATAN ── wake_schedule{intent, after_minutes?, topic?, payload?, episode_class}
+            │  WakePolicy.schedule: clamp [floor, ceiling] + jitter          (DEC-128)
+            ▼
+   pi-durable background task `satan.wake`, owned by the target conversation (DEC-127)
+            │  sleepUntil(at) — the harness arms the timer; restart-safe
+            ▼
+   fire phase ── WakePolicy.gate: switch → quiet window → weighted presence  (DEC-128/129/132)
+            │        defer → sleepUntil(later)
+            ├── beforeInput · percept ← satan_boot_context over `scheduled`  (DEC-133)
+            ├── input {entry satan.wake, requestId wake:<task>:<at>, followUp}
+            │     wake.md (corpus) + intent + payload + percept + fire metadata
+            └── wait → failure: journal + notify_send (→ satan-tank)          (DEC-134)
+   heartbeat: one recurring satan.wake in topic `room`, every ceiling when nothing else is pending (DEC-131)
 ```
 
 Existing seams (read 2026-10-27; to be consolidated in research):
@@ -31,113 +33,112 @@ Existing seams (read 2026-10-27; to be consolidated in research):
 |---|---|
 | `src/daemon-extensions.ts` | native tools come from pi-durable extensions; a `tasks` extension sits here |
 | `src/daemon-start.ts:107` | the profile's store is `session.sqlite` via pi-durable's node SQLite storage |
-| `src/runner/store.ts`, `src/runner/scheduler.ts` | precedent: runner tables share one SQLite file with pi-durable's `pi_` tables; a queue woken on submit (DEC-056). Pattern to copy, not code to share |
+| `src/runner/store.ts`, `src/runner/scheduler.ts` | precedent: runner tables share one SQLite file with pi-durable's `pi_` tables; a queue woken on submit (DEC-056). Not used: wakes are pi-durable tasks (DEC-127) |
 | `src/protocol.ts:44-47` | conversations are addressable by topic name |
-| `src/conversation-context.ts:28` | `SatanKind = "interactive"` — the satan-mcp pool/identity kind; a wake turn needs its own |
+| `src/conversation-context.ts:28` | `SatanKind = "interactive"` — the satan-mcp pool/identity kind; gains `scheduled` (DEC-139) |
 | `src/satan-tools.ts`, `src/satan-pool.ts` | the daemon is an MCP client of satan-mcp; no MCP server of its own |
 | `satan/satan-mcp.el:649` (satan repo) | `satan_boot_context`: fresh percept, resonance, motive, sensor status, attributes; partial capsule on backend failure; cached per session unless `refresh` |
 | `src/daemon.ts:119` | `conversation.compact(instructions, context)` already reachable |
 
 ## Scope & Objectives
 
-1. **Task store:** a task table in the profile's `session.sqlite`, beside
-   pi-durable's tables. Row: id, target topic, intent (text), payload (JSON,
-   optional), requested time and priority, decided fire time, state
-   (`pending | fired | cancelled | failed`), reason, scheduling conversation.
-   Firing a task and submitting its turn is one transaction where the store
-   allows it.
-2. **Tool:** a native `tasks` pi-durable extension — `task_schedule`,
-   `task_cancel`, `task_list`. In-process; works with Emacs absent.
-3. **Decider:** a pure function `(tasks, now, policy) → next (task, fire_at)`.
-   v0 clamps a requested time to `[floor, ceiling]` and orders by fire time,
-   then priority. SATAN proposes; the decider disposes.
-4. **Heartbeat:** after a wake turn ends, if no task is pending, the decider
-   schedules a default `resume` into the default wake topic at the ceiling.
-   Also on daemon start with an empty queue.
-5. **Timer and fire path:** one timer armed at the earliest fire time, re-armed
-   on every store change; overdue tasks on start fire in decided order.
-6. **Wake entry:** fetch the percept via `satan_boot_context{refresh:true}`
-   under a `wake` pool kind; compose resume fragment
-   (`~/satan-corpus/prompts/wake.md`, model-facing, SATAN may edit it) +
-   intent + payload + percept + `fired_at`/`scheduled_by`/lateness; deliver it
-   so the model can tell it from user input; start a turn.
-7. **Visible failure:** a wake that cannot fire or whose turn fails records
-   `failed` with its reason and logs it to the journal.
-8. **satan side** (this repo): a `wake` mode/kind so satan-mcp's tool
-   allowlist and audit distinguish wake calls from interactive ones.
+Decisions: DEC-127 … DEC-139 (design run inquiry, 2026-10-27). Theme: the
+cheapest, simplest approach that works.
 
-v0 has one task kind: `resume` (a turn in an existing, topic-named
-conversation, created if absent).
+1. **Wake task** (DEC-127): pi-durable task `satan.wake` v1, background, owned
+   by the target conversation; one `fire` phase, checkpoint `{phase, at}`. Input
+   `{conversationId, intent, payload?, episodeClass, requestedAt?, scheduledBy,
+   recurring?}`. pi-durable's task table is the store: no host table, no host
+   timer.
+2. **Tools** (DEC-130): a native `tasks` extension — `wake_schedule`,
+   `wake_cancel`, `wake_list`. Target: the calling conversation, or a known
+   topic's latest, resolved at schedule time. In-process; works with Emacs
+   absent.
+3. **WakePolicy** (DEC-128, DEC-129): an async seam with an injected `env`
+   (`now`, `random`, `wakes`, `presence`). v0: clamp + jitter at schedule; at
+   fire, quiet window (23:20–07:00) defers, episode-class presence rule as a
+   weighted chance, unknown presence fires. Presence from satan-mcp
+   `activity_read{scope:"current"}`.
+4. **Heartbeat** (DEC-131): one perpetual recurring wake into topic `room`,
+   ensured at daemon start; fires only when no other wake is pending.
+5. **Fire composition** (DEC-133): gate → `beforeInput` → percept over a
+   `scheduled` satan-mcp connection (10 s, degrades to one line) →
+   `~/satan-corpus/prompts/wake.md` → input with entry `satan.wake`,
+   `requestId wake:<taskId>:<at>`, `whenBusy: followUp`.
+6. **Off switch** (DEC-132): `MALEBOLGE_WAKES=on` at start, fail closed; off
+   defers, never drops.
+7. **Visible failure** (DEC-134): a failed fire or unanswered wake → journal
+   line + best-effort `notify_send` over `scheduled` (lands in satan-tank's
+   RECENT EVENTS); the heartbeat survives its failures.
+8. **Daemon wiring** (DEC-139): late-bound `tasks` extension; `SatanKind`
+   gains `scheduled`; heartbeat ensured after `resume()`; env keys
+   `MALEBOLGE_WAKES`, `_WAKE_FLOOR_MS`, `_WAKE_CEILING_MS`, `_WAKE_QUIET`,
+   `_WAKE_TOPIC`; unit env in `~/flakes` (with user confirmation).
+9. **Governance** (DEC-136, DEC-137, DEC-138): ledger token `room-daemon`,
+   rows 7b/6d/4d; no-limits v0; shared interactive allowlist; SPEC-002 REV;
+   one sentence in `docs/architecture.md` and `docs/governance.md`.
+
+No satan-side code: satan-mcp already accepts kind `scheduled` (DEC-121), and
+wake turns share the interactive allowlist (DEC-138).
+
+v0 has one task kind: `resume` (a turn in an existing conversation).
 
 ## Non-Goals
 
-- Spend, rate or concurrency limits (IMP-053) — nothing to limit yet. The
-  decider is where they will plug in.
-- Fancier routing (attributes, IMP-012 / ADR-002) — v0 decider only.
-- Other task kinds: `fresh` (new conversation with a context type), `patch`
-  (hand-off to the runner).
-- Posting tasks from outside the daemon (a socket `schedule` op; RSK-018
-  applies then).
+- Spend, rate or concurrency limits (DEC-137, IMP-053) — WakePolicy's `env` is
+  where they plug in.
+- Fancier routing (attributes, IMP-012 / ADR-002); recent-wake damping; max
+  lateness.
+- Other task kinds: `fresh`, `patch`.
+- Posting tasks from outside the daemon (a socket `schedule` op; RSK-018).
 - Modes-as-events for every mode (IDE-009) beyond `resume`.
 - The host profile; RFC-019's habitat work.
+- Pre-compaction before a wake (DEC-135, IMP-056).
+- A live (no-restart) off switch; a tank recent-wakes section (IMP-057);
+  `scheduled` attribution of in-turn tool calls (IMP-058).
+- Creating topics from the tool.
 
 ## Risks, Assumptions, Open Questions
 
-- **OQ-1 wake delivery:** does a custom pi-durable entry kind start a turn
-  (IDE-009 claims it queues/steers like input; unverified)? Fallback: ordinary
-  input wrapped in a `<wake>` tag. First spike.
-- **OQ-2 transactionality:** can the task table share the harness's storage
-  adapter in the interactive daemon as the runner's does, so fire + submit is
-  atomic? Otherwise: mark-fired-then-submit with idempotent recovery.
-- **OQ-3 durable timer:** own table + one process timer (proposed) versus
-  pi-durable `sleepUntil` background tasks (IDE-017's shape). Proposed because
-  the decider needs every pending task in view and rescheduling a durable
-  sleep means abort + recreate.
-- **OQ-4 percept size:** `satan_boot_context` is a session-start capsule;
-  appending one per wake to a long conversation repeats a lot. v0 accepts it;
-  a wake-sized delta capsule is a follow-up (also serves IMP-010).
-- **OQ-5 context weight:** measure the conversation's context before a wake
-  and compact first if heavy. Wanted; may land in this slice or follow it —
-  depends on what pi-durable exposes for context size (research).
-- **OQ-6 floor, ceiling, quiet hours:** values and where they live (daemon
-  config is host authority, ADR-017 — the model never edits its own clamp).
-  Quiet hours come from observation, not a clock (user, 2026-10-27):
-  panopticon knows when the user is idle and when the machine is suspended
-  (S3). Open: is user-idle a gate or the invitation (the goal is fiddling
-  while the user is away)? On resume from S3, do overdue tasks fire at once,
-  collapse to one, or re-decide? Whether the decider reads panopticon
-  directly or through the percept is a design question.
-  - A system timer suspends the machine roughly 23:20–07:00 (user, iirc; rarely
-    allowed to run on time). Treat that window as off limits for large jobs.
-  - Two episode classes with opposite drivers (user, 2026-10-27):
-    **observation/intervention** (user present; attend to them) and
-    **seclusion/self-work** (user away; SATAN's own weird work). Presence gates
-    one and invites the other. Design input: a task names its class, and the
-    decider applies the class's presence rule.
-- **ASM-a:** the room daemon is the long-running process; with it down, no
-  wakes fire (the existing user unit restarts it, SL-028).
-- **Risk:** unattended turns spend tokens with no ceiling. Accepted for v0 by
-  the user (2026-10-27); the LLM gateway key's cap is the backstop.
+Settled by research and the inquiry: OQ-1 (input with an application entry
+starts a turn, spike S1), OQ-2 (no shared transaction; `requestId` dedupes),
+OQ-3 (pi-durable sleeping tasks), OQ-5 (DEC-135), OQ-6 (DEC-128/129/139).
+
+- **OQ-4 percept size:** a full boot capsule per wake; accepted for v0, delta
+  capsule is a follow-up (IMP-010).
+- **ASM-a:** the room daemon is long-running; with it down, no wakes fire.
+- **ASM-b:** pi-durable 1.4.0 semantics as spiked hold for the pinned version.
+- **ASM-c (verify in implementation):** whether a run ending in `model_error`
+  (e.g. gateway spend cap) is distinguishable from the settled submission; if
+  cheaply, report it like any failed wake, else a backlog item (DEC-134).
+- **Risk:** unattended turns spend tokens with no owned ceiling (DEC-137); the
+  gateway key cap is the backstop.
+- **Risk:** a topic-targeted wake misses a newer conversation started in that
+  topic after scheduling; the heartbeat stays with its creation conversation.
+- **Risk:** presence needs Emacs; with Emacs absent the presence rule is inert
+  and failures reach only the journal.
 
 ## Summary
 
 Done when, against a running room daemon with a faux or real model:
 
-- SATAN calls `task_schedule` in one conversation; the task fires at the
-  decided time into the named topic, with the resume fragment, intent,
-  payload and a fresh percept in the wake entry, and a turn runs.
+- SATAN calls `wake_schedule`; the wake fires at the decided time into its
+  target with the fragment, intent, payload and a fresh percept, and a turn
+  runs; the result reports the decided `at`.
 - With satan-mcp unreachable, the wake still fires with a one-line
-  percept-unavailable note.
-- After a wake turn that schedules nothing, exactly one heartbeat is pending.
-- Requested times outside `[floor, ceiling]` are clamped; the decider is
-  covered by pure tests.
-- A daemon restart with overdue tasks fires each once, in order.
-- A failed wake is recorded `failed` with its reason and visible in the journal.
-- satan-mcp audit records wake-turn tool calls under the `wake` kind.
+  percept-unavailable note, and presence is `unknown`.
+- Exactly one heartbeat exists after any number of restarts.
+- WakePolicy is covered by deterministic tests (seeded `random`, fixed clock):
+  clamp, jitter bounds, quiet-window defer, weighted presence.
+- A daemon restart with overdue wakes fires each once (no duplicate turn).
+- `MALEBOLGE_WAKES` unset: nothing fires; wakes are kept.
+- A failed wake is reported in the journal and via `notify_send`.
+- Ledger rows 7b/6d/4d and token `room-daemon` land with the code.
 
 ## Follow-Ups
 
-- Wake-sized percept delta (OQ-4); pre-compaction if not landed (OQ-5).
-- Limits through the decider (IMP-053); attribute-informed routing (IMP-012).
+- IMP-056 pre-compaction; IMP-057 tank recent-wakes; IMP-058 in-turn
+  `scheduled` attribution; wake-sized percept delta (IMP-010).
+- Limits through WakePolicy (IMP-053); attribute-informed routing (IMP-012).
 - `fresh` and `patch` task kinds; socket `schedule` op (RSK-018).
 - Close IDE-014 and IDE-017 as absorbed once this lands.

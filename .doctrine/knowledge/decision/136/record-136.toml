@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 136
+slug = "sl-034-governance-writes-room-daemon-token-ledger-rows-7b6d4d-spec-002-revision-docs-wording"
+title = "SL-034 governance writes: room-daemon token, ledger rows 7b/6d/4d, SPEC-002 revision, docs wording"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 inq-10. ADR-017 §3 / INV-1: every new authority duty has one legend owner; rows and token land in the same change. The legend has no interactive-daemon token. Row 7 (arrival policy) is emacs-client's satan-tick."
+choice = "Landing with the implementing phase: legend token `room-daemon` (malebolge interactive daemon, room profile, unit malebolge-room). Row 7b arrival policy -> malebolge wakes (WakePolicy and its config from unit env; DEC-128). Row 6d kill switch -> wakes (MALEBOLGE_WAKES, read at start, fail closed, defers; DEC-132). Row 4d append-only audit -> wake lifecycle (wake_schedule/wake_cancel tool calls and satan.wake input entries in pi-durable transcripts; journal lines for heartbeat creation and failures; DEC-134) -- task rows are mutable and are not cited. No row 5d: the no-limits decision covers it. Rows cite ADR-017 directly (QUE-001 open; no SPEC-001 arrival REQ). SPEC-002: interactive daemon Owns gains wake scheduling; the satan-mcp transport names `scheduled` (REV at reconcile). docs/architecture.md:50-54 and docs/governance.md:54 gain one sentence: malebolge wakes are a user-installed mechanism (host clamp, heartbeat, fail-closed switch)."
+alternatives = ["A SPEC-001 arrival requirement first (QUE-001 still open)", "A new append-only wake event table (second schema owner of session.sqlite; transcripts already serve)"]
+rationale = "Minimal writes that satisfy INV-1 and REQ-003 using records that already exist."
+consequences = ["The plan carries a ledger/docs task in the implementing phase and a SPEC-002 REV at reconcile"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

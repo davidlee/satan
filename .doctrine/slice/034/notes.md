@@ -48,15 +48,38 @@ POL-001 (disable switch per extraction).
 - The room daemon is long-running (SL-028 user unit); with it down, no wakes fire.
 - pi-durable 1.4.0 semantics as spiked hold for the pinned version.
 
+## Inquiry outcomes (2026-10-27, inquiring → all 11 resolved)
+
+| inq | Record | Gist |
+|---|---|---|
+| 1 | DEC-127 | `satan.wake` background task owned by target; one `fire` phase; no topic/parent snapshot (index via `contextOf`) |
+| 3 | DEC-128 | async `WakePolicy` seam + injected `env` (user: wants randomness, budget, history later); weighted presence (~60/40) |
+| 4 | DEC-129 | presence = satan-mcp `activity_read{scope:current}` over `scheduled` |
+| 2 | DEC-130 | `wake_*` tools; target = caller or known topic's latest at schedule |
+| 5 | DEC-131 | one perpetual recurring heartbeat, topic `room` |
+| 7 | DEC-132 | `MALEBOLGE_WAKES=on` at start; off defers |
+| 6 | DEC-133 | fire composition; `requestId wake:<task>:<at>` (heartbeat would dedupe otherwise) |
+| 8 | DEC-134 | failure → journal + `notify_send` (lands in satan-tank) |
+| 9 | DEC-135 | no pre-compaction (IMP-056) |
+| 10 | DEC-136 | ledger token `room-daemon`, rows 7b/6d/4d; plus DEC-137 (no limits v0), DEC-138 (shared allowlist) |
+| 11 | DEC-139 | daemon wiring; 5 env keys, rest code constants (narrows DEC-128) |
+
+Runbook steps `inquire.knowledge` and `inquire.scope` discharged (rev 23–24);
+scope rewritten. Outstanding before drafting: GPT sense check of the map (user
+direction), then the user's `sufficiency-accepted`.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-27 · design/inquiring (run rev 11) · 2bac37c (SL-034 uncommitted)
+fresh-as-of: 2026-10-27 · design/inquiring (run rev 24) · SL-034 inquiry uncommitted until this commit
 
 ### Produced
-- SL-034 scope, notes; research round (`research/`, gitignored); design run dr-01a17c58 (inquiring).
+- SL-034 scope (rewritten), notes; research (`research/`, gitignored); design run dr-01a17c58 (inquiring, 11/11 resolved).
+- DEC-127 … DEC-139 (accepted, shape SL-034); IMP-056, IMP-057, IMP-058.
 
 ### Learned
 - mem.fact.pi-durable.scheduled-turn-mechanics (spike S1–S6).
 
 ### Open
-- inq-1 … inq-11 (design run). Candidate backlog at close: close IDE-014 / IDE-017 as absorbed.
+- GPT sense check of the inquiry map; user `sufficiency-accepted`; then drafting.
+- ASM-c (scope): model_error vs settled submission — verify in implementation.
+- Candidate backlog at close: close IDE-014 / IDE-017 as absorbed.

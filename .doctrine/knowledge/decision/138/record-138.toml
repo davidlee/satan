@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 138
+slug = "malebolge-wake-turns-share-the-interactive-allowlist-satan-mcp-kind-scheduled-is-audit-attribution"
+title = "Malebolge wake turns share the interactive allowlist; satan-mcp kind scheduled is audit attribution only"
+record_kind = "decision"
+status = "accepted"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034. satan-mcp accepts identity kinds interactive and scheduled (DEC-121) and resolves every call to mode interactive. A distinct wake allowlist needs a mode-spec and kind->mode resolution (ledger row 2, emacs-client)."
+choice = "Wake turns use the interactive mode's allowlist. Malebolge opens scheduled connections for the daemon's wake calls (percept, presence, notify); the kind is attribution, never authority. Ledger row 2 is unchanged."
+alternatives = ["A scheduled mode-spec with its own allowlist and kind->mode resolution"]
+rationale = "User ruling (2026-10-27); no separate allowlist is needed for v0."
+consequences = ["Wake turns may call any interactive tool including notify_send and activity_read"]
+decided_by = "user (2026-10-27)"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"
