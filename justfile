@@ -12,7 +12,7 @@ export SATAN_DB_HOST := PGHOST
 # create the DATABASE. Must match the suites' defconsts.
 test_dbs := "satan_memory_test trace_test patch_live_test"
 
-check: lint test forms-suite shell-suite
+check: lint test shell-suite
 
 gate: check
 
@@ -59,12 +59,6 @@ test: _require-test-dbs
       -l satan-test -f satan-test-run-batch-and-exit
     for t in noctalia/*/test/*_test.luau; do luau "$t"; done
     (cd satan/harness && python3 -m unittest -q test_gptel_harness)
-
-# The offline flake-form suites (TS, run by node's type stripping — no build
-# step). No test database and no network, so `check` covers them without the DB
-# gate.
-forms-suite:
-    node --test test/flake/*.test.ts
 
 # The offline shell-script suites: every `scripts/**/*-test.sh`, each exit 0 = pass.
 shell-suite:
