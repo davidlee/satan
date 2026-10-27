@@ -6,7 +6,7 @@ slug = "mail-jmap-mirror"
 title = "Belphegor: read-only mail for SATAN through a JMAP mirror outside the agent"
 status = "open"
 created = "2026-10-25"
-updated = "2026-10-25"
+updated = "2026-10-27"
 tags = ["architecture", "authority", "belphegor", "jmap", "mail", "screwtape", "trust-boundary"]
 
 [relationships]
