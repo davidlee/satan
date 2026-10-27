@@ -319,22 +319,28 @@ work with Emacs absent.
 `wake_schedule`:
 
 1. Target: `topic` absent → `api.conversationId`. `topic` present → read the
-   index; unknown topic → error result (the tool creates no topics); else its
-   latest conversation now (W8).
+   index through the tool API (`readIndex(api)`, the read `contextOf` uses;
+   not `deps.conversations`, whose `open` would create a conversation). A
+   topic is known when it is `default` or has a stored record
+   (`isKnownTopic`). Unknown topic → error result (the tool creates no
+   topics); known with no conversation → error result; else its latest
+   conversation now (W8).
 2. `requestedAt = after_minutes === undefined ? undefined : api.now() + after_minutes × 60000`.
 3. `at = policy.schedule(requestedAt, env)`.
 4. `api.commit(tx => tx.createTask(wakeDefinition, input, {ownership:{kind:"conversation"}, conversationId: target, background: true}))`.
 5. Result carries the decided `at` as ISO-8601 local time and `enabled`, so
    SATAN learns wakes are off rather than silently waiting.
 
-`wake_cancel{id}`: refused unless `id` is a live `satan.wake` that is not the
-heartbeat (`input.recurring`). Then, from `inspect()`:
+`wake_cancel{id}`: refused unless `id` is a live `satan.wake` (a terminal wake
+is refused too) that is not the heartbeat (`input.recurring`). Then, from
+`inspect()`:
 
 - not `sleeping` → `cancelled: false, reason: "already fired"`; the task is
   left alone.
 - `sleeping` → `harness.abortTask(id)`, then `api.waitForTask(id)`; answer
-  from the settled result: `{fired:false}` → `cancelled: true`;
-  `{fired:true}` → `cancelled: false, reason: "already fired"`.
+  from the settled result: exactly `{fired:false}` → `cancelled: true`;
+  any other settlement (`{fired:true}`, or failed without a result) →
+  `cancelled: false, reason: "already fired"`.
 
 This closes the race between `inspect()` and the timer (W9). If the abort
 wins inside a `fire` phase without `prepared`, nothing was submitted and the
@@ -347,7 +353,9 @@ journal line agree with the answer.
 
 `wake_list`: sleeping `satan.wake` tasks from `harness.inspect()`, heartbeat
 included and marked (`recurring: true`); topic derived via `contextOf` at list
-time.
+time (`null` when the target has no index entry). Each wake's `at` is its next
+fire, the sleep's `until`, which moves with defers and heartbeat beats; not
+`input.at`.
 
 Tools need the Harness (`inspect`, `abortTask`), which the tool API does not
 expose, so they read it from the late-bound deps (*Daemon wiring and configuration*).
@@ -423,7 +431,10 @@ ${fragment}
 }
 ```
 
-`late_by` is `firedAt − input.at` in minutes (how far defers pushed it).
+`late_by` is `firedAt − input.at` in minutes (how far defers pushed it), on
+occurrence 0 only: a heartbeat's later occurrences omit it, since the
+checkpoint's `at` moves with every defer and keeps no due time. `fired_at` is
+local time (*Off switch, failure visibility, audit*).
 `wake.md` is read per fire, as `persona.ts` reads persona files per request; it
 is corpus text SATAN can edit. A missing file fails the fire visibly rather
 than running on framing SATAN did not write (SL-015's preference).
@@ -450,9 +461,12 @@ submission settles `unanswered` (including `model_error`, e.g. a gateway spend
 cap — pi-durable settles those inputs `unanswered`, `generation.ts:376`), or
 the bounded wait withdraws it:
 
-1. journal `malebolge: wake <id> (<topic>) failed: <reason>`;
+1. journal `malebolge: wake <id> n=<n> (<topic>) failed: <reason>` (no
+   `n=` for the start sweep's blocked wake, whose checkpoint is not read);
 2. best-effort `notify_send{title:"SATAN wake failed", body}` via `call` over
-   `scheduled` (desktop notification; lands in satan-tank's RECENT EVENTS);
+   `scheduled` (desktop notification; lands in satan-tank's RECENT EVENTS).
+   A heartbeat withdrawn by the bound is not a failure: it notifies
+   `SATAN wake unanswered` instead (*Heartbeat*);
 3. one-shot → task fails with the reason; heartbeat → stays alive, sleeps one
    ceiling, `n+1`.
 
@@ -505,6 +519,10 @@ about every ceiling even when it schedules nothing.
   the next start's candidates exclude it and ensure creates the
   replacement. `abortTask` returns before
   the abort handler settles; nothing waits for it.
+
+  A sweep or ensure failure fails daemon start (fail closed, visible, W5):
+  `startDaemon` closes the session first, so the lock is free and the next
+  start repeats both.
 - **When due:** if any *other* `satan.wake` is sleeping → sleep one ceiling, no
   fire, `n` unchanged, journal `suppressed`. Otherwise run the gate and the
   fire composition (*Fire composition*).
@@ -555,11 +573,17 @@ record for ledger row 4d together with the transcript:
 | gate: fire | `wake <id> n=<n> (<topic>) fire` |
 | gate: defer | `wake <id> n=<n> (<topic>) defer <reason> until <iso>` |
 | heartbeat suppressed | `wake <id> heartbeat suppressed: <k> pending` |
-| terminal | `wake <id> n=<n> (<topic>) done` / `failed: <reason>` / `cancelled` |
+| terminal | `wake <id> n=<n> (<topic>) done` / `failed: <reason>` / `cancelled` / `cancelled: already fired` (abort handler, `{fired:true}`) |
+| abort handler error | `wake <id> n=<n> (<topic>) withdraw failed: <message>` (answers `{fired:true}`) |
 | heartbeat unanswered | `wake <id> n=<n> heartbeat unanswered after <ceiling>; withdrawn` (also notified) |
-| cancel | `wake <id> cancelled` / `wake <id> cancel: already fired` |
-| start sweep | `wake <id> blocked (<reason>); aborting` and `wake <id> withdrew <k> queued input(s)` |
+| cancel | `wake <id> cancelled` / `wake <id> cancel: already fired` (the tool's line; a tool cancel also yields the terminal line) |
+| start sweep | `wake <id> blocked (<reason>); aborting` and `wake <id> withdrew <k> queued input(s)` (`k` counts inputs actually withdrawn; logged at 0); a blocked one-shot not cancelled also `wake <id> (<topic>) failed: blocked (<reason>)` |
 | heartbeat ensure | `wake heartbeat <id> created in <topic>` |
+
+Every time these lines, the wake content (`fired_at`) and the tool results
+carry is ISO-8601 local time with milliseconds and offset (`localIso`,
+`src/wake/local-time.ts`): the quiet window is local, so SATAN and the reader
+see one zone.
 
 No new table and no transcript writes: task rows are mutable, so they are not
 cited as audit.
@@ -624,6 +648,9 @@ flowchart TD
 - **Clock.** `SessionOptions` gains optional `now`, passed to `Harness.open`,
   and the same function is `WakeEnv.now`, so tests drive both with one fake
   clock (`test/harness-fixture.ts`). No `onWake`: the harness arms its own timer.
+  `SessionOptions.setTimer` passes pi-durable's harness timer the same way, so
+  tests drive the bounded wait on the fake clock; production leaves it unset
+  (`setTimeout`).
 - **Stop** is unchanged and cancels nothing durable. An interrupted fire re-runs
   on restart and dedupes by W1.
 - **`SatanKind`** becomes `"interactive" | "scheduled"`; the pool already keys
@@ -642,9 +669,19 @@ export interface WakeDeps {
   harness: Pick<Harness, "inspect" | "abortTask" | "abortSubmission">;
   conversations: Pick<Conversations, "setTopic" | "open">;
 }
-export const tasksExtension = (deps: () => WakeDeps): Extension =>
-  defineExtension({ name: "tasks", tasks: [wakeTask(deps)], tools: [wakeSchedule(deps), wakeCancel(deps), wakeList(deps)] });
+// The getter and its two binding steps (E, I); reading before both throws.
+export const wakeBinding = (): { deps: () => WakeDeps; bindEarly(e: EarlyWakeDeps): void; bindLate(l: LateWakeDeps): void };
+// One wake definition object both registers and creates: the daemon passes the
+// instance it also hands ensureHeartbeat.
+export const tasksExtension = (deps: () => WakeDeps, task = wakeTask(deps)): Extension =>
+  defineExtension({ name: "tasks", tasks: [task], tools: [wakeSchedule(deps, task), wakeCancel(deps), wakeList(deps)] });
 ```
+
+`sweepBlockedWakes(deps, read, ctx)` takes the session's harness as an
+`IndexReader` to name a one-shot's topic in its failure report, so `WakeDeps.harness`
+stays narrow. `startDaemon` installs the `tasks` extension only for room
+(`DaemonParts.tasks`); `StartDeps.now?` and `StartDeps.environment?` are its
+test seams (one clock; a room start without a room).
 
 **Config** (`src/config.ts`): `Config.wakes: WakeSettings`, parsed with the
 existing helpers (`idleMsOf`'s digit-only rule for `*_MS`; a new small parser
@@ -657,7 +694,7 @@ for `HH:MM-HH:MM`). A malformed value fails daemon start, like every other
 | `MALEBOLGE_WAKE_FLOOR_MS` | 300000 | earliest a wake may be scheduled; retry step |
 | `MALEBOLGE_WAKE_CEILING_MS` | 7200000 | latest; heartbeat period |
 | `MALEBOLGE_WAKE_QUIET` | `23:20-07:00` | local window in which nothing fires |
-| `MALEBOLGE_WAKE_TOPIC` | `room` | the heartbeat's topic |
+| `MALEBOLGE_WAKE_TOPIC` | `room` | the heartbeat's topic; a topic name, not `default` (reserved; start fails) |
 
 **Jail** (this repo's `flake.nix`, ledger row 3b, owner `satan-flake`). The
 launcher sets the jail's env explicitly, so a unit's env never reaches the

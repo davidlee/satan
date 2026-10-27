@@ -90,3 +90,23 @@ wrong; the sheet is disposable, so nothing is reconciled.
 
 ### Not reconcile's
 - F-7: no action (tooling limit). F-8: user ruling pending, reported in the audit summary. F-10: RSK-022. At /close: IDE-014 / IDE-017 absorbed; candidate memories from notes § Harvest › Learned.
+
+## Reconciliation Outcome
+
+User agreed to all proposed edits (2026-10-28: "yes apply them").
+
+### Direct edits applied (design.md; run locked, edited directly, not adopted)
+- sec-2 Fire composition: `late_by` on occurrence 0 only; `fired_at` local time (F-1, F-4).
+- sec-2 Failure: step 1 carries `n=<n>` (none for the sweep's blocked wake); a withdrawn heartbeat notifies `SATAN wake unanswered` (F-3).
+- sec-3 Heartbeat: a sweep or ensure failure fails daemon start, session closed first (F-5).
+- sec-4 journal table: abort handler `cancelled: already fired` and `withdraw failed`; tool cancel also yields the terminal line; sweep `withdrew <k>` semantics and the blocked one-shot's failure line; all times local ISO-8601 with offset (`localIso`) (F-3, F-4, F-6).
+- sec-5: sketch shows `wakeBinding`, `tasksExtension(deps, task)`, `wakeSchedule(deps, task)`; `sweepBlockedWakes(deps, read, ctx)`, `DaemonParts.tasks`, `StartDeps.now?/environment?`; Clock bullet adds `SessionOptions.setTimer`; Config: `MALEBOLGE_WAKE_TOPIC` a topic name, not `default` (F-2, F-5).
+- sec-13 Tools: `wake_schedule` reads the topic index (`isKnownTopic`), refuses a known topic with no conversation; `wake_cancel` refuses terminal wakes and answers `cancelled` only on exactly `{fired:false}`; `wake_list` `at` is the next fire (F-4, F-5).
+
+### REVs completed
+- REV-015 (`reconcile-sl-034`): done — SPEC-002 Interactive daemon Owns gains wake scheduling; MCP row names the `scheduled` kind (F-9). `doctrine spec validate SPEC-002` clean.
+
+### Tolerated / follow-up
+- F-7: tolerated (cross-repo tooling limit). F-8: tolerated; the user's ruling on the forms-suite deletion is still pending (reopen F-8 to rewrite). F-10: RSK-022.
+
+Reconcile pass complete — handoff to /close.
