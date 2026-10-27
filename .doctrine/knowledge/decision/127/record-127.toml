@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 127
+slug = "sl-034-wake-task-target-owned-background-pi-durable-task-one-fire-phase-minimal-input"
+title = "SL-034 wake task: target-owned background pi-durable task, one fire phase, minimal input"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 wakes are pi-durable background tasks (research S3-S6). inq-1 asked which task definition carries a wake and what its input is."
+choice = """Task `satan.wake` v1 in the `tasks` extension. Ownership: the target conversation (`ownership:{kind:"conversation"}`, `conversationId`: target, `background:true`), created by the tool via `api.commit(tx => tx.createTask(...))`. One phase `fire`, checkpoint `{phase:"fire", at}`: the decider runs on entry; not-yet or defer -> `sleepUntil(next, {phase:"fire", at: next})`; go -> daemon beforeInput gate, compose, submit input with entry `satan.wake` and requestId `wake:<taskId>`, commit terminal `{fired:true}`. Abort handler commits terminal `{fired:false}` (task_cancel). A thrown error is the task's failed outcome (inq-8). Input `{conversationId, intent, payload?, episodeClass, requestedAt?, scheduledBy}`; `scheduledBy` is the scheduling tool's `api.conversationId`. No priority field in v0. Topic and parent are not stored: at fire the wake turn derives them from the index via `contextOf`, as every tool attempt's `SATAN_*` env already does."""
+alternatives = ["Task owned by the scheduling tool call: abandonOnRestart by default, so a wake dies on daemon restart", "One dedicated scheduler conversation owning all wakes: an extra conversation with no gain over Harness.inspect()", "Two phases sleeping -> fire (spike shape): an extra step; one phase covers first sleep and every defer", "Snapshot topic and SATAN_PARENT_CONVERSATION into the input at schedule time"]
+rationale = "Simplest shape the spike proved. The decided time in the checkpoint makes defer a re-sleep, not abort+recreate. Snapshotting topic/parent is not cheaper (contextOf is one index-doc read, already done per tool attempt) and is less resilient: a second source of truth (conversation-context.ts forbids one) that goes stale when the conversation is forked or re-topicked. scheduledBy is a historical fact and is free at schedule time, so it is snapshotted."
+consequences = ["inq-2 must settle fork handling: forks inherit their parent's topic (topics.ts:87-92), so a pending wake targets the conversation chosen at schedule time, not the topic's latest", "inq-3's decider takes episodeClass and the checkpoint's at", "Priority can return as an optional input field later"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

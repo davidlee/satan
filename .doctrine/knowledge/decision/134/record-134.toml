@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 134
+slug = "sl-034-wake-failure-visibility-journal-line-plus-notify-send-over-the-scheduled-connection-lands-in"
+title = "SL-034 wake failure visibility: journal line plus notify_send over the scheduled connection (lands in satan-tank)"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 inq-8. User wants a notify-send and, ideally, recent failures visible in satan-tank, at low cost. Submission.wait() settles done|unanswered (pi harness/types.ts:88-94). satan-mcp mints a run in satan-runs-dir per scheduled connection and audits each tool call (satan-mcp.el:258-300); satan-tank's RECENT EVENTS tails those transcripts."
+choice = """The fire phase awaits submission.wait(). A fire failure (wake.md missing, target unreachable, submit throws) or an unanswered settlement is reported by: (1) a journal line on stderr `malebolge: wake <id> (<topic>) failed: <reason>`; (2) best-effort notify_send{title:"SATAN wake failed", body: reason, topic, intent} over the wake's scheduled satan-mcp connection, which is both the desktop notification and a satan-tank RECENT EVENTS entry with no tank code; (3) one-shot -> task failed with the reason; heartbeat -> reported, stays alive, sleeps a ceiling."""
+alternatives = ["A dedicated satan-tank recent-wakes section (needs a daemon read op or filtering runs by kind=scheduled) -- backlog", "Journal only (invisible unless looked for)"]
+rationale = "Reuses the scheduled connection DEC-129/DEC-133 already open and satan's existing audit-to-tank path; zero satan-side code."
+consequences = ["Emacs or satan-mcp down: journal only", "Assumption to verify in implementation: whether a run ending in model_error (e.g. gateway spend cap) is distinguishable from the settled submission; if cheaply readable, report it the same way, else file a backlog item", "Backlog: tank recent-wakes section"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

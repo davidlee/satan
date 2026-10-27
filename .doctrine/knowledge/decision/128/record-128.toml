@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 128
+slug = "sl-034-decider-an-async-wakepolicy-seam-with-injected-env-v0-is-clamp-jitter-quiet-window-weighted"
+title = "SL-034 decider: an async WakePolicy seam with injected env; v0 is clamp, jitter, quiet window, weighted presence"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 inq-3 framed the decider as a pure function. The user (2026-10-27): it should have randomness and, over time, respond to token budget, recent tasks and more; a pure function is the wrong frame."
+choice = "An async `WakePolicy { schedule(request, env) -> at; gate(wake, env) -> fire | defer(until) }`, called by task_schedule and at each entry to the wake task's fire phase. `env` supplies facts on demand: now(), random(), wakes() (Harness.inspect), presence() (source: inq-4); new factors extend env or add a policy, never the fire phase. v0 policy: schedule clamps requestedAt (default now+ceiling) to [floor, ceiling] and adds bounded jitter, re-clamped. gate defers anything inside the quiet window (~23:20-07:00 local) to its end plus jitter; applies the episode-class presence rule as a weighted chance, not an exclusion (fire when presence favours the class, otherwise fire with a configured probability, e.g. 0.4, else defer); unknown presence fires; a defer re-sleeps a jittered step of about the floor. Floor, ceiling, jitter, window, retry step and presence weight are daemon config (host authority, ADR-017); the model never edits them."
+alternatives = ["Pure core fed a gathered situation bundle (gathers every fact every call; awkward for factors needing I/O or a model call)", "Model-judged policy now (nothing to weigh until budget and history exist)", "Binary presence exclusion (user prefers a ~60/40 influence; same code once random() exists)", "Max lateness / drop or merge of stale wakes (a deferred wake costs only a sleeping task row)"]
+rationale = "Same v0 code as a pure core, cheaper to extend. Tests stay deterministic by passing a fake env with a seeded random() and a fixed clock. random() is in v0 for jitter, so the weighted presence rule costs no extra machinery."
+consequences = ["inq-4 picks presence()'s source; with none, the presence rule is inert", "Token budget, recent-wake damping and max lateness plug into env/policy later (IMP-053 and successors)", "inq-10's ledger rows cover the policy config as host-owned", "inq-11 names the config keys"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

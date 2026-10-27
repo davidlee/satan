@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 129
+slug = "sl-034-presence-source-satan-mcp-activity-readscopecurrent-over-the-wakes-scheduled-connection"
+title = "SL-034 presence source: satan-mcp activity_read{scope:current} over the wake's scheduled connection"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = """DEC-128's WakePolicy reads presence() through env. The room daemon's jail is offline and binds satan-mcp's socket (/run/user/1000/satan/mcp) but not panopticon's (satan flake.nix room profile). satan already derives presence from panopticon's keyrate minutes: activity_read{scope:"current"} -> typing|reading|idle|mixed over satan-keyrate-window-minutes (10), or missing (satan-tools-activity.el:170). The interactive allowlist is every registered tool, so wake turns may call it."""
+choice = """env.presence() calls activity_read{scope:"current"} over the wake's `scheduled` satan-mcp connection. typing, reading, mixed -> present; idle -> away; missing, a tool error, satan-mcp off or Emacs absent -> unknown (the policy fires)."""
+alternatives = ["None in v0: presence always unknown; DEC-128's weighted rule inert", "Panopticon keyrate socket direct: new jail bind (ledger row 3b, satan-flake), launcher-check edit, a socket client, and idle-duration tracking that duplicates satan-keyrate"]
+rationale = "Reuses satan's presence derivation and the satan-mcp connection inq-6 needs anyway; no jail change. Degrading to unknown keeps unattended wakes firing."
+consequences = ["inq-6's exported satan-mcp call path serves both the percept and presence", "Each gate check (including every deferred retry) uses a scheduled connection and appears in satan-mcp's audit; accepted as noise", "Presence depends on Emacs: with Emacs absent the presence rule is inert"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

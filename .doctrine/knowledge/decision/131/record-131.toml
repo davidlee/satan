@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 131
+slug = "sl-034-heartbeat-one-perpetual-recurring-satanwake-in-a-dedicated-daemon-written-topic"
+title = "SL-034 heartbeat: one perpetual recurring satan.wake in a dedicated daemon-written topic"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 inq-5. The scoped heartbeat (after a wake turn, add one if none pending) races: two wakes settling together each see the other live and neither adds one; it also needs a separate daemon-start check."
+choice = "Exactly one heartbeat: the satan.wake definition (DEC-127) with input `recurring: true`, episode class seclusion/self-work. At daemon start, under the daemon lock, the daemon writes the heartbeat topic's record (config; e.g. `room`) and creates the heartbeat, owned by that topic's latest conversation, unless a live one exists. When due: if any other satan.wake is pending, sleepUntil one ceiling on; otherwise run the gate and fire composition, then sleepUntil one ceiling on. It never goes terminal. wake_cancel refuses it (host-owned); the off switch is inq-7. Defaults: ceiling 2h, floor 5m, both daemon config."
+alternatives = ["Post-turn check in the fire phase: must await the turn, needs check-and-create in one commit to avoid the race, and still needs a start-time check", "In the tool: nothing triggers it if SATAN never schedules", "Heartbeat into `default`: unprompted turns interleave with the user's default conversation"]
+rationale = "One task by construction removes the race; reuses the wake definition and fire path; a dedicated topic gives SATAN its own seclusion thread, bounded by pi-durable auto-compaction."
+consequences = ["Worst-case gap is about 2x ceiling when SATAN's own chain stops just after a heartbeat check", "A new conversation started in the heartbeat topic is not followed: the heartbeat stays with the conversation it was created in", "inq-11 owns the start ordering (topic write, heartbeat ensure after resume/refresh/backfill) and the config keys"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"

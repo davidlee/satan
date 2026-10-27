@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 132
+slug = "sl-034-wake-off-switch-malebolge-wakeson-read-at-start-fail-closed-off-defers-never-drops"
+title = "SL-034 wake off switch: MALEBOLGE_WAKES=on read at start, fail closed; off defers, never drops"
+record_kind = "decision"
+status = "proposed"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-034 inq-7; ADR-017 §4 fail closed. Precedents: ledger row 6b (runner config `enabled`, read at start, disabled start parks) and 6c (pi_agent policy `enabled`, re-read every gate tick). The room daemon's config is MALEBOLGE_* env from its user unit (src/config.ts); its jail binds individual config files only."
+choice = "Env MALEBOLGE_WAKES, read at daemon start; only `on` enables, unset or any other value is off. The gate checks it first: off -> defer by the retry step (no presence call); the wake is kept. wake_schedule still accepts and reports wakes disabled; wake_list works; the heartbeat is still ensured and defers. Turned on (restart), overdue wakes fire at their next check, spread by jitter."
+alternatives = ["Switch file re-read per gate (6c-style): needs a new jail bind (row 3b, satan-flake); if HM-rendered, flipping needs a rebuild anyway", "Daemon socket op toggled from Emacs, state in a store doc: truly live and on the privileged client, but a new protocol op and Emacs command"]
+rationale = "Follows the 6b precedent; no jail or protocol change; smallest. Deferring keeps SATAN's scheduled intent across an off period."
+consequences = ["Flipping the switch needs a daemon restart (malebolge-stop/start), which also halts an in-flight wake turn", "A live toggle (option C) is a follow-up if restart proves too coarse", "inq-10 records the switch's ledger row and owner; inq-11 adds the config key"]
+decided_by = "user (2026-10-27), on the agent's proposal"
+decided_on = "2026-10-27"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-034"
