@@ -150,7 +150,8 @@ Journal (`journalctl --user -u malebolge-room | grep 'malebolge: wake'`):
 - Not exercised live: heartbeat fire (due ~11:47 unless suppressed), failure path, sweep of a blocked wake (covered by PHASE-04..07 tests).
 
 Observations for /audit (not defects found by tests):
-- `fired_at` and the `defer … until` journal line are UTC (`Z`), while `wake_schedule`/`wake_list` report local offset (`+11:00`). SATAN, reading both, misread it as a clock shift. Candidate: render `fired_at` in local offset.
+- `fired_at` and the `defer … until` journal line were UTC (`Z`), while `wake_schedule`/`wake_list` report local offset (`+11:00`); SATAN read the mix as a clock shift. User: "timezone needs fixing". Fixed in malebolge 578761c (`localIso` → `src/wake/local-time.ts`, used by all three; red→green, `just check` 2258 tests); daemon restarted 10:13:23, no new `heartbeat … created` line (ensure kept 1976: idempotent across restart, live). Compounding cause outside this slice: the room VM (`/srv/fleet` `rooms.assistant`) runs in UTC, so `date` in the room shows UTC; the user is setting its time zone themselves.
+- pi `implement` in malebolge now runs node (user-approved form, malebolge f611305), with two sandbox caveats: `npx biome` needs the nix glibc loader (`/lib64/ld-linux` absent), and the sandbox's `git-guarded` refuses `reset --hard`/`clean -ffd`, failing 4 `test/runner/{collect,recovery}` tests in-sandbox (green on host).
 - A tool cancel journals two lines (handler `n=0 (room) cancelled` + tool `cancelled`); check against design sec-4's table.
 - The PHASE-08 procedure predicted the floor for an absent `after_minutes`; the design (and code) give one ceiling. Procedure note was wrong, not the code.
 
