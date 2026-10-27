@@ -109,6 +109,9 @@ unchanged, re-concluded) examined nothing new and changes none of this.
 | 01 | pi implement (code) | $0.048, 18 req | green after 3 hand lint fixes | could not run node: pi write form lacks node/npx, so lint/tsc issues reached me |
 | 01 | pi review | $0.018, 7 req | 7 minors | F3/F7 false (host refusal ordering); DST notes accepted as doc caveat |
 | 02 | Sonnet sub-agent (implement) | ~108k tokens | green first gate run | ended without handback; needed a nudge |
+| 03 | pi implement (tests) | $0.041, 27 req | 4 tests drafted; red as specified (stall demo timed out — F-13 reproduced) | none material; guessed signatures listed accurately |
+| 03 | Opus sub-orchestrator (code) | — | ~60-line wrapper; green after one lint fix (type assertion → non-generic helper) | — |
+| 03 | pi review | $0.042, 21 req | 2 major, 4 minor, 3 nit; 6 accepted | majors 1/2 false (EventStream iteration never rejects; an inner without a result is settled by the deadline); could not find ~/.local/src/pi from its jail, read dist instead |
 
 Form constraint: the quotient `write`/`implement` form has no node, so pi cannot run malebolge's gate. Build loops are the orchestrator's or a Bash-capable sub-agent's.
 
