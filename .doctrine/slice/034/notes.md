@@ -157,7 +157,7 @@ Observations for /audit (not defects found by tests):
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-28 · PHASE-08 completed (all 8) → /audit · satan 61da3b4, malebolge 578761c
+fresh-as-of: 2026-10-28 · audit RV-063 concluded → /reconcile · satan 1d44fb4, malebolge 578761c
 
 ### Produced
 - PHASE-01…08 completed. malebolge 6e7e461, 8950871, fe010b9, 77fec26, b1ac1d9, d3b374b, 27d0855, 578761c (+ f611305 build: malebolge's own quotient forms with node, user-approved); satan c67618c…61da3b4 (PHASE-08 code: 1441304, db21812, 6de3fb3); satan-corpus a8b2db2 (prompts/wake.md); ~/flakes (home repo) 001b88da (lock: satan + user's pending bumps). satan pushed to 6de3fb3; later satan commits and all malebolge commits unpushed.
@@ -173,9 +173,10 @@ fresh-as-of: 2026-10-28 · PHASE-08 completed (all 8) → /audit · satan 61da3b
 - Process: Anthropic sub-agents in this session repeatedly ended without a hand-back and needed a nudge; pi test drafts had real defects every phase (review hard).
 
 ### Open
-- Next: `/audit` → `/reconcile` (design text for the departures above; SPEC-002 REV) → `/close`.
+- Audit: RV-063 (10 findings, all verified; none blocking). Gates re-run green: malebolge `just check`, satan `just check`, `doctrine check gate`, `nix flake check`. Reconcile works from RV-063 § Reconciliation Brief (design.md F-1…F-5; SPEC-002 REV F-9).
+- Next: `/reconcile` → `/close`.
 - Room VM (`/srv/fleet` `rooms.assistant`) runs UTC; the user is setting its time zone (outside SL-034).
 - Optional user act: approve malebolge's read form (`quotient allow /home/david/dev/malebolge read=…`); read/review pi profiles in malebolge are refused until then.
-- 1441304 deleted `test/flake/forms.test.ts` rather than rewriting it — user not yet asked.
+- 1441304 deleted `test/flake/forms.test.ts` rather than rewriting it: RV-063 F-8 tolerated; user ruling pending (reopen F-8 if they want it rewritten).
 - Not exercised live: heartbeat fire, failure path, blocked-wake sweep (tests cover them).
 - RSK-022 (per-tool deadlines). At close: IDE-014 / IDE-017 absorbed.

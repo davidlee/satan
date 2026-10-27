@@ -1,0 +1,348 @@
+id    = 63
+slug  = "reconciliation-review-of-sl-034"
+title = "reconciliation review of SL-034"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "reconciliation"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Conformance audit of SL-034 against design.md (locked) and plan.toml, at satan 1d44fb4, malebolge 578761c, satan-corpus a8b2db2. Examined: every phase-sheet D-numbered departure and the 578761c live fix against sec-2/3/4/5/11/13; the emitted journal lines against the sec-4 table; slice conformance (undeclared/undelivered); verify-vt's cross-repo gap and the substitute test→VT maps; the PHASE-08 live journal; governance writes in sec-6 (ledger rows 4d/6d/7b, token, row 3b, docs). Re-ran gates: malebolge just check, satan just check, doctrine check gate, nix flake check (all exit 0).
+"""
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-034"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = "late_by: design sec-2 puts it on every fired input; code emits it only on occurrence 0"
+detail = """
+Expected (design sec-2 Fire composition): every submitted `<wake>` carries `late_by="…"`, defined as `firedAt − input.at` in minutes.
+Observed (malebolge src/wake/task.ts:195-200, PHASE-04 D10): `late_by` is emitted only when `n === 0`; heartbeat occurrences n>=1 omit it, because the checkpoint `at` moves with every defer and keeps no due time, so `firedAt − input.at` would be meaningless for them.
+Status: departure accepted by the user during PHASE-04. Content text only; no durable shape changed.
+"""
+disposition = "design-wrong"
+response = """
+Design text is wrong; code is the accepted behaviour (user-accepted PHASE-04 D10). Reconcile design.md sec-2: late_by on occurrence 0 only, with the reason. Brief entry: Per-slice, F-1.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Design text is wrong; code is the accepted behaviour (user-accepted PHASE-04 D10). Reconcile design.md sec-2: late_by on occurrence 0 only, with the reason. Brief entry: Per-slice, F-1.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "minor"
+title = "MALEBOLGE_WAKE_TOPIC: design sec-5 accepts any topic; code requires a topic name other than default"
+detail = """
+Expected (design sec-5 Config table): `MALEBOLGE_WAKE_TOPIC`, default `room`, "the heartbeat's topic"; no validation beyond the general "malformed value fails start".
+Observed (PHASE-07 D9, malebolge 27d0855, src/config.ts): the value must pass `topicNameOf` and must not be `default` (reserved; `writeTopicRecord` throws for it, so a room configured with `default` would fail every start). config.test.ts updated.
+Status: accepted by the user (recorded in satan 6de3fb3).
+"""
+disposition = "design-wrong"
+response = """
+Design text is wrong; code is the accepted behaviour (user-accepted PHASE-07 D9). Reconcile design.md sec-5 Config table: a topic name, not default. Brief entry: Per-slice, F-2.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Design text is wrong; code is the accepted behaviour (user-accepted PHASE-07 D9). Reconcile design.md sec-5 Config table: a topic name, not default. Brief entry: Per-slice, F-2.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "minor"
+title = "Journal table (sec-4) omits lines the code emits; sec-2 failure line disagrees with sec-4"
+detail = """
+Expected: design sec-4 says the journal lines are the audit record for ledger row 4d, so the table should list every line emitted.
+Observed (malebolge src/wake/task.ts, sweep.ts):
+- abort handler: `wake <id> n=<n> (<topic>) cancelled: already fired` ({fired:true}) and `… withdraw failed: <message>` (PHASE-05 D5); the table's terminal row lists only `cancelled`.
+- the start sweep's one-shot failure report omits `n=` (`wake <id> (<topic>) failed: <reason>`, PHASE-07 D5: no occurrence readable for a blocked wake); the table's terminal row has `n=<n>`.
+- `withdrew <k>` is logged even when k = 0 and counts only `aborted` answers (PHASE-07 D6).
+- design self-inconsistency: sec-2 Failure step 1 writes `wake <id> (<topic>) failed: <reason>` (no `n=`); sec-4 writes `wake <id> n=<n> (<topic>) failed: <reason>`. Code follows sec-4 for occurrences.
+- notify titles: sec-2 names only `SATAN wake failed`; code also sends `SATAN wake unanswered` for a withdrawn heartbeat (PHASE-05 D4).
+PHASE-07 review m1 asked for the restart_limit handler's `cancelled: already fired` wording to be settled here.
+"""
+disposition = "design-wrong"
+response = """
+Code lines are deliberate (PHASE-05 D4/D5, PHASE-07 D5/D6) and serve W7; the table is the audit record for row 4d, so the design is what is wrong. Reconcile design.md sec-4 table (abort-handler `cancelled: already fired`, `withdraw failed: <message>`, the sweep's n-less failure line, `withdrew 0`) and sec-2 Failure step 1 (`n=<n>` for an occurrence; heartbeat notify title `SATAN wake unanswered`). PHASE-07 review m1 wording kept: W9 permits overstating fired. Brief entry: Per-slice, F-3.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code lines are deliberate (PHASE-05 D4/D5, PHASE-07 D5/D6) and serve W7; the table is the audit record for row 4d, so the design is what is wrong. Reconcile design.md sec-4 table (abort-handler , , n-less sweep failure, withdrew 0) and sec-2 Failure step 1 ( for an occurrence; heartbeat notify title). PHASE-07 m1 wording kept: W9 permits overstating fired. Brief entry: Per-slice, F-3.
+"""
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "first response lost its code spans to shell expansion"
+disposition = "design-wrong"
+response = """
+Code lines are deliberate (PHASE-05 D4/D5, PHASE-07 D5/D6) and serve W7; the table is the audit record for row 4d, so the design is what is wrong. Reconcile design.md sec-4 table (abort-handler `cancelled: already fired`, `withdraw failed: <message>`, the sweep's n-less failure line, `withdrew 0`) and sec-2 Failure step 1 (`n=<n>` for an occurrence; heartbeat notify title `SATAN wake unanswered`). PHASE-07 review m1 wording kept: W9 permits overstating fired. Brief entry: Per-slice, F-3.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "minor"
+title = "Rendered times: design fixes local ISO only for tool results; code renders every time as local ISO with offset"
+detail = """
+Expected (design): sec-13 step 5 gives `wake_schedule` its `at` as ISO-8601 local time; sec-2 leaves `fired_at` unspecified; sec-4's defer line says `<iso>`.
+Observed: live check (notes § Live check) showed `fired_at` and the defer journal line in UTC `Z` while the tools reported `+11:00`; SATAN read the mix as a clock shift and the user asked for it fixed. malebolge 578761c moved `localIso` to src/wake/local-time.ts and uses it for tool `at`, `wake_list` `at`, `fired_at`, and the defer line (red→green, `just check` 2258 tests). Also `wake_list` `at` is the sleep's `until` (current next fire), not `input.at` (PHASE-06 D5); sec-13 does not say which.
+Gap: the design never states one time rendering for model- and journal-facing text, which is how the mismatch shipped.
+"""
+disposition = "design-wrong"
+response = """
+Code is right (user-directed fix, 578761c); design under-specified. Reconcile design.md sec-2/sec-4/sec-13: every model- and journal-facing time is local ISO-8601 with offset (localIso); wake_list at = next fire. Brief entry: Per-slice, F-4.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Code is right (user-directed fix, 578761c); design under-specified. Reconcile design.md sec-2/sec-4/sec-13: every model- and journal-facing time is local ISO-8601 with offset (localIso); wake_list at = next fire. Brief entry: Per-slice, F-4.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "Design sketches (sec-5, sec-13) differ from landed signatures and two behaviours"
+detail = """
+Expected: design sec-5 sketch `tasksExtension(deps)` registering `wakeSchedule(deps)` etc.; sec-13 tools read the harness and conversations from the late-bound deps; sec-3 is silent on what a sweep/ensure failure does to start.
+Observed (phase-sheet decisions):
+- Signatures: `wakeSchedule(deps, task)` (PHASE-06 D1), `tasksExtension(deps, task?)` (PHASE-07 D2), `sweepBlockedWakes(deps, read, ctx)` (PHASE-07 D1), `DaemonParts.tasks` + `profile` (D3), `SessionOptions.setTimer` (PHASE-05 D2), `StartDeps.environment?/now?` test seams (PHASE-07 D4), shared helpers `liveWakes`/`createWakeTask`/`reportFailure` (D5), `durationOf` → src/duration.ts (PHASE-05 D6).
+- Behaviour: `wake_schedule` resolves a topic through the index (`readIndex(api)`, shared `isKnownTopic`), not `deps.conversations` (whose `open` would create a topic); a known topic with no conversation is refused (PHASE-06 D2). `wake_cancel` refuses terminal wakes too and answers `cancelled` only on exactly `{fired:false}` (PHASE-06 D4). A sweep or ensure failure fails daemon start, closing the session first (PHASE-07 D7 + review M1).
+All within the design's intent; the text should match before close.
+"""
+disposition = "design-wrong"
+response = """
+Departures are refinements within intent, each recorded with its reason in the phase sheets. Reconcile design.md sec-5 sketch and sec-13/sec-3 prose to the landed signatures and the three behaviours. Brief entry: Per-slice, F-5.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Departures are refinements within intent, each recorded with its reason in the phase sheets. Reconcile design.md sec-5 sketch and sec-13/sec-3 prose to the landed signatures and the three behaviours. Brief entry: Per-slice, F-5.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "nit"
+title = "Two journal lines per tool cancel (live check) — check against sec-4"
+detail = """
+Observed live (09:50:43): `wake 1983 n=0 (room) cancelled` then `wake 1983 cancelled`.
+Expected (sec-4 table): the terminal row (`wake <id> n=<n> (<topic>) cancelled`, from the task's abort handler) and the cancel row (`wake <id> cancelled`, from the tool) are separate events. A tool cancel produces both.
+"""
+disposition = "aligned"
+response = """
+Two rows, two events: the abort handler journals the task terminal, the tool journals the cancel. Matches sec-4. No change.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = """
+Two rows, two events: the abort handler journals the task terminal, the tool journals the cancel. Matches sec-4. No change.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "Cross-repo evidence: verify-vt UNATTRIBUTABLE and conformance undelivered for every malebolge/corpus selector"
+detail = """
+Expected: `doctrine slice verify-vt 34` attributes each VT to its test; `slice conformance 34` matches design-target selectors to recorded deltas.
+Observed: every malebolge VT (PHASE-01..07) reads UNATTRIBUTABLE, and conformance lists 10 undelivered selectors (src/wake/**, src/config.ts, src/session.ts, src/daemon-*.ts, src/satan-tools.ts, src/conversation-context.ts, test/harness-fixture.ts, test/wake-*.test.ts, prompts/wake.md). All of them live in ~/dev/malebolge or ~/satan-corpus; the tools read only this repo's history.
+Substitute evidence (this audit): each phase sheet's test→VT map and negative controls; malebolge files present at 578761c (src/wake/{policy,presence,task,extension,tools,sweep,heartbeat,local-time}.ts, test/wake-*.test.ts); malebolge `just check` exit 0 at 578761c (fmt, eslint --max-warnings 0, tsc, vitest; lines 98.56%); corpus prompts/wake.md at a8b2db2.
+"""
+disposition = "tolerated"
+response = """
+Tool limitation, not a verification gap: doctrine verify-vt and conformance read only this repo. Substitute evidence recorded in the detail and re-run by this audit (malebolge just check exit 0 @578761c). Selectors stay: they document the design targets; removing them to green the algebra would hide where the code is. Accepted for SL-034; any cross-repo attribution is doctrine tooling work, outside this project.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Tool limitation, not a verification gap: doctrine verify-vt and conformance read only this repo. Substitute evidence recorded in the detail and re-run by this audit (malebolge just check exit 0 @578761c). Selectors stay: they document the design targets; removing them to green the algebra would hide where the code is. Accepted for SL-034; any cross-repo attribution is doctrine tooling work, outside this project.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Undeclared scope: 1441304 deleted test/flake/forms.test.ts and the justfile forms-suite target"
+detail = """
+Expected: the slice touches only its design targets, or records a departure the user agreed.
+Observed (conformance undeclared: justfile, test/flake/forms.test.ts; also notes.md, the slice's own notes): PHASE-08 found satan `just check` red at HEAD because the suite still asserted the hand-rolled `quotientFormFamily` that 4dfd3b2 replaced with `jailLib.quotientFormFamily`. 1441304 deleted the suite (10 node tests: bind modes, tmpfs /tmp, argument guards, --die-with-parent, probe presence) rather than rewriting it, relying on `quotient.lib.checkFormFamily` (flake check `quotient-forms`) and `just check-jails`. The user has not been asked. This audit did not check that `checkFormFamily` covers each deleted assertion.
+"""
+disposition = "tolerated"
+response = """
+Out-of-slice hygiene, kept: the suite tested code 4dfd3b2 had already removed, so it could only fail; the property it guarded (form bind sets, guards) moved to quotient.lib.checkFormFamily, which runs in nix flake check (green this audit). Not a design target, so no selector added. Raised to the user in the audit summary; if they want the suite rewritten instead, reopen.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Out-of-slice hygiene, kept: the suite tested code 4dfd3b2 had already removed, so it could only fail; the property it guarded (form bind sets, guards) moved to quotient.lib.checkFormFamily, which runs in nix flake check (green this audit). Not a design target, so no selector added. Raised to the user in the audit summary; if they want the suite rewritten instead, reopen.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "SPEC-002 not yet updated for room-daemon wakes"
+detail = """
+Expected (design sec-6): SPEC-002 (whole-system context spec): the interactive daemon's Owns gains wake scheduling; the satan-mcp transport names the `scheduled` kind. Deferred by design to a REV at reconcile.
+Observed: SPEC-002 unchanged at 1d44fb4.
+"""
+disposition = "design-wrong"
+response = """
+Owed governance write named by design sec-6. Reconcile by REV against SPEC-002 (interactive daemon Owns: wake scheduling; satan-mcp transport: scheduled kind). Brief entry: Governance/spec, F-9.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "design-wrong"
+response = """
+Owed governance write named by design sec-6. Reconcile by REV against SPEC-002 (interactive daemon Owns: wake scheduling; satan-mcp transport: scheduled kind). Brief entry: Governance/spec, F-9.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Wake turns can still hang on room tools without a per-call deadline (bash, grep)"
+detail = """
+Expected (design Risks): a wake's model turn is bounded; the model stream deadline (PHASE-03) covers the model, and in-turn tool calls should be bounded too.
+Observed (PHASE-06 recon): satan-mcp calls are bounded by pi-mcp's 30 s request timeout; `bash` (no default timeout) and `grep` (no wall-clock bound) are not. A hung tool call holds the wake's placed input until the daemon restarts. Minted RSK-022.
+"""
+disposition = "follow-up"
+response = """
+Owned future work: RSK-022 already captures it (bash/grep per-call deadline in the room profile). Fix touches room tool wiring outside this slice's design; the design Risks section named it as a follow-up.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "follow-up"
+response = """
+Owned future work: RSK-022 already captures it (bash/grep per-call deadline in the room profile). Fix touches room tool wiring outside this slice's design; the design Risks section named it as a follow-up.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
