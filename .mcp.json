@@ -8,7 +8,7 @@
       "command": "${DOCTRINE_BIN:-doctrine}"
     },
     "quotient": {
-      "command": "${HOME}/.local/state/quotient/bin/quotient"
+      "command": "quotient"
     }
   }
 }

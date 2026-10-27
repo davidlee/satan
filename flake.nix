@@ -294,8 +294,8 @@
         # SL-029's per-call forms (`quotient help form`), one per filesystem
         # capability: quotient's form family through the agents lib, so the
         # form-1 contract (DEC-116) is quotient's and the posture the lib's.
-        # The forms serve this host's quotient policy, every root it allows:
-        # the project half they carry must suit them all. No persisted home:
+        # They are this root's project forms (`just quotient-forms`, then
+        # `quotient allow`), so they carry the supabase env. No persisted home:
         # a form writes only the root, the session directory and its private
         # temp, so the policy's `exposure` is empty.
         quotientFamily = jailLib.quotientFormFamily {

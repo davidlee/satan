@@ -19,9 +19,9 @@ One blocking call: `pi_agent(prompt, profile)` → `{state, final, result, trans
 
 Operator setup, outside the repo (an absent or malformed policy refuses every call):
 
-- Policy: `~/.config/quotient/policy.json` (mode 0444; schema `quotient-policy/1`, see `quotient help policy`). It names the forms by stable link, `~/.local/state/quotient/forms/<capability>/bin/quotient-<capability>`.
-- `just quotient-forms` rebuilds those links and `~/.local/state/quotient/bin/quotient` (GC-rooted). Run it after changing the forms in `flake.nix` or bumping the `quotient` input.
-- The server is the `quotient` entry in `.mcp.json`, run from that bin link; `quotient help clients` prints the client snippets.
+- Policy: `~/.config/quotient/policy.json` (mode 0444; see `quotient help policy`). Its machine-default forms carry no project env; the server and those forms are the host's (flakes `agents.quotient`).
+- This root's forms carry the supabase env (`projectOptions`): `just quotient-forms` links them at `.quotient/forms/<capability>`, then `quotient allow` approves them. Rerun both after changing the forms in `flake.nix` or bumping the `quotient` input.
+- The server is the `quotient` entry in `.mcp.json`, run from PATH; `quotient help clients` prints the client snippets.
 - Profiles are read once at start-up. Restart the session after editing `~/.config/quotient/profiles/`.
 
 **Judgement — governance applicability, competing readings, tradeoffs**
@@ -37,7 +37,7 @@ export PI_MODEL=llm-gateway/deepseek-flash  # the only model the gateway's model
 
 Answer on stdout, prompt on argv or stdin, `PI_BACKSTOP` seconds hard cap (default 900). Their tool lists include `write`: give them read-only questions, or an isolated worktree if they must write. Inside `jailed-pi` the cwd is `/workspace/<basename>` and sibling repos are `/workspace/<name>`; write prompt paths that way. Already inside a jail? Leave `PI_BIN` unset.
 
-**Raw shell runs** (custom flags, no MCP client): `pi --mode json … > events.jsonl`, then `~/.local/state/quotient/bin/quotient reduce events.jsonl --alert 'FAIL|\.doctrine/'`. The reducer exits 0 on completed, 1 on failed or incomplete. Traps:
+**Raw shell runs** (custom flags, no MCP client): `pi --mode json … > events.jsonl`, then `quotient reduce events.jsonl --alert 'FAIL|\.doctrine/'`. The reducer exits 0 on completed, 1 on failed or incomplete. Traps:
 
 - `--mode rpc` is **not** a one-shot: it shuts down on stdin EOF and answers nothing. Always `--mode json`.
 - json mode exits 0 even when the model errored. The verdict is `status.state`, or the reducer's exit code.

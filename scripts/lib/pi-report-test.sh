@@ -33,7 +33,7 @@ cat >"$STREAM" <<'JSONL'
 JSONL
 
 echo "1. reduces a pi event stream through the default reducer (quotient reduce)"
-if [ -x "$HOME/.local/state/quotient/bin/quotient" ]; then
+if command -v quotient >/dev/null; then
   out=$(pi_report "$STREAM" "[test]" 2>&1)
   contains "$out" "----- [test] report -----" "prints a tagged report header"
   contains "$out" "→ bash(wc -l big.txt)" "renders the tool call"
@@ -41,7 +41,7 @@ if [ -x "$HOME/.local/state/quotient/bin/quotient" ]; then
   missing "$out" "SYSTEM ECHO" "drops context echo"
   contains "$out" "transcript=" "status line names the transcript artefact"
 else
-  echo "  skip — no quotient bin on this host (just quotient-forms)"
+  echo "  skip — no quotient on PATH (flakes agents.quotient)"
 fi
 
 echo "2. degrades to the raw tail when the reducer is unavailable"

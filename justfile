@@ -70,20 +70,20 @@ forms-suite:
 shell-suite:
     for t in scripts/*-test.sh scripts/lib/*-test.sh; do [ -e "$t" ] || continue; bash "$t" || exit 1; done
 
-# Build the quotient forms and bin to fixed, GC-rooted links. The operator
-# policy names `<state>/forms/<capability>/bin/quotient-<capability>`, and
-# `<state>/bin/quotient` is the stable server path: a rebuild is picked up
-# without editing either, and a garbage collection cannot delete them.
-quotient-forms state=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "quotient"):
-    mkdir -p {{state}}/forms {{state}}/bin
-    nix build -o {{state}}/forms/read .#quotient-read
-    nix build -o {{state}}/forms/write .#quotient-write
-    nix build -o {{state}}/pkg .#quotient
-    ln -sfn ../pkg/bin/quotient {{state}}/bin/quotient
+# Build this root's quotient forms and link them where quotient looks
+# (.quotient/forms/<capability>). A rebuild that changes a form needs a fresh
+# `quotient allow`. The server and the machine-default forms are the host's
+# (flakes agents.quotient).
+quotient-forms:
+    mkdir -p .quotient/forms
+    nix build -o .quotient/result-read .#quotient-read
+    nix build -o .quotient/result-write .#quotient-write
+    ln -sfn "$(readlink -f .quotient/result-read)/bin/quotient-read" .quotient/forms/read
+    ln -sfn "$(readlink -f .quotient/result-write)/bin/quotient-write" .quotient/forms/write
 
 # Quotient's write-denial probe against both built forms. Calls a model through
 # the LLM gateway, so it is not part of `check`. Exit 77 = prerequisite missing.
-quotient-hostile-audit state=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "quotient"): (quotient-forms state)
+quotient-hostile-audit state=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "quotient"): quotient-forms
     #!/usr/bin/env bash
     set -euo pipefail
     # The forms run under the gateway (profile specDev, network) and their
@@ -108,7 +108,7 @@ quotient-hostile-audit state=(env("XDG_STATE_HOME", env("HOME") / ".local/state"
       echo "quotient-hostile-audit: $capability evidence under $dir"
       # No exposure: the form writes only the call's root and session
       # directory, and its private temp.
-      "$audit" --form {{state}}/forms/$capability/bin/quotient-$capability \
+      "$audit" --form .quotient/forms/$capability \
         --capability "$capability" --model llm-gateway/deepseek-flash \
         "$dir/root" "$dir/session-home" "$dir/run" || status=1
     done

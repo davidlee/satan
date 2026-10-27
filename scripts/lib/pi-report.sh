@@ -15,12 +15,12 @@
 #   PI_ALERTS              space-separated regexes to warn about, e.g. 'FAIL|\.doctrine/'
 #   PI_REDUCE              reducer command, split on whitespace; its first word must
 #                          be executable, so paths with spaces are unsupported
-#                          (default: $HOME/.local/state/quotient/bin/quotient reduce)
+#                          (default: quotient reduce)
 #   PI_REPORT_TAIL_LINES   fallback tail length (default 40)
 #
 # The reducer is quotient's `reduce` subcommand, a self-contained launcher (no
-# node needed on PATH). Where it is unavailable (a jail without the quotient
-# bin, a host that never ran `just quotient-forms`) this degrades to the old
+# node needed on PATH). Where it is unavailable (a jail without quotient, a
+# host without the flakes agents.quotient feature) this degrades to the old
 # tail rather than reporting nothing: a noisy report beats a silent one.
 #
 # Only pi `--mode json` / `--mode rpc` streams reduce. The claude arm emits a
@@ -30,9 +30,9 @@
 pi_report() {
   local stream=$1 tag=${2:-[spawn]}
   local -a reduce
-  read -ra reduce <<<"${PI_REDUCE:-$HOME/.local/state/quotient/bin/quotient reduce}"
+  read -ra reduce <<<"${PI_REDUCE:-quotient reduce}"
 
-  if [ -x "${reduce[0]:-}" ]; then
+  if [ -n "${reduce[0]:-}" ] && command -v "${reduce[0]}" >/dev/null; then
     # Bash 3.2 (the macOS arm) errors on expanding an empty array under `set -u`,
     # hence the ${alerts[@]+...} form.
     local alerts=() pattern

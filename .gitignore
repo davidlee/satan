@@ -144,3 +144,6 @@ oauth2-auto.plist
 /.claude/skills/worktree
 /.pi/agents/dispatch-worker.md
 # <<< doctrine managed
+
+# quotient forms: links into the nix store, rebuilt by `just quotient-forms`
+/.quotient/
