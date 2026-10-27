@@ -262,7 +262,7 @@
         # its probe, a deploy, and a `malebolge-room` restart. The other wake
         # keys keep the daemon's defaults. Local time needs no TZ: the jail
         # binds the host's /etc/localtime (probed below).
-        malebolgeWakes = "off";
+        malebolgeWakes = "on";
         malebolgeRoomJailOptions = with jailLib.combinators;
           jailLib.gatewaySocketOptions
           ++ [
@@ -434,7 +434,7 @@
               "--setenv MALEBOLGE_GATEWAY_SOCKET /run/llm-gateway-client/api.sock "
               "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge "
               "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json "
-              "--setenv MALEBOLGE_WAKES off "
+              "--setenv MALEBOLGE_WAKES on "
               # The wake quiet window is local time; without this Node falls
               # back to UTC (SL-034 EX-5).
               "--symlink \"$(readlink /etc/localtime)\" /etc/localtime"
