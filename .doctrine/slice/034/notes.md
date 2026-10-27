@@ -112,6 +112,9 @@ unchanged, re-concluded) examined nothing new and changes none of this.
 | 03 | pi implement (tests) | $0.041, 27 req | 4 tests drafted; red as specified (stall demo timed out — F-13 reproduced) | none material; guessed signatures listed accurately |
 | 03 | Opus sub-orchestrator (code) | — | ~60-line wrapper; green after one lint fix (type assertion → non-generic helper) | — |
 | 03 | pi review | $0.042, 21 req | 2 major, 4 minor, 3 nit; 6 accepted | majors 1/2 false (EventStream iteration never rejects; an inner without a result is settled by the deadline); could not find ~/.local/src/pi from its jail, read dist instead |
+| 04 | pi implement (tests) | $0.139+0.005, 31+2 req | 9 tests drafted, red against a throwing skeleton | first call hit the ceiling before writing (re-prompted via session); crash-after-admission test raced the faux model (fixed: hold the first turn, wait `placed`); `checkpointOf` param type too narrow |
+| 04 | Opus sub-orchestrator (code) | — | task.ts ~370 lines; green after 3 lint fixes + one doctrine-word trip (`capsule` in a comment fails the door-knowledge test) | — |
+| 04 | pi review | $0.058, 30 req | 4 accepted (late_by on heartbeat n≥1, notify-catch, exact journal lines, heartbeat occurrence 1), 6 rejected | first call spent its ceiling in pi-durable dist; could not reach the satan design path from its jail |
 
 Form constraint: the quotient `write`/`implement` form has no node, so pi cannot run malebolge's gate. Build loops are the orchestrator's or a Bash-capable sub-agent's.
 
