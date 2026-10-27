@@ -131,6 +131,29 @@ unchanged, re-concluded) examined nothing new and changes none of this.
 
 Form constraint: the quotient `write`/`implement` form has no node, so pi cannot run malebolge's gate. Build loops are the orchestrator's or a Bash-capable sub-agent's.
 
+## Live check (PHASE-08 VA-1, 2026-10-28)
+
+Deploy: satan 6de3fb3 (`malebolgeWakes = "on"` + probe) pushed; ~/flakes 001b88da (lock: satan, plus the user's pending agents/emacs/claude-desktop bumps, by their choice); `just home-switch`; launcher `/nix/store/ig9n4msk…-jailed-malebolge` carries `--setenv MALEBOLGE_WAKES on`; `systemctl --user restart malebolge-room` at 09:47:23. Driven by the super-orchestrator through `MALEBOLGE_PROFILE=room node src/attach-main.ts --topic room` (conversation 1970). Transcripts: session scratchpad `live-attach-{1,2,3}.txt`.
+
+Journal (`journalctl --user -u malebolge-room | grep 'malebolge: wake'`):
+```
+09:47:23 wake heartbeat 1976 created in room                       # ensure at start; sweep: nothing blocked, no line
+09:50:43 wake 1983 n=0 (room) cancelled                            # abort handler
+09:50:43 wake 1983 cancelled                                       # wake_cancel tool
+09:55:47 wake 2000 n=0 (room) defer presence until 2026-10-27T23:01:11.270Z
+10:01:11 wake 2000 n=0 (room) fire
+10:01:12 wake 2000 n=0 (room) done
+```
+- schedule: `wake_schedule` without `after_minutes` → id 1983 at now + ceiling (2 h), per design sec-13 step 2 ("absent means one ceiling"); with `after_minutes: 1` → id 2000 at now + floor (5 min). `wake_list` showed heartbeat 1976 (recurring) and 1983, `enabled: true`.
+- cancel: `wake_cancel 1983` → `{"id":1983,"cancelled":true}`.
+- fire: wake 2000 deferred once on presence (user active), fired 10:01:11, produced exactly one turn in conversation 1970 whose input is `<wake fired_at="2026-10-27T23:01:11.385Z" late_by="5" class="seclude" scheduled_by="1970">` with wake.md, intent and percept; SATAN replied once and stopped; `done`.
+- Not exercised live: heartbeat fire (due ~11:47 unless suppressed), failure path, sweep of a blocked wake (covered by PHASE-04..07 tests).
+
+Observations for /audit (not defects found by tests):
+- `fired_at` and the `defer … until` journal line are UTC (`Z`), while `wake_schedule`/`wake_list` report local offset (`+11:00`). SATAN, reading both, misread it as a clock shift. Candidate: render `fired_at` in local offset.
+- A tool cancel journals two lines (handler `n=0 (room) cancelled` + tool `cancelled`); check against design sec-4's table.
+- The PHASE-08 procedure predicted the floor for an absent `after_minutes`; the design (and code) give one ceiling. Procedure note was wrong, not the code.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-28 · plan authored, 8 phases materialised · slice status ready
