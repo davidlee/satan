@@ -101,6 +101,17 @@ in-turn tool calls (Risks). Those land as `/plan` criteria and `/audit`.
 The later route-only reopen of F-1…F-5/F-7/F-9 (routed `review`, verdicts
 unchanged, re-concluded) examined nothing new and changes none of this.
 
+## Execution log (review passes)
+
+| phase | who / profile | cost | outcome | what went wrong |
+|---|---|---|---|---|
+| 01 | pi implement (tests) | $0.064, 33 req | 3 suites, red as specified | header cited wrong design refs (`§4.5; RFC-002`); fixed by hand |
+| 01 | pi implement (code) | $0.048, 18 req | green after 3 hand lint fixes | could not run node: pi write form lacks node/npx, so lint/tsc issues reached me |
+| 01 | pi review | $0.018, 7 req | 7 minors | F3/F7 false (host refusal ordering); DST notes accepted as doc caveat |
+| 02 | Sonnet sub-agent (implement) | ~108k tokens | green first gate run | ended without handback; needed a nudge |
+
+Form constraint: the quotient `write`/`implement` form has no node, so pi cannot run malebolge's gate. Build loops are the orchestrator's or a Bash-capable sub-agent's.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
 fresh-as-of: 2026-10-28 · plan authored, 8 phases materialised · slice status ready
