@@ -1,0 +1,201 @@
+# Implementation plan for SL-034 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-034"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase, in execution order — the authored array order
+# IS the order; never sort by id. Ids are PHASE-NN (zero-padded), immutable and
+# never reused once authored — edits append, they never renumber, so the id
+# sequence goes non-monotonic after a split and that is expected. Criterion ids
+# are local to their phase, bare, and equally immutable
+# (`lib:reference/glossary.md` § reference forms). The prefix is
+# the only mode marker; there is no mode field. Reference a criterion from
+# another phase phase-qualified (PHASE-03/EX-8) — bare EX-8 is ambiguous.
+#
+# Paths: malebolge code and tests are absolute (~/dev/malebolge = M); satan paths are repo-relative.
+# "M green" = `just check` in M (fmt-check, lint, typecheck, test) at zero warnings.
+
+[[phase]]
+id        = "PHASE-01"
+name      = "malebolge: wake settings, WakePolicy v0, presence adapter"
+objective = "The pure core of the slice: WakeSettings parsed from the five MALEBOLGE_WAKE* keys (host refuses them), the v0 WakePolicy (schedule clamp + jitter; gate: switch, quiet window, weighted presence) over an injected WakeEnv, and presenceOf, the printed-Lisp adapter (design sec-12, sec-4 Config, W2/W3/W10)."
+entrance_criteria = [
+  { id = "EN-1", text = "Design SL-034 locked; M green at the starting commit." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "src/config.ts: Config.wakes: WakeSettings from MALEBOLGE_WAKES (only exact on enables), _WAKE_FLOOR_MS, _WAKE_CEILING_MS (digit-only, idleMsOf's rule), _WAKE_QUIET (HH:MM-HH:MM, may wrap midnight), _WAKE_TOPIC; design defaults; malformed value fails start; any MALEBOLGE_WAKE* key under the host profile fails start." },
+  { id = "EX-2", text = "src/wake/policy.ts: WakePolicy, WakeEnv, Gate, DeferReason, WakeSettings, QuietWindow, v0Policy, constants JITTER = 0.1 and PRESENCE_WEIGHT = 0.4; schedule and gate exactly as design sec-12 (gate order: disabled, quiet, presence; presence only called at step 3)." },
+  { id = "EX-3", text = "src/wake/presence.ts: presenceOf(result) maps the first :presence \"<word>\" by the design's regex; no match or isError -> unknown. A thrown call maps to unknown at the env.presence call site." },
+  { id = "EX-4", text = "M green." },
+]
+verification = [
+  { id = "VT-1", expects = "Config: each key parsed with its default; malformed floor/ceiling/quiet fail; WAKES other than exact on is disabled; a wake key under host fails start", test_file = "/home/david/dev/malebolge/test/config.test.ts", keywords = ["MALEBOLGE_WAKES", "MALEBOLGE_WAKE_QUIET", "MALEBOLGE_WAKE_CEILING_MS"], waived = false },
+  { id = "VT-2", expects = "Policy with a fake env (fixed clock, seeded random, scripted presence): clamp below floor and above ceiling; jitter within +-10% and within bounds over many seeds; quiet window defers to its end incl. a window wrapping midnight and now exactly at either edge; disabled defers with no presence call; favoured fires, unfavoured fires at weight 0.4 under a seeded sequence, unknown fires", test_file = "/home/david/dev/malebolge/test/wake-policy.test.ts", keywords = ["v0Policy", "PRESENCE_WEIGHT", "midnight", "presence"], waived = false },
+  { id = "VT-3", expects = "Adapter over real satan-mcp result text: typing, reading, mixed -> present; idle -> away; :status \"missing\", isError -> unknown", test_file = "/home/david/dev/malebolge/test/wake-presence.test.ts", keywords = ["presenceOf", "typing", "idle", "isError"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "malebolge: session clock, beforeResume, scheduled kind, SatanTools.call"
+objective = "The seams the wake task needs from existing modules, with no wake behaviour yet: SessionOptions.now and beforeResume(session) in openSession, clock injection through the test harness fixture, SatanKind gains scheduled, and SatanTools exports call(key, tool, args, deadlineMs) over the existing pool and deadline helper (design sec-5, sec-2)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "src/session.ts: SessionOptions.now? is passed to Harness.open; beforeResume?(session) is called synchronously with the complete {harness, root} after backfillIndex and before harness.resume()." },
+  { id = "EX-2", text = "test/harness-fixture.ts drives the harness clock and an env clock with one fake function through openSession." },
+  { id = "EX-3", text = "src/conversation-context.ts: SatanKind = interactive | scheduled; satanIdentity carries the kind; the pool keys by (conversation, kind) unchanged." },
+  { id = "EX-4", text = "src/satan-tools.ts: SatanTools.call reuses withConnection and within; a call over the scheduled key opens its own pooled connection; past deadlineMs it rejects." },
+  { id = "EX-5", text = "M green; existing daemon and session tests unchanged in behaviour." },
+]
+verification = [
+  { id = "VT-1", expects = "beforeResume runs after backfill and before resume, with no task phase run before it; now reaches the harness (a sleeping task wakes on the fake clock)", test_file = "/home/david/dev/malebolge/test/session.test.ts", keywords = ["beforeResume", "now"], waived = false },
+  { id = "VT-2", expects = "call over a scheduled key: identity carries kind scheduled, separate pool entry from interactive; deadline rejects a hung call", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["scheduled", "deadlineMs", ".call("], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "malebolge: model stream deadline (RV-062 F-13 demonstrate)"
+objective = "withStreamDeadline bounds every gateway model request from request start across headers and the whole body; on expiry it aborts the inner request and ends the stream as a non-retryable error, so a stalled stream fails its run with model_error and settles its inputs unanswered (design sec-5 Model stream deadline). Hosts the RV-062 F-13 demonstration, which must land no later than the first phase relying on a placed wake always settling (PHASE-05)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-02 exit criteria met." },
+  { id = "EN-2", text = "RV-062 F-13 and F-16 responses re-read from the ledger (doctrine review show RV-062 -f F-13, -f F-16): F-16 replaces F-13's clause the run fail after its retries with the run fails with model_error after exactly one model request." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "src/models.ts: MODEL_STREAM_DEADLINE_MS = 2 h code constant; withStreamDeadline(api, ms); gatewayProvider wraps its API for both profiles; on expiry the inner request signal is aborted and the stream ends stopReason error, errorMessage model stream exceeded 2h (wording matched by none of pi-ai's retryable patterns)." },
+  { id = "EX-2", text = "RV-062 F-13 (demonstrate, criterion as amended by F-16): through the real pi-ai openai-completions adapter with an injected transport and a shortened deadline, inside a real pi-durable run, a response that sends headers and one chunk and then never ends makes the stream end as an error, the inner request signal aborted, the run fail with model_error after exactly one model request (no retry), and a placed input settle unanswered; a stream finishing inside the deadline is unaffected. Option propagation on a faux model does not count." },
+  { id = "EX-3", text = "M green." },
+]
+verification = [
+  { id = "VT-1", expects = "RV-062 F-13 demonstration as EX-2: headers + one chunk then stall -> error, inner signal aborted, exactly one model request, placed input unanswered; positive control: a stream inside the deadline completes", test_file = "/home/david/dev/malebolge/test/models.test.ts", keywords = ["withStreamDeadline", "openai-completions", "model_error", "unanswered"], waived = false },
+  { id = "VA-1", text = "Agent confirms the test uses the real adapter and a real pi-durable run (not a faux model), and records the positive and negative outcomes in notes; this is the transcription RV-062 F-13 verify asserts." },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "malebolge: satan.wake task — fire and submit"
+objective = "The satan.wake v1 definition without its bounded wait or abort handler: fire (not-yet re-sleep, gate, defer keeping n and prepared, compose percept + wake.md fragment + intent + payload), submit (host re-check on every entry, defer back to fire with prepared, submit requestId wake:<id>:<n> followUp, wait), the heartbeat's recurring n+1 branch, and the failure report (design sec-11, sec-2; W1, W3, W6, W7)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-03 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "src/wake/task.ts: WakeInput, WakeState, WakeResult, EpisodeClass, wakeTask(deps) with phases fire and submit and checkpoints as design sec-11; ownership conversation, background." },
+  { id = "EX-2", text = "fire: now < at re-sleeps unchanged; a defer is sleepUntil(until, {...state, at: until}); on fire it runs beforeInput, fetches satan_boot_context{refresh:true} over scheduled within 10 s (else percept unavailable: <reason>), reads the fragment (missing -> fail), composes the <wake> content and checkpoints submit {at, n, firedAt, content}." },
+  { id = "EX-3", text = "submit: host checks (switch, quiet) on every entry, defer -> fire with prepared; submits byte-identical content under wake:<id>:<n>; settled done -> one-shot completes {fired:true}, heartbeat sleeps one ceiling with n+1 in one checkpoint." },
+  { id = "EX-4", text = "Failure path (DEC-134): wake.md missing, target unreachable, submit throws, or settled unanswered -> journal failed line, best-effort notify_send over scheduled, one-shot fails with the reason, heartbeat stays alive with n+1. Journal lines per design sec-4 for fire, defer, terminal." },
+  { id = "EX-5", text = "M green." },
+]
+verification = [
+  { id = "VT-1", expects = "Schedule -> fire (task created directly in the test): nothing before at; one turn after; the model sees <wake> with fragment, intent, payload, percept; entry satan.wake carries n", test_file = "/home/david/dev/malebolge/test/wake-task.test.ts", keywords = ["satan.wake", "<wake", "requestId"], waived = false },
+  { id = "VT-2", expects = "W1: interrupt right after submit, reopen with the clock in the quiet window -> exactly one turn; same with a defer between crash and re-run. Crash between submit checkpoint and admission: reopen wakes off -> no input, back to fire with prepared; quiet likewise; on later -> one turn; a second defer keeps prepared", test_file = "/home/david/dev/malebolge/test/wake-task.test.ts", keywords = ["prepared", "reopen", "quiet"], waived = false },
+  { id = "VT-3", expects = "Restart with overdue wakes: each fires once. Degraded: satan-mcp unreachable -> percept unavailable and presence unknown, still fires; wake.md missing -> one-shot fails with journal line, heartbeat survives with n+1", test_file = "/home/david/dev/malebolge/test/wake-task.test.ts", keywords = ["percept unavailable", "overdue", "failed"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-05"
+name      = "malebolge: bounded wait and the abort handler"
+objective = "Every occurrence waits at most one ceiling for its input to be placed, and an aborted wake owns its input: the bounded-wait race in submit (aborted / already_placed / settled), the heartbeat's unanswered recovery, and the abort handler's withdraw (design sec-2 Bounded wait, sec-11 abort handler, sec-3 Bounded wait; W4, W9). Relies on PHASE-03: a placed input always settles."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-04 exit criteria met; PHASE-03/EX-2 (RV-062 F-13) met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "submit races submission.wait() against one ceiling; on expiry submission.abort(): aborted -> failure path with not answered within <ceiling>; withdrawn (heartbeat: unanswered journal + notify, sleep, n+1); already_placed -> wait on unbounded; settled -> read wait()." },
+  { id = "EX-2", text = "abort handler: when the checkpoint is submit or prepared, withdraw looks up submissionByRequest(conversationId, wake:<id>:<n>) and abortSubmission per the design's table; returns {fired} accordingly; lookup or abort throwing -> fired with a journal line." },
+  { id = "EX-3", text = "M green." },
+]
+verification = [
+  { id = "VT-1", expects = "Heartbeat behind a failed run (faux stopReason error, second input queued): after one ceiling its input is withdrawn (journal + notify unanswered), it sleeps, its next input runs with the other queued input; withdrawn input never reaches the model; also across close/reopen while stuck", test_file = "/home/david/dev/malebolge/test/wake-wait.test.ts", keywords = ["heartbeat unanswered", "afterFailedRun", "withdrawn"], waived = false },
+  { id = "VT-2", expects = "One-shot behind a failed run in a non-heartbeat conversation: withdrawn after one ceiling, task fails with not answered within <ceiling>; withdrawn, journal + notify_send, no turn; across close/reopen. Negative control: submit without the bound leaves the task running and the input queued, and the test fails. Placed at the bound: neither withdrawn nor reported, completes when the turn ends", test_file = "/home/david/dev/malebolge/test/wake-wait.test.ts", keywords = ["not answered within", "already_placed", "notify_send"], waived = false },
+  { id = "VT-3", expects = "Abort owns the input (harness.abortTask directly): queued behind a foreground run -> withdrawn, {fired:false}; then fail the foreground run and pass one ceiling -> submission unanswered (aborted), no turn, no failure report; prepared occurrence admitted before a crash, and one never admitted -> {fired:false}; placed -> {fired:true}. Negative control: a handler that only reports leaves the input queued and the test fails", test_file = "/home/david/dev/malebolge/test/wake-wait.test.ts", keywords = ["abortTask", "submissionByRequest", "fired"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-06"
+name      = "malebolge: tasks extension and wake tools"
+objective = "SATAN's interface: WakeDeps, tasksExtension(deps getter), and the native tools wake_schedule, wake_cancel, wake_list (design sec-13, sec-5 WakeDeps; W8, W9)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-05 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "src/wake/extension.ts: WakeDeps and tasksExtension as design sec-5; tools read the harness and conversations from the late-bound getter." },
+  { id = "EX-2", text = "src/wake/tools.ts: wake_schedule resolves the target (calling conversation, or a known topic's latest; unknown topic -> error, no topic created), computes requestedAt from after_minutes, at = policy.schedule, creates the task, returns {id, at (ISO local), conversation, enabled}." },
+  { id = "EX-3", text = "wake_cancel refuses unknown ids, non-wakes and the heartbeat; not sleeping -> already fired, task untouched; sleeping -> abortTask then waitForTask, answer from {fired}. wake_list: sleeping satan.wake tasks incl. the heartbeat marked recurring, topic via contextOf." },
+  { id = "EX-4", text = "M green." },
+]
+verification = [
+  { id = "VT-1", expects = "wake_schedule returns the decided at and enabled; topic target resolves to its latest conversation at schedule time; unknown topic errors; wakes off -> created and enabled false", test_file = "/home/david/dev/malebolge/test/wake-tools.test.ts", keywords = ["wake_schedule", "enabled", "topic"], waived = false },
+  { id = "VT-2", expects = "Cancel: sleeping -> cancelled, no turn; after fire with turn placed -> already fired; abort first -> cancelled, no input; heartbeat refused; unknown id refused; timer first with input queued behind a foreground run -> cancelled and input withdrawn; never cancelled with a turn that ran", test_file = "/home/david/dev/malebolge/test/wake-tools.test.ts", keywords = ["wake_cancel", "already fired", "cancelled"], waived = false },
+  { id = "VT-3", expects = "wake_list shows sleeping wakes with topic, conversation, intent, episode_class, and the heartbeat marked", test_file = "/home/david/dev/malebolge/test/wake-tools.test.ts", keywords = ["wake_list", "recurring"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-07"
+name      = "malebolge: daemon wiring, start sweep, heartbeat"
+objective = "Wire wakes into startDaemon for the room profile only: two-step deps binding (E before serve, I in beforeResume with the one Conversations instance), sweepBlockedWakes then ensureHeartbeat after resume(), heartbeat suppression, the off switch end to end (design sec-3, sec-4, sec-5; W3, W5, W10)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-06 exit criteria met." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "daemonExtensions takes the profile; room appends tasksExtension(deps); host has no tasks extension and no sweep or heartbeat." },
+  { id = "EX-2", text = "startDaemon: deps step 1 after satanTools (policy, settings, satan.call, beforeInput = satan.refresh, log, fragment reader of ~/satan-corpus/prompts/wake.md); step 2 in beforeResume builds the one Conversations, binds it and the harness, and resolves conversationsReady with the same instance." },
+  { id = "EX-3", text = "src/wake/sweep.ts sweepBlockedWakes: for each live blocked satan.wake, in order journal, withdraw queued wake:<id>: submissions, one-shot failure report, abortTask last (design sec-3, RV-062 F-15)." },
+  { id = "EX-4", text = "src/wake/heartbeat.ts ensureHeartbeat: setTopic; candidates are live recurring, not abortRequested, not blocked; none -> open the topic's latest (or first) conversation and create the heartbeat; journal. When due, the heartbeat sleeps one ceiling with n unchanged and journals suppressed while any other satan.wake sleeps." },
+  { id = "EX-5", text = "M green." },
+]
+verification = [
+  { id = "VT-1", expects = "Heartbeat: exactly one after N restarts; a parked heartbeat (restartLimit) is replaced; restart between abort of a blocked heartbeat and its replacement -> one new heartbeat that fires; suppressed while another wake sleeps, not by a fired-awaiting wake; n increments per fire, each a distinct turn", test_file = "/home/david/dev/malebolge/test/wake-heartbeat.test.ts", keywords = ["ensureHeartbeat", "suppressed", "restartLimit"], waived = false },
+  { id = "VT-2", expects = "Start sweep: task_too_old heartbeat queued behind a failed run -> journalled, orphaned with no handler call, input withdrawn (unanswered, aborted), replacement created, incl. newer conversation in topic, restart between abort and create, and restart after withdrawal before abort; blocked one-shot also gets the failure report; restart_limit heartbeat -> input withdrawn once, no error; placed input left to run. Negative controls: sweep that only aborts, and abort-before-withdraw stopped between, each leave the input queued and fail the test", test_file = "/home/david/dev/malebolge/test/wake-heartbeat.test.ts", keywords = ["sweepBlockedWakes", "task_too_old", "orphaned", "restart_limit"], waived = false },
+  { id = "VT-3", expects = "Startup binding: an overdue wake and a resumed tool call at openSession find every deps member bound at first invocation. Host profile: a wake key set -> start fails; host registry has no tasks extension and no heartbeat. Off: MALEBOLGE_WAKES unset -> nothing fires, wakes kept, enabled false; restart on -> overdue wakes fire", test_file = "/home/david/dev/malebolge/test/daemon-start.test.ts", keywords = ["tasksExtension", "MALEBOLGE_WAKES", "host"], waived = false },
+]
+specs        = []
+requirements = []
+
+[[phase]]
+id        = "PHASE-08"
+name      = "satan: jail env, wake.md, governance; live check"
+objective = "Land the host side and governance with the implementing change (DEC-136): room jail set-env and launcher probes in flake.nix (row 3b), the SATAN-facing wake.md in satan-corpus, authority-ledger token and rows 7b/6d/4d and row 3b evidence, one sentence each in docs/architecture.md and docs/governance.md; then a live run (design sec-5 Jail, sec-6, sec-7, sec-8 by-agent items)."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-07 exit criteria met; malebolge changes committed and the flake input that pins malebolge updated." },
+]
+exit_criteria = [
+  { id = "EX-1", text = "flake.nix: room jail options gain set-env for the wake keys the host sets (at least MALEBOLGE_WAKES on when enabled) beside MALEBOLGE_PROFILE; jailProbes.malebolge.present gains the matching --setenv strings; nix flake check green." },
+  { id = "EX-2", text = "~/satan-corpus/prompts/wake.md exists (SATAN-facing framing for a wake turn), committed in satan-corpus with just commit." },
+  { id = "EX-3", text = ".doctrine/adr/017/authority-ledger.md: legend token room-daemon; rows 7b (arrival policy -> malebolge wakes), 6d (MALEBOLGE_WAKES), 4d (wake lifecycle audit) citing ADR-017; row 3b evidence gains the wake env keys and probes; no 5d." },
+  { id = "EX-4", text = "docs/architecture.md and docs/governance.md gain one sentence each per design sec-6. just check green in this repo." },
+  { id = "EX-5", text = "Room jail time zone checked in the running jail; if Node would fall back to UTC, TZ added to set-env and probes (same row 3b change)." },
+]
+verification = [
+  { id = "VT-1", expects = "Launcher check: the room jail argv carries the wake --setenv strings", test_file = "flake.nix", keywords = ["MALEBOLGE_WAKES", "--setenv MALEBOLGE_WAKES"], waived = false },
+  { id = "VA-1", text = "Agent, in a live room daemon: journal lines appear for each event in design sec-4's table that the run exercises (schedule, fire, defer, terminal, heartbeat ensure, sweep if staged), and a scheduled wake produces one turn; output recorded in notes." },
+  { id = "VA-2", text = "Agent confirms the ledger rows, legend token and docs sentences landed and match design sec-6; SPEC-002 REV is left to reconcile." },
+  { id = "VH-1", text = "User enables MALEBOLGE_WAKES in the deployed room jail (deploy + restart) and accepts the live behaviour." },
+]
+specs        = []
+requirements = []
