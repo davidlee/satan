@@ -1,0 +1,46 @@
+memory_uid = "mem_01a17c5ce0557073accccae6e1f673b7"
+memory_key = "mem.fact.pi-durable.scheduled-turn-mechanics"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi-durable 1.4.0: scheduling a future turn with a sleeping background task"
+summary = "Input+entry starts a turn; requestId dedupes; background task sleepUntil then submit fires once, survives reopen; inspect lists sleeps; reschedule = abort+recreate"
+created = "2026-10-27"
+updated = "2026-10-27"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi-durable", "malebolge", "durable"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "f37893e22517833e658df069ba91daa5381941c9"
+ref_name = "refs/heads/main"
+checkout_state_id = "c8ac4340c13173795cd8c67138c4e5df7edeb3dc94a4eca3191c189328e158da"
+base_commit = "2bac37ce95fd1f31025261f29963e1eca682912f"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-034"
+

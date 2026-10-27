@@ -1,0 +1,128 @@
+id = 34
+slug = "malebolge-wakeups"
+title = "malebolge wakeups: SATAN schedules its own turns in the room daemon"
+status = "design"
+created = "2026-10-27"
+updated = "2026-10-27"
+tags = []
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = []                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "src/daemon-extensions.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon-start.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/conversation-context.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/satan-tools.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/satan-pool.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/daemon.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/session.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/config.ts"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "src/tasks/**"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/**"
+intent = "scope-relevant"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "satan/satan-mcp.el"
+intent = "scope-relevant"
+note = "satan repo: wake mode/kind"
+
+[[selector]]
+selector = "satan/satan-mode.el"
+intent = "scope-relevant"
+note = "satan repo: wake mode/kind"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-017"
+
+[[relation]]
+label = "governed_by"
+target = "ADR-018"
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "IDE-014"
+
+[[relation]]
+label = "references"
+role = "originates_from"
+target = "IDE-017"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "IMP-053"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "IDE-009"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "RSK-018"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "IMP-010"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "ISS-056"
+
+[[relation]]
+label = "references"
+role = "concerns"
+target = "SPEC-002"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.
