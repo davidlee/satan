@@ -455,9 +455,7 @@
               mountLaunchDir = false;
               extraPkgs = [pkgs.nodejs pkgs.openssh pkgs.socat];
               extraOptions = malebolgeRoomJailOptions;
-              # No provider keys, so no 1Password wrapper: the key file is its only secret.
-              apiKeys = [];
-              useOpEnv = false;
+              # Its key file is its only secret: no jail carries a provider key.
               workspaceDeps = [];
               # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
               workspaceDepsFromEnv = false;
