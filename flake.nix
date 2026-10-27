@@ -15,9 +15,10 @@
     emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
-    # The per-call pi delegation server (its own repo).
+    # The per-call pi delegation server (its own repo) and its form builder.
+    # Unpinned: a break should surface.
     quotient = {
-      url = "github:davidlee/quotient/v0.3.1";
+      url = "github:davidlee/quotient";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -89,22 +90,18 @@
             jailLib.agentsByName.claude
           ];
 
-        mcpJailOptions =
-          jailLib.satanMcpOptions
-          ++ [
-            # (allow arbitrary elisp execution):
-            (jailLib.combinators.try-readwrite "/run/user/1000/emacs/server")
+        # The project half of every dev jail's and every quotient form's
+        # options, over either builder's combinator set (agents README
+        # § quotient forms): the local supabase database, over TCP. No
+        # container socket: one would let a delegate mount any host path.
+        projectOptions = c:
+          with c; [
+            (set-env "SATAN_DB_HOST" "127.0.0.1")
+            (set-env "PGHOST" "127.0.0.1")
+            (set-env "PGPORT" "54322")
+            (set-env "PGUSER" "postgres")
+            (set-env "PGPASSWORD" "postgres")
           ];
-
-        supabaseJailOptions = with jailLib.combinators; [
-          (try-fwd-env "DOCKER_HOST")
-          (try-readwrite "/run/user/1000/podman/podman.sock")
-          (set-env "SATAN_DB_HOST" "127.0.0.1")
-          (set-env "PGHOST" "127.0.0.1")
-          (set-env "PGPORT" "54322")
-          (set-env "PGUSER" "postgres")
-          (set-env "PGPASSWORD" "postgres")
-        ];
 
         # SATAN's corpus (~/satan-corpus) for dev agents.  It used to be reachable
         # through the /workspace/notes dep; workspaceDeps mounts by basename and
@@ -120,7 +117,7 @@
           (set-env "DOCTRINE_RESERVATION_FALLBACK" "1")
         ];
 
-        jailEnvOptions = supabaseJailOptions ++ mcpJailOptions ++ corpusJailOptions ++ doctrineJailOptions;
+        jailEnvOptions = projectOptions jailLib.combinators ++ jailLib.satanMcpOptions ++ corpusJailOptions ++ doctrineJailOptions;
         # workspaceDeps = [ "/home/david/.emacs.d/" ];
         workspaceDeps = [
           "/home/david/flakes/"
@@ -294,104 +291,23 @@
             (readwrite malebolgeStateDir)
           ];
 
-        # SL-029's per-call launch forms (design sec-3, "Per-call mode"): one
-        # per filesystem capability, built on the shared jail generator. The
-        # generator's launch-dir mount is off — its own rw `--bind` at
-        # `/workspace/<basename>` is the wrong strength for read and the wrong
-        # path for both — and the root is bound at its own absolute path, so the
-        # server's cwd (the canonical root) keeps its meaning inside the jail.
-        #
-        # The form consumes exactly one positional, the active session
-        # directory, and forwards everything after it as pi's own argv: no
-        # executable word and no `--` (design sec-3, "Executable contract").
-        # The session directory travels as a run-time variable — the form sets
-        # it from `$1` and the launcher's raw args expand it — so the session
-        # home and the run directory are never bound. `~/.pi` is the
-        # generator's persisted-home bind; a second bind for it would be a
-        # second story about the same path.
-        # `prefix` names the forms and their baseline, `sessionVar` is the
-        # run-time variable the form exports, and `--die-with-parent` (below)
-        # keeps the jailed child from outliving its server.
-        #
-        # `jail` is the one generator call a family's forms share; `extraOptions`
-        # is a form's own residue over it. `baseline` is the same call with
-        # none: the `<prefix>-forms` check subtracts its binds, so whatever the
-        # generator (jail.nix base, network, persisted home, gateway) binds
-        # cancels rather than being listed here — a generator bump neither
-        # fails nor moves the check. The baseline is the host exposure a
-        # per-call policy declares as `child_binds` (design sec-3): what the
-        # form adds beyond it is the call's root and session directory, nothing
-        # else. Never a package: it exists to be compared against.
-        quotientFormFamily = let
+        # SL-029's per-call forms (`quotient help form`), one per filesystem
+        # capability: quotient's form family through the agents lib, so the
+        # form-1 contract (DEC-116) is quotient's and the posture the lib's.
+        # The forms serve this host's quotient policy, every root it allows:
+        # the project half they carry must suit them all. No persisted home:
+        # a form writes only the root, the session directory and its private
+        # temp, so the policy's `exposure` is empty.
+        quotientFamily = jailLib.quotientFormFamily {
+          inherit (inputs) quotient;
           prefix = "quotient";
-          sessionVar = "QUOTIENT_ACTIVE_SESSION_DIR";
-          jail = name: extraOptions:
-            jailLib.makeJailedPi {
-              inherit name extraOptions;
-              # The tracked profiles name `llm-gateway/deepseek-flash`, so the
-              # form carries the same gateway the other pi jails do.
-              profile = "specDev";
-              gateway = piGateway;
-              # The project toolchain (node, just, emacs, …) so a delegate can
-              # run the root's tests, as `jailed-pi` can.
-              extraPkgs = projectPkgs;
-              mountLaunchDir = false;
-              workspaceDepsFromEnv = false;
-            };
-          rawArg = jailLib.combinators.unsafe-add-raw-args;
-          # Read-only or writable at the same absolute path: the capability is
-          # one word here and nowhere else.
-          rootBindOption = capability:
-            rawArg (
-              if capability == "read"
-              then ''--ro-bind "$PWD" "$PWD"''
-              else ''--bind "$PWD" "$PWD"''
-            );
-          mkForm = capability: let
-            name = "${prefix}-${capability}";
-            formJail = jail name [
-              (rootBindOption capability)
-              # The active session directory, and only it: rw in both
-              # capabilities, because pi writes the conversation there even
-              # under a read root (design sec-3).
-              (rawArg ("--bind \"$" + sessionVar + "\" \"$" + sessionVar + "\""))
-              (rawArg ''--tmpfs /tmp'')
-              # After the generator's own --chdir "$HOME": the later wins.
-              (rawArg ''--chdir "$PWD"'')
-              (rawArg "--die-with-parent")
-            ];
-          in
-            pkgs.writeShellScriptBin name ''
-              set -euo pipefail
-
-              if [ "$#" -lt 1 ]; then
-                echo "${name}: missing the active session directory (this form's one positional argument)" >&2
-                exit 64
-              fi
-              session_dir=$1
-              shift # the form's one positional; pi's own argv follows
-              case "$session_dir" in
-                /*) ;;
-                *)
-                  echo "${name}: the active session directory must be an absolute path: $session_dir" >&2
-                  exit 64
-                  ;;
-              esac
-              if [ ! -d "$session_dir" ]; then
-                echo "${name}: no active session directory at $session_dir" >&2
-                exit 64
-              fi
-              export ${sessionVar}="$session_dir"
-              exec ${formJail}/bin/jailed-${name} "$@"
-            '';
-        in {
-          baseline = jail "${prefix}-baseline" [];
-          forms = {
-            "${prefix}-read" = mkForm "read";
-            "${prefix}-write" = mkForm "write";
-          };
+          packages = projectPkgs;
+          options = projectOptions;
         };
-        quotientForms = quotientFormFamily.forms;
+        quotientForms = {
+          quotient-read = quotientFamily.read;
+          quotient-write = quotientFamily.write;
+        };
 
         jailPkgs = lib.optionalAttrs isLinux ({
             jailed-pi = jailLib.makeJailedPi {
@@ -481,31 +397,6 @@
         # the I1 closure sweep excludes this one by name. Written literally,
         # never derived from the jails' option lists, so dropping a forward
         # there fails a check instead of moving it.
-        formProbes = let
-          envPrefix = "QUOTIENT";
-        in {
-          inherit envPrefix;
-          # Unquoted, as the check reads launchers with quotes stripped.
-          session = "--bind $" + "${envPrefix}_ACTIVE_SESSION_DIR $" + "${envPrefix}_ACTIVE_SESSION_DIR";
-          # The session home (all sessions, not just this call's), the run
-          # directory and the policy file are bound into no form.
-          absent = [
-            "/workspace/"
-            "${envPrefix}_SESSION_HOME"
-            "${envPrefix}_RUN_DIR"
-            "${envPrefix}_POLICY"
-          ];
-          # At its own absolute path, read-only for the read capability. Each
-          # form must not carry the other's.
-          read = {
-            root = ''--ro-bind "$PWD" "$PWD"'';
-            otherRoot = ''--bind "$PWD" "$PWD"'';
-          };
-          write = {
-            root = ''--bind "$PWD" "$PWD"'';
-            otherRoot = ''--ro-bind "$PWD" "$PWD"'';
-          };
-        };
         jailProbes = {
           harness = {
             # The 1Password wrapper execs `"$op" run`, so the literal `op run`
@@ -669,126 +560,6 @@
         # them. A regression guard for known paths, not proof of NF-004:
         # whole-home binds are ISS-028's, the abstract socket RSK-021's.
         opUnjailed = jailLib.opUnjailed (lib.attrValues jailPkgs);
-
-        # SL-029 (design sec-3's per-call mode, sec-7's verification): each
-        # form's bind set equals its family's generator baseline plus root +
-        # active session directory, so a bind the form adds or drops fails
-        # here; what the generator binds is its own concern. Also the
-        # positional contract and the run-time session path. Text only
-        # (DEC-046): nothing is launched. The check is `quotient-forms`.
-        quotientFormsCheck = let
-          prefix = "quotient";
-          p = formProbes;
-          family = quotientFormFamily;
-          checkName = "${prefix}-forms";
-          sessionVar = "${p.envPrefix}_ACTIVE_SESSION_DIR";
-          # One capability's half: pkg is the form package, whose exec line
-          # names the gateway wrapper, whose exec line names the bwrap launcher
-          # that carries the bind args.
-          formCheck = capability: pkg: let
-            cap = p.${capability};
-            label = "(e) ${capability} form";
-            execLabel = "(e) ${capability} form exec";
-          in ''
-            cap=${capability}
-            form=${pkg}/bin/${prefix}-${capability}
-            test -f "$form" || fail "$cap: no form at $form"
-
-            # (e) The positional contract: exactly one positional is consumed
-            # — the active session directory — and the rest is forwarded as
-            # pi's own argv, with no executable word and no `--`. The form
-            # names no jail flag: the confinement is the generator's.
-            must ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "session_dir=$1"}
-            must ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "shift"}
-            must ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "export ${sessionVar}=\"$session_dir\""}
-            must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "$2"}
-            must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "--bind"}
-            must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "--ro-bind"}
-            must_not ${lib.escapeShellArg label} "$form" ${lib.escapeShellArg "--tmpfs"}
-            # The three argument guards each exit 64 (EX_USAGE).
-            test "$(grep -Fc -- 'exit 64' "$form")" -eq 3 || fail "$cap: the form must carry exactly three 'exit 64' guards"
-            sed -n '/^exec /p' "$form" > "$TMPDIR/$cap-form-exec"
-            test -s "$TMPDIR/$cap-form-exec" || fail "$cap: the form has no exec line"
-            must ${lib.escapeShellArg execLabel} "$TMPDIR/$cap-form-exec" ${lib.escapeShellArg "/bin/jailed-${prefix}-${capability} \"$@\""}
-            must_not ${lib.escapeShellArg execLabel} "$TMPDIR/$cap-form-exec" ${lib.escapeShellArg " -- "}
-            must_not ${lib.escapeShellArg execLabel} "$TMPDIR/$cap-form-exec" ${lib.escapeShellArg "$1"}
-
-            outer=$(sed -n 's|^exec \(/nix/store/[^ ]*/bin/jailed-[^ ]*\) .*|\1|p' "$form")
-            if [ -z "$outer" ] || [ ! -f "$outer" ]; then
-              fail "$cap: the form execs no jailed launcher (not the gateway wrapper?)"
-            fi
-            launcher=$(sed -n 's|^exec \(/nix/store/[^ ]*/bin/jailed-[^ ]*\) .*|\1|p' "$outer")
-            if [ -z "$launcher" ] || [ ! -f "$launcher" ]; then
-              fail "$cap: the gateway wrapper execs no bwrap launcher"
-            fi
-
-            # (b) The root flag is this capability's, and the other one is not.
-            must ${lib.escapeShellArg "(b) ${capability} root flag"} "$launcher" ${lib.escapeShellArg cap.root}
-            must_not ${lib.escapeShellArg "(b) ${capability} root flag"} "$launcher" ${lib.escapeShellArg cap.otherRoot}
-            # (d) The session home, the run directory, the policy file and
-            # /workspace/ are bound into no child.
-            ${lib.concatMapStringsSep "\n" (s: "must_not ${lib.escapeShellArg "(d) ${capability} launcher"} \"$launcher\" ${lib.escapeShellArg s}") p.absent}
-            # (f) G7: the child dies with its parent. jail.nix also emits
-            # `--die-with-parent`, so the family's own raw arg is a harmless
-            # duplicate that states the guarantee on the form itself.
-            if ! grep -Fq -- ${lib.escapeShellArg "--die-with-parent"} "$launcher"; then
-              fail "(f) ${capability} launcher must contain '--die-with-parent'"
-            fi
-            # Quotes stripped once, so a raw arg and a generator-rendered bind
-            # are read the same way.
-            sed 's/"//g' "$launcher" > "$TMPDIR/$cap-unquoted"
-
-            # (a) The residue over the baseline: every bind word-pair this
-            # form adds to the generator's own jail must be root + session
-            # directory, and it must drop none. Both residues are printed
-            # when they differ.
-            bind_words "$TMPDIR/$cap-unquoted" > "$TMPDIR/$cap-actual-set"
-            printf '%s\n' ${lib.escapeShellArg cap.root} ${lib.escapeShellArg p.session} |
-              sed 's/"//g' > "$TMPDIR/$cap-expected"
-            bind_words "$TMPDIR/$cap-expected" > "$TMPDIR/$cap-expected-set"
-            comm -13 "$TMPDIR/baseline-set" "$TMPDIR/$cap-actual-set" > "$TMPDIR/$cap-added"
-            comm -23 "$TMPDIR/baseline-set" "$TMPDIR/$cap-actual-set" > "$TMPDIR/$cap-dropped"
-            if ! cmp -s "$TMPDIR/$cap-expected-set" "$TMPDIR/$cap-added" || [ -s "$TMPDIR/$cap-dropped" ]; then
-              {
-                echo "${checkName}: $cap: the residue over the generator baseline is not root + active session directory"
-                echo "--- expected residue ---"
-                cat "$TMPDIR/$cap-expected-set"
-                echo "--- added over the baseline ---"
-                cat "$TMPDIR/$cap-added"
-                echo "--- dropped from the baseline ---"
-                cat "$TMPDIR/$cap-dropped"
-              } >&2
-              fail "(a) $cap: the launcher's bind set is not baseline + root + session directory"
-            fi
-
-            # (c) A tmpfs /tmp inside the jail, never the host's /tmp.
-            must ${lib.escapeShellArg "(c) ${capability} launcher"} "$TMPDIR/$cap-unquoted" ${lib.escapeShellArg "--tmpfs /tmp"}
-
-          '';
-        in
-          launcherCheck checkName ''
-            # Every bind word-pair in a launcher, one per line, quotes already
-            # stripped and store hashes folded: a nixpkgs bump is not drift.
-            bind_words() {
-              grep -oE -- '--(ro-)?bind(-try)? [^ ]+ [^ ]+' "$1" |
-                sed -E 's|/nix/store/[a-z0-9]{32}-|/nix/store/*-|g' |
-                sort -u
-            }
-
-            # The baseline's bind set, once: same generator call, no extra
-            # options. Its gateway wrapper execs the bwrap launcher.
-            baseline_outer=${family.baseline}/bin/jailed-${prefix}-baseline
-            test -f "$baseline_outer" || fail "no baseline at $baseline_outer"
-            baseline=$(sed -n 's|^exec \(/nix/store/[^ ]*/bin/jailed-[^ ]*\) .*|\1|p' "$baseline_outer")
-            if [ -z "$baseline" ] || [ ! -f "$baseline" ]; then
-              fail "the baseline's gateway wrapper execs no bwrap launcher"
-            fi
-            sed 's/"//g' "$baseline" > "$TMPDIR/baseline-unquoted"
-            bind_words "$TMPDIR/baseline-unquoted" > "$TMPDIR/baseline-set"
-
-            ${formCheck "read" "${jailPkgs."${prefix}-read"}"}
-            ${formCheck "write" "${jailPkgs."${prefix}-write"}"}
-          '';
       in {
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
@@ -821,7 +592,12 @@
         checks = lib.optionalAttrs isLinux {
           harness-jail-profile = harnessJailProfile;
           malebolge-jail-profile = malebolgeJailProfile;
-          quotient-forms = quotientFormsCheck;
+          # quotient's form-1 check over the family's text (SL-029's residue
+          # property is its rule (f); DEC-116).
+          quotient-forms = inputs.quotient.lib.checkFormFamily {
+            inherit pkgs;
+            family = quotientFamily;
+          };
           runner-socket-unjailed = runnerSocketUnjailed;
           op-unjailed = opUnjailed;
         };

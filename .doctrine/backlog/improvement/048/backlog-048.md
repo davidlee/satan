@@ -33,3 +33,15 @@ and publishes a minimal `child_binds` that omits it gets no refusal:
 can write the audit. That is two lines of operator configuration and a total
 audit bypass. Acceptance: this configuration is refused before spawn, whether the
 policy declares the bind or not.
+
+## Update 2026-10-27 (nix-config CHR-023)
+
+Gap 2 is closed upstream: satan's forms are now built by quotient's
+`mkFormFamily` (through the agents lib's `quotientFormFamily`), and
+`checks.quotient-forms` is quotient's `checkFormFamily`, whose rule (g)
+refuses a baseline that writes a host path the family's `exposure` does not
+list. The forms carry no persisted home, so the host policy's `exposure` is
+`[]`. Gap 1 (`child_binds` → `exposure` without a per-bind read/read-write
+half) is quotient's to decide; the `PI_MCP_RUN_DIR` trigger in the
+acceptance above names the old server and should be re-read against
+quotient's run-dir rules before this item is closed.

@@ -678,16 +678,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1792823286,
-        "narHash": "sha256-5+TsBMekYE+2VNnGFkRx7E2Gq9K4bSNvlJ6JlPRvjRA=",
+        "lastModified": 1793074058,
+        "narHash": "sha256-e4NsCP192YG/JtJcFUj31eCIy2dHjcbQZmVDgON5xXk=",
         "owner": "davidlee",
         "repo": "quotient",
-        "rev": "d4e3fb136c21345f3e5c7e34c363ea4bde53fdfd",
+        "rev": "1f18594f3a390504d9f4cc83288f7c168ec75eb3",
         "type": "github"
       },
       "original": {
         "owner": "davidlee",
-        "ref": "v0.3.1",
         "repo": "quotient",
         "type": "github"
       }

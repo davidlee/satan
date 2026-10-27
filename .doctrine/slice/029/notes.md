@@ -1203,3 +1203,16 @@ review's point 1). These commits are in no phase's delta: PHASE-09's row is stil
 `bba7d87`, like the F-6 and F-7 repairs. `slice conformance` stays quiet
 because `pi/mcp/**` matches, so read the registry as covering the phases' code,
 not all of the slice's code. Same family as RV-055 F-2.
+
+## Form check moved to quotient (2026-10-27, nix-config CHR-023)
+
+Per DEC-116, the form contract is quotient's. The hand-rolled
+`quotientFormFamily` and `quotientFormsCheck` are gone from `flake.nix`:
+the forms come from `jailLib.quotientFormFamily` (prefix `quotient`, so the
+policy's form paths hold), and `checks.quotient-forms` is
+`quotient.lib.checkFormFamily`. This slice's residue property (form binds =
+baseline + root + session directory) is that check's rule (f); its
+positional guards, `--tmpfs /tmp`, `--die-with-parent` and no-`QUOTIENT_`
+assertions are rules (a), (d) and (e). Not carried over: the `/workspace/`
+absence probe (the builder mounts no launch dir). Forms now carry the agents
+lib's posture and the project's supabase env, and no persisted home.

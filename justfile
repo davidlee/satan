@@ -106,11 +106,10 @@ quotient-hostile-audit state=(env("XDG_STATE_HOME", env("HOME") / ".local/state"
       dir=$(mktemp -d "$base/$capability-XXXXXX")
       mkdir "$dir/root" "$dir/session-home" "$dir/run"
       echo "quotient-hostile-audit: $capability evidence under $dir"
-      # The persisted jail home is the form's one writable host path beyond
-      # the call's root and session directory.
+      # No exposure: the form writes only the call's root and session
+      # directory, and its private temp.
       "$audit" --form {{state}}/forms/$capability/bin/quotient-$capability \
         --capability "$capability" --model llm-gateway/deepseek-flash \
-        --exposure "$HOME/.local/share/jail.nix/home/agent" \
         "$dir/root" "$dir/session-home" "$dir/run" || status=1
     done
     exit "$status"
