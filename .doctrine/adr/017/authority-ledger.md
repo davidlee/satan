@@ -17,7 +17,9 @@ migration was SL-023's (2026-10-19): the patch-job duties moved to
 `patch-runner` (rows 4b, 5b, 6b, 8, 9; DEC-062). SL-027 (2026-10-20) added
 row 3b, owned by `satan-flake` from the start (DEC-082). SL-029 (2026-10-21)
 added the `pi_agent` delegate's own rows — 1b, 2b, 4c, 5c, 6c owned by `pi-mcp`
-and 3c by `satan-flake` — new duties, not migrations (DEC-091). Every other item
+and 3c by `satan-flake` — new duties, not migrations (DEC-091). SL-034
+(2026-10-28) added SATAN's self-scheduled wakes in the malebolge room daemon —
+4d, 6d and 7b owned by `room-daemon` — also new duties (DEC-136). Every other item
 is still `emacs-client`'s. The next planned transition is D4.2 (policy/registry →
 `daemon-core`) per RFC-017; the worked example under *Transition log* shows its
 shape.
@@ -26,7 +28,7 @@ shape.
 
 Fixed vocabulary, keyed to the ADR-017 §1 / ADR-018 D1 topology. A token enters
 the legend when its component is first received as an owner; `emacs-client`,
-`patch-runner`, `satan-flake` and `pi-mcp` are in use today.
+`patch-runner`, `satan-flake`, `pi-mcp` and `room-daemon` are in use today.
 
 | Token | Component |
 |---|---|
@@ -35,6 +37,7 @@ the legend when its component is first received as an owner; `emacs-client`,
 | `patch-runner` | Patch-job runner: the `satan-runner` binary in `~/dev/malebolge` (IMP-006, SL-023; was `satan-patcher`, the retired Go repo) |
 | `satan-flake` | The satan flake's launchers (`~/dev/satan/flake.nix`; SL-027) |
 | `pi-mcp` | The `pi_agent` stdio MCP server (`~/dev/satan/pi/mcp/`, `bin/pi-mcp`; SL-029) |
+| `room-daemon` | The malebolge interactive daemon, room profile (`~/dev/malebolge` `src/daemon-main.ts`, unit `malebolge-room`; SL-034) |
 | `satan-memoryd` | Memory substrate daemon (IMP-007) |
 | `satan-audit` | Audit verifier CLI (IMP-008) |
 | `satan-attrd` | Attribute / arrival daemon (ADR-002) |
@@ -57,18 +60,21 @@ old site is deleted (the cutover proof, REQ-009 / NF-001).
 | 2 | Mode/tool allowlist | `emacs-client` | REQ-002, REQ-006 | mode-spec `:tools` via `satan-mode-register`; consistency `satan-mode-check-tool-references` (satan-mode.el) | ADR-017 |
 | 2b | Profile → tool allowlist → `pi_agent` delegates | `pi-mcp` | REQ-002, REQ-006 | start-up profile snapshot `loadProfiles`, `resolveProfile`, `effectiveTools` (narrow-only), `checkProfileExtensions` (`pi/mcp/profiles.ts`); the policy's `profiles` list | SL-029 |
 | 3 | Capability / jail profiles | `emacs-client` | REQ-002 | `satan-profiles` defcustom / `satan-mode--apply-profile` (satan-mode.el) | ADR-017 |
-| 3b | Malebolge execution profile | `satan-flake` | REQ-002 | `jailed-malebolge` / `malebolgeRoomJailOptions` (`~/dev/satan/flake.nix`), enforced at bwrap; checked by the `malebolge-jail-profile` flake check | SL-027 |
+| 3b | Malebolge execution profile | `satan-flake` | REQ-002 | `jailed-malebolge` / `malebolgeRoomJailOptions` (`~/dev/satan/flake.nix`), enforced at bwrap; checked by the `malebolge-jail-profile` flake check. Wake env: `set-env "MALEBOLGE_WAKES" malebolgeWakes` (the other `MALEBOLGE_WAKE_*` keys unset: daemon defaults), probed as `--setenv MALEBOLGE_WAKES <value>` with the host `/etc/localtime` symlink (the quiet window is local time; SL-034) | SL-027 |
 | 3c | `pi_agent` per-call execution forms | `satan-flake` | REQ-002, REQ-009 | `piMcpJail` / `piMcpForms` (`~/dev/satan/flake.nix`), enforced at bwrap; checked by the `pi-mcp-forms` flake check (residue over the generator baseline); the server authors no bwrap argv | SL-029 |
 | 4a | Append-only audit → run actions ⚠ | `emacs-client` | REQ-003 | `satan-audit-record` (satan-audit.el:95) | ADR-017 |
 | 4b | Append-only audit → patch-job actions | `patch-runner` | REQ-003 | `JobStore.appendEvent` / transition writes, `job_events` append-only triggers (malebolge `src/runner/store.ts`); the job's pi-durable transcript | SL-023 |
 | 4c | Append-only audit → `pi_agent` delegate runs | `pi-mcp` | REQ-003 | `appendAudit` (run `audit.jsonl`: `spawn` / `abort` / `exit`) and `appendAttempt` (`attempts.jsonl`) (`pi/mcp/evidence.ts`); the run's `events.jsonl` is the enacted record | SL-029 |
+| 4d | Append-only audit → wake lifecycle | `room-daemon` | REQ-003, ADR-017 | the conversation transcript (`wake_schedule` / `wake_cancel` tool calls; the `satan.wake` entry of each fired input, request id `wakeRequestId`) and the `malebolge: wake …` journal lines (`journal`, `reportFailure` in `src/wake/task.ts`; `sweepBlockedWakes`, `ensureHeartbeat`); task rows are mutable, so not audit | SL-034 |
 | 5a | Token / budget ceiling → run budget | `emacs-client` | REQ-004 | `satan-budget-exceeded-p` (satan-budget.el:67) | ADR-017 |
 | 5b | Token / budget ceiling → per-job ceiling | `patch-runner` | REQ-004 | `createModelGate` / `gatedModels` (`model-gate.ts`), `exhausted` (`ceilings.ts`), `armCeilingTimers` (`deadline.ts`); maxima `checkSubmit` → `ceilingsWithinMaxima` (`protocol.ts`) | SL-023 |
 | 5c | Token / budget ceiling → `pi_agent` delegate run | `pi-mcp` | REQ-004 | `clampCeilings` (`pi/mcp/policy.ts`) at admission; `createGate` (`pi/mcp/gate.ts`) — retrospective accounting with best-effort termination (DEC-097), the wall clock as backstop | SL-029 |
 | 6a | Kill / disable switches → broker and client switches | `emacs-client` | REQ-005 | `satan-*-enabled` defcustoms; broker halt | ADR-017 |
 | 6b | Kill / disable switches → the runner's `enabled` | `patch-runner` | REQ-005 | runner config `enabled` (`config.ts`); `submit` refused `runner_disabled` (`control.ts`); disabled start parks (`recoverHost`, `recover.ts`) | SL-023 |
 | 6c | Kill / disable switch → `pi_agent` | `pi-mcp` | REQ-005 | the policy's `enabled`: admission refusal `disabled` (`admitCall`, `pi/mcp/policy.ts`) *and* active halt — re-read at every gate tick, `abort(switch)` (`createGate`, `pi/mcp/gate.ts`) | SL-029 |
+| 6d | Kill / disable switch → malebolge wakes | `room-daemon` | REQ-005, ADR-017 | `MALEBOLGE_WAKES` (only `on` enables), read once at start by `resolveConfig` → `wakesOf` (`src/config.ts`); fail closed: `gateOf` defers `disabled` (`src/wake/policy.ts`), nothing dropped; stops new admissions only, an admitted wake input still runs; host profile refuses every wake key (`refuseWakeKeys`) | SL-034 |
 | 7 | Arrival policy (gating) † | `emacs-client` | ADR-002 † | `satan-tick-quiet-p` / `satan-tick-pick` (satan-tick.el) | ADR-017 |
+| 7b | Arrival policy → malebolge wakes | `room-daemon` | ADR-017 | `v0Policy` (`scheduleOf` clamp to floor/ceiling, `gateOf` quiet window and presence; `src/wake/policy.ts`), applied at schedule (`wakeSchedule`) and before submit (`hostGate`, `src/wake/task.ts`); bounds from the room jail env (`wakesOf`, defaults 5 min / 2 h / `23:20-07:00`) | SL-034 |
 | 8 | Patch-job lifecycle / queue consumer | `patch-runner` | REQ-001, ADR-018 D3 ‡ | `parseRequest` / `checkSubmit` (`protocol.ts`), `serveControl` (`control.ts`), `createScheduler` (`scheduler.ts`), `JobStore.transition` (`store.ts`) | SL-023 |
 | 9 | Per-job path allowlist | `patch-runner` | REQ-002 | authoritative at collection: `classify` / `disallowedPaths` (`classify.ts`) over every commit; early: `jobGuard` `beforeTool` (`guard.ts`); submit: `normaliseAllowedEntry`, and mode scope `withinModeScope` (`protocol.ts`, DEC-069) | SL-023 |
 
@@ -200,6 +206,20 @@ row 4c ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enf
 row 5c ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enforcement to delete; gate tests green)
 row 6c ↳ 2026-10-21  (new) → pi-mcp       (SL-029 audit RV-055; no prior enforcement to delete; enable-flip and mid-run switch tests green)
 legend ↳ 2026-10-21  (new) pi-mcp  (SL-029 audit)
+```
+
+**SL-034 (2026-10-28).** Rows 4d, 6d and 7b are new: SATAN's self-scheduled
+wakes in the room daemon, owned from the start (DEC-136). Row 7's tick policy
+stays `emacs-client`'s; 7b gates only malebolge wakes. Row 3b's owner is
+unchanged; its evidence gains the wake env key and probes. No row 5d: wakes
+have no limits in v0 (DEC-137). Rows cite ADR-017 where no REQ covers arrival
+(QUE-001 open).
+
+```
+row 4d ↳ 2026-10-28  (new) → room-daemon  (SL-034; no prior enforcement to delete; wake-* tests green)
+row 6d ↳ 2026-10-28  (new) → room-daemon  (SL-034; no prior enforcement to delete; wake-* tests green; malebolge-jail-profile green)
+row 7b ↳ 2026-10-28  (new) → room-daemon  (SL-034; no prior enforcement to delete; wake-policy tests green)
+legend ↳ 2026-10-28  (new) room-daemon  (SL-034)
 ```
 
 ## Maintaining this ledger

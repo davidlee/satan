@@ -257,6 +257,12 @@
         # write only its persisted home and /tmp (RV-038 F-3).
         malebolgeStateDir = "/home/david/.local/state/satan/durable/room";
         malebolgeRuntimeDir = "/run/user/1000/satan/durable/room";
+        # SATAN's self-scheduled wakes (SL-034, ledger row 6d): only `on`
+        # enables; read once at daemon start. Turning it on is this binding and
+        # its probe, a deploy, and a `malebolge-room` restart. The other wake
+        # keys keep the daemon's defaults. Local time needs no TZ: the jail
+        # binds the host's /etc/localtime (probed below).
+        malebolgeWakes = "off";
         malebolgeRoomJailOptions = with jailLib.combinators;
           jailLib.gatewaySocketOptions
           ++ [
@@ -267,6 +273,7 @@
             (set-env "MALEBOLGE_GATEWAY_SOCKET" gatewayClientSocket)
             (set-env "MALEBOLGE_GATEWAY_KEY_FILE" malebolgeKeyFile)
             (set-env "MALEBOLGE_GATEWAY_CATALOG" malebolgeCatalog)
+            (set-env "MALEBOLGE_WAKES" malebolgeWakes)
             # Directories, never the files (ISS-042), and the door's root, not
             # its own dir: that is the relay's RuntimeDirectory, removed on
             # every room stop (oubliette DEC-056; RV-038 F-2). Connect only.
@@ -427,6 +434,10 @@
               "--setenv MALEBOLGE_GATEWAY_SOCKET /run/llm-gateway-client/api.sock "
               "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge "
               "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json "
+              "--setenv MALEBOLGE_WAKES off "
+              # The wake quiet window is local time; without this Node falls
+              # back to UTC (SL-034 EX-5).
+              "--symlink \"$(readlink /etc/localtime)\" /etc/localtime"
               "--ro-bind /run/capsule-room /run/capsule-room "
               "--ro-bind /var/lib/capsule/room/assistant /var/lib/capsule/room/assistant "
               "--ro-bind /home/david/.ssh/malebolge-vm.key /home/david/.ssh/malebolge-vm.key "

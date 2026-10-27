@@ -55,6 +55,10 @@ ROM prompt
 + audit trail
 ```
 
+The invocation schedule includes the wakes SATAN schedules for itself in the
+malebolge room daemon (SL-034): a user-installed mechanism with a host
+clamp, a heartbeat and a fail-closed switch (`MALEBOLGE_WAKES`).
+
 Models are interchangeable. Harnesses are interchangeable. The broker
 may evolve. The identity and governance rules should remain coherent
 across those changes.

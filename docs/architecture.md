@@ -51,7 +51,10 @@ integration, 2026-07-22.)
 Defines when and why SATAN runs (morning, evening, MOTD, weekly review,
 manual self-edit). Explicit, scheduled, inspectable, boring. SATAN does
 not decide for itself when to wake up except through mechanisms the
-user has explicitly installed.
+user has explicitly installed. Malebolge wakes (SL-034) are one such
+mechanism: SATAN schedules its own room turns, but the host clamps them
+to its floor, ceiling and quiet window, keeps a heartbeat, and fires
+nothing unless `MALEBOLGE_WAKES` is `on`.
 
 ### Broker
 The protocol's current enforcement point, not its definition. Owns mode
