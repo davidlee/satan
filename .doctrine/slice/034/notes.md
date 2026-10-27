@@ -130,6 +130,6 @@ fresh-as-of: 2026-10-28 · plan authored, 8 phases materialised · slice status 
 
 ### Open
 - Next: `/phase-plan` PHASE-01, then `/execute` (code in ~/dev/malebolge).
-- RV-062 F-13 (demonstrate) transcribed to PHASE-03 EX-2/VT-1/VA-1 with F-16's amendment; raiser verifies the transcription.
+- RV-062 F-13 (demonstrate) transcribed to PHASE-03 EX-2/VT-1/VA-1 with F-16's amendment. Raiser-side transcription check done 2026-10-28 (Opus standing in for codex, super-orchestrator): EX-2 carries F-13's criterion with F-16's "exactly one model request, no retry"; malebolge fe010b9 `test/models.test.ts` asserts it through the real adapter in a real pi-durable run (`requests` toBe 1, unanswered/model_error, positive control "hello"); lands before PHASE-05 as F-13's host constraint requires. F-13 itself was already verified/terminal; no ledger act needed.
 - Implementation checks carried by the design: room jail time zone; per-tool deadlines for in-turn tool calls (Risks).
 - Candidate backlog at close: close IDE-014 / IDE-017 as absorbed.
