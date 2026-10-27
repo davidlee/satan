@@ -67,7 +67,7 @@ exit_criteria = [
 ]
 verification = [
   { id = "VT-1", expects = "beforeResume runs after backfill and before resume, with no task phase run before it; now reaches the harness (a sleeping task wakes on the fake clock)", test_file = "/home/david/dev/malebolge/test/session.test.ts", keywords = ["beforeResume", "now"], waived = false },
-  { id = "VT-2", expects = "call over a scheduled key: identity carries kind scheduled, separate pool entry from interactive; deadline rejects a hung call", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["scheduled", "deadlineMs", ".call("], waived = false },
+  { id = "VT-2", expects = "call over a scheduled key: identity carries kind scheduled, separate pool entry from interactive; deadline rejects a hung call", test_file = "/home/david/dev/malebolge/test/satan-tools.test.ts", keywords = ["scheduled", "deadlineMs", "call("], waived = false },
 ]
 specs        = []
 requirements = []
@@ -164,7 +164,7 @@ entrance_criteria = [
 ]
 exit_criteria = [
   { id = "EX-1", text = "daemonExtensions takes the profile; room appends tasksExtension(deps); host has no tasks extension and no sweep or heartbeat." },
-  { id = "EX-2", text = "startDaemon: deps step 1 after satanTools (policy, settings, satan.call, beforeInput = satan.refresh, log, fragment reader of ~/satan-corpus/prompts/wake.md); step 2 in beforeResume builds the one Conversations, binds it and the harness, and resolves conversationsReady with the same instance." },
+  { id = "EX-2", text = "startDaemon: deps step 1 after satanTools (policy, settings, satan.call, beforeInput = satan.refresh, log, fragment reader of join(config.corpusRoot, prompts, wake.md), read per fire as persona.ts reads persona files); step 2 in beforeResume builds the one Conversations, binds it and the harness, and resolves conversationsReady with the same instance." },
   { id = "EX-3", text = "src/wake/sweep.ts sweepBlockedWakes: for each live blocked satan.wake, in order journal, withdraw queued wake:<id>: submissions, one-shot failure report, abortTask last (design sec-3, RV-062 F-15)." },
   { id = "EX-4", text = "src/wake/heartbeat.ts ensureHeartbeat: setTopic; candidates are live recurring, not abortRequested, not blocked; none -> open the topic's latest (or first) conversation and create the heartbeat; journal. When due, the heartbeat sleeps one ceiling with n unchanged and journals suppressed while any other satan.wake sleeps." },
   { id = "EX-5", text = "M green." },
@@ -182,7 +182,7 @@ id        = "PHASE-08"
 name      = "satan: jail env, wake.md, governance; live check"
 objective = "Land the host side and governance with the implementing change (DEC-136): room jail set-env and launcher probes in flake.nix (row 3b), the SATAN-facing wake.md in satan-corpus, authority-ledger token and rows 7b/6d/4d and row 3b evidence, one sentence each in docs/architecture.md and docs/governance.md; then a live run (design sec-5 Jail, sec-6, sec-7, sec-8 by-agent items)."
 entrance_criteria = [
-  { id = "EN-1", text = "PHASE-07 exit criteria met; malebolge changes committed and the flake input that pins malebolge updated." },
+  { id = "EN-1", text = "PHASE-07 exit criteria met; malebolge changes committed (the room daemon runs from the ~/dev/malebolge working tree, flake.nix malebolgeRoot, so a daemon restart picks them up)." },
 ]
 exit_criteria = [
   { id = "EX-1", text = "flake.nix: room jail options gain set-env for the wake keys the host sets (at least MALEBOLGE_WAKES on when enabled) beside MALEBOLGE_PROFILE; jailProbes.malebolge.present gains the matching --setenv strings; nix flake check green." },
@@ -195,7 +195,7 @@ verification = [
   { id = "VT-1", expects = "Launcher check: the room jail argv carries the wake --setenv strings", test_file = "flake.nix", keywords = ["MALEBOLGE_WAKES", "--setenv MALEBOLGE_WAKES"], waived = false },
   { id = "VA-1", text = "Agent, in a live room daemon: journal lines appear for each event in design sec-4's table that the run exercises (schedule, fire, defer, terminal, heartbeat ensure, sweep if staged), and a scheduled wake produces one turn; output recorded in notes." },
   { id = "VA-2", text = "Agent confirms the ledger rows, legend token and docs sentences landed and match design sec-6; SPEC-002 REV is left to reconcile." },
-  { id = "VH-1", text = "User enables MALEBOLGE_WAKES in the deployed room jail (deploy + restart) and accepts the live behaviour." },
+  { id = "VH-1", text = "User enables MALEBOLGE_WAKES in the deployed room jail (flake.nix change through the runtime jail deploy path, then a malebolge-room restart) and accepts the live behaviour." },
 ]
 specs        = []
 requirements = []

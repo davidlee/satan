@@ -66,6 +66,16 @@ PHASE-08 satan: flake.nix env, wake.md, ledger rows, docs; live (VA/VH)
   majors are routed `review` and were settled in the design's prose.
 - Test files are named in each VT mandate; new suites are `test/wake-*.test.ts`
   in malebolge.
+- **The live room daemon runs from the malebolge working tree**
+  (`flake.nix` `malebolgeRoot`), so any restart mid-slice runs whatever is
+  committed. Consequences for sequencing: PHASE-03 changes the model path of
+  both profiles on the next restart, so it must be complete when committed;
+  nothing registers the wake task until PHASE-07 wires the extension, so
+  PHASE-04…06 are inert in the daemon. From PHASE-07 on, a restart ensures a
+  heartbeat in `session.sqlite` even with wakes off (it defers). Once that has
+  happened, `satan.wake` v1's input and checkpoint shapes are durable: a later
+  shape change needs a version bump and migration, or the start sweep will
+  orphan the stored wakes (`task_too_old`).
 - Implementation checks the design carries, not design questions: the room
   jail's time zone (PHASE-08 EX-5); per-tool deadlines for in-turn tool calls
   (design Risks; goes to the backlog if any tool lacks one).
