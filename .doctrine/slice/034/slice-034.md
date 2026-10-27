@@ -21,7 +21,7 @@ one task always pending, aimed at one thread.
    fire phase ── WakePolicy.gate: switch → quiet window → weighted presence  (DEC-128/129/132)
             │        defer → sleepUntil(later)
             ├── beforeInput · percept ← satan_boot_context over `scheduled`  (DEC-133)
-            ├── input {entry satan.wake, requestId wake:<task>:<at>, followUp}
+            ├── input {entry satan.wake, requestId wake:<task>:<n>, followUp}
             │     wake.md (corpus) + intent + payload + percept + fire metadata
             └── wait → failure: journal + notify_send (→ satan-tank)          (DEC-134)
    heartbeat: one recurring satan.wake in topic `room`, every ceiling when nothing else is pending (DEC-131)
@@ -46,36 +46,51 @@ Decisions: DEC-127 … DEC-139 (design run inquiry, 2026-10-27). Theme: the
 cheapest, simplest approach that works.
 
 1. **Wake task** (DEC-127): pi-durable task `satan.wake` v1, background, owned
-   by the target conversation; one `fire` phase, checkpoint `{phase, at}`. Input
-   `{conversationId, intent, payload?, episodeClass, requestedAt?, scheduledBy,
-   recurring?}`. pi-durable's task table is the store: no host table, no host
-   timer.
+   by the target conversation; phases `fire` (gate, compose) and `submit`
+   (checkpointed before the input is sent), checkpoint `{phase, at, n}`; `n`
+   counts occurrences (a defer keeps it, a completed fire bumps it). Input
+   `{conversationId, intent, payload?, episodeClass, at, requestedAt?,
+   scheduledBy, recurring?}`; the tool decides `at`. pi-durable's task table is
+   the store: no host table, no host timer.
 2. **Tools** (DEC-130): a native `tasks` extension — `wake_schedule`,
    `wake_cancel`, `wake_list`. Target: the calling conversation, or a known
-   topic's latest, resolved at schedule time. In-process; works with Emacs
-   absent.
+   topic's latest, resolved at schedule time. `wake_cancel` acts only on a
+   sleeping wake, waits for it to settle and answers from its result: never
+   `cancelled` with an admitted turn; otherwise "already fired". In-process; works with
+   Emacs absent.
 3. **WakePolicy** (DEC-128, DEC-129): an async seam with an injected `env`
    (`now`, `random`, `wakes`, `presence`). v0: clamp + jitter at schedule; at
    fire, quiet window (23:20–07:00) defers, episode-class presence rule as a
    weighted chance, unknown presence fires. Presence from satan-mcp
-   `activity_read{scope:"current"}`.
+   `activity_read{scope:"current"}`, read from its printed-Lisp result by a
+   small adapter. Episode classes `attend` / `seclude`.
 4. **Heartbeat** (DEC-131): one perpetual recurring wake into topic `room`,
-   ensured at daemon start; fires only when no other wake is pending.
+   ensured at daemon start (a blocked, parked or abort-marked heartbeat is
+   replaced; every blocked wake is aborted and its queued inputs withdrawn); fires only when no other wake is sleeping; a stuck input is
+   withdrawn after one ceiling, so a heartbeat behind a failed run recovers
+   itself.
 5. **Fire composition** (DEC-133): gate → `beforeInput` → percept over a
    `scheduled` satan-mcp connection (10 s, degrades to one line) →
    `~/satan-corpus/prompts/wake.md` → input with entry `satan.wake`,
-   `requestId wake:<taskId>:<at>`, `whenBusy: followUp`.
+   `requestId wake:<taskId>:<n>`, `whenBusy: followUp`. The gate decides
+   admission; a followUp behind a busy turn may start in the quiet window.
 6. **Off switch** (DEC-132): `MALEBOLGE_WAKES=on` at start, fail closed; off
-   defers, never drops.
+   defers, never drops. It stops new admissions; an admitted turn completes;
+   `satan-mcp-enabled` stays the hard stop.
 7. **Visible failure** (DEC-134): a failed fire or unanswered wake → journal
    line + best-effort `notify_send` over `scheduled` (lands in satan-tank's
-   RECENT EVENTS); the heartbeat survives its failures.
+   RECENT EVENTS); the heartbeat survives its failures. Every wake waits at
+   most one ceiling for its turn; an input still queued then (e.g. behind a
+   failed run) is withdrawn and reported, a running turn is waited on.
 8. **Daemon wiring** (DEC-139): late-bound `tasks` extension; `SatanKind`
    gains `scheduled`; heartbeat ensured after `resume()`; env keys
-   `MALEBOLGE_WAKES`, `_WAKE_FLOOR_MS`, `_WAKE_CEILING_MS`, `_WAKE_QUIET`,
-   `_WAKE_TOPIC`; unit env in `~/flakes` (with user confirmation).
+   room profile only (host refuses wake keys; CON-005); `beforeResume(session)`
+   binds deps before `resume()`; `MALEBOLGE_WAKES`, `_WAKE_FLOOR_MS`, `_WAKE_CEILING_MS`, `_WAKE_QUIET`,
+   `_WAKE_TOPIC`, set in the room jail options in this repo's `flake.nix` and
+   pinned by the launcher probes (row 3b, `satan-flake`). No `~/flakes` change.
 9. **Governance** (DEC-136, DEC-137, DEC-138): ledger token `room-daemon`,
-   rows 7b/6d/4d; no-limits v0; shared interactive allowlist; SPEC-002 REV;
+   rows 7b/6d/4d (4d: a journal line per gate decision and terminal outcome),
+   row 3b evidence; no-limits v0; shared interactive allowlist; SPEC-002 REV;
    one sentence in `docs/architecture.md` and `docs/governance.md`.
 
 No satan-side code: satan-mcp already accepts kind `scheduled` (DEC-121), and
@@ -100,7 +115,7 @@ v0 has one task kind: `resume` (a turn in an existing conversation).
 
 ## Risks, Assumptions, Open Questions
 
-Settled by research and the inquiry: OQ-1 (input with an application entry
+Settled by research and the inquiry: ASM-c (model failures settle `unanswered`/`model_error`, pi-durable `generation.ts:376`), OQ-1 (input with an application entry
 starts a turn, spike S1), OQ-2 (no shared transaction; `requestId` dedupes),
 OQ-3 (pi-durable sleeping tasks), OQ-5 (DEC-135), OQ-6 (DEC-128/129/139).
 
@@ -108,9 +123,6 @@ OQ-3 (pi-durable sleeping tasks), OQ-5 (DEC-135), OQ-6 (DEC-128/129/139).
   capsule is a follow-up (IMP-010).
 - **ASM-a:** the room daemon is long-running; with it down, no wakes fire.
 - **ASM-b:** pi-durable 1.4.0 semantics as spiked hold for the pinned version.
-- **ASM-c (verify in implementation):** whether a run ending in `model_error`
-  (e.g. gateway spend cap) is distinguishable from the settled submission; if
-  cheaply, report it like any failed wake, else a backlog item (DEC-134).
 - **Risk:** unattended turns spend tokens with no owned ceiling (DEC-137); the
   gateway key cap is the backstop.
 - **Risk:** a topic-targeted wake misses a newer conversation started in that
@@ -130,10 +142,23 @@ Done when, against a running room daemon with a faux or real model:
 - Exactly one heartbeat exists after any number of restarts.
 - WakePolicy is covered by deterministic tests (seeded `random`, fixed clock):
   clamp, jitter bounds, quiet-window defer, weighted presence.
-- A daemon restart with overdue wakes fires each once (no duplicate turn).
+- A daemon restart with overdue wakes fires each once (no duplicate turn),
+  including a crash right after admission followed by a restart into quiet
+  hours.
+- `wake_cancel` racing a fire: either the wake is cancelled or it answers
+  "already fired"; never a cancelled wake with a queued turn.
 - `MALEBOLGE_WAKES` unset: nothing fires; wakes are kept.
 - A failed wake is reported in the journal and via `notify_send`.
-- Ledger rows 7b/6d/4d and token `room-daemon` land with the code.
+- A wake input stuck behind a failed run is withdrawn after one ceiling and
+  reported, in any target conversation; a wake whose turn started before the
+  bound is not. The heartbeat's next input then releases the inputs queued
+  behind the failed run, about two ceilings after the stuck input's
+  admission, absent gate defers, restarts or other input.
+- A crash between preparing and admitting a wake input never fires it while
+  wakes are off or inside the quiet window.
+- Host profile: wake keys refuse start; no `tasks` extension, no heartbeat.
+- Ledger rows 7b/6d/4d, row 3b evidence and token `room-daemon` land with the
+  code.
 
 ## Follow-Ups
 

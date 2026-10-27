@@ -1,0 +1,846 @@
+id    = 62
+slug  = "design-review-of-sl-034"
+title = "design review of SL-034"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "codex"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "codex completed the adversarial design review of all 13 sections of SL-034 design.md against accepted DEC-127 through DEC-139 and today's GPT-sense-check amendments, scope, ADR-017/authority ledger, ADR-018, POL-001, CON-005 and REQ-013. Inspected the named malebolge/pi-durable 1.4.0 source and spec, flake jail/probes, research and retained spike, plus satan-mcp's actual result encoding. Read-only in-memory runtime probes verified W1 replay across reopen/defer and atomic counter+sleep, passive startup before resume, a queued-input cancellation race, heartbeat queue blockage across restart, and recovery with an outstanding abort mark. Raised F-1..F-5 major and F-6 minor with evidence, reproduction or explicit inference and concrete repair directions. Revision required; findings remain open for the responder. No design/code/other-file edits; only RV-062 metadata, brief/evidence, findings and conclusion were changed. Live jail timezone, deployed integration and real crash durability were not verified."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "codex completed the RV-062 verify round over all six fix-now responses, revised 13-section design, DEC-127/130/131/139 amendments, reconciled scope and corrected adjacent passages. Verified F-1, F-2, F-4, F-5, F-6 as design repairs. Contested F-3 with an installed pi-durable 1.4.0 reproduction: task.state.phase is absent, so the supplied abort expression still returns fired:false for an admitted input. Raised F-7 major (prepared submit checkpoint admits a first input with wakes disabled after reopen, also bypasses quiet gate) and F-8 minor (scope promises one-ceiling recovery but algorithm waits then sleeps). Additional in-memory probes checked bounded-wait recovery under keep across reopen, cancellation-intent survivor exclusion, and regex result handling; source checked room-only construction and synchronous complete-Session binding. Revision required; responder owns F-3/F-7/F-8. Only RV-062 changed; no production implementation, live integration, build or deployment verification."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "codex completed verify round 2 on F-3/F-7/F-8, revised Wake task/submit gate/W3/W9/Fire composition/Heartbeat/Verification, DEC-127 latest amendment and scope Summary. Verified all three dispositions: actual checkpoint discriminator repaired; host recheck prevents first admission while disabled without stopping pi-durable's independent admitted runs or breaking same-request dedupe; timing acceptance now agrees. Probed prepared lifecycle, admitted vs unadmitted reopen, queued inputs, counter reset and next-heartbeat identity with installed pi-durable 1.4.0, MemoryStorage and faux models. Raised F-9 major: accepted DEC-127's later fire-defer recipe drops prepared at unchanged n; runtime reproduction again returned fired:false with an admitted queued input. Preserving the marker fixes that probe. Current W9 remains revision-required; F-9 awaits responder. Only RV-062 ledger records changed; no source/design/decision edits, builds, deployments or live integration checks."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "codex completed verify round 3 on F-9 and the requested checkpoint-construction sweep. Verified the core F-9 repair: every fire defer preserves the current state, including n and prepared, in the current design and amended DEC-127. Reproduced admitted-queued wake -> restart -> prepared defer -> three subsequent defers/reopen -> abort: fired:true with marker retained. A valid surviving heartbeat counter seeded at 7 survived defers, then advanced with the next sleep to 8 and later 9, clearing prepared only on occurrence advance. Swept initial, early sleep, policy defer, suppression, fire->submit, submit->fire host defer, success/error/timeout next occurrence and terminal paths; no further checkpoint-loss issue found. Raised F-10 minor for the residual cancellation-diagram/Tools-prose contradiction already noted in F-9's requested repair; correct handler/W9/state recipes remain intact. All major findings verified, only F-10 awaits responder. Only RV-062 ledger changed; no production implementation/build/deployment or live integration claims."
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Codex raiser re-review, 2026-10-27: examined the whole current 13-section SL-034 design, design run revision 45 / watermark 4264e458f2557cb6d53d87aa26e91434f67ed34b38623ca36aff327125e93e6a (unchanged during this pass), the full RV-062 history, current scope via doctrine show SL-034, accepted DEC-127 through DEC-139 via tier-aware show, ADR-017 and its authority ledger, ADR-018 including the 2026-10-18 workload-fit/private-store amendment, POL-001, CON-005 and REQ-013. Verified F-10's prepared-fire qualification and diagram/Tools consistency. F-1 through F-9's existing repairs still hold as their respective design contracts: bounded heartbeat self-recovery and qualified recovery timing; exclusion of durable abort intent during replacement; actual checkpoint access and cancellation outcome; real Lisp-text presence adapter; room-only construction/config boundary; synchronous Session dependency binding; submit host recheck; and sticky n/prepared across same-occurrence defers. No existing finding was reopened.
+
+Adversarial coverage included crash before/after input admission, disabled/quiet restarts, repeated defers and cancellation, distinct heartbeat occurrences, abort/create restart boundary, concurrent timer/cancel orderings and topic/conversation ownership, startup resume binding, Emacs/MCP absence, host profile isolation, policy bounds and local-zone obligation, journal/transcript audit ownership, launcher env/probes, and the single schema owner. The task/timer/store approach remains appropriate; the accepted no-owned-limits v0, interactive allowlist, target-fixed routing, admission-only switch and afterFailedRun:keep were treated as settled constraints. No additional governance contradiction or regression of F-1..F-9's repairs was verified.
+
+Raised exactly one new finding, F-11 (major): the heartbeat self-recovery path does not cover a one-shot stranded behind a failed run in another conversation, where its unbounded wait never reaches visible failure and pending-only listing omits it. Direct source evidence and an installed pi-durable 1.4.0 MemoryStorage/faux-model probe support this: queued/running after foreground model_error; still queued/running after harness reopen and three successful heartbeat-like inputs elsewhere; released by a control input to the original target. The probe retained MemoryStorage by suppressing its close, used Node stdin, created no files or external effects, and did not execute a production wake implementation. Production wake code does not yet exist; no builds, deployed room/editor calls, real SQLite process-crash tests or wall-clock timing claims were made. The first attempt could not reopen a closed MemoryStorage; the retained-backing rerun completed and supplied the reported evidence.
+
+Pass concluded with F-11 open for the responder. Only RV-062 was written; scope, design, decisions, code, slice notes, other reviews and design-run attestations were left unchanged."""
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Codex bounded-wait verification pass, 2026-10-27. Reviewed F-11's route-review/fix-now response, F-1's earlier verification, current SL-034 design revision 47 (rev-46 materialization; watermark 662c3cee355bc99733bbe6abe6fa2d9f25284520a9c78194bb017b66259d41cb), amended DEC-131 and DEC-134, reconciled slice scope, and the changed rule's seams with the Wake task, Invariants, Tools, Fire composition, Heartbeat, Off switch/audit, Verification and Risks sections. Checked pi-durable source at harness/submissions.ts:115-143,201-216,241-264; harness/generation.ts:376-427; harness/live.ts:138-145; harness/harness.ts:491-518; harness/scheduler.ts:558-596. No design-run or user attestations were authored.
+
+F-11 VERIFIED for its original stranded non-heartbeat one-shot case: an atomic queue-only withdrawal plus the failure path fixes indefinite unreported waiting while keeping placed turns intact. F-1 remains VERIFIED and was not reopened: its old carried-own-input explanation has been superseded by amended DEC-131 and this pass's direct probe; withdrawal of occurrence n followed by n+1 still gives the heartbeat progress and releases other queued inputs. W1 dedupe prevents resurrecting a withdrawn occurrence; host admission checks remain before submission and prepared remains sticky for W9. W4 now explicitly admits queue-timeout withdrawal as an exception. Unbounded waiting for already-placed active work and restarting the in-memory timeout on reopen are explicit design choices, not claimed durable timing guarantees.
+
+Runtime evidence: installed pi-durable 1.4.0, Node stdin, faux provider and retained MemoryStorage only. Probed queued abort vs placement/settlement commit order; another queued user input was not withdrawn. Reopen mid-wait reached one-shot failure/withdrawal with an in-memory reporting hook; later user input never executed that withdrawn wake. Reopen after the withdrawal commit but before the task outcome recovered the same unanswered/aborted requestId and failed the task without another model call. Heartbeat probe withdrew n=0, committed sleeping n=1 with another input still queued, then its distinct next input released that other input and committed sleeping n=2; n=0 stayed aborted. One initial contract-probe attempt tried to read an old submission handle after closing its harness; the corrected rerun reacquired the handle and completed all three abort outcomes. These are API/state-machine checks, not production wake code, real notifications, deployed jail/editor checks, wall-clock measurements or SQLite crash-durability proof.
+
+Raised exactly one new finding: F-12 major, a supported wake_cancel/timer race ends the only bounded-wait monitor with terminal {fired:true}/already fired while its input remains queued after foreground failure. Direct probe: inspection sleeping, timer admission, foreground model_error, abortTask+waitForTask terminal fired:true; advancing the controlled bound left the input queued and no withdrawal/report event; later target input released it. Prepared-sleeping cancellation is the same source-level class. The earlier W9 answer correction still holds; the newly exposed defect is loss of the F-11 withdrawal/reporting responsibility after cancellation. F-12 remains open for the responder. No other new finding was verified in this bounded-rule pass. Only RV-062 was changed."""
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Codex F-12 verification and ownership/timeout re-review, 2026-10-27. Examined the F-12 fix-now/route-review response, current design revision 51 (rev-50 materialization; sha256/watermark 4d345bde664834e4f7a8b1a5308db890cca99f152794c72b5d46cc08784545f9, unchanged through the pass), amended DEC-127, and affected invariants, task/abort ownership, Tools, Fire composition, Heartbeat replacement, wiring/timeout, deps, verification and risks. Checked pi-durable Harness.abortSubmission, tx.submissionByRequest, scheduler abort/join/admission ordering, abort-mode runtime commits, orphaning, parked-task behavior and restart handling, plus the actual malebolge gateway provider, pi-ai 1.4.0 openai-completions adapter and installed OpenAI SDK 7.19.0 timeout/stream implementation.
+
+F-12 VERIFIED for the original timer/cancel and prepared-sleeping monitor-loss cases. The handler can capture a committed occurrence lookup in an explicitly context-bearing runtime.commit, return from that read callback, call Harness.abortSubmission outside the callback, then commit its terminal result. Abort-mode #gated permits that commit despite abortRequested. No waiting/sleeping task state or nested Session operation is needed. The ordinary invocation ends before abort cleanup can admit the missing-record conclusion, so no-submission is reliable for that joined invocation; cancellation of a placed input remains conservative and does not stop its turn. Stable conversation-scoped request IDs, queue-only withdrawal and the changed fired:false rule preserve the W1/W9 guarantees in the checked ordinary cases.
+
+Completed Node-stdin probes over installed 1.4.0, faux models and retained MemoryStorage exercised timer-first queued cancellation, prepared admitted/unadmitted cancellation, the bound withdrawing before the task abort, a held placed wake at cancel, close/reopen before abort-handler withdrawal, close/reopen after withdrawal but before the final task checkpoint, and a restart_limit heartbeat-replacement control. Results: queued inputs became unanswered/aborted with fired:false; an unrelated queued user input stayed intact; an absent input gave fired:false; an input already withdrawn by the bound or by a pre-close abort invocation gave settled/fired:true on retry without resurrection; a placed input gave already_placed/fired:true and completed. The restart_limit control ran its handler once and cleaned up. Early probe attempts had an omitted context argument and then a held faux foreground response preventing close; these harness defects were corrected and only the completed reruns support the outcomes.
+
+Raised exactly two new findings. F-13 major: settings.stream.timeoutMs forwards the SDK's pre-response timeout but does not bound a response body that stalls after headers; actual installed pi-ai/provider/SDK probe with timeoutMs:20, headers and one valid SSE chunk was still pending and transport un-aborted after 100 ms, while a no-headers positive control timed out. Explicit caller abort cleaned up the stalled stream. The injected fetch and ReadableStream made no network calls and used no provider credentials. F-14 major: definition-blocked heartbeat replacement does not run the abort handler; a persisted v2 heartbeat reopened under a v1 definition inspected task_too_old, abortTask made it orphaned with zero handler calls, and its input stayed queued after two successful replacement-like inputs in another newer conversation. A same-version restart_limit control withdrew the old input. The scenario models the design's explicitly listed incompatible-definition replacement path, not an observed production rollback.
+
+No other fresh defect was verified in this scoped pass. The existing accepted afterFailedRun:keep, admission-only switch, shared allowlist and no-owned-spend-limits choices were not reopened. The probes are proposed-state-machine/API and injected-transport evidence, not production wake code, real notifications, deployed jail/editor checks, a two-hour timing experiment or process-crash/SQLite durability proof. Only RV-062 was written. Pass concluded with F-13 and F-14 open for the responder."""
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = """
+Opus standing in for codex (quota exhausted). Examined F-13 and F-14 responses against design.md (rev 52-54: wake task, Fire composition, Heartbeat sweep and ensure, Daemon wiring, Verification) and source: pi-durable 1.4.0 (scheduler.ts abort, harness.ts inspect/abortSubmission, submissions.ts abort, generation.ts classify/streamResponse), pi-ai 1.4.0 (utils/retry.ts, api/openai-completions.ts), malebolge (models.ts, daemon.ts, protocol.ts). Verified F-13 and F-14. Adversarial checks: (1) sweep vs concurrent restart_limit abort handler - one-commit abortSubmission makes double withdrawal safe, no lost abort; but abort-before-withdraw opens a crash window for definition-blocked wakes (F-15, minor). (2) wake:<id>: prefix - numeric TaskIds plus the trailing colon prevent id-prefix collisions; socket clients may set any requestId (protocol.ts:28, daemon.ts:100) but no in-tree client does and the socket is the user's trust domain, so not raised. (3) sweep timing - runs after resume with harness and conversations bound at beforeResume; satan clients can submit concurrently (socket served before the session), which can place a blocked wake's queued input before the sweep reaches it; the sweep leaves placed inputs to run, consistent with W4, not raised. (4) stream deadline outcome class - expiry is non-retryable under pi-ai's classifier and the abort path, contrary to the stated retries (F-16, minor). No blockers.
+"""
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Re-concluded by the agent on the user's direction (2026-10-28) after the route-only reopen of F-1, F-2, F-3, F-4, F-5, F-7 and F-9 (each routed review, verdict unchanged). The substantive pass, concluded earlier by Opus standing in for codex, examined design rev 59: F-13 to F-16 and the start sweep, wake prefix, sweep timing and stream-deadline mechanisms."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-034"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Heartbeat ensure cannot recognize a wake stranded behind a failed run"
+detail = """
+Expected: DEC-131 explicitly treats a heartbeat blocked behind a failed run as dead and recreates it at daemon start; afterFailedRun remains keep. Observed: design.md:351-362 tests only TaskInspection.state.kind === blocked and its four scheduler-definition/restart reasons. A heartbeat awaiting Submission.wait() is an active invocation, so inspect reports running even when its input is permanently queued in an idle conversation. The task's own n remains unchanged; replay submits the same requestId and returns the old queued submission, so restart does not release it.
+
+VERIFIED source: ~/.local/src/pi/packages/durable/src/harness/scheduler.ts:1667-1679 returns running before any other test; harness/generation.ts:404-427 leaves queued inputs untouched under keep; harness/submissions.ts:210-216 returns the existing submission without a placement boundary. design.md:287-289 awaits that submission. The narrower gap qualification at design.md:370-373 does not implement DEC-131's restart recovery.
+
+VERIFIED reproduction against malebolge's installed pi-durable 1.4.0, MemoryStorage and faux model: hold a foreground response; run a conversation-owned background task that submits wake:<id>:0 and waits; fail the foreground response with stopReason error; inspect; close/reopen the same storage, resume and inspect again. Both views showed task {kind:running} and the same submission {status:queued,requestId:wake:10:0}; model call count remained 1. This is an API-behavior probe, not execution of the unimplemented wake code.
+
+Repair: specify detection of this application-level blockage using the queued submission plus target conversation/run state, and a safe recovery/admission path while preserving the accepted keep setting and occurrence identity. Add this exact failed-run/restart case to verification; the current parked-heartbeat test at design.md:558-561 cannot detect it."""
+disposition = "fix-now"
+response = """
+Accepted (verified: types.ts:568 keep semantics, generation.ts:414). Start-time detection dropped for this case; the heartbeat's submit phase races wait() against one ceiling, journals+notifies 'heartbeat unanswered', sleeps with n+1; its next input starts a run carrying the stuck one under keep. DEC-131 amended; design Heartbeat + Verification (failed-run and close/reopen cases).
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted (verified: types.ts:568 keep semantics, generation.ts:414). Start-time detection dropped for this case; the heartbeat's submit phase races wait() against one ceiling, journals+notifies 'heartbeat unanswered', sleeps with n+1; its next input starts a run carrying the stuck one under keep. DEC-131 amended; design Heartbeat + Verification (failed-run and close/reopen cases)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a design repair. design.md:412-421 replaces unworkable start-time queue-blockage detection with a bounded submit-phase wait followed by a new occurrence/requestId; DEC-131's current choice and RV-062 amendment explicitly adopt it while retaining afterFailedRun:keep. design.md:632-635 adds the failed-foreground-run and reopen cases. Source check: pi-durable harness/types.ts:565-568 and generation.ts:404-427 preserve queued inputs under keep; submissions.ts:210-216 makes replay of the same requestId inert, whereas :241-264 places queued inputs when a fresh input arrives idle. In-memory 1.4.0 probe: foreground error stranded wake:10:0; reopen; timeout -> checkpoint fire n=1 with old input still queued; next deadline admitted n=1 and queued work ran, ending sleeping at n=2. This establishes the mechanism, not deployed timing. The separate residual mismatch in scope's one-ceiling recovery acceptance is raised separately; it does not negate the liveness repair."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened by the agent on the user's direction (2026-10-28) only to add the missing route; the finding predates route tagging and the lock refuses an unrouted major. Not a change of verdict."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted (verified: types.ts:568 keep semantics, generation.ts:414). Start-time detection dropped for this case; the heartbeat's submit phase races wait() against one ceiling, journals+notifies 'heartbeat unanswered', sleeps with n+1; its next input starts a run carrying the stuck one under keep. DEC-131 amended; design Heartbeat + Verification (failed-run and close/reopen cases).
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified by the agent on the user's direction (2026-10-28): response unchanged apart from the added route review; the prior verification stands."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "Heartbeat replacement loses restart safety after committing the old task's abort mark"
+detail = """
+Expected: W5 (design.md:69-70) and DEC-131 ensure exactly one viable heartbeat after every start. Observed: design.md:356-362 aborts a blocked heartbeat, excludes it only in that invocation's local collection, and creates its replacement later. A stop/crash after the durable abort mark and before replacement leaves an abortRequested task. On the next start that task is ready or running its abort handler, rather than blocked, so ensure counts it as the heartbeat and creates nothing. Its abort handler then commits terminal {fired:false} (design.md:111), leaving zero heartbeats for the whole daemon lifetime.
+
+VERIFIED source: pi-durable src/harness/scheduler.ts:558-584 commits the abort mark and joins only an active run, not the abort handler; docs/spec.md:1021-1028 explicitly says abortTask does not await terminal settlement. scheduler.ts:1667-1679 reports an active abort invocation as running. There is no abortRequested exclusion in the design's survivor predicate.
+
+VERIFIED reproduction with installed 1.4.0: create a recurring background task on a paused in-memory harness; abortTask; close/reopen the same storage (representing the persisted mark before replacement); resume and hold its abort handler at a barrier. Inspection returned [{state:{kind:running},abortRequested:true,input:{recurring:true}}]. Apply the design's survivor test: one survives, so no replacement. Release the handler: live heartbeat count becomes 0. The barrier makes a valid scheduling window deterministic; no wake implementation exists yet.
+
+Repair: define viable survivors to exclude durable cancellation intent and make replacement restart-idempotent across the abort/create boundary; account for abortTask returning before terminal settlement. Add a restart test at this boundary and verify the surviving heartbeat can fire, rather than merely counting live recurring records."""
+disposition = "fix-now"
+response = """
+Accepted. Candidates exclude record.abortRequested, so a restart between abort and create yields a replacement. DEC-131 amended; design Heartbeat (abort/create boundary) + Verification (restart at the boundary, survivor fires).
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. Candidates exclude record.abortRequested, so a restart between abort and create yields a replacement. DEC-131 amended; design Heartbeat (abort/create boundary) + Verification (restart at the boundary, survivor fires)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a design repair. design.md:396-408 excludes record.abortRequested before choosing survivors and explicitly handles abort/create as separate commits; W5 at :72-75 now says viable heartbeat. DEC-131's current choice/RV-062 amendment agrees; :627-631 requires restart at this boundary and a surviving heartbeat that fires. Repeated the original persisted-mark/reopen probe against installed 1.4.0 with an abort-handler barrier: old task 7 was running with cancellation intent; revised survivor filter excluded it, replacement 8 was created, and after old abort completion only task 8 remained a viable candidate. The bad abort phase lookup in F-3 is separate and does not undo this survivor predicate."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened by the agent on the user's direction (2026-10-28) only to add the missing route; the finding predates route tagging and the lock refuses an unrouted major. Not a change of verdict."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Candidates exclude record.abortRequested, so a restart between abort and create yields a replacement. DEC-131 amended; design Heartbeat (abort/create boundary) + Verification (restart at the boundary, survivor fires).
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified by the agent on the user's direction (2026-10-28): response unchanged apart from the added route review; the prior verification stands."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "wake_cancel explicitly permits the outcome that the accepted scope and tests forbid"
+detail = """
+Expected: SL-034 scope Summary requires a cancel racing fire to cancel or answer already fired, never report a cancelled wake with a queued turn; DEC-130/F5 limits cancellation to sleeping wakes and leaves admitted work alone. Observed: design.md:242-256 reads sleeping then aborts in a separate operation, explicitly accepts a queued wake surviving that cancellation, and says the outcome line will be cancelled. Verification at design.md:562-564 still requires the opposite. The design calls the race accepted for v0, but the accepted DEC-130 amendment and scope do not contain that relaxation.
+
+VERIFIED source: pi-durable src/harness/harness.ts:310-317 and 332-334 make inspection and abort separate operations; scheduler.ts:558-584 marks and signals the task; harness.ts:491-518 and docs/spec.md:1014-1028 state that cancelling the invocation/wait leaves admitted submissions durable. This applies even if the turn is still queued behind a busy conversation.
+
+VERIFIED reproduction with installed 1.4.0 and faux model: hold a foreground turn; create/sleep a wake until 2000; inspect sleeping; advance the injected clock and resume; wait until the wake input is queued; abortTask; wait for its terminal receipt. Observed task result {fired:false} with requestId wake:10:0 still queued. Releasing the foreground response ran the queued wake (modelCalls:2). This proves the design's advertised interleaving without implementing new production code.
+
+Repair: specify one consistent admission/cancellation protocol so a winning admission yields already fired and a successful cancellation guarantees no admitted input; reconcile the task outcome and journal line too. If the narrower promise is deliberately abandoned, obtain an explicit scope/decision amendment rather than asserting acceptance in the draft. Test both timer-before-abort orderings, including admission-before-abort; testing only abort-before-submit as design.md:255-256 proposes hides the defect."""
+disposition = "fix-now"
+response = """
+Contest upheld: the handler now reads task.state.checkpoint (pi-durable RunningTask.state = {status, checkpoint}); fired = phase submit or checkpoint.prepared. Design Wake task code; DEC-127 amended.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted (verified: abort handler receives task state, types.ts:346). Second phase 'submit' checkpointed before submit; abort in submit settles {fired:true}; wake_cancel aborts, waits for settlement, answers from the result. New invariant W9: never cancelled with an admitted input. DEC-127, DEC-130 amended; design Wake task, Tools, Fire composition, Verification (both orderings)."
+
+[[finding.turn]]
+act = "contest"
+role = "raiser"
+note = """CONTEST: the intended two-phase protocol is now in DEC-127/130 and design.md:113-129,277-291, but the exact abort handler at :129 uses task.state.phase === "submit". pi-durable RunningTask.state is {status:"running",checkpoint:S}, so the actual phase is task.state.checkpoint.phase (src/types.ts:209-210,607-612,346); state.phase does not exist. Under TypeScript this is a compile error; if translated/executed as the draft's JS expression it is always false. VERIFIED in-memory 1.4.0 reproduction of the revised two-phase definition: inspect sleeping, timer transitions to submit and queues wake:10:0 behind a held foreground response, abortTask then waitForTask. Abort handler received state {status:"running",checkpoint:{phase:"submit",at:2000,n:0,content:"wake",firedAt:2000}}, but expression evaluated false and terminal result was {fired:false}; wake:10:0 remained queued and later ran (modelCalls:2). Thus wake_cancel still answers cancelled in the original forbidden scenario. Repair the discriminator to task.state.checkpoint.phase and recheck both abort orderings, with the actual received task record shape and a typecheck. This is the same unresolved cancellation defect, not a new duplicate finding."""
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Contest upheld: the handler now reads task.state.checkpoint (pi-durable RunningTask.state = {status, checkpoint}); fired = phase submit or checkpoint.prepared. Design Wake task code; DEC-127 amended."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED the revised discriminator and the original cancellation-race repair. design.md:132-135 now reads task.state.checkpoint, matching pi-durable src/types.ts:209-210,607-612, and checks phase submit OR prepared:true; DEC-127's current choice and latest amendment agree. Thus the prior contest's exact expression state.phase is gone. The received running record's submit checkpoint now classifies as potentially admitted, and a preserved prepared fire checkpoint returned {fired:true} in the in-memory runtime probe; a genuinely unprepared fire remains {fired:false}. wake_cancel still waits for the terminal receipt (:295-309). This accepts the corrected handler and original timer/abort case, not blanket certification of W9: a distinct newly introduced same-occurrence defer recipe discards prepared, raised separately as F-9 with a before/after runtime reproduction. That data-propagation defect is in the fire transition, not the repaired checkpoint lookup."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened by the agent on the user's direction (2026-10-28) only to add the missing route; the finding predates route tagging and the lock refuses an unrouted major. Not a change of verdict."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Contest upheld: the handler now reads task.state.checkpoint (pi-durable RunningTask.state = {status, checkpoint}); fired = phase submit or checkpoint.prepared. Design Wake task code; DEC-127 amended.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified by the agent on the user's direction (2026-10-28): response unchanged apart from the added route review; the prior verification stands."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "Presence policy assumes a structured result that satan-mcp does not return"
+detail = """
+Expected: DEC-129's weighted presence rule distinguishes typing/reading/mixed/idle from unavailable data. Observed: design.md:210-214 directs env.presence() to read result.presence.presence from the new SatanTools.call, whose return type is raw CallToolResult (design.md:318-322). No decoding contract exists for the actual wire format.
+
+VERIFIED source: satan/satan-tools-activity.el:203-209 returns an Elisp plist, including :presence from :170-175; satan/satan-tools.el:191-194 preserves that plist as :result. satan/satan-mcp.el:381-402 serializes successful results as content:[{type:"text",text:prin1-to-string(result)}], without structuredContent. Thus a healthy current-presence response is Lisp text such as (:scope "current" ... :presence (:status "ok" ... :presence "idle")), not JSON or a JS object. pi-mcp src/client.ts:148-152,378-385 validates/passes through the MCP envelope; it does not decode the text. The existing malebolge tool adapter src/satan-tools.ts:55-64 only converts content for model presentation, which cannot supply the design's object lookup.
+
+INFERENCE: implementing the specified lookup directly fails or classifies healthy presence as unknown, which design.md:201 says always fires; tests using a scripted Presence-returning WakeEnv (design.md:216-217,546-550) can all pass while the real weighted rule never operates.
+
+Repair: choose and specify the smallest working adapter for the real response representation, with an explicit error/unrecognized-data fallback; do not silently add an unscoped satan-side protocol change or a general Lisp interpreter. Add an adapter test using an actual satan-mcp result envelope for every presence value and isError/missing data, before relying on pure policy tests. Resolve any necessary change to the no-satan-code boundary explicitly."""
+disposition = "fix-now"
+response = """
+Accepted (verified: satan-mcp.el:381 prin1-to-string). presenceOf adapter: regex on the inner ':presence "word"'; no match/isError/throw -> unknown. Design WakePolicy + Code impact (src/wake/presence.ts) + Verification with real result text. DEC-129 unchanged.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """Accepted (verified: satan-mcp.el:381 prin1-to-string). presenceOf adapter: regex on the inner ':presence "word"'; no match/isError/throw -> unknown. Design WakePolicy + Code impact (src/wake/presence.ts) + Verification with real result text. DEC-129 unchanged."""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a design repair. design.md:234-249 now names the real CallToolResult text envelope and prin1-to-string Lisp representation, specifies the inner :presence quoted-enum regex, isError/no-match/throw fallbacks, and avoids an unscoped satan-side change. :617-619 requires real result-text adapter fixtures. Rechecked satan-mcp.el:381-402 and satan-tools-activity.el:170-175,203-209: the outer :presence holds a plist, while the inner holds the quoted enum as assumed. Focused JS-envelope probes using the stated regex mapped typing/reading/mixed to present, idle to away, missing and isError to unknown; a printed title containing escaped quotes around a fake :presence value did not override the real inner value. No general Lisp parser is necessary for this current representation. Live editor transport behavior remains untested."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened by the agent on the user's direction (2026-10-28) only to add the missing route; the finding predates route tagging and the lock refuses an unrouted major. Not a change of verdict."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted (verified: satan-mcp.el:381 prin1-to-string). presenceOf adapter: regex on the inner ':presence "word"'; no match/isError/throw -> unknown. Design WakePolicy + Code impact (src/wake/presence.ts) + Verification with real result text. DEC-129 unchanged.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified by the agent on the user's direction (2026-10-28): response unchanged apart from the added route review; the prior verification stands."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "major"
+title = "The proposed shared startup path lacks a room-profile gate for autonomous turns"
+detail = """
+Expected: the scope lists the host profile as a non-goal; CON-005 explicitly says host profile is interactive-only. A room wake mechanism must preserve that boundary rather than rely on an operator remembering not to enable it elsewhere. Observed: design.md:415-423 adds the tasks extension and ensureHeartbeat to startDaemon with no profile predicate; :461-472 parses the enabling env key into the shared Config; :515-528 lists corresponding shared-code edits. Neither WakeSettings nor the first gate check includes the execution profile (:178-183,199-203). The narrative/diagram labels the daemon room-profile, but never tells a cold implementer where that restriction is enforced.
+
+VERIFIED source: malebolge src/config.ts:22-34,68-76,133-139 supports both host and room; src/daemon-main.ts:14-17 sends either to the same startDaemon; src/daemon-start.ts:67-78 uses the same daemonExtensions and :107-112 the same openSession. src/daemon-extensions.ts:13-32 has no profile argument or conditional extension surface. CON-005's current doctrine show output states Host profile is interactive-only and the slice scope Non-Goals excludes that profile.
+
+INFERENCE: applying the listed edits literally permits MALEBOLGE_PROFILE=host plus MALEBOLGE_WAKES=on to create/fire a heartbeat and expose wake tools against host coding tools. The default off switch reduces accidental activation but does not establish the room-only contract. This is a design omission, not a claim that the unimplemented feature already executes on host.
+
+Repair: specify an explicit execution-profile boundary at construction/admission, including how host startup handles wake settings and whether task definitions must remain registered for recovery. Keep host operation interactive-only. Add a host-profile regression case with the enabling env deliberately on, proving no autonomous input/heartbeat admission and no supported scheduling path on host; do not broaden into the deferred egress-profile design."""
+disposition = "fix-now"
+response = """
+Accepted. Room-only wiring: tasks extension and ensureHeartbeat for room; resolveConfig refuses MALEBOLGE_WAKE* on host (as MALEBOLGE_DOOR). Invariant W10; DEC-139 amended; host regression test in Verification.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. Room-only wiring: tasks extension and ensureHeartbeat for room; resolveConfig refuses MALEBOLGE_WAKE* on host (as MALEBOLGE_DOOR). Invariant W10; DEC-139 amended; host regression test in Verification."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a design repair. design.md:10-11,80-81,472-488 now explicitly restricts extension/heartbeat construction to room, passes profile into daemonExtensions, refuses every MALEBOLGE_WAKE* env key on host, and explains why no historical host wake definition needs recovery. DEC-139's current choice and RV-062 amendment match. Code-impact entries at :588-593 and host regression at :642-643 carry the boundary into implementation/verification. The existing host/room config and shared startup paths were checked against these instructions: a cold implementer now has the missing predicate and failure behavior. This verifies the design contract, not unimplemented host startup code."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened by the agent on the user's direction (2026-10-28) only to add the missing route; the finding predates route tagging and the lock refuses an unrouted major. Not a change of verdict."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Room-only wiring: tasks extension and ensureHeartbeat for room; resolveConfig refuses MALEBOLGE_WAKE* on host (as MALEBOLGE_DOOR). Invariant W10; DEC-139 amended; host regression test in Verification.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified by the agent on the user's direction (2026-10-28): response unchanged apart from the added route review; the prior verification stands."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "beforeResume's signature does not supply the Session needed to bind Conversations synchronously"
+detail = """
+Expected: the chosen beforeResume hook binds every WakeDeps member before any resume-driven task/tool can run (design.md:426-435). Observed: its declared signature is beforeResume?: (harness) => void, but the same paragraph requires constructing conversations from the session there. At that point the caller's session variable is not assigned yet. The diagram at :421-423 still depicts resume before the second binding step.
+
+VERIFIED source: malebolge src/session.ts:16-19 defines Session as {harness,root}; :47-53 obtains root before resume and only then returns the Session. src/conversations.ts:190-200 requires that complete Session and reads session.root synchronously. Harness.root is asynchronous (pi-durable src/harness/harness.ts:368-372,394-410), so a callback receiving only Harness cannot directly construct the stated Conversations using the available API. An async callback is assignable to a void-returning TypeScript callback, but a hook invoked without await would not wait for those bindings.
+
+INFERENCE: a cold implementation may reacquire root asynchronously and inadvertently reintroduce the exact resume-before-bind race the hook is intended to close. This is a missing implementable contract, not evidence that Harness.open itself runs overdue tasks: the in-memory probe confirmed scheduling remains paused through open/root/configure/commits until resume.
+
+Repair: pass the already-built {harness,root} Session to a synchronous hook, bind one Conversations instance there and share it with the socket path; alternatively declare and await an asynchronous hook explicitly. Update the wiring diagram accordingly and add an openSession-level overdue-task/resumed-tool assertion that all deps are available before the first invocation. Pure harness spike tests do not cover this integration seam."""
+disposition = "fix-now"
+response = "Accepted. beforeResume(session: Session) is synchronous, receives {harness, root}; startDaemon builds the one Conversations instance there and shares it with the socket path. DEC-139 amended; wiring diagram and Verification (startup binding) updated."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. beforeResume(session: Session) is synchronous, receives {harness, root}; startDaemon builds the one Conversations instance there and shares it with the socket path. DEC-139 amended; wiring diagram and Verification (startup binding) updated."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED as a design repair. design.md:478-481 and :490-500 now invoke synchronous beforeResume(session:Session) with complete {harness,root} after backfill, construct one Conversations instance, bind deps and share that same instance with the socket path, then call resume. DEC-139 and scope objective 8 agree; :640-641 requires the overdue-wake/resumed-tool binding test. This matches existing session.ts:47-53 (root already available before resume) and conversations.ts:190-200 (synchronous factory requires Session.root). Resolving conversationsReady inside a synchronous hook cannot let promise consumers run before the same stack reaches resume. No async root reacquisition or duplicate serialization scope is prescribed anymore. Actual openSession implementation remains future work."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "major"
+title = "A persisted submit checkpoint can admit a new wake after restart with wakes disabled"
+detail = """
+Expected: W3/W4 (design.md:67-71), DEC-132 and scope objective 6 allow only already-admitted inputs to continue when wakes are off; off stops new admissions and keeps intent. Observed: the F-3 repair commits the submit checkpoint before Conversation.submit (design.md:113-135,165-170,323-324). Only fire runs WakePolicy.gate. A crash/stop between these two commits leaves no admitted input but resumes directly in submit, bypassing the disabled/quiet checks. A checkpoint is durable preparation, not pi-durable input admission.
+
+VERIFIED source: pi-durable src/types.ts:607-612 stores the running checkpoint; harness/scheduler.ts:403-406 preserves it as pending on reopen. harness/submissions.ts:75-93 admits input in its own later commit, and :210-216 dedupes only if a submission actually exists. There is no gate/recovery branch in the prescribed submit phase.
+
+VERIFIED reproduction against installed 1.4.0, MemoryStorage/faux model: implement the revised two-phase shape; hold fire immediately after committing {phase:submit,at:1000,n:0,firedAt:1000,content:wake}; close. Before close, inspection showed submissions:[] and modelCalls:0. Reopen with enabled=false and resume. Submit ran without calling fire/gate, yielding modelCalls:1 and terminal {fired:true}. The same unadmitted checkpoint also bypasses a quiet window entered during downtime (inference from identical control flow). This is a probe of the proposed state machine, not deployed wake code.
+
+Repair: define resume behavior that distinguishes an existing durable admission from an unadmitted prepared checkpoint. Re-drive existing admissions with the same requestId as W1/W4 require; reapply the applicable gate before a first admission after restart, retaining occurrence identity through any defer. Do not silently redefine checkpoint preparation as admission or indiscriminately block already-admitted work. Add the missing checkpoint-before-submit/restart-disabled case and its quiet-window sibling; the existing test at design.md:623-625 crashes only after submission and cannot expose this regression."""
+disposition = "fix-now"
+response = """
+Accepted. submit re-checks the host gate (switch, quiet window) on every entry; a defer returns to fire with the same n and prepared:true, so an earlier admission dedupes (W1), an admitted input still runs (W4), and cancel reports already fired (W9). W3 restated; sequence diagram; Verification adds the checkpoint-before-admission restart cases (wakes off, quiet window, cancel). DEC-127 amended.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. submit re-checks the host gate (switch, quiet window) on every entry; a defer returns to fire with the same n and prepared:true, so an earlier admission dedupes (W1), an admitted input still runs (W4), and cancel reports already fired (W9). W3 restated; sequence diagram; Verification adds the checkpoint-before-admission restart cases (wakes off, quiet window, cancel). DEC-127 amended."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED the first-admission gate repair. design.md:67-73,144-153,341-346 now rechecks switch/quiet on every submit entry and defers with unchanged n plus prepared:true. DEC-127 and scope Summary:152-153 match; design verification:649-652 covers the original preadmission restart hole. In-memory 1.4.0 probe: close at a submit checkpoint before admission, reopen off -> 0 model calls and sleeping fire {n:0,prepared:true}; re-enable -> 1 call, then next heartbeat occurrence -> 2 calls. Separately stored an actual placed pi-durable submission via its admission function on a paused harness (0 model calls), then closed/reopened off: the admitted run resumed independently and settled done while the wake task deferred prepared at n=0. Re-enable -> same requestId deduped (call count stayed 1), n advanced to 1 with prepared absent; next deadline produced call 2 and n=2. This verifies W1/W4 without needing a new admission-lookup mechanism. Repeated fire-phase defers must retain the marker; the contradictory recipe is separately F-9. These are state-machine probes, not deployed wake code."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened by the agent on the user's direction (2026-10-28) only to add the missing route; the finding predates route tagging and the lock refuses an unrouted major. Not a change of verdict."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. submit re-checks the host gate (switch, quiet window) on every entry; a defer returns to fire with the same n and prepared:true, so an earlier admission dedupes (W1), an admitted input still runs (W4), and cancel reports already fired (W9). W3 restated; sequence diagram; Verification adds the checkpoint-before-admission restart cases (wakes off, quiet window, cancel). DEC-127 amended.
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified by the agent on the user's direction (2026-10-28): response unchanged apart from the added route review; the prior verification stands."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "Scope still promises one-ceiling heartbeat recovery while the repair waits and then sleeps"
+detail = """
+Expected: the reconciled scope's acceptance promise must describe the selected recovery mechanism. Observed: slice-034.md:149-150 says a heartbeat whose input is stuck behind a failed run recovers within about one ceiling. Revised design.md:412-421 waits one ceiling for settlement, then sleeps one more ceiling before submitting the fresh input that releases queued work under keep. Thus if blockage begins just after admission, and no external input arrives, the prescribed path takes approximately two ceilings from that admission to recovery, before any further gate deferral or restart. design.md:426-428 and DEC-131 instead describe about three ceilings between heartbeat opportunities, which is a different reference interval.
+
+VERIFIED by reading the timing steps and keep semantics in pi-durable harness/types.ts:565-568 / generation.ts:404-427: neither the timeout nor sleep places the queued input; the later fresh submission does. The in-memory recovery probe likewise showed the old input still queued after timeout at the n=1 sleeping checkpoint, then running only after the next deadline. The two-ceiling duration is derived from the authored algorithm, not a deployed wall-clock measurement.
+
+Repair: reconcile scope's acceptance criterion with the accepted bounded-wait design and DEC-131, naming the interval being bounded and qualifying gates/restarts. Keep the intended simple recovery mechanism unless a shorter bound is an explicit requirement. Verification should distinguish timeout expiry, sleeping for the next occurrence, and actual queued-input execution; do not call the first event recovery."""
+disposition = "fix-now"
+response = "Accepted. Scope criterion now: a stuck heartbeat input runs about two ceilings after its admission (bounded wait, sleep, next input), qualified for gate defers, restarts and other input. Design Heartbeat gap bound distinguishes the opportunity gap (~3x) from recovery after admission (~2x)."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. Scope criterion now: a stuck heartbeat input runs about two ceilings after its admission (bounded wait, sleep, next input), qualified for gate defers, restarts and other input. Design Heartbeat gap bound distinguishes the opportunity gap (~3x) from recovery after admission (~2x)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED. scope slice-034.md:149-151 now measures approximately two ceilings from the stuck input's admission and explicitly excludes gate defers, restarts and other input. design.md:446-451 distinguishes that interval from the approximately three-ceiling gap between heartbeat opportunities, and :432-441 still describes wait one ceiling, sleep one ceiling, then a fresh input. The quantities now agree with the algorithm and keep semantics (pi-durable harness/types.ts:565-568). The newly introduced host/prepared defer falls under the stated gate-defer qualification, rather than making timeout alone count as recovery. No production wall-clock bound was measured."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "major"
+title = "The fire-defer recipe drops prepared on the second defer and permits a false cancelled answer"
+detail = """
+Expected: W9 and the new design.md:144-153 contract require prepared to survive every same-occurrence defer and clear only when n advances. Observed: DEC-127's current accepted choice still prescribes fire/not-yet-or-defer -> sleepUntil(next,{phase:"fire",at:next,n}), which omits prepared. The fire-gate defer arrow at design.md:335 likewise reconstructs the checkpoint without it, whereas only the submit-gate defer at :149/:343 sets it. The state diagram at :174-175 and Tools text at :308-309 also still classify fire aborts as cancelled unconditionally. These instructions conflict with the new invariant and code. A cold implementer following the explicit DEC recipe loses the marker on a second disabled/quiet/presence defer while n remains unchanged.
+
+VERIFIED source: pi-durable src/harness/scheduler.ts:2182-2186 passes the supplied checkpoint as the complete next sleeping state; :1956-1976 replaces the record state rather than merging omitted fields. The corrected abort handler at design.md:132-135 can therefore no longer distinguish that occurrence from a never-prepared fire. The original state.phase error in F-3 is fixed; this is a new lifecycle regression introduced by the return from submit to fire.
+
+VERIFIED in-memory reproduction against installed 1.4.0: admit wake:10:0 behind a held foreground run, fail the foreground run under keep, close/reopen with the host gate disabled. Submit defer correctly stored fire {at:2000,n:0,prepared:true}. Advance to the next retry and use DEC-127's fire-defer recipe: state became fire {at:3000,n:0}, with the flag gone. abortTask + waitForTask returned {fired:false} while wake:10:0 remained queued; later normal input released it and it ran. In the identical control probe, carrying prepared through the second defer kept the flag and the corrected handler returned {fired:true}. These execute the authored transition recipes, not an existing wake implementation.
+
+Repair: make the same-occurrence marker sticky explicitly in DEC-127 and every fire retry/suppression/defer recipe (preserve the current state/flag while changing at); clear it only when committing n+1. Reconcile diagram and Tools cancellation prose with the prepared exception. Add an already-admitted -> restart -> submit defer -> second/third fire defer -> cancel case, including a still-queued input; the immediate-defer cancellation test at :649-652 misses this boundary. No new table or admission mechanism is required."""
+disposition = "fix-now"
+response = """
+Accepted. Every defer from fire is sleepUntil(until, {...state, at: until}); only at changes, so n and prepared survive any number of defers. DEC-127 amended; design Wake task state diagram and text, Fire composition diagram, Verification (second defer after a prepared defer, then cancel → already fired).
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+route = "review"
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. Every defer from fire is sleepUntil(until, {...state, at: until}); only at changes, so n and prepared survive any number of defers. DEC-127 amended; design Wake task state diagram and text, Fire composition diagram, Verification (second defer after a prepared defer, then cancel → already fired)."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED the state-preservation repair. design.md:169,186-190,334-337 and the current DEC-127 choice/latest F-9 amendment now preserve {...state,at:until} for every fire defer. The new verification at :651-655 covers a later fire defer after preparation. Installed pi-durable 1.4.0, MemoryStorage/faux-model reproduction: after an admitted queued wake and restart-off submit defer, checkpoints at 2000/3000/4000/5000 all retained {phase:fire,n:0,prepared:true}, including reopen between retries; abortTask/waitForTask returned {fired:true} while the old input remained queued. A separate valid surviving heartbeat checkpoint seeded at n=7 retained n=7/prepared through the same retries; re-enabled replay deduped the queued occurrence, timeout advanced atomically to sleeping fire {at:6000,n:8} without prepared, then the next deadline produced distinct occurrence 8 and checkpoint n=9. Sweep found no other checkpoint-loss recipe: initial n=0 is fresh; early/retry/suppression fire sleeps preserve state; fire->submit retains n and the phase itself marks potential admission; submit->fire explicitly sets prepared:true at unchanged n; next-occurrence success/error/timeout paths advance n and intentionally clear the marker; terminal outcomes have no continuing checkpoint. pi-durable scheduler.ts:1956-1976,2182-2186 confirms replacement semantics; submissions.ts:210-216 confirms dedupe. The diagram/tool cancellation prose still omits the prepared exception; that residual prose aspect is isolated at minor severity in F-10, not treated as an unfixed major data-loss path. These remain proposed-state-machine probes, not production implementation tests."
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "Reopened by the agent on the user's direction (2026-10-28) only to add the missing route; the finding predates route tagging and the lock refuses an unrouted major. Not a change of verdict."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Every defer from fire is sleepUntil(until, {...state, at: until}); only at changes, so n and prepared survive any number of defers. DEC-127 amended; design Wake task state diagram and text, Fire composition diagram, Verification (second defer after a prepared defer, then cancel → already fired).
+
+Route added 2026-10-28: review. Repaired in prose in this design review; the finding predates route tagging.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Re-verified by the agent on the user's direction (2026-10-28): response unchanged apart from the added route review; the prior verification stands."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "Cancellation diagram and Tools prose still omit the prepared-fire exception"
+detail = """
+F-9's checkpoint-loss mechanism is repaired and verified. This is the residual prose aspect of its repair request, isolated at minor severity because the actual handler and W9 now specify the correct behavior.
+
+Expected: every cancellation description distinguishes an unprepared fire checkpoint from fire {prepared:true}. Observed: design.md:174-175 still labels both sleeping/fire -> cancelled as 'abort in fire -> {fired:false}', with no condition or prepared-fire route to abortedFired. Tools prose at :310-311 still says an abort inside fire means nothing was submitted and the answer is cancelled. Those descriptions are false for the new submit-host-defer -> prepared fire path. They contradict W9 at :78-82 and the handler at :132-135, which returns {fired:true} for that exact checkpoint.
+
+VERIFIED evidence: round-3 in-memory 1.4.0 probe admitted wake:10:0, restarted into a host-gate defer, preserved {phase:fire,n:0,prepared:true} through three further defers and a reopen, then aborted. The handler returned {fired:true} while the old input remained queued. The state diagram/Tools prose would describe {fired:false}/cancelled instead. This is a design-document inconsistency, not a new runtime failure or an assertion that the corrected handler is wrong.
+
+Repair: qualify the cancelled fire/sleeping edges and corresponding Tools sentence with 'without prepared'; show or state that prepared fire returns already fired. Preserve the corrected handler, checkpoint recipes and invariants. No new mechanism is needed. No other checkpoint reconstruction losing prepared or n was found in the requested sweep."""
+disposition = "fix-now"
+response = "Accepted. Wake task state diagram: abort without prepared → {fired:false}; abort with prepared → {fired:true}. Tools prose: a prepared occurrence answers already fired."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Accepted. Wake task state diagram: abort without prepared → {fired:false}; abort with prepared → {fired:true}. Tools prose: a prepared occurrence answers already fired."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "VERIFIED against the current design. The Wake task lifecycle diagram (design.md:174-177) now qualifies the cancelled sleeping/fire routes with 'not prepared' and shows prepared cancellation returning {fired:true}; Tools (:307-313) limits the no-submission/cancelled explanation to fire without prepared and explicitly says a prepared occurrence answers 'already fired'. These agree with W9 (:78-82), the checkpoint-reading abort handler (:132-135), sticky same-occurrence defers (:184-191), and DEC-127/DEC-130. This verifies the requested document correction; no production wake implementation or runtime behavior is claimed."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "major"
+title = "A one-shot wake stranded behind a failed run has no recovery or failure report outside the heartbeat conversation"
+detail = """
+Expected: SL-034 Summary (slice-034.md:134-148) says a scheduled wake runs a turn in its target and a failed wake is reported in the journal and through notify_send. DEC-130/W8 permit wakes in the caller or any known topic, fixed at scheduling; the heartbeat's dedicated conversation is not the only supported target. A run failure must therefore have an explicit observable outcome for these wakes too.
+
+Observed: Fire composition (design.md:353-354) says 'For the heartbeat only, the wait is bounded by one ceiling ... A one-shot waits until its submission settles.' Its failure handler (:394-403) runs only for an exception or an unanswered settlement. Heartbeat (:411-414,436-445) targets its own fixed topic conversation and releases stuck work by submitting a new occurrence to THAT conversation under afterFailedRun:keep. It cannot release an input queued in another conversation. A one-shot admitted behind a still-running foreground turn can therefore stay queued forever when that foreground turn fails. Its task stays running, so wake_list omits it (:315-317) and wake_cancel returns already fired without acting (:298-305); it neither executes nor reaches the wake failure reporter. This is separate from F-1: the heartbeat's own recovery repair remains valid; the uncovered case is a one-shot in another target conversation.
+
+VERIFIED source: pi-durable src/harness/types.ts:565-568 documents keep as retaining queued inputs until the next input/queued write; harness/generation.ts:404-427 leaves that queue alone after model_error; harness/submissions.ts:210-216 returns an existing requestId without a placement boundary, and :241-264 applies the boundary only for a fresh submission to that conversation. No global heartbeat tick drains other conversations.
+
+VERIFIED probe against malebolge's installed pi-durable 1.4.0, using Node stdin, a faux model and MemoryStorage only: held a foreground response in conversation 1, admitted a target-owned background satan.wake in submit awaiting requestId wake:16:0, then failed the foreground with stopReason:error. The wake submission remained queued and its task inspected running (1 model call). Closed/reopened the harness over the same in-memory backing (storage close suppressed solely to retain MemoryStorage), then successfully submitted three distinct heartbeat-like inputs to a separate conversation: the one-shot still showed queued/running (4 model calls). A control input to conversation 1 released it to done (6 calls). This exercises the specified unbounded one-shot submit/wait path and the conversation-local recovery behavior; it is not a probe of an implemented wake extension or SQLite crash durability.
+
+INFERENCE: with no later input/write to the original target, the current design leaves this wake silently stranded indefinitely, even while the daemon and room heartbeat are healthy. The lack of wake failure reporting follows from the authored wait/failure branches; no production notifications were sent.
+
+Repair: specify and test an observable recovery or stuck-wake outcome for one-shot inputs queued behind failed runs in non-heartbeat conversations, including close/reopen. Preserve the accepted afterFailedRun:keep setting, W1 occurrence identity, W4 admission-only switch, and W9 cancellation guarantee; merely timing out and retrying the same requestId does not release the queue. If indefinite parking is intentionally accepted instead, explicitly reconcile that limitation with scope/DEC-134 and make the stranded wake observable. Do not reopen the settled no-spend-limits or shared-allowlist decisions."""
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Observation verified on source: pi-durable types.ts:565-568 (keep leaves queued inputs for the next input) and Fire composition's former heartbeat-only bound. Repair accepted by the user 2026-10-27: every wake races submission.wait() against one ceiling; on timeout submit calls Submission.abort(), which in one commit withdraws the input only if still queued (harness/submissions.ts:130-143). aborted: withdrawn, never reaches the model, occurrence takes the failure path (one-shot fails with reason not answered within the ceiling, withdrawn; journal plus notify_send). already_placed: its turn is running, wait on unbounded; a failed run settles its own placed inputs unanswered (generation.ts endFailedRun), so it always settles. settled: read wait(). One commit, so a turn that starts just before the bound is neither withdrawn nor reported. The heartbeat shares the rule; its stuck input is withdrawn rather than carried, and its next input still releases other queued inputs. afterFailedRun stays keep; Conversation.abort rejected (withdraws user inputs). Edited design rev 46: Fire composition, Heartbeat, Off switch journal table, Verification (one-shot behind a failed run in a non-heartbeat conversation incl. close/reopen with a negative control; placed-at-the-bound), Risks, W4, task state diagram. DEC-134 and DEC-131 amended; slice scope reconciled. This also changes the F-1 repair (stuck heartbeat input withdrawn, not carried): please re-check F-1 against it.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Observation verified on source: pi-durable types.ts:565-568 (keep leaves queued inputs for the next input) and Fire composition's former heartbeat-only bound. Repair accepted by the user 2026-10-27: every wake races submission.wait() against one ceiling; on timeout submit calls Submission.abort(), which in one commit withdraws the input only if still queued (harness/submissions.ts:130-143). aborted: withdrawn, never reaches the model, occurrence takes the failure path (one-shot fails with reason not answered within the ceiling, withdrawn; journal plus notify_send). already_placed: its turn is running, wait on unbounded; a failed run settles its own placed inputs unanswered (generation.ts endFailedRun), so it always settles. settled: read wait(). One commit, so a turn that starts just before the bound is neither withdrawn nor reported. The heartbeat shares the rule; its stuck input is withdrawn rather than carried, and its next input still releases other queued inputs. afterFailedRun stays keep; Conversation.abort rejected (withdraws user inputs). Edited design rev 46: Fire composition, Heartbeat, Off switch journal table, Verification (one-shot behind a failed run in a non-heartbeat conversation incl. close/reopen with a negative control; placed-at-the-bound), Risks, W4, task state diagram. DEC-134 and DEC-131 amended; slice scope reconciled. This also changes the F-1 repair (stuck heartbeat input withdrawn, not carried): please re-check F-1 against it.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+VERIFIED the repair to F-11's original non-cancellation case against design revision 47 (watermark 662c3cee355bc99733bbe6abe6fa2d9f25284520a9c78194bb017b66259d41cb), current DEC-134/DEC-131 and reconciled scope. Fire composition (:355-373,413-423) now bounds every queued wake's wait and reports withdrawal; Verification (:690-698) includes the non-heartbeat-conversation negative control, reopen, and placement at the bound. pi-durable harness/submissions.ts:130-143 atomically settles/removes only queued inputs, returning already_placed or settled otherwise. generation.ts:415-427 plus live.ts:138-145 settle the failed run's own placed inputs while keep preserves the other queued inputs. No Conversation.abort is used.
+
+Installed 1.4.0 Node-stdin/MemoryStorage/faux probes: an original-case one-shot still queued after foreground model_error was reopened mid-race, then the controlled bound withdrew its input and reached a failed task plus the in-memory failure-report hook; later user input did not execute the withdrawn wake. A second probe closed after the durable withdrawal but before the wake's failure checkpoint: reopen deduped the same requestId to the existing unanswered/aborted submission, reported failure and terminated without another model call. Direct abort/placement/settlement interleavings returned aborted (leaving another queued user input intact), already_placed (running turn intact), and settled, respectively. Replaying a withdrawn requestId after reopen returned the same submission id and no new model call, preserving W1.
+
+F-1's heartbeat liveness also survives the changed mechanism: after n=0 was withdrawn, the probe committed fire n=1 with its next deadline while another input remained queued; the next distinct requestId released that other input, completed and committed fire n=2. The withdrawn n=0 stayed unanswered/aborted and never reached the model. F-1 therefore remains verified, without reopening; its old verification's carried-own-input narrative is superseded by this evidence and amended DEC-131. The in-memory race resets on restart as explicitly documented; this is not a durable elapsed-time guarantee or a guarantee for arbitrarily hung active model/tool work.
+
+A distinct cancellation interaction discovered in this round is raised separately: wake_cancel can terminate the monitor after admission while answering already fired. That does not negate the original-case withdrawal repair verified here. These are proposed-state-machine/API probes, with failure/notification hooks recorded in memory, not production wake code, real notifications, deployed room behavior, wall-clock timing or SQLite crash-durability tests."""
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "major"
+title = "wake_cancel can answer already fired while terminating the only bounded-wait monitor for a queued input"
+detail = """
+Expected: the new Fire composition contract (design.md:355-367,413-423; DEC-134) withdraws and reports every wake input still queued after one ceiling, including when a foreground run failed under keep. Reporting already fired must not silently discard the wake's only responsibility for reaching that outcome. W9's no-false-cancelled-answer guarantee must continue to hold.
+
+Observed: Tools (:299-314) still says a sleeping inspection causes harness.abortTask(id), then reports from the task's settled result. The explicitly supported timer-first race (:308-311) lets the task reach submit before that abort. The Wake task abort handler (:132-136) then commits terminal completed {fired:true}; this correctly preserves W9, but it destroys the submit invocation that owns the newly added bound. No handler or replacement takes responsibility for the already-admitted submission. If its foreground run fails, the queued wake now has neither a live bound nor a failure-reporting continuation. The same issue applies to a prepared sleeping occurrence after a submit-host-defer (:145-154): wake_cancel aborts its monitor and answers already fired. This is a new interaction with the F-11 repair, not a request to undo F-3/F-9/F-10 or to classify an admitted input as successfully cancelled.
+
+VERIFIED source: pi-durable harness/scheduler.ts:558-584 abort-marks and joins the run invocation, with abort settlement handled separately; the design's handler makes that task terminal. harness/harness.ts:491-518 binds submission wait/abort operations to the invocation lifetime; ending the invocation leaves the admitted input durable. harness/submissions.ts:130-143 withdraws only when Submission.abort is actually called; abortTask does not call it. generation.ts:404-427 under afterFailedRun:keep leaves queued inputs in place. The source's endRun in live.ts:138-145 settles the failed run's own inputs, not the later queued wake.
+
+VERIFIED in-memory reproduction against malebolge's installed pi-durable 1.4.0, using the authored fire/submit shape, corrected checkpoint-reading abort handler and new submission.wait/timeout/Submission.abort rule: created a sleeping one-shot; retained the sleeping inspect result (until 1100); advanced to its deadline; let it checkpoint submit and queue wake:10:0 behind a foreground run; failed that run; performed the cancel recipe's abortTask and waitForTask. Task result was terminal completed {fired:true}, corresponding to cancelled:false/already fired. Then released the controlled ceiling trigger. The input was still queued, model call count stayed 1, and no withdrawal or failure-report event occurred. A later control input to the original target released it to done (3 calls), demonstrating that the durable input remained executable. A separate normal-path control withdrew the input and reported failure, confirming this result comes from aborting its monitor rather than a broken test bound. Notifications were in-memory hooks; no external message was sent.
+
+INFERENCE: absent later input/write to the target, the task remains terminal while its input stays queued indefinitely. Thus the original silent-stranding failure class remains reachable specifically through the documented cancel/timer race; a mere already-fired answer does not preserve the new bounded-wait contract. Listing only sleeping live tasks also hides this orphaned submission.
+
+Repair: retain or explicitly transfer withdrawal/reporting responsibility whenever wake_cancel discovers, or races with, a potentially admitted occurrence. Do not merely change its answer, and do not use Conversation.abort (which also withdraws user inputs). Specify both timer-before-cancel and prepared-sleeping behavior, preserving W1, W4 and W9; extend the cancellation tests to fail the foreground run and advance beyond the queue bound, checking the actual submission and failure report as well as the tool answer. A pre-inspection check alone does not close the timer race."""
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Observation verified on source: Harness.abortTask marks, signals and joins the active invocation (harness/types.ts abortTask doc) and never calls Submission.abort; the prior abort handler went straight to terminal. Repair accepted by the user 2026-10-27, design rev 50: the wake task abort handler owns the occurrence input. For phase submit or prepared it looks up the submission by requestId wake:<id>:<n> in the target (tx.submissionByRequest) and calls Harness.abortSubmission(id, ctx, conversation): no submission or not_found means never admitted (reliable, because abortTask joins the task invocation before the abort invocation runs) and gives fired false; aborted means withdrawn while queued, fired false; already_placed or settled, or any error, gives fired true. Every abort path (wake_cancel, heartbeat replacement) passes through the handler, so no aborted wake leaves a queued input unwatched; W9 holds (cancelled only when no turn ran or will run). Edited: The wake task (handler, ownership table, state diagram, prepared prose), Tools race prose, W9, WakeDeps adds abortSubmission, Verification (cancel owns the input: timer-first with the input queued behind a foreground run, then fail the run and advance past one ceiling, checking the submission settled unanswered aborted and no failure report; prepared admitted and prepared unadmitted; placed at cancel; negative control), crash-before-admission test now expects cancelled. DEC-127 amended. Also added at the user's direction: a 2 h per-model-request timeout (HarnessOptions.settings.stream.timeoutMs) so a hung model stream cannot hold a placed wake forever, and a Risks entry for hung in-turn tool calls (implementation check of per-tool deadlines).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Observation verified on source: Harness.abortTask marks, signals and joins the active invocation (harness/types.ts abortTask doc) and never calls Submission.abort; the prior abort handler went straight to terminal. Repair accepted by the user 2026-10-27, design rev 50: the wake task abort handler owns the occurrence input. For phase submit or prepared it looks up the submission by requestId wake:<id>:<n> in the target (tx.submissionByRequest) and calls Harness.abortSubmission(id, ctx, conversation): no submission or not_found means never admitted (reliable, because abortTask joins the task invocation before the abort invocation runs) and gives fired false; aborted means withdrawn while queued, fired false; already_placed or settled, or any error, gives fired true. Every abort path (wake_cancel, heartbeat replacement) passes through the handler, so no aborted wake leaves a queued input unwatched; W9 holds (cancelled only when no turn ran or will run). Edited: The wake task (handler, ownership table, state diagram, prepared prose), Tools race prose, W9, WakeDeps adds abortSubmission, Verification (cancel owns the input: timer-first with the input queued behind a foreground run, then fail the run and advance past one ceiling, checking the submission settled unanswered aborted and no failure report; prepared admitted and prepared unadmitted; placed at cancel; negative control), crash-before-admission test now expects cancelled. DEC-127 amended. Also added at the user's direction: a 2 h per-model-request timeout (HarnessOptions.settings.stream.timeoutMs) so a hung model stream cannot hold a placed wake forever, and a Risks entry for hung in-turn tool calls (implementation check of per-tool deadlines).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+VERIFIED the repair to F-12's original wake_cancel/timer and prepared-sleeping cases against current design revision 51 (rev-50 materialization; watermark 4d345bde664834e4f7a8b1a5308db890cca99f152794c72b5d46cc08784545f9), amended DEC-127, W9 and Tools. The handler at design.md:133-164 now looks up the exact occurrence and withdraws a queued input before committing fired:false; placed/settled inputs conservatively give fired:true. This closes the original loss of the monitor when an ordinary cancellation runs the handler.
+
+Source: Harness.abortSubmission (harness/harness.ts:324-329) delegates to the atomic queue-only operation in harness/submissions.ts:130-143. Tx.submissionByRequest is a committed conversation-scoped lookup (session/transaction.ts:278-282). A read-only runtime.commit followed by abortSubmission OUTSIDE that callback is permitted: scheduler #gated (:2340-2362) excludes abortRequested writes only in run mode, while abort mode can use the fresh invocation/context and then commit terminal. runtime.commit returns void, so the probe captured the lookup in the callback and passed its context explicitly; no nested Session call or forbidden waiting/sleeping state was used. scheduler.ts:558-584 and :1831-1832/:2063-2075 ensure an ordinary invocation cannot admit new work after its handoff to abort cleanup; already-admitted commits are on the same Session line. abortTask returning does not itself mean the abort handler has settled; wake_cancel's waitForTask remains necessary.
+
+Completed installed-1.4.0 Node-stdin/MemoryStorage/faux probes: timer/admission before cancel -> handler saw queued, abortSubmission returned aborted, task completed fired:false, wake input unanswered/aborted, and another queued user input stayed queued; prepared admitted -> same safe withdrawal; prepared unadmitted -> missing lookup, fired:false, no input; bounded-wait withdrawal winning before task abort -> settled, fired:true with no queued orphan; a placed wake at cancel -> already_placed/fired:true and the held turn subsequently completed. Close/reopen during the abort invocation before withdrawal retried cleanup and returned fired:false; close/reopen after withdrawal but before the terminal checkpoint found unanswered/aborted, returned settled/fired:true and did not resurrect the input. The latter is the intentional conservative overstatement, not a false cancellation. A restart_limit heartbeat replacement control also ran the handler and withdrew its input.
+
+Two distinct new gaps are raised separately: the new model timeout does not cover a stalled streaming body on the actual gateway provider; and definition-blocked heartbeat replacement can bypass the task handler entirely. They do not invalidate the original cancellation repair verified here. These are proposed-state-machine/API probes over retained MemoryStorage (close suppressed on the backing only), not production wake code, real notifications, process-crash/SQLite durability or deployed jail behavior."""
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "major"
+title = "settings.stream.timeoutMs does not bound a gateway model stream stalled after response headers"
+detail = """
+Expected: Daemon wiring and configuration (design.md:575-581) adds a 2 h MODEL_REQUEST_TIMEOUT_MS via settings.stream.timeoutMs specifically 'so a hung model stream cannot hold a turn — and the wake waiting on it — forever'. Verification (:746-747) currently checks only that faux request options carry the number. Fire composition still waits unbounded once the wake input is already_placed (:392-394), so actual stream-time enforcement matters for the claimed liveness improvement.
+
+Observed/VERIFIED source: malebolge src/models.ts:17,93-104,142-145,163-176 uses pi-ai's openai-completions adapter for the gateway. pi-durable harness/generation.ts:226-233 passes the setting into pi-ai without an independent elapsed-time abort. pi-ai src/api/openai-completions.ts:376-390 passes timeoutMs to the OpenAI SDK request's timeout and then begins consuming the stream; src/types.ts:200-204 calls this an HTTP request timeout for supporting SDKs. In malebolge's installed OpenAI SDK 7.19.0, node_modules/openai/src/client.ts:1610-1652 starts that timeout around fetch and clears it in finally when fetch returns a Response (headers), before its streaming body is consumed. client.ts:1033-1040 also bypasses non-streaming response-body timeout handling for stream requests. There is no replacement timeout in the SSE iteration at core/streaming.ts:106-137. Thus this option does not implement the stated full-request stream bound on the provider this daemon actually uses.
+
+VERIFIED no-network probe with installed pi-ai 1.4.0 and its real openai-completions/SDK path: injected a fetch returning status 200, SSE headers and one valid assistant chunk, then a ReadableStream that never emits or ends; the injected body honors the transport AbortSignal. With timeoutMs:20 and maxRetries:0, after 100 ms the pi-ai result was still unsettled and the SDK transport signal was not aborted. Explicit caller abort ended the stream as stopReason:aborted. A positive control withholding response headers with the same timeoutMs:20 did abort and return stopReason:error / 'Request timed out.' This checks the actual enforcement boundary with a shortened parameter, not two hours of production timing; no real provider, gateway, key or HTTP server was contacted.
+
+INFERENCE: a gateway/upstream that starts its SSE response and then stalls can keep a placed wake and its heartbeat submit invocation alive indefinitely despite the new 2 h setting; a test that merely inspects faux options passes while this failure remains. A live but stalled model stream is distinct from the separately accepted hung-tool risk.
+
+Repair: retain the user's chosen 2 h per-model-request policy, but enforce a deadline across actual response-body streaming with a cancellation path that settles the placed input. Choose the owning model/provider wrapper or other appropriate existing seam; merely forwarding the SDK timeout is insufficient. Add a real transport-adapter test for headers/first-chunk-then-stall, including successful cleanup/settlement, alongside the existing option-propagation test. This does not request a turn budget or change the accepted no-owned-spend-limits decision."""
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Accepted. Verified: the installed OpenAI SDK fetchWithTimeout clears its timer in finally once fetch returns headers, and pi-durable passes runtime.signal to pi-ai with no elapsed-time abort of its own (generation.ts streamResponse options). Repair accepted by the user 2026-10-27, design rev 52: settings.stream.timeoutMs is dropped; gatewayProvider in src/models.ts wraps the gateway API in withStreamDeadline with a 2 h code constant, running from request start across headers and the whole body; on expiry it aborts the inner request and ends the stream as an error, which pi-durable treats as a model error (retries per policy, then fails the run and settles its inputs unanswered). Worst case is about retries plus one times 2 h. Owned by malebolge, not a pi option, so it does not depend on pi internals. Edited Daemon wiring, Fire composition (already_placed note), Code impact, Verification, Risks.
+Criterion the demonstration must assert: through the real pi-ai openai-completions adapter with an injected transport and a shortened deadline, a response that sends headers and one chunk and then never ends makes the stream end as an error, the inner request signal aborted, the run fail after its retries, and a placed wake input settle unanswered; a stream finishing inside the deadline is unaffected. Constraint on the host phase: it must exercise the wrapper inside a real pi-durable run over the real adapter, not option propagation on a faux model, and it lands no later than the phase that first relies on a placed wake always settling.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "demonstrate"
+response = """
+Accepted. Verified: the installed OpenAI SDK fetchWithTimeout clears its timer in finally once fetch returns headers, and pi-durable passes runtime.signal to pi-ai with no elapsed-time abort of its own (generation.ts streamResponse options). Repair accepted by the user 2026-10-27, design rev 52: settings.stream.timeoutMs is dropped; gatewayProvider in src/models.ts wraps the gateway API in withStreamDeadline with a 2 h code constant, running from request start across headers and the whole body; on expiry it aborts the inner request and ends the stream as an error, which pi-durable treats as a model error (retries per policy, then fails the run and settles its inputs unanswered). Worst case is about retries plus one times 2 h. Owned by malebolge, not a pi option, so it does not depend on pi internals. Edited Daemon wiring, Fire composition (already_placed note), Code impact, Verification, Risks.
+Criterion the demonstration must assert: through the real pi-ai openai-completions adapter with an injected transport and a shortened deadline, a response that sends headers and one chunk and then never ends makes the stream end as an error, the inner request signal aborted, the run fail after its retries, and a placed wake input settle unanswered; a stream finishing inside the deadline is unaffected. Constraint on the host phase: it must exercise the wrapper inside a real pi-durable run over the real adapter, not option propagation on a faux model, and it lands no later than the phase that first relies on a placed wake always settling.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+Opus standing in for codex (quota exhausted). Verified as a sound resolution. The mechanism (a malebolge-owned wrapper around the gateway API in gatewayProvider, src/models.ts:183-197, timing from request start across the whole body and aborting the inner request) bounds the headers-then-stall case F-13 demonstrated, and does not depend on the OpenAI SDK timeout that clears at headers. The criterion discriminates the original failure: an injected transport that sends headers plus one chunk then stalls, through the real openai-completions adapter inside a real pi-durable run, cannot pass by option propagation on a faux model, and the positive control guards against a wrapper that cuts healthy streams. The host-phase constraint (no later than the first phase relying on a placed wake always settling) is the right ordering. One clause is mis-stated - the run fails after its retries: with the specified error text, and with pi-ai's abort path setting stopReason aborted (openai-completions.ts:726), pi-durable does not retry (generation.ts:559-567, retry.ts:266-271). That does not weaken the bound; it is raised separately as F-16 so the criterion asserts the request count.
+"""
+
+[[finding]]
+id = "F-14"
+status = "verified"
+severity = "major"
+title = "Definition-blocked heartbeat replacement orphans the task without running its new input-withdrawal handler"
+detail = """
+Expected: the new Wake task ownership prose (design.md:158-164) says 'Every abort path goes through the handler — wake_cancel and the heartbeat replacement ... so no aborted wake leaves a queued input unwatched'; W9 (:79-84) repeats that property. Heartbeat ensure (:469-474) explicitly supports candidates blocked for missing_task, task_too_old and migration_failed as well as restart_limit: it calls abortTask and replaces them. The new handler is currently the only cleanup owner for such a task's occurrence.
+
+Observed/VERIFIED source: pi-durable distinguishes a restart-limit park from an unavailable/incompatible definition. harness/scheduler.ts:558-574 resolves an inactive task before marking it and calls #terminate with orphaned immediately when no definition can take it and no owned work remains. Its abort-reservation path (:1545-1551) likewise orphans rather than calling missing/incompatible code. docs/spec.md:2234-2243 explicitly states that aborting a blocked task cannot run its abort handler and external effects may remain uncleaned; it names missing_task, task_too_old and migration_failed. The design's assertion that every replacement abort passes through withdraw is therefore false for three of the four blocked reasons it explicitly lists. Only the restart_limit case with a usable definition still runs the handler, aided by withAbortMark resetting the restart count (:2403-2409).
+
+VERIFIED installed pi-durable 1.4.0 MemoryStorage/faux probe: an old recurring satan.wake v2 submitted wake:10:0 behind a foreground run; the run failed, leaving that input queued under keep. Closed/reopened with the same task kind registered at v1, modelling an incompatible-definition rollback; inspection returned blocked/task_too_old. The ensure recipe's abortTask plus waitForTask returned terminal orphaned/task_too_old with zero abort-handler calls, and wake:10:0 remained queued. Two successful replacement-heartbeat-like inputs to a newer conversation still left the original input queued (3 model calls total). Targeting a newer conversation is allowed by ensure's latest-topic selection and W8: replacement need not return to the old task's fixed target. A control using a v1 record parked by restarts:5 instead returned blocked/restart_limit, ran the same handler once, and settled the old input unanswered/aborted before replacement traffic. The control's restart count was explicitly seeded in the in-memory record to exercise the documented parked branch. No production upgrade/rollback or real process crash was performed.
+
+INFERENCE: in the design's supported incompatible/missing-definition replacement cases, an old heartbeat input can remain queued with no handler or bounded monitor, even though the daemon has a healthy replacement. If replacement targets the original conversation, the old orphaned input may instead run later when fresh input releases it; it still did not receive the promised withdrawal/ownership handoff. This is separate from F-12's ordinary cancel race, whose now-executable abort handler is repaired.
+
+Repair: give ensure/recovery an explicit fallback cleanup/monitoring responsibility when abortTask cannot execute the definition, or narrow and reconcile which blocked reasons it promises to handle. Do not infer handler execution from abortTask success or terminality. Safely identify the old occurrence from the stored record and preserve user submissions and W1/W4/W9; define the fallback for unsupported checkpoint versions rather than guessing. Test at least a definition-blocked replacement with an already-queued occurrence, including a newer latest-topic conversation, in addition to the current restart_limit test. No change to afterFailedRun:keep or a new schema owner is required."""
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Verified: pi-durable docs/spec.md (blocked tasks) says aborting a blocked task cannot run its abort handler and settles it orphaned for missing_task, task_too_old and migration_failed. Repair accepted by the user 2026-10-27, design rev 52-54: a start sweep (src/wake/sweep.ts, sweepBlockedWakes), room only, before ensure: for every blocked satan.wake, heartbeat or one-shot, journal, abortTask, then withdraw its still-queued inputs by scanning inspect().submissions for requestIds starting wake:<id>: and calling Harness.abortSubmission on each queued one (placed left to run). The wake request-id namespace is the wake's own (W1) and does not depend on the checkpoint version, so no unsupported checkpoint is read. A blocked one-shot takes the failure report; a heartbeat is replaced by ensure, which now only counts and creates. The withdrawal runs whether or not the handler ran; abortSubmission is one commit, so a double attempt yields aborted then settled. The wake task prose no longer claims every abort runs the handler. Verification adds the start-sweep case: task_too_old heartbeat with a queued occurrence, replacement in a newer topic conversation, restart between abort and create, blocked one-shot with report, restart_limit with the handler also withdrawing, placed input left alone, and a negative control. DEC-131 amended; scope reconciled.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "review"
+response = """
+Accepted. Verified: pi-durable docs/spec.md (blocked tasks) says aborting a blocked task cannot run its abort handler and settles it orphaned for missing_task, task_too_old and migration_failed. Repair accepted by the user 2026-10-27, design rev 52-54: a start sweep (src/wake/sweep.ts, sweepBlockedWakes), room only, before ensure: for every blocked satan.wake, heartbeat or one-shot, journal, abortTask, then withdraw its still-queued inputs by scanning inspect().submissions for requestIds starting wake:<id>: and calling Harness.abortSubmission on each queued one (placed left to run). The wake request-id namespace is the wake's own (W1) and does not depend on the checkpoint version, so no unsupported checkpoint is read. A blocked one-shot takes the failure report; a heartbeat is replaced by ensure, which now only counts and creates. The withdrawal runs whether or not the handler ran; abortSubmission is one commit, so a double attempt yields aborted then settled. The wake task prose no longer claims every abort runs the handler. Verification adds the start-sweep case: task_too_old heartbeat with a queued occurrence, replacement in a newer topic conversation, restart between abort and create, blocked one-shot with report, restart_limit with the handler also withdrawing, placed input left alone, and a negative control. DEC-131 amended; scope reconciled.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+Opus standing in for codex (quota exhausted). Verified as a sound resolution in normal operation. Checked against pi-durable 1.4.0 source: abort of a definition-blocked task settles it orphaned without a handler (scheduler.ts:558-574), so a sweep that withdraws independently of the handler is required; inspect().submissions holds queued and placed submissions across conversations with requestId and conversationId (harness.ts:310-317); abortSubmission is one commit that withdraws only a queued input and reports placed/settled (submissions.ts:130-143), so the sweep and a concurrently running restart_limit handler cannot double-withdraw or lose an abort - the loser sees settled and the handler reports fired, the overstatement W9 permits. The wake: namespace scan is version-independent as claimed. TaskIds are numeric, so the trailing colon in wake:<id>: prevents 1 matching 10. Wording that every abort runs the handler is removed. One gap in the repair's crash analysis is raised separately as F-15: the abort commits orphaned before the withdrawal, and an orphaned task is not live, so a crash between steps 2 and 3 strands the input permanently.
+"""
+
+[[finding]]
+id = "F-15"
+status = "verified"
+severity = "minor"
+title = "Start sweep orphans a definition-blocked wake before withdrawing its input, so a crash between them leaves the input unwatched for good"
+detail = """
+Opus standing in for codex (quota exhausted). Expected: the F-14 repair (design.md Heartbeat, Sweep steps 1-4, approx lines 469-497) claims no aborted wake leaves a queued input unwatched, and its restart analysis covers only the window between the sweep's abort and ensure's create.
+
+Observed/VERIFIED source (pi-durable 1.4.0, ~/.local/src/pi/packages/durable/src): harness/scheduler.ts:558-574 - abort() of a task with no invocation, no owned live work and a blocked resolution (missing_task, task_too_old, migration_failed) calls #terminate(... orphaned ...) inside the same commit, so step 2 (abortTask) makes the task terminal at once. harness/types.ts:709-714 - HarnessInspection is a point-in-time view of live work: unfinished tasks only. The sweep selects 'every live satan.wake whose inspection state is blocked'. Verification (design.md approx 751-761) tests a restart between abort and create, not between abort and withdraw.
+
+INFERENCE: a crash or stop after step 2 commits and before step 3 withdraws leaves the definition-blocked wake terminal (orphaned) and its occurrence still queued. The next start's sweep never sees that task (not live), the abort handler never existed for it, and ensure does nothing for queued inputs - exactly the unwatched queued input F-14 described, now reachable through a crash window inside its own repair. A blocked one-shot's step 4 failure report is lost in the same window. Narrow window, so minor; but it falsifies the stated invariant and the existing restart test would not catch it.
+
+Repair options (choose one): (a) reorder - withdraw queued wake:<id>: inputs (and send a one-shot's report) before abortTask; the task is blocked, so nothing can resubmit, and a crash after withdraw leaves it live and blocked for the next sweep to finish (idempotent); or (b) also sweep queued submissions whose requestId is in the wake: namespace and whose task id is not a live task. Add a test: definition-blocked wake with a queued occurrence, stop after the abort commits and before withdrawal, reopen - the input ends unanswered/aborted. Negative control: the current order leaves it queued.
+"""
+disposition = "fix-now"
+response = """
+Accepted. Verified: scheduler.ts:558-574 settles a definition-blocked task with nothing live as orphaned inside the abort commit, and inspect() lists live tasks only, so the old order (abort, then withdraw) had a crash window that left the queued input unwatched for good. Repair (option a), design rev 56: the sweep now journals, withdraws queued wake:<id>: inputs, sends a one-shot's failure report, and calls abortTask last. A crash before the abort leaves the task live and blocked, so the next start's sweep repeats the steps; the input stays withdrawn and a one-shot's report may repeat, never be lost. The restart_limit case: the handler finds the input already withdrawn and gets settled. Edited Heartbeat (Sweep steps and the paragraph after them) and Verification (Start sweep: a restart after withdrawal and before abort; a second negative control, abort-before-withdraw stopped between the two, leaves the input queued and fails the test).
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Accepted. Verified: scheduler.ts:558-574 settles a definition-blocked task with nothing live as orphaned inside the abort commit, and inspect() lists live tasks only, so the old order (abort, then withdraw) had a crash window that left the queued input unwatched for good. Repair (option a), design rev 56: the sweep now journals, withdraws queued wake:<id>: inputs, sends a one-shot's failure report, and calls abortTask last. A crash before the abort leaves the task live and blocked, so the next start's sweep repeats the steps; the input stays withdrawn and a one-shot's report may repeat, never be lost. The restart_limit case: the handler finds the input already withdrawn and gets settled. Edited Heartbeat (Sweep steps and the paragraph after them) and Verification (Start sweep: a restart after withdrawal and before abort; a second negative control, abort-before-withdraw stopped between the two, leaves the input queued and fails the test).
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+Opus standing in for codex (quota exhausted). Verified. Rev 59 Heartbeat Sweep orders journal, withdraw queued wake:<id>: inputs, one-shot report, abortTask last, and the paragraph after it states why. Attacked the reorder: (1) own fire phase - a blocked task has no invocation; definition-blocked tasks cannot run, and a restart_limit park runs again only on retryTask, which neither the design nor malebolge src calls, so nothing can resubmit between withdraw and abort. (2) concurrent wake_cancel during the sweep (a user turn may run after resume) - wake_cancel answers already fired for any non-sleeping task and leaves it alone (design Tools, wake_cancel), which W9 permits for an input that never ran; it never aborts a blocked task, so no second abort path competes. (3) a user input placing the queued input mid-sweep - abortSubmission is one commit and returns already_placed, left to run per W4. (4) restart_limit handler after withdrawal sees settled and returns fired:true; no consumer reads that result, and the sweep already sent the report. Crash after withdraw re-runs the sweep idempotently with at most a duplicate one-shot report, as stated. Verification adds the withdraw-then-restart case and an abort-before-withdraw negative control that discriminates the old order.
+"""
+
+[[finding]]
+id = "F-16"
+status = "verified"
+severity = "minor"
+title = "Stream deadline expiry is non-retryable under pi-ai 1.4.0, contradicting the stated retries-then-fail outcome and the F-13 criterion"
+detail = """
+Opus standing in for codex (quota exhausted). Expected: Daemon wiring and configuration, Model stream deadline (design.md approx 598-611) says that on expiry the wrapper ends the stream as an error (model stream exceeded 2h) and pi-durable handles that as any model error: it retries per its retry policy, then fails the run; worst case about (retries + 1) x 2 h. Verification (approx 789-795) and the F-13 ledger criterion assert the run fails after its retries.
+
+Observed/VERIFIED source (pi 1.4.0 source at ~/.local/src/pi, same version as malebolge's installed pi-ai and pi-durable): durable/src/harness/generation.ts:559-567 retries only when stopReason is error AND isRetryableAssistantError(message). ai/src/utils/retry.ts:266-271 returns true only when errorMessage matches RETRYABLE_PROVIDER_ERROR_PATTERN (lines 33-118: overloaded, 5xx codes, timed out, timeout, terminated, network/connection wording, etc). The text model stream exceeded 2h matches none of them. Separately, ai/src/api/openai-completions.ts:726 sets stopReason to aborted (errorMessage Request was aborted, :696-701) whenever the request signal is aborted - which is how the wrapper cancels the inner request - and generation.ts:537-588 treats a non-error stopReason as non-retryable and fails the run with model_error.
+
+INFERENCE: as specified, the first deadline expiry fails the run immediately with zero retries, whichever way the wrapper ends the stream. The liveness bound still holds and is tighter (one deadline, not retries+1), so this is not a liveness defect; it is a mis-stated outcome class. Consequences: the worst-case arithmetic and the criterion clause after its retries describe behaviour that will not occur, and the design has not actually decided whether a stalled stream should be retried (a transient upstream stall arguably should be). A test written to the criterion either fails for the wrong reason or is quietly adjusted at implementation.
+
+Repair: decide the outcome class. Either (a) no retry - state that the deadline fails the run at once, worst case about 2 h, and make the criterion assert exactly one model request; or (b) retry - the wrapper must end the stream with stopReason error (not aborted, even though it aborted the inner request) and an errorMessage the pi-ai classifier deems retryable (e.g. containing timed out), and the criterion asserts retries+1 requests. Either way the test asserts the request count, so it discriminates.
+"""
+disposition = "fix-now"
+response = """
+Accepted. Verified: generation.ts:561-566 retries only stopReason error whose message isRetryableAssistantError accepts (retry.ts:266-271); model stream exceeded 2h matches none of its patterns, and openai-completions.ts:726 sets aborted when the request signal is aborted, which is never retried. User decision 2026-10-27: no retry. Design rev 56 and 58, Daemon wiring: the expiry is not retried by design, and the wording is deliberately non-transient; the run fails with model_error on the first expiry, its inputs settle unanswered and the wake reports through the Fire composition failure path. The bound is per model request (about 2 h from that request's start), not per turn, since a turn may make several requests. The worst-case arithmetic is removed. Verification, Model stream deadline: the run fails with model_error after exactly one model request (no retry), so a wording change that made the expiry retryable fails the test. This supersedes the F-13 criterion clause the run fail after its retries; the criterion /plan carries for F-13 must read: the run fails with model_error after exactly one model request.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = """
+Accepted. Verified: generation.ts:561-566 retries only stopReason error whose message isRetryableAssistantError accepts (retry.ts:266-271); model stream exceeded 2h matches none of its patterns, and openai-completions.ts:726 sets aborted when the request signal is aborted, which is never retried. User decision 2026-10-27: no retry. Design rev 56 and 58, Daemon wiring: the expiry is not retried by design, and the wording is deliberately non-transient; the run fails with model_error on the first expiry, its inputs settle unanswered and the wake reports through the Fire composition failure path. The bound is per model request (about 2 h from that request's start), not per turn, since a turn may make several requests. The worst-case arithmetic is removed. Verification, Model stream deadline: the run fails with model_error after exactly one model request (no retry), so a wording change that made the expiry retryable fails the test. This supersedes the F-13 criterion clause the run fail after its retries; the criterion /plan carries for F-13 must read: the run fails with model_error after exactly one model request.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = """
+Opus standing in for codex (quota exhausted). Verified. Rev 59 Daemon wiring states expiry is deliberately non-retryable, the run fails with model_error on the first expiry, and the bound is per model request (about 2 h from that request's start), with the turn as a whole unbounded since healthy requests each get their own deadline - this matches generation.ts:559-588 and retry.ts:266-271. The outcome holds whichever way the wrapper ends the stream: an adapter-side stopReason aborted (openai-completions.ts:726) is also never retried and fails as model_error, so the wording is not load-bearing for the class, only for retry. Verification now pins exactly one model request, which discriminates a retryable wording. The superseded F-13 criterion clause is named in the response for /plan to carry.
+"""
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.

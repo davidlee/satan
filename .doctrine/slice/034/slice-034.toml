@@ -1,7 +1,7 @@
 id = 34
 slug = "malebolge-wakeups"
 title = "malebolge wakeups: SATAN schedules its own turns in the room daemon"
-status = "design"
+status = "plan"
 created = "2026-10-27"
 updated = "2026-10-27"
 tags = []
@@ -12,22 +12,22 @@ after = []                      # slice→work soft sequence: { to, rank }
 
 [[selector]]
 selector = "src/daemon-extensions.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/daemon-start.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/conversation-context.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/satan-tools.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
@@ -42,12 +42,12 @@ note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/session.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
 selector = "src/config.ts"
-intent = "scope-relevant"
+intent = "design-target"
 note = "cross-repo: paths are in ~/dev/malebolge"
 
 [[selector]]
@@ -69,6 +69,46 @@ note = "satan repo: wake mode/kind"
 selector = "satan/satan-mode.el"
 intent = "scope-relevant"
 note = "satan repo: wake mode/kind"
+
+[[selector]]
+selector = "flake.nix"
+intent = "design-target"
+note = "this repo: jail env + probes, ledger, docs sentences"
+
+[[selector]]
+selector = ".doctrine/adr/017/authority-ledger.md"
+intent = "design-target"
+note = "this repo: jail env + probes, ledger, docs sentences"
+
+[[selector]]
+selector = "docs/architecture.md"
+intent = "design-target"
+note = "this repo: jail env + probes, ledger, docs sentences"
+
+[[selector]]
+selector = "docs/governance.md"
+intent = "design-target"
+note = "this repo: jail env + probes, ledger, docs sentences"
+
+[[selector]]
+selector = "src/wake/**"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/harness-fixture.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "test/wake-*.test.ts"
+intent = "design-target"
+note = "cross-repo: paths are in ~/dev/malebolge"
+
+[[selector]]
+selector = "prompts/wake.md"
+intent = "design-target"
+note = "cross-repo: ~/satan-corpus"
 
 [[relation]]
 label = "governed_by"

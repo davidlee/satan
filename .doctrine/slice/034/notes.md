@@ -68,18 +68,54 @@ Runbook steps `inquire.knowledge` and `inquire.scope` discharged (rev 23–24);
 scope rewritten. Outstanding before drafting: GPT sense check of the map (user
 direction), then the user's `sufficiency-accepted`.
 
+## GPT sense check (2026-10-27)
+
+Codex `gpt-6.1-sol`, thread `01a17c9f-bea9-7882-bd5c-1f09ef8779b0`. Verdict:
+approach sound; F1–F3 would-block, F4–F8 should-fix. All dispositions accepted
+by the user as recommended; applied as DEC amendments (each DEC body records it).
+
+| # | Fix | DEC |
+|---|---|---|
+| F1 | stable occurrence id `wake:<taskId>:<n>`; defer keeps `n` | 127, 133 |
+| F2 | switch stops new admissions only; `satan-mcp-enabled` is the hard stop | 132, 136 |
+| F3 | wake env set in room jail `set-env` + launcher probes (row 3b); no `~/flakes` change | 139, 132, 136 |
+| F4 | pending = sleeping only; blocked/parked heartbeat recreated; `afterFailedRun` stays `keep` | 131 |
+| F5 | `wake_cancel` only while sleeping, else "already fired" | 130 |
+| F6 | admission-time quiet gating, documented | 128, 133 |
+| F7 | tool decides `at`, stored in task input | 127 |
+| F8 | journal line per gate decision + terminal outcome; journal suffices for REQ-003 | 136 |
+| ASM-c | settled by source (`generation.ts:376`) | 134 |
+
+Verified in source: F1, F3, F4, F7, ASM-c. F2, F5 plausible from the API
+(`resume()` re-drives admitted work; `abortTask` does not withdraw inputs).
+
+## Further review pass (2026-10-28, after RV-062 concluded)
+
+None needed before lock. RV-062 ran four rounds; the last (Opus standing in
+for codex) raised only two minors, both repaired and verified, against
+design rev 59. What another pass would probe is implementation-bound and
+is not settled by design prose: the F-13 demonstration (stream deadline
+through the real adapter in a real pi-durable run, criterion as amended by
+F-16), the sweep's crash windows as tests, and per-tool deadlines for
+in-turn tool calls (Risks). Those land as `/plan` criteria and `/audit`.
+The later route-only reopen of F-1…F-5/F-7/F-9 (routed `review`, verdicts
+unchanged, re-concluded) examined nothing new and changes none of this.
+
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-27 · design/inquiring (run rev 24) · SL-034 inquiry uncommitted until this commit
+fresh-as-of: 2026-10-28 · design locked (run rev 63) · slice status plan
 
 ### Produced
-- SL-034 scope (rewritten), notes; research (`research/`, gitignored); design run dr-01a17c58 (inquiring, 11/11 resolved).
-- DEC-127 … DEC-139 (accepted, shape SL-034); IMP-056, IMP-057, IMP-058.
+- SL-034 scope (rewritten, reconciled with RV-062), notes; research (`research/`, gitignored); design run dr-01a17c58 (locked 2026-10-28; 13 sections attested, RV-062 conducted).
+- DEC-127 … DEC-139 (accepted, shape SL-034; 127/128/130–134/136/139 amended by the GPT sense check and RV-062; 127/131/134 again by RV-062 F-11/F-12/F-14); IMP-056, IMP-057, IMP-058.
+- RV-062 (design review, raiser codex; Opus stood in for F-13…F-16): done, F-1…F-16 verified, concluded. F-13 routed demonstrate (its criterion clause amended by F-16's response).
 
 ### Learned
 - mem.fact.pi-durable.scheduled-turn-mechanics (spike S1–S6).
+- Candidate memories (not yet recorded): satan-mcp tool results are printed Lisp text (`satan-mcp.el:381`), not JSON; pi-durable `RunningTask.state` is `{status, checkpoint}`; `inspect()` reports a task awaiting `Submission.wait()` as `running` even when its input is stuck behind a failed run; design-run sections materialise in lexical id order (`sec-1`, `sec-10`, …); `Submission.abort()` withdraws only a still-queued input, check and withdraw in one commit (`harness/submissions.ts:130-143`); aborting a definition-blocked task never runs its abort handler, it settles `orphaned` (pi-durable `docs/spec.md` § blocked tasks); pi-ai `timeoutMs` on the openai-completions path stops at response headers (OpenAI SDK `fetchWithTimeout`); pi-durable retries a model error only when `stopReason` is `error` and pi-ai's wording classifier accepts it (`generation.ts:561-566`), so an aborted request is never retried.
 
 ### Open
-- GPT sense check of the inquiry map; user `sufficiency-accepted`; then drafting.
-- ASM-c (scope): model_error vs settled submission — verify in implementation.
+- Next: `/plan`.
+- `/plan` must carry F-13's criterion with F-16's amendment (exactly one model request, no retry).
+- Implementation checks carried by the design: room jail time zone; per-tool deadlines for in-turn tool calls (Risks).
 - Candidate backlog at close: close IDE-014 / IDE-017 as absorbed.
