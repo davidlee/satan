@@ -32,7 +32,7 @@ malebolge-unbound:
     #!/usr/bin/env bash
     set -euo pipefail
     out=$(JAIL_WORKSPACE_DEPS="$HOME/notes/" \
-      nix build --impure --no-link --print-out-paths .#jailed-malebolge)
+      nix build --impure --no-link --print-out-paths .#jailed-malebolge-probe)
     launcher=$out/bin/jailed-malebolge
     test -f "$launcher" || { echo "no launcher at $launcher" >&2; exit 1; }
     if grep -Fq -- /workspace/ "$launcher"; then

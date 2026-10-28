@@ -297,6 +297,48 @@
             (readwrite malebolgeRuntimeDir)
             (readwrite malebolgeStateDir)
           ];
+        # The mail toolset's reader (malebolge SL-005 DEC-028; RFC-020 OQ-6 for
+        # this reader): the unwrapped binary and its config by store path, each
+        # bound with its closure, and the store's directory read-write: a
+        # read-only WAL connection still writes -wal and -shm beside the store
+        # (screwtape DEC-031). The token is not among them: only `sync` reads
+        # it, from the credstore.
+        screwtapeJailOptions = {
+          package,
+          configFile,
+          storeDir,
+        }:
+          with jailLib.combinators; [
+            (set-env "MALEBOLGE_SCREWTAPE" "${package}/bin/screwtape")
+            (set-env "MALEBOLGE_SCREWTAPE_CONFIG" "${configFile}")
+            (bind-pkg "${package}" package)
+            (bind-pkg "${configFile}" configFile)
+            (readwrite storeDir)
+          ];
+        # The room daemon's launcher. Its screwtape comes from the deployment
+        # (~/flakes features/satan/malebolge.nix: services.screwtape's package,
+        # configFile and storeDir), so the config has one author.
+        mkJailedMalebolge = {screwtape}:
+          jailLib.makeJailedAgent {
+            name = "malebolge";
+            agent = malebolgeDaemon;
+            profile = "offline";
+            mountLaunchDir = false;
+            extraPkgs = [pkgs.nodejs pkgs.openssh pkgs.socat];
+            extraOptions = malebolgeRoomJailOptions ++ screwtapeJailOptions screwtape;
+            # Its key file is its only secret: no jail carries a provider key.
+            workspaceDeps = [];
+            # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
+            workspaceDepsFromEnv = false;
+            # Its own persisted home, shared with no other jail (RV-035 F-6).
+            persistedHome = "malebolge";
+          };
+        # A stand-in for the checks only; it fails every call.
+        probeScrewtape = {
+          package = pkgs.writeShellScriptBin "screwtape" "exit 1";
+          configFile = pkgs.writeText "screwtape.json" "{}";
+          storeDir = "/home/david/.local/state/screwtape";
+        };
 
         # SL-029's per-call forms (`quotient help form`), one per filesystem
         # capability: quotient's form family through the agents lib, so the
@@ -371,20 +413,9 @@
               gateway = satanGateway;
               workspaceDeps = [];
             };
-            jailed-malebolge = jailLib.makeJailedAgent {
-              name = "malebolge";
-              agent = malebolgeDaemon;
-              profile = "offline";
-              mountLaunchDir = false;
-              extraPkgs = [pkgs.nodejs pkgs.openssh pkgs.socat];
-              extraOptions = malebolgeRoomJailOptions;
-              # Its key file is its only secret: no jail carries a provider key.
-              workspaceDeps = [];
-              # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
-              workspaceDepsFromEnv = false;
-              # Its own persisted home, shared with no other jail (RV-035 F-6).
-              persistedHome = "malebolge";
-            };
+            # The launcher the checks and scans see, on a stand-in screwtape;
+            # the deployment builds its own with mkJailedMalebolge.
+            jailed-malebolge-probe = mkJailedMalebolge {screwtape = probeScrewtape;};
             jailed-shell = jailLib.makeJailedAgent {
               name = "shell";
               agent = pkgs.zsh;
@@ -435,6 +466,9 @@
               "--setenv MALEBOLGE_GATEWAY_KEY_FILE /home/david/.config/llm-gateway/keys/malebolge "
               "--setenv MALEBOLGE_GATEWAY_CATALOG /home/david/.config/malebolge/gateway-models.json "
               "--setenv MALEBOLGE_WAKES on "
+              "--setenv MALEBOLGE_SCREWTAPE ${probeScrewtape.package}/bin/screwtape "
+              "--setenv MALEBOLGE_SCREWTAPE_CONFIG ${probeScrewtape.configFile} "
+              "--bind /home/david/.local/state/screwtape /home/david/.local/state/screwtape "
               # The wake quiet window is local time; without this Node falls
               # back to UTC (SL-034 EX-5).
               "--symlink \"$(readlink /etc/localtime)\" /etc/localtime"
@@ -533,7 +567,7 @@
           p = jailProbes.malebolge;
         in
           launcherCheck "malebolge-jail-profile" ''
-            launcher=${jailPkgs.jailed-malebolge}/bin/jailed-malebolge
+            launcher=${jailPkgs.jailed-malebolge-probe}/bin/jailed-malebolge
             test -f "$launcher" || fail "no launcher at $launcher"
             # Absent first: a 1Password wrapper in place of the launcher
             # would otherwise fail as a missing bind.
@@ -551,6 +585,9 @@
             if ! grep -Faq -- "$ssh_config" "$closure" && ! grep -Fq -- "--ro-bind $ssh_config $ssh_config " "$launcher"; then
               fail "ssh config $ssh_config is not bound in the jail"
             fi
+            for p in ${probeScrewtape.package} ${probeScrewtape.configFile}; do
+              grep -Faq -- "$p" "$closure" || fail "screwtape's $p is not in the jail's closure"
+            done
           '';
 
         # I4 (SL-023 REQ-016): the satan-runner control socket is bound into
@@ -575,6 +612,9 @@
         _module.args.pkgs = import inputs.nixpkgs {
           inherit system;
         };
+
+        # A function, so not `packages`: the deployment's room launcher.
+        legacyPackages = lib.optionalAttrs isLinux {inherit mkJailedMalebolge;};
 
         packages =
           lib.optionalAttrs isLinux jailPkgs
