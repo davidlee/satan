@@ -1,0 +1,46 @@
+memory_uid = "mem_01a17fcd4a1472b3a3ade52cbe576a3f"
+memory_key = "mem.fact.pi-durable.task-abort-and-inspect-semantics"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi-durable 1.4.0: task abort, submission abort and inspect() semantics"
+summary = "What abortTask, Submission.abort, inspect() and sleeps actually do; traps found building satan.wake (SL-034)"
+created = "2026-10-27"
+updated = "2026-10-27"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi-durable", "malebolge", "durable"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "commit"
+commit = "e0b6d594e90a6f3c16e489aa31ff746036b68869"
+tree = "c6de36f022383f2728b75fb28f923cd68b8f0a85"
+ref_name = "refs/heads/main"
+checkout_state_id = ""
+base_commit = "e0b6d594e90a6f3c16e489aa31ff746036b68869"
+verified_sha = ""
+normalizer = ""
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-034"
+

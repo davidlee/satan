@@ -1,0 +1,46 @@
+memory_uid = "mem_01a17fcd4a337173a515d7e6475b0526"
+memory_key = "mem.fact.pi-ai.stream-timeout-and-retry"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "pi-ai timeoutMs stops at response headers; only retryable wording is retried"
+summary = "A stalled model stream after headers is unbounded by pi-ai; malebolge wraps it with withStreamDeadline"
+created = "2026-10-27"
+updated = "2026-10-27"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["pi-ai", "malebolge", "pi-durable"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c6de36f022383f2728b75fb28f923cd68b8f0a85"
+ref_name = "refs/heads/main"
+checkout_state_id = "3ac629320b15100f0ae076fb3f401d1e74bcea2e26725d56955a234517f2615a"
+base_commit = "e0b6d594e90a6f3c16e489aa31ff746036b68869"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-034"
+

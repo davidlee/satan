@@ -157,27 +157,25 @@ Observations for /audit (not defects found by tests):
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-10-28 · reconciled (RV-063 outcome, REV-015) → /close · satan 1d44fb4, malebolge 578761c
+fresh-as-of: 2026-10-28 · close · satan e0b6d59, malebolge 578761c
 
 ### Produced
-- PHASE-01…08 completed. malebolge 6e7e461, 8950871, fe010b9, 77fec26, b1ac1d9, d3b374b, 27d0855, 578761c (+ f611305 build: malebolge's own quotient forms with node, user-approved); satan c67618c…61da3b4 (PHASE-08 code: 1441304, db21812, 6de3fb3); satan-corpus a8b2db2 (prompts/wake.md); ~/flakes (home repo) 001b88da (lock: satan + user's pending bumps). satan pushed to 6de3fb3; later satan commits and all malebolge commits unpushed.
-- Live: `malebolge-room` runs wakes on since 2026-10-28 09:47 (restarted 10:13 for 578761c); heartbeat 1976; `satan.wake` v1 shapes now frozen. Evidence: § Live check.
-- Design departures to reconcile (phase sheets phase-0N.md § Decisions): PHASE-04 D10 (user-accepted); PHASE-05 D2/D4/D5; PHASE-06 D1/D2/D4/D5; PHASE-07 D1/D2/D4/D6/D7/D9 (D9 user-accepted), review m1 wording; local-time rendering (578761c); two-line tool cancel journal (§ Live check).
-- PHASE-08 recorded delta spans 1441304 (stale forms-suite deletion, pre-existing red) — check `slice conformance` at audit.
-- minted: RSK-022 — room tools bash/grep lack a per-call deadline.
-- `doctrine slice verify-vt 34` reports every malebolge VT UNATTRIBUTABLE (cross-repo limit); per-phase sheets map tests to VTs. Gates last run green: malebolge `just check` 2258 tests @578761c; satan `just check` + `nix flake check` @6de3fb3.
+- PHASE-01…08 done — malebolge 6e7e461…578761c (+ f611305 forms); satan c67618c…6de3fb3; satan-corpus a8b2db2 (prompts/wake.md). Live since 2026-10-28 09:47 (heartbeat 1976; `satan.wake` v1 frozen).
+- Audit RV-063 (10 findings); reconciled: design.md sec-2/3/4/5/13, REV-015 (SPEC-002).
+- Resolved: IDE-014, IDE-017 (promoted into this slice; IDE-017's budget backpressure stays with IMP-053).
+- minted: RSK-022 — room bash/grep lack a per-call deadline.
 
 ### Learned
-- mem.fact.pi-durable.scheduled-turn-mechanics (spike S1–S6).
-- Candidate memories (record at /close): satan-mcp tool results are printed Lisp text; pi-durable `RunningTask.state` is `{status, checkpoint}`; `inspect()` shows a task awaiting `Submission.wait()` as `running` even when its input is stuck; `Submission.abort()` withdraws only a queued input (check+withdraw one commit); aborting a definition-blocked task settles `orphaned` without its handler; pi-ai `timeoutMs` stops at response headers; pi-durable retries a model error only on `stopReason: error` + retryable wording; sleeps are recorded asynchronously (poll `inspect()` with `vi.waitFor`); fake `setTimer` via `SessionOptions.setTimer` drives in-phase bounds and also captures the scheduler timer, a held faux turn must be released; malebolge structure test rejects the word "capsule" in src; a root needing a toolchain for pi gets its own quotient forms (`just quotient-forms` + `quotient allow` per form), the host default forms carry none by rule; malebolge pi sandbox: `npx biome` needs the nix glibc loader, `git-guarded` fails 4 runner tests; design-run sections materialise in lexical id order.
-- Process: Anthropic sub-agents in this session repeatedly ended without a hand-back and needed a nudge; pi test drafts had real defects every phase (review hard).
+- mem.fact.pi-durable.scheduled-turn-mechanics — spike S1–S6.
+- mem.fact.pi-durable.task-abort-and-inspect-semantics — abort, withdraw, inspect traps.
+- mem.fact.pi-ai.stream-timeout-and-retry — timeoutMs stops at headers; retryable wording.
+- mem.fact.satan.mcp-results-printed-lisp — parse narrowly, fail to unknown.
+- mem.fact.malebolge.pi-delegation-constraints — own quotient forms; sandbox caveats.
+- Rejected as not durable: design-run lexical section order (CLI-visible); sub-agent hand-back nudges and pi draft defect rate (session process notes).
 
 ### Open
-- Audit: RV-063 (10 findings, all verified; none blocking). Gates re-run green: malebolge `just check`, satan `just check`, `doctrine check gate`, `nix flake check`. Reconcile works from RV-063 § Reconciliation Brief (design.md F-1…F-5; SPEC-002 REV F-9).
-- Reconciled: design.md sec-2/3/4/5/13 (F-1…F-6), REV-015 SPEC-002 (F-9).
-- Next: `/close`.
-- Room VM (`/srv/fleet` `rooms.assistant`) runs UTC; the user is setting its time zone (outside SL-034).
-- Optional user act: approve malebolge's read form (`quotient allow /home/david/dev/malebolge read=…`); read/review pi profiles in malebolge are refused until then.
-- 1441304 deleted `test/flake/forms.test.ts` rather than rewriting it: RV-063 F-8 tolerated; user ruling pending (reopen F-8 if they want it rewritten).
-- Not exercised live: heartbeat fire, failure path, blocked-wake sweep (tests cover them).
-- RSK-022 (per-tool deadlines). At close: IDE-014 / IDE-017 absorbed.
+- DEC-137 — no wake spend/rate limits in v0 (IMP-053 carries the ceiling work).
+- RSK-022 — per-tool deadlines in the room.
+- RV-063 F-8 — forms-suite deletion (1441304) tolerated; the user has not ruled.
+- Room VM time zone is UTC until the user's `/srv/fleet` change (outside SL-034).
+- Unpushed: satan after 6de3fb3; all SL-034 malebolge commits.

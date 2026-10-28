@@ -1,0 +1,46 @@
+memory_uid = "mem_01a17fcd4a5276d3b4706c68347de4c0"
+memory_key = "mem.fact.satan.mcp-results-printed-lisp"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "satan-mcp tool results are printed Lisp text, not JSON"
+summary = 'Clients parse plists like :presence "typing" from the text content; map no-match or isError to unknown'
+created = "2026-10-27"
+updated = "2026-10-27"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["satan-mcp", "malebolge"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c6de36f022383f2728b75fb28f923cd68b8f0a85"
+ref_name = "refs/heads/main"
+checkout_state_id = "6cc0a08868278861cb150d9caf442f757999b4523ad517c1b7c3f24952ccf7e5"
+base_commit = "e0b6d594e90a6f3c16e489aa31ff746036b68869"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-034"
+

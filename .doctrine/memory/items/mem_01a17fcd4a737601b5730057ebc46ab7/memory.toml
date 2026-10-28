@@ -1,0 +1,46 @@
+memory_uid = "mem_01a17fcd4a737601b5730057ebc46ab7"
+memory_key = "mem.fact.malebolge.pi-delegation-constraints"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "Delegating malebolge work to pi: its own quotient forms, and sandbox caveats"
+summary = "malebolge needs project quotient forms with node; npx biome needs the nix loader; git-guarded fails 4 runner tests; structure test bans 'capsule' in src"
+created = "2026-10-27"
+updated = "2026-10-27"
+
+[scope]
+paths = []
+globs = []
+commands = []
+tags = ["malebolge", "quotient", "pi"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "c6de36f022383f2728b75fb28f923cd68b8f0a85"
+ref_name = "refs/heads/main"
+checkout_state_id = "e72e9afb85b7519c12467e037680d28a8826181d6e17e6d68b064ffc1c9ca5be"
+base_commit = "e0b6d594e90a6f3c16e489aa31ff746036b68869"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+
+[[source]]
+kind = "slice"
+ref = "SL-034"
+
