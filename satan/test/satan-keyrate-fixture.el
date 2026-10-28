@@ -17,6 +17,13 @@
        :keys ,(* 3 key-seconds) :key_seconds ,key-seconds
        :pointer_seconds ,pointer-seconds :peak_5s_cpm ,(* 36 key-seconds)))
 
+(defun satan-keyrate-fixture-window (ts app-id title keys key-seconds)
+  "A raw `keyrate_window' at TS: KEYS and KEY-SECONDS typed into APP-ID's TITLE.
+A nil TITLE is written as JSON null."
+  `(:v 1 :ts ,ts :source "keyrate" :event "keyrate_window"
+       :app_id ,app-id :title ,(or title :null)
+       :keys ,keys :key_seconds ,key-seconds))
+
 (defun satan-keyrate-fixture-write (root day minutes)
   "Write MINUTES (event plists or verbatim strings) as ROOT's keyrate DAY file.
 Return the file's path."

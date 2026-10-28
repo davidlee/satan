@@ -337,5 +337,85 @@ is not a gap in attention."
       (should (equal (plist-get presence :key_seconds) 1))
       (should (equal (plist-get presence :window_minutes) 10)))))
 
+;; ── per-window typing (IMP-059) ────────────────────────────────────────────
+
+(defun satan-tools-activity-test--window (ago app title keys key-seconds)
+  "A window row AGO seconds ago: KEYS in KEY-SECONDS into APP's TITLE."
+  (satan-keyrate-fixture-window (satan-tools-activity-test--ago ago)
+                                app title keys key-seconds))
+
+(defun satan-tools-activity-test--typing-rows ()
+  "Today's keyrate file: one minute split across two windows, one minute
+typed with nothing focused (minute row only)."
+  (satan-keyrate-fixture-write
+   satan-tools-activity-dir (satan-tools-activity-test--today)
+   (list (satan-keyrate-fixture-minute (satan-tools-activity-test--ago 120) 50 0)
+         (satan-tools-activity-test--window 120 "emacs" "a.el" 100 40)
+         (satan-tools-activity-test--window 120 "ghostty" "zsh" 60 30)
+         (satan-keyrate-fixture-minute (satan-tools-activity-test--ago 60) 20 0))))
+
+(ert-deftest satan-activity/today-types-from-raw-windows-not-the-histogram ()
+  "Scope `today' computes typing from today's raw window rows, with titles;
+the histogram's lagging `typing_per_app' copy is dropped.  Presence still
+counts minute rows only: the split minute's 50 s, not 40 + 30."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (make-directory (expand-file-name "histograms" satan-tools-activity-dir) t)
+    (satan-tools-activity-test--write-histogram
+     satan-tools-activity-dir
+     "{\"per_app_seconds\":{\"emacs\":1},\"typing_per_app\":{\"emacs\":{\"keys\":1}}}")
+    (satan-tools-activity-test--typing-rows)
+    (let ((p (cdr (satan-tool/activity-read '(:scope "today") nil))))
+      (should (equal (plist-get p :typing)
+                     '((:app_id "emacs" :keys 100 :key_seconds 40 :wpm 30.0
+                        :titles ((:title "a.el" :keys 100 :key_seconds 40 :wpm 30.0)))
+                       (:app_id "ghostty" :keys 60 :key_seconds 30 :wpm 24.0
+                        :titles ((:title "zsh" :keys 60 :key_seconds 30 :wpm 24.0))))))
+      (should (plist-get (plist-get p :histogram) :per_app_seconds))
+      (should-not (plist-member (plist-get p :histogram) :typing_per_app))
+      (should (equal (plist-get (plist-get p :presence) :key_seconds) 70)))))
+
+(ert-deftest satan-activity/recent-focus-segments-carry-their-app-typing ()
+  "A focus segment carries its app's typing; titles only with `:titles'.
+Gaps carry none: they have no app."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (make-directory (expand-file-name "segments" satan-tools-activity-dir) t)
+    (satan-tools-activity-test--write-focus-jsonl
+     satan-tools-activity-dir
+     (list (satan-tools-activity-test--segment "focus_segment" 120 60 "emacs")))
+    (satan-tools-activity-test--typing-rows)
+    (cl-flet ((segments (args)
+                (plist-get (cdr (satan-tool/activity-read args nil)) :segments)))
+      (let ((plain (segments '(:scope "recent_focus")))
+            (titled (segments '(:scope "recent_focus" :titles t))))
+        (should (equal (plist-get (car plain) :typing)
+                       '(:app_id "emacs" :keys 100 :key_seconds 40 :wpm 30.0)))
+        (should (equal (plist-get (plist-get (car titled) :typing) :titles)
+                       '((:title "a.el" :keys 100 :key_seconds 40 :wpm 30.0))))
+        (should (equal (plist-get (cadr plain) :event) "gap"))
+        (should-not (plist-member (cadr plain) :typing))))))
+
+(ert-deftest satan-activity/current-carries-recent-typing-per-window ()
+  "Scope `current' adds typing per app and title over the presence window."
+  (satan-keyrate-fixture-with-root satan-tools-activity-dir
+    (satan-tools-activity-test--typing-rows)
+    (let ((typing (plist-get (cdr (satan-tool/activity-read '(:scope "current") nil))
+                             :typing)))
+      (should (equal (mapcar (lambda (app) (plist-get app :app_id)) typing)
+                     '("emacs" "ghostty")))
+      (should (equal (plist-get (car typing) :titles)
+                     '((:title "a.el" :keys 100 :key_seconds 40 :wpm 30.0)))))))
+
+(ert-deftest satan-activity/dispatch-accepts-titles-on-every-scope ()
+  "`titles' is declared once, so no scope rejects it; scopes that always or
+never list titles ignore it."
+  (satan-tools-activity-test--with-root
+    (dolist (scope '("today" "recent_focus" "recent_browser" "current"))
+      (should (eq (plist-get (satan-tool-dispatch
+                              `(:type "tool_call" :id "ar2" :name "activity_read"
+                                :args (:scope ,scope :titles t))
+                              '("activity_read") nil)
+                             :ok)
+                  t)))))
+
 (provide 'satan-tools-activity-test)
 ;;; satan-tools-activity-test.el ends here

@@ -174,4 +174,81 @@ it sorts inside it as a string."
     (should (= (nth 9 pointer) 3))
     (should (= (apply #'+ keys) 22))))
 
+;; ── per-window typing (IMP-059) ────────────────────────────────────────────
+
+(defun satan-keyrate-test--win (hhmm app title keys key-seconds)
+  "A window row at HHMM on the test day: KEYS in KEY-SECONDS into APP's TITLE."
+  (satan-keyrate-fixture-window
+   (format "%sT%s:00.000+10:00" satan-keyrate-test--day hhmm)
+   app title keys key-seconds))
+
+(defun satan-keyrate-test--rows (rows)
+  "ROWS (event plists) as (INSTANT . ROW), parsed as the reader parses lines."
+  (mapcar (lambda (r)
+            (satan-desktop-parse-raw-line
+             (decode-coding-string (json-serialize r) 'utf-8)))
+          rows))
+
+(ert-deftest satan-keyrate/read-windows-only-when-asked ()
+  "Window rows share the minute's file and `ts'; the default reader skips
+them and the window reader keeps only them, so minute totals never see
+a window's seconds."
+  (satan-keyrate-fixture-with-root root
+    (satan-keyrate-fixture-write
+     root satan-keyrate-test--day
+     (list (satan-keyrate-test--min "09:00" 50 0)
+           (satan-keyrate-test--win "09:00" "emacs" "a.el" 100 40)
+           (satan-keyrate-test--win "09:00" "ghostty" "zsh" 60 30)))
+    (let ((from (satan-keyrate-test--t "09:00:00"))
+          (to (satan-keyrate-test--t "09:10:00")))
+      (should (equal (plist-get (satan-keyrate-describe
+                                 (cdr (satan-keyrate-read root from to)) from to)
+                                :key_seconds)
+                     50))
+      (should (equal (mapcar (lambda (w) (plist-get (cdr w) :app_id))
+                             (cdr (satan-keyrate-read root from to
+                                                      satan-keyrate-window-event)))
+                     '("emacs" "ghostty"))))))
+
+(ert-deftest satan-keyrate/typing-splits-a-minute-across-its-windows ()
+  "A minute typed into two windows counts toward each, apps by keys
+descending; wpm is keys/5 per minute of key seconds."
+  (should (equal (satan-keyrate-typing
+                  (satan-keyrate-test--rows
+                   (list (satan-keyrate-test--win "09:00" "ghostty" "zsh" 60 30)
+                         (satan-keyrate-test--win "09:00" "emacs" "a.el" 100 40)
+                         (satan-keyrate-test--win "09:01" "emacs" "b.el" 50 20)))
+                  nil)
+                 '((:app_id "emacs" :keys 150 :key_seconds 60 :wpm 30.0)
+                   (:app_id "ghostty" :keys 60 :key_seconds 30 :wpm 24.0)))))
+
+(ert-deftest satan-keyrate/typing-lists-titles-capped-with-the-rest-folded ()
+  "With titles, each app lists its top titles by keys; the rest fold into
+one \"(other)\" entry, and a null title is \"(untitled)\"."
+  (let* ((satan-keyrate-title-cap 2)
+         (app (car (satan-keyrate-typing
+                    (satan-keyrate-test--rows
+                     (list (satan-keyrate-test--win "09:00" "emacs" "a.el" 10 6)
+                           (satan-keyrate-test--win "09:01" "emacs" nil 30 12)
+                           (satan-keyrate-test--win "09:02" "emacs" "c.el" 5 6)
+                           (satan-keyrate-test--win "09:03" "emacs" "d.el" 5 6)
+                           (satan-keyrate-test--win "09:04" "emacs" "a.el" 10 6)))
+                    t))))
+    (should (equal (plist-get app :titles)
+                   '((:title "(untitled)" :keys 30 :key_seconds 12 :wpm 30.0)
+                     (:title "a.el" :keys 20 :key_seconds 12 :wpm 20.0)
+                     (:title "(other)" :keys 10 :key_seconds 12 :wpm 10.0))))))
+
+(ert-deftest satan-keyrate/typing-prorates-to-the-interval ()
+  "Bounded by FROM..TO, a window row counts in proportion to its overlap."
+  (should (equal (satan-keyrate-typing
+                  (satan-keyrate-test--rows
+                   (list (satan-keyrate-test--win "09:00" "emacs" "a.el" 100 40)))
+                  nil (satan-keyrate-test--t "09:00:30") (satan-keyrate-test--t "09:05:00"))
+                 '((:app_id "emacs" :keys 50 :key_seconds 20 :wpm 30.0)))))
+
+(ert-deftest satan-keyrate/typing-of-no-windows-is-empty ()
+  "Keys with nothing focused appear only in the minute row: no typing."
+  (should (null (satan-keyrate-typing nil t))))
+
 ;;; satan-keyrate-test.el ends here

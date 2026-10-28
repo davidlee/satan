@@ -42,6 +42,19 @@
 ;; A closed segment followed by nothing used to read as an ongoing
 ;; session (SATAN inbox, 2026-10-25); the gap entry is the answer.
 ;;
+;; Typing (IMP-059): keys, key seconds and wpm per focused window, from
+;; panopticon's raw `keyrate_window' rows (`satan-keyrate-typing'):
+;;   - today        -> `:typing' per app with titles, current to the last
+;;                     row; the histogram's lagging `typing_per_app' copy
+;;                     is dropped so the model sees one figure;
+;;   - recent_focus -> each focus segment's `:typing' for its app; titles
+;;                     only with the `titles' arg (its cost grows with
+;;                     `limit');
+;;   - current      -> `:typing' per app with titles over the presence
+;;                     window.
+;; Titles widen the "current-scope title leak" thread above: verbatim,
+;; capped per app (`satan-keyrate-title-cap'), accepted 2026-10-28.
+;;
 ;; Risk = `read'; no capability required.  Panopticon is the producer
 ;; that handles redaction (firefox extension strips queries/fragments
 ;; and drops incognito); SATAN is a downstream consumer.
@@ -110,6 +123,21 @@ is ok, or ENTRY's span does not parse, ENTRY is returned as is."
         (append entry (satan-keyrate-describe (cdr keyrate) (car span) (cdr span)))
       entry)))
 
+(defun satan-tools-activity--with-typing (entry windows titles)
+  "ENTRY plus `:typing', its app's typing in WINDOWS over its span.
+Only a focus segment names the app its keys went to; any other entry,
+or a segment with no typing, is returned as is.  TITLES lists titles."
+  (let ((span (satan-tools-activity--span entry))
+        (app (plist-get entry :app_id)))
+    (if-let* (((equal (plist-get entry :event) "focus_segment"))
+              (span)
+              (typing (car (satan-keyrate-typing
+                            (seq-filter (lambda (w) (equal (plist-get (cdr w) :app_id) app))
+                                        windows)
+                            titles (car span) (cdr span)))))
+        (append entry (list :typing typing))
+      entry)))
+
 (defun satan-tools-activity--gap (from-ts to-ts)
   "A gap entry from FROM-TS to TO-TS, or nil when it is too short to show."
   (let ((from (satan-memory-canon-parse-instant from-ts))
@@ -134,25 +162,30 @@ so it also covers whatever window is focused now."
                (push (if rest gap (append gap (list :open t))) out)))
     (nreverse out)))
 
-(defun satan-tools-activity--recent (root scope prefix limit gaps)
+(defun satan-tools-activity--recent (root scope prefix limit gaps titles)
   "SCOPE's result: the last LIMIT segments of today's PREFIX file under ROOT.
-Each entry carries its keyrate presence; with GAPS, gap entries are
-interleaved (`satan-tools-activity--with-gaps')."
+Each entry carries its keyrate presence, and a focus segment its typing
+(`satan-tools-activity--with-typing', TITLES as there); with GAPS, gap
+entries are interleaved (`satan-tools-activity--with-gaps')."
   (let* ((today (satan-tools-activity--today))
          (now-ts (format-time-string "%FT%T%:z"))
          (now (satan-memory-canon-parse-instant now-ts))
          (path (expand-file-name (format "segments/%s-%s.jsonl" prefix today) root))
          (tail (last (satan-jsonl-read-file path) limit))
          (entries (if gaps (satan-tools-activity--with-gaps tail now-ts) tail))
-         (keyrate (satan-keyrate-read
-                   root (or (car (satan-tools-activity--span (car entries))) now)
-                   now)))
+         (from (or (car (satan-tools-activity--span (car entries))) now))
+         (keyrate (satan-keyrate-read root from now))
+         (windows (cdr (satan-keyrate-read root from now
+                                           satan-keyrate-window-event))))
     (list :scope scope
           :date today
           :limit limit
           :path path
           :keyrate (car keyrate)
-          :segments (mapcar (lambda (e) (satan-tools-activity--with-presence e keyrate))
+          :segments (mapcar (lambda (e)
+                              (satan-tools-activity--with-typing
+                               (satan-tools-activity--with-presence e keyrate)
+                               windows titles))
                             entries))))
 
 (defun satan-tools-activity--day-presence (root day)
@@ -167,6 +200,24 @@ interleaved (`satan-tools-activity--with-gaps')."
                                                              :per_hour_pointer_seconds)))
                 hours)))))
 
+(defun satan-tools-activity--day-typing (root day)
+  "DAY's typing per app, with titles, from ROOT's raw window rows."
+  (satan-keyrate-typing
+   (cdr (satan-keyrate-read-day root day satan-keyrate-window-event)) t))
+
+(defun satan-tools-activity--recent-typing (root now)
+  "Typing per app, with titles, over the `satan-keyrate-window-minutes'
+ending at NOW, from ROOT's raw window rows."
+  (let ((from (time-subtract now (* 60 satan-keyrate-window-minutes))))
+    (satan-keyrate-typing
+     (cdr (satan-keyrate-read root from now satan-keyrate-window-event))
+     t from now)))
+
+(defun satan-tools-activity--without-typing-copy (histogram)
+  "HISTOGRAM without `typing_per_app': `today' computes it fresh from raw."
+  (cl-loop for (key value) on histogram by #'cddr
+           unless (eq key :typing_per_app) nconc (list key value)))
+
 (defun satan-tools-activity--recent-presence (root)
   "Presence over the last `satan-keyrate-window-minutes' under ROOT."
   (if-let* ((description (satan-keyrate-recent root (current-time))))
@@ -176,11 +227,13 @@ interleaved (`satan-tools-activity--with-gaps')."
 
 (defun satan-tool/activity-read (args _ctx)
   "Implements activity_read.
-ARGS: (:scope today|recent_focus|recent_browser|current :limit INT?).
+ARGS: (:scope today|recent_focus|recent_browser|current :limit INT?
+:titles BOOL?).
 Returns (ok PLIST) | (error STRING)."
   (let* ((scope (plist-get args :scope))
          (today (satan-tools-activity--today))
-         (root  satan-tools-activity-dir))
+         (root  satan-tools-activity-dir)
+         (titles (eq (plist-get args :titles) t)))
     (pcase scope
       ("today"
        (let* ((path (expand-file-name
@@ -189,24 +242,27 @@ Returns (ok PLIST) | (error STRING)."
          (cons 'ok (list :scope "today"
                          :date today
                          :path path
-                         :histogram data
+                         :histogram (satan-tools-activity--without-typing-copy data)
                          :presence (satan-tools-activity--day-presence
-                                    root today)))))
+                                    root today)
+                         :typing (satan-tools-activity--day-typing root today)))))
       ("recent_focus"
        (cons 'ok (satan-tools-activity--recent
                   root "recent_focus" "focus"
-                  (satan-tools-activity--clamp-limit (plist-get args :limit)) t)))
+                  (satan-tools-activity--clamp-limit (plist-get args :limit)) t titles)))
       ("recent_browser"
        (cons 'ok (satan-tools-activity--recent
                   root "recent_browser" "browser"
-                  (satan-tools-activity--clamp-limit (plist-get args :limit)) nil)))
+                  (satan-tools-activity--clamp-limit (plist-get args :limit)) nil titles)))
       ("current"
        (let ((probe (satan-desktop-at root (format-time-string "%FT%T%:z"))))
          (cons 'ok (list :scope "current"
                          :status (car probe)
                          :window (cdr probe)
                          :presence (satan-tools-activity--recent-presence
-                                    root)))))
+                                    root)
+                         :typing (satan-tools-activity--recent-typing
+                                  root (current-time))))))
       (_ (cons 'error (format "unknown scope: %s" scope))))))
 
 (satan-tool-register
@@ -215,7 +271,8 @@ Returns (ok PLIST) | (error STRING)."
        :args-schema '(scope (:type string :required t
                              :enum ("today" "recent_focus"
                                     "recent_browser" "current"))
-                      limit (:type integer :required nil))
+                      limit (:type integer :required nil)
+                      titles (:type boolean :required nil))
        :handler 'satan-tool/activity-read))
 
 (provide 'satan-tools-activity)

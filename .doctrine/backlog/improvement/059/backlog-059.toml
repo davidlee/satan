@@ -1,0 +1,22 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 59
+slug = "activity-read-exposes-per-window-typing-from-panopticon-keyrate-window"
+title = "activity_read exposes per-window typing from panopticon keyrate_window"
+kind = "improvement"
+status = "resolved"
+resolution = "done"
+created = "2026-10-28"
+updated = "2026-10-28"
+tags = ["activity", "keyrate", "satan", "wpm"]
+
+# outbound-only. Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows — author them with
+# `doctrine link ITEM-NNN <label> <target>`; `doctrine inspect ITEM-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }

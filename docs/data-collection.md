@@ -144,10 +144,10 @@ is described by handler and by model-facing description
 
 | Scope | Source | What comes through |
 |-------|--------|--------------------|
-| `today` | `~/.local/state/behaviour/histograms/daily-<date>.json` | Per-app/second/workspace/hour aggregates |
+| `today` | `~/.local/state/behaviour/histograms/daily-<date>.json`, `raw/keyrate-<date>.jsonl` | Per-app/second/workspace/hour aggregates; typing per app and window title (§6) |
 | `recent_focus` | `~/.local/state/behaviour/segments/focus-<date>.jsonl` | Last N focus segments (app, workspace, start/end, duration) |
 | `recent_browser` | `~/.local/state/behaviour/segments/browser-<date>.jsonl` | Last N browser segments (origin stripped to host, start/end, duration) |
-| `current` | `~/.local/state/behaviour/raw/desktop-<date>.jsonl` | Focused window replayed as of now: status + app_id, workspace, output, title, pid, window_id, since |
+| `current` | `~/.local/state/behaviour/raw/desktop-<date>.jsonl`, `raw/keyrate-<date>.jsonl` | Focused window replayed as of now: status + app_id, workspace, output, title, pid, window_id, since; typing per app and window title over the last 10 minutes (§6) |
 
 **Risk:** read. Available to: morning, motd, tick-pulse.
 **Producer:** panopticon (`~/dev/panopticon`) — sway watcher + Firefox
@@ -484,6 +484,17 @@ typing, reading, idle or mixed by share of its seconds:
 It replaces the WPM TSV (`~/.local/state/satan/log/wpm/<date>.tsv`, written
 by the retired `wpm-daemon`), which counted keys only.
 
+Since IMP-059 (2026-10-28) the same file also holds `keyrate_window` rows:
+the minute's `keys` and `key_seconds` per focused window (`app_id`, `title`
+with terminal spinners stripped). `activity_read` turns them into typing
+per app (`keys`, `key_seconds`, `wpm` = keys ÷ 5 per minute of key seconds):
+with titles for `today` (computed from raw, replacing the histogram's
+lagging `typing_per_app`) and `current`; per focus segment for
+`recent_focus`, titles only with `titles: true`. Titles are verbatim, top 5
+per app by keys, the rest folded into `(other)`. One second can hold keys
+in two windows, so window seconds never sum to the minute's: presence keeps
+reading `keyrate_minute` only.
+
 ---
 
 ## 7. Passive data feed (environmental sensors not tool-mediated)
@@ -497,7 +508,7 @@ tools but currently sit as raw files:
 | Behaviour browser segments | `~/.local/state/behaviour/segments/browser-<date>.jsonl` | panopticon | Via `activity_read` |
 | Behaviour histograms | `~/.local/state/behaviour/histograms/daily-<date>.json` | panopticon | Via `activity_read` |
 | Desktop event log (current window) | `~/.local/state/behaviour/raw/desktop-<date>.jsonl` | panopticon | Via `activity_read` + evidence replay |
-| Keyrate minutes (presence) | `~/.local/state/behaviour/raw/keyrate-<date>.jsonl` | panopticon | Via `activity_read` + presence sensor |
+| Keyrate minutes and windows (presence, typing) | `~/.local/state/behaviour/raw/keyrate-<date>.jsonl` | panopticon | Via `activity_read` + presence sensor (minutes only) |
 | Memory substrate | PostgreSQL `satan_memory` | SATAN itself | Via `psql` subprocess |
 
 ---
