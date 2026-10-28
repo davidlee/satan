@@ -107,6 +107,6 @@ User agreed to all proposed edits (2026-10-28: "yes apply them").
 - REV-015 (`reconcile-sl-034`): done — SPEC-002 Interactive daemon Owns gains wake scheduling; MCP row names the `scheduled` kind (F-9). `doctrine spec validate SPEC-002` clean.
 
 ### Tolerated / follow-up
-- F-7: tolerated (cross-repo tooling limit). F-8: tolerated; the user's ruling on the forms-suite deletion is still pending (reopen F-8 to rewrite). F-10: RSK-022.
+- F-7: tolerated (cross-repo tooling limit). F-8: tolerated, accepted by the user 2026-10-28 (reopened and re-verified to record it). F-10: RSK-022.
 
 Reconcile pass complete — handoff to /close.

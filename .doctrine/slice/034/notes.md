@@ -176,6 +176,5 @@ fresh-as-of: 2026-10-28 · close · satan e0b6d59, malebolge 578761c
 ### Open
 - DEC-137 — no wake spend/rate limits in v0 (IMP-053 carries the ceiling work).
 - RSK-022 — per-tool deadlines in the room.
-- RV-063 F-8 — forms-suite deletion (1441304) tolerated; the user has not ruled.
 - Room VM time zone is UTC until the user's `/srv/fleet` change (outside SL-034).
 - Unpushed: satan after 6de3fb3; all SL-034 malebolge commits.

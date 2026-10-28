@@ -19,6 +19,11 @@ note = """
 Conformance audit of SL-034 against design.md (locked) and plan.toml, at satan 1d44fb4, malebolge 578761c, satan-corpus a8b2db2. Examined: every phase-sheet D-numbered departure and the 578761c live fix against sec-2/3/4/5/11/13; the emitted journal lines against the sec-4 table; slice conformance (undeclared/undelivered); verify-vt's cross-repo gap and the substitute test→VT maps; the PHASE-08 live journal; governance writes in sec-6 (ledger rows 4d/6d/7b, token, row 3b, docs). Re-ran gates: malebolge just check, satan just check, doctrine check gate, nix flake check (all exit 0).
 """
 
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Re-concluded after F-8 reopen to record the user's acceptance of the forms-suite deletion; no other finding changed."
+
 [target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
 ref   = "SL-034"
 
@@ -265,7 +270,7 @@ Observed (conformance undeclared: justfile, test/flake/forms.test.ts; also notes
 """
 disposition = "tolerated"
 response = """
-Out-of-slice hygiene, kept: the suite tested code 4dfd3b2 had already removed, so it could only fail; the property it guarded (form bind sets, guards) moved to quotient.lib.checkFormFamily, which runs in nix flake check (green this audit). Not a design target, so no selector added. Raised to the user in the audit summary; if they want the suite rewritten instead, reopen.
+Accepted by the user (2026-10-28, "accept"), after reviewing the evidence: quotient's checkFormFamily (nix/check.sh) asserts the deleted suite's properties against the built launchers (root ro/rw bind, session bind, rule (d) isolation incl. --die-with-parent, three exit-64 guards, tmpfs masking), and passed in this audit's nix flake check. Accepted costs: the check runs only in nix flake check / just check-jails, not just check; satan-specific names are checked only for self-consistency.
 """
 
 [[finding.turn]]
@@ -278,6 +283,23 @@ role = "responder"
 disposition = "tolerated"
 response = """
 Out-of-slice hygiene, kept: the suite tested code 4dfd3b2 had already removed, so it could only fail; the property it guarded (form bind sets, guards) moved to quotient.lib.checkFormFamily, which runs in nix flake check (green this audit). Not a design target, so no selector added. Raised to the user in the audit summary; if they want the suite rewritten instead, reopen.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+
+[[finding.turn]]
+act = "reopen"
+role = "raiser"
+note = "User ruled on the deletion (2026-10-28): 'accept'. Re-disposing to record it."
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+response = """
+Accepted by the user (2026-10-28, "accept"), after reviewing the evidence: quotient's checkFormFamily (nix/check.sh) asserts the deleted suite's properties against the built launchers (root ro/rw bind, session bind, rule (d) isolation incl. --die-with-parent, three exit-64 guards, tmpfs masking), and passed in this audit's nix flake check. Accepted costs: the check runs only in nix flake check / just check-jails, not just check; satan-specific names are checked only for self-consistency.
 """
 
 [[finding.turn]]
