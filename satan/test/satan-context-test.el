@@ -417,7 +417,7 @@ rest under :dropped-files."
         (mind (satan-mode-resolve "self-edit-mind")))
     (should (eq (plist-get mech :auto-apply) 'none))
     (should (eq (plist-get mind :auto-apply) 'none))
-    (dolist (tool '("proposal_stage" "sway_border_set" "sway_border_reset"))
+    (dolist (tool '("proposal_stage"))
       (should (member tool (plist-get mech :tools)))
       (should (member tool (plist-get mind :tools))))
     (should (eq (plist-get mech :source-roots-var) 'satan-self-edit-mech-roots))

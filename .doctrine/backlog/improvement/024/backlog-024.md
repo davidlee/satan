@@ -15,7 +15,7 @@ PHASE-08 EX-2):
 
 | tool | side effect | create call |
 |---|---|---|
-| `sway_border_set` | `swaymsg` per class | `satan/satan-tools-sway.el:135` |
+| ~~`sway_border_set`~~ | removed 2026-10-28 (compositor is Umbriel; tool deleted) | — |
 | `proposal_stage` | `with-temp-file` proposal note | `satan/satan-tools-org.el:140` |
 | `inbox_append` | `append-to-file` to `satan-inbox-file` | `satan/satan-tools-inbox.el:99` |
 | `patch_job_create` | patch-store row insert | `satan/satan-tools-patch.el:143` |

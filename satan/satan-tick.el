@@ -82,7 +82,6 @@ The prompt file defaults to `<prompts>/tick/SHORT-NAME.txt'."
               :context-fn 'satan-context-tick
               :tools '("org_read_context" "notify_send" "speak" "inbox_append"
                         "activity_read" "notes_recent"
-                        "sway_border_set" "sway_border_reset"
                         "memory_mark" "memory_resonate"
                         "memory_show_trace"
                         "motive_read" "motive_replace"

@@ -315,16 +315,7 @@ runs` block for future tick runs, which means **the model's own
 summary influences its future context** indirectly through the
 recent-runs block.
 
-### 4.8 `sway_border_set` / `sway_border_reset`
-
-| Property | Value |
-|----------|-------|
-| **Risk** | medium |
-| **Capability** | none (mode-gated) |
-| **Effect** | Changes sway window-border colours; reset does `swaymsg reload` |
-
-Ephemeral visual effect. No durable state. Not a feed-forward mechanism
-for future context.
+### 4.8 (removed: `sway_border_set` / `sway_border_reset`, 2026-10-28)
 
 ### 4.9 `notes_at_satan_done`
 

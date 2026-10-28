@@ -94,7 +94,6 @@ Dotfiles must not be the source of truth for prompt content."
                 "inbox_append" "activity_read"
                 "notes_recent" "notes_at_satan_scan"
                 "notes_read" "notes_grep"
-                "sway_border_set" "sway_border_reset"
                 "memory_mark" "memory_resonate"
                 "memory_show_trace"
                 "motive_read" "motive_replace"
@@ -121,7 +120,6 @@ Dotfiles must not be the source of truth for prompt content."
                 "hippocampus_grep" "hippocampus_rename"
                 "activity_read" "notes_recent"
                 "notes_read" "notes_grep"
-                "sway_border_set" "sway_border_reset"
                 "memory_mark" "memory_resonate"
                 "memory_show_trace"
                 "motive_read" "motive_replace"
@@ -142,7 +140,7 @@ Dotfiles must not be the source of truth for prompt content."
        :prompt-file (expand-file-name "self-edit-mech.txt" satan-prompts-dir)
        :context-fn 'satan-context-self-edit
        :source-roots-var 'satan-self-edit-mech-roots
-       :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
+       :tools '("proposal_stage"
                 "hippocampus_list" "hippocampus_read" "hippocampus_write"
                 "hippocampus_overwrite" "hippocampus_delete"
                 "hippocampus_grep" "hippocampus_rename"
@@ -165,7 +163,7 @@ Dotfiles must not be the source of truth for prompt content."
        :prompt-file (expand-file-name "self-edit-mind.txt" satan-prompts-dir)
        :context-fn 'satan-context-self-edit
        :source-roots-var 'satan-self-edit-mind-roots
-       :tools '("proposal_stage" "sway_border_set" "sway_border_reset"
+       :tools '("proposal_stage"
                 "hippocampus_list" "hippocampus_read" "hippocampus_write"
                 "hippocampus_overwrite" "hippocampus_delete"
                 "hippocampus_grep" "hippocampus_rename"

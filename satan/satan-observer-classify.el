@@ -288,9 +288,8 @@ outcome-semantics §1 + §10 step 2).  Anything outside this set is
 non-user-facing and becomes `:neutral'.
 
 Closed against `satan-audit-intervention-kinds'; kinds not
-listed (`delay', `quarantine', plus any future
-`sway_border_set'-style non-user-facing kinds) fall into the
-`:neutral' bucket.")
+listed (`delay', `quarantine', plus any future non-user-facing
+kinds) fall into the `:neutral' bucket.")
 
 (defun satan-observer--ack-checked-p (after)
   "Return non-nil when AFTER's panopticon focus probe succeeded.

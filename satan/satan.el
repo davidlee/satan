@@ -40,7 +40,6 @@
 (require 'satan-tools-content)
 (require 'satan-tools-notes)
 (require 'satan-tools-docs)
-(require 'satan-tools-sway)
 (require 'satan-tools-motive)
 (require 'satan-tools-vcs)
 (require 'satan-memory)

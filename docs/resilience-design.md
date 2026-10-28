@@ -302,8 +302,6 @@ transition.
 | `notify_send` | yes | yes | yes | - |
 | `notes_at_satan_done` | yes | yes | yes | - |
 | `notes_at_satan_intervention_done` | yes | yes | yes | - |
-| `sway_border_set` | yes | yes | yes | - |
-| `sway_border_reset` | yes | yes | yes | - |
 | `org_update_owned_block` | yes | yes | yes | - |
 | `satan_final` | yes | yes | yes | yes |
 

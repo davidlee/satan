@@ -165,8 +165,8 @@ Closed sets at the audit boundary are **strings**, not elisp keywords
 ### Event names
 
 - `intervention.created` — emitted by the user-facing tool handler
-  (`notify_send`, `inbox_append`, `proposal_stage`, `patch_job_create`,
-  `sway_border_set`) at tool-call time.
+  (`notify_send`, `inbox_append`, `proposal_stage`, `patch_job_create`)
+  at tool-call time.
 - `intervention.outcome_classified` — emitted by the observer (auto)
   or the manual-mark writer when the maturity gate fires.
 - `intervention.outcome_revised` — emitted when a later run updates a

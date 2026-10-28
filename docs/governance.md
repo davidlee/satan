@@ -390,7 +390,6 @@ justification):
 | `satan-tools-motive.el` | `motive_read` / `motive_replace` handlers + bound validators (≤3 active, ≤10 ruminations, `:cue:` syntax + sensor-observed-handle requirement, rejects `:ceiling:`). |
 | `satan-tools-atsatan.el` | `notes_at_satan_scan` (read; `rg --json` over `~/notes/` excluding `satan/`, enriched with headline + context) + `notes_at_satan_done` (claim by replacing `@satan` with `@satan-was-here` + quoted run-id block). Registers `tick-agent` via `satan-tick-register`. |
 | `satan-tools-notes.el` | `notes_recent` (fd-based recently-modified files under `~/notes/`), `notes_read` (one note's body — notes-root-relative path, `.org`/`.md`/`.txt` only, byte-capped with `:bytes`/`:total-bytes`/`:truncated`), `notes_grep` (literal `rg` search over exactly the files `notes_read` can open; relative-path hits). |
-| `satan-tools-sway.el` | `sway_border_set` / `sway_border_reset` (visual ephemeral effect). |
 | `satan-tools-vcs.el` | `vcs_log` (read; `git -C REPO log` for an abs path or a bare slug resolved against `~/dev`/`~/.config/emacs`/`~/flakes`); pwd-independent. The on-demand drill-in for the git-activity sensor (§S6); the `project:<slug>` handle tells the model *which* repo to ask about. |
 | `satan-patch.el` | Patch client aggregator (SL-023): requires rpc, tools, inbox, promote; starts the inbox watch in interactive Emacs. The patch runner itself is malebolge (separate repo). |
 | `satan-patch-rpc.el` | The one NDJSON client for the runner control socket (`$XDG_RUNTIME_DIR/satan-runner/control.sock`): bounded one-shot calls and the persistent `watch`. |
@@ -495,12 +494,12 @@ justification):
 
 | Mode | Tools | Auto-apply | Budget tokens / tool-calls / wall |
 |---|---|---|---|
-| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `owned` | 20000 / 8 / 90s |
-| `motd` | `org_read_context`, `notify_send`, `inbox_append`, `activity_read`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
-| `tick-pulse` | `org_read_context`, `notify_send`, `inbox_append`, `sway_border_set`, `sway_border_reset`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `motive_read`, `motive_replace`, `patch_job_create`, `patch_job_status`, `patch_job_cancel` | `owned` (only `inbox_append`; motives written via `motive_replace` model-side, footer via observer broker-side) | 3000 / 4 / 30s |
+| `morning` | `org_read_context`, `org_update_owned_block`, `proposal_stage`, `notify_send`, `hippocampus_write`, `inbox_append`, `activity_read`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `owned` | 20000 / 8 / 90s |
+| `motd` | `org_read_context`, `notify_send`, `inbox_append`, `activity_read`, `memory_mark`, `memory_resonate`, `memory_show_trace` | `owned` (motd surface owned by output handler; written from `satan_final.summary`) | 10000 / 4 / 45s |
+| `tick-pulse` | `org_read_context`, `notify_send`, `inbox_append`, `memory_mark`, `memory_resonate`, `memory_show_trace`, `motive_read`, `motive_replace`, `patch_job_create`, `patch_job_status`, `patch_job_cancel` | `owned` (only `inbox_append`; motives written via `motive_replace` model-side, footer via observer broker-side) | 3000 / 4 / 30s |
 | `tick-agent` | as `tick-pulse` plus `notes_at_satan_scan`, `notes_at_satan_done`, `notes_recent` | as `tick-pulse` (claims directives via `notes_at_satan_done`) | 3000 / 4 / 30s |
-| `self-edit-mech` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read`, `patch_job_create` | `none` | 50000 / 20 / 180s |
-| `self-edit-mind` | `proposal_stage`, `sway_border_set`, `sway_border_reset`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `none` | 50000 / 20 / 180s |
+| `self-edit-mech` | `proposal_stage`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read`, `patch_job_create` | `none` | 50000 / 20 / 180s |
+| `self-edit-mind` | `proposal_stage`, `memory_resonate`, `memory_show_trace`, `docs_list`, `docs_search`, `docs_read` | `none` | 50000 / 20 / 180s |
 
 Tick-mode pool (`satan-tick-pool`): `tick-pulse` weight 5,
 `tick-agent` weight 3. `satan-tick-register SHORT-NAME` registers
