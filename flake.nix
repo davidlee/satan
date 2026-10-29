@@ -315,17 +315,34 @@
             (bind-pkg "${configFile}" configFile)
             (readwrite storeDir)
           ];
-        # The room daemon's launcher. Its screwtape comes from the deployment
-        # (~/flakes features/satan/malebolge.nix: services.screwtape's package,
-        # configFile and storeDir), so the config has one author.
-        mkJailedMalebolge = {screwtape}:
+        # The bookmark toolset's source (malebolge SL-008 DEC-055, CHR-006):
+        # Firefox's bookmarkbackups directory, read-only, and never the
+        # profile around it (history, logins.json, key4.db). Unset, the
+        # daemon's bookmark tools refuse as not configured.
+        bookmarkJailOptions = dir:
+          with jailLib.combinators;
+            lib.optionals (dir != null) [
+              (set-env "MALEBOLGE_BOOKMARK_BACKUPS" dir)
+              (readonly dir)
+            ];
+        # The room daemon's launcher. Its screwtape and bookmark backups come
+        # from the deployment (~/flakes features/satan/malebolge.nix:
+        # services.screwtape's package, configFile and storeDir; the Firefox
+        # bookmarkbackups path), so the config has one author.
+        mkJailedMalebolge = {
+          screwtape,
+          bookmarkBackups ? null,
+        }:
           jailLib.makeJailedAgent {
             name = "malebolge";
             agent = malebolgeDaemon;
             profile = "offline";
             mountLaunchDir = false;
             extraPkgs = [pkgs.nodejs pkgs.openssh pkgs.socat];
-            extraOptions = malebolgeRoomJailOptions ++ screwtapeJailOptions screwtape;
+            extraOptions =
+              malebolgeRoomJailOptions
+              ++ screwtapeJailOptions screwtape
+              ++ bookmarkJailOptions bookmarkBackups;
             # Its key file is its only secret: no jail carries a provider key.
             workspaceDeps = [];
             # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
