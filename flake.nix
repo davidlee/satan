@@ -229,7 +229,11 @@
         # ssh, so the jail is offline and binds no host work tree. Its own
         # code is read-only; store and socket are explicit binds.
         malebolgeRoot = "/home/david/dev/malebolge";
+        # Jev's loopback bridge (malebolge DEC-059, IMP-060): screwtape's one
+        # config names the host relay's http://127.0.0.1:4000, so the jail
+        # serves that port from the gateway's client socket.
         malebolgeDaemon = pkgs.writeShellScriptBin "malebolge" ''
+          ${pkgs.socat}/bin/socat TCP-LISTEN:4000,bind=127.0.0.1,fork,reuseaddr UNIX-CONNECT:${gatewayClientSocket} &
           exec ${lib.getExe pkgs.nodejs_latest} ${malebolgeRoot}/src/daemon-main.ts "$@"
         '';
         # The daemon reads its gateway key only from a file, never env or argv
@@ -314,6 +318,21 @@
             (bind-pkg "${package}" package)
             (bind-pkg "${configFile}" configFile)
             (readwrite storeDir)
+            # STOPGAP until screwtape ISS-002 deploys: screwtape builds TLS
+            # options, CA store included, even for Jev's plain-http loopback,
+            # and the jail has no /etc/ssl, so classify fails `tls_failed`.
+            # Remove with ISS-002, then re-check classify in the jail.
+            (bind-pkg "/etc/ssl/certs/ca-certificates.crt" "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt")
+            # Jev's credential for classify (malebolge DEC-059, IMP-060): the
+            # unit's CREDENTIALS_DIRECTORY (flakes IMP-055), read-only at its
+            # host path. Launched outside the unit both stay unset, and the
+            # mail tools refuse every call.
+            (add-runtime ''
+              if [ -n "''${CREDENTIALS_DIRECTORY:-}" ]; then
+                RUNTIME_ARGS+=(--ro-bind "$CREDENTIALS_DIRECTORY" "$CREDENTIALS_DIRECTORY")
+                RUNTIME_ARGS+=(--setenv MALEBOLGE_SCREWTAPE_CREDENTIALS "$CREDENTIALS_DIRECTORY")
+              fi
+            '')
           ];
         # The bookmark toolset's source (malebolge SL-008 DEC-055, CHR-006):
         # Firefox's bookmarkbackups directory, read-only, and never the
