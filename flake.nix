@@ -289,6 +289,8 @@
             (readonly "${malebolgeSshConfig}")
             # satan-mcp, connect only; the rest of /run/user/1000/satan stays out.
             (readonly "/run/user/1000/satan/mcp")
+            # Read-only directory bind permits connecting to the host helper only.
+            (readonly "/run/user/1000/room-behind")
             (readonly malebolgeRoot)
             (readonly "/home/david/satan-corpus")
             (readonly malebolgeKeyFile)
@@ -297,7 +299,7 @@
             # needs it. satan-mcp's dir too: its bind above is strict, and
             # only satan-mcp-start creates it, so on a fresh login bwrap would
             # fail before the daemon could degrade (RV-040 F-2).
-            (add-runtime "mkdir -p ${malebolgeStateDir} ${malebolgeRuntimeDir} /run/user/1000/satan/mcp")
+            (add-runtime "mkdir -p ${malebolgeStateDir} ${malebolgeRuntimeDir} /run/user/1000/satan/mcp /run/user/1000/room-behind")
             (readwrite malebolgeRuntimeDir)
             (readwrite malebolgeStateDir)
           ];
