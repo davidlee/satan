@@ -12,11 +12,11 @@ tags = []
 
 [facet]                         # every field typed; seeded empty (captured later)
 context = "SL-030: many conversations. pi-durable has no harness-wide default model (no_model without one); root({agent}) is a no-op on an existing root; configure merges per key (raw/architecture.md F-2, X-E)."
-choice = "The daemon's AgentChange {model, cwd} is written once, atomically, by createConversation({ownership: ownerless, agent}) for each new conversation; a client-supplied cwd overrides the default cwd. Root keeps today's behaviour: the daemon's AgentChange is re-applied to root on every open. No other conversation is reconfigured on open."
+choice = "The daemon's AgentChange {model, cwd} is written once, atomically, by createConversation({ownership: ownerless, agent}) for each new conversation; a client-supplied cwd overrides the stored default cwd. Root keeps today's behaviour: the daemon's AgentChange is re-applied to root on every open. No other conversation is reconfigured on open. Stored cwd remains inspectable; room-daemon tool environments instead use configured room home as their effective starting directory, including for existing conversations. Host-profile cwd behavior is unchanged."
 alternatives = ["Re-apply the model to every ownerless conversation on open (research X-1 option 1)", "conversationCreated hook for defaults (createConversation({agent}) already applies them in the creating commit)"]
 rationale = "pi stores the model per conversation; making the daemon's model a creation default matches that, keeps startup O(1), and leaves per-conversation models (RFC-002 OQ-2) possible without a second mechanism."
-consequences = ["After a MALEBOLGE_MODEL change, non-root conversations keep their old model; no client verb changes it yet (RFC-002 OQ-2)", "test/session.test.ts:106-121 keeps its meaning (root)", "VT: a created conversation carries the daemon's model and its own cwd; a reopen does not reconfigure it"]
-decided_by = "user (accepted agent proposals, 2026-10-20)"
+consequences = ["After a MALEBOLGE_MODEL change non-root conversations keep their old model; no client verb changes it yet (RFC-002 OQ-2)", "test/session.test.ts:106-121 keeps its meaning (root)", "A created conversation retains its model and stored cwd; reopen does not reconfigure non-root conversations", "Room daemon tool execution uses room home regardless of stored cwd"]
+decided_by = "user (accepted 2026-10-20; room-only amendment confirmed in malebolge SL-013 design, 2026-10-31)"
 decided_on = "2026-10-20"
 
 [evidence]                      # free-text citations (supports / contradicts / notes)
