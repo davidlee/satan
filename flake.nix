@@ -346,6 +346,17 @@
               (set-env "MALEBOLGE_BOOKMARK_BACKUPS" dir)
               (readonly dir)
             ];
+        # The mail plans directory (malebolge SL-012 DEC-110, DEC-119): the
+        # daemon's mail_propose writes plan files there, read-write and created
+        # 0700 before the jail starts. Only plans: Emacs keeps its act log in a
+        # directory no jail binds. Unset, mail_propose refuses as not configured.
+        mailPlansJailOptions = dir:
+          with jailLib.combinators;
+            lib.optionals (dir != null) [
+              (add-runtime "mkdir -p ${dir} && chmod 0700 ${dir}")
+              (set-env "MALEBOLGE_MAIL_PLANS" dir)
+              (readwrite dir)
+            ];
         # The room daemon's launcher. Its screwtape and bookmark backups come
         # from the deployment (~/flakes features/satan/malebolge.nix:
         # services.screwtape's package, configFile and storeDir; the Firefox
@@ -353,6 +364,7 @@
         mkJailedMalebolge = {
           screwtape,
           bookmarkBackups ? null,
+          mailPlans ? null,
         }:
           jailLib.makeJailedAgent {
             name = "malebolge";
@@ -363,7 +375,8 @@
             extraOptions =
               malebolgeRoomJailOptions
               ++ screwtapeJailOptions screwtape
-              ++ bookmarkJailOptions bookmarkBackups;
+              ++ bookmarkJailOptions bookmarkBackups
+              ++ mailPlansJailOptions mailPlans;
             # Its key file is its only secret: no jail carries a provider key.
             workspaceDeps = [];
             # The devshell evaluates impure: never merge JAIL_WORKSPACE_DEPS (RV-035 F-1).
