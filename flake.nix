@@ -118,7 +118,7 @@
         ];
 
         jailEnvOptions = projectOptions jailLib.combinators ++ jailLib.satanMcpOptions ++ corpusJailOptions ++ doctrineJailOptions;
-        # workspaceDeps = [ "/home/david/.emacs.d/" ];
+
         workspaceDeps = [
           "/home/david/flakes/"
           "/home/david/notes/"
@@ -126,6 +126,13 @@
           "/home/david/dev/satan-attrd/"
           "/home/david/dev/satan-patcher/"
           "/home/david/dev/panopticon/"
+        ];
+        workspaceDepsRw = [
+          # FIXME: verify rw needed
+          # presume for mcp tools
+          # TODO: if so the deps need to be passed into the tool execution context
+          # satanJailOptions ?
+          "/home/david/.local/state/behaviour/"
         ];
 
         # SATAN — phase-1 fake harness.  Emits ready, one tool_call, then
@@ -419,6 +426,7 @@
               extraOptions = jailEnvOptions;
               gateway = piGateway;
               inherit workspaceDeps;
+              # inherit workspaceDepsRw;
             };
             jailed-pi-research = jailLib.makeJailedPi {
               name = "pi-research";
@@ -427,6 +435,7 @@
               extraOptions = corpusJailOptions;
               gateway = piGateway;
               inherit workspaceDeps;
+              # inherit workspaceDepsRw;
             };
             jailed-claude = jailLib.makeJailedClaude {
               profile = "specDev";
@@ -436,6 +445,7 @@
               extraOptions = jailEnvOptions;
               gateway = piGateway;
               inherit workspaceDeps;
+              # inherit workspaceDepsRw;
             };
             # jailed-codex = jailLib.makeJailedCodex {
             #   profile = "specDev";
