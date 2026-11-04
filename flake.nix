@@ -90,19 +90,6 @@
             jailLib.agentsByName.claude
           ];
 
-        # The project half of every dev jail's and every quotient form's
-        # options, over either builder's combinator set (agents README
-        # § quotient forms): the local supabase database, over TCP. No
-        # container socket: one would let a delegate mount any host path.
-        projectOptions = c:
-          with c; [
-            (set-env "SATAN_DB_HOST" "127.0.0.1")
-            (set-env "PGHOST" "127.0.0.1")
-            (set-env "PGPORT" "54322")
-            (set-env "PGUSER" "postgres")
-            (set-env "PGPASSWORD" "postgres")
-          ];
-
         # SATAN's corpus (~/satan-corpus) for dev agents.  It used to be reachable
         # through the /workspace/notes dep; workspaceDeps mounts by basename and
         # /workspace/satan is this project, so it gets its own name (SL-015 D-2).
@@ -117,7 +104,7 @@
           (set-env "DOCTRINE_RESERVATION_FALLBACK" "1")
         ];
 
-        jailEnvOptions = projectOptions jailLib.combinators ++ jailLib.satanMcpOptions ++ corpusJailOptions ++ doctrineJailOptions;
+        jailEnvOptions = jailLib.satanMcpOptions ++ corpusJailOptions ++ doctrineJailOptions;
 
         workspaceDeps = [
           "/home/david/flakes/"
@@ -409,7 +396,6 @@
           inherit (inputs) quotient;
           prefix = "quotient";
           packages = projectPkgs;
-          options = projectOptions;
         };
         quotientForms = {
           quotient-read = quotientFamily.read;
@@ -698,6 +684,8 @@
               name = "satan-dev-tools";
               paths = devToolPkgs ++ [doctrine-pkg];
               ignoreCollisions = true;
+              # The dev-envs consumer's per-project env (flakes:SL-022).
+              passthru.devEnv.env.DOCTRINE_RESERVATION_FALLBACK = "1";
             };
           };
 
