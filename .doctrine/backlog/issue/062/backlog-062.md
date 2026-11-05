@@ -23,8 +23,9 @@ Exit 1 with a transcript stays a normal report, because that verdict is the
 caller's. Add red-first cases for the failing and silent reducer. Do not change
 the `command -v quotient` guard.
 
-Held with flakes:ISS-026, pending flakes:IMP-066 (operator, 2026-11-05). This fix
-stands whatever that decides, but how a jail gets a reducer does not:
-flakes:ISS-026 option B would add `PI_REDUCE` to `passthru.devEnv.env` here and a
-caveat to the `quotient reduce` recipe in `CLAUDE.md`. Do not add quotient to
-`devToolPkgs`: it could shadow the jail's shim.
+**Fixed (2026-11-05).** As proposed: `pi_report` captures the reducer's stdout, falls
+back to the tail when it is empty, and closes the reducer's stdin. Exit 1 with a
+transcript stays a report. flakes:DEC-122 took the relay out of jails, so a jail
+has no `quotient`: it gets the labelled tail, and no `PI_REDUCE` was added. A jail
+that enables the relay would need one. `pi-report-test.sh`: 21 of 21 on the host,
+16 of 16 in a `jailed-shell` with section 1 skipped; `just check` green in the jail.
