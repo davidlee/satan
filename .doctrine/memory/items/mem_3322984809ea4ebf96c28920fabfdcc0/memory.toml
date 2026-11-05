@@ -6,7 +6,7 @@ status = "active"
 title = "satan-attrd devshell toolchain"
 summary = "The nix devshell toolchain for developing satan-attrd (Rust daemon)."
 created = "2026-06-16"
-updated = "2026-06-16"
+updated = "2026-11-05"
 
 [scope]
 paths = []

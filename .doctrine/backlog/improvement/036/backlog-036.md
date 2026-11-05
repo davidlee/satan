@@ -38,3 +38,10 @@ guest /work/satan
   interpreter).
 - Wrapped Emacs comes from `flakes/emacs`, so flakes IMP-025 (load-prefer-newer
   via site-start) reaches the guest with the next lock bump.
+
+## Test DB update (2026-11-05, flakes IMP-063)
+
+Tests no longer use Supabase: `just test` starts `dev-db`, a throwaway Postgres
+on a socket. A capsule takes `dev-tools` only, and `dev-db` comes from the
+dev-envs consumer, so the guest lacks it. The capsule needs `dev-db` added, or
+its own server on the socket the justfile expects (`/tmp/satan/db/run`).

@@ -27,7 +27,7 @@ Run all cargo tooling through the devshell.
   ```
 
 - `just check` (= `lint format test`) also works but its recipe **overrides
-  `DATABASE_URL`** to the supabase-local tcp URL (`…54322/postgres`); to prove the
+  `DATABASE_URL`** to the project's dev-db socket URL; to prove the
   prod-leak guard, run the suite under the `.envrc` prod-socket env instead.
 - clippy uses `-W clippy::pedantic` (warn, not deny): pre-existing pedantic
   `cast_possible_wrap` warnings exist and do **not** fail the gate; only

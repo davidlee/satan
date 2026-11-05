@@ -165,9 +165,7 @@ current topology from the architectural destination.
 For development, enter the Nix devshell, then run:
 
 ```sh
-just db-start    # local Supabase; run outside a jail
-just db-setup    # create the test databases
-just check      # lint + interpreted Elisp, Python, and Luau tests
+just check      # lint + interpreted Elisp, Python, and Luau tests; starts the test database
 ```
 
 The Elisp package requires Emacs 30.1 or later. A full agent deployment also

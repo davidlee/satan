@@ -2,9 +2,10 @@
 
 ## How the suite reaches a database (fixed 2026-09-23, ISS-008 + ISS-009)
 
-- The justfile exports one test target to every recipe: `PGHOST=127.0.0.1`,
-  `PGPORT=54322`, `PGUSER`/`PGPASSWORD=postgres`, `SATAN_DB_HOST=$PGHOST` —
-  the local Supabase Postgres, same as the dev jail's `supabaseJailOptions`.
+- The justfile exports one test target to every recipe:
+  `PGHOST=/tmp/satan/db/run`, `PGPORT=5432`, `PGUSER=postgres`,
+  `SATAN_DB_HOST=$PGHOST` — this project's dev-db, a throwaway Postgres on a
+  socket, one per jail (flakes IMP-063; Supabase is gone).
   Override with `SATAN_TEST_PG{HOST,PORT,USER,PASSWORD}`.
 - Deliberately **not** in the devshell env: direnv applies it to Emacs
   buffers, and the broker's own `psql` calls inherit the calling buffer's
@@ -12,8 +13,9 @@
   no longer take buffer env — ISS-037.)
 - `SATAN_DB_HOST` is a `psql -h` host (hostname or socket dir), **not** a
   URL. Port/user/password come from `PG*`.
-- Setup: `just db-start` (outside the jail — `supabase start` fails inside),
-  then `just db-setup` (idempotent).
+- Setup: none. `just test` runs `just db-setup`, which starts the dev-db and
+  creates the test databases. `dev-db` comes from the dev-envs consumer, so
+  satan's own quotient forms lack it until flakes IMP-064.
 - `just test` refuses (exit 1) if any test DB is unreachable;
   `SATAN_TEST_ALLOW_NO_DB=1` opts out (~142 DB tests then skip).
 - The production-host guard (`satan-db-production-host-p`) compares canonical

@@ -1,12 +1,14 @@
-# Test database target, exported to every recipe. Defaults match the dev
-# jail (`supabaseJailOptions` in flake.nix): the local Supabase Postgres
-# (`just db-start`, run outside the jail). Override with SATAN_TEST_PG*.
+# Test database target, exported to every recipe: this project's dev-db, a
+# throwaway Postgres on a socket (`dev-db help`), which `just test` starts.
+# Override with SATAN_TEST_PG*; that server is then yours to start.
 # Nothing here falls back to the libpq default (the system socket).
-export PGHOST := env("SATAN_TEST_PGHOST", "127.0.0.1")
-export PGPORT := env("SATAN_TEST_PGPORT", "54322")
+export DEV_DB_NAME := "satan"
+export PGHOST := env("SATAN_TEST_PGHOST", "/tmp/satan/db/run")
+export PGPORT := env("SATAN_TEST_PGPORT", "5432")
 export PGUSER := env("SATAN_TEST_PGUSER", "postgres")
-export PGPASSWORD := env("SATAN_TEST_PGPASSWORD", "postgres")
+export PGPASSWORD := env("SATAN_TEST_PGPASSWORD", "")
 export SATAN_DB_HOST := PGHOST
+export SATAN_MEMORY_TEST_DB := "satan_memory_test"
 
 # The DB suites drop and re-migrate their own TABLES per test, but never
 # create the DATABASE. Must match the suites' defconsts.
@@ -112,17 +114,17 @@ _require-test-dbs:
     #!/usr/bin/env bash
     set -euo pipefail
     [[ -n "${SATAN_TEST_ALLOW_NO_DB:-}" ]] && exit 0
+    {{just_executable()}} db-setup >/dev/null
     for db in {{test_dbs}}; do
         if ! psql -d "$db" -Atqc 'SELECT 1' >/dev/null 2>&1; then
             echo "test DB '$db' unreachable at $PGHOST:$PGPORT." >&2
-            echo "Run 'just db-start' (outside the jail), then 'just db-setup';" >&2
-            echo "or set SATAN_TEST_ALLOW_NO_DB=1 to skip the DB suites." >&2
+            echo "Set SATAN_TEST_ALLOW_NO_DB=1 to skip the DB suites." >&2
             exit 1
         fi
     done
 
 # Create the test databases on the target above. Idempotent.
-db-setup:
+db-setup: db-up
     #!/usr/bin/env bash
     set -euo pipefail
     for db in {{test_dbs}}; do
@@ -135,12 +137,12 @@ db-setup:
         fi
     done
 
-# Supabase must run outside the jail (inside it, `supabase start` fails).
-db-start:
-  supabase start
+# Start the dev-db, unless SATAN_TEST_PGHOST names another server. Idempotent.
+db-up:
+  @test -n "${SATAN_TEST_PGHOST:-}" || dev-db up
 
-db-stop:
-  supabase stop
+db-down:
+  dev-db down
 
 db-status:
-  supabase status
+  dev-db status

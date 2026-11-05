@@ -17,5 +17,5 @@ So: never accept a worker's test claim for DB-backed behaviour; re-run
 `SATAN_DB_HOST` by hand trips the `satan-db/resolve-host-guard-*` tests
 instead.
 
-Host side: the test DB is Supabase on `127.0.0.1:54322`
-([[mem.fact.satan.test-db-on-rootless-docker]]).
+Update (flakes IMP-063): dev-envs jails carry `dev-db`, so `just test` runs
+the DB suites there. Satan's own forms do not carry it until flakes IMP-064.

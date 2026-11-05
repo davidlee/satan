@@ -6,7 +6,7 @@ status = "active"
 title = "pi workers' quotient form has no SATAN_DB_HOST: DB tests skip or fail there"
 summary = "Inside quotient pi_agent forms, satan DB-gated tests skip and some (satan-motive capsule, satan-mcp boot-context) fail with 'refusing production host'; workers call these pre-existing. Only the host just check is evidence."
 created = "2026-10-26"
-updated = "2026-10-26"
+updated = "2026-11-05"
 
 [scope]
 paths = ["satan/test"]

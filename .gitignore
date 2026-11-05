@@ -17,7 +17,6 @@ oauth2.*
 
 /eca
 /.spec-driver/run/events.jsonl
-/supabase/*
 
 .spec-driver
 

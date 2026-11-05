@@ -20,7 +20,7 @@ One blocking call: `pi_agent(prompt, profile)` → `{state, final, result, trans
 Operator setup, outside the repo (an absent or malformed policy refuses every call):
 
 - Policy: `~/.config/quotient/policy.json` (mode 0444; see `quotient help policy`). Its machine-default forms carry no project env; the server and those forms are the host's (flakes `agents.quotient`).
-- This root's forms carry the supabase env (`projectOptions`): `just quotient-forms` links them at `.quotient/forms/<capability>`, then `quotient allow` approves them. Rerun both after changing the forms in `flake.nix` or bumping the `quotient` input.
+- This root's forms: `just quotient-forms` links them at `.quotient/forms/<capability>`, then `quotient allow` approves them. Rerun both after changing the forms in `flake.nix` or bumping the `quotient` input.
 - The server is the `quotient` entry in `.mcp.json`, run from PATH; `quotient help clients` prints the client snippets.
 - Profiles are read once at start-up. Restart the session after editing `~/.config/quotient/profiles/`.
 

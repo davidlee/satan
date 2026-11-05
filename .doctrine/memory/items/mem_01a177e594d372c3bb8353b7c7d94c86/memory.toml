@@ -2,11 +2,11 @@ memory_uid = "mem_01a177e594d372c3bb8353b7c7d94c86"
 memory_key = "mem.fact.satan.test-db-on-rootless-docker"
 schema_version = 1
 memory_type = "fact"
-status = "active"
+status = "archived"
 title = "satan test DB runs on rootless docker, not the podman socket .envrc names"
 summary = "satan .envrc exports DOCKER_HOST=podman.sock, which this host lacks; Supabase runs on rootless docker (systemctl --user start docker; DOCKER_HOST=unix:///run/user/1000/docker.sock)."
 created = "2026-10-26"
-updated = "2026-10-26"
+updated = "2026-11-05"
 
 [scope]
 paths = [".envrc", "justfile"]

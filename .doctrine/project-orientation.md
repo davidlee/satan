@@ -77,11 +77,11 @@ roots are literal `~` strings, so `expand-file-name` before `call-process`.
 
 - You might be working inside a bubblewrap jail, in which case your pwd at `/workspace/satan` maps to `~/dev/satan` outside the jail.
 - Enter the Nix devshell (`nix develop` / direnv): provides Emacs, Python,
-  psql, supabase, doctrine.
-- Test DB: the local Supabase Postgres (127.0.0.1:54322). The justfile exports
-  `PG*` + `SATAN_DB_HOST` for it (override with `SATAN_TEST_PG*`); nothing
-  falls back to the system socket. One-time: `just db-start` (outside the
-  jail), then `just db-setup`.
+  psql, doctrine.
+- Test DB: this project's dev-db, a throwaway Postgres on a socket in `/tmp`
+  (`dev-db help`), one per jail. `just test` starts it and creates the test
+  databases. The justfile exports `PG*` + `SATAN_DB_HOST` for it (override with
+  `SATAN_TEST_PG*`); nothing falls back to the system socket.
 - `just check` — lint + test. `just lint` — paren balance only
   (`bin/elisp-locate-paren-error`). `just test` — ert in `emacs --batch`
   (interpreted, never byte-compiled) + Python harness unittests. Fails if a

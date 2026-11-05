@@ -68,7 +68,6 @@
           nodejs
           just
           postgresql_18
-          supabase-cli
           wrappedEmacs
           emacsclient-commands
           sqlite
@@ -389,7 +388,7 @@
         # capability: quotient's form family through the agents lib, so the
         # form-1 contract (DEC-116) is quotient's and the posture the lib's.
         # They are this root's project forms (`just quotient-forms`, then
-        # `quotient allow`), so they carry the supabase env. No persisted home:
+        # `quotient allow`). No persisted home:
         # a form writes only the root, the session directory and its private
         # temp, so the policy's `exposure` is empty.
         quotientFamily = jailLib.quotientFormFamily {
