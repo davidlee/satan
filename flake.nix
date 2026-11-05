@@ -223,10 +223,9 @@
         # code is read-only; store and socket are explicit binds.
         malebolgeRoot = "/home/david/dev/malebolge";
         # Jev's loopback bridge (malebolge DEC-059, IMP-060): screwtape's one
-        # config names the host relay's http://127.0.0.1:4000, so the jail
-        # serves that port from the gateway's client socket.
+        # config names the host relay's http://127.0.0.1:4000, which
+        # gatewaySocketOptions' forwarder serves in the jail.
         malebolgeDaemon = pkgs.writeShellScriptBin "malebolge" ''
-          ${pkgs.socat}/bin/socat TCP-LISTEN:4000,bind=127.0.0.1,fork,reuseaddr UNIX-CONNECT:${gatewayClientSocket} &
           exec ${lib.getExe pkgs.nodejs_latest} ${malebolgeRoot}/src/daemon-main.ts "$@"
         '';
         # The daemon reads its gateway key only from a file, never env or argv
