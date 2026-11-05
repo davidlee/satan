@@ -43,8 +43,8 @@ command -v pi >/dev/null || { echo "[review] pi not found" >&2; exit 1; }
 [ -f "$PF" ] || { echo "[review] prompt file not found: $PF" >&2; exit 1; }
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-# The rpc poll/reap lives in one place for all four spawn scripts — it was four
-# byte-identical copies, and that is how CHR-051 came to be fixed in two of them.
+# The rpc poll/reap lives in one place for the spawn scripts — it was
+# byte-identical copies, and that is how CHR-051 came to be fixed in only some.
 # Preconditions it relies on: `set -m` before the first background job (below),
 # and being called from this shell so `wait` can reach our own children.
 # shellcheck source=scripts/lib/pi-reap.sh

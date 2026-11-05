@@ -73,7 +73,7 @@ cd "$ROOT" || {
 }
 # bwrap --bind/--chdir require an ABSOLUTE path: under `--ro-bind / /` it cannot
 # mkdir a relative mountpoint against the read-only new root. Absolutize $D
-# (relative dirs are resolved against $ROOT) so callers keep the pi-spawn.sh
+# (relative dirs are resolved against $ROOT) so callers keep the
 # relative-dir convention.
 case "$D" in /*) ;; *) D="$ROOT/$D" ;; esac
 
@@ -105,8 +105,8 @@ fi
 OUT=$(mktemp)
 
 if [ "$HARNESS" = pi ]; then
-  # The rpc poll/reap lives in one place for all four spawn scripts — it was four
-  # byte-identical copies, and that is how CHR-051 came to be fixed in two of them.
+  # The rpc poll/reap lives in one place for the spawn scripts — it was
+  # byte-identical copies, and that is how CHR-051 came to be fixed in only some.
   # Preconditions it relies on: `set -m` before the first background job (below),
   # and being called from this shell so `wait` can reach our own children. Sourced
   # INSIDE the pi profile: `claude -p` exits on completion and has no fifo to poll,

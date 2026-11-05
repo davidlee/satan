@@ -2,10 +2,9 @@
 # pi-reap.sh — completion poll and reap for the pi `--mode rpc` spawn arm.
 #
 # SOURCED, never executed. Provides one function, `pi_await_and_reap`, shared by
-# pi-spawn.sh, spawn-confined.sh, pi-respawn-nofork.sh and pi-review.sh —
-# every script that runs `pi --mode rpc` behind a fifo. It was four byte-identical
-# copies before this file existed, which is how CHR-051's fixes came to be applied
-# to two of the four while pi-respawn-nofork.sh kept the original defects.
+# spawn-confined.sh and pi-review.sh — every script that runs `pi --mode rpc`
+# behind a fifo. It was byte-identical copies before this file existed, which is
+# how CHR-051's fixes came to be applied to only some of them.
 #
 # NOT for the `--print` arm (pi-agent, and its pi-scout / pi-research shims):
 # `--print` self-exits once stdin closes and needs no fifo, poll, or reap.

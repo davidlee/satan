@@ -14,7 +14,7 @@
 # This is the `--print` arm. It has NO fifo, poll, or reap: `pi --print`
 # self-exits once its turn ends *provided stdin is closed*, which is the whole
 # termination story (see the ISS-266 note below). The `--mode rpc` arm —
-# pi-spawn.sh, spawn-confined.sh, pi-respawn-nofork.sh, pi-review.sh — is a
+# spawn-confined.sh, pi-review.sh — is a
 # different lifecycle; do not port that machinery here.
 #
 # Usage:
