@@ -1,0 +1,44 @@
+id = 37
+slug = "f1-signal-hold"
+title = "Signal loss (F1): hold unsupported outcomes at the broker, then add the reason the daemon lacks"
+status = "design"
+created = "2026-11-06"
+updated = "2026-11-06"
+tags = ["attributes", "satan", "sensor", "signal-loss"]
+
+[relationships]
+needs = []                      # slice→work hard prerequisite
+after = [{ to = "SL-019", rank = 0 }]                      # slice→work soft sequence: { to, rank }
+
+[[selector]]
+selector = "satan/satan-sensor-content.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "satan/satan-attribute.el"
+intent = "scope-relevant"
+
+[[selector]]
+selector = "docs/attributes/design-contract.md"
+intent = "scope-relevant"
+
+[[relation]]
+label = "related"
+target = "ISS-011"
+
+[[relation]]
+label = "related"
+target = "RFC-021"
+
+[[relation]]
+label = "related"
+target = "SL-036"
+
+# STRUCTURAL relations are uniform `[[relation]]` rows, never a typed
+# `[relationships]` axis. Slices carry no typed STRUCTURAL
+# relation axes — the `[relationships]` table above holds only the dep/seq payload
+# (`needs`/`after`). Author a structural edge with the `doctrine link` verb
+# — it validates the (source, label) pair and resolves the target:
+#   doctrine link SL-NNN specs SPEC-NNN
+#   doctrine link SL-NNN governed_by ADR-NNN
+# `doctrine inspect SL-NNN` renders the inbound + outbound edges.

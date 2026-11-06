@@ -63,3 +63,10 @@ Beyond adding the missing reason to one side:
 - If the reason is simply added to attrd: it needs a §6S delta row (a
   design-contract amend), and the magnitude should follow `segment_backlog`'s
   partial-satisfaction reading rather than being invented.
+
+## Implementation
+
+`SL-037` takes both halves in one act: a broker-side gate so an unsupported
+`(source, reason)` is *held* (no enqueue, no watermark advance, a visible hold record with a
+reader) instead of enqueued-and-deleted, then the daemon-side `ContentBacklog` reason plus
+the `§6S.1`/`§6S.2` contract rows. O1's general machinery stays out of scope by design.
