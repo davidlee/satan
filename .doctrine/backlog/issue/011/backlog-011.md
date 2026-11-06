@@ -16,3 +16,37 @@ dropped. Compare the broker-side reason set (`satan-sensor-content.el:122`,
 
 Seen during SL-015 PHASE-03 T18 (journal around tick
 `20260914T125539-tick-pulse-c3dce4`); unrelated to the corpus move.
+
+## Mechanism (added 2026-11-06, RFC-021 F1)
+
+The loss is irreversible, and not only because the row is deleted. Two halves:
+
+1. **Daemon side.** `process_outcome_row` claims the row (`claimed_at`), fails
+   `parse_inbox_payload`, then calls `delete_outcome_row` and returns Ok
+   (`satan-attrd/src/run_loop.rs:527-548`). Same path for a `schema_version`
+   major mismatch (`:540`). Nothing durable records the rejection; the only
+   trace is one journald line.
+2. **Broker side.** `satan-sensor-content-probe-commit` enqueues the payload and
+   then advances the probe watermark to the snapshot's high-water — on *enqueue*,
+   not on acknowledgement. A rejected event therefore consumes the evidence it
+   carried: the next probe sees nothing new.
+
+Consequence: "no events today" and "every event was rejected today" are
+indistinguishable from the database (see RFC-021 F2/F3 and `ISS-063`'s sibling
+problem: a reader over successful events reports health).
+
+## Wanted (generalised)
+
+Beyond adding the missing reason to one side:
+
+- Decide **which side owns the reason vocabulary** — the broker emits, so it
+  should either consult a daemon-advertised set (RFC-021 O2) or the daemon should
+  store unknown `(source, reason)` pairs opaquely instead of deleting them
+  (RFC-021 O1).
+- Adopt the **advance-on-acknowledgement rule** for every broker probe watermark:
+  advance on enqueue only where the sink cannot reject. `satan-sensor-content`,
+  the keyrate sensors and the curiosity sensor all advance through the same
+  commit path, so the rule is one fix, not one per sensor.
+- If the reason is simply added to attrd: it needs a §6S delta row (a
+  design-contract amend), and the magnitude should follow `segment_backlog`'s
+  partial-satisfaction reading rather than being invented.
