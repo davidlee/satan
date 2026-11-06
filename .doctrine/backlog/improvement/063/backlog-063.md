@@ -53,3 +53,9 @@ recall, not latency.
 psql call, so any suite that touches the DB writes live rows (ISS-018). As of
 2026-11-06 the files hold 152,983 `kind:"subprocess"` rows and **zero**
 `kind:"tick"` rows. The report must filter on `kind` and a non-empty `run_id`.
+
+## Implementation
+
+`SL-036` (increment 1) implements this item's reader as `tick_explain`, and goes on to a
+shadow policy oracle only if the reader shows the loop's decisions are reconstructible. The
+slice is the work; this item stays as the statement of what "coverage" means.
