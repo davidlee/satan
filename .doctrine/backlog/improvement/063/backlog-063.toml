@@ -1,0 +1,30 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 63
+slug = "tick-ledger-review-derive-null-tick-and-signal-coverage-from-what-runs-already-record"
+title = "Tick ledger review: derive null-tick and signal coverage from what runs already record"
+kind = "improvement"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-11-06"
+updated = "2026-11-06"
+tags = ["memory", "observability", "satan", "tick"]
+
+# outbound-only. Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows — author them with
+# `doctrine link ITEM-NNN <label> <target>`; `doctrine inspect ITEM-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "related"
+target = "IMP-014"
+
+[[relation]]
+label = "related"
+target = "ISS-018"

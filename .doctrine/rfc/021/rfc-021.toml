@@ -1,0 +1,44 @@
+schema = "doctrine.rfc"
+version = 1
+
+id = 21
+slug = "the-attribute-layer-state-of-play-priorities-and-breadcrumbs-for-satan-attrd"
+title = "The attribute layer: state of play, priorities and breadcrumbs for satan-attrd"
+status = "open"
+created = "2026-11-06"
+updated = "2026-11-06"
+tags = ["attrd", "attributes", "metabolism", "satan"]
+
+[relationships]
+# RFCs participate in the tier-1 `related` relation (AnyNumbered — links to any entity).
+# Author with `doctrine link RFC-NNN related <target>`. `doctrine inspect RFC-NNN` renders them.
+superseded_by = []   # reverse link is derived (REV→RFC originates_from)
+
+[[relation]]
+label = "related"
+target = "RFC-016"
+
+[[relation]]
+label = "related"
+target = "RFC-017"
+
+[[relation]]
+label = "related"
+target = "POL-001"
+
+[[relation]]
+label = "related"
+target = "IMP-012"
+
+[[relation]]
+label = "related"
+target = "ISS-011"
+
+[[relation]]
+label = "related"
+target = "RSK-015"
+
+[[relation]]
+label = "related"
+target = "IMP-055"
+

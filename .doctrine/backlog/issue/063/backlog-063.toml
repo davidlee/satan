@@ -1,0 +1,30 @@
+schema = "doctrine.backlog"
+version = 1
+
+id = 63
+slug = "pattern-layer-is-write-only-patternseld-is-never-synced-in-production-and-no-code-reads-satan"
+title = "Pattern layer is write-only: patterns.eld is never synced in production and no code reads satan_pattern_stats"
+kind = "issue"
+status = "open"
+resolution = ""                 # seeded empty so `backlog edit` sets it in place
+created = "2026-11-06"
+updated = "2026-11-06"
+tags = ["gotcha", "memory", "pattern", "satan"]
+
+# outbound-only. Cross-kind structural edges (e.g. references with a role
+# — `originates_from` for backlog→slice provenance — governed_by, related, drift) are
+# uniform `[[relation]]` rows — author them with
+# `doctrine link ITEM-NNN <label> <target>`; `doctrine inspect ITEM-NNN` renders
+# them. The dep/seq axes below stay typed (they carry per-edge payloads).
+[relationships]
+needs    = []                   # item→item hard prerequisite
+after    = []                   # item→item soft sequence: { to, rank? }
+triggers = []                   # watched source globs: { globs, note? }
+
+[[relation]]
+label = "related"
+target = "ISS-025"
+
+[[relation]]
+label = "related"
+target = "ISS-059"
