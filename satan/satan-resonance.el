@@ -1,6 +1,6 @@
 ;;; satan-resonance.el --- SATAN auto-resonance (Phase 2) -*- lexical-binding: t; -*-
 
-;; Phase 2 of the perceptual-layer v0 (see docs/satan/perceptual-design.md
+;; Phase 2 of the perceptual-layer v0 (see docs/perceptual-design.md
 ;; §S2, §7, §A4–A5).  Derives a cue from the run's percept, applies the
 ;; §S2 anti-generic-recall gate, calls `memory_resonate', and returns a
 ;; resonance plist the broker attaches to the run_ctx.

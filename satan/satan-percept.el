@@ -1,6 +1,6 @@
 ;;; satan-percept.el --- SATAN percept skeleton (Phase 1) -*- lexical-binding: t; -*-
 
-;; Phase 1 of the perceptual-layer v0 (see docs/satan/perceptual-design.md
+;; Phase 1 of the perceptual-layer v0 (see docs/perceptual-design.md
 ;; §S1, §7, §A1–A6).  Builds the percept capsule from the existing memory
 ;; substrate (evidence assembler + canonicalizer), persists a
 ;; deterministic `percept.json' next to `bundle.json', and renders a

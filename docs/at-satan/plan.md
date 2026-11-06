@@ -5,8 +5,6 @@ metadata:
   type: plan
   topic: satan-at
   status: draft
-  updated_at: 03398479
-  verified_at: 03398479
 ---
 
 # Plan: Rewrite design.md as two-stage deliverable (B → A)

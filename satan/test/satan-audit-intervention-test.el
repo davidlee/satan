@@ -1,7 +1,7 @@
 ;;; satan-audit-intervention-test.el --- intervention audit-event validator -*- lexical-binding: t; -*-
 
 ;; T7 PR 1 — validator for the three intervention audit-event kinds
-;; defined in docs/satan/attributes/outcome-semantics.md §9.  No
+;; defined in docs/attributes/outcome-semantics.md §9.  No
 ;; callers yet; this file exercises the validator in isolation.
 ;;
 ;; Run from CLI, at the repo root:

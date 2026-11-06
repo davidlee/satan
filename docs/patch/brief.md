@@ -4,9 +4,8 @@ description: SATAN patch-agent extension — technical brief (scope, safety mode
 metadata:
   type: design
   topic: satan-patch
-  status: canon
-  updated_at: 03398479
-  verified_at: 03398479
+  status: superseded
+  superseded_by: SPEC-004
 ---
 
 # Technical Brief: SATAN Patch-Agent Extension

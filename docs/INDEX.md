@@ -5,8 +5,6 @@ metadata:
   type: reference
   topic: satan
   status: living
-  updated_at: 03398479
-  verified_at: 03398479
 ---
 
 # SATAN docs index

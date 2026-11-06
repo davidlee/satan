@@ -1,6 +1,6 @@
 ;;; satan-motive.el --- SATAN motive file parser (Phase 3) -*- lexical-binding: t; -*-
 
-;; Phase 3 of the perceptual-layer v0 (see docs/satan/perceptual-design.md
+;; Phase 3 of the perceptual-layer v0 (see docs/perceptual-design.md
 ;; §S3, §S4, §7, §A7–A9).  Parses `motives.org' — a single, bounded,
 ;; user-and-SATAN-editable prose file at `satan-motive-file' —
 ;; into the structured shape the capsule renderer and the

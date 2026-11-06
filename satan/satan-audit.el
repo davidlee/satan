@@ -192,7 +192,7 @@ and knows about `final.json'."
 ;; ---------- Intervention event validators (T7) ----------
 ;;
 ;; Three audit-log event kinds carry intervention lifecycle per
-;; `docs/satan/attributes/outcome-semantics.md' §9.  The validator is
+;; `docs/attributes/outcome-semantics.md' §9.  The validator is
 ;; broker-internal: it checks payloads before/after they hit
 ;; `transcript.jsonl', and it checks replay-safety (every
 ;; `outcome_classified' / `outcome_revised' references a previously-seen

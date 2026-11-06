@@ -597,7 +597,7 @@ Guard order (:mature / NOW-nil):
 Single-motive only; multi-motive correlation lands in 5.7.
 Verdict asserted via '--assert-auto-classification' (no :harmful/:contradicted).
 
-Full semantics: docs/satan/observer-classify.md"
+Full semantics: docs/observer-classify.md"
 
   (let ((maturity (and now (satan-observer--maturity-state intervention now))))
     (pcase maturity

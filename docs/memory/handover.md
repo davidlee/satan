@@ -5,8 +5,6 @@ metadata:
   type: handover
   topic: satan-memory
   status: living
-  updated_at: 03398479
-  verified_at: 03398479
 ---
 
 # SATAN — Memory Substrate Handover

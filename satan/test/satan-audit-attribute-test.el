@@ -1,7 +1,7 @@
 ;;; satan-audit-attribute-test.el --- attribute audit-event validator -*- lexical-binding: t; -*-
 
 ;; T-attr-1b broker side — validator for `attribute.delta_applied'
-;; defined in docs/satan/attributes/design-contract.md §5.1.  The
+;; defined in docs/attributes/design-contract.md §5.1.  The
 ;; satan-attrd daemon writes the event row + RPCs the event back to
 ;; the broker for transcript write; this validator gates the
 ;; transcript-write boundary (see contract §17.4).  No callers yet;

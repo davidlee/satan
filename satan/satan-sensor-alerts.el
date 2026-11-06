@@ -1,6 +1,6 @@
 ;;; satan-sensor-alerts.el --- SATAN sensor freshness + loud failure -*- lexical-binding: t; -*-
 
-;; Phase 4 of the perceptual-layer v0 (see docs/satan/perceptual-design.md
+;; Phase 4 of the perceptual-layer v0 (see docs/perceptual-design.md
 ;; §S6, §7, §A15–A17).  Reads the `:sensor_status' plist returned by
 ;; `satan-memory-evidence-assemble', renders the capsule sensor line,
 ;; and (Phase 4.3+) decides whether to dispatch a `notify_send' tool

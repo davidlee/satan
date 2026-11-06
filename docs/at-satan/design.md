@@ -5,8 +5,6 @@ metadata:
   type: design
   topic: satan-at
   status: draft
-  updated_at: 03398479
-  verified_at: 03398479
 ---
 
 # AT-SATAN: `@satan` agent-trigger tooling

@@ -4,9 +4,8 @@ description: SATAN patch-agent implementation plan — phases, file plan, migrat
 metadata:
   type: plan
   topic: satan-patch
-  status: living
-  updated_at: 03398479
-  verified_at: 03398479
+  status: superseded
+  superseded_by: SPEC-004
 ---
 
 # Patch-Agent Extension — Implementation Plan

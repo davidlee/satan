@@ -1,7 +1,8 @@
 ;;; satan-tools-docs.el --- docs_* lazy doc lookup tools -*- lexical-binding: t; -*-
 
 ;; Three read-only tools over the chunked, frontmatter-stamped markdown
-;; corpus under `docs/satan/' and `docs/emacs/' (post-reshape 03398479):
+;; corpus under `docs/' (roots: `satan-tools-docs-roots'; the config-owned
+;; `docs/emacs' corpus is not part of the package):
 ;;
 ;;   docs_list                                  -> [slug entries]
 ;;   docs_search :query? :topic? :type? :status? -> [slug entries]
@@ -23,7 +24,7 @@
 ;; Lazy-load model: tiny INDEX in canon, chunks pulled on demand via
 ;; these tools.  No eager corpus ingest.
 ;;
-;; Mind/mechanism split (see docs/satan/governance.md §Ownership): tool
+;; Mind/mechanism split (see docs/governance.md §Ownership): tool
 ;; descriptions live in `satan-tools-descriptions-dir' (docs_*.md), not here.
 
 (require 'cl-lib)

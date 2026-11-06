@@ -10,7 +10,7 @@ metadata:
 
 # SATAN refactor — themes index
 
-Companion to [`../../CODE_REVIEW.md`](../../CODE_REVIEW.md) (review artifact, frozen point-in-time)
+Companion to [`../review/CODE_REVIEW.md`](../review/CODE_REVIEW.md) (review artifact, frozen point-in-time)
 and [`extraction-policy.md`](extraction-policy.md) (standing policy for when modules should leave elisp).
 Per-theme briefs live in this directory.
 
