@@ -167,12 +167,14 @@ Ids are stable; §9 records what happened to each. `status` is one of `fixed`, `
 
 ## 6. Gaps — subjects with no document
 
-Ranked by how much their absence costs a new agent.
+Ranked by how much their absence costs a new agent. **The plan for closing the spec
+half of this list is `IMP-067`**; the census behind it is `.doctrine/state/spec-coverage-map.md`
+(provisional, gitignored).
 
 1. **The attribute daemon (`satan-attrd`).** 4.5k lines of Rust, 14 modules, 6 migrations.
    Its only current description is RFC-021 — a mutable working doc — plus a repo whose
    README says "Scaffold only" and whose HANDOVER is dated 2026-05-23. No spec, no contract
-   home for the daemon half of the attribute layer (RFC-021 Q3).
+   home for the daemon half of the attribute layer (RFC-021 Q3). **`IMP-067` proposes SPEC-005.**
 2. **The state roots and their retention.** The three roots are described in AGENTS.md and
    in `satan-custom.el`, but nothing states what may be deleted, what is backup-worthy, or
    what "discardable" means for `runs/` — `ISS-065`.
@@ -180,7 +182,12 @@ Ranked by how much their absence costs a new agent.
    exist because there is no account of what a null tick is and what the ledger should say.
 4. **The pattern layer.** `ISS-063`: it is written and never read; no doc says what it is for.
 5. **The memory substrate has a design doc but no spec** (§4), so grammar drift has no
-   authority to contradict it.
+   authority to contradict it. **`IMP-067` proposes a memory-substrate component spec
+   under a future broker container spec.**
+
+A full coverage census of the broker-side surface — 19,897 loc, the containers SPEC-002
+already marks `Spec: —`, and two anchor defects — is summarised in `IMP-067`; its
+artefact is `.doctrine/state/spec-coverage-map.md`.
 
 ---
 
@@ -223,6 +230,10 @@ memory, perception and `@satan` is ungoverned and will silently rot like `docs/s
 
 RFC-021 is the same question one layer down, for the attribute layer. That is why this
 ledger sits beside it: the answer for `satan-attrd` will be the template for the rest.
+
+`IMP-067` is the concrete first answer — anchors, then SPEC-005 for the attribute layer,
+then a broker container spec — chosen to cover the largest ungoverned areas with the
+smallest number of documents, rather than filling SPEC-002's `Spec: —` column for symmetry.
 
 ---
 
