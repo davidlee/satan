@@ -37,6 +37,16 @@ problem: a reader over successful events reports health).
 
 ## Wanted (generalised)
 
+**Immediate mitigation, no code (2026-11-06).** Set `satan-sensor-content-enabled` to
+nil. The probe then does nothing — no enqueue *and* no watermark advance, because
+`satan-sensor-content-probe-commit` advances only when the snapshot says `:emit`. The
+backlog accumulates in `articles.jsonl` and will be emitted whole (at full count) once
+the daemon accepts the reason. This stops the destruction without losing the evidence;
+it costs timeliness only. Do **not** stop emitting while letting the watermark advance —
+that is the same loss moved to the broker, and remapping to `segment_backlog` is not
+equivalent (different stream, different metric, different watermark; see the RFC-021
+§5 item 1 comparison).
+
 Beyond adding the missing reason to one side:
 
 - Decide **which side owns the reason vocabulary** — the broker emits, so it
