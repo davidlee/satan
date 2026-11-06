@@ -31,9 +31,24 @@ built its own dev jails, forms and shell commands, and `dev-tools` carried doctr
   `devEnv` cannot bind a path.
 - `runner-socket-unjailed` and `op-unjailed` now scan production jails only.
 
-## Open
+## Fleet (2026-11-06)
 
-- The dev-envs half of the audit move is committed in `~/flakes`, not yet pushed.
-- `~/flakes/bin/dev-envs-forms`, then `quotient allow` and `direnv allow` (the operator's).
-- `/srv/fleet/targets/satan.nix`: `toolsPackage = "capsule-tools"`, in the same change as
-  the re-lock onto this commit. A re-lock alone drops doctrine from the room.
+`/srv/fleet` `384c141`: the room's target takes `capsule-tools`, with the re-lock onto
+`e399fae`. `just` was red on `.#fragmentsCases` (`attribute 'lounge' missing`), also at
+`a9b384f` and `b9d6a2e`, so this change did not cause it. oubliette:ISS-028 fixed that in
+`27612b8`, and fleet `b130609` locks it.
+
+- `just` exit 0 at `b130609`, and again at `3809645`, which drops satan's stale
+  `inputs.goad.follows`. `.#roomImages` is the same store path either side of that commit.
+- `fragmentsCases` logs `skip case 6: no room fits`. Case 6 needs a room with no fragments,
+  and fleet's only room selects `postgresql-18`. The postgresql cases ran.
+- Pushed to origin/main through `3809645`.
+
+## Room (2026-11-06)
+
+`just refresh-build assistant`: `current` and `booted` both moved to `9gbi3cna…`.
+
+- `session satan -- type -a doctrine`: one entry, `/etc/room/repo/satan/tools/bin/doctrine`,
+  which is `doctrine-0.48.1` in `satan-capsule-tools`. `doctrine status` runs in `/work/satan`.
+- `doctrine` is not on a login's `PATH`, for `agent` or `satan`. That is by design: a room's
+  tool set is reached only through `session` (oubliette `docs/contract-target.md`).
