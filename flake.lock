@@ -495,26 +495,6 @@
         "type": "github"
       }
     },
-    "quotient": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1793074058,
-        "narHash": "sha256-e4NsCP192YG/JtJcFUj31eCIy2dHjcbQZmVDgON5xXk=",
-        "owner": "davidlee",
-        "repo": "quotient",
-        "rev": "1f18594f3a390504d9f4cc83288f7c168ec75eb3",
-        "type": "github"
-      },
-      "original": {
-        "owner": "davidlee",
-        "repo": "quotient",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "agents": "agents",
@@ -523,7 +503,6 @@
         "emacs": "emacs",
         "flake-parts": "flake-parts_3",
         "nixpkgs": "nixpkgs_8",
-        "quotient": "quotient",
         "zig-overlay": "zig-overlay"
       }
     },

@@ -15,12 +15,6 @@
     emacs.url = "github:davidlee/nix-config?dir=flakes/emacs";
     doctrine.url = "github:davidlee/doctrine";
     zig-overlay.url = "github:mitchellh/zig-overlay";
-    # The per-call pi delegation server (its own repo) and its form builder.
-    # Unpinned: a break should surface.
-    quotient = {
-      url = "github:davidlee/quotient";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = inputs @ {
@@ -52,17 +46,14 @@
           if isLinux
           then inputs.agents.lib.${system}.mkJailedAgents {}
           else {};
-        # LLM gateway clients (DEC-047): the harness has its own key; the pi
-        # jails and jailed-claude share pi's. Lazy, so darwin never forces them.
-        piGateway = jailLib.gatewayClient "pi";
+        # The harness's LLM gateway client (DEC-047): its own key. Lazy, so
+        # darwin never forces it.
         satanGateway = jailLib.gatewayClient "satan";
         doctrine-pkg = doctrine.packages.${system}.default;
         wrappedEmacs = inputs.emacs.packages.${system}.default;
-        # The tool set minus the jailed agents: what a SATAN working
-        # environment needs, independent of how it is confined. Exported as
-        # `packages.dev-tools` for consumers that confine differently — the
-        # oubliette microvm capsule puts it in the guest's systemPackages, where
-        # the agents come from the capsule and a bwrap jail is meaningless.
+        # What a SATAN working environment needs, independent of how it is
+        # confined: dev-envs adds the jails on Linux, and the room adds its own
+        # agent. Exported as `packages.dev-tools` and `packages.capsule-tools`.
         devToolPkgs = with pkgs; [
           zigPackage
           nodejs
@@ -82,45 +73,6 @@
           coreutils # timeout(1) — bounds runaway harness children (SL-011, EX-6)
           luau # noctalia/ plugin tests + lint
         ];
-        projectPkgs =
-          devToolPkgs
-          ++ lib.optionals isLinux [
-            jailLib.agentsByName.codex
-            jailLib.agentsByName.claude
-          ];
-
-        # SATAN's corpus (~/satan-corpus) for dev agents.  It used to be reachable
-        # through the /workspace/notes dep; workspaceDeps mounts by basename and
-        # /workspace/satan is this project, so it gets its own name (SL-015 D-2).
-        # Since CHR-010 that name is simply the basename: mind and mechanism no
-        # longer collide, so the target is an explicit path rather than a
-        # workaround.
-        corpusJailOptions = with jailLib.combinators; [
-          (rw-bind "/home/david/satan-corpus" "/workspace/satan-corpus")
-        ];
-
-        doctrineJailOptions = with jailLib.combinators; [
-          (set-env "DOCTRINE_RESERVATION_FALLBACK" "1")
-        ];
-
-        jailEnvOptions = jailLib.satanMcpOptions ++ corpusJailOptions ++ doctrineJailOptions;
-
-        workspaceDeps = [
-          "/home/david/flakes/"
-          "/home/david/notes/"
-          "/home/david/.local/state/behaviour/"
-          "/home/david/dev/satan-attrd/"
-          "/home/david/dev/satan-patcher/"
-          "/home/david/dev/panopticon/"
-        ];
-        workspaceDepsRw = [
-          # FIXME: verify rw needed
-          # presume for mcp tools
-          # TODO: if so the deps need to be passed into the tool execution context
-          # satanJailOptions ?
-          "/home/david/.local/state/behaviour/"
-        ];
-
         # SATAN — phase-1 fake harness.  Emits ready, one tool_call, then
         # final with one org_update_owned_block action.  Used by the
         # broker (Emacs side) to validate the JSONL contract end-to-end
@@ -383,98 +335,26 @@
           storeDir = "/home/david/.local/state/screwtape";
         };
 
-        # SL-029's per-call forms (`quotient help form`), one per filesystem
-        # capability: quotient's form family through the agents lib, so the
-        # form-1 contract (DEC-116) is quotient's and the posture the lib's.
-        # They are this root's project forms (`just quotient-forms`, then
-        # `quotient allow`). No persisted home:
-        # a form writes only the root, the session directory and its private
-        # temp, so the policy's `exposure` is empty.
-        quotientFamily = jailLib.quotientFormFamily {
-          inherit (inputs) quotient;
-          prefix = "quotient";
-          packages = projectPkgs;
+        jailPkgs = lib.optionalAttrs isLinux {
+          SATAN-jailed-fake-harness = jailLib.makeJailedAgent {
+            name = "satan-fake-harness";
+            agent = satanFakeHarness;
+            profile = "offline";
+            extraOptions = satanJailOptions;
+            workspaceDeps = [];
+          };
+          satan-jailed-gptel-harness = jailLib.makeJailedAgent {
+            name = "satan-gptel-harness";
+            agent = satanGptelHarness;
+            profile = "specDev";
+            extraOptions = satanGptelJailOptions;
+            gateway = satanGateway;
+            workspaceDeps = [];
+          };
+          # The launcher the checks and scans see, on a stand-in screwtape;
+          # the deployment builds its own with mkJailedMalebolge.
+          jailed-malebolge-probe = mkJailedMalebolge {screwtape = probeScrewtape;};
         };
-        quotientForms = {
-          quotient-read = quotientFamily.read;
-          quotient-write = quotientFamily.write;
-        };
-
-        jailPkgs = lib.optionalAttrs isLinux ({
-            jailed-pi = jailLib.makeJailedPi {
-              profile = "specDev";
-              allowSelfAsSubagent = true;
-              maxSubagentDepth = 2;
-              subagents = ["pi" "claude"];
-              extraPkgs = projectPkgs;
-              extraOptions = jailEnvOptions;
-              gateway = piGateway;
-              inherit workspaceDeps;
-              # inherit workspaceDepsRw;
-            };
-            jailed-pi-research = jailLib.makeJailedPi {
-              name = "pi-research";
-              profile = "research";
-              extraPkgs = projectPkgs;
-              extraOptions = corpusJailOptions;
-              gateway = piGateway;
-              inherit workspaceDeps;
-              # inherit workspaceDepsRw;
-            };
-            jailed-claude = jailLib.makeJailedClaude {
-              profile = "specDev";
-              subagents = ["pi" "claude"]; # pi agents run nested on the pi gateway
-              maxSubagentDepth = 2;
-              extraPkgs = projectPkgs;
-              extraOptions = jailEnvOptions;
-              gateway = piGateway;
-              inherit workspaceDeps;
-              # inherit workspaceDepsRw;
-            };
-            # jailed-codex = jailLib.makeJailedCodex {
-            #   profile = "specDev";
-            #   extraPkgs = projectPkgs;
-            #   extraOptions = jailEnvOptions;
-            #   inherit workspaceDeps;
-            # };
-            # jailed-zero = jailLib.makeJailedZerostack {
-            #   profile = "specDev";
-            #   extraPkgs = projectPkgs;
-            #   extraOptions = jailEnvOptions;
-            #   inherit workspaceDeps;
-            # };
-            SATAN-jailed-fake-harness = jailLib.makeJailedAgent {
-              name = "satan-fake-harness";
-              agent = satanFakeHarness;
-              profile = "offline";
-              extraOptions = satanJailOptions;
-              workspaceDeps = [];
-            };
-            satan-jailed-gptel-harness = jailLib.makeJailedAgent {
-              name = "satan-gptel-harness";
-              agent = satanGptelHarness;
-              profile = "specDev";
-              extraOptions = satanGptelJailOptions;
-              gateway = satanGateway;
-              workspaceDeps = [];
-            };
-            # The launcher the checks and scans see, on a stand-in screwtape;
-            # the deployment builds its own with mkJailedMalebolge.
-            jailed-malebolge-probe = mkJailedMalebolge {screwtape = probeScrewtape;};
-            jailed-shell = jailLib.makeJailedAgent {
-              name = "shell";
-              agent = pkgs.zsh;
-              profile = "specDev";
-              extraPkgs = projectPkgs;
-              subagents = ["pi" "claude"];
-              extraOptions = jailEnvOptions;
-              gateway = piGateway;
-            };
-            bubblewrap = pkgs.bubblewrap;
-          }
-          # The per-call forms are `packages` (nix build .#quotient-read) and are
-          # swept by runnerSocketUnjailed like every jail.
-          // quotientForms);
 
         # Every probe string of the launcher checks, and no other binding:
         # the I1 closure sweep excludes this one by name. Written literally,
@@ -664,71 +544,32 @@
         packages =
           lib.optionalAttrs isLinux jailPkgs
           // {
-            quotient = inputs.quotient.packages.${system}.default;
-            # The input's write-denial probe, run from its store source (it
-            # resolves its own src/cli.ts relative to the script).
-            quotient-hostile-audit = pkgs.writeShellApplication {
-              name = "quotient-hostile-audit";
-              runtimeInputs = [pkgs.nodejs_22];
-              text = ''exec ${inputs.quotient}/scripts/hostile-audit "$@"'';
-            };
-            # The devshell's tool set as one closure, for out-of-tree consumers
-            # that need the same tools without the devshell (the microvm
-            # capsule's `toolsPackage`), so the VM and the devshell can't drift.
-            # One exception: doctrine. The devshell and jails use the host's
-            # cargo install (agents' hostDoctrine); a capsule has no host
-            # binary, so it gets this flake's pinned build.
+            # The tool set as one closure: what dev-envs builds its jails, forms
+            # and shell from (flakes:SPEC-003). It carries no doctrine, so the
+            # host's install is the only one on PATH there.
             dev-tools = pkgs.buildEnv {
               name = "satan-dev-tools";
+              paths = devToolPkgs;
+              ignoreCollisions = true;
+              passthru.devEnv.env.DOCTRINE_RESERVATION_FALLBACK = "1";
+            };
+            # The room's tools (the fleet target's `toolsPackage`): the same set
+            # plus doctrine, since a capsule has no host binary (flakes:DEC-112).
+            capsule-tools = pkgs.buildEnv {
+              name = "satan-capsule-tools";
               paths = devToolPkgs ++ [doctrine-pkg];
               ignoreCollisions = true;
-              # The dev-envs consumer's per-project env (flakes:SL-022).
-              passthru.devEnv.env.DOCTRINE_RESERVATION_FALLBACK = "1";
             };
           };
 
         checks = lib.optionalAttrs isLinux {
           harness-jail-profile = harnessJailProfile;
           malebolge-jail-profile = malebolgeJailProfile;
-          # quotient's form-1 check over the family's text (SL-029's residue
-          # property is its rule (f); DEC-116).
-          quotient-forms = inputs.quotient.lib.checkFormFamily {
-            inherit pkgs;
-            family = quotientFamily;
-          };
           runner-socket-unjailed = runnerSocketUnjailed;
           op-unjailed = opUnjailed;
         };
 
-        devshells.default = {
-          packages = projectPkgs ++ lib.optionals isLinux (lib.attrValues jailPkgs);
-          commands = [
-            {
-              name = "d";
-              command = "doctrine $@";
-            }
-            {
-              name = "jpi";
-              help = "jailed-pi $@";
-              command = "jailed-pi $@";
-            }
-            {
-              name = "jcl";
-              help = "jailed-claude (--dangerously-skip-permissions for interactive)";
-              command = ''
-                case "''${1:-}" in
-                  marketplace|update|config|mcp) jailed-claude "$@" ;;
-                  *) jailed-claude --dangerously-skip-permissions "$@" ;;
-                esac
-              '';
-            }
-            {
-              name = "jail-zsh";
-              help = "jailed shell (zsh) in pi's context";
-              command = "jailed-shell $@";
-            }
-          ];
-        };
+        devshells.default.packages = devToolPkgs;
       };
     };
 }

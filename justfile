@@ -25,7 +25,6 @@ check-jails: malebolge-unbound
     nix build --no-link -L .#checks.x86_64-linux.runner-socket-unjailed
     nix build --no-link -L .#checks.x86_64-linux.op-unjailed
     nix build --no-link -L .#checks.x86_64-linux.malebolge-jail-profile
-    nix build --no-link -L .#checks.x86_64-linux.quotient-forms
 
 # RV-035 F-1: the jailed-malebolge an impure devshell builds binds no
 # /workspace/ path, even with JAIL_WORKSPACE_DEPS set. `nix flake check` is
@@ -65,50 +64,6 @@ test: _require-test-dbs
 # The offline shell-script suites: every `scripts/**/*-test.sh`, each exit 0 = pass.
 shell-suite:
     for t in scripts/*-test.sh scripts/lib/*-test.sh; do [ -e "$t" ] || continue; bash "$t" || exit 1; done
-
-# Build this root's quotient forms and link them where quotient looks
-# (.quotient/forms/<capability>). A rebuild that changes a form needs a fresh
-# `quotient allow`. The server and the machine-default forms are the host's
-# (flakes agents.quotient).
-quotient-forms:
-    mkdir -p .quotient/forms
-    nix build -o .quotient/result-read .#quotient-read
-    nix build -o .quotient/result-write .#quotient-write
-    ln -sfn "$(readlink -f .quotient/result-read)/bin/quotient-read" .quotient/forms/read
-    ln -sfn "$(readlink -f .quotient/result-write)/bin/quotient-write" .quotient/forms/write
-
-# Quotient's write-denial probe against both built forms. Calls a model through
-# the LLM gateway, so it is not part of `check`. Exit 77 = prerequisite missing.
-quotient-hostile-audit state=(env("XDG_STATE_HOME", env("HOME") / ".local/state") / "quotient"): quotient-forms
-    #!/usr/bin/env bash
-    set -euo pipefail
-    # The forms run under the gateway (profile specDev, network) and their
-    # wrapper refuses to launch without both.
-    gateway_run_dir=/run/llm-gateway
-    gateway_key="$HOME/.config/llm-gateway/keys/pi"
-    if [ ! -d "$gateway_run_dir" ]; then
-      echo "quotient-hostile-audit: the LLM gateway is not running (no $gateway_run_dir); just system-switch, or systemctl status llm-gateway" >&2
-      exit 77
-    fi
-    if [ ! -r "$gateway_key" ] || [ ! -s "$gateway_key" ]; then
-      echo "quotient-hostile-audit: no gateway key at $gateway_key; llm-gateway issue pi --models <a,b> --budget <usd> --out \"$gateway_key\"" >&2
-      exit 77
-    fi
-    audit=$(nix build --no-link --print-out-paths .#quotient-hostile-audit)/bin/quotient-hostile-audit
-    base={{state}}/hostile-audit
-    mkdir -p "$base"
-    status=0
-    for capability in read write; do
-      dir=$(mktemp -d "$base/$capability-XXXXXX")
-      mkdir "$dir/root" "$dir/session-home" "$dir/run"
-      echo "quotient-hostile-audit: $capability evidence under $dir"
-      # No exposure: the form writes only the call's root and session
-      # directory, and its private temp.
-      "$audit" --form .quotient/forms/$capability \
-        --capability "$capability" --model llm-gateway/deepseek-flash \
-        "$dir/root" "$dir/session-home" "$dir/run" || status=1
-    done
-    exit "$status"
 
 _require-test-dbs:
     #!/usr/bin/env bash
