@@ -1,0 +1,42 @@
+memory_uid = "mem_01a1b57523d07fb2a941f08c9cb72822"
+memory_key = "mem.fact.satan.audit-rejection-visible-only-in-attrd-journal"
+schema_version = 1
+memory_type = "fact"
+status = "active"
+title = "A broker rejection of attribute.delta_applied is visible only in the satan-attrd journal"
+summary = "The listener logs nothing on a validator rejection, and the daemon deletes satan_audit_replies rows after logging; the delta and event row are already applied."
+created = "2026-11-07"
+updated = "2026-11-07"
+
+[scope]
+paths = ["satan/satan-attribute-listener.el"]
+globs = []
+commands = []
+tags = ["satan", "attributes"]
+workspace = "default"
+repo = "github.com/davidlee/satan"
+repo_id_kind = "remote"
+repo_id_confidence = "high"
+
+[git]
+anchor_kind = "checkout_state"
+commit = ""
+tree = "7005fdd36343ed3f4ca7cf79ee2972aaecca75f1"
+ref_name = "refs/heads/main"
+checkout_state_id = "20400237bb44c5baf274cbf4e4ce607849314eb3d6fa1fb7a9b9ec788ac43b9e"
+base_commit = "4b1a550f1dbeb4946e21bd5863bc3219d1190577"
+verified_sha = ""
+normalizer = "forget.checkout.v1"
+
+[review]
+verification_state = "unverified"
+reviewed = ""
+review_by = ""
+
+[trust]
+trust_level = "medium"
+
+[ranking]
+severity = "none"
+weight = 0
+

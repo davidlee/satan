@@ -1,0 +1,72 @@
+id    = 65
+slug  = "sl-037-phase-03-broker-commit-on-delivery-audit-reason"
+title = "SL-037 PHASE-03 broker: commit on delivery, audit reason"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "code-review"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "git diff of satan/ for PHASE-03 against design sec-2, sec-3, sec-7 and the plan's EX/VT rows; pi first pass (review profile) plus orchestrator verification of each point; negative controls for the audit literal and the broker spy."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-037"
+phase = "PHASE-03"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "minor"
+title = 'probe-commit docstring overclaims: "non-nil iff a signal was emitted"'
+detail = """satan/satan-sensor-content.el, satan-sensor-content-probe-commit. Expected: the return contract matches behaviour. Observed: when enqueue answers (ok . ID) and mark-inspected then signals, the row was delivered but condition-case returns nil, so "iff" is false. The design's Invariants section names this path (a watermark write failing after a good insert). Raised by pi first pass, confirmed by reading the lines."""
+disposition = "fix-now"
+response = "Docstring now reads: non-nil iff the signal was delivered and the watermark advanced."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Docstring now reads: non-nil iff the signal was delivered and the watermark advanced."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix read in the working tree; just check green with TZ=Etc/GMT-10."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "nit"
+title = "--with-backlog added beside two tests that inline the same fixture"
+detail = "satan/test/satan-sensor-content-test.el. Expected: a new helper replaces identical inline set-up. Observed: read-snapshot-charges-nothing and read-without-commit-keeps-backlog inline exactly the fixture satan-sensor-content-test--with-backlog provides, including the seed literal. The other older tests differ (several articles, or a different seed), so they stay."
+disposition = "fix-now"
+response = "Both tests moved onto --with-backlog and the seed constant. The other older tests have different fixtures and stay as they are."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Both tests moved onto --with-backlog and the seed constant. The other older tests have different fixtures and stay as they are."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Fix read in the working tree; just check green with TZ=Etc/GMT-10."
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
