@@ -1,7 +1,7 @@
 id = 37
 slug = "f1-signal-hold"
 title = "Signal loss (F1): add the reason the daemon lacks, preserving the backlog until it deploys"
-status = "ready"
+status = "started"
 created = "2026-11-06"
 updated = "2026-11-07"
 tags = ["attributes", "satan", "sensor", "signal-loss"]
