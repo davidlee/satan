@@ -96,6 +96,8 @@ oauth2-auto.plist
 .doctrine/slice/*/phases
 .doctrine/**/handover.md
 .doctrine/slice/*/inquisition.md
+.doctrine/slice/*/research/
+.codex/hooks.json
 .doctrine/memory/index/*
 .doctrine/memory/embeddings/*
 .doctrine/memory/state/*

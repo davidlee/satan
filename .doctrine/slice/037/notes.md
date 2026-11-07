@@ -92,3 +92,7 @@ Corrections worth keeping, all from reading the code:
 ## Plan (2026-11-07)
 
 `plan.toml` has four phases; PHASE-01 and PHASE-04 are operator acts that need the user's approval. `RV-064` F-3 and F-4 are transcribed onto criteria. The research advisory reports drift only in the slice and design files, not in code, so `research.md` was not refreshed or restamped. Nothing from this design or plan round is committed.
+
+## PHASE-01 log
+
+Flag set nil live and under `:custom` in `apps/dl-satan.el` at 2026-11-07T21:00:53+11:00; that edit is uncommitted in the Emacs config repo. Watermark at the time: `2026-11-07T20:49:22.288+11:00`. Last parse failure in the `satan-attrd` journal: 20:51:45 (positive control for the later search: 27 such lines in the prior two days).
