@@ -33,6 +33,34 @@
   "Write a state file at PATH with :last_inspected WATERMARK."
   (satan-sensor-content-test--write-state path (list :last_inspected watermark)))
 
+(defmacro satan-sensor-content-test--with-enqueue-result (result &rest body)
+  "Evaluate BODY with `satan-attribute-enqueue' answering RESULT."
+  (declare (indent 1))
+  `(cl-letf (((symbol-function 'satan-attribute-enqueue)
+              (lambda (&rest _) ,result)))
+     ,@body))
+
+(defconst satan-sensor-content-test--seed-watermark "2026-05-31T05:00:00.000Z"
+  "The watermark `satan-sensor-content-test--with-backlog' seeds.")
+
+(defmacro satan-sensor-content-test--with-backlog (state-var &rest body)
+  "Evaluate BODY with the probe enabled and one capture past the seed watermark.
+STATE-VAR is bound to the state file's path."
+  (declare (indent 1))
+  `(satan-sensor-content-test--with-temp-state ,state-var
+     (satan-tools-content-test--with-store
+       (satan-tools-content-test--write-article-jsonl
+        (list (satan-tools-content-test--article-plist
+               "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+               "https://example.com/1" "example.com"
+               "Article One" "2026-05-31T06:00:00.000Z")))
+       (satan-sensor-content-test--seed-state
+        ,state-var satan-sensor-content-test--seed-watermark)
+       (let ((satan-sensor-content-state-file ,state-var)
+             (satan-sensor-content-enabled t)
+             (satan-attribute-updates-enabled t))
+         ,@body))))
+
 ;; --- Tests -----------------------------------------------------
 
 (ert-deftest satan-sensor-content/backlog-detected-emits-and-advances ()
@@ -57,15 +85,16 @@
          state-path "2026-05-31T05:00:00.000Z")
         (let ((satan-sensor-content-state-file state-path)
               (satan-sensor-content-enabled t))
-          (let ((result (satan-sensor-content-probe
-                         :run-id "test-run-1"
-                         :ts "2026-05-31T06:30:00+10:00")))
-            ;; Should emit (2 captures after the seed watermark)
-            (should result)
-            ;; Watermark must advance to max captured_at (article3), NOT the ts
-            (let ((state (satan-sensor-content-test--read-state state-path)))
-              (should (equal "2026-05-31T06:00:00.000Z"
-                             (plist-get state :last_inspected))))))))))
+          (satan-sensor-content-test--with-enqueue-result '(ok . 1)
+            (let ((result (satan-sensor-content-probe
+                           :run-id "test-run-1"
+                           :ts "2026-05-31T06:30:00+10:00")))
+              ;; Should emit (2 captures after the seed watermark)
+              (should result)
+              ;; Watermark must advance to max captured_at (article3), NOT the ts
+              (let ((state (satan-sensor-content-test--read-state state-path)))
+                (should (equal "2026-05-31T06:00:00.000Z"
+                               (plist-get state :last_inspected)))))))))))
 
 (ert-deftest satan-sensor-content/no-backlog-no-emit ()
   "When all captures are ≤ watermark, probe returns nil and watermark unchanged."
@@ -102,15 +131,16 @@
         (satan-sensor-content-test--seed-state state-path "")
         (let ((satan-sensor-content-state-file state-path)
               (satan-sensor-content-enabled t))
-          (satan-sensor-content-probe
-           :run-id "test-dec5"
-           :ts "2026-05-31T15:30:00+10:00") ; broker ts — DIFFERENT format
-          (let ((wm (plist-get (satan-sensor-content-test--read-state state-path)
-                               :last_inspected)))
-            ;; DEC-5: watermark MUST be the captured_at string, NOT the broker ts
-            (should (equal "2026-05-31T05:25:45.968Z" wm))
-            ;; DEC-5: watermark must NOT be the broker ts
-            (should-not (equal "2026-05-31T15:30:00+10:00" wm))))))))
+          (satan-sensor-content-test--with-enqueue-result '(ok . 1)
+            (satan-sensor-content-probe
+             :run-id "test-dec5"
+             :ts "2026-05-31T15:30:00+10:00") ; broker ts — DIFFERENT format
+            (let ((wm (plist-get (satan-sensor-content-test--read-state state-path)
+                                 :last_inspected)))
+              ;; DEC-5: watermark MUST be the captured_at string, NOT the broker ts
+              (should (equal "2026-05-31T05:25:45.968Z" wm))
+              ;; DEC-5: watermark must NOT be the broker ts
+              (should-not (equal "2026-05-31T15:30:00+10:00" wm)))))))))
 
 (ert-deftest satan-sensor-content/disabled-returns-nil ()
   "When satan-sensor-content-enabled is nil, probe returns nil without emit."
@@ -171,15 +201,16 @@
       (satan-sensor-content-test--seed-state state-path "")
       (let ((satan-sensor-content-state-file state-path)
             (satan-sensor-content-enabled t))
-        (let ((result (satan-sensor-content-probe
-                       :run-id "test-malformed"
-                       :ts "2026-05-31T06:30:00+10:00")))
-          ;; Should emit — 2 valid captures uninspected
-          (should result)
-          (let ((state (satan-sensor-content-test--read-state state-path)))
-            ;; Watermark should be the max captured_at of valid lines
-            (should (equal "2026-05-31T05:25:45.968Z"
-                           (plist-get state :last_inspected)))))))))
+        (satan-sensor-content-test--with-enqueue-result '(ok . 1)
+          (let ((result (satan-sensor-content-probe
+                         :run-id "test-malformed"
+                         :ts "2026-05-31T06:30:00+10:00")))
+            ;; Should emit — 2 valid captures uninspected
+            (should result)
+            (let ((state (satan-sensor-content-test--read-state state-path)))
+              ;; Watermark should be the max captured_at of valid lines
+              (should (equal "2026-05-31T05:25:45.968Z"
+                             (plist-get state :last_inspected))))))))))
 
 (ert-deftest satan-sensor-content/initial-watermark-empty-string ()
   "Initial watermark is empty string, which sorts before all timestamps."
@@ -193,15 +224,16 @@
         ;; No seed — probe reads empty state file (or non-existent) → watermark ""
         (let ((satan-sensor-content-state-file state-path)
               (satan-sensor-content-enabled t))
-          (let ((result (satan-sensor-content-probe
-                         :run-id "test-initial"
-                         :ts "2026-05-31T06:30:00+10:00")))
-            ;; With empty watermark, every capture is uninspected
-            (should result)
-            (should (equal "2026-05-31T05:25:45.968Z"
-                           (plist-get
-                            (satan-sensor-content-test--read-state state-path)
-                            :last_inspected)))))))))
+          (satan-sensor-content-test--with-enqueue-result '(ok . 1)
+            (let ((result (satan-sensor-content-probe
+                           :run-id "test-initial"
+                           :ts "2026-05-31T06:30:00+10:00")))
+              ;; With empty watermark, every capture is uninspected
+              (should result)
+              (should (equal "2026-05-31T05:25:45.968Z"
+                             (plist-get
+                              (satan-sensor-content-test--read-state state-path)
+                              :last_inspected))))))))))
 
 (ert-deftest satan-sensor-content/no-run-id-guards ()
   "When run-id is nil, probe returns nil (guarded same as curiosity)."
@@ -245,29 +277,19 @@
 (ert-deftest satan-sensor-content/read-snapshot-charges-nothing ()
   "VT-probe-split: `-probe-read' enqueues nothing and never advances the
 watermark.  The forbidden writers are spied to fail if called."
-  (satan-sensor-content-test--with-temp-state state-path
-    (satan-tools-content-test--with-store
-      (satan-tools-content-test--write-article-jsonl
-       (list (satan-tools-content-test--article-plist
-              "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
-              "https://example.com/1" "example.com"
-              "Article One" "2026-05-31T06:00:00.000Z")))
-      (satan-sensor-content-test--seed-state state-path "2026-05-31T05:00:00.000Z")
-      (let ((satan-sensor-content-state-file state-path)
-            (satan-sensor-content-enabled t)
-            (satan-attribute-updates-enabled t))
-        (cl-letf (((symbol-function 'satan-attribute-enqueue)
-                   (lambda (&rest _) (ert-fail "read enqueued an attribute")))
-                  ((symbol-function 'satan-sensor-content-mark-inspected)
-                   (lambda (&rest _) (ert-fail "read advanced the watermark"))))
-          (let ((snap (satan-sensor-content-probe-read
-                       :run-id "rid" :ts "2026-05-31T06:30:00+10:00")))
-            (should (plist-get snap :emit))
-            ;; Watermark untouched by the read.
-            (should (equal (plist-get
-                            (satan-sensor-content-test--read-state state-path)
-                            :last_inspected)
-                           "2026-05-31T05:00:00.000Z"))))))))
+  (satan-sensor-content-test--with-backlog state-path
+    (cl-letf (((symbol-function 'satan-attribute-enqueue)
+               (lambda (&rest _) (ert-fail "read enqueued an attribute")))
+              ((symbol-function 'satan-sensor-content-mark-inspected)
+               (lambda (&rest _) (ert-fail "read advanced the watermark"))))
+      (let ((snap (satan-sensor-content-probe-read
+                   :run-id "rid" :ts "2026-05-31T06:30:00+10:00")))
+        (should (plist-get snap :emit))
+        ;; Watermark untouched by the read.
+        (should (equal (plist-get
+                        (satan-sensor-content-test--read-state state-path)
+                        :last_inspected)
+                       satan-sensor-content-test--seed-watermark))))))
 
 (ert-deftest satan-sensor-content/commit-advances-to-max-captured-at-not-ts ()
   "VT-probe-split: commit advances the watermark to the snapshot's native
@@ -290,8 +312,7 @@ row is still counted."
       (let ((satan-sensor-content-state-file state-path)
             (satan-sensor-content-enabled t)
             (satan-attribute-updates-enabled t))
-        (cl-letf (((symbol-function 'satan-attribute-enqueue)
-                   (lambda (&rest _) nil)))
+        (satan-sensor-content-test--with-enqueue-result '(ok . 1)
           (let* ((ts "2026-05-31T15:30:00+10:00") ; broker ts — must NOT win
                  (snap (satan-sensor-content-probe-read :run-id "rid" :ts ts)))
             (should (plist-get snap :emit))
@@ -306,37 +327,58 @@ row is still counted."
 (ert-deftest satan-sensor-content/read-without-commit-keeps-backlog ()
   "VT-probe-split: a read taken but never committed (budget-denied path)
 leaves the watermark unchanged; a later commit still sees the backlog."
-  (satan-sensor-content-test--with-temp-state state-path
-    (satan-tools-content-test--with-store
-      (satan-tools-content-test--write-article-jsonl
-       (list (satan-tools-content-test--article-plist
-              "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
-              "https://example.com/1" "example.com"
-              "Article One" "2026-05-31T06:00:00.000Z")))
-      (satan-sensor-content-test--seed-state state-path "2026-05-31T05:00:00.000Z")
-      (let ((satan-sensor-content-state-file state-path)
-            (satan-sensor-content-enabled t)
-            (satan-attribute-updates-enabled t))
-        (cl-letf (((symbol-function 'satan-attribute-enqueue)
-                   (lambda (&rest _) nil)))
-          ;; First tick: read only, no commit.
-          (let ((snap1 (satan-sensor-content-probe-read
-                        :run-id "rid" :ts "2026-05-31T06:30:00+10:00")))
-            (should (plist-get snap1 :emit))
-            (should (equal (plist-get
-                            (satan-sensor-content-test--read-state state-path)
-                            :last_inspected)
-                           "2026-05-31T05:00:00.000Z")))
-          ;; Next tick: backlog still visible; commit advances the watermark.
-          (let ((snap2 (satan-sensor-content-probe-read
-                        :run-id "rid" :ts "2026-05-31T06:45:00+10:00")))
-            (should (plist-get snap2 :emit))
-            (should (equal (plist-get snap2 :high-water) "2026-05-31T06:00:00.000Z"))
-            (should (satan-sensor-content-probe-commit snap2))
-            (should (equal (plist-get
-                            (satan-sensor-content-test--read-state state-path)
-                            :last_inspected)
-                           "2026-05-31T06:00:00.000Z"))))))))
+  (satan-sensor-content-test--with-backlog state-path
+    (satan-sensor-content-test--with-enqueue-result '(ok . 1)
+      ;; First tick: read only, no commit.
+      (let ((snap1 (satan-sensor-content-probe-read
+                    :run-id "rid" :ts "2026-05-31T06:30:00+10:00")))
+        (should (plist-get snap1 :emit))
+        (should (equal (plist-get
+                        (satan-sensor-content-test--read-state state-path)
+                        :last_inspected)
+                       satan-sensor-content-test--seed-watermark)))
+      ;; Next tick: backlog still visible; commit advances the watermark.
+      (let ((snap2 (satan-sensor-content-probe-read
+                    :run-id "rid" :ts "2026-05-31T06:45:00+10:00")))
+        (should (plist-get snap2 :emit))
+        (should (equal (plist-get snap2 :high-water) "2026-05-31T06:00:00.000Z"))
+        (should (satan-sensor-content-probe-commit snap2))
+        (should (equal (plist-get
+                        (satan-sensor-content-test--read-state state-path)
+                        :last_inspected)
+                       "2026-05-31T06:00:00.000Z"))))))
+
+;; --- SL-037: the watermark marks delivered evidence ------------
+
+(ert-deftest satan-sensor-content/commit-enqueue-error-keeps-watermark ()
+  "An enqueue that did not answer (ok . ID) keeps the watermark, and the
+commit reports no signal emitted."
+  (dolist (result '((error . "db down") nil))
+    (satan-sensor-content-test--with-backlog state-path
+      (satan-sensor-content-test--with-enqueue-result result
+        (let ((snap (satan-sensor-content-probe-read
+                     :run-id "rid" :ts "2026-05-31T06:30:00+10:00")))
+          (should (plist-get snap :emit))
+          (should-not (satan-sensor-content-probe-commit snap))
+          (should (equal (plist-get
+                          (satan-sensor-content-test--read-state state-path)
+                          :last_inspected)
+                         satan-sensor-content-test--seed-watermark)))))))
+
+(ert-deftest satan-sensor-content/commit-then-reprobe-after-error-recounts ()
+  "After a failed commit the next read reports the same count and high-water."
+  (satan-sensor-content-test--with-backlog state-path
+    (satan-sensor-content-test--with-enqueue-result '(error . "db down")
+      (let* ((read-snapshot (lambda ()
+                              (satan-sensor-content-probe-read
+                               :run-id "rid" :ts "2026-05-31T06:30:00+10:00")))
+             (failed (funcall read-snapshot)))
+        (satan-sensor-content-probe-commit failed)
+        (let ((retried (funcall read-snapshot)))
+          (should (equal (plist-get retried :high-water)
+                         "2026-05-31T06:00:00.000Z"))
+          (should (= 1 (plist-get (plist-get retried :payload) :metric_value)))
+          (should (equal retried failed)))))))
 
 (provide 'satan-sensor-content-test)
 ;;; satan-sensor-content-test.el ends here

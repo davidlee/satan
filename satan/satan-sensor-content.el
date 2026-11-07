@@ -129,15 +129,21 @@ a signal is warranted, else (:emit nil)."
 
 (defun satan-sensor-content-probe-commit (snapshot)
   "Commit SNAPSHOT from `satan-sensor-content-probe-read' (consume-side).
-When (:emit SNAPSHOT) is non-nil, enqueue the payload and advance the
-watermark to the snapshot's high-water (DEC-5: max captured_at, NOT ts).
-Returns non-nil iff a signal was emitted."
+When (:emit SNAPSHOT) is non-nil, enqueue the payload.  The watermark
+advances to the snapshot's high-water (DEC-5: max captured_at, NOT ts)
+only once the enqueue answers (ok . ID): it marks delivered evidence, so
+after any other answer the next probe reports the same captures again.
+Returns non-nil iff the signal was delivered and the watermark advanced."
   (condition-case err
       (when (plist-get snapshot :emit)
         (require 'satan-attribute)
-        (satan-attribute-enqueue (plist-get snapshot :payload))
-        (satan-sensor-content-mark-inspected (plist-get snapshot :high-water))
-        t)
+        (pcase (satan-attribute-enqueue (plist-get snapshot :payload))
+          (`(ok . ,_)
+           (satan-sensor-content-mark-inspected (plist-get snapshot :high-water))
+           t)
+          (result
+           (message "[satan-sensor-content] enqueue failed, watermark kept: %S" result)
+           nil)))
     (error
      (message "[satan-sensor-content] probe-commit soft-failed: %S" err)
      nil)))

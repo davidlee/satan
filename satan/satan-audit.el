@@ -447,7 +447,7 @@ validator.  Widens with each T-attr-1e PR.")
 
 (defconst satan-audit-attribute-sensor-reasons
   '("segment_backlog" "typing_active" "typing_idle" "reading"
-    "ask_suppressed" "ask_uncorrelated")
+    "ask_suppressed" "ask_uncorrelated" "content_backlog")
   "Closed set of reasons for source=sensor (design-contract §6S.1).")
 
 (defconst satan-audit-attribute-caps

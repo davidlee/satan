@@ -371,7 +371,7 @@ Defaults model `reason=segment_backlog' raising curiosity by 0.05."
 
 (ert-deftest satan-audit-attribute/accepts-each-sensor-reason ()
   (dolist (reason '("segment_backlog" "typing_active" "typing_idle" "reading"
-                     "ask_suppressed" "ask_uncorrelated"))
+                     "ask_suppressed" "ask_uncorrelated" "content_backlog"))
     (should-not
      (satan-audit-validate-attribute-event
       "attribute.delta_applied"

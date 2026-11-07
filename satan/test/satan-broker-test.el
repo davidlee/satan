@@ -1770,14 +1770,15 @@ finalises exactly once and kills the stderr buffer."
 (defmacro satan-broker-test--with-call-log (log fns &rest body)
   "Evaluate BODY with each function in FNS replaced by a recorder.
 LOG is bound to the calls made, newest first, each as (FN . ARGS).
-Every recorder returns nil."
+A recorder returns nil; an entry (FN RESULT) makes it return RESULT."
   (declare (indent 2))
   `(let ((,log nil))
-     (cl-letf ,(mapcar (lambda (fn)
-                         `((symbol-function ',fn)
-                           (lambda (&rest args)
-                             (push (cons ',fn args) ,log)
-                             nil)))
+     (cl-letf ,(mapcar (lambda (entry)
+                         (pcase-let ((`(,fn ,result) (ensure-list entry)))
+                           `((symbol-function ',fn)
+                             (lambda (&rest args)
+                               (push (cons ',fn args) ,log)
+                               ,result))))
                        fns)
        ,@body)))
 
@@ -1828,7 +1829,7 @@ show as a double enqueue."
         (ready '(:type "ready" :run_id "rid")))
     (satan-broker-test--with-call-log log
         (satan-audit-record
-         satan-attribute-enqueue
+         (satan-attribute-enqueue '(ok . 1))
          satan-sensor-curiosity-mark-inspected
          satan-sensor-content-mark-inspected
          satan-sensor-wpm--write-state
