@@ -99,7 +99,7 @@ Flag set nil live and under `:custom` in `apps/dl-satan.el` at 2026-11-07T21:00:
 
 ## PHASE-03 log
 
-Implemented in the working tree; uncommitted, so the phase stays `in_progress` (completing it now would record `code_end_oid` equal to `code_start_oid`, an empty delta that conformance reads as covered).
+Code in 6f552ef. The phase stayed `in_progress` until that commit, because completing it earlier would have recorded `code_end_oid` equal to `code_start_oid`, an empty delta that conformance reads as covered.
 
 Deviations from the design:
 - Four tests called the real enqueue, not three: `malformed-line-skipped` too. Two more stubbed it to `nil` and needed `(ok . 1)`.
@@ -111,20 +111,18 @@ Evidence (2026-11-07/08):
 - Same control for the broker test: bare spy FAILED, `(FN RESULT)` spy passes.
 - `just check` exit 0 at 23:59 (1371/1372, 1 skipped, `morning-end-to-end`), live dev-db. `doctrine check gate` at 00:01 exit 1: the five `satan-activity` tests of `ISS-061`, in its 00:00-01:00 AEDT window. `TZ=Etc/GMT-10 just check` at the same instant: exit 0, 1371/1372. This also confirms ISS-061's inference, and adds two tests to its list (`current-carries-recent-typing-per-window`, `recent-focus-segments-carry-their-app-typing`).
 
-RV-065 (per-phase review, required by the out-of-scope test edit): done, solid. F-1 and F-2 fixed; final `TZ=Etc/GMT-10 just check` exit 0, 1371/1372. A plain `just check` needs rerunning after 01:00 AEDT, on the final tree.
-
-`doctrine slice verify-vt` reports PHASE-03 VT-1..3 `UNATTRIBUTABLE` until the tests are committed.
+RV-065 (per-phase review, required by the out-of-scope test edit): done, solid. F-1 and F-2 fixed; final `TZ=Etc/GMT-10 just check` exit 0, 1371/1372. Plain `just check` on the final tree (75b3e5c) at 01:01 AEDT: exit 0, 1371/1372, 1 skipped.
 
 PHASE-01 checks, 2026-11-08 00:01: watermark unmoved at `2026-11-07T20:49:22.288+11:00`; `satan-attrd` journal since 21:00:53 has no entries at all, against 41 `parse failed` lines from 2026-11-05 to the flag change. Three hours at about nine rejections a day is too short to close EX-3.
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-08 · PHASE-01, PHASE-03 in_progress · 4b1a550
+fresh-as-of: 2026-11-08 · PHASE-01 in_progress, PHASE-03 completed · 6f552ef
 
 ### Produced
 - Design locked (run revision 40) after RV-064; plan of four phases (469b8d9).
 - PHASE-01 flag applied; EX-2 and EX-3 open.
-- PHASE-03 implemented and reviewed (RV-065), uncommitted.
+- PHASE-03 implemented and reviewed (RV-065), 6f552ef.
 
 ### Learned
 - mem.fact.satan.audit-rejection-visible-only-in-attrd-journal — where a broker rejection shows up.
