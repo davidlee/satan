@@ -1,0 +1,107 @@
+# Implementation plan for SL-037 — the authored, durable phase plan.
+#
+# This is the single source of each phase's objective, criteria, verification,
+# and links. Runtime status lives separately under .doctrine/state/ (phase
+# tracking) — never record progress here. Hand-edit freely: the tool reads this
+# file but does not rewrite it.
+schema  = "doctrine.plan.overview"
+version = 1
+slice   = "SL-037"
+
+# Canonical spec/requirement links — cite ids, never restate what they say. The
+# plan reader does not model these yet, so nothing downstream consumes them.
+[specs]
+primary       = []
+collaborators = []
+
+[requirements]
+targets      = []
+dependencies = []
+
+# One [[phase]] per ordered phase, in execution order. Ids are immutable and
+# never reused; edits append, they never renumber.
+[[phase]]
+id        = "PHASE-01"
+name      = "Interim: hold the probe off, durably"
+objective = "Stop the live loss now. Set satan-sensor-content-enabled nil in the Emacs config and live, so the backlog accumulates in articles.jsonl until the daemon is deployed. Operator act; no commit in this repo."
+entrance_criteria = [
+  { id = "EN-1", text = "The user approves the edit to apps/dl-satan.el in the Emacs config repo and the live evaluation, or performs them" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "apps/dl-satan.el sets (satan-sensor-content-enabled nil) under :custom in the satan use-package form; the live value is nil; custom-vars.el holds no entry for it" },
+  { id = "EX-2", text = "RV-064 F-4: after an Emacs restart during the interim, the flag is still nil and the watermark in sensor-content.json has not moved" },
+  { id = "EX-3", text = "Allowing one in-flight tick, content_backlog parse failures stop in the satan-attrd journal" },
+]
+verification = [
+  { id = "VH-1", text = "Evaluate satan-sensor-content-enabled after a restart: nil. Record the watermark before and after in notes.md" },
+  { id = "VH-2", text = "rg the satan-attrd journal since the flag change for the reason-parse failure, with a positive control on a line known to be there; record both in notes.md" },
+]
+specs             = []
+requirements      = []
+
+[[phase]]
+id        = "PHASE-02"
+name      = "Daemon reason and contract"
+objective = "satan-attrd accepts content_backlog as Curiosity +0.025, unscaled, and the contract declares it. Built and tested, not deployed."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (design run dr-01a1b05a); DEC-147, DEC-148, DEC-149 accepted" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "SensorReason::ContentBacklog exists with as_str, the FromStr arm, the round-trip array entry and the tuning row [TINY, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]" },
+  { id = "EX-2", text = "just check (lint, format, test) passes in the satan-attrd devshell" },
+  { id = "EX-3", text = "design-contract.md has the 6S.1 reason, the 6S.2 row and preamble note, the 6S.5 evidence values and a dated 16 entry" },
+]
+verification = [
+  { id = "VT-1", expects = "the round-trip test covers ContentBacklog, so a forgotten FromStr arm fails", test_file = "/home/david/dev/satan-attrd/src/types.rs", keywords = ["SensorReason::ContentBacklog", "content_backlog"], waived = true, waived_reason = "out-of-repo test (~/dev/satan-attrd); verified by its just check in the devshell, recorded in notes.md" },
+  { id = "VT-2", expects = "parse_sensor_payload accepts the probe's real fields: panopticon_content_backlog, integer metric_value, uninspected_captures, enabled, an offset ts", test_file = "/home/david/dev/satan-attrd/src/run_loop.rs", keywords = ["panopticon_content_backlog", "uninspected_captures"], waived = true, waived_reason = "out-of-repo test (~/dev/satan-attrd); verified by its just check in the devshell, recorded in notes.md" },
+  { id = "VT-3", expects = "the row is Curiosity +0.025 only; dispatch writes exactly one Curiosity event and changes nothing else", test_file = "/home/david/dev/satan-attrd/src/dispatcher.rs", keywords = ["dispatch_sensor_content_backlog_affects_only_curiosity"], waived = true, waived_reason = "out-of-repo test (~/dev/satan-attrd); verified by its just check in the devshell, recorded in notes.md" },
+  { id = "VT-4", expects = "from Curiosity at exactly 1.0 dispatch still writes the event, carrying RangeClamp", test_file = "/home/david/dev/satan-attrd/src/dispatcher.rs", keywords = ["dispatch_sensor_content_backlog_at_ceiling"], waived = true, waived_reason = "out-of-repo test (~/dev/satan-attrd); verified by its just check in the devshell, recorded in notes.md" },
+  { id = "VA-1", text = "Read the contract edits against sec-4 of the design and against the daemon row: reason string, delta and evidence values agree" },
+]
+specs             = []
+requirements      = []
+
+[[phase]]
+id        = "PHASE-03"
+name      = "Broker: commit on delivery, audit reason"
+objective = "probe-commit advances the watermark only on (ok . ID), and the audit validator accepts content_backlog."
+entrance_criteria = [
+  { id = "EN-1", text = "Design locked (design run dr-01a1b05a)" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "satan-sensor-content-probe-commit follows sec-3 of the design; its docstring states the rule" },
+  { id = "EX-2", text = "Every test that expects the watermark to advance stubs enqueue to return (ok . 1), through one test helper, including the three that call the real enqueue today" },
+  { id = "EX-3", text = "satan-audit-attribute-sensor-reasons contains content_backlog" },
+  { id = "EX-4", text = "RV-064 F-3, first half: removing the literal from satan-audit-attribute-sensor-reasons turns the accepted-reasons test red" },
+  { id = "EX-5", text = "just check green, against a live test database, with zero lint warnings" },
+]
+verification = [
+  { id = "VT-1", expects = "an (error . MSG) result leaves the watermark unchanged and probe-commit returns nil; red before the change", test_file = "satan/test/satan-sensor-content-test.el", keywords = ["satan-sensor-content/commit-enqueue-error-keeps-watermark"] },
+  { id = "VT-2", expects = "after a failed commit the next probe-read reports the same count and high-water", test_file = "satan/test/satan-sensor-content-test.el", keywords = ["satan-sensor-content/commit-then-reprobe-after-error-recounts"] },
+  { id = "VT-3", expects = "the accepted-reasons loop includes content_backlog", test_file = "satan/test/satan-audit-attribute-test.el", keywords = ["content_backlog"] },
+  { id = "VA-1", text = "RV-064 F-3 negative control: temporarily remove the literal, observe the test fail, restore; record the failing output in notes.md" },
+]
+specs             = []
+requirements      = []
+
+[[phase]]
+id        = "PHASE-04"
+name      = "Release and closure"
+objective = "Deploy the daemon, load the broker change, re-enable the probe, and confirm the signal lands on both halves. Close ISS-011."
+entrance_criteria = [
+  { id = "EN-1", text = "PHASE-01, PHASE-02 and PHASE-03 complete; the flag is still nil" },
+  { id = "EN-2", text = "satan-attrd committed, and the user approves the host rebuild and restart" },
+]
+exit_criteria = [
+  { id = "EX-1", text = "The running satan-attrd carries ContentBacklog and the live broker has the PHASE-03 change, before the flag returns" },
+  { id = "EX-2", text = "RV-064 F-4: the config line is gone from apps/dl-satan.el, the flag is t, custom-vars.el holds no entry, and the watermark advances" },
+  { id = "EX-3", text = "satan_attribute_events has a content_backlog row whose evidence_json carries the accumulated count, and the reason-parse failure stops" },
+  { id = "EX-4", text = "RV-064 F-3, second half: that run's transcript.jsonl has an attribute.delta_applied line with reason content_backlog, and the satan-attrd journal has no broker rejected attribute.delta_applied line in that window; the event row alone does not pass" },
+  { id = "EX-5", text = "ISS-011 has a dated closure note recording the mechanism, the fix and these checks" },
+]
+verification = [
+  { id = "VH-1", text = "Query satan_attribute_events for the reason; record the row in notes.md. Compare evidence metric_value with the captures counted since the PHASE-01 watermark" },
+  { id = "VH-2", text = "rg the transcript on the reason and the satan-attrd journal on the broker rejected line, with a positive control on the journal search and the run directory confirmed present; record both in notes.md" },
+]
+specs             = []
+requirements      = []

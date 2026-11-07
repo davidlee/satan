@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 144
+slug = "one-floor-constant-two-uses"
+title = "One deployed-floor constant feeds both the gate and the audit validator; the contract is the ceiling and is tested"
+record_kind = "decision"
+status = "superseded"
+created = "2026-11-06"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The sensor reason vocabulary had three broker-side copies: the probe literal, satan-audit-attribute-sensor-reasons (the return-path validator applied by satan-attribute-listener--handle), and — after DEC-142 — the new floor constant, plus the contract §6S.1 ceiling and the daemon enum. The audit set and the gate set are the same set: the daemon only emits a delta event for a reason the broker sent."
+choice = "One floor constant in satan/satan-attribute.el feeds both the gate predicate and the audit validator's sensor reason set. satan-attribute-ask-reasons stays as a payload-builder guard with a subset test. Tests: floor is a subset of the contract §6S.1 list parsed from docs/attributes/design-contract.md; each probe's fixture-driven probe-read emits a reason in the floor and a sensor_type/metric_unit present in §6S.5; ask reasons are a subset of the floor. The daemon keeps its enum round-trip test plus a dated citation of §6S.1, which is a human-checked residual."
+alternatives = ["Keep the audit literal separate and widen it by hand — the SL-016 precedent (someone must remember), drift unchanged", "A machine-readable reasons artefact in the contract, vendored into both repos — one true source, but cross-repo build plumbing for a six-element list"]
+rationale = "Collapsing the audit set into the floor makes opening the gate and widening the return-path validator one act, so they cannot get out of step; the contract stays the ceiling and is checked by reading it from the same repo. The daemon/contract link cannot be machine-checked from either side — neither repo holds the other's artefact — so it is stated as a citation rather than dressed up as a test."
+consequences = ["satan-audit.el's literal is replaced by a reference to the floor constant", "The floor bump is the single act that both admits the reason and lets the daemon's delta events through", "Residual risk: daemon enum and contract §6S.1 can drift until a reviewer compares them; the daemon test cites the contract section and date"]
+decided_by = "user (inq-5, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = ["DEC-148"]   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

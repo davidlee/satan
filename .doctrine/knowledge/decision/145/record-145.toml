@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 145
+slug = "held-signal-reader-function-plus-capsule-line"
+title = "The held-signal reader is a function plus one additive capsule line under the attributes header"
+record_kind = "decision"
+status = "superseded"
+created = "2026-11-06"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The hold is broker-local state, not a database projection, so the existing attribute capsule block cannot show it. The model cannot know to call a tool that would reveal it, and adding a tool would cost a registration, allowlist entries and a corpus tool description in a third repo. design-contract §9 already establishes that the capsule explains an attribute-layer gap with an explicit marker rather than rendering silence."
+choice = "satan-attribute-held-signals returns the held records as an alist keyed by reason; satan-attribute-render-block appends one line under the existing attributes header when anything is held, e.g. 'Attributes: held content_backlog - 42 captures since 2026-11-04'. The line is additive (the live attribute rows still render), hardcoded text under the corpus-supplied header, and self-suppresses when nothing is held."
+alternatives = ["Function only — leaves the model blind to a hold it cannot know to ask about", "Function plus a registered read-only tool — the model must still know to ask, and it costs a tool description in satan-corpus and allowlist edits", "Both surfaces — more surface than the message needs"]
+rationale = "A withheld signal is exactly what the model should not have to think to ask about, and the capsule is the only surface that reaches it unprompted. §9's disabled marker is the precedent for the capsule explaining an attribute-layer gap; the difference is that a hold annotates rather than replaces, because the rest of the layer is live. Reader parity then holds end to end: writer, then function, then capsule line."
+consequences = ["satan/satan-attribute-render.el gains the held line; it reads the same state file the probe writes, so the block now depends on broker-local state as well as the snapshot query", "The capsule lags one tick: the hold is written in tick N's commit and rendered in tick N+1", "No corpus, tool-registry or allowlist change", "SL-036's reader-parity discipline is satisfied by construction, not by assertion"]
+decided_by = "user (inq-6, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = ["DEC-148"]   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

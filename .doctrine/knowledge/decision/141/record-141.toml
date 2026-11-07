@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 141
+slug = "held-signal-projection-in-probe-state"
+title = "The held-signal record is a keyed projection inside the probe's own state file"
+record_kind = "decision"
+status = "superseded"
+created = "2026-11-06"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-037 needs somewhere to record that a signal was withheld: reason, count, withheld watermark, first/last held time, and why. ADR-018 D5 forbids a new stateful elisp layer, so the record must be a derivation, not a system of record. The hold spans many ticks and run bundles (the watermark does not advance while held), and the reader must reach it without a new parser. The evidence itself lives in panopticon's articles.jsonl plus the probe watermark, neither of which the hold touches."
+choice = 'Extend satan-sensor-content-state-file (satan-state-path "sensor-content.json") with a `held` map keyed by reason, each entry {count, watermark, first_held, last_held, why, accepted}. No run_id. Losing the file costs a warning and a count, not the signal.'
+alternatives = ["Per-run trace JSONL — the wrong container: one hold spans many runs, so the reader would have to sweep runs/", "A new sensor-held.json — a second writer and parser for no gain"]
+rationale = "The probe already reads and writes this file, so the hold costs one more key and no new machinery. It is derivable in the required sense: delete it and the next probe re-derives the same hold from the untouched articles.jsonl and watermark, which is what satisfies D5 rather than waiving it. Keying by reason means a second gated sensor needs no format change. `accepted` snapshots the declared vocabulary at hold time so the reader can explain a hold after the vocabulary has moved — the rot diagnosis the slice's risk section asks for."
+consequences = ["The reader reads the same file the writer writes; no new writable artefact", "A test must delete the state file and show the hold re-derives with the same count and an unchanged watermark (D5 discharged by test, not assertion)", "The state root stays discardable: dropping it loses the warning and the count, never the evidence"]
+decided_by = "user (inq-2, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = ["DEC-148"]   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

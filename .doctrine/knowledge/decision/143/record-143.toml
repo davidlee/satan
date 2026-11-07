@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 143
+slug = "gate-in-attribute-layer-wired-by-probe"
+title = "The unsupported-reason gate is an attribute-layer predicate plus hold record, wired only by the probe that owns a watermark"
+record_kind = "decision"
+status = "superseded"
+created = "2026-11-06"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "Only three probes enqueue sensor payloads (curiosity, wpm, content); satan-sensor-alerts builds no attribute payload. satan-attribute-enqueue is the true chokepoint but also carries outcomes, hippocampus, ask and memory-store writes, none of which own a watermark to withhold, so a gate there would turn preservation into loss for those sources. All probe commits are siblings dispatched by name from one pcase-dolist in satan-broker--commit-frontiers."
+choice = "Predicate satan-attribute-sensor-supported-p (reason against the deployed floor) and hold write/clear helpers taking the state-file path live in satan/satan-attribute.el. The content probe's commit calls them. Curiosity and wpm adopt them only if they gain a reason the deployed daemon lacks."
+alternatives = ["Scoped to satan-sensor-content.el — smallest diff, but a reason-keyed record and reader would live inside one probe's file and move on the first second adopter", "Gate inside satan-attribute-enqueue — one place unmissable, but it would hold outcome/hippocampus/ask payloads that have no frontier to withhold, which is loss rather than preservation"]
+rationale = "The predicate and the record are attribute-layer facts (what this daemon will accept; what we withheld) and belong beside the payload builders; the decision to gate belongs to the probe that knows what to leave unadvanced. That is reuse of two small helpers, not O1's machinery: no opaque pair storage, no dead-letter, no claim expiry, no handshake."
+consequences = ["satan-attribute.el gains the vocabulary constant, the predicate and the hold helpers; satan-sensor-content.el gains a gate call and a release/clear call", "No other probe's behaviour changes in this slice", "A future probe with an undeployed reason spends one call, not a design round"]
+decided_by = "user (inq-4, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = ["DEC-148"]   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

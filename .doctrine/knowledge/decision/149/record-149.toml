@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 149
+slug = "content-backlog-curiosity-tiny-telemetry"
+title = "content_backlog keeps Curiosity +0.025, unscaled, as effective telemetry while Curiosity is saturated"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "DEC-140 chose Curiosity +0.025 on a premise of daily cadence and a +0.025/day net. Measured on 2026-11-07: segment_backlog about 23 events/day, trace_marked about 18/day, content_backlog about 9/day (journal rejections); Curiosity reached 1.000 on each of the last 15 days and stands at 0.975; 309 of 690 Curiosity events in 30 days carried a cap. Curiosity is not decayed (DECAY_TARGETS). The daemon skips attributes with a zero base delta, so an all-zero row writes no event and would lose the signal."
+choice = "Curiosity +0.025 (tiny), every other attribute 0. The delta does not scale with metric_value; the capture count stays evidence in the event row."
+alternatives = ["An attribute with headroom and decay, such as Metamorphosis +0.025: the value would move, but an unread capture is not metamorphosis, and it would take up about 0.2/day of that range", "A new smaller Curiosity magnitude such as +0.005: less pressure, but a new constant with no visible gain at the ceiling", "All-zero row: writes no event, so the signal disappears"]
+rationale = "The non-zero base is what makes the daemon write an evidence row, including when the value is clamped, so the reason is recorded whatever Curiosity's level. Its meaning, the observed/unobserved gap, matches Curiosity. Curiosity's saturation predates this reason and belongs with decay, not this row."
+consequences = ["At about 9 events/day the row adds about 0.2/day of nominal upward pressure to an attribute already at its ceiling", "The closure check is the event row, not movement in the projection", "§6S.2 must state that content_backlog is per-event while the backlog persists, and that metric_value never scales the delta", "Curiosity saturation is tracked as a separate backlog item"]
+decided_by = "user (inq-10, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-07"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-140"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

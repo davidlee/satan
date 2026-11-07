@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 147
+slug = "gate-covers-reasons-not-schema-major"
+title = "The gate covers the reason vocabulary only; schema-major divergence stays a release-time invariant for O1"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-06"
+updated = "2026-11-06"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "satan-attrd deletes the inbox row both on check_schema_major failure and on reason-parse failure (run_loop.rs). A sensor-probe gate can only protect sensor payloads; the same schema check guards outcome, hippocampus and sensor rows alike, and the return path mirrors it in satan-attribute-listener--check-schema. The reason vocabulary grows routinely on each side, while the schema major changes only by a deliberate contract amend."
+choice = "The gate answers one question - is this reason in the declared floor - and nothing else. Schema-major divergence is recorded as a release-time invariant: a major bump is a contract amendment and must deploy daemon-first, failures being loud in both directions. General dead-lettering stays with O1."
+alternatives = ["Extend the declared floor to include the accepted schema major and gate both - cheap and symmetrical, but it protects sensors while outcome and hippocampus rows remain exposed, so a partial gate reads as coverage"]
+rationale = "A gate that silently protects one source while three others remain exposed is worse than an honest scope edge. Separating the two risks by kind - routine growth versus deliberate amendment - keeps the mechanism proportionate to the failure it prevents."
+consequences = ["The design states the boundary explicitly rather than leaving the slice's risk bullet unanswered", "A schema-major bump ahead of deployment remains a way to lose data, and it is documented as a release error, not a code gap", "O1 inherits both the dead-letter and any general schema negotiation"]
+decided_by = "user (inq-8, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

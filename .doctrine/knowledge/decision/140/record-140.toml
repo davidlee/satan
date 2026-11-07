@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 140
+slug = "content-backlog-curiosity-tiny"
+title = "content_backlog earns Curiosity +0.025 (tiny), not scaled by the capture count"
+record_kind = "decision"
+status = "superseded"
+created = "2026-11-06"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-037 amends design-contract §6S.2 with a row for the sensor reason content_backlog (uninspected panopticon page captures). Constraining facts: segment_backlog already charges Curiosity +0.05 for uninspected focus segments; trace_marked subtracts -0.025 on the same attribute at a similar cadence (the 2026-05-29 amend, made because +0.05 vs -0.05 pinned Curiosity at 0 for three days); Curiosity is not decayed (contract §8, DECAY_TARGETS), so its permanent daily net is +0.025 and any positive row is a saturation clock; content_backlog is the same observed/unobserved gap one level deeper (pages unread vs activity uninspected)."
+choice = "Curiosity +0.025 (tiny), every other attribute 0. The delta does not scale with metric_value; the capture count stays evidence in the event row."
+alternatives = ["Curiosity +0.05, mirroring segment_backlog — doubles the charge for one event class and raises the daily net to +0.075, pinning Curiosity at 1.0 sooner", "Zero row, telemetry only — RFC-021's literal advice (decide consumer-vs-telemetry before magnitudes), but it contradicts the slice's closure criterion that the backlog's signal reaches the projection"]
+rationale = "The restored signal has to do something for the slice to be a restoration rather than a record-keeping fix. tiny is the smallest non-vacuous claim, matches the magnitude already used for partial signals, and does not pre-empt RFC-021 O5a (consumer vs telemetry). Refusing to mirror segment_backlog's small avoids charging Curiosity twice for one underlying gap and slows the saturation the missing decay guarantees."
+consequences = ["Curiosity's permanent daily net rises from +0.025 to +0.05 while content_backlog fires — a saturation clock, not a balanced signal", "§6S.2 must state that content_backlog is per-event while the backlog persists (a third kind beside the state-transition default and the ask reasons), and that metric_value never scales the delta", "SL-037's closure check is that the accumulated backlog emits once and the projection moves"]
+decided_by = "user (inq-1, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = ["DEC-149"]   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

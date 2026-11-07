@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 148
+slug = "no-broker-hold-restoring-fix-only"
+title = "No broker-side hold: SL-037 is the restoring fix, with the probe flag as the interim preservation"
+record_kind = "decision"
+status = "accepted"
+created = "2026-11-07"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-037 specified a declared floor, an unsupported-reason gate, a held-signal record, a warning, a reader and a capsule line (DEC-141 to DEC-146). Review on 2026-11-07 found: the required test that every emitted reason is in the floor makes the gate unreachable in any green build, and red while a hold is active; RFC-021 section 5 item 1(i) gives the deployable-now preserving route as satan-sensor-content-enabled nil, which needs no code; the reason for deferring the daemon fix, the missing delta row, is being decided in this run; satan-attrd is a local path flake input and the elisp loads from the live tree, so the skew the floor guards against is one rebuild by one operator on one host."
+choice = "Drop the floor, gate, hold record, warning, reader and capsule line. Sequence: set satan-sensor-content-enabled nil until the daemon is deployed; add the daemon reason, the contract amend and the audit validator widening; deploy; re-enable, so the backlog emits once. The content probe advances its watermark only when the enqueue returns (ok . ID). Future vocabulary skew is left to RFC-021 O1."
+alternatives = ["Keep a declared floor and drop the emitter-coverage test: the gate works, but it still rests on a human claim about what is deployed", "Daemon publishes its accepted reasons in a satan_attribute_settings row: the gate becomes real, but this builds RFC-021 O2 ahead of O1, against that RFC's sequencing"]
+rationale = "The flag already provides the preservation the hold was built for: no enqueue and no watermark advance. The hold would be dead code once the reason ships, and O1 would replace it. Removing it removes the review's findings about the gate, the projection argument, stale holds and the attribute-layer coupling. The enqueue check stays because it closes a real loss path on the line being changed."
+consequences = ["DEC-141 to DEC-146 are superseded by this decision", "The audit validator's sensor reason list is widened by hand, as in SL-016; no shared constant", "Until O1 ships, a reason emitted before the daemon accepts it is still lost; deploying the daemon first is a release constraint", "DEC-147's schema-major release invariant stands; its references to the gate are moot", "Curiosity and wpm probes keep advancing on enqueue regardless of the result; the same fix for them stays with O1", "No change to satan-attribute-render.el; satan-attribute.el changes only if the enqueue contract needs it"]
+decided_by = "user (inq-9, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-07"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = ["DEC-141", "DEC-142", "DEC-143", "DEC-144", "DEC-145", "DEC-146"]   # record ids this one replaces (set by doctrine supersede)
+superseded_by = []   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

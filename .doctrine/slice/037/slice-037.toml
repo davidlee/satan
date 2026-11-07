@@ -1,9 +1,9 @@
 id = 37
 slug = "f1-signal-hold"
-title = "Signal loss (F1): hold unsupported outcomes at the broker, then add the reason the daemon lacks"
-status = "design"
+title = "Signal loss (F1): add the reason the daemon lacks, preserving the backlog until it deploys"
+status = "ready"
 created = "2026-11-06"
-updated = "2026-11-06"
+updated = "2026-11-07"
 tags = ["attributes", "satan", "sensor", "signal-loss"]
 
 [relationships]
@@ -12,15 +12,23 @@ after = [{ to = "SL-019", rank = 0 }]                      # slice→work soft s
 
 [[selector]]
 selector = "satan/satan-sensor-content.el"
-intent = "scope-relevant"
-
-[[selector]]
-selector = "satan/satan-attribute.el"
-intent = "scope-relevant"
+intent = "design-target"
 
 [[selector]]
 selector = "docs/attributes/design-contract.md"
-intent = "scope-relevant"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/satan-audit.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-sensor-content-test.el"
+intent = "design-target"
+
+[[selector]]
+selector = "satan/test/satan-audit-attribute-test.el"
+intent = "design-target"
 
 [[relation]]
 label = "related"

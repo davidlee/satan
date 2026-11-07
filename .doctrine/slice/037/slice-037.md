@@ -1,4 +1,4 @@
-# SL-037: Signal loss (F1) — hold unsupported outcomes at the broker, then add the reason the daemon lacks
+# SL-037: Signal loss (F1) — add the reason the daemon lacks, preserving the backlog until it deploys
 
 ## Why
 
@@ -14,130 +14,115 @@ Two wrong states have already been tried. RFC-016's Phase 0 had the rows **block
 startup** (a poison message); the current code **deletes them** (invisible loss). The
 correct state is neither: store the signal, then handle it. That is this slice.
 
-`RFC-021` §5 item 1 names the routes. This slice takes the one that is both deployable now
-and preserving — the broker-side hold — and then the restoring fix (the daemon-side reason,
-in the same act as the contract amend). It explicitly does **not** take O1's general
-machinery; see *Out of scope*.
+`RFC-021` §5 item 1 names the routes. This slice takes route (i), the flag, as the interim
+preservation and route (ii), the daemon reason, as the fix. It builds no broker-side hold
+(`DEC-148`) and does **not** take O1's general machinery; see *Out of scope*.
 
 ## What changes
 
-### A. Broker — a signal cannot be destroyed by an unsupported reason
+### A. Interim — stop the loss, no code
 
-`probe-commit` becomes *gate → enqueue → advance*, where the gate asks one question: does the
-deployed daemon accept this `(source, reason)` pair? If it does, behaviour is unchanged. If it
-does not:
+Set `satan-sensor-content-enabled` nil until the daemon is deployed, in the Emacs config so a
+restart keeps it. From the next probe read it does nothing: no enqueue and no watermark
+advance. A tick already past its read commits once. The backlog stays in `articles.jsonl`
+(panopticon never prunes `content/`; `RFC-021` §5 item 1). This is an operator act on the
+host, not a code change.
 
-- **no enqueue** (nothing to reject, nothing to delete),
-- **no watermark advance** (the evidence is not consumed),
-- a **held-signal record** — reason, count, watermark, first/last held time, why it is held,
-- a **visible warning** at the point of holding, not a `message` that scrolls away.
-
-Release is automatic and requires no new code path: once the reason is accepted, the next
-probe re-reads `articles.jsonl` (verified: panopticon never prunes `content/`, so the backlog
-survives; `RFC-021` §5 item 1) and emits the whole accumulated count once.
-
-The declared vocabulary is a constant in the broker, and a test asserts it matches the
-contract's `§6S.1` list — so the two sides cite one list rather than each other's memory.
-
-### B. Daemon — the reason exists, so the hold releases
+### B. Daemon and contract — the reason exists
 
 `satan-attrd`: `SensorReason::ContentBacklog` with `as_str` → `"content_backlog"`, parser
-mapping, a `tuning::sensor_base_deltas` row, and dispatcher tests. Contract
-`docs/attributes/design-contract.md`: a `§6S.1` reason row, a `§6S.2` delta row, and a `§16`
-change-history entry — the contract amend `RFC-021` requires in the same act.
+mapping, a `tuning::sensor_base_deltas` row, and dispatcher tests. Confirm that
+`parse_sensor_payload` accepts this payload's `sensor_type` and `metric_unit`.
 
-Delta values are a decision, not a transcription (see *Open questions*), but the shape is
-fixed by §6S.2 and by the `SegmentBacklog` precedent.
+Contract `docs/attributes/design-contract.md`: a `§6S.1` reason row, a `§6S.2` delta row, the
+`§6S.5` evidence enumerations (`panopticon_content_backlog` / `uninspected_captures` are
+missing today, so the contract already contradicts shipped code), a `§6S.2` preamble note that
+this reason fires once per tick that finds captures newer than the watermark, and a `§16` change-history entry.
 
-### C. The reader
+The row is Curiosity **+0.025**, every other attribute zero, never scaled by the capture count
+(`DEC-149`). A non-zero base is required: the dispatcher skips zero-base attributes, so an
+all-zero row writes no event.
 
-The held-signal record must be readable by an agent — a read-only surface that answers "what
-is held, why, since when, and how much". Same invariant as `SL-036`, applied to this slice's
-own writer: no new writable artefact without a reader in the same slice.
+### C. Broker — two small changes
+
+- `satan-audit-attribute-sensor-reasons` gains `content_backlog`, or the broker rejects the
+  daemon's `attribute.delta_applied` for the new reason (the SL-016 precedent).
+- `satan-sensor-content-probe-commit` advances the watermark only when
+  `satan-attribute-enqueue` returns `(ok . ID)`. Today it ignores `(error . MSG)`, so a failed
+  insert consumes the evidence.
+
+### D. Release
+
+Daemon first, then re-enable the flag. The next probe emits the accumulated count once.
 
 ## In scope
 
-- `satan/satan-sensor-content.el` — the gate, the hold record, the warning.
-- `satan/satan-attribute.el` — only if enqueue needs a hook to report refusal.
-- A read-only reader for held signals (function, and a tool only if `/design` argues for it).
-- `docs/attributes/design-contract.md` — `§6S.1`, `§6S.2`, `§16`.
+- `satan/satan-sensor-content.el` — commit advances on `(ok . ID)` only.
+- `satan/satan-audit.el` — the sensor reason literal gains `content_backlog`.
+- `docs/attributes/design-contract.md` — `§6S.1`, `§6S.2` (row + preamble), `§6S.5`, `§16`.
 - `satan-attrd` (external repo, same act): `src/types.rs`, `src/dispatcher.rs`, `src/tuning.rs`
-  and their tests. No migration: sensor reasons are code, not schema — confirm in `/design`.
-- Tests: the negative (unsupported reason ⇒ no enqueue, no advance), the hold record, the
-  vocabulary/contract agreement, and the daemon's parse + delta for the new reason.
+  and their tests, plus a parse test in `src/run_loop.rs`. No migration: `reason` is
+  `TEXT NOT NULL` with no CHECK (`migrations/0007_attributes.sql`), so sensor reasons are code,
+  not schema — confirmed.
+- Tests: every test that expects the watermark to advance stubs enqueue to return `(ok . 1)`;
+  an enqueue error leaves the watermark unchanged; the audit validator accepts the new
+  reason; the daemon's parse and delta for the new reason.
 
 ## Out of scope
 
+- **A broker-side hold** — floor, gate, hold record, warning, reader, capsule line (`DEC-148`).
 - **O1's general machinery** — opaque storage of *unknown* `(source, reason)` pairs, a
   dead-letter carrying the error, claim expiry, and a general broker↔daemon acknowledgement
-  handshake. This slice hard-codes one declared vocabulary; O1 is the invariant that makes
-  the vocabulary unnecessary. Building half of O1 here would leave the worse half behind.
+  handshake. Future vocabulary skew stays O1's.
+- **The curiosity and wpm probes' watermark advance** — the same `(ok . ID)` fix, left to O1.
 - **Remapping to `segment_backlog`** — rejected in `RFC-021`: different sensor type, metric
-  and watermark (`captured_at`, DEC-5); it would encode one evidence stream as another.
+  and watermark (`captured_at`, `DR-005` DEC-5); it would encode one evidence stream as another.
 - **Stopping emission while the watermark advances** — the same loss with better manners.
-- **F2's forward-compatibility contract** (a versioned reason negotiation). Named as the
-  general answer, deliberately deferred.
+- **F2's forward-compatibility contract** (a versioned reason negotiation).
+- **Schema-major divergence** — a release invariant (`DEC-147`; its references to the gate
+  are moot after `DEC-148`).
 - Attribute *semantics* beyond one reason and its delta row; decay; caps; the daemon's
   projection.
 
 ## Affected surface
 
-- `satan/satan-sensor-content.el` — gate, hold, warning
-- `satan/satan-attribute.el` — refusal reporting (if needed)
-- `satan/satan-attributes-*` / reader site for held signals
-- `docs/attributes/design-contract.md` — §6S.1, §6S.2, §16
-- `satan-attrd/src/{types,dispatcher,tuning}.rs` + tests (external repo)
-- A test asserting no unsupported reason can reach the queue
+- `satan/satan-sensor-content.el`, `satan/satan-audit.el`
+- `satan/test/satan-sensor-content-test.el`, the audit validator's test file
+- `docs/attributes/design-contract.md` — §6S.1, §6S.2, §6S.5, §16
+- `satan-attrd/src/{types,dispatcher,tuning}.rs` + tests, `src/run_loop.rs` tests (external repo)
 
 ## Risks and assumptions
 
-- **The declared table can rot.** A constant that claims what the daemon accepts is exactly
-  the kind of convention `F2` says fails. Mitigation: one list, in the contract, with a test
-  on each side citing it; and the hold is *visible*, so rot shows up as a warning rather than
-  as silence.
-- **Delta semantics.** `+0.05` of something on "you have an uninspected reading backlog" is a
-  design claim. Getting it wrong is recoverable (the reason lands with a recorded delta and a
-  rebuildable projection) but not free.
-- **The fix may already be latent on the host.** `satan-sensor-content-enabled` defaults to
-  `t` but the operator may have set it nil as the immediate mitigation (`ISS-011`). If so,
-  this slice is correctness, not an incident — confirm the live value **[verify]**.
-- **Two repos, one act.** A broker-only hold with no daemon reason is a *permanent* hold —
-  better than loss, worse than working. If the daemon change cannot land in the same window,
-  the broker half ships behind the existing disable switch and the hold is announced as such.
-- Assumption: the daemon's rejection is the *only* reason these rows vanish. `run_loop.rs`
-  deletes on parse *and* on schema-version failure (`:527-548`); the hold must not mask a
-  schema failure as a vocabulary failure — the two need distinct reporting.
+- **Release order is not enforced.** Until O1 ships, a reason emitted before the daemon accepts
+  it is still lost. Here the flag covers the gap; re-enabling before the deploy re-opens the loss.
+- **Delta semantics.** Curiosity reached 1.000 on each of the 15 days to 2026-11-07 and is not
+  decayed, so this row is effectively telemetry while it stays saturated (`DEC-149`, `ISS-066`).
+- **The loss is live.** Verified 2026-11-07: the watermark tracks the latest capture and the
+  journal shows rejections, so the flag is on. Part A has not yet been applied.
+- **Schema divergence stays open.** `run_loop.rs` deletes on parse *and* on schema-major
+  failure (`DEC-147`).
 
 ## Verification / closure
 
-- **Loss is impossible by construction:** a test drives the probe with a reason the declared
-  vocabulary lacks and asserts *no* enqueue and *no* watermark advance, plus one hold record.
-- **The hold is visible:** the reader reports it with count, age and cause, without SQL.
-- **The list is one list:** broker constant == contract `§6S.1` == daemon `as_str` set (two
-  tests, one per repo).
-- **The signal lands:** with the daemon change in place, the accumulated backlog emits once
-  and `uninspected_captures` reaches the projection; the `parse_inbox_payload` failure line
-  for this reason disappears from the journal.
+- **Interim:** with the flag nil, and allowing one in-flight tick, the watermark stops moving and
+  `content_backlog` rejections stop in the journal. The flag stays nil across an Emacs restart.
+- **Enqueue failure:** a test shows an `(error . MSG)` result leaves the watermark unchanged.
+- **The signal lands:** after deploy and re-enable, the accumulated backlog emits once, a
+  `satan_attribute_events` row exists for the reason, and the `parse_inbox_payload` failure line
+  for it disappears from the journal. The check is the event row, not movement in the
+  projection, which may be clamped.
+- **The broker accepts it:** the run transcript has an `attribute.delta_applied` line with this
+  reason, and the `satan-attrd` journal has no `broker rejected` line in that window. The event
+  row exists either way.
 - **Nothing else moves:** no watermark behaviour changes for any other sensor;
   `satan-sensor-content-enabled` keeps its meaning.
 - `ISS-011` gets a dated closure note recording the mechanism and the fix.
 
-## Open questions for `/design`
+## Decisions taken (design run `dr-01a1b05a`)
 
-- **What are the delta values?** `§6S.2` needs a row: which attribute(s), what sign, what
-  magnitude, and whether the magnitude scales with the backlog count (§6S.3 says sensor
-  signals are binary — so presumably not, and the count stays evidence). The `SegmentBacklog`
-  row is the precedent, not the answer.
-- **Where does the hold record live** — the probe's state file (cheap, already read/written)
-  or the trace JSONL (already per-run)? Prefer whichever gives the reader without a new
-  parser.
-- **Is the vocabulary declared or discovered?** A constant is simple and rots; reading the
-  daemon's `as_str` set at build time is not available cross-repo; a handshake is O1. The
-  design should choose and say why, rather than defaulting.
-- **Does the gate belong in every sensor or only here?** Four sensor probes share the shape
-  (`sensor-wpm`, `sensor-curiosity`, `sensor-alerts`, `sensor-content`); generalising is
-  cheap now and is O1's first inch — but O1 is deliberately out of scope, so the design must
-  decide whether the narrow gate is *scoped* to content or *written* for reuse.
+- `DEC-148` (2026-11-07) — no broker-side hold; supersedes `DEC-141` … `DEC-146`.
+- `DEC-147` — schema-major divergence stays a release invariant for O1.
+- `DEC-149` (2026-11-07) — Curiosity `+0.025`, unscaled, on measured rates; supersedes `DEC-140`.
 
 ## Relations
 
@@ -145,5 +130,5 @@ own writer: no new writable artefact without a reader in the same slice.
 - `RFC-021` — F1, §5 item 1 (routes), §5 item 2 (O1, deliberately excluded).
 - `SL-019` — hermetic test DB with the pinned `satan-attrd` schema; the integration test wants
   it (`after`).
-- `SL-036` — the same reader-parity discipline, applied to a different writer.
+- `SL-036` — its reader-parity discipline no longer applies: this slice adds no new writable artefact.
 - `SL-023`/`SPEC-004` not involved: the shared database is, but the patch runner is not.

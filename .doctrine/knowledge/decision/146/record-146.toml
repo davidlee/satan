@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 146
+slug = "hold-announced-once-by-display-warning"
+title = "The hold is announced once per episode by display-warning; the capsule line carries it thereafter"
+record_kind = "decision"
+status = "superseded"
+created = "2026-11-06"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "The slice requires a visible warning at the point of holding rather than a scrolling message, and rejects the tick-time 'message' channel. DEC-145 already gives the model a continuous capsule line for the duration of a hold, so a repeatedly emitted warning would add noise without information. display-warning is the codebase's established channel (satan-attribute-snapshot uses it for query failure), lands in the *Warnings* buffer and echoes, and degrades to stderr under emacs --batch rather than disappearing."
+choice = "Emit one display-warning at the commit that sets first_held for a reason (i.e. on the transition into held), naming the reason, the count, the withheld watermark and the cause in one clause. Emit nothing on subsequent held commits. Clear the record silently on release; the capsule line disappears on its own."
+alternatives = ["A warning per held commit — the same warning per tick for days", "Entry warning plus a daily re-warn (needs a last_warned field) — nagging the human about what the capsule already reports", "No warning at all — drops the slice's own requirement"]
+rationale = "With the capsule carrying the ongoing state, the warning's only job is to announce the transition. first_held already exists in the record, so the once-only behaviour needs no new field and no timer."
+consequences = ["The warning is transition-scoped, so a hold that lasts weeks produces exactly one warning", "A user who dismisses the warning still has two surfaces: the capsule for the model and satan-attribute-held-signals for themselves", "Batch and headless ticks surface the warning on stderr instead of dropping it"]
+decided_by = "user (inq-7, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = ["DEC-148"]   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

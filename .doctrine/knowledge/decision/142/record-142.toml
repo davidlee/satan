@@ -1,0 +1,33 @@
+schema = "doctrine.knowledge"
+version = 1
+
+id = 142
+slug = "sensor-vocabulary-deployed-floor"
+title = "The broker's declared sensor vocabulary is a deployed floor, not a transcription of §6S.1"
+record_kind = "decision"
+status = "superseded"
+created = "2026-11-06"
+updated = "2026-11-07"
+tags = []
+
+[facet]                         # every field typed; seeded empty (captured later)
+context = "SL-037's gate must predict whether the deployed satan-attrd accepts a (source, reason) pair before enqueueing it. There is no daemon-to-broker refusal channel (satan_audit_replies runs broker-to-daemon), so runtime discovery would be O1's handshake, out of scope. The daemon and the broker deploy independently, and the two failure modes are asymmetric: a gate open too early resumes the silent loss and looks fixed; a gate closed too early produces a visible hold."
+choice = "The broker constant is the set of reasons the deployed daemon is known to accept — a floor, not §6S.1. Two tests hold it: floor is a subset of the contract's §6S.1 list (so the broker can never claim what the contract does not declare), and every reason the broker emits is in the floor (so a new emitter cannot ship without a deliberate floor bump). Adding content_backlog to the floor is a distinct act after the daemon deploy, dated with the daemon revision it was verified against."
+alternatives = ["A contract-equality constant (the broker constant is exactly §6S.1) — the strongest 'one list', but its truth depends on a release ordering nothing checks, and the first premature release re-creates the bug silently", "Runtime discovery of the daemon's enum — O1's handshake, deliberately out of scope"]
+rationale = "The constant's job is to predict the daemon, not to transcribe the contract. Subset-plus-emitter-coverage keeps the contract as the ceiling and still makes the broker's own list single-sourced, while making the failure mode of a bad release a visible hold instead of an invisible loss. The residual weakness — the floor is a human claim about a deployment — is inherent to a declared vocabulary and is mitigated by dating it against a daemon revision."
+consequences = ["The slice lands in three acts, not two: daemon + contract amend, then the broker floor bump", "A broker released ahead of the daemon merely holds; a daemon released ahead of the broker loses nothing", "The 'one list' verification becomes two relations (floor subset-of §6S.1; emitted subset-of floor) rather than equality, and inq-5 decides where those tests live", "The daemon side still asserts enum/round-trip equality with §6S.1 by citation, since it does not hold the contract"]
+decided_by = "user (inq-3, SL-037 design run dr-01a1b05a)"
+decided_on = "2026-11-06"
+
+[evidence]                      # free-text citations (supports / contradicts / notes)
+supports    = []
+contradicts = []
+notes       = []
+
+[relationships]                 # verb-written edges (set by doctrine supersede)
+supersedes    = []   # record ids this one replaces (set by doctrine supersede)
+superseded_by = ["DEC-148"]   # set on superseded predecessor (verb-written)
+
+[[relation]]
+label = "shapes"
+target = "SL-037"

@@ -1,0 +1,367 @@
+id    = 64
+slug  = "design-review-of-sl-037"
+title = "design review of SL-037"
+# no status — a review's status is DERIVED from its findings, so
+# it is never stored (the storage rule forbids derived data in authored files).
+
+[review]
+facet     = "design"     # scope|design|plan|phase-plan|implementation|code-review|reconciliation
+raiser    = "raiser"
+responder = "responder"
+rounds_base = 0
+contests_base = 0
+concluded = true
+
+[[review.turn]]
+act = "conclude"
+role = "raiser"
+note = "Two pi review passes (deepseek-flash, max thinking) over design.md and slice-037.md against the broker code, tests and contract in this repo; the second pass covered the revised passages. satan-attrd claims were checked by the orchestrator reading src/types.rs, tuning.rs, dispatcher.rs and run_loop.rs, not by an independent reviewer, because the pi run in that root was refused (form-unapproved). No runtime checks. F-3 (control) and F-4 (probe) stay answered until their criteria are transcribed onto phases."
+
+[target]                   # the outbound `reviews` edge: RV-NNN ──reviews──▶ <ref>
+ref   = "SL-037"
+
+[[finding]]
+id = "F-1"
+status = "verified"
+severity = "major"
+title = "Three advance tests call the real enqueue; the code-impact table misses them"
+detail = "pi review (broker pass). satan-sensor-content-test.el backlog-detected-emits-and-advances (:60-68), the dec5 test (:105-113) and the initial-state test (:196-204) call satan-sensor-content-probe with no enqueue stub. Today they pass because the result is ignored, so a failed insert still advances. After the change, a failed or missing inbox keeps the watermark and these go red. The design's sec-6 and sec-7 account only for the stubs at :293 and :320."
+disposition = "fix-now"
+route = "refresh"
+response = "Confirmed: the three tests have no stub, and only :293 and :320 (and :259) stub enqueue. The test file is the side that is right; the design's inventory lagged it. Edited sec-6 and sec-7: every test that expects the watermark to advance stubs enqueue to return (ok . 1), so none depends on a reachable inbox. Swept slice-037.md: its test scope already names the failure case and needs no change."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "refresh"
+response = "Confirmed: the three tests have no stub, and only :293 and :320 (and :259) stub enqueue. The test file is the side that is right; the design's inventory lagged it. Edited sec-6 and sec-7: every test that expects the watermark to advance stubs enqueue to return (ok . 1), so none depends on a reachable inbox. Swept slice-037.md: its test scope already names the failure case and needs no change."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Second pass conceded; sec-6, sec-7 and the slice scope now carry the stub requirement."
+
+[[finding]]
+id = "F-2"
+status = "verified"
+severity = "major"
+title = "Insert succeeds, watermark write fails: the same captures are reported twice"
+detail = "pi review (broker pass). mark-inspected can signal after the row is committed (satan-sensor-content--write-state, full or read-only state root). The next tick re-enqueues the same captures with a new run_id and ts; nothing dedupes. pi proposes a dedupe key enforced by attrd."
+disposition = "tolerated"
+route = "review"
+response = "Observation correct, severity and prescription not adopted. The enqueue-then-mark order exists today, so this change does not introduce it, and neither sec-2's invariant nor sec-3's claim is contradicted: both concern a failed insert, not a failed watermark write. The cost is one extra evidence row at a rare disk fault, on an attribute already at its ceiling. A dedupe key would add a daemon contract for that case, which DEC-148 keeps out of this slice. Disclosed: sec-2 states delivery is at least once; sec-8 carries the duplicate report as an accepted risk."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "tolerated"
+route = "review"
+response = "Observation correct, severity and prescription not adopted. The enqueue-then-mark order exists today, so this change does not introduce it, and neither sec-2's invariant nor sec-3's claim is contradicted: both concern a failed insert, not a failed watermark write. The cost is one extra evidence row at a rare disk fault, on an attribute already at its ceiling. A dedupe key would add a daemon contract for that case, which DEC-148 keeps out of this slice. Disclosed: sec-2 states delivery is at least once; sec-8 carries the duplicate report as an accepted risk."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Second pass conceded; disclosed in sec-2 and sec-8."
+
+[[finding]]
+id = "F-3"
+status = "verified"
+severity = "major"
+title = "The host check cannot detect a missing audit-list entry"
+detail = "pi review (broker pass). A validator rejection in satan-attribute-listener--handle writes satan_audit_replies and drops the audit inbox row; the delta and event row are already in Postgres, and only the transcript echo is lost. So sec-7's closing check, the event row, passes with satan-audit-attribute-sensor-reasons unpatched, and sec-3 does not say what the rejection costs. pi proposes checking for no satan_audit_replies row."
+disposition = "fix-now"
+route = "control"
+response = """
+Observation confirmed in satan-attribute-listener--handle. The prescription is wrong: the daemon's process_reply_row deletes each satan_audit_replies row after logging it, so an absent row proves nothing. Control: the concrete incorrect candidate is a broker running without content_backlog in satan-audit-attribute-sensor-reasons; the check must reject it. The criterion must assert that removing the literal turns the accepted-reasons test red, and that the host check needs a transcript.jsonl line for attribute.delta_applied whose reason is content_backlog (other sensors write the same event to the same file), plus no broker rejected attribute.delta_applied line in the satan-attrd journal for that window (run_loop.rs:710; the broker logs nothing on a rejection). The event row alone does not pass. Host phase constraint: it must follow the re-enable step, needs the run directory still present, and needs a positive control on the journal search. Separable second arm, repaired in prose: sec-3 now states what a rejection costs and who logs it, and sec-7 says the event row proves only the daemon half.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "control"
+response = "Observation confirmed in satan-attribute-listener--handle. The prescription is wrong: the daemon's process_reply_row deletes each satan_audit_replies row after logging it, so an absent row proves nothing. Control: the concrete incorrect candidate is a broker running without content_backlog in satan-audit-attribute-sensor-reasons; the check must reject it. The criterion must assert that removing the literal turns the accepted-reasons test red, and that the host check needs the transcript line for the event and no broker rejected attribute.delta_applied journal line, not merely the event row. Host phase constraint: it must follow the re-enable step, and needs a positive control on the journal search. Separable second arm, repaired in prose: sec-3 now states what a rejection costs, and sec-7 says the event row proves only the daemon half."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "pi second pass: the first wording could pass under the fault (sibling reasons share the transcript; the rejected line exists only in the daemon journal). Same control, sharper criterion."
+disposition = "fix-now"
+route = "control"
+response = """
+Observation confirmed in satan-attribute-listener--handle. The prescription is wrong: the daemon's process_reply_row deletes each satan_audit_replies row after logging it, so an absent row proves nothing. Control: the concrete incorrect candidate is a broker running without content_backlog in satan-audit-attribute-sensor-reasons; the check must reject it. The criterion must assert that removing the literal turns the accepted-reasons test red, and that the host check needs a transcript.jsonl line for attribute.delta_applied whose reason is content_backlog (other sensors write the same event to the same file), plus no broker rejected attribute.delta_applied line in the satan-attrd journal for that window (run_loop.rs:710; the broker logs nothing on a rejection). The event row alone does not pass. Host phase constraint: it must follow the re-enable step, needs the run directory still present, and needs a positive control on the journal search. Separable second arm, repaired in prose: sec-3 now states what a rejection costs and who logs it, and sec-7 says the event row proves only the daemon half.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Transcribed: SL-037 PHASE-03 EX-4 and VA-1 (negative control), PHASE-04 EX-4 and VH-2 (host check). Claims transcription only, not repair."
+
+[[finding]]
+id = "F-4"
+status = "verified"
+severity = "major"
+title = "The interim flag does not survive an Emacs restart, which sec-5 itself offers"
+detail = "pi review (broker pass). satan-sensor-content-enabled defaults to t and nothing persists a live nil. sec-5 names restarting Emacs as a way to load the broker change. A restart before the attrd deploy restores t, and the probe resumes consuming and losing evidence with no log. Conversely a persisted nil outlives a live re-enable, and the probe stays off silently."
+disposition = "fix-now"
+route = "probe"
+response = "Confirmed: the defcustom defaults to t, and neither the config nor custom-vars sets it. sec-5 now names the mechanism: the setting lives under :custom in apps/dl-satan.el, with a live setq, and re-enabling removes the line. Probe: must hold against an Emacs restart during the interim and against a re-enable that leaves the config line behind; need not hold against an operator deliberately editing the flag. The criterion must assert that after a restart the flag is nil and the watermark has not moved, and that after re-enabling the config no longer sets the flag and the watermark advances. Host phase constraint: the interim phase must precede the daemon deploy, and the re-enable check must follow it."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+route = "probe"
+response = "Confirmed: the defcustom defaults to t, and neither the config nor custom-vars sets it. sec-5 now names the mechanism: the setting lives under :custom in apps/dl-satan.el, with a live setq, and re-enabling removes the line. Probe: must hold against an Emacs restart during the interim and against a re-enable that leaves the config line behind; need not hold against an operator deliberately editing the flag. The criterion must assert that after a restart the flag is nil and the watermark has not moved, and that after re-enabling the config no longer sets the flag and the watermark advances. Host phase constraint: the interim phase must precede the daemon deploy, and the re-enable check must follow it."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Transcribed: SL-037 PHASE-01 EX-2 and VH-1 (restart), PHASE-04 EX-2 (re-enable). Claims transcription only, not repair."
+
+[[finding]]
+id = "F-5"
+status = "verified"
+severity = "minor"
+title = "An in-flight tick still enqueues and advances after the flag is set nil"
+detail = """pi review (broker pass). probe-read checks the flag; probe-commit does not and runs at the child's first ready. The slice's "no enqueue and no watermark advance" is therefore false for one tick. pi proposes re-checking the flag in commit."""
+disposition = "fix-now"
+response = "Confirmed. The observation is integrated; the prescription is not. A re-check of the flag in commit would add a guard for one tick of a temporary state, and that tick's captures are no worse off than those of the tick before it. sec-5 and the slice now state that the flag takes effect at the next probe-read, and the interim host check allows one in-flight tick."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Confirmed. The observation is integrated; the prescription is not. A re-check of the flag in commit would add a guard for one tick of a temporary state, and that tick's captures are no worse off than those of the tick before it. sec-5 and the slice now state that the flag takes effect at the next probe-read, and the interim host check allows one in-flight tick."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Second pass conceded; window stated in sec-5, the diagram note, sec-7 and the slice."
+
+[[finding]]
+id = "F-6"
+status = "verified"
+severity = "minor"
+title = "The timestamp risk is understated"
+detail = "pi review (broker pass). The probe compares raw captured_at strings. In a mixed store an offset row compares as local wall clock, so a later Z capture can sort before the watermark and be skipped for good, not only after a daylight-saving fall-back. pi marks the data side as inferred."
+disposition = "fix-now"
+response = """
+Partly contested. The later-Z scenario needs a new Z row; the 2026-11-07 measurement in notes.md found all 36 Z rows date from 2026-05-31 to 06-01, and the watermark is now an offset row. pi conceded this on the second pass. The real residual case is any change in local offset, so sec-8 now gives both windows: an hour after a daylight-saving fall-back, and the size of the shift after a timezone change. No normalisation added; it stays a recorded risk.
+"""
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "Partly contested. The later-Z scenario needs a new Z row; the 2026-11-07 measurement in notes.md found all 36 Z rows date from 2026-05-31 to 06-01, and the watermark is now an offset row. The real residual case is any change in local offset, so sec-8 now names a timezone change beside the daylight-saving fall-back. No normalisation added; it stays a recorded risk."
+
+[[finding.turn]]
+act = "amend"
+role = "responder"
+note = "pi second pass: the skip window after a timezone change is the size of the shift, not an hour. Accepted."
+disposition = "fix-now"
+response = """
+Partly contested. The later-Z scenario needs a new Z row; the 2026-11-07 measurement in notes.md found all 36 Z rows date from 2026-05-31 to 06-01, and the watermark is now an offset row. pi conceded this on the second pass. The real residual case is any change in local offset, so sec-8 now gives both windows: an hour after a daylight-saving fall-back, and the size of the shift after a timezone change. No normalisation added; it stays a recorded risk.
+"""
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "sec-8 reworded; both windows stated."
+
+[[finding]]
+id = "F-7"
+status = "verified"
+severity = "minor"
+title = "No closed-set guard on the reason at payload build"
+detail = "pi review (broker pass). satan-attribute-build-sensor-payload accepts any reason string, while the ask wrapper guards its reasons. A typo in the content reason would again be dropped silently by attrd. pi: out of scope is acceptable if stated."
+disposition = "aligned"
+response = "No change. The design already leaves skew protection to O1 (sec-1, and the first bullet of sec-8), and the reason here is a single literal in the probe, not a caller-supplied value as with the ask wrapper. A guard would be a one-member list, which DEC-148 rejects in its wider form."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = "No change. The design already leaves skew protection to O1 (sec-1, and the first bullet of sec-8), and the reason here is a single literal in the probe, not a caller-supplied value as with the ask wrapper. A guard would be a one-member list, which DEC-148 rejects in its wider form."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Second pass conceded."
+
+[[finding]]
+id = "F-8"
+status = "verified"
+severity = "minor"
+title = "The daemon parse check has no home, and today's rejection masks later fields"
+detail = """Orchestrator read of satan-attrd; the pi daemon pass was refused (form-unapproved). sec-7 requires a parse test with the probe's real field values, but parse_sensor_payload is private to src/run_loop.rs, which sec-4 and sec-6 omit, and no existing test parses a sensor payload (no sensor hits in tests/run_loop.rs or tests/dispatcher.rs). The reason is parsed before sensor_type, metric_value, metric_unit and enabled (run_loop.rs:313-326), so the live rejection shows nothing about those fields. sec-4's "the reason is the only blocker" is true, by reading the builder, but no test holds it."""
+disposition = "fix-now"
+response = "sec-4 now lists every field parse_sensor_payload requires, states that the builder supplies them, and states why the live rejection cannot confirm it. A parse test goes in the mod tests of src/run_loop.rs, and sec-6 and slice-037.md name that file."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-4 now lists every field parse_sensor_payload requires, states that the builder supplies them, and states why the live rejection cannot confirm it. A parse test goes in the mod tests of src/run_loop.rs, and sec-6 and slice-037.md name that file."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "sec-4, sec-6, sec-7 and the slice name the run_loop.rs parse test."
+
+[[finding]]
+id = "F-9"
+status = "verified"
+severity = "minor"
+title = "The load-bearing event-at-the-ceiling behaviour is untested for this reason"
+detail = "Orchestrator read of satan-attrd. DEC-149 and sec-7 rest on the daemon writing an event while Curiosity sits at 1.000. The code holds: dispatch_sensor pushes an event whatever plan_for returns (dispatcher.rs:388-417), and run_loop inserts each one. But dispatch_sensor_range_clamp_applies starts from 0.98, so a future skip of no-op deltas at exactly 1.0 would pass every test and silently remove this slice's signal."
+disposition = "fix-now"
+response = "sec-4 and sec-7 add a dispatcher test that starts Curiosity at exactly 1.0 and expects one event carrying RangeClamp."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-4 and sec-7 add a dispatcher test that starts Curiosity at exactly 1.0 and expects one event carrying RangeClamp."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "sec-4 and sec-7 add the exact-ceiling test."
+
+[[finding]]
+id = "F-10"
+status = "verified"
+severity = "minor"
+title = "A Customize save would outlive removing the config line"
+detail = "pi second pass. :custom is sound (tested; satan.el loads satan-broker, which requires satan-sensor-content). But if nil were also saved to custom-file, deleting the apps/dl-satan.el line leaves the probe off after the next restart."
+disposition = "fix-now"
+response = "sec-5 now says the setting is not saved through Customize. custom-vars.el holds no satan entry today, so only a deliberate save could cause this."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "sec-5 now says the setting is not saved through Customize. custom-vars.el holds no satan entry today, so only a deliberate save could cause this."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "sec-5 states it."
+
+[[finding]]
+id = "F-11"
+status = "verified"
+severity = "minor"
+title = '"Costs timeliness only" reads against the at-least-once disclosure'
+detail = """pi second pass. sec-3's "a failed insert costs timeliness only" survived the revision and reads as a whole-function guarantee."""
+disposition = "aligned"
+response = "Contested. The sentence has a failed insert as its subject and sits in the paragraph about the insert result. A watermark write failure after a good insert is a different event, carried by sec-2 and sec-8. Nothing contradicts; no change."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "aligned"
+response = "Contested. The sentence has a failed insert as its subject and sits in the paragraph about the insert result. A watermark write failure after a good insert is a different event, carried by sec-2 and sec-8. Nothing contradicts; no change."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Contest stands on the text of sec-3."
+
+[[finding]]
+id = "F-12"
+status = "verified"
+severity = "minor"
+title = "The slice did not carry the stub requirement"
+detail = "pi second pass. sec-6 and sec-7 require every advancing test to stub enqueue; slice-037.md's scope and verification did not, so closing against the slice could leave sec-6 unmet."
+disposition = "fix-now"
+response = "slice-037.md In scope now names the stub requirement."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "slice-037.md In scope now names the stub requirement."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Slice scope carries it."
+
+[[finding]]
+id = "F-13"
+status = "verified"
+severity = "nit"
+title = "The sequence diagram note omits the one-tick caveat"
+detail = 'pi second pass. The sec-5 diagram note said "no enqueue, no watermark advance" without the in-flight tick stated in the prose above it.'
+disposition = "fix-now"
+response = "The diagram note now says from the next read."
+
+[[finding.turn]]
+act = "raise"
+role = "raiser"
+
+[[finding.turn]]
+act = "dispose"
+role = "responder"
+disposition = "fix-now"
+response = "The diagram note now says from the next read."
+
+[[finding.turn]]
+act = "verify"
+role = "raiser"
+note = "Diagram note reworded."
+
+# Findings are append-only `[[finding]]` tables, added by `review raise`.
+# Empty here at creation — a fresh review is Active, awaiting the raiser.
