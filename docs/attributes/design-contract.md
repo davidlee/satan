@@ -414,10 +414,11 @@ Source `sensor`. Sensor readings carry metabolic signal about the external world
 | `typing_idle`       | Keys in ≤5% of the window, pointer input in <10%: neither     |
 | `ask_suppressed`    | The `goad_ask` tool declined to ask: no motive correlates with the candidate subject |
 | `ask_uncorrelated`  | A goad ask matured `:no_correlation` — SATAN's motives moved on before it was answered |
+| `content_backlog`   | Panopticon page captures exist that SATAN hasn't inspected |
 
 ### 6S.2 Delta table
 
-Magnitudes: tiny = 0.025, small = 0.05. Sensor signals are state-transition-based (one signal per state change, not per tick) to avoid delta flooding — except `ask_suppressed`/`ask_uncorrelated`, which are per-event: the former can fire on every suppressed tool call while the mismatch persists, the latter once per matured ask. Both are held to `tiny` for exactly this reason (SL-016 PHASE-05); rate-limiting, if needed, is a producer-side concern, not the daemon's.
+Magnitudes: tiny = 0.025, small = 0.05. Sensor signals are state-transition-based (one signal per state change, not per tick) to avoid delta flooding — except `ask_suppressed`/`ask_uncorrelated`, which are per-event: the former can fire on every suppressed tool call while the mismatch persists, the latter once per matured ask. Both are held to `tiny` for exactly this reason (SL-016 PHASE-05); rate-limiting, if needed, is a producer-side concern, not the daemon's. `content_backlog` is also not state-transition-based: it fires once per tick that finds captures newer than the probe's watermark. The watermark advance suppresses repeats, so it does not fire every tick while old captures sit unread. `metric_value` never scales it; the count is evidence only (SL-037).
 
 | Reason              | Δ curiosity | Δ friction | Δ shame | Δ doubt | Δ hunger | Δ suspicion | Δ brooding | Δ metamorphosis |
 |---                  |---:         |---:        |---:     |---:     |---:      |---:         |---:        |---:             |
@@ -427,6 +428,7 @@ Magnitudes: tiny = 0.025, small = 0.05. Sensor signals are state-transition-base
 | `reading`           | 0           | 0          | 0       | 0       | +0.025   | 0           | 0          | 0               |
 | `ask_suppressed`    | +0.025      | 0          | 0       | 0       | 0        | 0           | 0          | +0.025          |
 | `ask_uncorrelated`  | 0           | 0          | 0       | +0.025  | 0        | 0           | 0          | +0.025          |
+| `content_backlog`   | +0.025      | 0          | 0       | 0       | 0        | 0           | 0          | 0               |
 
 Design notes:
 
@@ -448,9 +450,9 @@ Sensor signals are one-shot. `is_revision` is always `false`.
 For `source=sensor`, the `evidence` object carries:
 
 ```text
-evidence.sensor_type    ; string — "panopticon_backlog" | "wpm_activity" | "goad_ask"
+evidence.sensor_type    ; string — "panopticon_backlog" | "panopticon_content_backlog" | "wpm_activity" | "goad_ask"
 evidence.metric_value   ; number — the measured value (segment count, active seconds, etc.); 0 for goad_ask
-evidence.metric_unit    ; string — "unprocessed_segments" | "active_seconds" | "idle_seconds" | "correlating_motives"
+evidence.metric_unit    ; string — "unprocessed_segments" | "uninspected_captures" | "active_seconds" | "idle_seconds" | "correlating_motives"
 ```
 
 No `intervention_id`, `confidence`, or `classification` fields. The validator rejects `source=sensor` events carrying outcome-shaped evidence.
@@ -736,6 +738,7 @@ These do not block T-attr-1b. T-attr-1b may proceed with the §4 storage shapes 
 | 2026-05-29 | T-attr-2f — structural fix for the 2e restart-while-disabled `(run_id, seq)` collision (daemon `~/dev/satan-attrd` `b4ceee1`). On each UTC-day rotation (incl. the first tick of a fresh process) `DecayScheduler::acquire_day_counter` resumes its per-day `Counter` from `MAX(seq)+1` for that day's `run_id` via new `store::max_seq_for_run` + `Counter::resuming_from`. Resume runs lazily on the first due tick rather than in `new()` (equivalent for the guarantee; keeps `new()` sync/IO-free; covers day-rolls uniformly). The loud `Error::DecaySeqCollision` guard is retained as defence-in-depth. §17.8 "Restart-while-disabled seq collision" flipped known-gap → resolved. The 2e probe flips to `tick_restart_while_disabled_same_day_resumes_cleanly` (2 ticks → 2N distinct rows); + 2 `Counter::resuming_from` unit tests. 107 daemon tests green (69 unit + 38 integration); lint + fmt clean. | T-attr-2f daemon PR (this broker commit records the doc updates). |
 | 2026-09-24 | SL-016 PHASE-05 — two sensor reasons added for the goad-ask surface: `ask_suppressed` (the `goad_ask` tool declined to ask: no correlating motive) and `ask_uncorrelated` (an ask matured `:no_correlation`). §6S.1 reason table and §6S.2 delta table gain both rows (curiosity/metamorphosis +tiny for `ask_suppressed`; doubt/metamorphosis +tiny for `ask_uncorrelated`, both provisional — the user expects to iterate); §6S.2 design note 4 amended with the doubt/metamorphosis exception these two reasons carry, and the preamble amended to flag them as per-event rather than per-state-change; §6S.5 evidence enumerations gain `sensor_type="goad_ask"` and `metric_unit="correlating_motives"`. Daemon-side: `SensorReason::AskSuppressed`/`AskUncorrelated` + `tuning::sensor_base_deltas` rows in `~/dev/satan-attrd` (VT-36). Broker-side: `satan-attribute-build-ask-payload` (thin wrapper over `satan-attribute-build-sensor-payload`) in `satan-attribute.el`, and `satan-audit-attribute-sensor-reasons` widened in `satan-audit.el` so the transcript-write validator accepts the resulting `attribute.delta_applied` events (VT-37). Nothing emits either reason yet; attrd must be redeployed (PHASE-08) before `satan-goad-enabled` is turned on — until then attrd rejects both reasons and drops the row. | SL-016 PHASE-05. |
 | 2026-10-26 | IMP-055: §6S — new sensor reason `reading` (Hunger +0.025); `typing_idle` narrows to neither keys nor pointer; triggers restated as shares of the window over panopticon's keyrate minutes (the WPM TSV is retired); `metric_value` is the measured seconds, not the threshold. | IMP-055 (agreed with the user). |
+| 2026-11-08 | SL-037 PHASE-02 — new sensor reason `content_backlog` (Curiosity +0.025, unscaled by `metric_value`): §6S.1 and §6S.2 rows; §6S.2 preamble states its once-per-tick-with-new-captures cadence; §6S.5 gains `sensor_type="panopticon_content_backlog"` and `metric_unit="uninspected_captures"`. Curiosity reached 1.000 on each of the 15 days to 2026-11-07, so the row is effectively telemetry at about 0.2/day of nominal pressure (DEC-149, ISS-066); the event row, not movement in Curiosity, is the evidence. Daemon-side: `SensorReason::ContentBacklog` + `tuning::sensor_base_deltas` row in `~/dev/satan-attrd`. attrd must deploy before the content probe's flag is re-enabled; until then attrd rejects the reason and deletes the row (ISS-011). | SL-037 PHASE-02. |
 
 ---
 

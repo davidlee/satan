@@ -97,6 +97,18 @@ Corrections worth keeping, all from reading the code:
 
 Flag set nil live and under `:custom` in `apps/dl-satan.el` at 2026-11-07T21:00:53+11:00; that edit is uncommitted in the Emacs config repo. Watermark at the time: `2026-11-07T20:49:22.288+11:00`. Last parse failure in the `satan-attrd` journal: 20:51:45 (positive control for the later search: 27 such lines in the prior two days).
 
+## PHASE-02 log
+
+Daemon change in `~/dev/satan-attrd` 1ef298d: `SensorReason::ContentBacklog`, `as_str`, `FromStr`, tuning row `[TINY, 0.0, ...]`, round-trip entry; tests `dispatch_sensor_content_backlog_affects_only_curiosity`, `dispatch_sensor_content_backlog_at_ceiling`, `sensor_payload_accepts_content_probe_fields`, plus the row in `sensor_base_deltas_match_contract`. The user's `.doctrine/doctrine.toml` and `.gitignore` edits there are not part of it. Contract edits in `docs/attributes/design-contract.md`: 6S.1, 6S.2 row and preamble, 6S.5, 16.
+
+Evidence (2026-11-08):
+- Red: five E0599 errors on the missing variant. Compile failure only, so no behavioural red for the parse test.
+- `just check` in the devshell, attrd: lint and format clean, 117 tests pass (75 unit, 42 integration). VT-1 to VT-4 pass by name. The real payload parsed with only the reason added, confirming sec-4.
+- `doctrine check gate` here at 02:00: exit 0.
+- VA-1: contract rows read against sec-4, `tuning.rs` and `satan-sensor-content.el:122-125`: reason string, +0.025 and evidence values agree.
+- pi review (first independent daemon review; `quotient allow` is now run, so the handover's `form-unapproved` caveat is out of date; run `run-20261107T150020244Z-87-b8ae930eb22b`): no defects, no other reason enumeration, no CHECK on `reason`. Two test weaknesses left as they are: the ceiling test cannot catch a wrong magnitude (other tests pin it); the parse test skips envelope routing (VT-2 specifies `parse_sensor_payload`; the routing is shared).
+
+
 ## PHASE-03 log
 
 Code in 6f552ef. The phase stayed `in_progress` until that commit, because completing it earlier would have recorded `code_end_oid` equal to `code_start_oid`, an empty delta that conformance reads as covered.
@@ -117,12 +129,13 @@ PHASE-01 checks, 2026-11-08 00:01: watermark unmoved at `2026-11-07T20:49:22.288
 
 ## Harvest
 <!-- single-copy: updated in place each harvest; ids only, never restated content -->
-fresh-as-of: 2026-11-08 · PHASE-01 in_progress, PHASE-03 completed · 6f552ef
+fresh-as-of: 2026-11-08 · PHASE-01 in_progress, PHASE-02 and PHASE-03 completed · 9bd3a68
 
 ### Produced
 - Design locked (run revision 40) after RV-064; plan of four phases (469b8d9).
 - PHASE-01 flag applied; EX-2 and EX-3 open.
 - PHASE-03 implemented and reviewed (RV-065), 6f552ef.
+- PHASE-02 completed: attrd 1ef298d, contract in the SL-037 docs commit.
 
 ### Learned
 - mem.fact.satan.audit-rejection-visible-only-in-attrd-journal — where a broker rejection shows up.
@@ -130,3 +143,4 @@ fresh-as-of: 2026-11-08 · PHASE-01 in_progress, PHASE-03 completed · 6f552ef
 ### Open
 - No open DEC / QUE / ASM. RV-064 F-3 and F-4 are phase criteria.
 - ISS-066 — Curiosity saturation, outside this slice.
+- Conformance: `satan/test/satan-broker-test.el` undeclared, for /reconcile to add to design sec-6.
