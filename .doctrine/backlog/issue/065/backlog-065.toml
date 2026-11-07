@@ -8,7 +8,7 @@ kind = "issue"
 status = "open"
 resolution = ""                 # seeded empty so `backlog edit` sets it in place
 created = "2026-11-06"
-updated = "2026-11-06"
+updated = "2026-11-08"
 tags = ["memory", "resilience", "satan", "security"]
 
 # outbound-only. Cross-kind structural edges (e.g. references with a role

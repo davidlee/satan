@@ -23,8 +23,29 @@ Recorded because they are not derivable from either repo and they change the pic
   this item said `corpus`; the operator corrected it — production binds `satan_memory`, as
   the code defaults already say.)
 - **Jail Postgres:** a database entirely separate from `satan_memory`; 30-day rolling
-  archive of raw `pg_dump` output to the operator's own disk. Plain SQL, so restorable in
-  principle; never restored.
+  archive of `pg_dump` output to the operator's own disk. Custom format, so restorable in
+  principle with `pg_restore` (an earlier note said plain SQL; corrected 2026-11-08); never
+  restored.
+
+## The jail archive in practice (2026-11-08)
+
+Taken from `flakes:SL-017`, which built it, and from the host's journal. That this is the
+archive in row 6b is inferred: it is the only scheduled database dump on the host.
+
+- **What it is:** the `satan-postgres-backup` user timer, 03:00 daily, dumps database
+  `satan` in room `assistant` to
+  `~/.local/state/oubliette/backups/assistant/satan/<UTC timestamp>-<pid>/`, as `full.dump`
+  and `schema.dump`. No cluster-global roles are dumped.
+- **Its horizon is 30 complete sets, not 30 days** (`flakes:DEC-080`). Failed runs publish
+  nothing and prune nothing, so failures stretch the window.
+- **It protects against loss of the room volume only.** The dumps sit on the host's disk;
+  there is no off-host copy.
+- **Failures are silent.** 9 of 12 scheduled runs from 2026-10-27 to 2026-11-07 succeeded.
+  Runs failed on 2026-10-29, 11-04 and 11-05 at the SSH tunnel; on the last two
+  `/run/capsule-room/assistant/ssh.sock` was missing, so the room was probably down (cause
+  of 10-29 not established). This is the designed behaviour: an unavailable room is a
+  failed run in the journal, with no retry. Nothing tells the operator, so the two-day gap
+  went unnoticed.
 
 Consequences are in "Why 'no overall plan' is the accurate description" below. The short
 version: the archive covers a database that is not the one holding the history.
@@ -39,7 +60,7 @@ version: the archive covers a database that is not the one holding the history.
 | 4 | `~/.local/state/satan/tick-trace-*.jsonl` — `satan-trace-dir` (`satan-trace.el:37`) | per-tick rows + a ledger of **every psql call** (`satan-db.el:121,164`) | low–medium (argv, labels, timings) | none; one file per day, 152,983 rows as of 2026-11-06 | none |
 | 5 | `~/.local/state/satan/` cursors — `sensor-content.json`, ingest cursor, `log/wpm/` | watermarks and counters | low | n/a | none; **not rebuildable** if lost (silently re-reads everything, or skips it) |
 | 6a | **Host** Postgres — database `satan_memory` on `/run/postgresql` (matches the code defaults: `satan-attribute-database`, `satan-attrd`'s `DATABASE_URL`, `nix/module.nix`'s `databaseUrl`) | `traces` (LLM prose about the user and its work), `trace_handles`, `satan_interventions`, `satan_intervention_outcomes`, `satan_patterns`/`_outcomes`, `satan_attributes`, `satan_attribute_events`, queues | **high** | none — `ISS-064`: `retention_json` is decorative; `satan_attribute_events` is append-only and unbounded | **none** (operator, 2026-11-06) — the only copy |
-| 6b | **Jail** Postgres — a database **entirely separate** from 6a (not a copy or fork; operator, 2026-11-06); contents not established here | whatever jail-side runs write | unknown | 30-day rolling archive | **30-day rolling archive** of raw `pg_dump` output to the operator's own disk (operator, 2026-11-06); plain-SQL format, so restorable in principle with `psql` — never tested |
+| 6b | **Jail** Postgres — a database **entirely separate** from 6a (not a copy or fork; operator, 2026-11-06); contents not established here | whatever jail-side runs write | unknown | 30-day rolling archive | **30-day rolling archive** of `pg_dump` output to the operator's own disk (operator, 2026-11-06); custom format, so restorable in principle with `pg_restore` — never tested |
 | 7 | `~/.local/state/behaviour/` — panopticon | `raw/` (desktop/firefox events), `segments/`, `histograms/`, `content/` (**full extracted page text** + digests) | **highest per byte** — page bodies, URLs, titles | `raw/` 7 d (gated on the same-day segment), `segments/` 90 d, `histograms/` forever, `content/`+`digest/` **none** (`panopticon/segmentizer/retention.py`; README tier table) | none |
 
 ## Why "no overall plan" is the accurate description
@@ -60,8 +81,8 @@ version: the archive covers a database that is not the one holding the history.
   output; the host database `satan_memory` has **nothing**. The archive is therefore not a
   partial substitute, it is a substitute for somewhere else: the irreplaceable history
   (`traces`, interventions, outcomes, attributes, the append-only attribute event log)
-  exists in exactly one place. The archive is at least in a real format — plain SQL, so
-  `psql` can consume it — but it has never been restored, and 30 days is shorter than the
+  exists in exactly one place. The archive is at least in a real format — custom format, so
+  `pg_restore` can consume it — but it has never been restored, and 30 days is shorter than the
   retention the system claims elsewhere (segments 90 days, histograms forever, traces
   unbounded), so an archive horizon that matches no declared rule is a coincidence, not a
   policy.
@@ -100,7 +121,7 @@ version: the archive covers a database that is not the one holding the history.
    the history that matters; (b) add a host-DB `pg_dump` to off-host storage with an
    interval set from the loss tolerance; and (c) **perform one restore** into a scratch
    instance, dated, with steps recorded — including a restore *from the existing jail
-   archive*, which is plain SQL and therefore cheap to test, and which has never been
+   archive* (`full.dump`, with `pg_restore`), which is cheap to test, and which has never been
    tested. Also: corpus remote verified current, and panopticon's content tier decided
    (their repo, their item).
 4. **A PII decision on the copies.** Either bundles get a redaction pass at write time, or
@@ -111,6 +132,10 @@ version: the archive covers a database that is not the one holding the history.
    corruption, corpus repo loss — what is lost, what is rebuilt, and from what. If the
    answer is "everything since the last dump", say so and set the dump interval from the
    tolerance.
+6. **A failed backup that someone sees.** A missed run reaches only the journal. Alert on
+   backup age, for example a `sleipnir-doctor` check (`checks.d/`) on the newest complete
+   set, and apply it to the host-DB dump in item 3 too. Decide whether a failed run should
+   retry.
 
 ## Out of scope
 
@@ -127,6 +152,7 @@ version: the archive covers a database that is not the one holding the history.
   in the estate, and the only one covering a SATAN-owned text store.
 - `ISS-018` — the test traffic that makes the tick-trace ledger larger than it should be.
 - `RFC-021` — the deferral argument in its §5 item 1 assumes content is never pruned.
+- `flakes:SL-017`, `flakes:DEC-080` — the jail archive's implementation and retention rule.
 
 ## Open
 
