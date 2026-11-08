@@ -97,6 +97,10 @@ Corrections worth keeping, all from reading the code:
 
 Flag set nil live and under `:custom` in `apps/dl-satan.el` at 2026-11-07T21:00:53+11:00; that edit is uncommitted in the Emacs config repo. Watermark at the time: `2026-11-07T20:49:22.288+11:00`. Last parse failure in the `satan-attrd` journal: 20:51:45 (positive control for the later search: 27 such lines in the prior two days).
 
+EX-2, 2026-11-08 10:50 after the user's Emacs restart (uptime 19 s): `satan-sensor-content-enabled` nil; watermark still `2026-11-07T20:49:22.288+11:00` (file mtime 20:51:45). EX-2 met.
+
+EX-3 interim, 10:50: no `content_backlog` parse failure since 21:00:53, about 14 h, against an expected ~5 at the old rate. Positive control: 41 `parse failed` lines 2026-11-05 to 21:00:53. One unrelated line since: 09:15:00 `classification: invalid reason for source=outcome: unknown id=4531`, an outcome row, not this reason (filed as ISS-067). Left open until 24 h have passed.
+
 ## PHASE-02 log
 
 Daemon change in `~/dev/satan-attrd` 1ef298d: `SensorReason::ContentBacklog`, `as_str`, `FromStr`, tuning row `[TINY, 0.0, ...]`, round-trip entry; tests `dispatch_sensor_content_backlog_affects_only_curiosity`, `dispatch_sensor_content_backlog_at_ceiling`, `sensor_payload_accepts_content_probe_fields`, plus the row in `sensor_base_deltas_match_contract`. The user's `.doctrine/doctrine.toml` and `.gitignore` edits there are not part of it. Contract edits in `docs/attributes/design-contract.md`: 6S.1, 6S.2 row and preamble, 6S.5, 16.
